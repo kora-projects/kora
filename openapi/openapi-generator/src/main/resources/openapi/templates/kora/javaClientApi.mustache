@@ -47,13 +47,11 @@ public interface {{classname}} {
     {{.}}
     {{/koraAdditionalContractAnnotations}}
     @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
-    @ApiImplicitParams({
+    @io.swagger.v3.oas.annotations.Parameters({
     {{#headerParams}}
-     TODO implicit header
-    {{>implicitHeader}}
+        {{>implicitHeaderV3}}
     {{/headerParams}}
-    })
-    {{/implicitHeaders}}{{#responses}}
+    }){{/implicitHeaders}}{{#responses}}
     @ResponseCodeMapper(code = {{#isDefault}}ResponseCodeMapper.DEFAULT{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class){{/responses}}
     {{#vendorExtensions.authInterceptorTag}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{.}}.class), value = HttpClientInterceptor.class)

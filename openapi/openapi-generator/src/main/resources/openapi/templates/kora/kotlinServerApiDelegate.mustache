@@ -15,13 +15,14 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
 interface {{classname}}Delegate {
 {{#operations}}
 {{#operation}}
-    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}(
-{{#vendorExtensions.requestInDelegateParams}}      _serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}      {{^isFormParam}}
-      {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}
-{{/isFormParam}}{{/allParams}}    {{#hasFormParams}}
-      form: {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam
-    {{/hasFormParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
+    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}(
+        {{#vendorExtensions.requestInDelegateParams}}_serverRequest: HttpServerRequest{{#hasParams}},{{/hasParams}}
+        {{/vendorExtensions.requestInDelegateParams}}{{^implicitHeaders}}{{#allParams}}{{^isFormParam}}{{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/isFormParam}}
+        {{/allParams}}{{/implicitHeaders}}{{#implicitHeaders}}{{#allParams}}{{^isFormParam}}{{^isHeaderParam}}{{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}} ,{{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{/hasFormParams}}
+        {{/isHeaderParam}}{{/isFormParam}}{{/allParams}}{{/implicitHeaders}}{{#hasFormParams}}
+        {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form{{/hasFormParams}}
+    ): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 {{/operation}}
 }
 {{/operations}}

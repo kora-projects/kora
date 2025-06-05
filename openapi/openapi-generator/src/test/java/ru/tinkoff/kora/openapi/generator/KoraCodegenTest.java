@@ -36,6 +36,7 @@ import java.util.stream.Collectors;
 import static ru.tinkoff.kora.annotation.processor.common.TestUtils.classpath;
 
 class KoraCodegenTest {
+
     static {
         if (LoggerFactory.getLogger("ROOT") instanceof Logger log) {
             log.setLevel(Level.WARN);
@@ -44,7 +45,7 @@ class KoraCodegenTest {
 
     record SwaggerParams(String mode, String spec, String name, Options options) {
 
-        record Options(boolean authAsArg, boolean jsonNullable) {}
+        record Options(boolean authAsArg, boolean jsonNullable, boolean includeServerRequest, boolean implicitHeaders) {}
     }
 
     static SwaggerParams[] generateParams() {
@@ -89,17 +90,22 @@ class KoraCodegenTest {
                     .replace(".yaml", "")
                     .replace(".json", "");
 
-                result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(false, false)));
+                result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(false, false, false, false)));
 
                 if (fileName.contains("security")) {
-                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options(true, false)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options(true, false, false, false)));
+                }
+
+                if (name.equals("petstoreV2") || name.equals("petstoreV3")) {
+                    result.add(new SwaggerParams(mode, fileName, name + "_server_request", new SwaggerParams.Options(false, false, true, false)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_implicit_headers", new SwaggerParams.Options(false, false, false, true)));
                 }
 
                 if (fileName.contains("discriminator")
                     || fileName.contains("validation")
                     || fileName.contains("nullable")
                     || fileName.contains("additional_props")) {
-                    result.add(new SwaggerParams(mode, fileName, name + "_enable_json_nullable", new SwaggerParams.Options(false, true)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_enable_json_nullable", new SwaggerParams.Options(false, true, false, false)));
                 }
             }
         }
@@ -151,6 +157,8 @@ class KoraCodegenTest {
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg())
             .addAdditionalProperty("enableJsonNullable", options.jsonNullable())
+            .addAdditionalProperty("implicitHeaders", options.implicitHeaders())
+            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest())
             .addAdditionalProperty("clientConfigPrefix", "test");
 
         if (spec.contains("_filter")) {

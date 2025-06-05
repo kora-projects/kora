@@ -16,6 +16,7 @@ import java.util.concurrent.CompletionStage;
 public interface {{classname}}ServerRequestMappers {
 {{#operations}}
 {{#operation}}
+
 {{#hasFormParams}}
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<

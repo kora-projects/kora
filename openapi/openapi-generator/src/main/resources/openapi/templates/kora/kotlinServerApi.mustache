@@ -20,6 +20,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
 {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
 {{#operations}}
 {{#operation}}
+
     /**
      * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
     {{#notes}}
@@ -42,14 +43,11 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
-    @ApiImplicitParams({
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}{{#getHasHeaderParams}}
+    @io.swagger.v3.oas.annotations.Parameters(value = [
     {{#headerParams}}
-     TODO implicit header
-    {{>implicitHeader}}
-    {{/headerParams}}
-    })
-    {{/implicitHeaders}}{{#hasAuthMethods}}
+    {{>implicitHeaderV3Kotlin}}{{/headerParams}}    ]){{/getHasHeaderParams}}{{/implicitHeaders}}
+    {{#hasAuthMethods}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}{{#vendorExtensions.x-validate}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor::class)
     @ru.tinkoff.kora.validation.common.annotation.Validate
@@ -63,13 +61,12 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     {{/interceptorTags}}
     {{/koraInterceptors}}
     @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
-    {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
-      return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
-        {{#allParams}}{{#lambda.trim}}
-        {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}
-        {{^hasFormParams}}{{paramName}}{{^-last}},{{/-last}}{{/hasFormParams}}{{/lambda.trim}}{{/allParams}}{{#hasFormParams}}
-        form{{/hasFormParams}}
-      )
+    {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
+      _serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
+        return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
+            {{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{^implicitHeaders}}{{paramName}}, {{/implicitHeaders}}{{#implicitHeaders}}{{^isHeaderParam}}{{paramName}}, {{/isHeaderParam}}{{/implicitHeaders}}{{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{^implicitHeaders}}{{paramName}}{{^-last}}, {{/-last}}{{/implicitHeaders}}{{#implicitHeaders}}{{^isHeaderParam}}{{paramName}}{{^-last}}, {{/-last}}{{/isHeaderParam}}{{/implicitHeaders}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}
+            form{{/hasFormParams}}
+        )
     }
 
 {{#hasFormParams}}
@@ -80,8 +77,6 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
       {{/formParams}}
     ){}
 {{/hasFormParams}}
-
-
 {{/operation}}
 }
 {{/operations}}
