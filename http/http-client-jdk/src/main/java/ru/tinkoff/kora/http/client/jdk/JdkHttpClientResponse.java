@@ -60,11 +60,12 @@ public class JdkHttpClientResponse implements HttpClientResponse {
 
     private static final class BodyPublisher extends AtomicBoolean implements HttpBodyInput {
 
-        private static final String EMPTY_CONTENT_TYPE = "";
+        private static final String EMPTY_CONTENT_TYPE = "<UNKNOWN-CONTENT-TYPE\r\n>";
         private static final long EMPTY_CONTENT_LENGTH = -2;
 
         private final Flow.Publisher<List<ByteBuffer>> publisher;
         private final java.net.http.HttpHeaders headers;
+
         private volatile HttpResponseInputStream is;
         private volatile long contentLength = EMPTY_CONTENT_LENGTH;
         private volatile String contentType = EMPTY_CONTENT_TYPE;
