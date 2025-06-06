@@ -4,14 +4,19 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.consumer.containers.KafkaSubscribeConsumerContainer;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
@@ -76,6 +81,22 @@ class KafkaSubscribeConsumerContainerTest {
                 }
             }
             consumer.commitSync();
+        }, new KafkaConsumerTelemetry<>() {
+            @Override
+            public KafkaConsumerRecordsTelemetryContext<String, Integer> get(ConsumerRecords<String, Integer> records) {
+                return new KafkaConsumerRecordsTelemetryContext<>() {
+                    @Override
+                    public KafkaConsumerRecordTelemetryContext<String, Integer> get(ConsumerRecord<String, Integer> record) {
+                        return ex -> { };
+                    }
+
+                    @Override
+                    public void close(@Nullable Throwable ex) { }
+                };
+            }
+
+            @Override
+            public void reportLag(TopicPartition partition, long lag) { }
         }, null);
         try {
             container.init();
