@@ -20,6 +20,7 @@ import ru.tinkoff.kora.kafka.common.KafkaUtils.NamedThreadFactory;
 import ru.tinkoff.kora.kafka.common.consumer.ConsumerAwareRebalanceListener;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 
 import java.time.Duration;
 import java.util.*;
@@ -37,6 +38,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     private final AtomicLong backoffTimeout;
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
+    private final KafkaConsumerTelemetry<K, V> telemetry;
     private volatile ExecutorService executorService;
 
     private final BaseKafkaRecordsHandler<K, V> handler;
@@ -47,26 +49,12 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     private final String consumerPrefix;
     private final boolean commitAllowed;
 
-    public KafkaSubscribeConsumerContainer(KafkaListenerConfig config,
-                                           Deserializer<K> keyDeserializer,
-                                           Deserializer<V> valueDeserializer,
-                                           BaseKafkaRecordsHandler<K, V> handler) {
-        this(config, keyDeserializer, valueDeserializer, handler, null);
-    }
-
-    public KafkaSubscribeConsumerContainer(KafkaListenerConfig config,
-                                           Deserializer<K> keyDeserializer,
-                                           Deserializer<V> valueDeserializer,
-                                           BaseKafkaRecordsHandler<K, V> handler,
-                                           @Nullable ConsumerAwareRebalanceListener rebalanceListener) {
-        this(KafkaUtils.getConsumerPrefix(config), config, keyDeserializer, valueDeserializer, handler, rebalanceListener);
-    }
-
     public KafkaSubscribeConsumerContainer(String consumerName,
                                            KafkaListenerConfig config,
                                            Deserializer<K> keyDeserializer,
                                            Deserializer<V> valueDeserializer,
                                            BaseKafkaRecordsHandler<K, V> handler,
+                                           KafkaConsumerTelemetry<K, V> telemetry,
                                            @Nullable ConsumerAwareRebalanceListener rebalanceListener) {
         if (config.driverProperties().get(CommonClientConfigs.GROUP_ID_CONFIG) == null) {
             throw new IllegalArgumentException("Group id is required for subscribe container");
@@ -85,15 +73,16 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
-        if(consumerName == null || consumerName.isBlank()) {
+        if (consumerName == null || consumerName.isBlank()) {
             this.consumerPrefix = KafkaUtils.getConsumerPrefix(config);
         } else {
             this.consumerPrefix = consumerName;
         }
+        this.telemetry = telemetry;
     }
 
     public void launchPollLoop(Consumer<K, V> consumer, long started) {
-        try (consumer) {
+        try (consumer; var t = this.telemetry.get(consumer)) {
             consumers.add(consumer);
             logger.info("Kafka Consumer '{}' started in {}", consumerPrefix, TimeUtils.tookForLogging(started));
 
@@ -143,7 +132,8 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                     Context.clear();
                 }
             }
-            Thread.interrupted();
+        } catch (Exception e) {
+            logger.error("Kafka Consumer '{}' poll loop got unhandled exception", consumerPrefix, e);
         } finally {
             consumers.remove(consumer);
         }

@@ -1,13 +1,10 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
 import jakarta.annotation.Nullable;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
-
-import java.util.Map;
 
 public interface KafkaConsumerMetrics {
 
@@ -34,5 +31,14 @@ public interface KafkaConsumerMetrics {
 
     default void reportLag(String consumerName, TopicPartition partition, long lag) {
         reportLag(partition, lag);
+    }
+
+    interface KafkaConsumerMetricsContext extends AutoCloseable {
+        @Override
+        void close();
+    }
+
+    default KafkaConsumerMetricsContext get(Consumer<?, ?> consumer) {
+        return () -> { };
     }
 }
