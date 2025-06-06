@@ -55,24 +55,30 @@ public final class KoraRetryReactorBuilder {
         private final int attempts;
         private final RetryPredicate failurePredicate;
         private final RetryMetrics metrics;
+        private final RetryConfig.NamedConfig config;
 
-        private KoraReactorRetry(String name, long delayNanos, long delayStepNanos, int attempts, RetryPredicate failurePredicate, RetryMetrics metrics) {
+        private KoraReactorRetry(String name, long delayNanos, long delayStepNanos, int attempts, RetryPredicate failurePredicate, RetryMetrics metrics, RetryConfig.NamedConfig config) {
             this.name = name;
             this.delayNanos = delayNanos;
             this.delayStepNanos = delayStepNanos;
             this.attempts = attempts;
             this.failurePredicate = failurePredicate;
             this.metrics = metrics;
+            this.config = config;
         }
 
         private KoraReactorRetry(String name, RetryConfig.NamedConfig config, RetryPredicate failurePredicate, RetryMetrics metric) {
-            this(name, config.delay().toNanos(), config.delayStep().toNanos(), config.attempts(), failurePredicate, metric);
+            this(name, config.delay().toNanos(), config.delayStep().toNanos(), config.attempts(), failurePredicate, metric, config);
         }
 
         @Override
         public Publisher<?> generateCompanion(Flux<RetrySignal> retrySignals) {
             return retrySignals
                 .concatMap(retryWhenState -> {
+                    if (!config.enabled()) {
+                        return Mono.empty();
+                    }
+
                     //capture the state immediately
                     final RetrySignal signal = retryWhenState.copy();
                     final Throwable currentFailure = signal.failure();
