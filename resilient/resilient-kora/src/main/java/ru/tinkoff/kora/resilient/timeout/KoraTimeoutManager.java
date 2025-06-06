@@ -28,7 +28,7 @@ final class KoraTimeoutManager implements TimeoutManager {
         return timeouterMap.computeIfAbsent(name, (k) -> {
             var config = this.config.getNamedConfig(name);
             logger.debug("Creating Timeout named '{}' and config {}", name, config);
-            return new KoraTimeout(name, config.duration().toNanos(), metrics, timeoutExecutor.executor());
+            return new KoraTimeout(name, config.duration().toNanos(), metrics, config, timeoutExecutor.executor());
         });
     }
 }
