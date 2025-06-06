@@ -73,13 +73,14 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
     {{/interceptorTags}}
     {{/koraInterceptors}}
+    @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
     {{#vendorExtensions.x-validate}}
     @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
-    @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
     public {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
-      HttpServerRequest _serverRequest{{#hasParams}}, {{/hasParams}}
-    {{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}) throws Exception {
+        HttpServerRequest _serverRequest{{#hasParams}}, {{/hasParams}}
+    {{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}
+    ){{#isBlocking}} throws Exception{{/isBlocking}} {
         return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
             {{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}
             form{{/hasFormParams}}

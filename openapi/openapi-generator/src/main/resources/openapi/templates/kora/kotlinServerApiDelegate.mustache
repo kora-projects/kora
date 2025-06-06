@@ -20,7 +20,7 @@ interface {{classname}}Delegate {
         _serverRequest: HttpServerRequest{{#hasParams}},{{/hasParams}}
         {{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
         {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
-        {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form{{/hasFormParams}}
+        form: {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/hasFormParams}}
     ): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 {{/operation}}
 }

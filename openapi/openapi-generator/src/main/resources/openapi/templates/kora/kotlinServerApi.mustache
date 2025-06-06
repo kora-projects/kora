@@ -45,9 +45,10 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     @io.swagger.v3.oas.annotations.Parameters(value = [
     {{#implicitHeadersParams}}{{>implicitHeaderV3Kotlin}}{{/implicitHeadersParams}}    ]){{/vendorExtensions.x-has-implicit-headers}}
     {{#hasAuthMethods}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}{{#vendorExtensions.x-validate}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class)
+    {{/hasAuthMethods}}
+    {{#vendorExtensions.x-validate}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor::class)
-    @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
@@ -59,6 +60,9 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     {{/interceptorTags}}
     {{/koraInterceptors}}
     @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
+    {{#vendorExtensions.x-validate}}
+    @ru.tinkoff.kora.validation.common.annotation.Validate
+    {{/vendorExtensions.x-validate}}
     {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
       _serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}
     ): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
