@@ -15,15 +15,14 @@ import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor
 interface {{classname}} {
 {{#operations}}
 {{#operation}}
+
     /**
      * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
     {{#notes}}
      * {{.}}
     {{/notes}}
-     *
-    {{#allParams}}
-     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{{.}}}{{/defaultValue}}){{/required}}
-    {{/allParams}}
+     * {{#allParams}}
+     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
      * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
      *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
@@ -37,21 +36,17 @@ interface {{classname}} {
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
-    @ApiImplicitParams({
-    {{#headerParams}}
-     TODO implisit header
-    {{>implicitHeader}}
-    {{/headerParams}}
-    })
-    {{/implicitHeaders}}{{#responses}}
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#vendorExtensions.x-has-implicit-headers}}
+    @io.swagger.v3.oas.annotations.Parameters(value = [
+{{#implicitHeadersParams}}{{>implicitHeaderV3Kotlin}}{{/implicitHeadersParams}}    ]){{/vendorExtensions.x-has-implicit-headers}}{{#responses}}
     @ResponseCodeMapper(code = {{#isDefault}}ResponseCodeMapper.DEFAULT{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper::class){{/responses}}
     {{#vendorExtensions.authInterceptorTag}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{.}}::class), value = HttpClientInterceptor::class)
     {{/vendorExtensions.authInterceptorTag}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(value = [{{interceptorTags}}]), value = {{interceptorImpl}})
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(value = [{{interceptorTags}}]),
+        value = {{interceptorImpl}})
     {{/interceptorTags}}
     {{^interceptorTags}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
@@ -60,7 +55,8 @@ interface {{classname}} {
     {{#isDeprecated}}
     @Deprecated(message = "Deprecated")
     {{/isDeprecated}}
-    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
+    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}
+    ): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
 {{#hasFormParams}}
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
@@ -70,8 +66,6 @@ interface {{classname}} {
       {{/formParams}}
     ){}
 {{/hasFormParams}}
-
-
 {{/operation}}
 }
 {{/operations}}

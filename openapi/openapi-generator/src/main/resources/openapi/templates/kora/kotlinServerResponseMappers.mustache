@@ -22,6 +22,7 @@ import {{package}}.{{classname}}Responses.*
 interface {{classname}}ServerResponseMappers {
 {{#operations}}
 {{#operation}}
+
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ResponseMapper(
     {{#responses}}
@@ -32,7 +33,8 @@ interface {{classname}}ServerResponseMappers {
     response{{code}}Delegate: HttpServerResponseMapper<{{{dataType}}}>{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
     {{/dataType}}
     {{/responses}}
-  ): HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
+  ): HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {
+
     {{#responses}}
     {{#dataType}}
     private val response{{code}}Delegate = HttpServerResponseEntityMapper(response{{code}}Delegate)
@@ -40,36 +42,23 @@ interface {{classname}}ServerResponseMappers {
     {{/responses}}
 
     override fun apply(ctx: Context, rq: HttpServerRequest, rs: {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse): HttpServerResponse { {{^vendorExtensions.singleResponse}}
-      when (rs) {
-      {{/vendorExtensions.singleResponse}}{{#responses}}{{^vendorExtensions.singleResponse}}
-        is {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}} -> {
-{{/vendorExtensions.singleResponse}}
-          {{#vendorExtensions.isBinaryUnknownType}}
-          val headers = HttpHeaders.of("content-type", "{{{vendorExtensions.contentType}}}")
-          {{/vendorExtensions.isBinaryUnknownType}}
-          {{^vendorExtensions.isBinaryUnknownType}}
-          val headers = HttpHeaders.of()
-          {{/vendorExtensions.isBinaryUnknownType}}{{#headers}}{{#required}}
+      when (rs) { {{/vendorExtensions.singleResponse}}{{#responses}}{{^vendorExtensions.singleResponse}}
+        is {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{^vendorExtensions.singleResponse}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse{{/vendorExtensions.singleResponse}} -> { {{/vendorExtensions.singleResponse}}{{#vendorExtensions.isBinaryUnknownType}}
+          val headers = HttpHeaders.of("content-type", "{{{vendorExtensions.contentType}}}"){{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
+          val headers = HttpHeaders.of(){{/vendorExtensions.isBinaryUnknownType}}{{#headers}}{{#required}}
           headers.set("{{baseName}}", rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}});{{/required}}{{^required}}
-          rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}?.let { headers.set("{{baseName}}", it) }{{/required}}{{/headers}}
-          {{#isBinary}}{{#vendorExtensions.isBinaryUnknownType}}
+          rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}?.let { headers.set("{{baseName}}", it) }{{/required}}{{/headers}}{{#isBinary}}{{#vendorExtensions.isBinaryUnknownType}}
           val entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content)
-          return response{{code}}Delegate.apply(ctx, rq, entity)
-          {{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
-          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content))
-          {{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}
-          {{^isBinary}}{{^dataType}}
-          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers)
-          {{/dataType}}{{#dataType}}
+          return response{{code}}Delegate.apply(ctx, rq, entity){{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
+          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content)){{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
+          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers){{/dataType}}{{#dataType}}
           val entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content)
-          return response{{code}}Delegate.apply(ctx, rq, entity)
-          {{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
-        }{{/vendorExtensions.singleResponse}}
-      {{/responses}}{{^vendorExtensions.singleResponse}}
+          return response{{code}}Delegate.apply(ctx, rq, entity){{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}
+        }
+        {{/vendorExtensions.singleResponse}}{{/responses}}{{^vendorExtensions.singleResponse}}
       }{{/vendorExtensions.singleResponse}}
     }
   }
-
 {{/operation}}
 {{/operations}}
 }

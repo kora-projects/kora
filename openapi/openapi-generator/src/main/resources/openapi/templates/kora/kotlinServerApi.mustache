@@ -20,15 +20,14 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
 {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}class {{classname}}Controller(private val delegate: {{classname}}Delegate) {
 {{#operations}}
 {{#operation}}
+
     /**
      * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
     {{#notes}}
      * {{.}}
     {{/notes}}
-     *
-    {{#allParams}}
-     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}
-    {{/allParams}}
+     * {{#allParams}}
+     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
      * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
      *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
@@ -42,34 +41,35 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
-    @ApiImplicitParams({
-    {{#headerParams}}
-     TODO implicit header
-    {{>implicitHeader}}
-    {{/headerParams}}
-    })
-    {{/implicitHeaders}}{{#hasAuthMethods}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class){{/hasAuthMethods}}{{#vendorExtensions.x-validate}}
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#vendorExtensions.x-has-implicit-headers}}
+    @io.swagger.v3.oas.annotations.Parameters(value = [
+    {{#implicitHeadersParams}}{{>implicitHeaderV3Kotlin}}{{/implicitHeadersParams}}    ]){{/vendorExtensions.x-has-implicit-headers}}
+    {{#hasAuthMethods}}
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class)
+    {{/hasAuthMethods}}
+    {{#vendorExtensions.x-validate}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor::class)
-    @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(value = [{{interceptorTags}}]), value = {{interceptorImpl}})
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(value = [{{interceptorTags}}]),
+        value = {{interceptorImpl}})
     {{/interceptorTags}}
     {{^interceptorTags}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
     {{/interceptorTags}}
     {{/koraInterceptors}}
     @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ResponseMapper::class)
-    {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
-      return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
-        {{#allParams}}{{#lambda.trim}}
-        {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}
-        {{^hasFormParams}}{{paramName}}{{^-last}},{{/-last}}{{/hasFormParams}}{{/lambda.trim}}{{/allParams}}{{#hasFormParams}}
-        form{{/hasFormParams}}
-      )
+    {{#vendorExtensions.x-validate}}
+    @ru.tinkoff.kora.validation.common.annotation.Validate
+    {{/vendorExtensions.x-validate}}
+    {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
+      _serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}
+    ): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
+        return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
+            {{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}
+            form{{/hasFormParams}}
+        )
     }
 
 {{#hasFormParams}}
@@ -80,8 +80,6 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
       {{/formParams}}
     ){}
 {{/hasFormParams}}
-
-
 {{/operation}}
 }
 {{/operations}}

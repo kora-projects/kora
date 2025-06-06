@@ -24,15 +24,14 @@ import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
 public interface {{classname}} {
 {{#operations}}
 {{#operation}}
+
     /**
      * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
     {{#notes}}
      * {{.}}
     {{/notes}}
-     *
-    {{#allParams}}
-     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}
-    {{/allParams}}
+     * {{#allParams}}
+     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
      * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
      *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
@@ -46,21 +45,17 @@ public interface {{classname}} {
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#implicitHeaders}}
-    @ApiImplicitParams({
-    {{#headerParams}}
-     TODO implicit header
-    {{>implicitHeader}}
-    {{/headerParams}}
-    })
-    {{/implicitHeaders}}{{#responses}}
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#vendorExtensions.x-has-implicit-headers}}
+    @io.swagger.v3.oas.annotations.Parameters({
+    {{#implicitHeadersParams}}{{>implicitHeaderV3}}{{/implicitHeadersParams}}    }){{/vendorExtensions.x-has-implicit-headers}}{{#responses}}
     @ResponseCodeMapper(code = {{#isDefault}}ResponseCodeMapper.DEFAULT{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class){{/responses}}
     {{#vendorExtensions.authInterceptorTag}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{.}}.class), value = HttpClientInterceptor.class)
     {{/vendorExtensions.authInterceptorTag}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag({ {{interceptorTags}} }), value = {{interceptorImpl}})
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag({ {{interceptorTags}} }),
+        value = {{interceptorImpl}})
     {{/interceptorTags}}
     {{^interceptorTags}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
@@ -69,59 +64,25 @@ public interface {{classname}} {
     {{#isDeprecated}}
     @Deprecated
     {{/isDeprecated}}
-    {{#isAsync}}
-    CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
-    {{/isAsync}}
-    {{#isReactive}}
-    Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
-    {{/isReactive}}
-    {{#isBlocking}}
-    {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
-    {{/isBlocking}}
-    {{>javaAnnotatedParams}}
-    );
+    {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{>javaAnnotatedParams}});
     {{#vendorExtensions.x-have-optional}}
     {{^hasFormParams}}
 
-    {{#isAsync}}
-    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
-    {{/isAsync}}
-    {{#isReactive}}
-    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
-    {{/isReactive}}
-    {{#isBlocking}}
-    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
-    {{/isBlocking}}
-    {{#vendorExtensions.x-required-params}}
-        {{{dataType}}} {{paramName}}{{^-last}},{{/-last}}
-    {{/vendorExtensions.x-required-params}}
-    ) {
+    default {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.x-required-params}}
+        {{{dataType}}} {{paramName}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-required-params}}) {
         return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}{{#defaultValue}}{{#isEnum}}{{{enumDefaultValue}}}{{/isEnum}}{{^isEnum}}{{{defaultValue}}}{{/isEnum}}{{/defaultValue}}{{^defaultValue}}({{{dataType}}}) null{{/defaultValue}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}});
     }
 
-    {{#isAsync}}
-    default CompletionStage<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
-    {{/isAsync}}
-    {{#isReactive}}
-    default Mono<{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {{operationId}}(
-    {{/isReactive}}
-    {{#isBlocking}}
-    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}(
-    {{/isBlocking}}
-    {{#vendorExtensions.x-required-params}}
-        {{{dataType}}} {{paramName}},
-    {{/vendorExtensions.x-required-params}}
-        {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs optionalArguments
-    ) {
+    default {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.x-required-params}}
+        {{{dataType}}} {{paramName}},{{/vendorExtensions.x-required-params}}
+        {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs optionalArguments) {
         return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}optionalArguments.{{paramName}}(){{/required}}{{^-last}}, {{/-last}}{{/allParams}});
     }
 
 {{>javaClientApiOptionalParams}}
     {{/hasFormParams}}
     {{/vendorExtensions.x-have-optional}}
-
 {{>javaFormParams}}
-
 {{/operation}}
 }
 {{/operations}}
