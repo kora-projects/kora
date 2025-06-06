@@ -3,10 +3,12 @@ package ru.tinkoff.kora.micrometer.module.kafka.consumer;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import jakarta.annotation.Nullable;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -122,6 +124,15 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     @Override
     public void init() {
 
+    }
+
+    @Override
+    public KafkaConsumerMetricsContext get(Consumer<?, ?> consumer) {
+        // todo config?
+        var micrometerMetrics = new KafkaClientMetrics(consumer);
+        micrometerMetrics.bindTo(meterRegistry);
+
+        return micrometerMetrics::close;
     }
 
     @Override

@@ -81,7 +81,7 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.addCode("return new $T<>($S, config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);",
             kafkaAssignConsumerContainer, configPath);
         methodBuilder.addCode("$<\n} else {$>\n");
-        methodBuilder.addCode("return new $T<>($S, config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener);",
+        methodBuilder.addCode("return new $T<>($S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener);",
             kafkaSubscribeConsumerContainer, configPath);
         methodBuilder.addCode("$<\n}\n");
         return methodBuilder.build();
