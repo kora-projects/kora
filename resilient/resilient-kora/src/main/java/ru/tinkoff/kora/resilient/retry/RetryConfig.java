@@ -27,6 +27,9 @@ public interface RetryConfig {
     interface NamedConfig {
 
         @Nullable
+        Boolean enabled();
+
+        @Nullable
         Duration delay();
 
         @Nullable
@@ -65,6 +68,7 @@ public interface RetryConfig {
         if (defaultConfig == null) {
             if (namedConfig.delayStep() == null) {
                 return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+                    namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : true,
                     namedConfig.delay(),
                     Duration.ZERO,
                     namedConfig.attempts(),
@@ -75,6 +79,7 @@ public interface RetryConfig {
         }
 
         return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
             namedConfig.delay() == null ? defaultConfig.delay() : namedConfig.delay(),
             namedConfig.delayStep() == null ? Objects.requireNonNullElse(defaultConfig.delayStep(), Duration.ZERO) : namedConfig.delayStep(),
             namedConfig.attempts() == null ? defaultConfig.attempts() : namedConfig.attempts(),

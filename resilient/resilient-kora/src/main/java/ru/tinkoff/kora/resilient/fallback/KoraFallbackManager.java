@@ -33,7 +33,7 @@ final class KoraFallbackManager implements FallbackManager {
             logger.debug("Creating Fallback named '{}' with failure predicate '{}' and config {}",
                 name, failurePredicate.name(), config);
 
-            return new KoraFallback(name, metrics, failurePredicate);
+            return new KoraFallback(name, metrics, failurePredicate, config);
         });
     }
 
