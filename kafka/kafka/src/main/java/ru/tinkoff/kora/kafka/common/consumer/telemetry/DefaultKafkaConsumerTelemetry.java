@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
 import jakarta.annotation.Nullable;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
@@ -50,6 +51,29 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
     public void reportLag(TopicPartition partition, long lag) {
         if (this.metrics != null) {
             this.metrics.reportLag(consumerName, partition, lag);
+        }
+    }
+
+    @Override
+    public KafkaConsumerTelemetryContext<K, V> get(Consumer<K, V> consumer) {
+        var metrics = this.metrics == null ? null : this.metrics.get(consumer);
+
+        return new DefaultKafkaConsumerTelemetryContext<>(metrics);
+    }
+
+    private static final class DefaultKafkaConsumerTelemetryContext<K, V> implements KafkaConsumerTelemetryContext<K, V> {
+
+        private final KafkaConsumerMetrics.KafkaConsumerMetricsContext metrics;
+
+        public DefaultKafkaConsumerTelemetryContext(@Nullable KafkaConsumerMetrics.KafkaConsumerMetricsContext metrics) {
+            this.metrics = metrics;
+        }
+
+        @Override
+        public void close() {
+            if (this.metrics != null) {
+                this.metrics.close();
+            }
         }
     }
 
