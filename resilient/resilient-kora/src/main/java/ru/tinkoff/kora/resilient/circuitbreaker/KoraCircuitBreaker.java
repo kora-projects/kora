@@ -66,11 +66,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Nonnull
     State getState() {
-        if (config.enabled()) {
-            return getState(state.get());
-        } else {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             return State.CLOSED;
+        } else {
+            return getState(state.get());
         }
     }
 
@@ -85,7 +85,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     private <T> T internalAccept(@Nonnull Supplier<T> supplier, Supplier<T> fallback) {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             return supplier.get();
         }
@@ -146,7 +146,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public void acquire() throws CallNotPermittedException {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             return;
         }
@@ -158,7 +158,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public boolean tryAcquire() {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             return true;
         }
@@ -214,7 +214,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public void releaseOnSuccess() {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             return;
         }
@@ -268,7 +268,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public void releaseOnError(@Nonnull Throwable throwable) {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             return;
         }

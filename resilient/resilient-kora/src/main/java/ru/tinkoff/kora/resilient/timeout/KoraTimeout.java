@@ -35,17 +35,17 @@ final class KoraTimeout implements Timeout {
     @Nonnull
     @Override
     public Duration timeout() {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Timeout '{}' is disabled", name);
             return Duration.ZERO;
+        } else {
+            return Duration.ofNanos(delayMaxNanos);
         }
-
-        return Duration.ofNanos(delayMaxNanos);
     }
 
     @Override
     public void execute(@Nonnull Runnable runnable) throws TimeoutExhaustedException {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Timeout '{}' is disabled", name);
             runnable.run();
         }
@@ -68,7 +68,7 @@ final class KoraTimeout implements Timeout {
 
     @Override
     public <T> T execute(@Nonnull Callable<T> callable) throws TimeoutExhaustedException {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Timeout '{}' is disabled", name);
 
             try {
