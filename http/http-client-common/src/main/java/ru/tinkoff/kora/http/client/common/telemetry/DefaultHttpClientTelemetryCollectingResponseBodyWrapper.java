@@ -194,9 +194,10 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
                     telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
                 }
                 if (read > 0) {
-                    var buf = ByteBuffer.allocate(read);
-                    buf.put(b, off, read);
-                    body.add(buf);
+                    var copy = ByteBuffer.allocate(read);
+                    copy.put(b, off, read);
+                    copy.rewind();
+                    body.add(copy);
                 }
                 return read;
             } catch (IOException e) {
