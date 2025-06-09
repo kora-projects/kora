@@ -21,6 +21,8 @@ nexusPublishing {
             password = System.getenv().getOrDefault("REPO_PASSWORD", "")
         }
     }
+    connectTimeout = Duration.ofMinutes(15)
+    clientTimeout = Duration.ofMinutes(20)
     transitionCheckOptions {
         maxRetries = 400
         delayBetween = Duration.ofSeconds(5)
