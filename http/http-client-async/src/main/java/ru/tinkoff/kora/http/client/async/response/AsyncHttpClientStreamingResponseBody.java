@@ -8,14 +8,18 @@ import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class AsyncHttpClientStreamingResponseBody extends AtomicBoolean implements HttpBodyInput {
-    private static final String UNKNOWN_CONTENT_TYPE = "<UNKNOWN-CONTENT-TYPE\r\n>";
+
+    private static final String EMPTY_CONTENT_TYPE = "<UNKNOWN-CONTENT-TYPE\r\n>";
+    private static final long EMPTY_CONTENT_LENGTH = -2;
+
     private final HttpHeaders headers;
-    private String contentType;
-    private long contentLength = -2;
+    private volatile long contentLength = EMPTY_CONTENT_LENGTH;
+    private volatile String contentType = EMPTY_CONTENT_TYPE;
 
     private final Flow.Publisher<ByteBuffer> bodyStream;
 
@@ -26,35 +30,21 @@ public final class AsyncHttpClientStreamingResponseBody extends AtomicBoolean im
 
     @Override
     public long contentLength() {
-        var cl = this.contentLength;
-        if (cl >= -1) {
-            return cl;
+        var contentLength = this.contentLength;
+        if (contentLength == EMPTY_CONTENT_LENGTH) {
+            this.contentLength = contentLength = Long.parseLong(headers.get(HttpHeaderNames.CONTENT_LENGTH));
         }
-        var value = headers.get(HttpHeaderNames.CONTENT_LENGTH);
-        if (value != null) {
-            return this.contentLength = Long.parseLong(value);
-        } else {
-            return this.contentLength = -1;
-        }
+        return contentLength;
     }
 
     @Nullable
     @Override
     public String contentType() {
-        var ct = this.contentType;
-        if (ct == UNKNOWN_CONTENT_TYPE) {
-            return null;
+        var contentType = this.contentType;
+        if (Objects.equals(contentType, EMPTY_CONTENT_TYPE)) {
+            this.contentType = contentType = headers.get(HttpHeaderNames.CONTENT_TYPE);
         }
-        if (ct != null) {
-            return ct;
-        }
-        var value = headers.get(HttpHeaderNames.CONTENT_TYPE);
-        if (value != null) {
-            return this.contentType = value;
-        } else {
-            this.contentType = UNKNOWN_CONTENT_TYPE;
-            return null;
-        }
+        return contentType;
     }
 
     @Override

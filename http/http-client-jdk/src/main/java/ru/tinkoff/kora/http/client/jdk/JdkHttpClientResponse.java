@@ -59,12 +59,16 @@ public class JdkHttpClientResponse implements HttpClientResponse {
     }
 
     private static final class BodyPublisher extends AtomicBoolean implements HttpBodyInput {
-        private static final String EMPTY = "";
+
+        private static final String EMPTY_CONTENT_TYPE = "<UNKNOWN-CONTENT-TYPE\r\n>";
+        private static final long EMPTY_CONTENT_LENGTH = -2;
+
         private final Flow.Publisher<List<ByteBuffer>> publisher;
         private final java.net.http.HttpHeaders headers;
+
         private volatile HttpResponseInputStream is;
-        private volatile long contentLength = -2;
-        private volatile String contentType;
+        private volatile long contentLength = EMPTY_CONTENT_LENGTH;
+        private volatile String contentType = EMPTY_CONTENT_TYPE;
 
         public BodyPublisher(HttpResponse<Flow.Publisher<List<ByteBuffer>>> response) {
             this.publisher = response.body();
@@ -83,7 +87,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         @Override
         public long contentLength() {
             var contentLength = this.contentLength;
-            if (contentLength == -2) {
+            if (contentLength == EMPTY_CONTENT_LENGTH) {
                 this.contentLength = contentLength = headers.firstValueAsLong("content-length").orElse(-1);
             }
             return contentLength;
@@ -93,7 +97,7 @@ public class JdkHttpClientResponse implements HttpClientResponse {
         @Override
         public String contentType() {
             var contentType = this.contentType;
-            if (Objects.equals(contentType, EMPTY)) {
+            if (Objects.equals(contentType, EMPTY_CONTENT_TYPE)) {
                 this.contentType = contentType = headers.firstValue("content-type").orElse(null);
             }
             return contentType;
