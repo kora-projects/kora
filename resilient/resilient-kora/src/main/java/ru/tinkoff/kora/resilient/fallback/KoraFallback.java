@@ -24,7 +24,7 @@ final class KoraFallback implements Fallback {
 
     @Override
     public boolean canFallback(Throwable throwable) {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Fallback '{}' is disabled", name);
             return false;
         } else if (failurePredicate.test(throwable)) {
@@ -38,7 +38,7 @@ final class KoraFallback implements Fallback {
 
     @Override
     public void fallback(@Nonnull Runnable runnable, @Nonnull Runnable fallback) {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Fallback '{}' is disabled", name);
             runnable.run();
             return;
@@ -57,7 +57,7 @@ final class KoraFallback implements Fallback {
 
     @Override
     public <T> T fallback(@Nonnull Supplier<T> supplier, @Nonnull Supplier<T> fallback) {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Fallback '{}' is disabled", name);
             return supplier.get();
         }

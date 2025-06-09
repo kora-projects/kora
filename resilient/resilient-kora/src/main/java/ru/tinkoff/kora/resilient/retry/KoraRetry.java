@@ -87,11 +87,11 @@ final class KoraRetry implements Retry {
     @Nonnull
     @Override
     public RetryState asState() {
-        if (config.enabled()) {
-            return new KoraRetryState(name, System.nanoTime(), delayNanos, delayStepNanos, attempts, failurePredicate, metrics, new AtomicInteger(0));
-        } else {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Retry '{}' is disabled", name);
             return EMPTY_STATE;
+        } else {
+            return new KoraRetryState(name, System.nanoTime(), delayNanos, delayStepNanos, attempts, failurePredicate, metrics, new AtomicInteger(0));
         }
     }
 
@@ -115,7 +115,7 @@ final class KoraRetry implements Retry {
 
     @Override
     public <T> CompletionStage<T> retry(@NotNull Supplier<CompletionStage<T>> supplier) {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Retry '{}' is disabled", name);
             return supplier.get();
         }
@@ -171,7 +171,7 @@ final class KoraRetry implements Retry {
     }
 
     private <T, E extends Throwable> T internalRetry(RetrySupplier<T, E> consumer, @Nullable RetrySupplier<T, E> fallback) throws E {
-        if (!config.enabled()) {
+        if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Retry '{}' is disabled", name);
             return consumer.get();
         }
