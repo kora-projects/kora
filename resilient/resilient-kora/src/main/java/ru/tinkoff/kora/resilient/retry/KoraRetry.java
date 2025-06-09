@@ -21,35 +21,78 @@ final class KoraRetry implements Retry {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraRetry.class);
 
+    private static final RetryState EMPTY_STATE = new KoraEmptyRetryState();
+
+    private static class KoraEmptyRetryState implements RetryState {
+
+        @Override
+        public @NotNull RetryStatus onException(@NotNull Throwable throwable) {
+            return RetryStatus.REJECTED;
+        }
+
+        @Override
+        public int getAttempts() {
+            return 0;
+        }
+
+        @Override
+        public int getAttemptsMax() {
+            return 0;
+        }
+
+        @Override
+        public long getDelayNanos() {
+            return 0;
+        }
+
+        @Override
+        public void doDelay() {
+
+        }
+
+        @Override
+        public void close() {
+
+        }
+    }
+
     final String name;
     final long delayNanos;
     final long delayStepNanos;
     final int attempts;
     final RetryPredicate failurePredicate;
     final RetryMetrics metrics;
+    final RetryConfig.NamedConfig config;
 
     KoraRetry(String name,
               long delayNanos,
               long delayStepNanos,
               int attempts,
               RetryPredicate failurePredicate,
-              RetryMetrics metrics) {
+              RetryMetrics metrics,
+              RetryConfig.NamedConfig config) {
         this.name = name;
         this.delayNanos = delayNanos;
         this.delayStepNanos = delayStepNanos;
         this.attempts = attempts;
         this.failurePredicate = failurePredicate;
         this.metrics = metrics;
+        this.config = config;
     }
 
     KoraRetry(String name, RetryConfig.NamedConfig config, RetryPredicate failurePredicate, RetryMetrics metric) {
-        this(name, config.delay().toNanos(), config.delayStep().toNanos(), config.attempts(), failurePredicate, metric);
+        this(name, config.delay().toNanos(), config.delayStep().toNanos(), config.attempts(), failurePredicate, metric, config);
     }
 
     @Nonnull
     @Override
     public RetryState asState() {
-        return new KoraRetryState(name, System.nanoTime(), delayNanos, delayStepNanos, attempts, failurePredicate, metrics, new AtomicInteger(0));
+        if (config.enabled()) {
+            return new KoraRetryState(name, System.nanoTime(), delayNanos, delayStepNanos, attempts, failurePredicate, metrics, new AtomicInteger(0));
+        } else {
+            logger.debug("Retry '{}' is disabled", name);
+            return EMPTY_STATE;
+        }
     }
 
     @Override
@@ -72,6 +115,11 @@ final class KoraRetry implements Retry {
 
     @Override
     public <T> CompletionStage<T> retry(@NotNull Supplier<CompletionStage<T>> supplier) {
+        if (!config.enabled()) {
+            logger.debug("Retry '{}' is disabled", name);
+            return supplier.get();
+        }
+
         if (attempts == 0) {
             return supplier.get();
         }
@@ -123,6 +171,11 @@ final class KoraRetry implements Retry {
     }
 
     private <T, E extends Throwable> T internalRetry(RetrySupplier<T, E> consumer, @Nullable RetrySupplier<T, E> fallback) throws E {
+        if (!config.enabled()) {
+            logger.debug("Retry '{}' is disabled", name);
+            return consumer.get();
+        }
+
         if (attempts == 0) {
             return consumer.get();
         }

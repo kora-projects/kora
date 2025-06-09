@@ -6,21 +6,50 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.Context;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.concurrent.*;
 import java.util.function.Function;
 
-record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Executor executor) implements Timeout {
+final class KoraTimeout implements Timeout {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraTimeout.class);
+
+    private final String name;
+    private final long delayMaxNanos;
+    private final TimeoutMetrics metrics;
+    private final TimeoutConfig.NamedConfig config;
+    private final Executor executor;
+
+    KoraTimeout(String name,
+                long delayMaxNanos,
+                TimeoutMetrics metrics,
+                TimeoutConfig.NamedConfig config,
+                Executor executor) {
+        this.name = name;
+        this.delayMaxNanos = delayMaxNanos;
+        this.metrics = metrics;
+        this.config = config;
+        this.executor = executor;
+    }
 
     @Nonnull
     @Override
     public Duration timeout() {
+        if (!config.enabled()) {
+            logger.debug("Timeout '{}' is disabled", name);
+            return Duration.ZERO;
+        }
+
         return Duration.ofNanos(delayMaxNanos);
     }
 
     @Override
     public void execute(@Nonnull Runnable runnable) throws TimeoutExhaustedException {
+        if (!config.enabled()) {
+            logger.debug("Timeout '{}' is disabled", name);
+            runnable.run();
+        }
+
         internalExecute(e -> {
             var future = new CompletableFuture<Void>();
             Context current = Context.current();
@@ -39,6 +68,19 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
 
     @Override
     public <T> T execute(@Nonnull Callable<T> callable) throws TimeoutExhaustedException {
+        if (!config.enabled()) {
+            logger.debug("Timeout '{}' is disabled", name);
+
+            try {
+                return callable.call();
+            } catch (Exception e) {
+                KoraTimeouterUtils.doThrow(e.getCause());
+            }
+
+            // is not executed
+            throw new IllegalStateException("Should not happen");
+        }
+
         return internalExecute(e -> {
             var future = new CompletableFuture<T>();
             Context current = Context.current();
@@ -70,7 +112,7 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
             } else {
                 KoraTimeouterUtils.doThrow(e.getCause());
             }
-        } catch (java.util.concurrent.TimeoutException e) {
+        } catch (TimeoutException e) {
             handler.cancel(true);
             final Duration timeout = timeout();
             logger.debug("KoraTimeout '{}' registered timeout after: {}", name, timeout);
@@ -83,4 +125,42 @@ record KoraTimeout(String name, long delayMaxNanos, TimeoutMetrics metrics, Exec
         // is not executed
         throw new IllegalStateException("Should not happen");
     }
+
+    public String name() {return name;}
+
+    public long delayMaxNanos() {return delayMaxNanos;}
+
+    public TimeoutMetrics metrics() {return metrics;}
+
+    public TimeoutConfig.NamedConfig config() {return config;}
+
+    public Executor executor() {return executor;}
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) return true;
+        if (obj == null || obj.getClass() != this.getClass()) return false;
+        var that = (KoraTimeout) obj;
+        return Objects.equals(this.name, that.name) &&
+               this.delayMaxNanos == that.delayMaxNanos &&
+               Objects.equals(this.metrics, that.metrics) &&
+               Objects.equals(this.config, that.config) &&
+               Objects.equals(this.executor, that.executor);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name, delayMaxNanos, metrics, config, executor);
+    }
+
+    @Override
+    public String toString() {
+        return "KoraTimeout[" +
+               "name=" + name + ", " +
+               "delayMaxNanos=" + delayMaxNanos + ", " +
+               "metrics=" + metrics + ", " +
+               "config=" + config + ", " +
+               "executor=" + executor + ']';
+    }
+
 }

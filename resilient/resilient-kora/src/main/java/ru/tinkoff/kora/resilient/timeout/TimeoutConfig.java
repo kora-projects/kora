@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.resilient.timeout;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
@@ -14,6 +15,19 @@ public interface TimeoutConfig {
 
     default Map<String, NamedConfig> timeout() {
         return Map.of();
+    }
+
+    /**
+     * {@link #duration} Configures maximum interval for timeout.
+     */
+    @ConfigValueExtractor
+    interface NamedConfig {
+
+        @Nullable
+        Boolean enabled();
+
+        @Nullable
+        Duration duration();
     }
 
     default NamedConfig getNamedConfig(@Nonnull String name) {
@@ -38,12 +52,8 @@ public interface TimeoutConfig {
             return namedConfig;
         }
 
-        return new NamedConfig(namedConfig.duration() == null ? defaultConfig.duration() : namedConfig.duration());
+        return new $TimeoutConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
+            namedConfig.duration() == null ? defaultConfig.duration() : namedConfig.duration());
     }
-
-    /**
-     * {@link #duration} Configures maximum interval for timeout.
-     */
-    @ConfigValueExtractor
-    record NamedConfig(Duration duration) {}
 }

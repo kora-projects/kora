@@ -35,7 +35,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            30, WAIT_IN_OPEN, 3, 10L, 8L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 30, WAIT_IN_OPEN, 3, 10L, 8L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -71,7 +71,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenForMinimumNumberOfCalls() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 1, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 100, WAIT_IN_OPEN, 1, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -91,7 +91,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -117,7 +117,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -150,7 +150,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosed() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -187,7 +187,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenWhenPartFailToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -224,7 +224,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToClosed() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -252,7 +252,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromOpenToHalfOpenAndValidateAcquireCalls() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 1, 1L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, 100, WAIT_IN_OPEN, 1, 1L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
@@ -276,7 +276,7 @@ class KoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenForCustomFailurePredicate() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
-            100, WAIT_IN_OPEN, 1, 1L, 1L, "custom");
+            true, 100, WAIT_IN_OPEN, 1, 1L, 1L, "custom");
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new CustomPredicate(), new NoopCircuitBreakerMetrics());
 
         // when
