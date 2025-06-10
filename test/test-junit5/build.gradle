@@ -19,5 +19,6 @@ dependencies {
 
     testImplementation libs.mockk
     testImplementation libs.mockito.core
+    testImplementation libs.mockito.junit
     testImplementation libs.kotlin.stdlib.lib
 }

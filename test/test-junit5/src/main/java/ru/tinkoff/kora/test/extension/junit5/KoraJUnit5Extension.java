@@ -474,7 +474,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     private static <A extends Annotation> Optional<A> findAnnotation(ExtensionContext context, Class<A> annotationClass) {
         Optional<ExtensionContext> current = Optional.of(context);
         while (current.isPresent()) {
-            var requiredTestClass = current.get().getRequiredTestClass();
+            var testClass = current.get().getTestClass();
+            if (testClass.isEmpty()) {
+                return Optional.empty();
+            }
+            var requiredTestClass = testClass.get();
             while (!requiredTestClass.equals(Object.class)) {
                 final Optional<A> annotation = AnnotationSupport.findAnnotation(requiredTestClass, annotationClass);
                 if (annotation.isPresent()) {
