@@ -88,10 +88,10 @@ record GraphMockitoMock(GraphCandidate candidate,
                 settings = settings.serializable();
             }
 
-            var val = value;
-            if (val == null) val = Mockito.mock(mockClass, settings);
+            var mock = (value == null)
+                ? (T) Mockito.mock(mockClass, settings)
+                : (T) value;
 
-            var mock = (T) val;
             if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc) && !mockClass.equals(node.type())) {
                 Wrapped<T> mockedWrapper = (Wrapped<T>) Mockito.mock(tc, settings);
                 Mockito.when(mockedWrapper.value()).thenReturn(mock);
