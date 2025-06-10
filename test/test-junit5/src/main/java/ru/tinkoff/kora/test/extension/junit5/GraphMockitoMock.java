@@ -58,12 +58,9 @@ record GraphMockitoMock(GraphCandidate candidate,
         graphDraw.replaceNode(node, g -> {
             var settings = getMockSettings();
 
-            var val = value;
-            if (val == null) {
-                val = Mockito.mock(mockClass, settings);
-            }
-
-            var mock = (T) val;
+            var mock = (value == null)
+                ? (T) Mockito.mock(mockClass, settings)
+                : (T) value;
 
             Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
             if (wrappedType.isPresent() && wrappedType.get().isInstance(mock)) {

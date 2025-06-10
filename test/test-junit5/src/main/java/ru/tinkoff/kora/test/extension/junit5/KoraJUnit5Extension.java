@@ -13,6 +13,8 @@ import org.mockito.Spy;
 import org.mockito.internal.configuration.plugins.Plugins;
 import org.mockito.internal.session.MockitoSessionLoggerAdapter;
 import org.mockito.internal.util.MockUtil;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -394,9 +396,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 }
             }
         }
-        var annotation = findKoraAppTest(context);
         MockitoSession session = Mockito.mockitoSession()
-            .strictness(annotation.map(KoraAppTest::strictness).orElse(null))
+            .strictness(findStrictness(context))
             .initMocks(testInstance)
             .logger(new MockitoSessionLoggerAdapter(Plugins.getMockitoLogger())).startMocking();
         context.getStore(MOCKITO).put(SESSION, session);
@@ -412,12 +413,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public void afterEach(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
-        context.getStore(MOCKITO).remove(SESSION, MockitoSession.class).finishMocking(context.getExecutionException().orElse(null));
+        var mockitoContext = context.getStore(MOCKITO);
+        mockitoContext.remove(SESSION, MockitoSession.class).finishMocking(context.getExecutionException().orElse(null));
 
-        var mockParameters = context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class);
-        var reporter = new MockitoUnusedStubbingReporter(mockParameters, koraTestContext.annotation.strictness());
+        var mockParameters = mockitoContext.getOrComputeIfAbsent(HashSet.class);
+        var reporter = new MockitoUnusedStubbingReporter(mockParameters, findStrictness(context));
 
-        context.getStore(MOCKITO).remove(HashSet.class);
+        mockitoContext.remove(HashSet.class);
         reporter.reportUnused(context);
 
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
@@ -462,22 +464,31 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private static Optional<KoraAppTest> findKoraAppTest(ExtensionContext context) {
+        return findAnnotation(context, KoraAppTest.class);
+    }
+
+    private static Optional<MockitoSettings> findMockitoSettings(ExtensionContext context) {
+        return findAnnotation(context, MockitoSettings.class);
+    }
+
+    private static <A extends Annotation> Optional<A> findAnnotation(ExtensionContext context, Class<A> annotationClass) {
         Optional<ExtensionContext> current = Optional.of(context);
         while (current.isPresent()) {
             var requiredTestClass = current.get().getRequiredTestClass();
             while (!requiredTestClass.equals(Object.class)) {
-                final Optional<KoraAppTest> annotation = AnnotationSupport.findAnnotation(requiredTestClass, KoraAppTest.class);
+                final Optional<A> annotation = AnnotationSupport.findAnnotation(requiredTestClass, annotationClass);
                 if (annotation.isPresent()) {
                     return annotation;
                 }
-
                 requiredTestClass = requiredTestClass.getSuperclass();
             }
-
             current = current.get().getParent();
         }
-
         return Optional.empty();
+    }
+
+    private Strictness findStrictness(ExtensionContext context) {
+        return findMockitoSettings(context).map(MockitoSettings::strictness).orElse(Strictness.STRICT_STUBS);
     }
 
     @Override
@@ -671,7 +682,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                             } catch (IllegalAccessException e) {
                                 final Class<?>[] tags = parseTags(f);
                                 final GraphCandidate candidate = new GraphCandidate(f.getGenericType(), tags);
-                                throw new IllegalArgumentException("Can't extract @Spy component '%s' for field: %s".formatted(candidate.type(), f.getName()));
+                                throw new IllegalArgumentException("Can't extract @Spy or @Mock component '%s' for field: %s".formatted(candidate.type(), f.getName()));
                             }
                         })
                         .orElse(null);
