@@ -11,9 +11,7 @@ import org.mockito.Mockito;
 import org.mockito.MockitoSession;
 import org.mockito.Spy;
 import org.mockito.internal.configuration.plugins.Plugins;
-import org.mockito.internal.invocation.finder.AllInvocationsFinder;
 import org.mockito.internal.session.MockitoSessionLoggerAdapter;
-import org.mockito.internal.stubbing.UnusedStubbingReporting;
 import org.mockito.internal.util.MockUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -417,11 +415,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         context.getStore(MOCKITO).remove(SESSION, MockitoSession.class).finishMocking(context.getExecutionException().orElse(null));
 
         var mockParameters = context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class);
-        var unusedStubbing = AllInvocationsFinder.findStubbings(mockParameters).stream().filter(UnusedStubbingReporting::shouldBeReported).toList();
-        var reporter = new MockitoUnusedStubbingReporter(unusedStubbing, koraTestContext.annotation.strictness());
+        var reporter = new MockitoUnusedStubbingReporter(mockParameters, koraTestContext.annotation.strictness());
 
         context.getStore(MOCKITO).remove(HashSet.class);
-        reporter.reportUnused();
+        reporter.reportUnused(context);
 
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
             if (koraTestContext.graph != null) {

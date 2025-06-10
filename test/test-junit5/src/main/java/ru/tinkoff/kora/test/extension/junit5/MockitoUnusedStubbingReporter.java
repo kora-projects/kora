@@ -1,33 +1,48 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import org.mockito.internal.exceptions.Reporter;
-import org.mockito.invocation.Invocation;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.mockito.internal.configuration.plugins.Plugins;
+import org.mockito.internal.junit.TestFinishedEvent;
+import org.mockito.internal.junit.UniversalTestListener;
+import org.mockito.mock.MockCreationSettings;
 import org.mockito.quality.Strictness;
-import org.mockito.stubbing.Stubbing;
 
 import java.util.Collection;
-import java.util.LinkedList;
-import java.util.List;
+
+import static org.mockito.Mockito.withSettings;
 
 public class MockitoUnusedStubbingReporter {
-    private final Collection<? extends Stubbing> unused;
+    private final Collection<?> unused;
     private final Strictness strictness;
 
-    public MockitoUnusedStubbingReporter(Collection<? extends Stubbing> unused, Strictness strictness) {
+    public MockitoUnusedStubbingReporter(Collection<?> unused, Strictness strictness) {
         this.unused = unused;
         this.strictness = strictness;
     }
 
-    public void reportUnused() {
-        if (!Strictness.STRICT_STUBS.equals(strictness) || unused.isEmpty()) {
+    @SuppressWarnings("rawtypes")
+    public void reportUnused(ExtensionContext context) {
+        if (unused.isEmpty()) {
             return;
         }
 
-        List<Invocation> invocations = new LinkedList<>();
-        for (Stubbing stubbing : unused) {
-            invocations.add(stubbing.getInvocation());
+        var listener = new UniversalTestListener(strictness, Plugins.getMockitoLogger());
+
+        for (Object mock : unused) {
+            listener.onMockCreated(mock, (MockCreationSettings)withSettings());
         }
 
-        Reporter.unncessaryStubbingException(invocations);
+        listener.testFinished(
+            new TestFinishedEvent() {
+                @Override
+                public Throwable getFailure() {
+                    return context.getExecutionException().orElse(null);
+                }
+
+                @Override
+                public String getTestName() {
+                    return context.getRequiredTestInstance().getClass().getCanonicalName();
+                }
+            });
     }
 }
