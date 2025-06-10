@@ -109,7 +109,6 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
 
     private TypeSpec generateClient(TypeElement s3client) {
         var implSpecBuilder = CommonUtils.extendsKeepAop(s3client, NameUtils.generatedType(s3client, "Impl"))
-            .addOriginatingElement(s3client)
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
             .addAnnotation(CommonClassNames.component);
 

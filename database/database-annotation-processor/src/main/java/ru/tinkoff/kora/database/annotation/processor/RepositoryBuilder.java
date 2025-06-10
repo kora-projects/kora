@@ -34,8 +34,7 @@ public class RepositoryBuilder {
     public TypeSpec build(TypeElement repositoryElement) throws ProcessingErrorException {
         var name = NameUtils.generatedType(repositoryElement, "Impl");
         var builder = CommonUtils.extendsKeepAop(repositoryElement, name)
-            .addAnnotation(AnnotationUtils.generated(RepositoryAnnotationProcessor.class))
-            .addOriginatingElement(repositoryElement);
+            .addAnnotation(AnnotationUtils.generated(RepositoryAnnotationProcessor.class));
 
         var tags = parseTagValue(repositoryElement);
         if (!tags.isEmpty()) {

@@ -21,19 +21,11 @@ import java.util.stream.Collectors;
 
 public class AopAnnotationProcessor extends AbstractKoraProcessor {
     private static final Logger log = LoggerFactory.getLogger(AopAnnotationProcessor.class);
-    private final List<KoraAspect> aspects;
-    private final Set<ClassName> annotations;
-    private final AopProcessor aopProcessor;
+    private List<KoraAspect> aspects;
+    private Set<ClassName> annotations;
+    private AopProcessor aopProcessor;
 
     public AopAnnotationProcessor() {
-        this.aspects = ServiceLoader.load(KoraAspectFactory.class, this.getClass().getClassLoader()).stream()
-            .map(ServiceLoader.Provider::get)
-            .<KoraAspect>mapMulti((factory, sink) -> factory.create(processingEnv).ifPresent(sink))
-            .toList();
-        this.annotations = this.aspects.stream()
-            .flatMap(a -> a.getSupportedAnnotationClassNames().stream())
-            .collect(Collectors.toSet());
-        this.aopProcessor = new AopProcessor(this.types, this.elements, this.aspects);
     }
 
     @Override
@@ -44,9 +36,14 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        if (this.aspects.isEmpty()) {
-            return;
-        }
+        this.aspects = ServiceLoader.load(KoraAspectFactory.class, this.getClass().getClassLoader()).stream()
+            .map(ServiceLoader.Provider::get)
+            .<KoraAspect>mapMulti((factory, sink) -> factory.create(processingEnv).ifPresent(sink))
+            .toList();
+        this.aopProcessor = new AopProcessor(this.types, this.elements, this.aspects);
+        this.annotations = this.aspects.stream()
+            .flatMap(a -> a.getSupportedAnnotationClassNames().stream())
+            .collect(Collectors.toSet());
 
         if (log.isDebugEnabled()) {
             var aspects = this.aspects.stream()

@@ -83,7 +83,6 @@ final class KafkaPublisherTransactionalGenerator {
         var implementationName = NameUtils.generatedType(typeElement, "Impl");
         var publisherImplementationTypeName = ClassName.get(publisherPackageName, NameUtils.generatedType(publisherTypeElement, "Impl"));
         var b = CommonUtils.extendsKeepAop(typeElement, implementationName)
-            .addOriginatingElement(typeElement)
             .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class))
             .addSuperinterface(CommonClassNames.lifecycle)
             .addField(ParameterizedTypeName.get(KafkaClassNames.transactionalPublisherImpl, publisherImplementationTypeName), "delegate", Modifier.PRIVATE, Modifier.FINAL)

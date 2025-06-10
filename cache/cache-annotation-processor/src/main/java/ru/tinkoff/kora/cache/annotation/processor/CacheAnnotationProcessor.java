@@ -71,12 +71,10 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
             var cacheImplBase = getCacheImplBase(cacheContract, cacheContractType);
             var implSpec = CommonUtils.extendsKeepAop(cacheContract, getCacheImpl(cacheContract).simpleName())
-                .addOriginatingElement(cacheContract)
                 .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
                 .addModifiers(Modifier.FINAL)
                 .addMethod(getCacheConstructor(configPath, cacheContractType))
                 .superclass(cacheImplBase)
-                .addSuperinterface(cacheContract.asType())
                 .build();
 
             try {

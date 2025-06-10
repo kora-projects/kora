@@ -166,7 +166,6 @@ final class KafkaPublisherGenerator {
         var topicConfigTypeName = ClassName.get(packageName, topicConfigName);
 
         var b = CommonUtils.extendsKeepAop(publisher, implementationName)
-            .addOriginatingElement(publisher)
             .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class))
             .addSuperinterface(generatedPublisher)
             .addField(CommonClassNames.telemetryConfig, "telemetryConfig", Modifier.PRIVATE, Modifier.FINAL)
