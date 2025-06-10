@@ -63,7 +63,7 @@ public class AopAnnotationProcessor extends AbstractKoraProcessor {
         record RoundAnnotations(List<? extends TypeElement> withAopAnnotation, List<? extends TypeElement> noAopAnnotation) {}
 
         var roundAnnotations = annotations.stream()
-            .filter(a -> this.annotations.contains(a.getQualifiedName().toString()))
+            .filter(a -> this.annotations.contains(ClassName.get(a)))
             .collect(Collectors.teeing(
                 Collectors.filtering(a -> AnnotationUtils.isAnnotationPresent(a, CommonClassNames.aopAnnotation), Collectors.toList()),
                 Collectors.filtering(a -> !AnnotationUtils.isAnnotationPresent(a, CommonClassNames.aopAnnotation), Collectors.toList()),
