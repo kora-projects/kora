@@ -13,7 +13,6 @@ import org.mockito.Spy;
 import org.mockito.internal.configuration.plugins.Plugins;
 import org.mockito.internal.session.MockitoSessionLoggerAdapter;
 import org.mockito.internal.util.MockUtil;
-import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -467,8 +466,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         return findAnnotation(context, KoraAppTest.class);
     }
 
-    private static Optional<MockitoSettings> findMockitoSettings(ExtensionContext context) {
-        return findAnnotation(context, MockitoSettings.class);
+    private static Optional<MockStrictness> findMockStrictness(ExtensionContext context) {
+        return findAnnotation(context, MockStrictness.class);
     }
 
     private static <A extends Annotation> Optional<A> findAnnotation(ExtensionContext context, Class<A> annotationClass) {
@@ -492,7 +491,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private Strictness findStrictness(ExtensionContext context) {
-        return findMockitoSettings(context).map(MockitoSettings::strictness).orElse(Strictness.STRICT_STUBS);
+        return findMockStrictness(context).map(MockStrictness::value).orElse(Strictness.STRICT_STUBS);
     }
 
     @Override
