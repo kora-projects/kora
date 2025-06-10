@@ -142,6 +142,7 @@ public class AopProcessor {
 
 
         var typeBuilder = TypeSpec.classBuilder(AopUtils.aopProxyName(typeElement))
+            .addOriginatingElement(typeElement)
             .superclass(typeElement.asType())
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(CommonClassNames.aopProxy);
@@ -259,10 +260,7 @@ public class AopProcessor {
             .map(a -> CodeBlock.of("$S", a))
             .collect(CodeBlock.joining(", ", "{", "}"));
 
-        typeBuilder
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", generated)
-                .build());
+        typeBuilder.addAnnotation(AnnotationUtils.generated(generated));
 
 
         if (AnnotationUtils.findAnnotation(typeElement, CommonClassNames.component) != null) {

@@ -3,8 +3,8 @@ package ru.tinkoff.kora.json.annotation.processor.reader;
 import com.squareup.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.naming.NameConverter;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
@@ -17,8 +17,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import java.util.ArrayList;
 import java.util.Objects;
-
-import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.getNameConverter;
 
 public class ReaderTypeMetaParser {
     private final ProcessingEnvironment env;
@@ -41,7 +39,7 @@ public class ReaderTypeMetaParser {
 
         var jsonConstructor = Objects.requireNonNull(this.findJsonConstructor(jsonClass));
         var fields = new ArrayList<FieldMeta>(jsonConstructor.getParameters().size());
-        var nameConverter = getNameConverter(jsonClass);
+        var nameConverter = CommonUtils.getNameConverter(jsonClass);
 
         for (var parameter : jsonConstructor.getParameters()) {
             var fieldMeta = this.parseField(jsonClass, parameter, nameConverter);
@@ -123,7 +121,7 @@ public class ReaderTypeMetaParser {
         );
     }
 
-    private FieldMeta parseField(TypeElement jsonClass, VariableElement parameter, NameConverter nameConverter) {
+    private FieldMeta parseField(TypeElement jsonClass, VariableElement parameter, CommonUtils.NameConverter nameConverter) {
         var jsonField = this.findJsonField(jsonClass, parameter);
         var jsonName = this.parseJsonName(parameter, jsonField, nameConverter);
         var reader = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "reader");
@@ -150,7 +148,7 @@ public class ReaderTypeMetaParser {
         return null;
     }
 
-    private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, @Nullable NameConverter nameConverter) {
+    private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, @Nullable CommonUtils.NameConverter nameConverter) {
         if (jsonField == null) {
             if (nameConverter != null) {
                 return nameConverter.convert(param.getSimpleName().toString());
