@@ -2,7 +2,6 @@ package ru.tinkoff.kora.test.extension.junit5;
 
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.quality.Strictness;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.KoraApp;
 
@@ -22,11 +21,6 @@ public @interface KoraAppTest {
      * @return class annotated with {@link KoraApp}
      */
     Class<?> value();
-
-    /**
-     * @return mockito mock strictness
-     */
-    Strictness strictness() default Strictness.STRICT_STUBS;
 
     /**
      * @return {@link Component} that should be included in Context initialization in addition to {@link TestComponent} found in tests
