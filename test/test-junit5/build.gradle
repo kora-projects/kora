@@ -3,7 +3,6 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
     compileOnly libs.mockito.core
-    compileOnly libs.mockito.junit
     compileOnly libs.mockk
     compileOnly libs.kotlin.reflect
 
@@ -19,6 +18,5 @@ dependencies {
 
     testImplementation libs.mockk
     testImplementation libs.mockito.core
-    testImplementation libs.mockito.junit
     testImplementation libs.kotlin.stdlib.lib
 }

@@ -13,7 +13,6 @@ import org.mockito.Spy;
 import org.mockito.internal.configuration.plugins.Plugins;
 import org.mockito.internal.session.MockitoSessionLoggerAdapter;
 import org.mockito.internal.util.MockUtil;
-import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
