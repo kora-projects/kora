@@ -36,9 +36,10 @@ public class MockStrictStubbingReporterTests {
         assertEquals(2, listener.getSummary().getTestsFailedCount());
     }
 
+    @Disabled
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
     @MockStrictness(Strictness.STRICT_STUBS)
-    public static class MockStrictTest {
+    static class MockStrictTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;

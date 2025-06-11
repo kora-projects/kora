@@ -36,7 +36,7 @@ public class MockLenientStubbingReporterTests {
 
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
     @MockStrictness(Strictness.LENIENT)
-    public static class MockLenientTest {
+    static class MockLenientTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;
