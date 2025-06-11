@@ -36,7 +36,7 @@ public class MockWarnStubbingReporterTests {
 
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
     @MockStrictness(Strictness.WARN)
-    public static class MockWarnTest {
+    static class MockWarnTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;

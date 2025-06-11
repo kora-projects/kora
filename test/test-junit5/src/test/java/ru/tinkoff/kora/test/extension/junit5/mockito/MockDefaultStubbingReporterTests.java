@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.mockito;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
@@ -21,6 +22,7 @@ public class MockDefaultStubbingReporterTests {
     @Test
     public void mockDefault() {
         var request = LauncherDiscoveryRequestBuilder.request()
+            .configurationParameter("junit.jupiter.conditions.deactivate", "*")
             .selectors(DiscoverySelectors.selectClass(MockDefaultTest.class)).build();
 
         var launcher = LauncherFactory.create();
@@ -32,8 +34,9 @@ public class MockDefaultStubbingReporterTests {
         assertEquals(2, listener.getSummary().getTestsFailedCount());
     }
 
+    @Disabled
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    public static class MockDefaultTest {
+    static class MockDefaultTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;
