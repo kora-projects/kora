@@ -97,7 +97,7 @@ internal class SuspendJdbcDatabaseTest {
             val latch = CountDownLatch(1)
             try {
                 db.inTxSuspend {
-                    db.currentConnectionContext().addPostRollbackAction { latch.countDown() }
+                    db.currentConnectionContext().addPostRollbackAction { _, _ -> latch.countDown() }
                     db.currentConnection().prepareStatement(sql).use { stmt ->
                         stmt.execute()
                     }
@@ -108,7 +108,7 @@ internal class SuspendJdbcDatabaseTest {
                     throw RuntimeException("something wrong", e)
                 }
             }
-            
+
             Assertions.assertThat(latch.count).isEqualTo(0)
 
             var values = params.query(
@@ -118,7 +118,7 @@ internal class SuspendJdbcDatabaseTest {
 
             val latch1 = CountDownLatch(1)
             db.inTx(SqlRunnable {
-                db.currentConnectionContext().addPostCommitAction { latch1.countDown() }
+                db.currentConnectionContext().addPostCommitAction { _ -> latch1.countDown() }
                 db.currentConnection().prepareStatement(sql).use { stmt ->
                     stmt.execute()
                 }

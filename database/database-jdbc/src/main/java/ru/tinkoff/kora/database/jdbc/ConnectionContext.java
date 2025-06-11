@@ -74,11 +74,11 @@ public class ConnectionContext {
     }
 
     public interface PostCommitAction {
-        void run();
+        void run(Connection connection) throws SQLException;
     }
 
     public interface PostRollbackAction {
-        void run();
+        void run(Connection connection, Exception e) throws SQLException;
     }
 
     private boolean isActiveTransaction() throws SQLException {
