@@ -34,9 +34,8 @@ public class MockDefaultStubbingReporterTests {
         assertEquals(2, listener.getSummary().getTestsFailedCount());
     }
 
-    @Disabled
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    static class MockDefaultTest {
+    public static class MockDefaultTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;

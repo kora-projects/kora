@@ -9,6 +9,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.quality.Strictness;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.MockStrictness;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1;
@@ -34,8 +35,8 @@ public class MockLenientStubbingReporterTests {
     }
 
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    @MockitoStrictness(Strictness.LENIENT)
-    static class MockLenientTest {
+    @MockStrictness(Strictness.LENIENT)
+    public static class MockLenientTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;

@@ -10,6 +10,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.quality.Strictness;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.MockStrictness;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1;
@@ -35,10 +36,9 @@ public class MockStrictStubbingReporterTests {
         assertEquals(2, listener.getSummary().getTestsFailedCount());
     }
 
-    @Disabled
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    @MockitoStrictness(Strictness.STRICT_STUBS)
-    static class MockStrictTest {
+    @MockStrictness(Strictness.STRICT_STUBS)
+    public static class MockStrictTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;
