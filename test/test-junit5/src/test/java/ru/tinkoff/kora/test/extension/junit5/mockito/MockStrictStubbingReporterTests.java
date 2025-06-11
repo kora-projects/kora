@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.mockito;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
@@ -23,6 +24,7 @@ public class MockStrictStubbingReporterTests {
     @Test
     public void mockStrict() {
         var request = LauncherDiscoveryRequestBuilder.request()
+            .configurationParameter("junit.jupiter.conditions.deactivate", "*")
             .selectors(DiscoverySelectors.selectClass(MockStrictTest.class)).build();
 
         var launcher = LauncherFactory.create();
@@ -34,9 +36,10 @@ public class MockStrictStubbingReporterTests {
         assertEquals(2, listener.getSummary().getTestsFailedCount());
     }
 
+    @Disabled
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
     @MockStrictness(Strictness.STRICT_STUBS)
-    public static class MockStrictTest {
+    static class MockStrictTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;
