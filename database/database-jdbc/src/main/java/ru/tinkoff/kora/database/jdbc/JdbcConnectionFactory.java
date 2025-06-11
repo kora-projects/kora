@@ -82,13 +82,17 @@ public interface JdbcConnectionFactory {
                 try {
                     connection.rollback();
                     connection.setAutoCommit(true);
-                    currentConnectionContext().postRollbackActions().forEach(PostRollbackAction::run);
-                } catch (SQLException sqlException) {
-                    e.addSuppressed(sqlException);
+                    for (PostRollbackAction action : currentConnectionContext().postRollbackActions()) {
+                        action.run(connection, e);
+                    }
+                } catch (Exception suppressed) {
+                    e.addSuppressed(suppressed);
                 }
                 throw e;
             }
-            currentConnectionContext().postCommitActions().forEach(PostCommitAction::run);
+            for (PostCommitAction action : currentConnectionContext().postCommitActions()) {
+                action.run(connection);
+            }
             return result;
         });
     }
