@@ -54,7 +54,7 @@ class KafkaContainerGenerator {
             addStatement("return %T(%S, config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)",
                 KafkaClassNames.kafkaAssignConsumerContainer, configPath)
             nextControlFlow("else")
-            addStatement("return %T(%S, config, keyDeserializer, valueDeserializer, wrappedHandler, rebalanceListener)",
+            addStatement("return %T(%S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener)",
                 KafkaClassNames.kafkaSubscribeConsumerContainer, configPath)
         }
         return funBuilder.build()

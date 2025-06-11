@@ -30,7 +30,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 CompletionStage<GetObjectResponse> get(String key);
             }
@@ -45,9 +45,24 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Get
                 CompletableFuture<GetObjectResponse> get(String key);
+            }
+            """);
+        this.compileResult.assertSuccess();
+        var clazz = this.compileResult.loadClass("$Client_Impl");
+        assertThat(clazz).isNotNull();
+    }
+
+    @Test
+    public void clientGetMetaAws() {
+        this.compile(List.of(new S3ClientAnnotationProcessor()), """
+            @S3.Client("my")
+            public interface Client {
+            
+                @S3.Get
+                CompletableFuture<HeadObjectResponse> get(String key);
             }
             """);
         this.compileResult.assertSuccess();
@@ -60,7 +75,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List
                 CompletionStage<ListObjectsV2Response> list();
             }
@@ -75,7 +90,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List
                 CompletionStage<ListObjectsV2Response> list(String prefix);
             }
@@ -90,7 +105,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List(limit = 100)
                 CompletionStage<ListObjectsV2Response> list(String prefix);
             }
@@ -105,7 +120,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List(value = "{key1}", delimiter = "/")
                 CompletionStage<ListObjectsV2Response> list(String key1);
             }
@@ -120,7 +135,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.List
                 CompletableFuture<ListObjectsV2Response> list(String prefix);
             }
@@ -135,7 +150,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete
                 CompletionStage<DeleteObjectResponse> delete(String key);
             }
@@ -150,7 +165,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete
                 CompletableFuture<DeleteObjectResponse> delete(String key);
             }
@@ -165,7 +180,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Delete
                 CompletionStage<DeleteObjectsResponse> delete(List<String> key);
             }
@@ -180,7 +195,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put
                 CompletionStage<PutObjectResponse> put(String key, S3Body body);
             }
@@ -195,7 +210,7 @@ class S3AwsAsyncClientTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
-                        
+            
                 @S3.Put
                 CompletableFuture<PutObjectResponse> put(String key, S3Body body);
             }

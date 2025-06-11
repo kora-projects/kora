@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
 import jakarta.annotation.Nullable;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
@@ -47,7 +48,25 @@ public final class DefaultKafkaConsumerTelemetryFactory<K, V> implements KafkaCo
             public void reportLag(TopicPartition partition, long lag) {
 
             }
+
+            @Override
+            public KafkaConsumerTelemetryContext<K, V> get(Consumer<K, V> consumer) {
+                return () -> {};
+            }
         };
+    }
+
+    @Deprecated
+    @Override
+    public KafkaConsumerTelemetry<K, V> get(Properties driverProperties, TelemetryConfig config) {
+        var logger = this.logger == null ? null : this.logger.get(driverProperties, config.logging());
+        var metrics = this.metrics == null ? null : this.metrics.get(driverProperties, config.metrics());
+        var tracer = this.tracer == null ? null : this.tracer.get(driverProperties, config.tracing());
+        if (logger == null && metrics == null && tracer == null) {
+            return empty;
+        }
+
+        return new DefaultKafkaConsumerTelemetry<>("", logger, tracer, metrics);
     }
 
     @Override

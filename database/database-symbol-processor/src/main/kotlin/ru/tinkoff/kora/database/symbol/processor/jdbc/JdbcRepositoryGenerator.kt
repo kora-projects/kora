@@ -118,12 +118,12 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
             b.addStatement("var _conToUse = %L", connection)
         }
-        b.addStatement("val _conToClose: %T?", JdbcTypes.connection)
+        b.addStatement("val _conToClose = ")
         b.controlFlow("if (_conToUse == null)") {
             addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
-            addStatement("_conToClose = _conToUse")
+            addStatement("_conToUse")
             nextControlFlow("else")
-            addStatement("_conToClose = null")
+            addStatement("null")
         }
         b.controlFlow("try") {
             controlFlow("_conToClose.use") {

@@ -2,8 +2,8 @@ package ru.tinkoff.kora.s3.client.aws;
 
 import org.jetbrains.annotations.ApiStatus;
 import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
-import software.amazon.awssdk.services.s3.model.GetObjectAttributesResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.S3Object;
 
 import java.time.Instant;
@@ -22,10 +22,10 @@ final class AwsS3ObjectMeta implements S3ObjectMeta {
         this.size = response.contentLength();
     }
 
-    public AwsS3ObjectMeta(String key, GetObjectAttributesResponse response) {
+    public AwsS3ObjectMeta(String key, HeadObjectResponse response) {
         this.key = key;
         this.modified = response.lastModified();
-        this.size = response.objectSize();
+        this.size = response.contentLength() == null ? -1 : response.contentLength();
     }
 
     public AwsS3ObjectMeta(S3Object object) {
@@ -65,8 +65,8 @@ final class AwsS3ObjectMeta implements S3ObjectMeta {
     @Override
     public String toString() {
         return "AwsS3ObjectMeta{key=" + key +
-            ", size=" + size +
-            ", modified=" + modified +
-            '}';
+               ", size=" + size +
+               ", modified=" + modified +
+               '}';
     }
 }

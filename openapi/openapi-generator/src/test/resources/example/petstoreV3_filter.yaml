@@ -30,6 +30,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/ParcelAllOf"
 
+  /system:
+    get:
+      operationId: getSystems
+      responses:
+        '200':
+          description: Systems
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/System"
+
   /deliveries:
     get:
       security:
@@ -414,6 +425,84 @@ components:
       additionalProperties:
         $ref: '#/components/schemas/DetailExtra'
 
+    System:
+      type: object
+      required:
+        - systemType
+        - systemName
+      properties:
+        systemType:
+          type: string
+        systemName:
+          type: string
+        entities:
+          type: array
+          items:
+            type: object
+            required:
+              - contract
+            properties:
+              entityType:
+                type: string
+              contract:
+                $ref: '#/components/schemas/EntityContract'
+
+    EntityContract:
+      type: object
+      required:
+        - common
+        - code
+      properties:
+        attributes:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/Attribute'
+
+    Attribute:
+      type: object
+      discriminator:
+        propertyName: type
+        mapping:
+          boolean: "#/components/schemas/BooleanAttribute"
+          number: "#/components/schemas/NumberAttribute"
+      required:
+        - type
+        - dataSource
+        - deprecated
+      properties:
+        dataSource:
+          $ref: '#/components/schemas/DataSource'
+        type:
+          $ref: '#/components/schemas/DataType'
+        deprecated:
+          type: boolean
+
+    BooleanAttribute:
+      allOf:
+        - $ref: '#/components/schemas/Attribute'
+
+    NumberAttribute:
+      allOf:
+        - $ref: '#/components/schemas/Attribute'
+        - type: object
+          required:
+            - value
+          properties:
+            value:
+              type: number
+              format: decimal
+
+    DataSource:
+      type: string
+      enum:
+        - some
+        - any
+
+    DataType:
+      type: string
+      enum:
+        - text
+        - enum
 
     Species:
       type: object

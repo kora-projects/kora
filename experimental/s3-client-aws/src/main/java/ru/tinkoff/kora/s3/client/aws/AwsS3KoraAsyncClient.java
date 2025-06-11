@@ -8,8 +8,8 @@ import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
 import ru.tinkoff.kora.s3.client.S3NotFoundException;
-import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.model.*;
+import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.telemetry.S3KoraClientTelemetry;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.async.AsyncRequestBody;
@@ -73,13 +73,12 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
     }
 
     private CompletionStage<S3ObjectMeta> getMetaInternal(String bucket, String key) {
-        var request = GetObjectAttributesRequest.builder()
+        var request = HeadObjectRequest.builder()
             .bucket(bucket)
             .key(key)
-            .objectAttributes(ObjectAttributes.OBJECT_SIZE)
             .build();
 
-        return asyncClient.getObjectAttributes(request)
+        return asyncClient.headObject(request)
             .thenApply(r -> new AwsS3ObjectMeta(key, r));
     }
 

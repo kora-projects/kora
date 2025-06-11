@@ -22,7 +22,7 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
     @Test
     fun clientGetAws() {
         this.compile0(
-             """
+            """
             @S3.Client("my")
             interface Client {
                         
@@ -37,9 +37,60 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun clientGetOptionalAws() {
+        this.compile0(
+            """
+            @S3.Client("my")
+            interface Client {
+                        
+                @S3.Get
+                fun get(key: String): GetObjectResponse?
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$Client_Impl")
+        assertThat(clazz).isNotNull()
+    }
+
+    @Test
+    fun clientGetMetaAws() {
+        this.compile0(
+            """
+            @S3.Client("my")
+            interface Client {
+                        
+                @S3.Get
+                fun get(key: String): HeadObjectResponse
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$Client_Impl")
+        assertThat(clazz).isNotNull()
+    }
+
+    @Test
+    fun clientGetMetaOptionalAws() {
+        this.compile0(
+            """
+            @S3.Client("my")
+            interface Client {
+                        
+                @S3.Get
+                fun get(key: String): HeadObjectResponse?
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val clazz = compileResult.loadClass("\$Client_Impl")
+        assertThat(clazz).isNotNull()
+    }
+
+    @Test
     fun clientListAws() {
         this.compile0(
-             """
+            """
             @S3.Client("my")
             interface Client {
                         
@@ -56,7 +107,7 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
     @Test
     fun clientListAwsWithPrefix() {
         this.compile0(
-             """
+            """
             @S3.Client("my")
             interface Client {
                         
@@ -73,7 +124,7 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
     @Test
     fun clientListAwsLimit() {
         this.compile0(
-             """
+            """
             @S3.Client("my")
             interface Client {
                         
@@ -107,7 +158,7 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
     @Test
     fun clientDeleteAws() {
         this.compile0(
-             """
+            """
             @S3.Client("my")
             interface Client {
                         
@@ -124,7 +175,7 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
     @Test
     fun clientDeletesAws() {
         this.compile0(
-             """
+            """
             @S3.Client("my")
             interface Client {
                         
@@ -141,7 +192,7 @@ class S3AwsClientTests : AbstractSymbolProcessorTest() {
     @Test
     fun clientPutBody() {
         this.compile0(
-             """
+            """
             @S3.Client("my")
             interface Client {
                         

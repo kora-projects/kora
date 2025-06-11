@@ -119,7 +119,7 @@ sealed interface ComponentDeclaration {
             // modules can be written in java so we better fix platform nullability
             val type = method.returnType!!.resolve().fixPlatformType(ctx.resolver)
             if (type.isError) {
-                throw ProcessingErrorException("Component type is not resolvable in the current round of processing", method)
+                throw ProcessingErrorException("Component type is not resolvable in the current round of processing: func $method()\nTry disabling Kora KSP processor dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", method)
             }
             val tags = TagUtils.parseTagValue(method)
             val parameterTypes = method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
@@ -160,7 +160,7 @@ sealed interface ComponentDeclaration {
                 throw ProcessingErrorException("No primary constructor to parse component for: $classDeclaration", classDeclaration)
             }
             if (type.isError) {
-                throw ProcessingErrorException("Component type is not resolvable in the current round of processing", classDeclaration)
+                throw ProcessingErrorException("Component type is not resolvable in the current round of processing: class $classDeclaration\nTry disabling Kora KSP processor dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", classDeclaration)
             }
             val tags = TagUtils.parseTagValue(classDeclaration)
 
@@ -174,7 +174,7 @@ sealed interface ComponentDeclaration {
             val parameterTags = sourceMethod.parameters.map { it.parseTags() }
             val type = sourceType.returnType!!
             if (type.isError) {
-                throw ProcessingErrorException("Component type is not resolvable in the current round of processing", sourceMethod)
+                throw ProcessingErrorException("Component type is not resolvable in the current round of processing: func $sourceType()\nTry disabling Kora KSP processor dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", sourceMethod)
             }
             val tag = if (sourceMethod.isConstructor()) {
                 sourceMethod.closestClassDeclaration()!!.parseTags()

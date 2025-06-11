@@ -1,15 +1,21 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
 import jakarta.annotation.Nullable;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.Metric;
-import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
 
-import java.util.Map;
-
 public interface KafkaConsumerTelemetry<K, V> {
+
+    interface KafkaConsumerTelemetryContext<K, V> extends AutoCloseable {
+        @Override
+        void close();
+    }
+
+    default KafkaConsumerTelemetryContext<K, V> get(Consumer<K, V> consumer) {
+        return () -> {};
+    }
 
     interface KafkaConsumerRecordsTelemetryContext<K, V> {
 
@@ -19,6 +25,7 @@ public interface KafkaConsumerTelemetry<K, V> {
     }
 
     interface KafkaConsumerRecordTelemetryContext<K, V> {
+
         void close(@Nullable Throwable ex);
     }
 

@@ -66,7 +66,12 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Nonnull
     State getState() {
-        return getState(state.get());
+        if (Boolean.FALSE.equals(config.enabled())) {
+            logger.debug("CircuitBreaker '{}' is disabled", name);
+            return State.CLOSED;
+        } else {
+            return getState(state.get());
+        }
     }
 
     @Override
@@ -80,6 +85,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     private <T> T internalAccept(@Nonnull Supplier<T> supplier, Supplier<T> fallback) {
+        if (Boolean.FALSE.equals(config.enabled())) {
+            logger.debug("CircuitBreaker '{}' is disabled", name);
+            return supplier.get();
+        }
+
         try {
             acquire();
             var t = supplier.get();
@@ -136,6 +146,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public void acquire() throws CallNotPermittedException {
+        if (Boolean.FALSE.equals(config.enabled())) {
+            logger.debug("CircuitBreaker '{}' is disabled", name);
+            return;
+        }
+
         if (!tryAcquire()) {
             throw new CallNotPermittedException(getState(state.get()), name);
         }
@@ -143,6 +158,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public boolean tryAcquire() {
+        if (Boolean.FALSE.equals(config.enabled())) {
+            logger.debug("CircuitBreaker '{}' is disabled", name);
+            return true;
+        }
+
         final long value = state.get();
         final State state = getState(value);
         if (state == State.CLOSED) {
@@ -194,6 +214,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public void releaseOnSuccess() {
+        if (Boolean.FALSE.equals(config.enabled())) {
+            logger.debug("CircuitBreaker '{}' is disabled", name);
+            return;
+        }
+
         State prevState;
         State newState;
         while (true) {
@@ -243,6 +268,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public void releaseOnError(@Nonnull Throwable throwable) {
+        if (Boolean.FALSE.equals(config.enabled())) {
+            logger.debug("CircuitBreaker '{}' is disabled", name);
+            return;
+        }
+
         if (!failurePredicate.test(throwable)) {
             if (logger.isTraceEnabled()) {
                 final long currentStateLong = state.get();

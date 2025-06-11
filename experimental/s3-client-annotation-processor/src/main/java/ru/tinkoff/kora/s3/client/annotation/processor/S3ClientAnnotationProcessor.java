@@ -68,6 +68,8 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
     private static final ClassName CLASS_AWS_GET_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "GetObjectRequest");
     private static final ClassName CLASS_AWS_GET_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "GetObjectResponse");
     private static final TypeName CLASS_AWS_GET_IS_RESPONSE = ParameterizedTypeName.get(ClassName.get("software.amazon.awssdk.core", "ResponseInputStream"), CLASS_AWS_GET_RESPONSE);
+    private static final ClassName CLASS_AWS_GET_META_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "HeadObjectRequest");
+    private static final ClassName CLASS_AWS_GET_META_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "HeadObjectResponse");
     private static final ClassName CLASS_AWS_DELETE_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "DeleteObjectRequest");
     private static final ClassName CLASS_AWS_DELETE_RESPONSE = ClassName.get("software.amazon.awssdk.services.s3.model", "DeleteObjectResponse");
     private static final ClassName CLASS_AWS_DELETES_REQUEST = ClassName.get("software.amazon.awssdk.services.s3.model", "DeleteObjectsRequest");
@@ -413,6 +415,79 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
             }
 
             return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.SIMPLE, mode, bodyBuilder.build());
+        } else if (CLASS_AWS_GET_META_RESPONSE.equals(returnType)) {
+            if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
+                throw new ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method);
+            }
+
+            String clientField = mode == S3Operation.Mode.SYNC
+                ? "_awsSyncClient"
+                : "_awsAsyncClient";
+
+            codeBuilder
+                .addStatement(key.code())
+                .add("\n")
+                .addStatement(CodeBlock.of("""
+                    var _request = $T.builder()
+                        .bucket(_clientConfig.bucket())
+                        .key(_key)
+                        .build()""", CLASS_AWS_GET_META_REQUEST))
+                .add("\n");
+
+            if (isMono) {
+                codeBuilder.beginControlFlow("return $T.fromCompletionStage(() -> ", CommonClassNames.mono);
+            }
+
+            if (mode == S3Operation.Mode.SYNC) {
+                if (isOptional) {
+                    codeBuilder.beginControlFlow("try");
+                    codeBuilder.add("return $T.of(", Optional.class);
+                } else {
+                    codeBuilder.add("return ");
+                }
+
+                codeBuilder.add("$L.headObject(_request)", clientField);
+
+                if (isOptional) {
+                    codeBuilder
+                        .addStatement(")")
+                        .nextControlFlow("catch($T | $T e)", CLASS_AWS_EXCEPTION_NO_KEY, CLASS_AWS_EXCEPTION_NO_BUCKET)
+                        .addStatement("return $T.empty()", Optional.class)
+                        .endControlFlow();
+                } else {
+                    codeBuilder.add(";\n");
+                }
+            } else {
+                codeBuilder.add("return $L.headObject(_request)", clientField);
+
+                if (isMono) {
+                    codeBuilder
+                        .add("\n")
+                        .add("""
+                                .exceptionallyCompose(e -> {
+                                    Throwable cause = e;
+                                    if (e instanceof $T) {
+                                        cause = e.getCause();
+                                    }
+                                    if (cause instanceof $T) {
+                                        return $T.completedFuture(null);
+                                    } else {
+                                        return $T.failedFuture(cause);
+                                    }
+                                });
+                            """, CompletionException.class, CLASS_S3_EXCEPTION_NOT_FOUND, CompletableFuture.class, CompletableFuture.class);
+                } else if (isOptional) {
+                    codeBuilder.add(";\n");
+                } else {
+                    codeBuilder.add(";\n");
+                }
+            }
+
+            if (isMono) {
+                codeBuilder.endControlFlow(")");
+            }
+
+            return new S3Operation(method, operationMeta.annotation, OperationType.GET, ImplType.AWS, mode, codeBuilder.build());
         } else if (CLASS_AWS_GET_RESPONSE.equals(returnType) || CLASS_AWS_GET_IS_RESPONSE.equals(returnType)) {
             if (firstParameter != null && CommonUtils.isCollection(firstParameter.asType())) {
                 throw new ProcessingErrorException("@S3.Get operation expected single result, but parameter is collection of keys", method);
@@ -502,8 +577,8 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                     CLASS_S3_OBJECT.simpleName(), CLASS_S3_OBJECT_META.simpleName()
                 ), method);
             } else {
-                throw new ProcessingErrorException("@S3.Get operation unsupported method return signature, expected any of %s/%s/%s/ResponseInputStream<%s>".formatted(
-                    CLASS_S3_OBJECT.simpleName(), CLASS_S3_OBJECT_META.simpleName(), CLASS_AWS_GET_RESPONSE.simpleName(), CLASS_AWS_GET_RESPONSE.simpleName()
+                throw new ProcessingErrorException("@S3.Get operation unsupported method return signature, expected any of %s/%s/%s/%s/ResponseInputStream<%s>".formatted(
+                    CLASS_S3_OBJECT.simpleName(), CLASS_S3_OBJECT_META.simpleName(), CLASS_AWS_GET_META_RESPONSE.simpleName(), CLASS_AWS_GET_RESPONSE.simpleName(), CLASS_AWS_GET_RESPONSE.simpleName()
                 ), method);
             }
         }

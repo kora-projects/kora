@@ -7,6 +7,11 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
+{{#isAsync}}
+import java.util.concurrent.CompletionStage;
+{{/isAsync}}{{#isReactive}}
+import reactor.core.publisher.Mono;
+{{/isReactive}}
 
 import java.util.List;
 import java.util.Map;
@@ -20,45 +25,39 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 @ru.tinkoff.kora.http.server.common.annotation.HttpController(value = "{{prefixPath}}"){{#vendorExtensions.allowAspects}}
 @ru.tinkoff.kora.common.Component{{/vendorExtensions.allowAspects}}
 public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}} class {{classname}}Controller {
+
     private final {{classname}}Delegate delegate;
 
     public {{classname}}Controller({{classname}}Delegate delegate) {
       this.delegate = delegate;
     }
+
 {{#operations}}
 {{#operation}}
 
-    /**
-     * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
+   /**
+    * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
     {{#notes}}
-     * {{.}}
+    * {{.}}
     {{/notes}}
-     *
-    {{#allParams}}
-     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}
-    {{/allParams}}
-     * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
-     *         or {{/-last}}{{/responses}}
+    * {{#allParams}}
+    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
+    * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
+    *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
-     * @deprecated
+    * @deprecated
     {{/isDeprecated}}
     {{#externalDocs}}
-     * {{description}}
-     * @see <a href="{{url}}">{{summary}} Documentation</a>
+    * {{description}}
+    * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
-     */
+    */
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
-    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}")
-    {{#implicitHeaders}}
-    @ApiImplicitParams({
-    {{#headerParams}}
-     TODO implicit header
-    {{>implicitHeader}}
-    {{/headerParams}}
-    })
-    {{/implicitHeaders}}
+    @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#vendorExtensions.x-has-implicit-headers}}
+    @io.swagger.v3.oas.annotations.Parameters({
+{{#implicitHeadersParams}}{{>implicitHeaderV3}}{{/implicitHeadersParams}}    }){{/vendorExtensions.x-has-implicit-headers}}
     {{#hasAuthMethods}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = ru.tinkoff.kora.http.server.common.HttpServerInterceptor.class)
     {{/hasAuthMethods}}
@@ -67,23 +66,25 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     {{/vendorExtensions.x-validate}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
-    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag({ {{interceptorTags}} }), value = {{interceptorImpl}})
+    @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag({ {{interceptorTags}} }),
+        value = {{interceptorImpl}})
     {{/interceptorTags}}
     {{^interceptorTags}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith({{interceptorImpl}})
     {{/interceptorTags}}
     {{/koraInterceptors}}
+    @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
     {{#vendorExtensions.x-validate}}
     @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
-    @ru.tinkoff.kora.common.Mapping({{classname}}ServerResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper.class)
-    public {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{#vendorExtensions.requestInDelegateParams}}HttpServerRequest _serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}) throws Exception {
-      return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
-        {{#allParams}}{{#lambda.trim}}
-        {{#hasFormParams}}{{^isFormParam}}{{paramName}},{{/isFormParam}}{{/hasFormParams}}
-        {{^hasFormParams}}{{paramName}}{{^-last}},{{/-last}}{{/hasFormParams}}{{/lambda.trim}}{{/allParams}}{{#hasFormParams}}
-        form{{/hasFormParams}}
-      );
+    public {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
+        HttpServerRequest _serverRequest{{#hasParams}}, {{/hasParams}}
+    {{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}
+    ){{#isBlocking}} throws Exception{{/isBlocking}} {
+        return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
+            {{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}
+            form{{/hasFormParams}}
+        );
     }
 {{>javaFormParams}}
 {{/operation}}

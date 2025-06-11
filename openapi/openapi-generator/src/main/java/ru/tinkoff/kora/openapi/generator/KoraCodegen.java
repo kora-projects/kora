@@ -417,17 +417,9 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientAsyncResponseMappers.mustache", "ClientResponseMappers.java");
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
-            case JAVA_SERVER -> {
+            case JAVA_SERVER, JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
-                apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
-                apiTemplateFiles.put("javaServerRequestMappers.mustache", "ServerRequestMappers.java");
-                apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
-                modelTemplateFiles.put("javaModel.mustache", ".java");
-            }
-            case JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
-                apiTemplateFiles.put("javaAsyncServerApi.mustache", "Controller.java");
-                apiTemplateFiles.put("javaAsyncServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
                 apiTemplateFiles.put("javaServerRequestMappers.mustache", "ServerRequestMappers.java");
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
@@ -589,7 +581,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (params.enableValidation) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null) {
+                        if (variableModelField != null && !variableModelField.isEnum) {
                             variable.vendorExtensions.put("x-has-valid-model", true);
                         }
                     }
@@ -613,7 +605,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (params.enableValidation) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null) {
+                        if (variableModelField != null && !variableModelField.isEnum) {
                             variable.vendorExtensions.put("x-has-valid-model", true);
                         }
                     }
@@ -626,7 +618,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (params.enableValidation) {
                     if (variable.getRef() != null) {
                         var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null) {
+                        if (variableModelField != null && !variableModelField.isEnum) {
                             variable.vendorExtensions.put("x-has-valid-model", true);
                         }
                     }
@@ -643,17 +635,7 @@ public class KoraCodegen extends DefaultCodegen {
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
                 }
-
-//                if (variable.isEnum) {
-//                    variable.datatypeWithEnum = toEnumName(variable);
-//                }
             }
-
-//            for (var variable : model.requiredVars) {
-//                if (variable.isEnum) {
-//                    variable.datatypeWithEnum = toEnumName(variable);
-//                }
-//            }
 
             if (model.discriminator != null) {
                 var map = model.discriminator.getMappedModels().stream()
@@ -723,9 +705,12 @@ public class KoraCodegen extends DefaultCodegen {
                     }
 
                     for (CodegenProperty prop : childModel.requiredVars) {
-                        if (prop.isOverridden != null && prop.isOverridden) {
-                            if (model.requiredVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
+                        if (prop.isOverridden != null) {
+                            boolean haveReqVar = model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name));
+                            if (prop.isOverridden && !haveReqVar) {
                                 prop.isOverridden = false;
+                            } else {
+                                prop.isOverridden = haveReqVar;
                             }
                         }
                     }
@@ -1701,7 +1686,7 @@ public class KoraCodegen extends DefaultCodegen {
             .filter(op -> op.getRequestBody() != null && op.getRequestBody().getContent() != null)
             .flatMap(op -> op.getRequestBody().getContent().values().stream())
             .filter(req -> req.getSchema() != null)
-            .flatMap(req -> getAllRefs(req.getSchema(), new ArrayList<>()).stream())
+            .flatMap(req -> getAllRefs(req.getSchema()).stream())
             .filter(Objects::nonNull)
             .filter(o -> !o.isBlank())
             .map(ModelUtils::getSimpleRef)
@@ -1712,7 +1697,7 @@ public class KoraCodegen extends DefaultCodegen {
             .filter(res -> res.getContent() != null)
             .flatMap(res -> res.getContent().values().stream())
             .filter(res -> res.getSchema() != null)
-            .flatMap(req -> getAllRefs(req.getSchema(), new ArrayList<>()).stream())
+            .flatMap(req -> getAllRefs(req.getSchema()).stream())
             .filter(Objects::nonNull)
             .filter(o -> !o.isBlank())
             .map(ModelUtils::getSimpleRef)
@@ -1744,40 +1729,60 @@ public class KoraCodegen extends DefaultCodegen {
     private Set<String> getSimpleRefRecursive(String targetName,
                                               Schema<?> targetSchema,
                                               Map<String, Schema> schemas,
-                                              Map<String, Set<String>> discriminatorSchemaRefs,
+                                              Map<String, Set<String>> schemaToAllSimpleRefs,
                                               Set<String> visited,
                                               boolean checkVisited) {
         if (checkVisited) {
-            if (targetSchema instanceof ObjectSchema && visited.contains(targetName)) {
+            if (visited.contains(targetName)) {
                 return Collections.emptySet();
-            } else if (targetSchema instanceof ObjectSchema) {
+            } else {
                 visited.add(targetName);
             }
         }
 
-        final Set<String> refs = new HashSet<>();
-        refs.add(targetName);
+        final Set<String> simpleRefs = new HashSet<>();
+        simpleRefs.add(targetName);
+
+        Set<String> targetAllRefs = getAllSimpleRefs(targetSchema);
+        simpleRefs.addAll(targetAllRefs);
 
         if (targetSchema.getDiscriminator() != null) {
+            Map<String, String> mapping = targetSchema.getDiscriminator().getMapping();
+            if (mapping != null) {
+                Set<String> schemaRefs = mapping.values().stream()
+                    .map(ModelUtils::getSimpleRef)
+                    .collect(Collectors.toSet());
+
+                List<Schema> schemaMappings = schemaRefs.stream()
+                    .map(schemas::get)
+                    .toList();
+
+                for (Schema schemaMapping : schemaMappings) {
+                    Set<String> itemRefs = getSimpleRefFromSchemaRef(schemaMapping, schemas, schemaToAllSimpleRefs, visited);
+                    simpleRefs.addAll(itemRefs);
+
+                    Set<String> allRefs = getAllSimpleRefs(schemaMapping);
+                    simpleRefs.addAll(allRefs);
+                }
+                simpleRefs.addAll(schemaRefs);
+            }
+
             // getting from  targetSchema.getDiscriminator().getMapping() may work only when its specified and won't consider other cases
             schemas.forEach((candidateName, candidateSchema) -> {
                 if (candidateSchema != targetSchema) {
-                    Set<String> discRefs = discriminatorSchemaRefs.computeIfAbsent(candidateName, k -> {
-                        List<String> allRefs = getAllRefs(candidateSchema, new ArrayList<>());
-                        Set<String> allDiscRefs = allRefs.stream()
-                            .map(ModelUtils::getSimpleRef)
-                            .collect(Collectors.toSet());
-                        allDiscRefs.add(candidateName);
-                        return allDiscRefs;
-                    });
+                    Set<String> allSimpleRefs = schemaToAllSimpleRefs.computeIfAbsent(candidateName, k -> getAllSimpleRefs(candidateSchema));
 
-                    if (discRefs.contains(targetName)) {
-                        for (String discRef : discRefs) {
+                    if (allSimpleRefs.contains(targetName)) {
+                        simpleRefs.add(candidateName);
+                        for (String discRef : allSimpleRefs) {
                             Schema discSchema = schemas.get(discRef);
-                            Set<String> itemRefs = getSimpleRefFromSchemaRef(discSchema, schemas, discriminatorSchemaRefs, visited);
-                            refs.addAll(itemRefs);
+                            Set<String> itemRefs = getSimpleRefFromSchemaRef(discSchema, schemas, schemaToAllSimpleRefs, visited);
+                            simpleRefs.addAll(itemRefs);
+
+                            Set<String> propAllRefs = getAllSimpleRefs(discSchema);
+                            simpleRefs.addAll(propAllRefs);
                         }
-                        refs.addAll(discRefs);
+                        simpleRefs.addAll(allSimpleRefs);
                     }
                 }
             });
@@ -1785,23 +1790,40 @@ public class KoraCodegen extends DefaultCodegen {
 
         if (targetSchema.getProperties() != null) {
             targetSchema.getProperties().forEach((propName, prop) -> {
-                Set<String> propRefs = getSimpleRefFromSchemaRef(prop, schemas, discriminatorSchemaRefs, visited);
-                refs.addAll(propRefs);
+                Set<String> propRefs = getSimpleRefFromSchemaRef(prop, schemas, schemaToAllSimpleRefs, visited);
+                simpleRefs.addAll(propRefs);
+
+                Set<String> propAllRefs = getAllSimpleRefs(prop);
+                simpleRefs.addAll(propAllRefs);
 
                 if (prop.getItems() != null) {
-                    Set<String> itemRefs = getSimpleRefFromSchemaRef(prop.getItems(), schemas, discriminatorSchemaRefs, visited);
-                    refs.addAll(itemRefs);
+                    Set<String> itemRefs = getSimpleRefFromSchemaRef(prop.getItems(), schemas, schemaToAllSimpleRefs, visited);
+                    simpleRefs.addAll(itemRefs);
+
+                    Set<String> itemAllSimpleRefs = getAllSimpleRefs(prop.getItems());
+                    simpleRefs.addAll(itemAllSimpleRefs);
                 }
             });
         }
 
         List<Schema<?>> innerSchemas = getAllInnerSchemas(targetSchema);
         for (Schema<?> innerSchema : innerSchemas) {
-            Set<String> innerSchemaRefs = getSimpleRefRecursive(targetName, innerSchema, schemas, discriminatorSchemaRefs, visited, false);
-            refs.addAll(innerSchemaRefs);
+            Set<String> innerSchemaRefs = getSimpleRefRecursive(targetName, innerSchema, schemas, schemaToAllSimpleRefs, visited, false);
+            simpleRefs.addAll(innerSchemaRefs);
+
+            Set<String> itemAllSimpleRefs = getAllSimpleRefs(innerSchema);
+            simpleRefs.addAll(itemAllSimpleRefs);
         }
 
-        return refs;
+        Set<String> innerSimpleRefs = new HashSet<>();
+        for (String simpleRef : simpleRefs) {
+            Schema schemaRef = schemas.get(simpleRef);
+            Set<String> innerSchemaRefs = getSimpleRefRecursive(simpleRef, schemaRef, schemas, schemaToAllSimpleRefs, visited, true);
+            innerSimpleRefs.addAll(innerSchemaRefs);
+        }
+
+        simpleRefs.addAll(innerSimpleRefs);
+        return simpleRefs;
     }
 
     private Set<String> getSimpleRefFromSchemaRef(Schema<?> targetSchema,
@@ -1825,16 +1847,31 @@ public class KoraCodegen extends DefaultCodegen {
         return refs;
     }
 
-    private List<String> getAllRefs(Schema req, List<Schema<?>> visited) {
+    private Set<String> getAllSimpleRefs(Schema req) {
+        return getAllSimpleRefs(req, new HashSet<>());
+    }
+
+    private Set<String> getAllSimpleRefs(Schema req, Set<Schema<?>> visited) {
+        Set<String> itemAllRefs = getAllRefs(req, visited);
+        return itemAllRefs.stream()
+            .map(ModelUtils::getSimpleRef)
+            .collect(Collectors.toSet());
+    }
+
+    private Set<String> getAllRefs(Schema req) {
+        return getAllRefs(req, new HashSet<>());
+    }
+
+    private Set<String> getAllRefs(Schema req, Set<Schema<?>> visited) {
         if (req instanceof ObjectSchema && visited.stream().anyMatch(s -> s == req)) {
-            return Collections.emptyList();
+            return Collections.emptySet();
         }
 
         if (req instanceof ObjectSchema) {
             visited.add(req);
         }
 
-        List<String> refs = new ArrayList<>();
+        Set<String> refs = new HashSet<>();
         if (req.get$ref() != null) {
             refs.add(req.get$ref());
         }
@@ -1846,7 +1883,7 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             visited.add(innerSchema);
-            List<String> schemaRefs = getAllRefs(innerSchema, visited);
+            Set<String> schemaRefs = getAllRefs(innerSchema, visited);
             refs.addAll(schemaRefs);
         }
 
@@ -1929,6 +1966,35 @@ public class KoraCodegen extends DefaultCodegen {
         return postProcessModelsEnum(objs);
     }
 
+    protected void handleImplicitHeaders(CodegenOperation operation, boolean implicitHeaders, @Nullable Pattern implicitHeadersRegex) {
+        if (operation.allParams.isEmpty()) {
+            return;
+        }
+
+        final ArrayList<CodegenParameter> copy = new ArrayList<>(operation.allParams);
+        operation.allParams.clear();
+
+        for (CodegenParameter p : copy) {
+            if (p.isHeaderParam && (implicitHeaders || shouldBeImplicitHeader(p, implicitHeadersRegex))) {
+                operation.implicitHeadersParams.add(p);
+                operation.headerParams.removeIf(header -> header.baseName.equals(p.baseName));
+                LOGGER.info("Update operation [{}]. Remove header [{}] because it's marked to be implicit", operation.operationId, p.baseName);
+            } else {
+                operation.allParams.add(p);
+            }
+        }
+
+        if(!operation.implicitHeadersParams.isEmpty()) {
+            operation.vendorExtensions.put("x-has-implicit-headers", true);
+        }
+
+        operation.hasParams = !operation.allParams.isEmpty();
+    }
+
+    protected boolean shouldBeImplicitHeader(CodegenParameter parameter, @Nullable Pattern implicitHeadersRegex) {
+        return implicitHeadersRegex != null && implicitHeadersRegex.matcher(parameter.baseName).matches();
+    }
+
     @Override
     public OperationsMap postProcessOperationsWithModels(OperationsMap objs, List<ModelMap> allModels) {
         // Remove imports of List, ArrayList, Map and HashMap as they are
@@ -1946,6 +2012,13 @@ public class KoraCodegen extends DefaultCodegen {
 
         record AuthMethodGroup(String name, List<CodegenSecurity> methods) {}
 
+        @Nullable
+        final Pattern implicitHeadersRegex = Optional.ofNullable(additionalProperties.get("implicitHeadersRegex"))
+            .filter(s -> s instanceof String str && !str.isBlank())
+            .map(s -> Pattern.compile(((String) s)))
+            .orElse(null);
+        final boolean implicitHeaders = Boolean.TRUE.equals(additionalProperties.get("implicitHeadersRegex"));
+
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
@@ -1954,6 +2027,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
         var operationList = (List<CodegenOperation>) operations.get("operation");
         for (var op : operationList) {
+            handleImplicitHeaders(op, implicitHeaders, implicitHeadersRegex);
             var operationImports = new TreeSet<String>();
             for (var p : op.allParams) {
                 if (importMapping.containsKey(p.dataType)) {
@@ -2341,6 +2415,10 @@ public class KoraCodegen extends DefaultCodegen {
                 var requiredParams = new ArrayList<CodegenParameter>();
                 var optionalParams = new ArrayList<CodegenParameter>();
                 for (var param : op.allParams) {
+                    if(param.isHeaderParam && implicitHeaders) {
+                        continue;
+                    }
+
                     if (param.notRequiredOrIsNullable() && !param.isPathParam) {
                         optionalParams.add(param);
                         param.vendorExtensions.put("x-optional-params", optionalParams);
