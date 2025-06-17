@@ -76,7 +76,7 @@ public final class KoraGraphModification {
     @Nonnull
     public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
                                                       @Nonnull Supplier<? extends T> replacementSupplier) {
-        modifications.add(new GraphReplacementWithDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace)));
+        modifications.add(new GraphReplacementNoDeps<>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace)));
         return this;
     }
 
@@ -90,7 +90,7 @@ public final class KoraGraphModification {
         if (tags.isEmpty()) {
             return replaceComponent(typeToReplace, replacementSupplier);
         } else {
-            modifications.add(new GraphReplacementWithDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace, tags)));
+            modifications.add(new GraphReplacementNoDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace, tags)));
             return this;
         }
     }
