@@ -11,28 +11,20 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @KoraAppTest(TestApplication.class)
-public class ReplaceWrappedTests implements KoraAppTestGraphModifier {
+public class ReplaceComplexOtherTests implements KoraAppTestGraphModifier {
 
     @TestComponent
-    private TestApplication.SomeWrapped someWrapped;
-    @TestComponent
-    private TestApplication.SomeContainer someContainer;
+    private TestApplication.ComplexOther other;
 
     @NotNull
     @Override
     public KoraGraphModification graph() {
         return KoraGraphModification.create()
-            .replaceComponent(TestApplication.SomeWrapped.class, () -> new TestApplication.SomeWrapped() {
-                @Override
-                public String toString() {
-                    return "12345";
-                }
-            });
+            .replaceComponent(TestApplication.ComplexOther.class, () -> (TestApplication.ComplexOther) () -> "12345");
     }
 
     @Test
-    void wrappedReplaced() {
-        assertEquals("12345", someWrapped.toString());
-        assertEquals("12345", someContainer.wrapped().toString());
+    void otherReplaced() {
+        assertEquals("12345", other.other());
     }
 }
