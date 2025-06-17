@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
 import org.mockito.Mock;
+import org.mockito.MockSettings;
 import org.mockito.Mockito;
 import org.mockito.internal.creation.MockSettingsImpl;
 import org.mockito.quality.Strictness;
@@ -50,49 +51,61 @@ record GraphMockitoMock(GraphCandidate candidate,
     @SuppressWarnings("unchecked")
     private <T> void replaceNode(ApplicationGraphDraw graphDraw, Node<T> node, Class<?> mockClass) {
         graphDraw.replaceNode(node, g -> {
-            var settings = new MockSettingsImpl<>()
-                .name(name)
-                .defaultAnswer(annotation.answer());
-
-            if (!annotation.mockMaker().isBlank()) {
-                settings = settings.mockMaker(annotation.mockMaker());
-            }
-
-            if (annotation.extraInterfaces().length != 0) {
-                settings = settings.extraInterfaces(annotation.extraInterfaces());
-            }
-
-            if (annotation.strictness() != Mock.Strictness.TEST_LEVEL_DEFAULT) {
-                var strictLevel = switch (annotation.strictness()) {
-                    case WARN -> Strictness.WARN;
-                    case LENIENT -> Strictness.LENIENT;
-                    case STRICT_STUBS -> Strictness.STRICT_STUBS;
-                    default -> throw new UnsupportedOperationException("Unknown strictness level provided: " + annotation.strictness());
-                };
-
-                settings = settings.strictness(strictLevel);
-            }
-
-            if (annotation.withoutAnnotations()) {
-                settings = settings.withoutAnnotations();
-            }
-            if (annotation.stubOnly()) {
-                settings = settings.stubOnly();
-            }
-            if (annotation.serializable()) {
-                settings = settings.serializable();
-            }
-
+            var settings = getMockSettings();
             var mock = (T) Mockito.mock(mockClass, settings);
-            if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc) && !mockClass.equals(node.type())) {
-                Wrapped<T> mockedWrapper = (Wrapped<T>) Mockito.mock(tc, settings);
-                Mockito.when(mockedWrapper.value()).thenReturn(mock);
-                return ((T) mockedWrapper);
-            } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom((Class<?>) pt.getRawType())) {
-                return (T) (Wrapped<?>) () -> mock;
-            } else {
-                return mock;
+
+            Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
+            if (wrappedType.isPresent() && wrappedType.get().isInstance(mock)) {
+                Optional<Class<?>> nodeClass = GraphUtils.tryCastType(node.type());
+                if (nodeClass.isPresent()) {
+                    if (nodeClass.get().equals(Wrapped.class)) {
+                        return (T) (Wrapped<T>) () -> mock;
+                    } else {
+                        Wrapped<T> mockedWrapper = (Wrapped<T>) Mockito.mock(nodeClass.get());
+                        Mockito.when(mockedWrapper.value()).thenReturn(mock);
+                        return ((T) mockedWrapper);
+                    }
+                }
             }
+
+            return mock;
         });
+    }
+
+    private MockSettings getMockSettings() {
+        var settings = new MockSettingsImpl<>()
+            .name(name)
+            .defaultAnswer(annotation.answer());
+
+        if (!annotation.mockMaker().isBlank()) {
+            settings = settings.mockMaker(annotation.mockMaker());
+        }
+
+        if (annotation.extraInterfaces().length != 0) {
+            settings = settings.extraInterfaces(annotation.extraInterfaces());
+        }
+
+        if (annotation.strictness() != Mock.Strictness.TEST_LEVEL_DEFAULT) {
+            var strictLevel = switch (annotation.strictness()) {
+                case WARN -> Strictness.WARN;
+                case LENIENT -> Strictness.LENIENT;
+                case STRICT_STUBS -> Strictness.STRICT_STUBS;
+                default -> throw new UnsupportedOperationException("Unknown strictness level provided: " + annotation.strictness());
+            };
+
+            settings = settings.strictness(strictLevel);
+        }
+
+        if (annotation.withoutAnnotations()) {
+            settings = settings.withoutAnnotations();
+        }
+        if (annotation.stubOnly()) {
+            settings = settings.stubOnly();
+        }
+        if (annotation.serializable()) {
+            settings = settings.serializable();
+        }
+
+        return settings;
     }
 }

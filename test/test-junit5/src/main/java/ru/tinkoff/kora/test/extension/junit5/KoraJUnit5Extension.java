@@ -707,8 +707,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             var object = graph.refreshableGraph().get(node);
             boolean isNodeWrapped = GraphUtils.isWrapped(node.type());
             boolean isCandidateWrapped = GraphUtils.isWrapped(candidate.type());
-            if (isNodeWrapped && !isCandidateWrapped) {
-                return ((Wrapped<?>) object).value();
+            if (isNodeWrapped && !isCandidateWrapped && object instanceof Wrapped<?> w) {
+                return w.value();
             } else {
                 return object;
             }
