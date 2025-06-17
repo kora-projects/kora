@@ -2,7 +2,6 @@ package ru.tinkoff.kora.test.extension.junit5;
 
 import jakarta.annotation.Nullable;
 import org.mockito.Mockito;
-import org.mockito.internal.util.MockUtil;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.Wrapped;
@@ -70,12 +69,9 @@ record GraphMockitoSpy(GraphCandidate candidate,
 
     @SuppressWarnings("unchecked")
     private <T> T getSpy(T spyCandidate, Node<T> node) {
-        T spy;
-        if (MockUtil.isSpy(spyCandidate)) {
-            spy = spyCandidate;
-        } else {
-            spy = Mockito.spy(spyCandidate);
-        }
+        final T spy = (MockUtil.isSpy(spyCandidate))
+            ? spyCandidate
+            : Mockito.spy(spyCandidate);
 
         Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
         if (wrappedType.isPresent() && wrappedType.get().isInstance(spy)) {

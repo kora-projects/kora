@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
-import org.mockito.internal.configuration.plugins.Plugins;
 import org.mockito.internal.junit.TestFinishedEvent;
 import org.mockito.internal.junit.UniversalTestListener;
 import org.mockito.mock.MockCreationSettings;
+import org.mockito.plugins.MockitoLogger;
 import org.mockito.quality.Strictness;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 
@@ -26,7 +28,7 @@ public class MockitoUnusedStubbingReporter {
             return;
         }
 
-        var listener = new UniversalTestListener(strictness, Plugins.getMockitoLogger());
+        var listener = new UniversalTestListener(strictness, new ReporterLogger());
 
         for (Object mock : unused) {
             listener.onMockCreated(mock, (MockCreationSettings)withSettings());
@@ -44,5 +46,14 @@ public class MockitoUnusedStubbingReporter {
                     return context.getRequiredTestInstance().getClass().getCanonicalName();
                 }
             });
+    }
+
+    static class ReporterLogger implements MockitoLogger {
+        private static final Logger logger = LoggerFactory.getLogger(ReporterLogger.class);
+
+        @Override
+        public void log(Object o) {
+            logger.info(String.valueOf(o));
+        }
     }
 }
