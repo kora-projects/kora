@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 import jakarta.annotation.Nullable;
@@ -20,9 +21,9 @@ public class ConnectionContext {
 
     private final Connection connection;
 
-    private Collection<PostCommitAction> postCommitActions;
+    private List<PostCommitAction> postCommitActions;
 
-    private Collection<PostRollbackAction> postRollbackActions;
+    private List<PostRollbackAction> postRollbackActions;
 
     public ConnectionContext(Connection connection) {
         this.connection = connection;
@@ -43,7 +44,7 @@ public class ConnectionContext {
     }
 
     public Collection<PostCommitAction> postCommitActions() {
-        return Objects.requireNonNullElseGet(this.postCommitActions, ArrayList::new);
+        return Objects.requireNonNullElseGet(this.postCommitActions, List::of);
     }
 
     public void addPostRollbackAction(PostRollbackAction action) throws SQLException {
@@ -57,7 +58,7 @@ public class ConnectionContext {
     }
 
     public Collection<PostRollbackAction> postRollbackActions() {
-        return Objects.requireNonNullElseGet(this.postRollbackActions, ArrayList::new);
+        return Objects.requireNonNullElseGet(this.postRollbackActions, List::of);
     }
 
     @Nullable
