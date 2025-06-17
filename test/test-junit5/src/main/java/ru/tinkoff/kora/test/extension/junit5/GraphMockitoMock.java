@@ -15,20 +15,15 @@ import java.util.Optional;
 record GraphMockitoMock(GraphCandidate candidate,
                         Class<?> mockClass,
                         String name,
-                        Object value,
                         Mock annotation) implements GraphModification {
 
-    public static GraphModification ofField(GraphCandidate candidate, AnnotatedElement element, String defaultName, Object value) {
+    public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
         var annotation = element.getAnnotation(Mock.class);
         var name = Optional.of(annotation.name())
             .filter(n -> !n.isBlank())
             .orElse(defaultName);
 
-        return new GraphMockitoMock(candidate, getClassToMock(candidate), name, value, annotation);
-    }
-
-    public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
-        return ofField(candidate, element, defaultName, null);
+        return new GraphMockitoMock(candidate, getClassToMock(candidate), name, annotation);
     }
 
     @Override
@@ -88,10 +83,7 @@ record GraphMockitoMock(GraphCandidate candidate,
                 settings = settings.serializable();
             }
 
-            var mock = (value == null)
-                ? (T) Mockito.mock(mockClass, settings)
-                : (T) value;
-
+            var mock = (T) Mockito.mock(mockClass, settings);
             if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc) && !mockClass.equals(node.type())) {
                 Wrapped<T> mockedWrapper = (Wrapped<T>) Mockito.mock(tc, settings);
                 Mockito.when(mockedWrapper.value()).thenReturn(mock);
