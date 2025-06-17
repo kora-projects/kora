@@ -7,11 +7,8 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.*;
 import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.util.ReflectionUtils;
-import org.mockito.Mockito;
-import org.mockito.MockitoSession;
+import org.mockito.Mock;
 import org.mockito.Spy;
-import org.mockito.internal.configuration.plugins.Plugins;
-import org.mockito.internal.session.MockitoSessionLoggerAdapter;
 import org.mockito.internal.util.MockUtil;
 import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
@@ -38,7 +35,6 @@ import java.util.stream.Stream;
 final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback, AfterAllCallback, AfterEachCallback, ParameterResolver {
 
     private static final ExtensionContext.Namespace NAMESPACE = ExtensionContext.Namespace.create(KoraJUnit5Extension.class);
-    private static final String SESSION = "session";
     private static final Logger logger = LoggerFactory.getLogger(KoraJUnit5Extension.class);
 
     // Application class -> graph supplier
@@ -391,41 +387,30 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public void beforeEach(ExtensionContext context) {
         MDC.clear();
-        initMockitoSession(context);
 
         var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.METHOD, context);
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
             resetMocks(koraTestContext.graph.initialized()); // may be skip reset and pass it completely on user
         }
         injectComponentsToFields(koraTestContext.metadata, koraTestContext.graph.initialized(), context);
+        initMockSet(context);
     }
 
-    private void initMockitoSession(ExtensionContext context) {
+    @SuppressWarnings("unchecked")
+    private void initMockSet(ExtensionContext context) {
         var testInstance = context.getRequiredTestInstance();
-        var spyFields = new ArrayList<Field>();
+        var mockSet = context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class);
         for (Field declaredField : testInstance.getClass().getDeclaredFields()) {
-            if (declaredField.isAnnotationPresent(Spy.class)) {
+            if (declaredField.isAnnotationPresent(Spy.class) || declaredField.isAnnotationPresent(Mock.class)) {
                 declaredField.setAccessible(true);
                 try {
-                    if (declaredField.get(testInstance) == null) {
-                        declaredField.set(testInstance, Mockito.mock(declaredField.getType())); // Here we initialize spy to prevent initMocks in mockitoSession
-                        spyFields.add(declaredField);
+                    var mock = declaredField.get(testInstance);
+                    if (mock != null) {
+                        mockSet.add(mock);
                     }
                 } catch (IllegalAccessException e) {
                     throw new RuntimeException(e);
                 }
-            }
-        }
-        MockitoSession session = Mockito.mockitoSession()
-            .strictness(findStrictness(context))
-            .initMocks(testInstance)
-            .logger(new MockitoSessionLoggerAdapter(Plugins.getMockitoLogger())).startMocking();
-        context.getStore(MOCKITO).put(SESSION, session);
-        for (Field declaredField : spyFields) {
-            try {
-                declaredField.set(testInstance, null);
-            } catch (IllegalAccessException e) {
-                throw new RuntimeException(e);
             }
         }
     }
@@ -434,7 +419,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     public void afterEach(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
         var mockitoContext = context.getStore(MOCKITO);
-        mockitoContext.remove(SESSION, MockitoSession.class).finishMocking(context.getExecutionException().orElse(null));
 
         var mockParameters = mockitoContext.getOrComputeIfAbsent(HashSet.class);
         var reporter = new MockitoUnusedStubbingReporter(mockParameters, findStrictness(context));
@@ -705,7 +689,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .filter(KoraJUnit5Extension::isMock)
             .map(f -> {
                 Object fieldValue = null;
-                if (isMockitoSpy(f) || isMockKSpyk(f) || isMockitoMock(f)) {
+                if (isMockitoSpy(f) || isMockKSpyk(f)) {
                     fieldValue = context.getTestInstance()
                         .map(inst -> {
                             try {
@@ -714,7 +698,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                             } catch (IllegalAccessException e) {
                                 final Class<?>[] tags = parseTags(f);
                                 final GraphCandidate candidate = new GraphCandidate(f.getGenericType(), tags);
-                                throw new IllegalArgumentException("Can't extract @Spy or @Mock component '%s' for field: %s".formatted(candidate.type(), f.getName()));
+                                throw new IllegalArgumentException("Can't extract @Spy component '%s' for field: %s".formatted(candidate.type(), f.getName()));
                             }
                         })
                         .orElse(null);
@@ -892,7 +876,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tags);
 
         if (isMockitoMock(field)) {
-            return GraphMockitoMock.ofField(candidate, field, field.getName(), fieldValue);
+            return GraphMockitoMock.ofAnnotated(candidate, field, field.getName());
         } else if (isMockitoSpy(field)) {
             return GraphMockitoSpy.ofField(candidate, field, fieldValue);
         } else if (isMockKMock(field)) {
