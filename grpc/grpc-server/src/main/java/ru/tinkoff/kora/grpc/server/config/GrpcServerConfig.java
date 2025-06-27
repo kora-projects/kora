@@ -33,4 +33,10 @@ public interface GrpcServerConfig {
 
     @Nullable
     Duration maxConnectionAgeGrace();
+
+    @Nullable
+    Duration keepAliveTime();
+
+    @Nullable
+    Duration keepAliveTimeout();
 }
