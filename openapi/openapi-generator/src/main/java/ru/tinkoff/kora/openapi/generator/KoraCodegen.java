@@ -156,8 +156,8 @@ public class KoraCodegen extends DefaultCodegen {
         String jsonAnnotation,
         boolean enableValidation,
         boolean authAsMethodArgument,
-        String primaryAuth,
-        String clientConfigPrefix,
+        @Nullable String primaryAuth,
+        @Nullable String clientConfigPrefix,
         String securityConfigPrefix,
         Map<String, TagClient> clientTags,
         Map<String, List<Interceptor>> interceptors,
@@ -166,7 +166,9 @@ public class KoraCodegen extends DefaultCodegen {
         boolean enableJsonNullable,
         boolean filterWithModels,
         @Nullable String prefixPath,
-        DelegateMethodBodyMode delegateMethodBodyMode
+        DelegateMethodBodyMode delegateMethodBodyMode,
+        boolean implicitHeaders,
+        @Nullable Pattern implicitHeadersRegex
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -204,6 +206,8 @@ public class KoraCodegen extends DefaultCodegen {
             var filterWithModels = false;
             String prefixPath = null;
             var delegateMethodBodyMode = DelegateMethodBodyMode.NONE;
+            boolean implicitHeaders = false;
+            Pattern implicitHeadersRegex = null;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -269,9 +273,19 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(DELEGATE_METHOD_BODY_MODE)) {
                 delegateMethodBodyMode = DelegateMethodBodyMode.of(additionalProperties.get(DELEGATE_METHOD_BODY_MODE).toString());
             }
+            if (additionalProperties.containsKey(IMPLICIT_HEADERS)) {
+                implicitHeaders = Boolean.parseBoolean(additionalProperties.get(IMPLICIT_HEADERS).toString());
+            }
+            if (additionalProperties.containsKey(IMPLICIT_HEADERS_REGEX)) {
+                implicitHeadersRegex = Optional.ofNullable(additionalProperties.get(IMPLICIT_HEADERS_REGEX).toString())
+                    .filter(s -> !s.isBlank())
+                    .map(s -> Pattern.compile(((String) s)))
+                    .orElse(null);
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, filterWithModels, prefixPath, delegateMethodBodyMode);
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable,
+                filterWithModels, prefixPath, implicitHeaders, implicitHeadersRegex);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -335,6 +349,8 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String FILTER_WITH_MODELS = "filterWithModels";
     public static final String PREFIX_PATH = "prefixPath";
     public static final String DELEGATE_METHOD_BODY_MODE = "delegateMethodBodyMode";
+    public static final String IMPLICIT_HEADERS = "implicitHeaders";
+    public static final String IMPLICIT_HEADERS_REGEX = "implicitHeadersRegex";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -2034,7 +2050,7 @@ public class KoraCodegen extends DefaultCodegen {
             }
         }
 
-        if(!operation.implicitHeadersParams.isEmpty()) {
+        if (!operation.implicitHeadersParams.isEmpty()) {
             operation.vendorExtensions.put("x-has-implicit-headers", true);
         }
 
@@ -2062,13 +2078,6 @@ public class KoraCodegen extends DefaultCodegen {
 
         record AuthMethodGroup(String name, List<CodegenSecurity> methods) {}
 
-        @Nullable
-        final Pattern implicitHeadersRegex = Optional.ofNullable(additionalProperties.get("implicitHeadersRegex"))
-            .filter(s -> s instanceof String str && !str.isBlank())
-            .map(s -> Pattern.compile(((String) s)))
-            .orElse(null);
-        final boolean implicitHeaders = Boolean.TRUE.equals(additionalProperties.get("implicitHeaders"));
-
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
@@ -2077,7 +2086,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
         var operationList = (List<CodegenOperation>) operations.get("operation");
         for (var op : operationList) {
-            handleImplicitHeaders(op, implicitHeaders, implicitHeadersRegex);
+            handleImplicitHeaders(op, params.implicitHeaders, params.implicitHeadersRegex);
             var operationImports = new TreeSet<String>();
             for (var p : op.allParams) {
                 if (importMapping.containsKey(p.dataType)) {
@@ -2465,7 +2474,7 @@ public class KoraCodegen extends DefaultCodegen {
                 var requiredParams = new ArrayList<CodegenParameter>();
                 var optionalParams = new ArrayList<CodegenParameter>();
                 for (var param : op.allParams) {
-                    if(param.isHeaderParam && implicitHeaders) {
+                    if (param.isHeaderParam && params.implicitHeaders) {
                         continue;
                     }
 
