@@ -2067,7 +2067,7 @@ public class KoraCodegen extends DefaultCodegen {
             .filter(s -> s instanceof String str && !str.isBlank())
             .map(s -> Pattern.compile(((String) s)))
             .orElse(null);
-        final boolean implicitHeaders = Boolean.TRUE.equals(additionalProperties.get("implicitHeadersRegex"));
+        final boolean implicitHeaders = Boolean.TRUE.equals(additionalProperties.get("implicitHeaders"));
 
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
