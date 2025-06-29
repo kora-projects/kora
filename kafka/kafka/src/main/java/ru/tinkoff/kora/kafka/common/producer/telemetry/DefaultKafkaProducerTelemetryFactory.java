@@ -8,7 +8,9 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics.KafkaProducerTxMetrics;
+import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTelemetry.TelemetryProducerRecord;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerRecordSpan;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer.KafkaProducerTxSpan;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -39,7 +41,7 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
         return new DefaultKafkaProducerTelemetry(tracer, logger, metrics);
     }
 
-    private static final class DefaultKafkaProducerTelemetry implements KafkaProducerTelemetry {
+    public static final class DefaultKafkaProducerTelemetry implements KafkaProducerTelemetry {
         @Nullable
         private final KafkaProducerTracer tracer;
         @Nullable
@@ -89,7 +91,17 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
             }
             var span = this.tracer == null ? null : this.tracer.get(record);
 
-            return new DefaultKafkaProducerRecordTelemetryContext(record, span, this.logger, this.metrics);
+            return new DefaultKafkaProducerRecordTelemetryContext(Either.left(record), span, this.logger, this.metrics);
+        }
+
+        @Override
+        public KafkaProducerRecordTelemetryContext record(TelemetryProducerRecord<?, ?> record) {
+            if (this.logger != null) {
+                this.logger.sendBegin(record);
+            }
+            var span = this.tracer == null ? null : this.tracer.get(record.producerRecord());
+
+            return new DefaultKafkaProducerRecordTelemetryContext(Either.right(record), span, this.logger, this.metrics);
         }
     }
 
@@ -145,11 +157,11 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
         private final KafkaProducerRecordSpan span;
         private final KafkaProducerMetrics metrics;
         private final KafkaProducerLogger logger;
-        private final ProducerRecord<?, ?> record;
+        private final Either<ProducerRecord<?, ?>, TelemetryProducerRecord<?, ?>> record;
         private final Context ctx;
         private final long start;
 
-        public DefaultKafkaProducerRecordTelemetryContext(ProducerRecord<?, ?> record, @Nullable KafkaProducerRecordSpan span, @Nullable KafkaProducerLogger logger, @Nullable KafkaProducerMetrics metrics) {
+        public DefaultKafkaProducerRecordTelemetryContext(Either<ProducerRecord<?, ?>, TelemetryProducerRecord<?, ?>> record, @Nullable KafkaProducerRecordSpan span, @Nullable KafkaProducerLogger logger, @Nullable KafkaProducerMetrics metrics) {
             this.span = span;
             this.logger = logger;
             this.record = record;
@@ -168,10 +180,14 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
                     this.span.close(e);
                 }
                 if (this.metrics != null) {
-                    this.metrics.sendEnd(record, duration, e);
+                    this.metrics.sendEnd(getKafkaProducerRecord(), duration, e);
                 }
                 if (this.logger != null) {
-                    this.logger.sendEnd(record, e);
+                    if (record.isRight()) {
+                        this.logger.sendEnd(record.right(), e);
+                    } else {
+                        this.logger.sendEnd(record.left(), e);
+                    }
                 }
             } finally {
                 oldCtx.inject();
@@ -188,14 +204,22 @@ public class DefaultKafkaProducerTelemetryFactory implements KafkaProducerTeleme
                     this.span.close(metadata);
                 }
                 if (this.metrics != null) {
-                    this.metrics.sendEnd(record, duration, metadata);
+                    this.metrics.sendEnd(getKafkaProducerRecord(), duration, metadata);
                 }
                 if (this.logger != null) {
-                    this.logger.sendEnd(metadata);
+                    if (record.isRight()) {
+                        this.logger.sendEnd(record.right(), metadata);
+                    } else {
+                        this.logger.sendEnd(metadata);
+                    }
                 }
             } finally {
                 oldCtx.inject();
             }
+        }
+
+        private ProducerRecord<?, ?> getKafkaProducerRecord() {
+            return record.isLeft() ? record.left() : record.right().producerRecord();
         }
     }
 }
