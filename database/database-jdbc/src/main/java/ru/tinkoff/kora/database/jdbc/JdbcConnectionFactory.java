@@ -27,7 +27,9 @@ public interface JdbcConnectionFactory {
     Connection currentConnection();
     
     @Nullable
-    ConnectionContext currentConnectionContext();
+    default ConnectionContext currentConnectionContext() {
+        return null;
+    }
 
     Connection newConnection();
 
