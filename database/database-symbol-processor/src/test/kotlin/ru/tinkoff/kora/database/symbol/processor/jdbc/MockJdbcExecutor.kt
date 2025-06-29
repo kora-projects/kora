@@ -6,10 +6,15 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry.DataBaseTelemetryContext
+import ru.tinkoff.kora.database.jdbc.ConnectionContext
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
 import ru.tinkoff.kora.database.jdbc.JdbcHelper.SqlFunction1
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException
-import java.sql.*
+import java.sql.CallableStatement
+import java.sql.Connection
+import java.sql.PreparedStatement
+import java.sql.ResultSet
+import java.sql.SQLException
 
 class MockJdbcExecutor : JdbcConnectionFactory {
     val resultSet = Mockito.mock(ResultSet::class.java)
@@ -19,6 +24,7 @@ class MockJdbcExecutor : JdbcConnectionFactory {
     val telemetry = Mockito.mock(DataBaseTelemetry::class.java)!!
     val telemetryCtx = Mockito.mock(DataBaseTelemetryContext::class.java)!!
     val mockConnection = Mockito.mock(Connection::class.java)!!
+    val mockConnectionContext = ConnectionContext(mockConnection)
 
     fun reset() {
         Mockito.reset(resultSet, preparedStatement, callableStatement, mockConnection, telemetry)
@@ -42,6 +48,8 @@ class MockJdbcExecutor : JdbcConnectionFactory {
     }
 
     override fun currentConnection() = mockConnection!!
+
+    override fun currentConnectionContext() = mockConnectionContext
 
     override fun newConnection(): Connection {
         TODO("Not yet implemented")
