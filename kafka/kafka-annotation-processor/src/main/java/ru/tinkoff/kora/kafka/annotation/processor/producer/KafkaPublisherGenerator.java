@@ -164,6 +164,7 @@ final class KafkaPublisherGenerator {
         var implementationName = NameUtils.generatedType(publisher, "Impl");
         var topicConfigName = NameUtils.generatedType(publisher, "TopicConfig");
         var topicConfigTypeName = ClassName.get(packageName, topicConfigName);
+        var configPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(publisherAnnotation, "value"));
 
         var b = CommonUtils.extendsKeepAop(publisher, implementationName)
             .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class))
@@ -179,6 +180,8 @@ final class KafkaPublisherGenerator {
                 .addAnnotation(Override.class)
                 .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", kafkaProducer, byteArraySerializer, byteArraySerializer)
                 .addCode("this.telemetry = this.telemetryFactory.get(this.telemetryConfig, this.delegate, driverProperties);\n", kafkaProducer)
+                .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", KafkaClassNames.kafkaProducer, byteArraySerializer, byteArraySerializer)
+                .addCode("this.telemetry = this.telemetryFactory.get($S, this.telemetryConfig, this.delegate, driverProperties);\n", configPath)
                 .build())
             .addMethod(MethodSpec.methodBuilder("release")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -275,6 +278,7 @@ final class KafkaPublisherGenerator {
             b.addStatement("var _key = $N.serialize($N.topic(), _headers, $N.key())", keyParserName, record, record);
             b.addStatement("var _value = $N.serialize($N.topic(), _headers, $N.value())", valueParserName, record, record);
             b.addStatement("var _record = new $T<>($N.topic(), $N.partition(), $N.timestamp(), _key, _value, _headers)", producerRecord, record, record, record);
+            b.addStatement("var _telemetryRecord = new $T<>($N.key(), $N.value(), _record)", telemetryProducerRecord, record, record);
         } else {
             b.addStatement("var _topic = this.topicConfig.$N().topic()", topicVariable);
             b.addStatement("var _partition = this.topicConfig.$N().partition()", topicVariable);
@@ -290,8 +294,17 @@ final class KafkaPublisherGenerator {
             }
             b.addStatement("var _value = $N.serialize(_topic, _headers, $N)", valueParserName, publishData.valueVar().getSimpleName());
             b.addStatement("var _record = new $T<>(_topic, _partition, null, _key, _value, _headers)", producerRecord);
+            if (publishData.keyVar() == null) {
+                b.addStatement("var _telemetryRecord = new $T<>(_key, $N, _record)", telemetryProducerRecord, publishData.valueVar().getSimpleName());
+            } else {
+                b.addStatement("var _telemetryRecord = new $T<>($N, $N, _record)",
+                    telemetryProducerRecord,
+                    publishData.keyVar().getSimpleName(),
+                    publishData.valueVar().getSimpleName()
+                );
+            }
         }
-        b.addStatement("var _tctx = this.telemetry.record(_record)");
+        b.addStatement("var _tctx = this.telemetry.record(_telemetryRecord)");
 
         var returnType = TypeName.get(publishMethod.getReturnType());
         if (returnType instanceof ParameterizedTypeName ptn && ptn.rawType.equals(ClassName.get(Future.class))) {
