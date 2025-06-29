@@ -50,6 +50,7 @@ object KafkaClassNames {
     val publisherTopicConfig = ClassName("ru.tinkoff.kora.kafka.common.producer", "KafkaPublisherConfig", "TopicConfig");
     val producerTelemetryFactory = ClassName("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaProducerTelemetryFactory");
     val producerTelemetry = ClassName("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaProducerTelemetry");
+    val telemetryProducerRecord = producerTelemetry.nestedClass("TelemetryProducerRecord");
     val generatedPublisher = ClassName("ru.tinkoff.kora.kafka.common.producer", "GeneratedPublisher");
 
 }
