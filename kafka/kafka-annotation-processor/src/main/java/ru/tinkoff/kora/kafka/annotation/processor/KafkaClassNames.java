@@ -9,6 +9,7 @@ public final class KafkaClassNames {
     public static final ClassName consumer = ClassName.get("org.apache.kafka.clients.consumer", "Consumer");
     public static final ClassName consumerRecord = ClassName.get("org.apache.kafka.clients.consumer", "ConsumerRecord");
     public static final ClassName producerRecord = ClassName.get("org.apache.kafka.clients.producer", "ProducerRecord");
+    public static final ClassName telemetryProducerRecord = ClassName.get("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaProducerTelemetry", "TelemetryProducerRecord");
     public static final ClassName consumerRecords = ClassName.get("org.apache.kafka.clients.consumer", "ConsumerRecords");
     public static final ClassName deserializer = ClassName.get("org.apache.kafka.common.serialization", "Deserializer");
     public static final ClassName serializer = ClassName.get("org.apache.kafka.common.serialization", "Serializer");
