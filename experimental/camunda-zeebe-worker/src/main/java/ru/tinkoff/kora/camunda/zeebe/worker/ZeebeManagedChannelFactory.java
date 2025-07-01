@@ -59,6 +59,25 @@ final class ZeebeManagedChannelFactory {
             public DefaultServiceConfig defaultServiceConfig() {
                 return null;
             }
+
+            @Override
+            @Nullable
+            public Duration keepAliveTime() {
+                return null;
+            }
+
+            @Override
+            @Nullable
+            public Duration keepAliveTimeout() {
+                return null;
+            }
+
+            @Override
+            @Nullable
+            public String loadBalancingPolicy() {
+                return null;
+            }
+
         };
     }
 
