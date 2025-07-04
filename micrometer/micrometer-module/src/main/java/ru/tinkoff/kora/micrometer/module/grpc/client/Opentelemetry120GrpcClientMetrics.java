@@ -1,9 +1,6 @@
 package ru.tinkoff.kora.micrometer.module.grpc.client;
 
-import io.grpc.Metadata;
-import io.grpc.MethodDescriptor;
-import io.grpc.ServiceDescriptor;
-import io.grpc.Status;
+import io.grpc.*;
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
@@ -46,7 +43,14 @@ public final class Opentelemetry120GrpcClientMetrics implements GrpcClientMetric
 
     @Override
     public <RespT, ReqT> void recordEnd(MethodDescriptor<ReqT, RespT> method, long startTime, Exception e) {
-        var key = new MetricsKey(this.service.getName(), method.getBareMethodName(), null, e.getClass());
+        Integer code = null;
+        if (e instanceof StatusException se) {
+            code = se.getStatus().getCode().value();
+        } else if (e instanceof StatusRuntimeException sre) {
+            code = sre.getStatus().getCode().value();
+        }
+
+        var key = new MetricsKey(this.service.getName(), method.getBareMethodName(), code, e.getClass());
         var metrics = this.metrics.computeIfAbsent(key, this::buildMetrics);
         var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000);
 
