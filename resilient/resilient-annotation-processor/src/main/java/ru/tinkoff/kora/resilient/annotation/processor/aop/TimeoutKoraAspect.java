@@ -22,7 +22,7 @@ import static com.squareup.javapoet.CodeBlock.joining;
 
 public class TimeoutKoraAspect implements KoraAspect {
 
-    private static final String ANNOTATION_TYPE = "ru.tinkoff.kora.resilient.timeout.annotation.Timeout";
+    private static final ClassName ANNOTATION_TYPE = ClassName.get("ru.tinkoff.kora.resilient.timeout.annotation", "Timeout");
     private static final ClassName EXHAUSTED_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.timeout", "TimeoutExhaustedException");
 
     private final ProcessingEnvironment env;
@@ -33,12 +33,17 @@ public class TimeoutKoraAspect implements KoraAspect {
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
+        return Set.of(ANNOTATION_TYPE.canonicalName());
+    }
+
+    @Override
+    public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(ANNOTATION_TYPE);
     }
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE)).findFirst();
+        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
         final String timeoutName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
                 .map(e -> String.valueOf(e.getValue().getValue())).findFirst())

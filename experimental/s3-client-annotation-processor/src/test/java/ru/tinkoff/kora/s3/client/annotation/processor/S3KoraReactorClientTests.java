@@ -1,14 +1,12 @@
 package ru.tinkoff.kora.s3.client.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
+class S3KoraReactorClientTests extends AbstractS3ClientTest {
 
     @Override
     protected String commonImports() {
@@ -123,7 +121,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientGetKeyMissing() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             
@@ -150,7 +148,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientGetKeyUnused() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             
@@ -268,7 +266,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientListKeyMissing() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             
@@ -295,7 +293,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientListKeyUnused() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             
@@ -338,7 +336,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientDeleteKeyMissing() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             
@@ -365,7 +363,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientDeleteKeyUnused() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             
@@ -514,7 +512,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientPutKeyMissing() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             
@@ -541,7 +539,7 @@ class S3KoraReactorClientTests extends AbstractAnnotationProcessorTest {
 
     @Test
     public void clientPutKeyUnused() {
-        assertThatThrownBy(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
+        assertCompileFailed(() -> this.compile(List.of(new S3ClientAnnotationProcessor()), """
             @S3.Client("my")
             public interface Client {
             

@@ -17,37 +17,30 @@ import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
 
-    private TypeElement kafkaProducerAnnotationElement;
-    private TypeElement aopProxyAnnotationElement;
-
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        this.kafkaProducerAnnotationElement = this.elements.getTypeElement(KafkaClassNames.kafkaPublisherAnnotation.canonicalName());
-        this.aopProxyAnnotationElement = this.elements.getTypeElement(CommonClassNames.aopProxy.canonicalName());
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
+    public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(
-            KafkaClassNames.kafkaPublisherAnnotation.canonicalName(),
-            CommonClassNames.aopProxy.canonicalName()
+            KafkaClassNames.kafkaPublisherAnnotation,
+            CommonClassNames.aopProxy
         );
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        if (this.kafkaProducerAnnotationElement == null) {
-            return false;
-        }
-        var producers = roundEnv.getElementsAnnotatedWith(this.kafkaProducerAnnotationElement);
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var producers = annotatedElements.getOrDefault(KafkaClassNames.kafkaPublisherAnnotation, List.of());
         var publisherTransactionalGenerator = new KafkaPublisherTransactionalGenerator(types, elements, processingEnv);
         var publisherGenerator = new KafkaPublisherGenerator(types, elements, processingEnv);
-        var aopProxies = getAopProxies(roundEnv);
+        var aopProxies = getAopProxies(annotatedElements);
         for (var aopProxy : aopProxies) {
             var publishMethods = new ArrayList<ExecutableElement>();
             for (var method : aopProxy.publisher().getEnclosedElements()) {
@@ -57,13 +50,10 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                 publishMethods.add((ExecutableElement) method);
             }
             var annotation = AnnotationUtils.findAnnotation(aopProxy.publisher, KafkaClassNames.kafkaPublisherAnnotation);
-            try {
-                publisherGenerator.generatePublisherModule(aopProxy.publisher, publishMethods, annotation, aopProxy.proxy);
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            }
+            publisherGenerator.generatePublisherModule(aopProxy.publisher, publishMethods, annotation, aopProxy.proxy);
         }
-        for (var producer : producers) {
+        for (var annotated : producers) {
+            var producer = annotated.element();
             try {
                 if (!(producer instanceof TypeElement typeElement) || typeElement.getKind() != ElementKind.INTERFACE) {
                     this.messager.printMessage(Diagnostic.Kind.ERROR, "@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer);
@@ -122,16 +112,15 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                 throw new IllegalStateException(e);
             }
         }
-        return false;
     }
 
     private record AopProxy(TypeElement publisher, TypeElement proxy) {}
 
-    private List<AopProxy> getAopProxies(RoundEnvironment roundEnv) {
-        var proxies = roundEnv.getElementsAnnotatedWith(aopProxyAnnotationElement);
+    private List<AopProxy> getAopProxies(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var proxies = annotatedElements.getOrDefault(CommonClassNames.aopProxy, List.of());
         var list = new ArrayList<AopProxy>(proxies.size());
         for (var p : proxies) {
-            var proxy = (TypeElement) p;
+            var proxy = (TypeElement) p.element();
             var proxySupertype = (DeclaredType) proxy.getSuperclass();
             if (proxySupertype == null) continue;
             var proxySupertypeElement = (TypeElement) proxySupertype.asElement();

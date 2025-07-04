@@ -3,7 +3,6 @@ package ru.tinkoff.kora.kora.app.annotation.processor.component;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.kora.app.annotation.processor.GraphResolutionHelper;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 
@@ -156,9 +155,9 @@ public sealed interface ComponentDependency {
                 var typeArguments = ((DeclaredType) typeRef).getTypeArguments();
 
                 if (typeArguments.isEmpty()) {
-                    b.add("$T.of($T.class)", TypeRef.class, types.erasure(typeRef));
+                    b.add("$T.of($T.class)", CommonClassNames.typeRef, types.erasure(typeRef));
                 } else {
-                    b.add("$T.<$T>of($T.class", TypeRef.class, typeRef, types.erasure(typeRef));
+                    b.add("$T.<$T>of($T.class", CommonClassNames.typeRef, typeRef, types.erasure(typeRef));
                     for (var typeArgument : typeArguments) {
                         b.add("$>,\n$L$<", buildTypeRef(types, typeArgument));
                     }
@@ -166,7 +165,7 @@ public sealed interface ComponentDependency {
                 }
                 return b.build();
             } else {
-                return CodeBlock.of("$T.of($T.class)", TypeRef.class, typeRef);
+                return CodeBlock.of("$T.of($T.class)", CommonClassNames.typeRef, typeRef);
             }
         }
 

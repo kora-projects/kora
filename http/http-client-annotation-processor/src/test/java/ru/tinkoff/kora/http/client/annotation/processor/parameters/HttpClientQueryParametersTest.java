@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.client.annotation.processor.parameters;
 
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.annotation.processor.common.CompileResult;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import ru.tinkoff.kora.http.client.annotation.processor.AbstractHttpClientTest;
@@ -37,26 +38,32 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
     @Test
     public void testQueryParamUnknownPathParamFails() {
-        assertThrows(ProcessingErrorException.class, () -> compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()),
-            """
-                @HttpClient
-                public interface TestClient {
-                  @HttpRoute(method = "POST", path = "/test/{param}")
-                  void request(@Query String qParam);
-                }
-                """));
+        assertThrows(CompileResult.CompilationFailedException.class, () -> {
+            compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()),
+                """
+                    @HttpClient
+                    public interface TestClient {
+                      @HttpRoute(method = "POST", path = "/test/{param}")
+                      void request(@Query String qParam);
+                    }
+                    """);
+            assertSuccess();
+        });
     }
 
     @Test
     public void testQueryParamIllegalFails() {
-        assertThrows(ProcessingErrorException.class, () -> compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()),
-            """
-                @HttpClient
-                public interface TestClient {
-                  @HttpRoute(method = "POST", path = "/test/{")
-                  void request(@Query String qParam);
-                }
-                """));
+        assertThrows(CompileResult.CompilationFailedException.class, () -> {
+            compile(List.of(new HttpClientAnnotationProcessor(), new ConfigParserAnnotationProcessor()),
+                """
+                    @HttpClient
+                    public interface TestClient {
+                      @HttpRoute(method = "POST", path = "/test/{")
+                      void request(@Query String qParam);
+                    }
+                    """);
+            assertSuccess();
+        });
     }
 
     @Test

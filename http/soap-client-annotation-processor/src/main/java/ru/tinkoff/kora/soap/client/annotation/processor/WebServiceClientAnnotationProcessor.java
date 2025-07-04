@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.soap.client.annotation.processor;
 
+import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
@@ -8,17 +9,20 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
-import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
     private SoapClientImplGenerator generator;
+    private static final ClassName JAKARTA_WEB_SERVICE = new SoapClasses.JakartaClasses().webServiceType();
+    private static final ClassName JAVAX_WEB_SERVICE = new SoapClasses.JavaxClasses().webServiceType();
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
+    public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(
-            "jakarta.jws.WebService",
-            "javax.jws.WebService"
+            JAKARTA_WEB_SERVICE,
+            JAVAX_WEB_SERVICE
         );
     }
 
@@ -29,35 +33,20 @@ public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        var jakartaWebService = this.elements.getTypeElement("jakarta.jws.WebService");
-        var javaxWebService = this.elements.getTypeElement("javax.jws.WebService");
-        if (jakartaWebService != null) {
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(JAKARTA_WEB_SERVICE, List.of())) {
             var jakartaClasses = new SoapClasses.JakartaClasses();
-            var webServices = roundEnv.getElementsAnnotatedWith(jakartaWebService);
-            for (var service : webServices) {
-                try {
-                    this.processService(service, jakartaClasses);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);// todo
-                }
-            }
+            var service = annotated.element();
+            this.processService(service, jakartaClasses);
         }
-        if (javaxWebService != null) {
+        for (var annotated : annotatedElements.getOrDefault(JAVAX_WEB_SERVICE, List.of())) {
             var javaxClasses = new SoapClasses.JavaxClasses();
-            var webServices = roundEnv.getElementsAnnotatedWith(javaxWebService);
-            for (var service : webServices) {
-                try {
-                    this.processService(service, javaxClasses);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);// todo
-                }
-            }
+            var service = annotated.element();
+            this.processService(service, javaxClasses);
         }
-        return false;
     }
 
-    private void processService(Element service, SoapClasses soapClasses) throws IOException {
+    private void processService(Element service, SoapClasses soapClasses) {
         var typeSpec = this.generator.generate(service, soapClasses);
         var typeJavaFile = JavaFile.builder(this.elements.getPackageOf(service).getQualifiedName().toString(), typeSpec)
             .build();

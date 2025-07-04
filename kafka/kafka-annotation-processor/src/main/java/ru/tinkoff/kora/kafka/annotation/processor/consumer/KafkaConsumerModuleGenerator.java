@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.TypeSpec;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
@@ -31,8 +29,8 @@ public class KafkaConsumerModuleGenerator {
     public final JavaFile generateModule(TypeElement typeElement) {
         var classBuilder = TypeSpec.interfaceBuilder(typeElement.getSimpleName().toString() + "Module")
             .addOriginatingElement(typeElement)
+            .addAnnotation(AnnotationUtils.generated(KafkaConsumerModuleGenerator.class))
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KafkaConsumerModuleGenerator.class.getCanonicalName())).build())
             .addAnnotation(CommonClassNames.module);
 
         for (var element : typeElement.getEnclosedElements()) {
