@@ -20,6 +20,15 @@ public interface GrpcClientConfig {
     @Nullable
     DefaultServiceConfig defaultServiceConfig();
 
+    @Nullable
+    Duration keepAliveTime();
+
+    @Nullable
+    Duration keepAliveTimeout();
+
+    @Nullable
+    String loadBalancingPolicy();
+
     static GrpcClientConfig defaultConfig(Config config, ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor<GrpcClientConfig> extractor, String serviceName) {
         var packageEnding = serviceName.lastIndexOf('.');
         var serviceSimpleName = (packageEnding == -1)

@@ -48,6 +48,43 @@ public interface KoraConfigModification {
     KoraConfigModification withSystemProperty(@Nonnull String key, @Nonnull String value);
 
     /**
+     * Example: Given config below
+     * <pre>
+     * {@code
+     *  myconfig {
+     *      myinnerconfig {
+     *          first = ${ENV_FIRST}
+     *          second = ${ENV_SECOND}
+     *      }
+     * }
+     * }
+     * </pre>
+     *
+     * Use system property to set `ENV_FIRST` and 'ENV_SECOND' at once
+     * <pre>
+     * {@code
+     * KoraConfigModification.ofString("""
+     *                              myconfig {
+     *                                  myinnerconfig {
+     *                                      first = ${ENV_FIRST}
+     *                                      second = ${ENV_SECOND}
+     *                                  }
+     *                              }
+     *                              """)
+     *                          .withSystemProperties(Map.of("ENV_FIRST", "1", "ENV_SECOND", "2"));
+     * }
+     * </pre>
+     *
+     * @param systemProperties map of properties to add, must not contain nulls in keys or values
+     * @return self
+     */
+    @Nonnull
+    default KoraConfigModification withSystemProperties(Map<String, String> systemProperties) {
+        systemProperties.forEach(this::withSystemProperty);
+        return this;
+    }
+
+    /**
      * Example below:
      * <pre>
      * {@code

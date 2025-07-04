@@ -19,6 +19,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedChannel> {
 
@@ -85,6 +86,19 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         }
         interceptors.add(new GrpcClientConfigInterceptor(this.config));
         builder.intercept(interceptors);
+
+        if (config.keepAliveTime() != null) {
+            builder.keepAliveTime(config.keepAliveTime().toMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        if (config.keepAliveTimeout() != null) {
+            builder.keepAliveTimeout(config.keepAliveTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        if (config.loadBalancingPolicy() != null) {
+            builder.defaultLoadBalancingPolicy(config.loadBalancingPolicy());
+        }
+
         var defaultServiceConfig = this.config.defaultServiceConfig();
         if (defaultServiceConfig != null && !defaultServiceConfig.content.isEmpty()) {
             builder.defaultServiceConfig(defaultServiceConfig.content);

@@ -74,6 +74,14 @@ public interface GrpcServerModule extends NettyCommonModule {
             builder.maxConnectionAgeGrace(grpcServerConfig.maxConnectionAgeGrace().toMillis(), TimeUnit.MILLISECONDS);
         }
 
+        if (grpcServerConfig.keepAliveTime() != null) {
+            builder.keepAliveTime(grpcServerConfig.keepAliveTime().toMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        if (grpcServerConfig.keepAliveTimeout() != null) {
+            builder.keepAliveTimeout(grpcServerConfig.keepAliveTimeout().toMillis(), TimeUnit.MILLISECONDS);
+        }
+
         if (grpcServerConfig.reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
             builder.addService(ProtoReflectionService.newInstance());
         }
