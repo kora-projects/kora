@@ -7,8 +7,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.*;
 import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.util.ReflectionUtils;
-import org.mockito.Mock;
-import org.mockito.Spy;
 import org.mockito.internal.util.MockUtil;
 import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
@@ -41,7 +39,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     private static final Map<Class<?>, Supplier<ApplicationGraphDraw>> GRAPH_SUPPLIER_MAP = new ConcurrentHashMap<>();
 
     private static final ExtensionContext.Namespace MOCKITO = ExtensionContext.Namespace.create("org.mockito.kora");
-
     static class KoraTestContext {
 
         volatile TestGraph graph;
@@ -197,7 +194,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @SuppressWarnings("unchecked")
     private static Set<Object> removeMockSet(ExtensionContext context) {
         var set = context.getStore(MOCKITO).remove(HashSet.class, HashSet.class);
-        if (set == null) return Set.of();
+        if (set == null) {
+            return Set.of();
+        }
         return set;
     }
 
@@ -393,37 +392,14 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             resetMocks(koraTestContext.graph.initialized()); // may be skip reset and pass it completely on user
         }
         injectComponentsToFields(koraTestContext.metadata, koraTestContext.graph.initialized(), context);
-        initMockSet(context);
-    }
-
-    @SuppressWarnings("unchecked")
-    private void initMockSet(ExtensionContext context) {
-        var testInstance = context.getRequiredTestInstance();
-        var mockSet = context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class);
-        for (Field declaredField : testInstance.getClass().getDeclaredFields()) {
-            if (declaredField.isAnnotationPresent(Spy.class) || declaredField.isAnnotationPresent(Mock.class)) {
-                declaredField.setAccessible(true);
-                try {
-                    var mock = declaredField.get(testInstance);
-                    if (mock != null) {
-                        mockSet.add(mock);
-                    }
-                } catch (IllegalAccessException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        }
     }
 
     @Override
     public void afterEach(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
-        var mockitoContext = context.getStore(MOCKITO);
+        var mockSet = removeMockSet(context);
 
-        var mockParameters = mockitoContext.getOrComputeIfAbsent(HashSet.class);
-        var reporter = new MockitoUnusedStubbingReporter(mockParameters, findStrictness(context));
-
-        mockitoContext.remove(HashSet.class);
+        var reporter = new MockitoUnusedStubbingReporter(mockSet, findStrictness(context));
         reporter.reportUnused(context);
 
         var koraTestContext = getKoraTestContext(context);
@@ -514,7 +490,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                || parameterContext.getParameter().getType().equals(Graph.class);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public Object resolveParameter(ParameterContext parameterContext, ExtensionContext context) throws ParameterResolutionException {
         var koraTestContext = getInitializedKoraTestContext(InitializeOrigin.CONSTRUCTOR, context);
