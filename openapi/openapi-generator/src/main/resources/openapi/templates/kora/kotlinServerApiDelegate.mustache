@@ -39,7 +39,11 @@ interface {{classname}}Delegate {
         {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{#-last}}
     {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
         form: {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam
-    {{/hasFormParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
+    {{/hasFormParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{#hasDelegateMethodBodyMode}}{
+    {{#isThrowExceptionDelegateMethodBodyMode}}
+        TODO("Not yet implemented")
+    {{/isThrowExceptionDelegateMethodBodyMode}}
+    }{{/hasDelegateMethodBodyMode}}
 {{/operation}}
 }
 {{/operations}}
