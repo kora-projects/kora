@@ -7,6 +7,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.requests.OffsetFetchResponse;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.kafka.common.consumer.SkipRecord;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
@@ -36,7 +37,17 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
             for (var record : records) {
                 var recordCtx = ctx.get(record);
                 try {
-                    handler.handle(consumer, recordCtx, record);
+                    Throwable maybeFailure;
+                    try {
+                        handler.handle(consumer, recordCtx, record);
+                        maybeFailure = null;
+                    } catch (Throwable e) {
+                        if (e instanceof SkipRecord) {
+                            maybeFailure = e;
+                        } else {
+                            throw e;
+                        }
+                    }
                     if (this.shouldCommit && commitAllowed) {
                         /**
                          * The committed offset should be the next message your application will consume, i.e. lastProcessedMessageOffset + 1
@@ -47,15 +58,15 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
 
                         try {
                             consumer.commitSync(topicAndOffsetAndMeta);
-                            recordCtx.close(null);
+                            recordCtx.close(maybeFailure);
                         } catch (WakeupException e) {
                             // retry commit if thrown on consumer release
                             consumer.commitSync(topicAndOffsetAndMeta);
-                            recordCtx.close(null);
+                            recordCtx.close(maybeFailure);
                             throw e;
                         }
                     } else {
-                        recordCtx.close(null);
+                        recordCtx.close(maybeFailure);
                     }
                 } catch (WakeupException e) {
                     throw e;
