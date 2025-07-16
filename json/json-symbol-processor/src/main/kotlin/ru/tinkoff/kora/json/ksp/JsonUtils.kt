@@ -3,11 +3,13 @@ package ru.tinkoff.kora.json.ksp
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.STAR
 import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.ksp.toTypeVariableName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.isJavaRecord
 import java.util.*
@@ -130,18 +132,22 @@ fun KSClassDeclaration.discriminatorValues(): List<String> {
 }
 
 
-fun detectSealedHierarchyTypeVariables(jsonClassDeclaration: KSClassDeclaration, subclasses: List<KSClassDeclaration>): Pair<IdentityHashMap<KSTypeParameter, TypeName>, ArrayList<TypeName>> {
+fun detectSealedHierarchyTypeVariables(jsonClassDeclaration: KSClassDeclaration, subclasses: List<KSClassDeclaration>): IdentityHashMap<KSTypeParameter, TypeName> {
     val subclassesSupertypes = subclasses.map { it.getAllSuperTypes().filter { it.declaration == jsonClassDeclaration }.first() }
-    val typeNames = ArrayList<TypeName>(jsonClassDeclaration.typeParameters.size)
     val map = IdentityHashMap<KSTypeParameter, TypeName>()
+    val jsonClassTypeName = jsonClassDeclaration.toTypeName()
 
     for ((index, ksTypeParameter) in jsonClassDeclaration.typeParameters.withIndex()) {
-        var typeName = null as TypeName?
+        var typeName = (jsonClassTypeName as ParameterizedTypeName).typeArguments[index]
         val subtypeArgs = ArrayList<KSTypeParameter>()
+        val rootTypeBounds = ksTypeParameter.bounds.map { it.toTypeName() }.toSet()
         for ((subclassIndex, subclass) in subclasses.withIndex()) {
             val supertype = subclassesSupertypes[subclassIndex]
             val supertypeArgument = supertype.arguments[index].type!!.resolve()
             val argDeclaration = supertypeArgument.declaration
+            if (argDeclaration.qualifiedName?.asString() == "kotlin.Nothing") {
+                continue
+            }
             if (argDeclaration !is KSTypeParameter) {
                 typeName = STAR
                 continue
@@ -151,18 +157,16 @@ fun detectSealedHierarchyTypeVariables(jsonClassDeclaration: KSClassDeclaration,
                 typeName = STAR
                 continue
             }
-            if (typeName == null || typeName != STAR) {
+            if (typeName != STAR) {
                 subtypeArgs.add(subtypeArgument)
-                typeName = if (subtypeArgument.bounds.toList() != ksTypeParameter.bounds.toList()) {
-                    STAR
-                } else {
-                    ksTypeParameter.toTypeVariableName()
+                val subtypeBounds = subtypeArgument.bounds.map { it.toTypeName() }.toSet()
+                if (subtypeBounds != rootTypeBounds) {
+                    typeName = STAR
                 }
             }
         }
-        typeNames.add(typeName!!)
         subtypeArgs.forEach { map[it] = typeName }
     }
-    return map to typeNames
+    return map
 }
 

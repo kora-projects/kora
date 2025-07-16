@@ -6,7 +6,8 @@ import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
-import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.json.ksp.*
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
@@ -17,13 +18,11 @@ import java.util.*
 
 class SealedInterfaceReaderGenerator {
     fun generateSealedReader(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
+        val typeParameterResolver = jsonClassDeclaration.typeParameters.toTypeParameterResolver()
         val subclasses = jsonClassDeclaration.collectFinalSealedSubtypes().toList()
-        val (typeArgMap, readerTypeVariables) = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
+        val typeArgMap = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
 
-        val typeName = if (jsonClassDeclaration.typeParameters.isEmpty())
-            jsonClassDeclaration.toClassName() else
-            jsonClassDeclaration.toClassName().parameterizedBy(readerTypeVariables)
-
+        val typeName = jsonClassDeclaration.toTypeName()
         val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
 
         val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
@@ -32,10 +31,9 @@ class SealedInterfaceReaderGenerator {
             .addModifiers(KModifier.PUBLIC)
         jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
 
-        readerTypeVariables.forEach {
-            if (it is TypeVariableName) {
-                typeBuilder.addTypeVariable(it)
-            }
+        jsonClassDeclaration.typeParameters.forEach {
+            val typeVariableName = it.toTypeVariableName(typeParameterResolver)
+            typeBuilder.addTypeVariable(TypeVariableName.invoke(typeVariableName.name, typeVariableName.bounds, null))
         }
 
         addReaders(typeBuilder, subclasses, typeArgMap)
