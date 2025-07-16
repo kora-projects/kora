@@ -8,6 +8,7 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.validate
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
@@ -33,7 +34,12 @@ class JsonSymbolProcessor(
             knownType
         )
         val symbolsToProcess = getSupportedAnnotationTypes().map { resolver.getSymbolsWithAnnotation(it).toList() }.flatten().distinct()
+        val symbolsToDelay = arrayListOf<KSAnnotated>()
         for (it in symbolsToProcess) {
+            if (!it.validate()) {
+                symbolsToDelay.add(it)
+                continue
+            }
             try {
                 when (it) {
                     is KSClassDeclaration -> {
@@ -68,7 +74,7 @@ class JsonSymbolProcessor(
                 e.printError(kspLogger)
             }
         }
-        return listOf()
+        return symbolsToDelay
     }
 }
 

@@ -5,7 +5,8 @@ import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
-import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.detectSealedHierarchyTypeVariables
 import ru.tinkoff.kora.json.ksp.jsonWriterName
@@ -18,21 +19,19 @@ import java.util.*
 class SealedInterfaceWriterGenerator {
 
     fun generateSealedWriter(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
+        val typeParameterResolver = jsonClassDeclaration.typeParameters.toTypeParameterResolver()
         val subclasses = jsonClassDeclaration.collectFinalSealedSubtypes().toList()
-        val (typeArgMap, writerTypeVariables) = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
-        val typeName = if (jsonClassDeclaration.typeParameters.isEmpty())
-            jsonClassDeclaration.toClassName() else
-            jsonClassDeclaration.toClassName().parameterizedBy(writerTypeVariables)
+        val typeArgMap = detectSealedHierarchyTypeVariables(jsonClassDeclaration, subclasses)
+        val typeName = jsonClassDeclaration.toTypeName()
         val writerInterface = JsonTypes.jsonWriter.parameterizedBy(typeName)
         val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
             .generated(JsonWriterGenerator::class)
             .addSuperinterface(writerInterface)
 
         jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
-        writerTypeVariables.forEach {
-            if (it is TypeVariableName) {
-                typeBuilder.addTypeVariable(it)
-            }
+        jsonClassDeclaration.typeParameters.forEach {
+            val typeVariableName = it.toTypeVariableName(typeParameterResolver)
+            typeBuilder.addTypeVariable(TypeVariableName.invoke(typeVariableName.name, typeVariableName.bounds, null))
         }
 
         addWriters(typeBuilder, subclasses, typeArgMap)
