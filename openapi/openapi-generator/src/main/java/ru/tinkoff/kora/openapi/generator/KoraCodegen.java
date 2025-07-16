@@ -133,7 +133,7 @@ public class KoraCodegen extends DefaultCodegen {
         boolean requestInDelegateParams,
         boolean enableJsonNullable,
         boolean filterWithModels,
-        String prefixPath
+        @Nullable String prefixPath
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -168,7 +168,7 @@ public class KoraCodegen extends DefaultCodegen {
             var requestInDelegateParams = false;
             var enableJsonNullable = false;
             var filterWithModels = false;
-            var prefixPath = "";
+            String prefixPath = null;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());

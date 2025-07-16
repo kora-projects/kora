@@ -25,29 +25,30 @@ public interface {{classname}} {
 {{#operations}}
 {{#operation}}
 
-    /**
-     * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
+   /**
+    * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
     {{#notes}}
-     * {{.}}
+    * {{.}}
     {{/notes}}
-     * {{#allParams}}
-     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
-     * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
-     *         or {{/-last}}{{/responses}}
+    * {{#allParams}}{{#description}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/allParams}}
+    * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
+    *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
-     * @deprecated
+    * @deprecated
     {{/isDeprecated}}
     {{#externalDocs}}
-     * {{description}}
-     * @see <a href="{{url}}">{{summary}} Documentation</a>
+    * {{description}}
+    * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
-     */
+    */
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
     @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#vendorExtensions.x-has-implicit-headers}}
     @io.swagger.v3.oas.annotations.Parameters({
-    {{#implicitHeadersParams}}{{>implicitHeaderV3}}{{/implicitHeadersParams}}    }){{/vendorExtensions.x-has-implicit-headers}}{{#responses}}
+{{#implicitHeadersParams}}{{>implicitHeaderV3}}{{/implicitHeadersParams}}    }){{/vendorExtensions.x-has-implicit-headers}}{{#responses}}
     @ResponseCodeMapper(code = {{#isDefault}}ResponseCodeMapper.DEFAULT{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, mapper = {{classname}}ClientResponseMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper.class){{/responses}}
     {{#vendorExtensions.authInterceptorTag}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{.}}.class), value = HttpClientInterceptor.class)

@@ -9,8 +9,9 @@
         @ru.tinkoff.kora.http.common.annotation.Header("{{baseName}}"){{/isHeaderParam}}{{#isCookieParam}}
         @ru.tinkoff.kora.http.common.annotation.Cookie("{{baseName}}"){{/isCookieParam}}{{#isBodyParam}}{{#vendorExtensions.hasMapperTag}}
         @{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}{{/isBodyParam}}
-        {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}{{#isClient}}
+        {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{#-last}}
+    {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}{{#isClient}}
         @ru.tinkoff.kora.common.Mapping({{classname}}ClientRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class){{/isClient}}{{^isClient}}
         @ru.tinkoff.kora.common.Mapping({{classname}}ServerRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class){{/isClient}}
         {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
-        {{/hasFormParams}}
+    {{/hasFormParams}}

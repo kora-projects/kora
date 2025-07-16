@@ -16,23 +16,24 @@ interface {{classname}} {
 {{#operations}}
 {{#operation}}
 
-    /**
-     * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
+   /**
+    * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
     {{#notes}}
-     * {{.}}
+    * {{.}}
     {{/notes}}
-     * {{#allParams}}
-     * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
-     * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
-     *         or {{/-last}}{{/responses}}
+    * {{#allParams}}{{#description}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/allParams}}
+    * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
+    *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
-     * @deprecated
+    * @deprecated
     {{/isDeprecated}}
     {{#externalDocs}}
-     * {{description}}
-     * @see <a href="{{url}}">{{summary}} Documentation</a>
+    * {{description}}
+    * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
-     */
+    */
     {{#koraAdditionalContractAnnotations}}
     {{.}}
     {{/koraAdditionalContractAnnotations}}
@@ -55,8 +56,7 @@ interface {{classname}} {
     {{#isDeprecated}}
     @Deprecated(message = "Deprecated")
     {{/isDeprecated}}
-    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}
-    ): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
+    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
 {{#hasFormParams}}
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
