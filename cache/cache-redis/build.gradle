@@ -2,9 +2,11 @@ dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
     api project(":cache:cache-common")
+    api project(":telemetry:telemetry-common")
 
     implementation project(":json:json-common")
     implementation project(":config:config-common")
+    implementation project(":netty-common")
     implementation(libs.lettuce.core) {
         exclude group: 'io.projectreactor', module: 'reactor-core'
         exclude group: 'io.netty', module: 'netty-common'

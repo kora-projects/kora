@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.lettuce.LettuceClientConfig;
 import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
+import ru.tinkoff.kora.telemetry.common.*;
 import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.time.Duration;
@@ -56,9 +57,21 @@ abstract class CacheRunner extends Assertions implements RedisCacheModule {
             public String password() {
                 return null;
             }
+
+            @Override
+            public TelemetryConfig telemetry() {
+                return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(false),
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new double[]{}));
+            }
+
+            @Override
+            public SslConfig ssl() {
+                return new SslConfig() {};
+            }
         };
 
-        var lettuceClient = lettuceRedisClient(lettuceClientFactory, lettuceClientConfig);
+        var lettuceClient = lettuceRedisClient(lettuceClientFactory, lettuceClientConfig, null, null, null);
         if (lettuceClient instanceof Lifecycle lc) {
             lc.init();
         }

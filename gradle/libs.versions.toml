@@ -115,7 +115,7 @@ byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.14.
 javapoet = { module = "com.squareup:javapoet", version = "1.13.0" }
 classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.179" }
 
-lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.5.5.RELEASE" }
+lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.7.1.RELEASE" }
 apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.12.1" }
 quartz = { module = "org.quartz-scheduler:quartz", version = "2.3.2" }
 

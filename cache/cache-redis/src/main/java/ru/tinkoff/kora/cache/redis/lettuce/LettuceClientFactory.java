@@ -4,17 +4,30 @@ import io.lettuce.core.*;
 import io.lettuce.core.cluster.ClusterClientOptions;
 import io.lettuce.core.cluster.RedisClusterClient;
 import io.lettuce.core.cluster.RedisClusterURIUtil;
+import io.lettuce.core.metrics.CommandLatencyRecorder;
 import io.lettuce.core.protocol.ProtocolVersion;
+import io.lettuce.core.resource.DefaultClientResources;
+import io.netty.channel.EventLoopGroup;
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
 
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
-public final class LettuceClientFactory {
+public class LettuceClientFactory {
 
     @Nonnull
     public AbstractRedisClient build(LettuceClientConfig config) {
+        return build(config, null, null, null);
+    }
+
+    @Nonnull
+    public AbstractRedisClient build(LettuceClientConfig config,
+                                     @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                     @Nullable LettuceConfigurator lettuceConfigurator,
+                                     @Nullable EventLoopGroup eventLoopGroup) {
         final Duration commandTimeout = config.commandTimeout();
         final Duration socketTimeout = config.socketTimeout();
         final ProtocolVersion protocolVersion = switch (config.protocol()) {
@@ -25,12 +38,20 @@ public final class LettuceClientFactory {
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
 
         return (mappedRedisUris.size() == 1)
-            ? buildRedisClientInternal(mappedRedisUris.get(0), commandTimeout, socketTimeout, protocolVersion)
-            : buildRedisClusterClientInternal(mappedRedisUris, commandTimeout, socketTimeout, protocolVersion);
+            ? buildRedisClientInternal(config, mappedRedisUris.get(0), commandTimeout, socketTimeout, protocolVersion, recorderFactory, lettuceConfigurator, eventLoopGroup)
+            : buildRedisClusterClientInternal(config, mappedRedisUris, commandTimeout, socketTimeout, protocolVersion, recorderFactory, lettuceConfigurator, eventLoopGroup);
     }
 
     @Nonnull
     public RedisClusterClient buildRedisClusterClient(LettuceClientConfig config) {
+        return buildRedisClusterClient(config, null, null, null);
+    }
+
+    @Nonnull
+    public RedisClusterClient buildRedisClusterClient(LettuceClientConfig config,
+                                                      @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                      @Nullable LettuceConfigurator lettuceConfigurator,
+                                                      @Nullable EventLoopGroup eventLoopGroup) {
         final Duration commandTimeout = config.commandTimeout();
         final Duration socketTimeout = config.socketTimeout();
         final ProtocolVersion protocolVersion = switch (config.protocol()) {
@@ -38,11 +59,19 @@ public final class LettuceClientFactory {
             case RESP3 -> ProtocolVersion.RESP3;
         };
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
-        return buildRedisClusterClientInternal(mappedRedisUris, commandTimeout, socketTimeout, protocolVersion);
+        return buildRedisClusterClientInternal(config, mappedRedisUris, commandTimeout, socketTimeout, protocolVersion, recorderFactory, lettuceConfigurator, eventLoopGroup);
     }
 
     @Nonnull
     public RedisClient buildRedisClient(LettuceClientConfig config) {
+        return buildRedisClient(config, null, null, null);
+    }
+
+    @Nonnull
+    public RedisClient buildRedisClient(LettuceClientConfig config,
+                                        @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                        @Nullable LettuceConfigurator lettuceConfigurator,
+                                        @Nullable EventLoopGroup eventLoopGroup) {
         final Duration commandTimeout = config.commandTimeout();
         final Duration socketTimeout = config.socketTimeout();
         final ProtocolVersion protocolVersion = switch (config.protocol()) {
@@ -50,21 +79,44 @@ public final class LettuceClientFactory {
             case RESP3 -> ProtocolVersion.RESP3;
         };
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
-        return buildRedisClientInternal(mappedRedisUris.get(0), commandTimeout, socketTimeout, protocolVersion);
+        return buildRedisClientInternal(config, mappedRedisUris.get(0), commandTimeout, socketTimeout, protocolVersion, recorderFactory, lettuceConfigurator, eventLoopGroup);
     }
 
     @Nonnull
-    private static RedisClusterClient buildRedisClusterClientInternal(List<RedisURI> redisURIs,
+    private static RedisClusterClient buildRedisClusterClientInternal(LettuceClientConfig config,
+                                                                      List<RedisURI> redisURIs,
                                                                       Duration commandTimeout,
                                                                       Duration socketTimeout,
-                                                                      ProtocolVersion protocolVersion) {
-        final RedisClusterClient client = RedisClusterClient.create(redisURIs);
-        client.setOptions(ClusterClientOptions.builder()
+                                                                      ProtocolVersion protocolVersion,
+                                                                      @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                                      @Nullable LettuceConfigurator lettuceConfigurator,
+                                                                      @Nullable EventLoopGroup eventLoopGroup) {
+
+        CommandLatencyRecorder recorder = recorderFactory != null
+            ? recorderFactory.get("cluster", config.telemetry().metrics())
+            : CommandLatencyRecorder.disabled();
+
+        var clientResourcesBuilder = DefaultClientResources.builder()
+            .commandLatencyRecorder(recorder);
+
+        if (eventLoopGroup != null) {
+            clientResourcesBuilder = clientResourcesBuilder.eventExecutorGroup(eventLoopGroup);
+        }
+        if (lettuceConfigurator != null) {
+            clientResourcesBuilder = lettuceConfigurator.configure(clientResourcesBuilder);
+        }
+
+        final RedisClusterClient client = RedisClusterClient.create(clientResourcesBuilder.build(), redisURIs);
+        var clusterBuilder = ClusterClientOptions.builder()
             .autoReconnect(true)
             .publishOnScheduler(true)
             .suspendReconnectOnProtocolFailure(false)
             .disconnectedBehavior(ClientOptions.DisconnectedBehavior.DEFAULT)
             .protocolVersion(protocolVersion)
+            .sslOptions(SslOptions.builder()
+                .cipherSuites(config.ssl().ciphers().toArray(new String[0]))
+                .handshakeTimeout(config.ssl().handshakeTimeout())
+                .build())
             .timeoutOptions(TimeoutOptions.builder()
                 .connectionTimeout()
                 .fixedTimeout(commandTimeout)
@@ -73,24 +125,50 @@ public final class LettuceClientFactory {
             .socketOptions(SocketOptions.builder()
                 .keepAlive(true)
                 .connectTimeout(socketTimeout)
-                .build())
-            .build());
+                .build());
 
+        if (lettuceConfigurator != null) {
+            clusterBuilder = lettuceConfigurator.configure(clusterBuilder);
+        }
+
+        client.setOptions(clusterBuilder.build());
         return client;
     }
 
     @Nonnull
-    private static RedisClient buildRedisClientInternal(RedisURI redisURI,
+    private static RedisClient buildRedisClientInternal(LettuceClientConfig config,
+                                                        RedisURI redisURI,
                                                         Duration commandTimeout,
                                                         Duration socketTimeout,
-                                                        ProtocolVersion protocolVersion) {
-        final RedisClient client = RedisClient.create(redisURI);
-        client.setOptions(ClientOptions.builder()
+                                                        ProtocolVersion protocolVersion,
+                                                        @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                        @Nullable LettuceConfigurator lettuceConfigurator,
+                                                        @Nullable EventLoopGroup eventLoopGroup) {
+        CommandLatencyRecorder recorder = recorderFactory != null
+            ? recorderFactory.get("single", config.telemetry().metrics())
+            : CommandLatencyRecorder.disabled();
+
+        var clientResourcesBuilder = DefaultClientResources.builder()
+            .commandLatencyRecorder(recorder);
+
+        if (eventLoopGroup != null) {
+            clientResourcesBuilder = clientResourcesBuilder.eventExecutorGroup(eventLoopGroup);
+        }
+        if (lettuceConfigurator != null) {
+            clientResourcesBuilder = lettuceConfigurator.configure(clientResourcesBuilder);
+        }
+
+        final RedisClient client = RedisClient.create(clientResourcesBuilder.build(), redisURI);
+        var clientBuilder = ClientOptions.builder()
             .autoReconnect(true)
             .publishOnScheduler(true)
             .suspendReconnectOnProtocolFailure(false)
             .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
             .protocolVersion(protocolVersion)
+            .sslOptions(SslOptions.builder()
+                .cipherSuites(config.ssl().ciphers().toArray(new String[0]))
+                .handshakeTimeout(config.ssl().handshakeTimeout())
+                .build())
             .timeoutOptions(TimeoutOptions.builder()
                 .connectionTimeout()
                 .fixedTimeout(commandTimeout)
@@ -99,9 +177,13 @@ public final class LettuceClientFactory {
             .socketOptions(SocketOptions.builder()
                 .keepAlive(true)
                 .connectTimeout(socketTimeout)
-                .build())
-            .build());
+                .build());
 
+        if (lettuceConfigurator != null) {
+            clientBuilder = lettuceConfigurator.configure(clientBuilder);
+        }
+
+        client.setOptions(clientBuilder.build());
         return client;
     }
 

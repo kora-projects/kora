@@ -1,15 +1,13 @@
 package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.cluster.RedisClusterClient;
-import io.lettuce.core.protocol.ProtocolVersion;
+import io.netty.channel.EventLoopGroup;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
+import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
-import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-
-import java.time.Duration;
 
 public interface LettuceModule {
 
@@ -23,8 +21,12 @@ public interface LettuceModule {
     }
 
     @DefaultComponent
-    default RedisCacheClient lettuceRedisClient(LettuceClientFactory factory, LettuceClientConfig config) {
-        var redisClient = factory.build(config);
+    default RedisCacheClient lettuceRedisClient(LettuceClientFactory factory,
+                                                LettuceClientConfig config,
+                                                @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                @Nullable LettuceConfigurator lettuceConfigurator,
+                                                @Nullable EventLoopGroup eventLoopGroup) {
+        var redisClient = factory.build(config, recorderFactory, lettuceConfigurator, eventLoopGroup);
         if (redisClient instanceof io.lettuce.core.RedisClient rc) {
             return new LettuceRedisCacheClient(rc, config);
         } else if (redisClient instanceof RedisClusterClient rcc) {
