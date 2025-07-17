@@ -98,9 +98,11 @@ public class LettuceClientFactory {
             : CommandLatencyRecorder.disabled();
 
         var clientResourcesBuilder = DefaultClientResources.builder()
-            .eventExecutorGroup(eventLoopGroup)
             .commandLatencyRecorder(recorder);
 
+        if(eventLoopGroup != null) {
+            clientResourcesBuilder = clientResourcesBuilder.eventExecutorGroup(eventLoopGroup);
+        }
         if (lettuceConfigurator != null) {
             clientResourcesBuilder = lettuceConfigurator.configure(clientResourcesBuilder);
         }
@@ -151,9 +153,11 @@ public class LettuceClientFactory {
             : CommandLatencyRecorder.disabled();
 
         var clientResourcesBuilder = DefaultClientResources.builder()
-            .eventExecutorGroup(eventLoopGroup)
             .commandLatencyRecorder(recorder);
 
+        if(eventLoopGroup != null) {
+            clientResourcesBuilder = clientResourcesBuilder.eventExecutorGroup(eventLoopGroup);
+        }
         if (lettuceConfigurator != null) {
             clientResourcesBuilder = lettuceConfigurator.configure(clientResourcesBuilder);
         }
