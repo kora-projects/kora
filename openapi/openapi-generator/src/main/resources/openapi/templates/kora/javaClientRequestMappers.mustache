@@ -35,21 +35,14 @@ public interface {{classname}}ClientRequestMappers {
 {{/vendorExtensions.requiresFormParamMappers}}
 
     @Override
-    public HttpBodyOutput apply(Context ctx, {{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam value) throws Exception {
-      {{#vendorExtensions.urlEncodedForm}}
+    public HttpBodyOutput apply(Context ctx, {{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam value) throws Exception { {{#vendorExtensions.urlEncodedForm}}
       var b = new UrlEncodedWriter();{{#formParams}}
-      if (value.{{paramName}}() != null) {
-        {{#vendorExtensions.requiresMapper}}
-        b.add("{{baseName}}", {{paramName}}Converter.convert(value.{{paramName}}()));
-        {{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
-        b.add("{{baseName}}", java.util.Objects.toString(value.{{paramName}}()));
-        {{/vendorExtensions.requiresMapper}}
-      }
-      {{/formParams}}
-      return b.write();
-      {{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
-      var l = new java.util.ArrayList
-      <ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>();{{#formParams}}
+      if (value.{{paramName}}() != null) { {{#vendorExtensions.requiresMapper}}
+        b.add("{{baseName}}", {{paramName}}Converter.convert(value.{{paramName}}()));{{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
+        b.add("{{baseName}}", java.util.Objects.toString(value.{{paramName}}()));{{/vendorExtensions.requiresMapper}}
+      }{{/formParams}}
+      return b.write();{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+      var l = new java.util.ArrayList<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>();{{#formParams}}
               if (value.{{paramName}}() != null) {
           {{#isFile}}
                   var file = value.{{paramName}}();
@@ -60,11 +53,8 @@ public interface {{classname}}ClientRequestMappers {
                   "{{baseName}}",
                   java.util.Objects.toString(value.{{paramName}}())
                   );{{/isFile}}
-      }
-      {{/formParams}}
-      return MultipartWriter.write(l);
-      {{/vendorExtensions.multipartForm}}
-
+      }{{/formParams}}
+      return MultipartWriter.write(l);{{/vendorExtensions.multipartForm}}
     }
   }
 {{/hasFormParams}}
