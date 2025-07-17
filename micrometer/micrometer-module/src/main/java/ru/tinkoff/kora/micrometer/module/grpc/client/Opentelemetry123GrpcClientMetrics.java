@@ -112,7 +112,7 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
         var code = (status == null) ? null : status.getCode().value();
         var key = new MetricsKey(this.service.getName(), method.getBareMethodName(), code, null);
         var metrics = this.metrics.computeIfAbsent(key, this::buildMetrics);
-        var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000);
+        var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000_000);
 
         metrics.duration.record(processingTime);
         metrics.requestsByRpc.record(requestsPerRpc);
