@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.test.extension.junit5;
+package ru.tinkoff.kora.test.extension.junit5.mockito;
 
 import org.mockito.quality.Strictness;
 
@@ -29,11 +29,11 @@ import java.lang.annotation.*;
 @Documented
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
-public @interface MockStrictness {
+public @interface MockitoStrictness {
     /**
      * Specifies the strictness level for all mocks in the test class.
      *
      * @return the {@link Strictness} level to apply to mocks, defaults to {@link Strictness#STRICT_STUBS}
      */
-    Strictness value() default Strictness.STRICT_STUBS;
+    Strictness value();
 }

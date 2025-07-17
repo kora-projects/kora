@@ -16,6 +16,7 @@ import ru.tinkoff.kora.application.graph.*;
 import ru.tinkoff.kora.application.graph.internal.GraphImpl;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.util.TimeUtils;
+import ru.tinkoff.kora.test.extension.junit5.mockito.MockitoStrictness;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -187,14 +188,15 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Nonnull
     @SuppressWarnings("unchecked")
     private static Set<Object> getMockSet(ExtensionContext context) {
-        return context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class);
+        return context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class, (k) -> new HashSet<>(), HashSet.class);
     }
 
     @Nonnull
     @SuppressWarnings("unchecked")
     private static Set<Object> removeMockSet(ExtensionContext context) {
         var set = context.getStore(MOCKITO).remove(HashSet.class, HashSet.class);
-        return Optional.ofNullable(set).orElseGet(HashSet::new);
+        if (set == null) return Set.of();
+        return set;
     }
 
     @Nonnull
@@ -396,8 +398,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         var koraTestContext = getKoraTestContext(context);
         var mockSet = removeMockSet(context);
 
-        var reporter = new MockitoUnusedStubbingReporter(mockSet, findStrictness(context));
-        reporter.reportUnused(context);
+        if (!mockSet.isEmpty()) {
+            var reporter = new MockitoUnusedStubbingReporter(mockSet, findStrictness(context));
+            reporter.reportUnused(context);
+        }
 
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
             if (koraTestContext.graph != null) {
@@ -444,8 +448,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         return findAnnotation(context, KoraAppTest.class);
     }
 
-    private static Optional<MockStrictness> findMockStrictness(ExtensionContext context) {
-        return findAnnotation(context, MockStrictness.class);
+    private static Optional<MockitoStrictness> findMockStrictness(ExtensionContext context) {
+        return findAnnotation(context, MockitoStrictness.class);
     }
 
     private static <A extends Annotation> Optional<A> findAnnotation(ExtensionContext context, Class<A> annotationClass) {
@@ -469,7 +473,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private Strictness findStrictness(ExtensionContext context) {
-        return findMockStrictness(context).map(MockStrictness::value).orElse(Strictness.STRICT_STUBS);
+        return findMockStrictness(context).map(MockitoStrictness::value).orElse(Strictness.STRICT_STUBS);
     }
 
     @Override
