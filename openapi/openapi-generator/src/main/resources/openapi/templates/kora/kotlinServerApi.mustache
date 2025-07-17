@@ -68,13 +68,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
         _serverRequest: HttpServerRequest{{#getHasParams}}, {{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
         return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#getHasParams}}, {{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}} form{{/hasFormParams}})
     }
-{{#hasFormParams}}
-
-    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
-    data class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
-      {{#formParams}}
-          val {{paramName}}: {{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile{{/isFile}}{{^isFile}}{{{dataType}}}{{/isFile}}{{^required}}?{{/required}}{{^-last}},{{/-last}}
-      {{/formParams}}
-    ) {}{{/hasFormParams}}{{/operation}}
+{{>kotlinFormParams}}
+{{/operation}}
 }
 {{/operations}}

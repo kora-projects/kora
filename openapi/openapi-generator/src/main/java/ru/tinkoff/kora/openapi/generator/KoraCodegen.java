@@ -2243,13 +2243,30 @@ public class KoraCodegen extends DefaultCodegen {
             }
             var formParamsWithMappers = new ArrayList<Map<String, Object>>();
             for (var formParam : op.formParams) {
-                if (formParam.isModel) {
+                boolean isEnum = formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty());
+                if (formParam.isModel || isEnum) {
                     formParam.vendorExtensions.put("requiresMapper", true);
-                    var type = allModels.stream()
-                        .filter(m -> m.getModel().name.equals(formParam.dataType))
-                        .findFirst()
-                        .map(m -> m.get("importPath").toString())
-                        .orElseThrow();
+                    String type;
+                    if(isEnum) {
+                        type = allModels.stream()
+                            .filter(m -> m.getModel().name.equals(formParam.dataType))
+                            .findFirst()
+                            .map(m -> m.get("importPath").toString())
+                            .or(() -> allModels.stream()
+                                .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.datatypeWithEnum.equals(v.datatypeWithEnum)))
+                                .findFirst()
+                                .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum))
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
+                        if(formParam.datatypeWithEnum != null) {
+                            formParam.dataType = type;
+                        }
+                    } else {
+                        type = allModels.stream()
+                            .filter(m -> m.getModel().name.equals(formParam.dataType))
+                            .findFirst()
+                            .map(m -> m.get("importPath").toString())
+                            .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
+                    }
 
                     if (isContentJson(formParam)) {
                         formParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
@@ -2268,6 +2285,21 @@ public class KoraCodegen extends DefaultCodegen {
                             "last", false
                         )));
                     }
+                } else if(formParam.isString
+                          || formParam.isBoolean
+                          || formParam.isDouble
+                          || formParam.isFloat
+                          || formParam.isInteger
+                          || formParam.isLong) {
+                    formParam.vendorExtensions.put("isPrimitive", true);
+                } else {
+                    formParam.vendorExtensions.put("requiresMapper", true);
+                    formParamsWithMappers.add(new HashMap<>(Map.of(
+                        "paramName", formParam.paramName,
+                        "requireTag", false,
+                        "paramType", formParam.dataType,
+                        "last", false
+                    )));
                 }
             }
             if (!formParamsWithMappers.isEmpty()) {
