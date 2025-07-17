@@ -16,7 +16,7 @@ public class JdkProxySelector extends ProxySelector {
     public JdkProxySelector(HttpClientConfig.HttpClientProxyConfig proxyConfig) {
         this.proxyConfig = proxyConfig;
         this.noProxyHosts = new HashSet<>(Objects.requireNonNullElse(proxyConfig.nonProxyHosts(), List.of()));
-        this.proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyConfig.host(), proxyConfig.port()));
+        this.proxy = new Proxy(Proxy.Type.HTTP, InetSocketAddress.createUnresolved(proxyConfig.host(), proxyConfig.port()));
     }
 
     @Override

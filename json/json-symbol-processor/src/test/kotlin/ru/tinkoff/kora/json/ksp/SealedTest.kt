@@ -446,4 +446,44 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
 
         assertThat(m.read("null")).isNull()
     }
+
+    @Test
+    fun testImplementationWithNothing() {
+        compile(
+            """
+                @ru.tinkoff.kora.json.common.annotation.Json
+                @JsonDiscriminatorField("type")
+                sealed interface TaskResult<out T : TaskRun> {
+                
+                  @ru.tinkoff.kora.json.common.annotation.Json
+                  @JsonDiscriminatorValue("success")
+                  data class Success<T : TaskRun>(val run: T) : TaskResult<T>
+                
+                  @ru.tinkoff.kora.json.common.annotation.Json
+                  @JsonDiscriminatorValue("failure")
+                  data class Failure(val error: String) : TaskResult<Nothing>
+                
+                  @ru.tinkoff.kora.json.common.annotation.Json
+                  @JsonDiscriminatorValue("delay")
+                  data class Delay(val delay: Int) : TaskResult<Nothing>
+                }
+                interface TaskRun
+                @Json
+                class TaskRun1: TaskRun
+                @Json
+                class TaskRun2: TaskRun
+            """.trimIndent(),
+            """
+                @KoraApp
+                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                  @Root
+                  fun root1(w1: ru.tinkoff.kora.json.common.JsonReader<TaskResult<TaskRun1>>, w2: ru.tinkoff.kora.json.common.JsonReader<TaskResult<TaskRun2>>) = ""
+                  @Root
+                  fun root2(w1: ru.tinkoff.kora.json.common.JsonWriter<TaskResult<TaskRun1>>, w2: ru.tinkoff.kora.json.common.JsonWriter<TaskResult<TaskRun2>>) = ""
+                }
+            """.trimIndent()
+        )
+        val graph = loadClass("TestAppGraph").toGraph()
+    }
+
 }

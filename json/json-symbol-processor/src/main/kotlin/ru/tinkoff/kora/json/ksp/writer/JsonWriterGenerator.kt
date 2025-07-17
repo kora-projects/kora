@@ -32,7 +32,8 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         typeBuilder.addSuperinterface(writerInterface)
 
         declaration.typeParameters.forEach {
-            typeBuilder.addTypeVariable(it.toTypeVariableName())
+            val typeVariableName = it.toTypeVariableName(typeParameterResolver)
+            typeBuilder.addTypeVariable(TypeVariableName.invoke(typeVariableName.name, typeVariableName.bounds, null))
         }
 
         this.addWriters(typeBuilder, meta, typeParameterResolver)

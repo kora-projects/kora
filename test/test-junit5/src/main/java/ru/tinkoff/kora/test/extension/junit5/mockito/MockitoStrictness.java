@@ -22,7 +22,6 @@ import java.lang.annotation.*;
  *     <li>{@link Strictness#WARN}: Warns about potential issues without failing the test.</li>
  * </ul>
  *
- *
  * @see Strictness
  */
 @Documented
