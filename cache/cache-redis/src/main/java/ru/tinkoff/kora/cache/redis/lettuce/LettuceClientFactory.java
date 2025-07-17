@@ -15,7 +15,6 @@ import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFacto
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 
 public class LettuceClientFactory {
 
@@ -115,10 +114,7 @@ public class LettuceClientFactory {
             .disconnectedBehavior(ClientOptions.DisconnectedBehavior.DEFAULT)
             .protocolVersion(protocolVersion)
             .sslOptions(SslOptions.builder()
-                .cipherSuites(Optional.of(config.ssl().ciphers())
-                    .filter(s -> !s.isEmpty())
-                    .map(s -> s.toArray(new String[0]))
-                    .orElse(null))
+                .cipherSuites(config.ssl().ciphers().toArray(new String[0]))
                 .handshakeTimeout(config.ssl().handshakeTimeout())
                 .build())
             .timeoutOptions(TimeoutOptions.builder()
@@ -170,10 +166,7 @@ public class LettuceClientFactory {
             .disconnectedBehavior(ClientOptions.DisconnectedBehavior.REJECT_COMMANDS)
             .protocolVersion(protocolVersion)
             .sslOptions(SslOptions.builder()
-                .cipherSuites(Optional.of(config.ssl().ciphers())
-                    .filter(s -> !s.isEmpty())
-                    .map(s -> s.toArray(new String[0]))
-                    .orElse(null))
+                .cipherSuites(config.ssl().ciphers().toArray(new String[0]))
                 .handshakeTimeout(config.ssl().handshakeTimeout())
                 .build())
             .timeoutOptions(TimeoutOptions.builder()
