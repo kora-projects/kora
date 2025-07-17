@@ -1,23 +1,23 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
-import jakarta.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 
 import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.httpClientRequestMapper;
 
 public interface Parameter {
+
     record HeaderParameter(VariableElement parameter, String headerName) implements Parameter {}
 
     record QueryParameter(VariableElement parameter, String queryParameterName) implements Parameter {}
 
     record PathParameter(VariableElement parameter, String pathParameterName) implements Parameter {}
+
+    record CookieParameter(VariableElement parameter, String cookieName) implements Parameter {}
 
     record BodyParameter(VariableElement parameter, @Nullable CommonUtils.MappingData mapper) implements Parameter {}
 
@@ -29,6 +29,7 @@ public interface Parameter {
         var header = AnnotationUtils.findAnnotation(parameter, HttpClientClassNames.header);
         var path = AnnotationUtils.findAnnotation(parameter, HttpClientClassNames.path);
         var query = AnnotationUtils.findAnnotation(parameter, HttpClientClassNames.query);
+        var cookie = AnnotationUtils.findAnnotation(parameter, HttpClientClassNames.cookie);
         if (header != null) {
             var headerValue = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(header, "value");
             var name = headerValue == null || headerValue.isBlank()
@@ -49,6 +50,13 @@ public interface Parameter {
                 ? parameter.getSimpleName().toString()
                 : queryValue;
             return new QueryParameter(parameter, name);
+        }
+        if (cookie != null) {
+            var cookieValue = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(cookie, "value");
+            var name = cookieValue == null || cookieValue.isBlank()
+                ? parameter.getSimpleName().toString()
+                : cookieValue;
+            return new CookieParameter(parameter, name);
         }
         var mapping = CommonUtils.parseMapping(parameter)
             .getMapping(httpClientRequestMapper);

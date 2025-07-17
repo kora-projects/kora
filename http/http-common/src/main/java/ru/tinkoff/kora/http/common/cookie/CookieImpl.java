@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.common.cookie;
 
 import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 
 public final class CookieImpl implements Cookie {
     private final String name;
@@ -144,6 +145,11 @@ public final class CookieImpl implements Cookie {
             this.setSameSite(true);
         }
         return this;
+    }
+
+    @Override
+    public String toValue() {
+        return Cookies.toCookieValue(this);
     }
 
     @Override
