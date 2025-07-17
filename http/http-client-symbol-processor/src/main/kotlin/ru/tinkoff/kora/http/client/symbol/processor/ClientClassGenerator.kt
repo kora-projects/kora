@@ -99,7 +99,6 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
-
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -112,7 +111,6 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
-
                     is Parameter.HeaderParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -122,6 +120,18 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         }
 
                         if (requiresConverter(parameterType) && httpHeaders != parameterType.toClassName()) {
+                            result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
+                        }
+                    }
+                    is Parameter.CookieParameter -> {
+                        var parameterType = parameter.parameter.type.resolve()
+                        if (parameterType.isCollection()) {
+                            parameterType = parameterType.arguments[0].type?.resolve() ?: continue
+                        } else if(parameterType.isMap()) {
+                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
+                        }
+
+                        if (requiresConverter(parameterType) && httpCookie != parameterType.toClassName()) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
