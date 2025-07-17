@@ -10,6 +10,7 @@ import ru.tinkoff.kora.micrometer.module.grpc.client.tag.MessageReceivedKey;
 import ru.tinkoff.kora.micrometer.module.grpc.client.tag.MessageSendKey;
 import ru.tinkoff.kora.micrometer.module.grpc.client.tag.MethodDurationKey;
 import ru.tinkoff.kora.micrometer.module.grpc.client.tag.MicrometerGrpcClientTagsProvider;
+import ru.tinkoff.kora.micrometer.module.grpc.server.tag.MetricsKey;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.net.URI;
