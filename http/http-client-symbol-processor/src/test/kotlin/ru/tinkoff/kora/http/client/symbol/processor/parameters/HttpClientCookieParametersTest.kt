@@ -128,7 +128,7 @@ class HttpClientCookieParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
         client.invoke<Unit>("request", mapOf("c1" to "test1", "c2" to "test2"))
-        verify(httpClient).execute(argThat { it -> setOf(it.headers().getAll("Cookie")) == setOf("c1=test1", "c2=test2") })
+        verify(httpClient).execute(argThat { it ->  it.headers().getAll("Cookie").toSet() == setOf("c1=test1", "c2=test2") })
     }
 
     @Test
@@ -148,7 +148,7 @@ class HttpClientCookieParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
         client.invoke<Unit>("request", mapOf("c1" to "test1", "c2" to "test2"))
-        verify(httpClient).execute(argThat { it -> setOf(it.headers().getAll("Cookie")) == setOf("c1=test1", "c2=test2") })
+        verify(httpClient).execute(argThat { it -> it.headers().getAll("Cookie").toSet() == setOf("c1=test1", "c2=test2") })
     }
 
     @Test
@@ -168,7 +168,7 @@ class HttpClientCookieParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
         client.invoke<Unit>("request", mapOf("c1" to "test1", "c2" to "test2"))
-        verify(httpClient).execute(argThat { it -> setOf(it.headers().getAll("Cookie")) == setOf("c1=test1", "c2=test2") })
+        verify(httpClient).execute(argThat { it -> it.headers().getAll("Cookie").toSet() == setOf("c1=test1", "c2=test2") })
     }
 
     @Test
@@ -188,7 +188,7 @@ class HttpClientCookieParametersTest : AbstractHttpClientTest() {
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
         client.invoke<Unit>("request", mapOf("c1" to "test1", "c2" to "test2"))
-        verify(httpClient).execute(argThat { it -> setOf(it.headers().getAll("Cookie")) == setOf("c1=test1", "c2=test2") })
+        verify(httpClient).execute(argThat { it -> it.headers().getAll("Cookie").toSet() == setOf("c1=test1", "c2=test2") })
     }
 
     @Test
@@ -207,7 +207,7 @@ class HttpClientCookieParametersTest : AbstractHttpClientTest() {
 
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs }
-        client.invoke<Unit>("request", HttpHeaders.of("c1", "test1", "c2", "test2"))
-        verify(httpClient).execute(argThat { it -> setOf(it.headers().getAll("Cookie")) == setOf("c1=test1", "c2=test2") })
+        client.invoke<Unit>("request", Cookie.of("c1", "test1"))
+        verify(httpClient).execute(argThat { it -> it.headers().getAll("Cookie").toSet() == setOf("c1=test1") })
     }
 }
