@@ -6,6 +6,7 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
+import java.util.List;
 
 @ConfigValueExtractor
 public interface LettuceClientConfig {
@@ -39,5 +40,19 @@ public interface LettuceClientConfig {
         RESP2,
         /** Redis 6+ */
         RESP3
+    }
+
+    SslConfig ssl();
+
+    @ConfigValueExtractor
+    interface SslConfig {
+
+        default List<String> ciphers() {
+            return List.of();
+        }
+
+        default Duration handshakeTimeout() {
+            return Duration.ofSeconds(10);
+        }
     }
 }
