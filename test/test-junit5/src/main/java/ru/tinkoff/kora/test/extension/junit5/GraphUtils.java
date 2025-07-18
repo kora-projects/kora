@@ -208,18 +208,46 @@ final class GraphUtils {
         }
     }
 
-    static Optional<Class<?>> tryCastType(Type type) {
-        try {
-            if (type instanceof Class<?> tc) {
-                return Optional.of(tc);
-            } else if (type instanceof ParameterizedType tp) {
-                return (tp.getRawType() instanceof Class<?>)
-                    ? Optional.ofNullable(((Class<?>) tp.getRawType()))
-                    : Optional.ofNullable(KoraJUnit5Extension.class.getClassLoader().loadClass(tp.getRawType().getTypeName()));
+    static Optional<Class<?>> findWrappedType(Type nodeType) {
+        if (nodeType instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
+            return Arrays.stream(tc.getGenericInterfaces())
+                .filter(i -> i instanceof ParameterizedType pt
+                             && pt.getRawType() instanceof Class<?> ptc
+                             && ptc.equals(Wrapped.class))
+                .map(i -> ((ParameterizedType) i).getActualTypeArguments()[0])
+                .<Class<?>>map(t -> tryCastType(t).orElse(null))
+                .filter(Objects::nonNull)
+                .findFirst();
+        } else if (nodeType instanceof ParameterizedType pt
+                   && pt.getRawType() instanceof Class<?> ptc
+                   && Wrapped.class.isAssignableFrom(ptc)) {
+            if (Wrapped.class.equals(ptc)) {
+                return tryCastType(pt.getActualTypeArguments()[0]);
             } else {
-                return Optional.empty();
+                return Arrays.stream(ptc.getGenericInterfaces())
+                    .filter(i -> i instanceof ParameterizedType ppt
+                                 && ppt.getRawType() instanceof Class<?> pptc
+                                 && pptc.equals(Wrapped.class))
+                    .map(i -> ((ParameterizedType) i).getActualTypeArguments()[0])
+                    .<Class<?>>map(t -> tryCastType(t).orElse(null))
+                    .filter(Objects::nonNull)
+                    .findFirst();
             }
-        } catch (ClassNotFoundException e) {
+        }
+
+        return Optional.empty();
+    }
+
+    static Optional<Class<?>> tryCastType(Type type) {
+        if (type instanceof Class<?> tc) {
+            return Optional.of(tc);
+        } else if (type instanceof ParameterizedType tp) {
+            return (tp.getRawType() instanceof Class<?> ptc)
+                ? Optional.of(ptc)
+                : tryCastType(tp.getRawType());
+        } else if (type instanceof GenericArrayType gat) {
+            return tryCastType(gat.getGenericComponentType());
+        } else {
             return Optional.empty();
         }
     }

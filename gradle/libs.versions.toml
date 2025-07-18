@@ -127,6 +127,7 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 mockito-core = { module = "org.mockito:mockito-core", version = "5.11.0" }
 mockito-inline = { module = "org.mockito:mockito-inline", version = "5.2.0" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "5.3.1" }
+mockk = { module = "io.mockk:mockk", version = "1.13.11" }
 assertj = { module = "org.assertj:assertj-core", version = "3.25.3" }
 mockserver-netty = { module = "org.mock-server:mockserver-netty", version.ref = "mockserver" }
 mockserver-client = { module = "org.mock-server:mockserver-client-java", version.ref = "mockserver" }

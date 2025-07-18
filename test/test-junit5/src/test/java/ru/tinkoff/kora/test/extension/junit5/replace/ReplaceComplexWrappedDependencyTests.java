@@ -2,6 +2,7 @@ package ru.tinkoff.kora.test.extension.junit5.replace;
 
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTestGraphModifier;
 import ru.tinkoff.kora.test.extension.junit5.KoraGraphModification;
@@ -11,28 +12,21 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @KoraAppTest(TestApplication.class)
-public class ReplaceWrappedTests implements KoraAppTestGraphModifier {
+public class ReplaceComplexWrappedDependencyTests implements KoraAppTestGraphModifier {
 
+    @Tag(TestApplication.ComplexWrapped.class)
     @TestComponent
-    private TestApplication.SomeWrapped someWrapped;
-    @TestComponent
-    private TestApplication.SomeContainer someContainer;
+    private String dep;
 
     @NotNull
     @Override
     public KoraGraphModification graph() {
         return KoraGraphModification.create()
-            .replaceComponent(TestApplication.SomeWrapped.class, () -> new TestApplication.SomeWrapped() {
-                @Override
-                public String toString() {
-                    return "12345";
-                }
-            });
+            .replaceComponent(TestApplication.ComplexWrapped.class, () -> (TestApplication.ComplexWrapped) () -> "12345");
     }
 
     @Test
-    void wrappedReplaced() {
-        assertEquals("12345", someWrapped.toString());
-        assertEquals("12345", someContainer.wrapped().toString());
+    void wrappedDepReplaced() {
+        assertEquals("wrapped-12345", dep);
     }
 }

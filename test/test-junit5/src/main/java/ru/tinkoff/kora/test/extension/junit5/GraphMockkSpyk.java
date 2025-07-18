@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import io.mockk.MockKKt;
 import io.mockk.impl.JvmMockKGateway;
 import io.mockk.impl.annotations.SpyK;
 import jakarta.annotation.Nullable;
@@ -88,13 +89,22 @@ record GraphMockkSpyk(GraphCandidate candidate,
     }
 
     @SuppressWarnings("unchecked")
-    private <T> T getSpy(T spyCandidate, Node<T> node) {
-        if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
-            return (T) (Wrapped<T>) () -> spyCandidate;
-        } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
-            return (T) (Wrapped<T>) () -> spyCandidate;
-        } else {
-            return spyCandidate;
+    private <T> T getSpy(T spy, Node<T> node) {
+        Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
+        if (wrappedType.isPresent() && wrappedType.get().isInstance(spy)) {
+            Optional<Class<?>> nodeClass = GraphUtils.tryCastType(node.type());
+            if (nodeClass.isPresent()) {
+                if (nodeClass.get().equals(Wrapped.class)) {
+                    return (T) (Wrapped<T>) () -> spy;
+                } else {
+                    var kotlinTC = JvmClassMappingKt.getKotlinClass(nodeClass.get());
+                    Wrapped<T> mockedWrapper = (Wrapped<T>) MockKKt.mockkClass(kotlinTC, null, true, new KClass<?>[]{}, true, v -> null);
+                    MockKKt.every(mockKMatcherScope -> mockedWrapper.value()).returns(spy);
+                    return (T) mockedWrapper;
+                }
+            }
         }
+
+        return spy;
     }
 }

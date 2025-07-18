@@ -1,12 +1,8 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import io.mockk.Answer;
-import io.mockk.ConstantAnswer;
 import io.mockk.MockKKt;
-import io.mockk.MockKMatcherScope;
 import io.mockk.impl.annotations.MockK;
 import kotlin.jvm.JvmClassMappingKt;
-import kotlin.jvm.functions.Function1;
 import kotlin.reflect.KClass;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
@@ -64,21 +60,25 @@ record GraphMockkMock(GraphCandidate candidate,
         graphDraw.replaceNode(node, g -> {
             var kotlinClass = JvmClassMappingKt.getKotlinClass(mockClass);
 
-            boolean isWrappedClass = node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc);
-            boolean isWrappedInterface = node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()));
+            boolean isNodeWrapped = node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc);
+            var mock = (T) MockKKt.mockkClass(kotlinClass, null, isNodeWrapped || relaxed, new KClass<?>[]{}, isNodeWrapped || relaxUnitFun, v -> null);
 
-            var mock = (T) MockKKt.mockkClass(kotlinClass, null, isWrappedClass || relaxed, new KClass<?>[]{}, isWrappedClass || relaxUnitFun, v -> null);
-
-            if (isWrappedClass && !mockClass.equals(node.type())) {
-                var kotlinTC = JvmClassMappingKt.getKotlinClass(((Class<?>) node.type()));
-                Wrapped<T> mockedWrapper = (Wrapped<T>) MockKKt.mockkClass(kotlinTC, null, relaxed, new KClass<?>[]{}, relaxUnitFun, v -> null);
-                MockKKt.every(mockKMatcherScope -> mockedWrapper.value()).returns(mock);
-                return ((T) mockedWrapper);
-            } else if (isWrappedInterface) {
-                return (T) (Wrapped<?>) () -> mock;
-            } else {
-                return mock;
+            Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
+            if (wrappedType.isPresent() && wrappedType.get().isInstance(mock)) {
+                Optional<Class<?>> nodeClass = GraphUtils.tryCastType(node.type());
+                if (nodeClass.isPresent()) {
+                    if (nodeClass.get().equals(Wrapped.class)) {
+                        return (T) (Wrapped<T>) () -> mock;
+                    } else {
+                        var kotlinTC = JvmClassMappingKt.getKotlinClass(nodeClass.get());
+                        Wrapped<T> mockedWrapper = (Wrapped<T>) MockKKt.mockkClass(kotlinTC, null, true, new KClass<?>[]{}, true, v -> null);
+                        MockKKt.every(mockKMatcherScope -> mockedWrapper.value()).returns(mock);
+                        return (T) mockedWrapper;
+                    }
+                }
             }
+
+            return mock;
         });
     }
 }

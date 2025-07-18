@@ -10,6 +10,7 @@ import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.util.Optional;
 
 record GraphMockitoSpy(GraphCandidate candidate,
                        Class<?> mockClass,
@@ -69,12 +70,21 @@ record GraphMockitoSpy(GraphCandidate candidate,
     @SuppressWarnings("unchecked")
     private <T> T getSpy(T spyCandidate, Node<T> node) {
         var spy = Mockito.spy(spyCandidate);
-        if (node.type() instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
-            return (T) (Wrapped<?>) () -> spy;
-        } else if (node.type() instanceof ParameterizedType pt && Wrapped.class.isAssignableFrom(((Class<?>) pt.getRawType()))) {
-            return (T) (Wrapped<?>) () -> spy;
-        } else {
-            return spy;
+
+        Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
+        if (wrappedType.isPresent() && wrappedType.get().isInstance(spy)) {
+            Optional<Class<?>> nodeClass = GraphUtils.tryCastType(node.type());
+            if (nodeClass.isPresent()) {
+                if (nodeClass.get().equals(Wrapped.class)) {
+                    return (T) (Wrapped<T>) () -> spy;
+                } else {
+                    Wrapped<T> mockedWrapper = (Wrapped<T>) Mockito.mock(nodeClass.get());
+                    Mockito.when(mockedWrapper.value()).thenReturn(spy);
+                    return ((T) mockedWrapper);
+                }
+            }
         }
+
+        return spy;
     }
 }
