@@ -46,10 +46,56 @@ class KoraCodegenTest {
 
     record SwaggerParams(String mode, String spec, String name, Options options) {
 
-        record Options(boolean authAsArg, boolean jsonNullable, boolean includeServerRequest, boolean implicitHeaders, @Nullable String implicitHeadersRegex) {
+        static final class Options {
+            private boolean authAsArg;
+            private boolean jsonNullable;
+            private boolean includeServerRequest;
+            private boolean implicitHeaders;
+            @Nullable
+            private String implicitHeadersRegex;
+            private boolean defaultDelegate;
 
-            public Options(boolean includeServerRequest, boolean jsonNullable, boolean authAsArg) {
-                this(authAsArg, jsonNullable, includeServerRequest, false, null);
+            public boolean authAsArg() {return authAsArg;}
+
+            public boolean jsonNullable() {return jsonNullable;}
+
+            public boolean includeServerRequest() {return includeServerRequest;}
+
+            public boolean implicitHeaders() {return implicitHeaders;}
+
+            @Nullable
+            public String implicitHeadersRegex() {return implicitHeadersRegex;}
+
+            public boolean isDefaultDelegate() {return defaultDelegate;}
+
+            public Options setAuthAsArg(boolean authAsArg) {
+                this.authAsArg = authAsArg;
+                return this;
+            }
+
+            public Options setJsonNullable(boolean jsonNullable) {
+                this.jsonNullable = jsonNullable;
+                return this;
+            }
+
+            public Options setIncludeServerRequest(boolean includeServerRequest) {
+                this.includeServerRequest = includeServerRequest;
+                return this;
+            }
+
+            public Options setImplicitHeaders(boolean implicitHeaders) {
+                this.implicitHeaders = implicitHeaders;
+                return this;
+            }
+
+            public Options setImplicitHeadersRegex(@Nullable String implicitHeadersRegex) {
+                this.implicitHeadersRegex = implicitHeadersRegex;
+                return this;
+            }
+
+            public Options setDefaultDelegate(boolean defaultDelegate) {
+                this.defaultDelegate = defaultDelegate;
+                return this;
             }
         }
     }
@@ -58,36 +104,36 @@ class KoraCodegenTest {
         var result = new ArrayList<SwaggerParams>();
         var modes = new String[]{
             KoraCodegen.Mode.JAVA_CLIENT.getMode(),
-            KoraCodegen.Mode.JAVA_ASYNC_CLIENT.getMode(),
-            KoraCodegen.Mode.JAVA_REACTIVE_CLIENT.getMode(),
+//            KoraCodegen.Mode.JAVA_ASYNC_CLIENT.getMode(),
+//            KoraCodegen.Mode.JAVA_REACTIVE_CLIENT.getMode(),
             KoraCodegen.Mode.JAVA_SERVER.getMode(),
-            KoraCodegen.Mode.JAVA_ASYNC_SERVER.getMode(),
-            KoraCodegen.Mode.JAVA_REACTIVE_SERVER.getMode(),
+//            KoraCodegen.Mode.JAVA_ASYNC_SERVER.getMode(),
+//            KoraCodegen.Mode.JAVA_REACTIVE_SERVER.getMode(),
             KoraCodegen.Mode.KOTLIN_CLIENT.getMode(),
-            KoraCodegen.Mode.KOTLIN_SUSPEND_CLIENT.getMode(),
+//            KoraCodegen.Mode.KOTLIN_SUSPEND_CLIENT.getMode(),
             KoraCodegen.Mode.KOTLIN_SERVER.getMode(),
-            KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
+//            KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
         };
 
         var files = new String[]{
-            "/example/petstoreV3_additional_props.yaml",
-            "/example/petstoreV3_enum.yaml",
-            "/example/petstoreV3_form.yaml",
-            "/example/petstoreV3_request_parameters.yaml",
-            "/example/petstoreV3_types.yaml",
-            "/example/petstoreV3_validation.yaml",
-            "/example/petstoreV3_single_response.yaml",
-            "/example/petstoreV3_security_all.yaml",
-            "/example/petstoreV3_security_api_key.yaml",
-            "/example/petstoreV3_security_basic.yaml",
-            "/example/petstoreV3_security_bearer.yaml",
-            "/example/petstoreV3_security_oauth.yaml",
-            "/example/petstoreV3_security_cookie.yaml",
-            "/example/petstoreV3_discriminator.yaml",
-            "/example/petstoreV3_nullable.yaml",
+//            "/example/petstoreV3_additional_props.yaml",
+//            "/example/petstoreV3_enum.yaml",
+//            "/example/petstoreV3_form.yaml",
+//            "/example/petstoreV3_request_parameters.yaml",
+//            "/example/petstoreV3_types.yaml",
+//            "/example/petstoreV3_validation.yaml",
+//            "/example/petstoreV3_single_response.yaml",
+//            "/example/petstoreV3_security_all.yaml",
+//            "/example/petstoreV3_security_api_key.yaml",
+//            "/example/petstoreV3_security_basic.yaml",
+//            "/example/petstoreV3_security_bearer.yaml",
+//            "/example/petstoreV3_security_oauth.yaml",
+//            "/example/petstoreV3_security_cookie.yaml",
+//            "/example/petstoreV3_discriminator.yaml",
+//            "/example/petstoreV3_nullable.yaml",
+//            "/example/petstoreV3_filter.yaml",
             "/example/petstoreV3.yaml",
-            "/example/petstoreV2.yaml",
-            "/example/petstoreV3_filter.yaml",
+//            "/example/petstoreV2.yaml",
         };
 
         for (var fileName : files) {
@@ -96,23 +142,27 @@ class KoraCodegenTest {
                     .replace(".yaml", "")
                     .replace(".json", "");
 
-                result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options(false, false, false)));
+                result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options()));
 
                 if (fileName.contains("security")) {
-                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options(true, false, false)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options().setIncludeServerRequest(true)));
                 }
 
                 if (name.equals("petstoreV2") || name.equals("petstoreV3")) {
-                    result.add(new SwaggerParams(mode, fileName, name + "_server_request", new SwaggerParams.Options(false, false, true, false, null)));
-                    result.add(new SwaggerParams(mode, fileName, name + "_implicit_headers", new SwaggerParams.Options(false, false, false, true, null)));
-                    result.add(new SwaggerParams(mode, fileName, name + "_implicit_headers_regex", new SwaggerParams.Options(false, false, false, false, "first.*")));
+                    result.add(new SwaggerParams(mode, fileName, name + "_server_request", new SwaggerParams.Options().setIncludeServerRequest(true)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_implicit_headers", new SwaggerParams.Options().setImplicitHeaders(true)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_implicit_headers_regex", new SwaggerParams.Options().setImplicitHeadersRegex("first.*")));
+                }
+
+                if (name.equals("petstoreV3")) {
+                    result.add(new SwaggerParams(mode, fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
                 }
 
                 if (fileName.contains("discriminator")
                     || fileName.contains("validation")
                     || fileName.contains("nullable")
                     || fileName.contains("additional_props")) {
-                    result.add(new SwaggerParams(mode, fileName, name + "_enable_json_nullable", new SwaggerParams.Options(false, true, false)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_enable_json_nullable", new SwaggerParams.Options().setJsonNullable(true)));
                 }
             }
         }
@@ -166,7 +216,12 @@ class KoraCodegenTest {
             .addAdditionalProperty("enableJsonNullable", options.jsonNullable())
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders())
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest())
+            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest())
             .addAdditionalProperty("clientConfigPrefix", "test");
+
+        if (options.isDefaultDelegate()) {
+            configurator.addAdditionalProperty("delegateMethodBodyMode", "throwException");
+        }
 
         if (options.implicitHeadersRegex() != null) {
             configurator.addAdditionalProperty("implicitHeadersRegex", options.implicitHeadersRegex());

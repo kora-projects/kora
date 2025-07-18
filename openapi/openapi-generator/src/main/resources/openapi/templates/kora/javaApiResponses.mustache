@@ -23,6 +23,7 @@ public interface {{classname}}Responses { {{#operations}}{{#operation}}{{#vendor
     @Nullable {{/required}}String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{#-last}}
   {{/-last}}{{/headers}}) {}
 {{/responses}}{{/vendorExtensions.singleResponse}}{{^vendorExtensions.singleResponse}}
+
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
   sealed interface {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
     {{#responses}}

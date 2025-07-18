@@ -110,7 +110,7 @@ public class KoraCodegen extends DefaultCodegen {
 
     public enum DelegateMethodBodyMode {
         NONE("none"),
-        THROW_EXCEPTION("throw-exception");
+        THROW_EXCEPTION("throwException");
 
         private final String mode;
 
