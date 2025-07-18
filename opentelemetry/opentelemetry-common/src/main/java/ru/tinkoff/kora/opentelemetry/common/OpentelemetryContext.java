@@ -25,6 +25,43 @@ public class OpentelemetryContext {
         this.context = ctx;
     }
 
+    @Nullable
+    public static Span getSpan() {
+        Context koraContext = Context.current();
+        var opentelemetryContext = OpentelemetryContext.get(koraContext);
+        if(opentelemetryContext.getContext() == null) {
+            return null;
+        }
+
+        Span span = Span.fromContext(opentelemetryContext.getContext());
+        if(span == Span.getInvalid()) {
+            return null;
+        } else {
+            return span;
+        }
+    }
+
+    @Nullable
+    public static String getTraceId() {
+        Span span = getSpan();
+        if(span == Span.getInvalid()) {
+            return null;
+        } else {
+            return span.getSpanContext().getTraceId();
+        }
+    }
+
+    public static Span getSpanOrInvalid() {
+        Context koraContext = Context.current();
+        var opentelemetryContext = OpentelemetryContext.get(koraContext);
+        return Span.fromContext(opentelemetryContext.getContext());
+    }
+
+    public static String getTraceIdOrInvalid() {
+        Span span = getSpanOrInvalid();
+        return span.getSpanContext().getTraceId();
+    }
+
     public static OpentelemetryContext get(Context ctx) {
         var tctx = ctx.get(KEY);
         if (tctx != null) {
