@@ -1,8 +1,17 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
+import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
 
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.Executors;
 
@@ -243,13 +252,163 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
                 UpdateCount insert(Entity entity);
             }
             """, """
-                @Table("entities")
-                record Entity(@Id @Embedded EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            @Table("entities")
+            record Entity(@Id @Embedded EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
             """, """
-                record EntityId(String id1, String id2) {}
+            record EntityId(String id1, String id2) {}
             """);
 
         repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", "2").get(), 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
+    }
+
+    @Test
+    void entityTableAndUpdateWhereIdIsEmbeddedNullable() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+            @Table("entities")
+            record Entity(@Id @Embedded @Nullable EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """, """
+            record EntityId(String id1, String id2) {}
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", "2").get(), 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
+    }
+
+    @Test
+    void entityTableAndUpdateWhereIdIsEmbeddedParamNullable() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+            @Table("entities")
+            record Entity(@Id @Embedded EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """, """
+            record EntityId(String id1, @Nullable String id2) {}
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", "2").get(), 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
+    }
+
+    @Test
+    void entityTableAndUpdateWhereIdIsEmbeddedNullanleParamNullable() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+            @Table("entities")
+            record Entity(@Id @Embedded @Nullable EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """, """
+            record EntityId(String id1, @Nullable String id2) {}
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", "2").get(), 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
+    }
+
+    public static final class TimeJdbcResultColumnMapper implements JdbcResultColumnMapper<OffsetDateTime> {
+        @Override
+        public OffsetDateTime apply(ResultSet row, int index) throws SQLException {
+            return row.getObject(index, OffsetDateTime.class);
+        }
+    }
+
+    public static final class TimeJdbcParameterColumnMapper implements JdbcParameterColumnMapper<OffsetDateTime> {
+        @Override
+        public void set(PreparedStatement stmt, int index, @Nullable OffsetDateTime value) throws SQLException {
+            stmt.setObject(index, value);
+        }
+    }
+
+    @Test
+    void entityTableAndUpdateWhereIdIsEmbeddedWithMapper() throws SQLException {
+        var repository = compileJdbc(List.of(new TimeJdbcParameterColumnMapper()), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+            @Table("entities")
+            record Entity(@Id @Embedded EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """, """
+            record EntityId(String id1, java.time.OffsetDateTime id2) {}
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", OffsetDateTime.MIN).get(), 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
+    }
+
+    @Test
+    void entityTableAndUpdateWhereIdIsEmbeddedNullableWithMapper() throws SQLException {
+        var repository = compileJdbc(List.of(new TimeJdbcParameterColumnMapper()), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+            @Table("entities")
+            record Entity(@Id @Embedded @Nullable EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """, """
+            record EntityId(String id1, java.time.OffsetDateTime id2) {}
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", OffsetDateTime.MIN).get(), 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
+    }
+
+    @Test
+    void entityTableAndUpdateWhereIdIsEmbeddedNullableParamWithMapper() throws SQLException {
+        var repository = compileJdbc(List.of(new TimeJdbcParameterColumnMapper()), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+                @Table("entities")
+                record Entity(@Id @Embedded EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """, """
+                record EntityId(String id1, @Nullable java.time.OffsetDateTime id2) {}
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", OffsetDateTime.MIN).get(), 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
+    }
+
+    @Test
+    void entityTableAndUpdateWhereIdIsEmbeddedNullableParamNullableWithMapper() throws SQLException {
+        var repository = compileJdbc(List.of(new TimeJdbcParameterColumnMapper()), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                UpdateCount insert(Entity entity);
+            }
+            """, """
+                @Table("entities")
+                record Entity(@Id @Embedded @Nullable EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            """, """
+                record EntityId(String id1, @Nullable java.time.OffsetDateTime id2) {}
+            """);
+
+        repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", OffsetDateTime.MIN).get(), 1, "1", "1").get());
         verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?");
     }
 
