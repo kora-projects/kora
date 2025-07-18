@@ -3,6 +3,7 @@ package ru.tinkoff.kora.cache.redis;
 import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.cache.redis.lettuce.$LettuceClientConfig_SslConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.redis.lettuce.LettuceClientConfig;
 import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
 import ru.tinkoff.kora.test.redis.RedisParams;
@@ -55,6 +56,11 @@ abstract class CacheRunner extends Assertions implements RedisCacheModule {
             @Override
             public String password() {
                 return null;
+            }
+
+            @Override
+            public SslConfig ssl() {
+                return new $LettuceClientConfig_SslConfig_ConfigValueExtractor.SslConfig_Defaults();
             }
         };
 
