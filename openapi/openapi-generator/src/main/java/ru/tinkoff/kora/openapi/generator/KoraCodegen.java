@@ -134,8 +134,8 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             final List<String> modes = Arrays.stream(Mode.values())
-                    .map(Mode::getMode)
-                    .toList();
+                .map(Mode::getMode)
+                .toList();
             throw new UnsupportedOperationException("Unknown DelegateMethodBodyMode is provided: " + option + ", available modes: " + modes);
         }
     }
@@ -285,7 +285,7 @@ public class KoraCodegen extends DefaultCodegen {
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
                 securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable,
-                filterWithModels, prefixPath, implicitHeaders, implicitHeadersRegex);
+                filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
