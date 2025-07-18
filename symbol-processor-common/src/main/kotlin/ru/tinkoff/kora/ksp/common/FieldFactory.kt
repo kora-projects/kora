@@ -15,6 +15,7 @@ class FieldFactory(builder: TypeSpec.Builder, constructor: FunSpec.Builder, pref
     private val constructor: FunSpec.Builder
     private val fields: MutableMap<FieldKey, String> = HashMap()
     private val prefix: String
+
     operator fun get(mapperType: TypeName, resultMapperTag: Set<String>): String? {
         return fields[FieldKey(mapperType, resultMapperTag)]
     }

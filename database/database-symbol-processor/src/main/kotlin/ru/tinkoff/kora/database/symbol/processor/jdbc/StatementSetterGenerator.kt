@@ -83,7 +83,7 @@ object StatementSetterGenerator {
                             }
                         } else {
                             for (idx in sqlParameter.sqlIndexes) {
-                                b.addCode(nativeType.bind("_stmt", "$parameterName.${field.accessor(false)}", idx + 1)).addCode("\n")
+                                b.addCode(nativeType.bind("_stmt", "$parameterName.${field.accessor(field.isNullable)}", idx + 1)).addCode("\n")
                             }
                         }
                     } else if (mapping?.mapper != null) {
@@ -94,7 +94,7 @@ object StatementSetterGenerator {
                     } else {
                         val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, field.type, field.property)
                         for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, fieldName)
+                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, "$parameterName.${field.accessor(field.isNullable)}")
                         }
                     }
                 }

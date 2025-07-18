@@ -2,13 +2,13 @@ package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
 import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
-import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes;
+import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
-import jakarta.annotation.Nullable;
 import javax.lang.model.element.ExecutableElement;
 import java.util.List;
 
@@ -81,6 +81,12 @@ public class StatementSetterGenerator {
                     var mapping = mappingData.getMapping(JdbcTypes.PARAMETER_COLUMN_MAPPER);
                     var nativeType = JdbcNativeTypes.findNativeType(TypeName.get(field.type()));
                     if (mapping == null && nativeType != null) {
+                        boolean embeddedNullable = field.entityField() instanceof DbEntity.SimpleEntityField se
+                                                   && se.nullable()
+                                                   && se.element() != field.element();
+                        if (embeddedNullable) {
+                            b.add("if ($N.$N() != null) {$>\n", parameterName, field.entityField().accessor());
+                        }
                         if (isNullable(field.element())) {
                             b.add("if ($L != null) {$>", accessor);
                             for (var idx : sqlParameter.sqlIndexes()) {
@@ -96,15 +102,48 @@ public class StatementSetterGenerator {
                                 b.add(nativeType.bind("_stmt", accessor, idx + 1)).add(";\n");
                             }
                         }
+                        if(embeddedNullable) {
+                            b.add("$<} else {$>");
+                            for (var idx : sqlParameter.sqlIndexes()) {
+                                b.add("\n").add(nativeType.bindNull("_stmt", idx + 1)).add(";");
+                            }
+                            b.add("$<\n}\n");
+                        }
                     } else if (mapping == null) {
+                        boolean embeddedNullable = field.entityField() instanceof DbEntity.SimpleEntityField se
+                                                   && se.nullable()
+                                                   && se.element() != field.element();
+                        if (embeddedNullable) {
+                            b.add("if ($N.$N() != null) {$>\n", parameterName, field.entityField().accessor());
+                        }
                         var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, field.type(), field.element());
                         for (var idx : sqlParameter.sqlIndexes()) {
                             b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, accessor);
                         }
+                        if (embeddedNullable) {
+                            b.add("$<} else {$>\n");
+                            for (var idx : sqlParameter.sqlIndexes()) {
+                                b.add("$L.set(_stmt, $L, null);\n", mapper, idx + 1);
+                            }
+                            b.add("$<}\n");
+                        }
                     } else {
+                        boolean embeddedNullable = field.entityField() instanceof DbEntity.SimpleEntityField se
+                                                   && se.nullable()
+                                                   && se.element() != field.element();
+                        if (embeddedNullable) {
+                            b.add("if ($N.$N() != null) {$>\n", parameterName, field.entityField().accessor());
+                        }
                         var mapper = parameterMappers.get(JdbcTypes.PARAMETER_COLUMN_MAPPER, mapping, field.type());
                         for (var idx : sqlParameter.sqlIndexes()) {
                             b.add("$L.set(_stmt, $L, $L);\n", mapper, idx + 1, accessor);
+                        }
+                        if (embeddedNullable) {
+                            b.add("$<} else {$>\n");
+                            for (var idx : sqlParameter.sqlIndexes()) {
+                                b.add("$L.set(_stmt, $L, null);\n", mapper, idx + 1);
+                            }
+                            b.add("$<}\n");
                         }
                     }
                 }

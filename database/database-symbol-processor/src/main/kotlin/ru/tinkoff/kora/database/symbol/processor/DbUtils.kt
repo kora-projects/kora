@@ -148,7 +148,8 @@ object DbUtils {
             }
             if (parameter is QueryParameter.EntityParameter) {
                 for (entityField in parameter.entity.columns) {
-                    val queryParam = query.find(parameter.name + "." + entityField.property.simpleName.getShortName())
+                    val paramName = parameter.name + "." + entityField.sqlParameterName
+                    val queryParam = query.find(paramName)
                     if (queryParam == null || queryParam.sqlIndexes.isEmpty()) {
                         continue
                     }
