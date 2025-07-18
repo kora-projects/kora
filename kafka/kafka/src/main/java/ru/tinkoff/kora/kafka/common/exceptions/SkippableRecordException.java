@@ -10,6 +10,7 @@ package ru.tinkoff.kora.kafka.common.exceptions;
  *    public MyException(String message) {
  *       super(message);}
  * }
+ * }
  * </pre>
  */
 public interface SkippableRecordException {}
