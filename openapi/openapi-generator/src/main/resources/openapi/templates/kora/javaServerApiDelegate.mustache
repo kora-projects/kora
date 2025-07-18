@@ -43,12 +43,17 @@ public interface {{classname}}Delegate {
     * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
     */
-    {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
+    {{#hasDelegateMethodBodyMode}}default {{/hasDelegateMethodBodyMode}}{{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
         HttpServerRequest _serverRequest{{#hasParams}},{{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
         {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{#-last}}
     {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
         {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
-    {{/hasFormParams}}){{#isBlocking}} throws Exception{{/isBlocking}};
+    {{/hasFormParams}}){{#isBlocking}} throws Exception{{/isBlocking}}{{^hasDelegateMethodBodyMode}};{{/hasDelegateMethodBodyMode}}{{#hasDelegateMethodBodyMode}} { {{/hasDelegateMethodBodyMode}}
+    {{#hasDelegateMethodBodyMode}}
+    {{#isThrowExceptionDelegateMethodBodyMode}}
+        throw new UnsupportedOperationException("Not yet implemented");
+    {{/isThrowExceptionDelegateMethodBodyMode}}
+    }{{/hasDelegateMethodBodyMode}}
 {{/operation}}
 }
 {{/operations}}

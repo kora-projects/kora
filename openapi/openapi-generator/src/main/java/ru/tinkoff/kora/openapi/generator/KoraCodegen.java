@@ -108,6 +108,38 @@ public class KoraCodegen extends DefaultCodegen {
         }
     }
 
+    public enum DelegateMethodBodyMode {
+        NONE("none"),
+        THROW_EXCEPTION("throwException");
+
+        private final String mode;
+
+        DelegateMethodBodyMode(String mode) {
+            this.mode = mode;
+        }
+
+        public String getMode() {
+            return mode;
+        }
+
+        public boolean isDelegateMethodBodyModeNeedsDefaultComponent() {
+            return this == THROW_EXCEPTION;
+        }
+
+        public static DelegateMethodBodyMode of(String option) {
+            for (DelegateMethodBodyMode value : DelegateMethodBodyMode.values()) {
+                if (value.getMode().equals(option)) {
+                    return value;
+                }
+            }
+
+            final List<String> modes = Arrays.stream(Mode.values())
+                    .map(Mode::getMode)
+                    .toList();
+            throw new UnsupportedOperationException("Unknown DelegateMethodBodyMode is provided: " + option + ", available modes: " + modes);
+        }
+    }
+
     record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
     record Interceptor(@Nullable String type, @Nullable Object tag) {}
@@ -133,7 +165,8 @@ public class KoraCodegen extends DefaultCodegen {
         boolean requestInDelegateParams,
         boolean enableJsonNullable,
         boolean filterWithModels,
-        @Nullable String prefixPath
+        @Nullable String prefixPath,
+        DelegateMethodBodyMode delegateMethodBodyMode
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -151,6 +184,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
             cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
             cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
+            cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
             return cliOptions;
         }
 
@@ -169,6 +203,7 @@ public class KoraCodegen extends DefaultCodegen {
             var enableJsonNullable = false;
             var filterWithModels = false;
             String prefixPath = null;
+            var delegateMethodBodyMode = DelegateMethodBodyMode.NONE;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -231,15 +266,21 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(PREFIX_PATH)) {
                 prefixPath = additionalProperties.get(PREFIX_PATH).toString();
             }
+            if (additionalProperties.containsKey(DELEGATE_METHOD_BODY_MODE)) {
+                delegateMethodBodyMode = DelegateMethodBodyMode.of(additionalProperties.get(DELEGATE_METHOD_BODY_MODE).toString());
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, filterWithModels, prefixPath);
+                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable, filterWithModels, prefixPath, delegateMethodBodyMode);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
             additionalProperties.put("hasSecurityConfigPrefix", securityConfigPrefix != null);
             additionalProperties.put("requestInDelegateParams", requestInDelegateParams);
             additionalProperties.put("prefixPath", prefixPath);
+            additionalProperties.put("hasDelegateMethodBodyMode", delegateMethodBodyMode != DelegateMethodBodyMode.NONE);
+            additionalProperties.put("isThrowExceptionDelegateMethodBodyMode", delegateMethodBodyMode == DelegateMethodBodyMode.THROW_EXCEPTION);
+            additionalProperties.put("isDelegateMethodBodyModeNeedsDefaultComponent", delegateMethodBodyMode.isDelegateMethodBodyModeNeedsDefaultComponent());
 
             switch (codegenMode) {
                 case JAVA_CLIENT -> {
@@ -293,6 +334,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
     public static final String FILTER_WITH_MODELS = "filterWithModels";
     public static final String PREFIX_PATH = "prefixPath";
+    public static final String DELEGATE_METHOD_BODY_MODE = "delegateMethodBodyMode";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -424,6 +466,10 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaServerRequestMappers.mustache", "ServerRequestMappers.java");
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
                 modelTemplateFiles.put("javaModel.mustache", ".java");
+
+                if (isNeedGenerateModule()) {
+                    apiTemplateFiles.put("javaServerApiModule.mustache", "Module.java");
+                }
             }
             case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
@@ -443,6 +489,10 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
                 apiTemplateFiles.put("kotlinServerRequestMappers.mustache", "ServerRequestMappers.kt");
                 apiTemplateFiles.put("kotlinServerResponseMappers.mustache", "ServerResponseMappers.kt");
+
+                if (isNeedGenerateModule()) {
+                    apiTemplateFiles.put("kotlinServerApiModule.mustache", "Module.kt");
+                }
             }
         }
         this.vendorExtensions.put("allowAspects", params.enableValidation() || !params.additionalContractAnnotations.isEmpty());
@@ -3118,5 +3168,9 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public void postProcess() {
+    }
+
+    private boolean isNeedGenerateModule() {
+        return params.delegateMethodBodyMode.isDelegateMethodBodyModeNeedsDefaultComponent();
     }
 }
