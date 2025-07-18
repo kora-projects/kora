@@ -7,7 +7,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.requests.OffsetFetchResponse;
 import ru.tinkoff.kora.application.graph.ValueOf;
-import ru.tinkoff.kora.kafka.common.consumer.SkipRecord;
+import ru.tinkoff.kora.kafka.common.exceptions.KafkaSkipRecordException;
+import ru.tinkoff.kora.kafka.common.exceptions.SkippableRecordException;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
@@ -37,13 +38,15 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
             for (var record : records) {
                 var recordCtx = ctx.get(record);
                 try {
-                    Throwable maybeFailure;
+                    Throwable skippedException;
                     try {
                         handler.handle(consumer, recordCtx, record);
-                        maybeFailure = null;
+                        skippedException = null;
                     } catch (Throwable e) {
-                        if (e instanceof SkipRecord) {
-                            maybeFailure = e;
+                        if(e instanceof KafkaSkipRecordException) {
+                            skippedException = e.getCause();
+                        } else if (e instanceof SkippableRecordException) {
+                            skippedException = e;
                         } else {
                             throw e;
                         }
@@ -58,15 +61,15 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
 
                         try {
                             consumer.commitSync(topicAndOffsetAndMeta);
-                            recordCtx.close(maybeFailure);
+                            recordCtx.close(skippedException);
                         } catch (WakeupException e) {
                             // retry commit if thrown on consumer release
                             consumer.commitSync(topicAndOffsetAndMeta);
-                            recordCtx.close(maybeFailure);
+                            recordCtx.close(skippedException);
                             throw e;
                         }
                     } else {
-                        recordCtx.close(maybeFailure);
+                        recordCtx.close(skippedException);
                     }
                 } catch (WakeupException e) {
                     throw e;
