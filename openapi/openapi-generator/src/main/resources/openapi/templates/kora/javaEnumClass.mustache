@@ -5,13 +5,8 @@
   {{#additionalEnumTypeAnnotations}}
   {{{.}}}
   {{/additionalEnumTypeAnnotations}}
-  public enum {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}} {
-        {{#allowableValues}}
-            {{#enumVars}}
-    {{{name}}}(Constants.{{{name}}}){{^-last}},
-    {{/-last}}{{#-last}};{{/-last}}
-            {{/enumVars}}
-        {{/allowableValues}}
+  public enum {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}} { {{#allowableValues}}{{#enumVars}}
+    {{{name}}}(Constants.{{{name}}}){{^-last}},{{/-last}}{{#-last}};{{/-last}}{{/enumVars}}{{/allowableValues}}
 
     private final {{{dataType}}} value;
 
@@ -38,6 +33,7 @@
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
     @ru.tinkoff.kora.common.Component
     public static final class JsonWriter implements ru.tinkoff.kora.json.common.JsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
+
       private final ru.tinkoff.kora.json.common.EnumJsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}, {{{dataType}}}> delegate;
 
       public JsonWriter(ru.tinkoff.kora.json.common.JsonWriter<{{{dataType}}}> valueWriter) {
@@ -57,6 +53,7 @@
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
     @ru.tinkoff.kora.common.Component
     public static final class JsonReader implements ru.tinkoff.kora.json.common.JsonReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
+
       private final ru.tinkoff.kora.json.common.EnumJsonReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}, {{{dataType}}}> delegate;
 
       public JsonReader(ru.tinkoff.kora.json.common.JsonReader<{{{dataType}}}> valueReader) {
@@ -78,10 +75,9 @@
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
     @ru.tinkoff.kora.common.Component
     public static final class StringParameterReader implements ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
-      private final ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> delegate = new ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader<>(
-        {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(),
-        v -> String.valueOf(v.value)
-      );
+
+      private final ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> delegate = new ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader<>({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(), v -> String.valueOf(v.value));
+
       public {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}} read(String string) {
         return this.delegate.read(string);
       }
@@ -92,10 +88,8 @@
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     @ru.tinkoff.kora.common.Component
     public static final class StringParameterConverter implements ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
-      private final ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> delegate = new ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter<>(
-        {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(),
-        v -> String.valueOf(v.value)
-      );
+
+      private final ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> delegate = new ru.tinkoff.kora.http.client.common.writer.EnumStringParameterConverter<>({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.values(), v -> String.valueOf(v.value));
 
       public String convert({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}} object) {
         return this.delegate.convert(object);

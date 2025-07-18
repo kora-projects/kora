@@ -9,37 +9,34 @@ package {{package}};
 {{/imports}}
 import jakarta.annotation.Nullable;
 
-@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-public interface {{classname}}Responses {
-{{#operations}}
-{{#operation}}{{#vendorExtensions.singleResponse}}{{#responses}}
-  /**
-  * {{message}} (status code {{code}})
-  */
-  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
-  public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse(
-    {{#dataType}}{{#isDefault}}int statusCode,
-    {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}
-    @Nullable{{/required}}
-    String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
-  ){}
-{{/responses}}{{/vendorExtensions.singleResponse}}{{^vendorExtensions.singleResponse}}
-  public sealed interface {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
-    {{#responses}}
-      /**
-      * {{message}} (status code {{code}})
-      */
-      @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
-      public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse(
-        {{#dataType}}{{#isDefault}}int statusCode,
-        {{/isDefault}}{{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}int statusCode{{#hasHeaders}},{{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}
-        @Nullable{{/required}}
-        String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{/headers}}
-      ) implements {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {}
+@ru.tinkoff.kora.common.annotation.Generated("openapi generator kora"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
+public interface {{classname}}Responses { {{#operations}}{{#operation}}{{#vendorExtensions.singleResponse}}{{#responses}}
 
+  /** {{message}} (status code {{code}}) */
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
+  record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse({{#dataType}}{{#isDefault}}
+    int statusCode,{{/isDefault}}
+    {{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{^hasHeaders}}
+  {{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}
+    int statusCode{{#hasHeaders}},{{/hasHeaders}}{{^hasHeaders}}
+  {{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}
+    @Nullable {{/required}}String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{#-last}}
+  {{/-last}}{{/headers}}) {}
+{{/responses}}{{/vendorExtensions.singleResponse}}{{^vendorExtensions.singleResponse}}
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
+  sealed interface {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
+    {{#responses}}
+
+      /** {{message}} (status code {{code}}) */
+      @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
+      record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{#isDefault}}Default{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}ApiResponse({{#dataType}}{{#isDefault}}
+        int statusCode,{{/isDefault}}
+        {{{dataType}}} content{{#hasHeaders}},{{/hasHeaders}}{{^hasHeaders}}
+      {{/hasHeaders}}{{/dataType}}{{^dataType}}{{#isDefault}}
+        int statusCode{{#hasHeaders}},{{/hasHeaders}}{{^hasHeaders}}
+      {{/hasHeaders}}{{/isDefault}}{{/dataType}}{{#headers}}{{^required}}
+        @Nullable {{/required}}String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{#-last}}
+      {{/-last}}{{/headers}}) implements {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {}
     {{/responses}}
-  }
-{{/vendorExtensions.singleResponse}}
-{{/operation}}
-{{/operations}}
+  } {{/vendorExtensions.singleResponse}}{{/operation}}{{/operations}}
 }

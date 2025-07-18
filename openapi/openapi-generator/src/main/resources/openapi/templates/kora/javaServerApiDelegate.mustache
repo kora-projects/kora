@@ -25,10 +25,30 @@ public interface {{classname}}Delegate {
 {{#operations}}
 {{#operation}}
 
+   /**
+    * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
+    {{#notes}}
+    * {{.}}
+    {{/notes}}
+    * {{#allParams}}{{#description}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/allParams}}
+    * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
+    *         or {{/-last}}{{/responses}}
+    {{#isDeprecated}}
+    * @deprecated
+    {{/isDeprecated}}
+    {{#externalDocs}}
+    * {{description}}
+    * @see <a href="{{url}}">{{summary}} Documentation</a>
+    {{/externalDocs}}
+    */
     {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
         HttpServerRequest _serverRequest{{#hasParams}},{{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
-        {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
-        {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form{{/hasFormParams}}){{#isBlocking}} throws Exception{{/isBlocking}};
+        {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{#-last}}
+    {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
+        {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
+    {{/hasFormParams}}){{#isBlocking}} throws Exception{{/isBlocking}};
 {{/operation}}
 }
 {{/operations}}

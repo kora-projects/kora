@@ -64,7 +64,7 @@ public interface {{classname}}ServerResponseMappers {
       }
       {{/vendorExtensions.singleResponse}}{{/responses}}
       {{^vendorExtensions.singleResponse}}
-      throw new IllegalStateException();
+      throw new IllegalStateException("Unexpected response type: " + response);
       {{/vendorExtensions.singleResponse}}
     }
   }

@@ -16,12 +16,30 @@ interface {{classname}}Delegate {
 {{#operations}}
 {{#operation}}
 
+   /**
+    * {{httpMethod}} {{{path}}}{{#summary}} : {{.}}{{/summary}}
+    {{#notes}}
+    * {{.}}
+    {{/notes}}
+    * {{#allParams}}{{#description}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/allParams}}
+    * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
+    *         or {{/-last}}{{/responses}}
+    {{#isDeprecated}}
+    * @deprecated
+    {{/isDeprecated}}
+    {{#externalDocs}}
+    * {{description}}
+    * @see <a href="{{url}}">{{summary}} Documentation</a>
+    {{/externalDocs}}
+    */
     {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
-        _serverRequest: HttpServerRequest{{#hasParams}},{{/hasParams}}
-        {{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
-        {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
-        form: {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/hasFormParams}}
-    ): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
+        _serverRequest: HttpServerRequest{{#hasParams}},{{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
+        {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{#-last}}
+    {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
+        form: {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam
+    {{/hasFormParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 {{/operation}}
 }
 {{/operations}}

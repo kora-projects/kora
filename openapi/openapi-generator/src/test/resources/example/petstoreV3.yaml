@@ -75,6 +75,40 @@ paths:
                         application/json:
                             schema:
                                 $ref: "#/components/schemas/Error"
+        patch:
+          summary: Patch a pet
+          operationId: patchPets
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/PetInfo'
+          tags:
+            - pets
+          responses:
+            '201':
+              description: Null response
+            default:
+              description: unexpected error
+              content:
+                application/json:
+                  schema:
+                    $ref: "#/components/schemas/Error"
+        put:
+          summary: Update a pet
+          operationId: updatePets
+          requestBody:
+            required: true
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/PetUpdate'
+          tags:
+            - pets
+          responses:
+            '201':
+              description: Null response
     /pets/{petId}:
         get:
             summary: Info for a specific pet
@@ -169,6 +203,20 @@ components:
                 type: string
               tag:
                 type: string
+        PetInfo:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
+        PetUpdate:
+          type: object
+          required:
+            - name
+          properties:
+            name:
+              type: string
         Pets:
             type: array
             items:

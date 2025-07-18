@@ -22,7 +22,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-@ru.tinkoff.kora.http.server.common.annotation.HttpController(value = "{{prefixPath}}"){{#vendorExtensions.allowAspects}}
+@ru.tinkoff.kora.http.server.common.annotation.HttpController{{#prefixPath}}("{{{prefixPath}}}"){{/prefixPath}}{{#vendorExtensions.allowAspects}}
 @ru.tinkoff.kora.common.Component{{/vendorExtensions.allowAspects}}
 public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}} class {{classname}}Controller {
 
@@ -31,7 +31,6 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     public {{classname}}Controller({{classname}}Delegate delegate) {
       this.delegate = delegate;
     }
-
 {{#operations}}
 {{#operation}}
 
@@ -40,8 +39,9 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     {{#notes}}
     * {{.}}
     {{/notes}}
-    * {{#allParams}}
-    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/allParams}}
+    * {{#allParams}}{{#description}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
+    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/allParams}}
     * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
     *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
@@ -78,13 +78,8 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
     public {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
-        HttpServerRequest _serverRequest{{#hasParams}}, {{/hasParams}}
-    {{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}
-    ){{#isBlocking}} throws Exception{{/isBlocking}} {
-        return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}
-            {{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}
-            form{{/hasFormParams}}
-        );
+        HttpServerRequest _serverRequest{{#hasParams}},{{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}){{#isBlocking}} throws Exception{{/isBlocking}} {
+        return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}form{{/hasFormParams}});
     }
 {{>javaFormParams}}
 {{/operation}}
