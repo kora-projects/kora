@@ -26,24 +26,16 @@ public interface {{classname}}ServerResponseMappers {
 {{#operation}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
-  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse>{
-
-    {{#responses}}
-    {{#dataType}}
-    private final HttpServerResponseMapper<HttpResponseEntity<{{{dataType}}}>> response{{code}}Delegate;
-    {{/dataType}}
-    {{/responses}}
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper implements HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {
+    {{#responses}}{{#dataType}}
+    private final HttpServerResponseMapper<HttpResponseEntity<{{{dataType}}}>> response{{code}}Delegate;{{/dataType}}{{/responses}}
 
     public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper({{#responses}}{{#dataType}}{{^isBinary}}
       @{{vendorExtensions.jsonTag}}{{/isBinary}}
-      HttpServerResponseMapper<{{{dataType}}}> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}{{/dataType}}{{/responses}}
-    ) {
-      {{#responses}}
-      {{#dataType}}
+      HttpServerResponseMapper<{{{dataType}}}> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}
+    {{/dataType}}{{/responses}}) { {{#responses}}{{#dataType}}
       this.response{{code}}Delegate = new HttpServerResponseEntityMapper<>(response{{code}}Delegate);
-      {{/dataType}}
-      {{/responses}}
-    }
+  {{/dataType}}{{/responses}} }
 
     @Override
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse response) throws java.io.IOException { {{#responses}}{{^vendorExtensions.singleResponse}}
