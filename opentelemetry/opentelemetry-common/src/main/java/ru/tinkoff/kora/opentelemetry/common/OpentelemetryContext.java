@@ -2,10 +2,9 @@ package ru.tinkoff.kora.opentelemetry.common;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.ImplicitContextKeyed;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.logging.common.MDC;
-
-import jakarta.annotation.Nullable;
 
 public class OpentelemetryContext {
     private static final Context.Key<OpentelemetryContext> KEY = new Context.Key<>() {
@@ -23,6 +22,43 @@ public class OpentelemetryContext {
 
     public OpentelemetryContext(io.opentelemetry.context.Context ctx) {
         this.context = ctx;
+    }
+
+    @Nullable
+    public static Span getSpan() {
+        var koraContext = Context.current();
+        var opentelemetryContext = OpentelemetryContext.get(koraContext);
+        if (opentelemetryContext.getContext() == null) {
+            return null;
+        }
+
+        var span = Span.fromContext(opentelemetryContext.getContext());
+        if (span == Span.getInvalid()) {
+            return null;
+        } else {
+            return span;
+        }
+    }
+
+    @Nullable
+    public static String getTraceId() {
+        var span = getSpan();
+        if (span == Span.getInvalid()) {
+            return null;
+        } else {
+            return span.getSpanContext().getTraceId();
+        }
+    }
+
+    public static Span getSpanOrInvalid() {
+        var koraContext = Context.current();
+        var opentelemetryContext = OpentelemetryContext.get(koraContext);
+        return Span.fromContext(opentelemetryContext.getContext());
+    }
+
+    public static String getTraceIdOrInvalid() {
+        var span = getSpanOrInvalid();
+        return span.getSpanContext().getTraceId();
     }
 
     public static OpentelemetryContext get(Context ctx) {
