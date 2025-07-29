@@ -39,9 +39,9 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     {{#notes}}
     * {{.}}
     {{/notes}}
-    * {{#allParams}}{{#description}}
-    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
-    * @param {{#isFormParam}}form{{/isFormParam}}{{^isFormParam}}{{paramName}}{{/isFormParam}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/allParams}}
+    * {{#allParams}}{{^isFormParam}}{{#description}}
+    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
+    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/isFormParam}}{{/allParams}}
     * @return {{#responses}}{{message}} (status code {{code}}){{^-last}}
     *         or {{/-last}}{{/responses}}
     {{#isDeprecated}}
