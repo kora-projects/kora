@@ -89,9 +89,10 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             logger.info("Kafka Consumer '{}' started in {}", consumerPrefix, TimeUtils.tookForLogging(started));
 
             boolean isFirstPoll = true;
+            boolean isFirstAssign = true;
             while (isActive.get()) {
                 var changed = this.refreshPartitions(allPartitions);
-                if (changed) {
+                if (changed || isFirstAssign) {
                     logger.info("Kafka Consumer '{}' refreshing and reassigning partitions...", consumerPrefix);
 
                     allPartitions = this.partitions.get();
@@ -103,6 +104,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                     }
 
                     consumer.assign(partitions);
+                    isFirstAssign = false;
                     synchronized (this.offsets) {
                         this.offsets.ensureCapacity(partitions.size());
                         for (var partition : partitions) {
@@ -272,14 +274,14 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
         var threads = this.threads;
         if (threads > 0) {
             if (this.topic != null) {
-                logger.debug("Kafka Consumer '{}' starting...", consumerPrefix);
-                final long started = TimeUtils.started();
-
                 executorService = Executors.newFixedThreadPool(threads, new NamedThreadFactory(this.topic));
                 for (int i = 0; i < threads; i++) {
                     var number = i;
                     executorService.execute(() -> {
                         while (isActive.get()) {
+                            logger.debug("Kafka Consumer '{}' starting...", consumerPrefix);
+                            final long started = TimeUtils.started();
+
                             var consumer = initializeConsumer();
                             if (consumer != null) {
                                 launchPollLoop(consumer, number, started);
