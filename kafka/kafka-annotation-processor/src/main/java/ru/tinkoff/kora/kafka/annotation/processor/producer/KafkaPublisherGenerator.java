@@ -3,7 +3,6 @@ package ru.tinkoff.kora.kafka.annotation.processor.producer;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 import ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaPublisherUtils;
 
@@ -37,15 +36,13 @@ final class KafkaPublisherGenerator {
         this.processingEnv = processingEnv;
     }
 
-    public void generatePublisherModule(TypeElement typeElement, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation, @Nullable TypeElement aopProxy) throws IOException {
+    public void generatePublisherModule(TypeElement typeElement, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation, @Nullable TypeElement aopProxy) {
         var packageName = this.elements.getPackageOf(typeElement).getQualifiedName().toString();
         var moduleName = NameUtils.generatedType(typeElement, "PublisherModule");
         var module = TypeSpec.interfaceBuilder(moduleName)
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
-                .addMember("value", CodeBlock.of("$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()))
-                .build())
-            .addAnnotation(CommonClassNames.module)
             .addOriginatingElement(typeElement)
+            .addAnnotation(AnnotationUtils.generated(KafkaPublisherGenerator.class))
+            .addAnnotation(CommonClassNames.module)
             .addModifiers(Modifier.PUBLIC);
 
         module.addMethod(this.buildPublisherFactoryFunction(typeElement, publishMethods, aopProxy));
@@ -53,9 +50,8 @@ final class KafkaPublisherGenerator {
         module.addMethod(this.buildProducerConfigMethod(typeElement, publisherAnnotation));
         module.addMethod(this.buildTopicConfigMethod(typeElement, publishMethods, publisherAnnotation));
 
-        JavaFile.builder(packageName, module.build())
-            .build()
-            .writeTo(this.processingEnv.getFiler());
+        var javaFile = JavaFile.builder(packageName, module.build()).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
     private MethodSpec buildProducerConfigMethod(TypeElement publisher, AnnotationMirror publisherAnnotation) {
@@ -170,22 +166,19 @@ final class KafkaPublisherGenerator {
         var topicConfigTypeName = ClassName.get(packageName, topicConfigName);
 
         var b = CommonUtils.extendsKeepAop(publisher, implementationName)
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
-                .addMember("value", CodeBlock.of("$S", KafkaPublisherAnnotationProcessor.class.getCanonicalName()))
-                .build())
-            .addOriginatingElement(publisher)
+            .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class))
             .addSuperinterface(generatedPublisher)
             .addField(CommonClassNames.telemetryConfig, "telemetryConfig", Modifier.PRIVATE, Modifier.FINAL)
             .addField(ClassName.get(Properties.class), "driverProperties", Modifier.PRIVATE, Modifier.FINAL)
             .addField(topicConfigTypeName, "topicConfig", Modifier.PRIVATE, Modifier.FINAL)
-            .addField(KafkaClassNames.producerTelemetryFactory, "telemetryFactory", Modifier.PRIVATE, Modifier.FINAL)
+            .addField(producerTelemetryFactory, "telemetryFactory", Modifier.PRIVATE, Modifier.FINAL)
             .addField(ParameterizedTypeName.get(producer, ArrayTypeName.of(TypeName.BYTE), ArrayTypeName.of(TypeName.BYTE)), "delegate", Modifier.PRIVATE, Modifier.VOLATILE)
-            .addField(KafkaClassNames.producerTelemetry, "telemetry", Modifier.PRIVATE, Modifier.VOLATILE)
+            .addField(producerTelemetry, "telemetry", Modifier.PRIVATE, Modifier.VOLATILE)
             .addMethod(MethodSpec.methodBuilder("init")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
-                .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", KafkaClassNames.kafkaProducer, byteArraySerializer, byteArraySerializer)
-                .addCode("this.telemetry = this.telemetryFactory.get(this.telemetryConfig, this.delegate, driverProperties);\n", KafkaClassNames.kafkaProducer)
+                .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", kafkaProducer, byteArraySerializer, byteArraySerializer)
+                .addCode("this.telemetry = this.telemetryFactory.get(this.telemetryConfig, this.delegate, driverProperties);\n", kafkaProducer)
                 .build())
             .addMethod(MethodSpec.methodBuilder("release")
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
@@ -354,8 +347,8 @@ final class KafkaPublisherGenerator {
 
     public void generateConfig(TypeElement producer, List<ExecutableElement> publishMethods) throws IOException {
         var record = new RecordClassBuilder(NameUtils.generatedType(producer, "TopicConfig"), KafkaPublisherAnnotationProcessor.class)
-            .addModifier(Modifier.PUBLIC)
-            .originatingElement(producer);
+            .originatingElement(producer)
+            .addModifier(Modifier.PUBLIC);
         for (int i = 0; i < publishMethods.size(); i++) {
             if (AnnotationUtils.isAnnotationPresent(publishMethods.get(0), kafkaTopicAnnotation)) {
                 record.addComponent("topic" + i, publisherTopicConfig);

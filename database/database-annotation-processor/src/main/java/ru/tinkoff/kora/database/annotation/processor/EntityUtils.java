@@ -2,26 +2,32 @@ package ru.tinkoff.kora.database.annotation.processor;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.naming.NameConverter;
-import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter;
 
 import javax.lang.model.element.*;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class EntityUtils {
 
-    private final static SnakeCaseNameConverter defaultColumnNameConverter = new SnakeCaseNameConverter();
+    public final static CommonUtils.NameConverter SNAKE_CASE_NAME_CONVERTER = originalName -> {
+        var splitted = originalName.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)");
+        return Stream.of(splitted)
+            .map(String::toLowerCase)
+            .collect(Collectors.joining("_"));
+    };
 
-    public static String parseColumnName(VariableElement element, @Nullable NameConverter columnsNameConverter) {
+    public static String parseColumnName(VariableElement element, @Nullable CommonUtils.NameConverter columnsNameConverter) {
         var column = AnnotationUtils.findAnnotation(element, DbUtils.COLUMN_ANNOTATION);
         var fieldName = element.getSimpleName().toString();
         if (column != null) {
             return AnnotationUtils.parseAnnotationValueWithoutDefault(column, "value");
         }
         return columnsNameConverter == null
-            ? defaultColumnNameConverter.convert(fieldName)
+            ? SNAKE_CASE_NAME_CONVERTER.convert(fieldName)
             : columnsNameConverter.convert(fieldName);
     }
 

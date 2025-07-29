@@ -72,9 +72,9 @@ public final class ConfigKoraExtension implements KoraExtension {
                 return ExtensionResult.fromExecutable(constructors.get(0));
             }
             var result = switch (element.getKind()) {
-                case CLASS -> this.configParserGenerator.generateForPojo(roundEnvironment, (DeclaredType) paramType);
-                case INTERFACE -> this.configParserGenerator.generateForInterface(roundEnvironment, (DeclaredType) paramType);
-                case RECORD -> this.configParserGenerator.generateForRecord(roundEnvironment, (DeclaredType) paramType);
+                case CLASS -> this.configParserGenerator.generateForPojo((DeclaredType) paramType);
+                case INTERFACE -> this.configParserGenerator.generateForInterface((DeclaredType) paramType);
+                case RECORD -> this.configParserGenerator.generateForRecord((DeclaredType) paramType);
                 default -> throw new IllegalStateException();
             };
             assert result.isLeft(); // should be checked
