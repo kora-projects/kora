@@ -2,10 +2,9 @@ package ru.tinkoff.kora.opentelemetry.common;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.context.ImplicitContextKeyed;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.logging.common.MDC;
-
-import jakarta.annotation.Nullable;
 
 public class OpentelemetryContext {
     private static final Context.Key<OpentelemetryContext> KEY = new Context.Key<>() {
@@ -27,14 +26,14 @@ public class OpentelemetryContext {
 
     @Nullable
     public static Span getSpan() {
-        Context koraContext = Context.current();
+        var koraContext = Context.current();
         var opentelemetryContext = OpentelemetryContext.get(koraContext);
-        if(opentelemetryContext.getContext() == null) {
+        if (opentelemetryContext.getContext() == null) {
             return null;
         }
 
-        Span span = Span.fromContext(opentelemetryContext.getContext());
-        if(span == Span.getInvalid()) {
+        var span = Span.fromContext(opentelemetryContext.getContext());
+        if (span == Span.getInvalid()) {
             return null;
         } else {
             return span;
@@ -43,8 +42,8 @@ public class OpentelemetryContext {
 
     @Nullable
     public static String getTraceId() {
-        Span span = getSpan();
-        if(span == Span.getInvalid()) {
+        var span = getSpan();
+        if (span == Span.getInvalid()) {
             return null;
         } else {
             return span.getSpanContext().getTraceId();
@@ -52,13 +51,13 @@ public class OpentelemetryContext {
     }
 
     public static Span getSpanOrInvalid() {
-        Context koraContext = Context.current();
+        var koraContext = Context.current();
         var opentelemetryContext = OpentelemetryContext.get(koraContext);
         return Span.fromContext(opentelemetryContext.getContext());
     }
 
     public static String getTraceIdOrInvalid() {
-        Span span = getSpanOrInvalid();
+        var span = getSpanOrInvalid();
         return span.getSpanContext().getTraceId();
     }
 
