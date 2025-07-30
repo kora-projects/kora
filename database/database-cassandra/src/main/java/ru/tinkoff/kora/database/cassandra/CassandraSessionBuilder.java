@@ -12,7 +12,7 @@ import java.util.Arrays;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
 
 public class CassandraSessionBuilder {
-    public CqlSession build(CassandraConfig config, DataBaseTelemetry telemetry) {
+    public CqlSession build(CassandraConfig config, CassandraConfigurer configurer, DataBaseTelemetry telemetry) {
         var builder = CqlSession.builder();
         var loaderBuilder = new DefaultProgrammaticDriverConfigLoaderBuilder();
         loaderBuilder.withStringList(CONTACT_POINTS, config.basic().contactPoints());
@@ -37,7 +37,11 @@ public class CassandraSessionBuilder {
             builder.withMetricRegistry(telemetry.getMetricRegistry());
         }
         builder.withConfigLoader(loaderBuilder.build());
-        return builder.build();
+        if (configurer != null) {
+            return configurer.configure(builder).build();
+        } else {
+            return builder.build();
+        }
     }
 
     void setBasicOptions(DefaultProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Basic config) {
@@ -87,7 +91,7 @@ public class CassandraSessionBuilder {
             }
         }
 
-        if(config.metrics() != null) {
+        if (config.metrics() != null) {
             builder.withBoolean(METRICS_GENERATE_AGGREGABLE_HISTOGRAMS, config.metrics().publishPercentileHistogram());
         }
         if (config.metrics() != null && config.metrics().session() != null) {
@@ -133,7 +137,8 @@ public class CassandraSessionBuilder {
         if (node.cqlMessages() != null) {
             if (node.cqlMessages().highestLatency() != null) builder.withDuration(METRICS_NODE_CQL_MESSAGES_HIGHEST, node.cqlMessages().highestLatency());
             if (node.cqlMessages().lowestLatency() != null) builder.withDuration(METRICS_NODE_CQL_MESSAGES_LOWEST, node.cqlMessages().lowestLatency());
-            if (node.cqlMessages().refreshInterval() != null && !node.cqlMessages().refreshInterval().isZero()) builder.withDuration(METRICS_NODE_CQL_MESSAGES_INTERVAL, node.cqlMessages().refreshInterval());
+            if (node.cqlMessages().refreshInterval() != null && !node.cqlMessages().refreshInterval().isZero())
+                builder.withDuration(METRICS_NODE_CQL_MESSAGES_INTERVAL, node.cqlMessages().refreshInterval());
             if (node.cqlMessages().significantDigits() != null) {
                 builder.withInt(METRICS_NODE_CQL_MESSAGES_DIGITS, node.cqlMessages().significantDigits());
             } else {

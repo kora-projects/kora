@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -17,10 +18,18 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
 
     private final CassandraConfig config;
     private final DataBaseTelemetry telemetry;
+    @Nullable
+    private final CassandraConfigurer configurer;
     private volatile CqlSession cqlSession;
 
+    @Deprecated
     public CassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory) {
+        this(config, null, telemetryFactory);
+    }
+
+    public CassandraDatabase(CassandraConfig config, @Nullable CassandraConfigurer configurer, DataBaseTelemetryFactory telemetryFactory) {
         this.config = config;
+        this.configurer = configurer;
         this.telemetry = Objects.requireNonNullElse(telemetryFactory.get(
             config.telemetry(),
             Objects.requireNonNullElse(config.basic().sessionName(), "cassandra"),
@@ -45,7 +54,7 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
         logger.debug("CassandraDatabase {} starting...", config.basic().contactPoints());
         var started = System.nanoTime();
 
-        cqlSession = new CassandraSessionBuilder().build(config, telemetry);
+        cqlSession = new CassandraSessionBuilder().build(config, configurer, telemetry);
 
         logger.info("CassandraDatabase {} started in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
     }
