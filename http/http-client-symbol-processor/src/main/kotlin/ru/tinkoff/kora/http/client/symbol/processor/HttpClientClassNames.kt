@@ -26,10 +26,11 @@ object HttpClientClassNames {
 
     val httpBody = ClassName("ru.tinkoff.kora.http.common.body", "HttpBody")
     val httpHeaders = ClassName("ru.tinkoff.kora.http.common.header", "HttpHeaders")
+    val httpCookie = ClassName("ru.tinkoff.kora.http.common.cookie", "Cookie")
     val uriQueryBuilder = ClassName("ru.tinkoff.kora.http.client.common.request", "UriQueryBuilder");
 
     val header = ClassName("ru.tinkoff.kora.http.common.annotation", "Header")
     val query = ClassName("ru.tinkoff.kora.http.common.annotation", "Query")
     val path = ClassName("ru.tinkoff.kora.http.common.annotation", "Path")
-
+    val cookie = ClassName("ru.tinkoff.kora.http.common.annotation", "Cookie")
 }

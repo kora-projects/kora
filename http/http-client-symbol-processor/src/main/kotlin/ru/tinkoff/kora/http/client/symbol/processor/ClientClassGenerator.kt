@@ -21,6 +21,7 @@ import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpCli
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientResponseMapper
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientTelemetryFactory
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientUnknownException
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpCookie
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpHeaders
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpRoute
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.interceptWithClassName
@@ -98,7 +99,6 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
-
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -111,7 +111,6 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
-
                     is Parameter.HeaderParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -121,6 +120,18 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         }
 
                         if (requiresConverter(parameterType) && httpHeaders != parameterType.toClassName()) {
+                            result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
+                        }
+                    }
+                    is Parameter.CookieParameter -> {
+                        var parameterType = parameter.parameter.type.resolve()
+                        if (parameterType.isCollection()) {
+                            parameterType = parameterType.arguments[0].type?.resolve() ?: continue
+                        } else if(parameterType.isMap()) {
+                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
+                        }
+
+                        if (requiresConverter(parameterType) && httpCookie != parameterType.toClassName()) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
@@ -321,7 +332,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         } else {
             b.addStatement("val _uri = this.%L", method.simpleName.asString() + "Uri");
         }
-        b.add("\n")
+        b.add("\n\n")
         methodData.parameters.filterIsInstance<Parameter.HeaderParameter>().forEach {
             var parameterType = it.parameter.type.resolve()
             var literalName = it.parameter.name!!.asString()
@@ -392,6 +403,75 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.endControlFlow()
             }
         }
+        methodData.parameters.filterIsInstance<Parameter.CookieParameter>().forEach {
+            var parameterType = it.parameter.type.resolve()
+            var literalName = it.parameter.name!!.asString()
+            val iterable = parameterType.isCollection()
+            val nullable = parameterType.isMarkedNullable
+            if (nullable) {
+                b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
+            }
+
+            if(httpCookie == parameterType.toClassName()) {
+                b.addStatement("_headers.add(\"Cookie\", %L.toValue())", literalName)
+            } else if (parameterType.isMap()) {
+                val keyType = parameterType.arguments[0].type?.resolve()
+                if (keyType!!.toClassName() != String::class.asClassName()) {
+                    throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
+                }
+
+                b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
+                    .beginControlFlow("if(!_k.isNullOrBlank())")
+
+                val argType = parameterType.arguments[1].type?.resolve()!!
+                if(argType.isMarkedNullable) {
+                    b.beginControlFlow("if(_v != null)")
+                }
+
+                if (!requiresConverter(argType)) {
+                    b.addStatement("_headers.add(\"Cookie\", _k + \"=\" + _v.toString())")
+                } else {
+                    b.addStatement("_headers.add(\"Cookie\", _k + \"=\" + %L.convert(_v))", getConverterName(methodData, it.parameter))
+                }
+
+                if(argType.isMarkedNullable) {
+                    b.endControlFlow()
+                }
+                b.endControlFlow().endControlFlow()
+            } else {
+                if (iterable) {
+                    val argType = parameterType.arguments[0].type?.resolve()
+                    val iteratorName = literalName + "_iterator"
+                    val paramName = "_" + literalName + "_element"
+                    b.addStatement("val %N = %N.iterator()", iteratorName, literalName)
+                        .beginControlFlow("while (%N.hasNext())", it.parameter.name!!.asString() + "_iterator")
+                        .addStatement("val %N = %N.next()", paramName, iteratorName)
+                    literalName = paramName
+
+                    if (argType != null) {
+                        parameterType = argType
+                        if (argType.isMarkedNullable) {
+                            b.add("if (%L != null) ", literalName)
+                        }
+                    }
+                }
+
+                if (!requiresConverter(parameterType)) {
+                    b.addStatement("_headers.add(\"Cookie\", \"%L=\" + %N.toString())", it.name, literalName)
+                } else {
+                    b.addStatement("_headers.add(\"Cookie\", \"%L=\" + %N.convert(%N))", it.name, getConverterName(methodData, it.parameter), literalName)
+                }
+
+                if (iterable) {
+                    b.endControlFlow().add("\n")
+                }
+            }
+
+            if (nullable) {
+                b.endControlFlow()
+            }
+        }
+        b.add("\n")
         if (bodyParameter == null) {
             b.addStatement("val _body = %T.empty()", httpBody)
         } else {
