@@ -2,6 +2,12 @@ package ru.tinkoff.kora.database.symbol.processor.jdbc
 
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
+import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
+import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper
+import java.sql.PreparedStatement
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.time.OffsetDateTime
 import java.util.concurrent.Executors
 
 class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
@@ -329,6 +335,218 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>(
             "insert",
             newGenerated("Entity", newGenerated("EntityId", "1", "2").invoke(), 1, "1", "1").invoke()
+        )
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
+    }
+
+    @Test
+    fun entityTableAndUpdateWhereIdIsEmbeddedNullable() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(entity: Entity): UpdateCount
+            }
+            """.trimIndent(), """
+                @Table("entities")
+                data class Entity(@field:Id @field:Embedded val id: EntityId?, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
+            
+            """.trimIndent(), """
+                data class EntityId(val id1: String, val id2: String)
+            """.trimIndent()
+        )
+        repository.invoke<Any>(
+            "insert",
+            newGenerated("Entity", newGenerated("EntityId", "1", "2").invoke(), 1, "1", "1").invoke()
+        )
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
+    }
+
+    @Test
+    fun entityTableAndUpdateWhereIdIsEmbeddedNullableParam() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(entity: Entity): UpdateCount
+            }
+            
+            """.trimIndent(), """
+                @Table("entities")
+                data class Entity(@field:Id @field:Embedded val id: EntityId, 
+                                  @field:Column("value1") val field1: Long, 
+                                  val value2: String, 
+                                  val value3: String?)
+            
+            """.trimIndent(), """
+                data class EntityId(val id1: String, val id2: String?)
+            
+            """.trimIndent()
+        )
+        repository.invoke<Any>(
+            "insert",
+            newGenerated("Entity", newGenerated("EntityId", "1", "2").invoke(), 1, "1", "1").invoke()
+        )
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
+    }
+
+    @Test
+    fun entityTableAndUpdateWhereIdIsEmbeddedNullableParamNullable() {
+        val repository = compile(
+            listOf<Any>(), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(entity: Entity): UpdateCount
+            }
+            """.trimIndent(), """
+            @Table("entities")
+            data class Entity(@field:Id @field:Embedded val id: EntityId?, 
+                              @field:Column("value1") val field1: Long, 
+                              val value2: String, 
+                              val value3: String?)
+            """.trimIndent(), """
+            data class EntityId(val id1: String, val id2: String?)
+            """.trimIndent()
+        )
+        repository.invoke<Any>(
+            "insert",
+            newGenerated("Entity", newGenerated("EntityId", "1", "2").invoke(), 1, "1", "1").invoke()
+        )
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
+    }
+
+    class TimeJdbcResultColumnMapper : JdbcResultColumnMapper<OffsetDateTime> {
+        override fun apply(row: ResultSet, index: Int): OffsetDateTime = row.getObject(index, OffsetDateTime::class.java)
+    }
+
+    class TimeJdbcParameterColumnMapper : JdbcParameterColumnMapper<OffsetDateTime> {
+        override fun set(stmt: PreparedStatement, index: Int, value: OffsetDateTime) = stmt.setObject(index, value)
+    }
+
+    @Test
+    fun entityTableAndUpdateWhereIdIsEmbeddedWithMapper() {
+        val repository = compile(
+            listOf<Any>(TimeJdbcParameterColumnMapper()), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(entity: Entity): UpdateCount
+            }
+            
+            """.trimIndent(), """
+            @Table("entities")
+            data class Entity(@field:Id @field:Embedded val id: EntityId, 
+                              @field:Column("value1") val field1: Long, 
+                              val value2: String, 
+                              val value3: String?)
+            """.trimIndent(), """
+            data class EntityId(val id1: String, val id2: java.time.OffsetDateTime)
+            """.trimIndent()
+        )
+        repository.invoke<Any>(
+            "insert",
+            newGenerated("Entity", newGenerated("EntityId", "1", OffsetDateTime.MIN).invoke(), 1, "1", "1").invoke()
+        )
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
+    }
+
+    @Test
+    fun entityTableAndUpdateWhereIdIsEmbeddedNullableWithMapper() {
+        val repository = compile(
+            listOf<Any>(TimeJdbcParameterColumnMapper()), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(entity: Entity): UpdateCount
+            }
+            
+            """.trimIndent(), """
+            @Table("entities")
+            data class Entity(@field:Id @field:Embedded val id: EntityId?, 
+                              @field:Column("value1") val field1: Long, 
+                              val value2: String, 
+                              val value3: String?)
+            """.trimIndent(), """
+            data class EntityId(val id1: String, val id2: java.time.OffsetDateTime)
+            """.trimIndent()
+        )
+        repository.invoke<Any>(
+            "insert",
+            newGenerated("Entity", newGenerated("EntityId", "1", OffsetDateTime.MIN).invoke(), 1, "1", "1").invoke()
+        )
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
+    }
+
+    @Test
+    fun entityTableAndUpdateWhereIdIsEmbeddedNullableParamWithMapper() {
+        val repository = compile(
+            listOf<Any>(TimeJdbcParameterColumnMapper()), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(entity: Entity): UpdateCount
+            }
+            
+            """.trimIndent(), """
+            @Table("entities")
+            data class Entity(@field:Id @field:Embedded val id: EntityId, 
+                              @field:Column("value1") val field1: Long, 
+                              val value2: String, 
+                              val value3: String?)
+            """.trimIndent(), """
+            data class EntityId(val id1: String, val id2: java.time.OffsetDateTime?)
+            """.trimIndent()
+        )
+        repository.invoke<Any>(
+            "insert",
+            newGenerated("Entity", newGenerated("EntityId", "1", OffsetDateTime.MIN).invoke(), 1, "1", "1").invoke()
+        )
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
+    }
+
+    @Test
+    fun entityTableAndUpdateWhereIdIsEmbeddedNullableParamNullableWithMapper() {
+        val repository = compile(
+            listOf<Any>(TimeJdbcParameterColumnMapper()), """
+            @Repository
+            interface TestRepository : JdbcRepository {
+                            
+                @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+                fun insert(entity: Entity): UpdateCount
+            }
+            
+            """.trimIndent(), """
+            @Table("entities")
+            data class Entity(@field:Id @field:Embedded val id: EntityId?, 
+                              @field:Column("value1") val field1: Long, 
+                              val value2: String, 
+                              val value3: String?)
+            """.trimIndent(), """
+            data class EntityId(val id1: String, val id2: java.time.OffsetDateTime?)
+            """.trimIndent()
+        )
+        repository.invoke<Any>(
+            "insert",
+            newGenerated("Entity", newGenerated("EntityId", "1", OffsetDateTime.MIN).invoke(), 1, "1", "1").invoke()
         )
         Mockito.verify(executor.mockConnection)
             .prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id1 = ? AND id2 = ?")
