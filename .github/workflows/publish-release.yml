@@ -41,7 +41,7 @@ jobs:
         run: ./gradlew assemble jar
 
       - name: Gradle publish
-        run: ./gradlew publishMavenPublicationToSonatypeRepository closeSonatypeStagingRepository releaseSonatypeStagingRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg
+        run: ./gradlew uploadPublishArchive -Psigning.secretKeyRingFile=/tmp/secring.gpg
         env:
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
