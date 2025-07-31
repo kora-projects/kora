@@ -1,0 +1,8 @@
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'com.squareup.okhttp3:okhttp:5.0.0-alpha.14'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.3'
+}

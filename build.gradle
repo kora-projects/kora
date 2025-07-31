@@ -1,31 +1,12 @@
 plugins {
     id "org.jetbrains.kotlin.jvm" version "1.9.10" apply false
     id 'jacoco'
-    id('io.github.gradle-nexus.publish-plugin') version '2.0.0'
 }
 
 if (hasProperty('buildScan')) {
     buildScan {
         termsOfServiceUrl = 'https://gradle.com/terms-of-service'
         termsOfServiceAgree = 'yes'
-    }
-}
-
-nexusPublishing {
-    packageGroup = "ru.tinkoff"
-    repositories {
-        sonatype {
-            nexusUrl.set(uri("https://ossrh-staging-api.central.sonatype.com/service/local/"))
-            snapshotRepositoryUrl.set(uri("https://central.sonatype.com/repository/maven-snapshots/"))
-            username = System.getenv().getOrDefault("REPO_USER", "")
-            password = System.getenv().getOrDefault("REPO_PASSWORD", "")
-        }
-    }
-    connectTimeout = Duration.ofMinutes(15)
-    clientTimeout = Duration.ofMinutes(20)
-    transitionCheckOptions {
-        maxRetries = 400
-        delayBetween = Duration.ofSeconds(5)
     }
 }
 
@@ -138,11 +119,32 @@ subprojects {
     }
 }
 
+def cleanPublishDir = tasks.register('cleanPublishDir', Delete) {
+    delete(project.rootProject.layout.buildDirectory.dir("publishing-repository"))
+    group = 'publishing'
+}
+
+def createPublishArchive = tasks.register("createPublishArchive", Zip) {
+    from(rootProject.layout.buildDirectory.dir("publishing-repository"))
+    include('*/**')
+    exclude('*/**/maven-metadata.*')
+    group = 'publishing'
+    getArchiveFile().set(rootProject.layout.buildDirectory.file('deployment.zip'))
+}
+
+tasks.register('uploadPublishArchive', ru.tinkoff.kora.gradle.SonatypePublishTask) {
+    dependsOn(createPublishArchive)
+    archive = rootProject.layout.buildDirectory.file('deployment.zip')
+    username = System.getenv().getOrDefault("REPO_USER", "")
+    password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+}
+
 // config published libraries
 subprojects {
     if (!isPublishedLibrary(it)) {
         return
     }
+    def currentProject = it
 
     apply plugin: 'maven-publish'
     apply plugin: 'jacoco'
@@ -167,6 +169,12 @@ subprojects {
     publishing {
         publications {
             maven(MavenPublication) {
+                if (currentProject.plugins.hasPlugin(JavaTestFixturesPlugin)) {
+                    components.java.withVariantsFromConfiguration(configurations.testFixturesApiElements) { skip() }
+                    components.java.withVariantsFromConfiguration(configurations.testFixturesRuntimeElements) { skip() }
+                    suppressPomMetadataWarningsFor('testFixturesApiElements')
+                    suppressPomMetadataWarningsFor('testFixturesRuntimeElements')
+                }
                 from components.java
                 pom {
                     afterEvaluate {
@@ -220,8 +228,28 @@ subprojects {
                 }
             }
         }
+        repositories {
+            maven {
+                name = 'build'
+                url = project.rootProject.layout.buildDirectory.dir("publishing-repository")
+            }
+            maven {
+                name = 'snapshot'
+                url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+                credentials {
+                    username = System.getenv().getOrDefault("REPO_USER", "")
+                    password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+                }
+            }
+        }
     }
-
+    def publishTask = it.tasks.named('publishMavenPublicationToBuildRepository')
+    publishTask.configure {
+        it.dependsOn(cleanPublishDir)
+    }
+    createPublishArchive.configure {
+        it.dependsOn(publishTask)
+    }
 
     signing {
         required = false
