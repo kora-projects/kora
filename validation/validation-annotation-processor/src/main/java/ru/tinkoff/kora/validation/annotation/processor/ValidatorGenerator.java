@@ -103,11 +103,10 @@ public class ValidatorGenerator {
 
         final TypeName typeName = meta.validator(processingEnv).asPoetType();
         final TypeSpec.Builder validatorSpecBuilder = TypeSpec.classBuilder(meta.validatorImplementationName())
+            .addOriginatingElement(meta.sourceElement())
+            .addAnnotation(AnnotationUtils.generated(ValidatorGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addSuperinterface(typeName)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", "$S", this.getClass().getCanonicalName())
-                .build());
+            .addSuperinterface(typeName);
 
         for (TypeParameterElement typeParameter : meta.sourceElement().getTypeParameters()) {
             validatorSpecBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
