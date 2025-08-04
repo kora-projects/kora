@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
@@ -47,9 +48,7 @@ public class JsonReaderGenerator {
 
     private TypeSpec generateForClass(JsonClassReaderMeta meta) {
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonReaderName(meta.typeElement()))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", JsonReaderGenerator.class.getCanonicalName()))
-                .build())
+            .addAnnotation(AnnotationUtils.generated(JsonReaderGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(meta.typeMirror())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(meta.typeElement());

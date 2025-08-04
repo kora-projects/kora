@@ -3,6 +3,7 @@ package ru.tinkoff.kora.validation.annotation.processor;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -58,9 +59,9 @@ public class ValidatorGenerator {
         var validatorSpecBuilder = TypeSpec.classBuilder(NameUtils.generatedType(validatedElement, VALIDATOR_TYPE))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(validatorType)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", "$S", this.getClass().getCanonicalName())
-                .build());
+            .addAnnotation(AnnotationUtils.generated(ValidatorGenerator.class))
+            .addOriginatingElement(validatedElement)
+            ;
         for (var typeParameter : validatedElement.getTypeParameters()) {
             validatorSpecBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
         }

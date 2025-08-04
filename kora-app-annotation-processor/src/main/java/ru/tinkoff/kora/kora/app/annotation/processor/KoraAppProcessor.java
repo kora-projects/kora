@@ -596,7 +596,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var packageElement = (PackageElement) classElement.getEnclosingElement();
         var className = "$" + classElement.getSimpleName().toString() + "Impl";
         var classBuilder = TypeSpec.classBuilder(className)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated).addMember("value", CodeBlock.of("$S", KoraAppProcessor.class.getCanonicalName())).build())
+            .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(typeMirror);
 

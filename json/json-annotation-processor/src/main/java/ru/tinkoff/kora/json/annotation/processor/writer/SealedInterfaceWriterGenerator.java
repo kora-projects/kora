@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nonnull;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
@@ -30,16 +31,14 @@ public class SealedInterfaceWriterGenerator {
 
     public TypeSpec generateSealedWriter(TypeElement jsonElement, List<? extends Element> jsonElements) {
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(jsonElement))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", SealedInterfaceWriterGenerator.class.getCanonicalName()))
-                .build())
+            .addAnnotation(AnnotationUtils.generated(SealedInterfaceWriterGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, TypeName.get(jsonElement.asType())))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);
         this.addWriters(typeBuilder, jsonElements);
 
 
-        for (TypeParameterElement typeParameter : jsonElement.getTypeParameters()) {
+        for (var typeParameter : jsonElement.getTypeParameters()) {
             typeBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
         }
 
