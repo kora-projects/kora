@@ -3,7 +3,6 @@ package ru.tinkoff.kora.validation.annotation.processor;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
