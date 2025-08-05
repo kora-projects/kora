@@ -1,10 +1,11 @@
 package ru.tinkoff.kora.database.annotation.processor.r2dbc.extension;
 
 import com.squareup.javapoet.*;
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
-import ru.tinkoff.kora.common.annotation.Generated;
 import ru.tinkoff.kora.database.annotation.processor.DbEntityReadHelper;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcNativeTypes;
@@ -12,7 +13,6 @@ import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcTypes;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -127,7 +127,7 @@ public class R2dbcTypesExtension implements KoraExtension {
             }
 
             var type = TypeSpec.classBuilder(mapperName)
-                .addAnnotation(AnnotationSpec.builder(Generated.class).addMember("value", "$S", R2dbcTypesExtension.class.getCanonicalName()).build())
+                .addAnnotation(AnnotationUtils.generated(R2dbcTypesExtension.class))
                 .addSuperinterface(ParameterizedTypeName.get(R2dbcTypes.ROW_MAPPER, TypeName.get(entity.typeMirror())))
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
             var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);

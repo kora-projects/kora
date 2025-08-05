@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 
 import com.squareup.javapoet.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
@@ -9,6 +10,7 @@ import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -27,17 +29,16 @@ public class UserDefinedTypeStatementSetterGenerator {
         this.types = processingEnv.getTypeUtils();
     }
 
-    public void generate(TypeMirror typeMirror) {
-        this.generateMapper(typeMirror);
-        this.generateListMapper(typeMirror);
+    public void generate(TypeElement element, TypeMirror typeMirror) {
+        this.generateMapper(element, typeMirror);
+        this.generateListMapper(element, typeMirror);
     }
 
-    public void generateMapper(TypeMirror typeMirror) {
-        var element = this.types.asElement(typeMirror);
+    public void generateMapper(TypeElement element, TypeMirror typeMirror) {
         var packageName = this.elements.getPackageOf(element);
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.PARAMETER_COLUMN_MAPPER))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", UserDefinedTypeStatementSetterGenerator.class.getCanonicalName())).build())
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(typeMirror)));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
@@ -66,13 +67,12 @@ public class UserDefinedTypeStatementSetterGenerator {
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
-    public void generateListMapper(TypeMirror typeMirror) {
-        var element = this.types.asElement(typeMirror);
+    public void generateListMapper(TypeElement element, TypeMirror typeMirror) {
         var packageName = this.elements.getPackageOf(element);
         var listType = ParameterizedTypeName.get(CommonClassNames.list, TypeName.get(typeMirror));
         var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraParameterColumnMapper"))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", UserDefinedTypeStatementSetterGenerator.class.getCanonicalName())).build())
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, listType));
         var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));

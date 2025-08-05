@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
-import com.squareup.javapoet.*;
-import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.common.annotation.Generated;
+import com.squareup.javapoet.ClassName;
+import com.squareup.javapoet.JavaFile;
+import com.squareup.javapoet.TypeSpec;
+import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -12,11 +11,9 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import java.io.IOException;
-import java.util.*;
-import java.util.function.Consumer;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
@@ -31,7 +28,7 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
             QuartzSchedulingGenerator.scheduleWithTrigger
         )
     );
-    private static final List<ClassName> triggers = List.of(
+    private static final Set<ClassName> triggers = Set.of(
         JdkSchedulingGenerator.scheduleOnce,
         JdkSchedulingGenerator.scheduleAtFixedRate,
         JdkSchedulingGenerator.scheduleWithFixedDelay,
@@ -42,10 +39,8 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
     private QuartzSchedulingGenerator quartzGenerator;
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return triggers.stream()
-            .map(ClassName::canonicalName)
-            .collect(Collectors.toSet());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return triggers;
     }
 
     @Override
@@ -55,16 +50,8 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
         this.quartzGenerator = new QuartzSchedulingGenerator(processingEnv);
     }
 
-    private static void ifElementExists(Elements elements, String name, Consumer<TypeElement> consumer) {
-        var element = elements.getTypeElement(name);
-        if (element == null) {
-            return;
-        }
-        consumer.accept(element);
-    }
-
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         var triggers = annotations.stream()
             .filter(te -> {
                 for (var trigger : KoraSchedulingAnnotationProcessor.triggers) {
@@ -87,23 +74,16 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
                 this.generateModule(type, methods);
             } catch (ProcessingErrorException e) {
                 e.printError(this.processingEnv);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
-            // todo exceptions
         }
-
-        return false;
     }
 
-    private void generateModule(TypeElement type, List<? extends Element> methods) throws IOException {
+    private void generateModule(TypeElement type, List<? extends Element> methods) {
         var module = TypeSpec.interfaceBuilder("$" + type.getSimpleName() + "_SchedulingModule")
-            .addAnnotation(AnnotationSpec.builder(Generated.class)
-                .addMember("value", CodeBlock.of("$S", KoraSchedulingAnnotationProcessor.class.getCanonicalName()))
-                .build())
-            .addAnnotation(AnnotationSpec.builder(ClassName.get("ru.tinkoff.kora.common", "Module")).build())
-            .addModifiers(Modifier.PUBLIC)
-            .addOriginatingElement(type);
+            .addOriginatingElement(type)
+            .addAnnotation(AnnotationUtils.generated(KoraSchedulingAnnotationProcessor.class))
+            .addAnnotation(CommonClassNames.module)
+            .addModifiers(Modifier.PUBLIC);
         for (var method : methods) {
             var m = (ExecutableElement) method;
             var trigger = this.parseSchedulerType(method);
@@ -114,7 +94,7 @@ public class KoraSchedulingAnnotationProcessor extends AbstractKoraProcessor {
         }
         var packageName = elements.getPackageOf(type).getQualifiedName().toString();
         var moduleFile = JavaFile.builder(packageName, module.build());
-        moduleFile.build().writeTo(this.processingEnv.getFiler());
+        CommonUtils.safeWriteTo(this.processingEnv, moduleFile.build());
     }
 
     private SchedulingTrigger parseSchedulerType(Element method) {

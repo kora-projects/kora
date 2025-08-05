@@ -18,9 +18,7 @@ public class EnumWriterGenerator {
     public TypeSpec generateEnumWriter(TypeElement typeElement) {
         var typeName = ClassName.get(typeElement);
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonWriterName(typeElement))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", JsonWriterGenerator.class.getCanonicalName()))
-                .build())
+            .addAnnotation(AnnotationUtils.generated(JsonWriterGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonWriter, typeName))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(typeElement);

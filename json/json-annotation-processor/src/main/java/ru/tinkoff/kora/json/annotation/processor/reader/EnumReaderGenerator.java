@@ -20,9 +20,7 @@ public class EnumReaderGenerator {
         var enumValue = this.detectValueType(typeElement);
 
         var typeBuilder = TypeSpec.classBuilder(JsonUtils.jsonReaderName(typeElement))
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", JsonReaderGenerator.class.getCanonicalName()))
-                .build())
+            .addAnnotation(AnnotationUtils.generated(JsonReaderGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, typeName))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(typeElement);

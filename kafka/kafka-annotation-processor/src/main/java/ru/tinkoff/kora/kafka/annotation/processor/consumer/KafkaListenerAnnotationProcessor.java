@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 
+import com.squareup.javapoet.ClassName;
 import ru.tinkoff.kora.annotation.processor.common.AbstractKoraProcessor;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
@@ -8,21 +9,23 @@ import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import java.io.IOException;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public class KafkaListenerAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(KafkaClassNames.kafkaListener.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(KafkaClassNames.kafkaListener);
     }
 
     @Override
-    public boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        var kafkaListener = this.elements.getTypeElement(KafkaClassNames.kafkaListener.canonicalName());
-        var typeElements = roundEnv.getElementsAnnotatedWith(kafkaListener)
+    public void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        var typeElements = annotatedElements.getOrDefault(KafkaClassNames.kafkaListener, List.of())
             .stream()
+            .map(AnnotatedElement::element)
             .map(Element::getEnclosingElement)
             .map(TypeElement.class::cast)
             .collect(Collectors.toSet());
@@ -35,8 +38,6 @@ public class KafkaListenerAnnotationProcessor extends AbstractKoraProcessor {
                 throw new RuntimeException(e);
             }
         }
-
-        return false;
     }
 
     private void processController(TypeElement controller) throws IOException {

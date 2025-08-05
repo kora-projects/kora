@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nonnull;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
@@ -30,9 +31,7 @@ public class SealedInterfaceReaderGenerator {
     public TypeSpec generateSealedReader(TypeElement jsonElement) {
         var typeName = JsonUtils.jsonReaderName(jsonElement);
         var typeBuilder = TypeSpec.classBuilder(typeName)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.koraGenerated)
-                .addMember("value", CodeBlock.of("$S", SealedInterfaceReaderGenerator.class.getCanonicalName()))
-                .build())
+            .addAnnotation(AnnotationUtils.generated(SealedInterfaceReaderGenerator.class))
             .addSuperinterface(ParameterizedTypeName.get(JsonTypes.jsonReader, ClassName.get(jsonElement)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addOriginatingElement(jsonElement);
