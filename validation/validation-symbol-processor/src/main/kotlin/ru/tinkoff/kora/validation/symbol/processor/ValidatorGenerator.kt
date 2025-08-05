@@ -30,6 +30,8 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         val parameterSpecs = ArrayList<ParameterSpec>()
         val typeName = meta.validator.contract
         val validatorSpecBuilder = TypeSpec.classBuilder(meta.sourceDeclaration.generatedClassName("Validator"))
+            .generated(ValidatorGenerator::class)
+            .addOriginatingKSFile(meta.sourceDeclaration)
             .addSuperinterface(typeName)
             .addAnnotation(
                 AnnotationSpec.builder(CommonClassNames.generated)

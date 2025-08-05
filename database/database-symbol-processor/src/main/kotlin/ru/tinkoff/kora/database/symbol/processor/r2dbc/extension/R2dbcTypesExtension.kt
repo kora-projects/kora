@@ -22,6 +22,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlux
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMono
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -133,6 +134,7 @@ class R2dbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             }
             val type = TypeSpec.classBuilder(mapperName)
                 .generated(R2dbcTypesExtension::class)
+                .addOriginatingKSFile(entity.classDeclaration)
                 .addSuperinterface(R2dbcTypes.rowMapper.parameterizedBy(entity.type.toTypeName()))
 
             val constructor = FunSpec.constructorBuilder()

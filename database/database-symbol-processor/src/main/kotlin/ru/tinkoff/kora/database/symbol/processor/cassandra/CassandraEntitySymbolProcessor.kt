@@ -22,9 +22,9 @@ class CassandraEntitySymbolProcessor(environment: SymbolProcessorEnvironment) : 
                 kspLogger.error("Can't parse entity from type: $annotated", annotated)
                 continue
             }
-            generator.generateRowMapper(entity)
-            generator.generateResultSetMapper(entity)
-            generator.generateListResultSetMapper(entity)
+            generator.generateRowMapper(entity, false)
+            generator.generateResultSetMapper(entity, false)
+            generator.generateListResultSetMapper(entity, false)
         }
         return emptyList()
     }

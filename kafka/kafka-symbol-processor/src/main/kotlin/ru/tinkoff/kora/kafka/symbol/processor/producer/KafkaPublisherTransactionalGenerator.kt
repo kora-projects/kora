@@ -74,6 +74,7 @@ class KafkaPublisherTransactionalGenerator(
         val b = typeElement.extendsKeepAop(implementationName, resolver)
             .addSuperinterface(CommonClassNames.lifecycle)
             .addOriginatingKSFile(typeElement)
+            .generated(KafkaPublisherTransactionalGenerator::class)
             .addProperty(PropertySpec.builder("delegate", KafkaClassNames.transactionalPublisherImpl.parameterizedBy(publisherImplementationTypeName), KModifier.PRIVATE, KModifier.FINAL)
                 .initializer("%T(config, factory)", KafkaClassNames.transactionalPublisherImpl)
                 .build())

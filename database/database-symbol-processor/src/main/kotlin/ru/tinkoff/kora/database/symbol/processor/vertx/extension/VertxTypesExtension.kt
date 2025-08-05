@@ -18,6 +18,7 @@ import ru.tinkoff.kora.database.symbol.processor.vertx.VertxTypes
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -80,6 +81,7 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             }
             val type = TypeSpec.classBuilder(mapperName)
                 .generated(VertxTypesExtension::class)
+                .addOriginatingKSFile(entity.classDeclaration)
                 .addSuperinterface(VertxTypes.rowMapper.parameterizedBy(entity.type.toTypeName()))
 
             val constructor = FunSpec.constructorBuilder()
@@ -145,6 +147,7 @@ class VertxTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
             }
             val type = TypeSpec.classBuilder(mapperName)
                 .generated(VertxTypesExtension::class)
+                .addOriginatingKSFile(entity.classDeclaration)
                 .addSuperinterface(VertxTypes.rowSetMapper.parameterizedBy(rowSetArg.toTypeName()))
 
             val readEntity = entityReader.readEntity("_rowValue", entity)

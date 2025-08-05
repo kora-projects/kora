@@ -164,6 +164,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         val targetNamespace = webService.findValue<String>("targetNamespace")!!
         val builder = TypeSpec.classBuilder(service.getOuterClassesAsPrefix() + service.simpleName.asString() + "_SoapClientImpl")
             .generated(WebServiceClientSymbolProcessor::class)
+            .addOriginatingKSFile(service)
             .addProperty("envelopeProcessor", Function::class.parameterizedBy(SoapEnvelope::class, SoapEnvelope::class), KModifier.PRIVATE)
             .addProperty("jaxb", soapClasses.jaxbContextTypeName(), KModifier.PRIVATE)
             .primaryConstructor(

@@ -70,7 +70,7 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
             }
             return DbEntity.parseEntity(rowType)?.let { entity ->
                 fromExtension(resolver, type, rowType.declaration.rowMapperName()) {
-                    generator.generateRowMapper(entity)
+                    generator.generateRowMapper(entity, true)
                 }
             }
         }
@@ -91,7 +91,7 @@ class JdbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val c
                 val entity = DbEntity.parseEntity(rowType)
                 if (entity != null) {
                     return fromExtension(resolver, type, rowType.declaration.listResultSetMapperName()) {
-                        generator.generateListResultSetMapper(entity)
+                        generator.generateListResultSetMapper(entity, true)
                     }
                 } else {
                     val resultSetMapperDecl = resolver.getClassDeclarationByName(JdbcTypes.jdbcResultSetMapper.canonicalName)!!

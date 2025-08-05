@@ -15,11 +15,11 @@ class WebServiceClientSymbolProcessor(private val env: SymbolProcessorEnvironmen
     private fun processService(service: KSClassDeclaration, soapClasses: SoapClasses, generator: SoapClientImplGenerator) {
         val typeSpec = generator.generate(service, soapClasses)
         val typeFileSpec = FileSpec.get(service.packageName.asString(), typeSpec)
-        typeFileSpec.writeTo(env.codeGenerator, true)
+        typeFileSpec.writeTo(env.codeGenerator, false)
 
         val moduleSpec = generator.generateModule(service, soapClasses)
         val moduleFileSpec = FileSpec.get(service.packageName.asString(), moduleSpec)
-        moduleFileSpec.writeTo(env.codeGenerator, true)
+        moduleFileSpec.writeTo(env.codeGenerator, false)
     }
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {

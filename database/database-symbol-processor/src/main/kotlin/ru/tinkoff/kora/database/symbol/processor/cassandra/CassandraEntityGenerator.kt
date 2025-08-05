@@ -30,7 +30,7 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         }
     )
 
-    fun generateResultSetMapper(entity: DbEntity) {
+    fun generateResultSetMapper(entity: DbEntity, aggregating: Boolean) {
         val rowType = entity.type
         val mapperName = rowType.resultSetMapperClassName()
         val packageName = rowType.declaration.packageName.asString()
@@ -60,10 +60,10 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(packageName, type.build()).writeTo(codeGenerator, true, listOfNotNull(entity.classDeclaration.containingFile))
+        FileSpec.get(packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.classDeclaration.containingFile))
     }
 
-    fun generateListResultSetMapper(entity: DbEntity) {
+    fun generateListResultSetMapper(entity: DbEntity, aggregating: Boolean) {
         val rowType = entity.type
         val mapperName = rowType.listResultSetMapperClassName()
         val packageName = rowType.declaration.packageName.asString()
@@ -97,10 +97,10 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(packageName, type.build()).writeTo(codeGenerator, true, listOfNotNull(entity.classDeclaration.containingFile))
+        FileSpec.get(packageName, type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.classDeclaration.containingFile))
     }
 
-    fun generateRowMapper(entity: DbEntity) {
+    fun generateRowMapper(entity: DbEntity, aggregating: Boolean) {
         val mapperName = entity.type.rowMapperClassName()
         val type = TypeSpec.classBuilder(mapperName)
             .generated(CassandraTypesExtension::class)
@@ -121,7 +121,7 @@ class CassandraEntityGenerator(val codeGenerator: CodeGenerator) {
         type.primaryConstructor(constructor.build())
         type.addFunction(apply.build())
 
-        FileSpec.get(entity.classDeclaration.packageName.asString(), type.build()).writeTo(codeGenerator, true, listOfNotNull(entity.classDeclaration.containingFile))
+        FileSpec.get(entity.classDeclaration.packageName.asString(), type.build()).writeTo(codeGenerator, aggregating, listOfNotNull(entity.classDeclaration.containingFile))
     }
 
     private fun parseIndexes(entity: DbEntity, rsName: String): CodeBlock {

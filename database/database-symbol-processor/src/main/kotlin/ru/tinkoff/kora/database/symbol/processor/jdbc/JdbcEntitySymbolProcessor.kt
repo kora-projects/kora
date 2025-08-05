@@ -14,7 +14,7 @@ class JdbcEntitySymbolProcessor(environment: SymbolProcessorEnvironment) : BaseS
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         for (annotated in resolver.getSymbolsWithAnnotation(JdbcTypes.jdbcEntity.canonicalName)) {
             if (annotated !is KSClassDeclaration || !annotated.modifiers.contains(Modifier.DATA)) {
-                kspLogger.error("@EntityJdbc only works on records and java bean like classes", annotated)
+                kspLogger.error("@EntityJdbc only works on data classes, records and java bean like classes", annotated)
                 continue
             }
             val entity = DbEntity.parseEntity(annotated.asStarProjectedType())
@@ -22,9 +22,9 @@ class JdbcEntitySymbolProcessor(environment: SymbolProcessorEnvironment) : BaseS
                 kspLogger.error("Can't parse entity from type: $annotated", annotated)
                 continue
             }
-            generator.generateRowMapper(entity)
-            generator.generateListResultSetMapper(entity)
-            generator.generateResultSetMapper(entity)
+            generator.generateRowMapper(entity, false)
+            generator.generateListResultSetMapper(entity, false)
+            generator.generateResultSetMapper(entity, false)
         }
         return emptyList()
     }

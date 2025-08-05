@@ -19,7 +19,6 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.visitClass
-import java.io.IOException
 
 class ConfigSourceSymbolProcessor(
     environment: SymbolProcessorEnvironment
@@ -61,11 +60,7 @@ class ConfigSourceSymbolProcessor(
                 val fileSpec = FileSpec.builder(packageElement, type.name!!)
                     .addType(type)
                     .build()
-                try {
-                    fileSpec.writeTo(codeGenerator, false)
-                } catch (e: IOException) {
-                    throw RuntimeException(e)
-                }
+                fileSpec.writeTo(codeGenerator, false)
             }
         }
         return listOf()

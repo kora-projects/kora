@@ -62,7 +62,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
                     return fromProcessor(resolver, rowSetParam.resultSetMapperClassName())
                 } else {
                     return fromExtension(resolver, rowSetKSType, rowSetParam.resultSetMapperClassName()) {
-                        entityGenerator.generateResultSetMapper(entity)
+                        entityGenerator.generateResultSetMapper(entity, true)
                     }
                 }
             }
@@ -86,7 +86,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
                 return fromProcessor(resolver, rowResolvedType.listResultSetMapperClassName())
             } else {
                 return fromExtension(resolver, rowSetKSType, rowResolvedType.listResultSetMapperClassName()) {
-                    entityGenerator.generateListResultSetMapper(entity)
+                    entityGenerator.generateListResultSetMapper(entity, true)
                 }
             }
         }
@@ -121,7 +121,7 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             return fromProcessor(resolver, rowType.rowMapperClassName())
         } else {
             return fromExtension(resolver, rowKSType, rowType.rowMapperClassName()) {
-                entityGenerator.generateRowMapper(entity)
+                entityGenerator.generateRowMapper(entity, true)
             }
         }
     }

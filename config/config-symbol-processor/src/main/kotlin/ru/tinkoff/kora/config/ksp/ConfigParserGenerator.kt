@@ -122,6 +122,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
+            .addOriginatingKSFile(element)
         val fields = f.left()!!
         val hasRequiredFields = fields.stream()
             .anyMatch { !it.hasDefault && !it.isNullable }
@@ -174,6 +175,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
+            .addOriginatingKSFile(decl)
         val fields = f.left()!!
 
         val hasRequiredFields = fields.any { !it.hasDefault && !it.isNullable }
@@ -226,6 +228,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
+            .addOriginatingKSFile(targetType.declaration)
         val fields = f.left()!!
 
         val implClassName = decl.toClassName()

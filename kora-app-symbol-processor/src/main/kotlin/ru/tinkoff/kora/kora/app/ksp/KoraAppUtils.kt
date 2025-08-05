@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.kora.app.ksp
 
-import com.google.devtools.ksp.*
-import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.getDeclaredFunctions
+import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.validate
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 
@@ -38,11 +40,3 @@ object KoraAppUtils {
         return constructors[0]
     }
 }
-
-
-fun isClassExists(resolver: Resolver, fullClassName: String): Boolean {
-    val declaration = resolver.getClassDeclarationByName(fullClassName)
-    return declaration != null
-}
-
-

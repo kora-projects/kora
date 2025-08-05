@@ -23,6 +23,7 @@ import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.configValueExtractor
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
@@ -83,6 +84,7 @@ class CacheSymbolProcessor(
             val moduleSpecBuilder =
                 TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
                     .generated(CacheSymbolProcessor::class)
+                    .addOriginatingKSFile(cacheContract)
                     .addAnnotation(CommonClassNames.module)
                     .addFunction(getCacheMethodImpl(cacheContract, cacheContractType))
                     .addFunction(getCacheMethodConfig(cacheContract, cacheContractType, resolver))
