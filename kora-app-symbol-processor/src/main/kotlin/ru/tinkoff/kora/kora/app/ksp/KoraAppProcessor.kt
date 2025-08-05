@@ -35,15 +35,12 @@ import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
 import java.util.function.Supplier
-import javax.annotation.processing.SupportedOptions
 
-@SupportedOptions("koraLogLevel")
 class KoraAppProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
     companion object {
         const val COMPONENTS_PER_HOLDER_CLASS = 500
-        const val OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled"
     }
 
     private val processedDeclarations = hashMapOf<String, Pair<KSClassDeclaration, ProcessingState>>()

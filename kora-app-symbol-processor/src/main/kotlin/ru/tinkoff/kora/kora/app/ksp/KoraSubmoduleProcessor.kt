@@ -13,7 +13,6 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessor.Companion.OPTION_SUBMODULE_GENERATION
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.findSinglePublicConstructor
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateComponent
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateModule
@@ -25,6 +24,10 @@ import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseTags
 
 class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : SymbolProcessor {
+    companion object {
+        const val OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled"
+    }
+
     private val isKoraAppSubmoduleEnabled = environment.options.getOrDefault(OPTION_SUBMODULE_GENERATION, "false").toBoolean()
 
     private val submodules = mutableSetOf<KSClassDeclaration>()
@@ -115,7 +118,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
     private fun generateSubmodule(submodule: KSClassDeclaration) {
         val packageName = submodule.packageName.asString()
         val b = TypeSpec.interfaceBuilder(submodule.simpleName.asString() + "SubmoduleImpl")
-            .generated(KoraAppProcessor::class)
+            .generated(KoraSubmoduleProcessor::class)
         var componentCounter = 0
         for (component in components) {
             val constructor = component.findSinglePublicConstructor()

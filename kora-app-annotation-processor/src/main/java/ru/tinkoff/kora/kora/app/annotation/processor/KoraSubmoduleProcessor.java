@@ -10,7 +10,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -111,7 +110,6 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
             var packageElement = this.elements.getPackageOf(appPart);
             var b = TypeSpec.interfaceBuilder(appPart.getSimpleName() + "SubmoduleImpl")
                 .addModifiers(Modifier.PUBLIC);
-            messager.printMessage(Diagnostic.Kind.NOTE, "WRITING " + appPart.getSimpleName() + "SubmoduleImpl");
             var componentNumber = 0;
             for (var component : this.components) {
                 var constructor = this.findSinglePublicConstructor(component);
