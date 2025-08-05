@@ -1,19 +1,19 @@
 package ru.tinkoff.kora.kora.app.ksp
 
 import com.google.devtools.ksp.getAllSuperTypes
-import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getDeclaredFunctions
+import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
-import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
-import ru.tinkoff.kora.common.annotation.Generated
+import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateComponent
+import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateModule
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
@@ -27,10 +27,8 @@ import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
-import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.visitClass
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
@@ -49,10 +47,16 @@ class KoraAppProcessor(
     private val annotatedModules = mutableListOf<KSClassDeclaration>()
     private val components = mutableSetOf<KSClassDeclaration>()
 
-    private lateinit var resolver: Resolver
     private var ctx: ProcessingContext? = null
+    private var hasDeferred = false
 
     override fun finish() {
+        if (hasDeferred) {
+            for (entry in processedDeclarations.values) {
+                kspLogger.warn("Kora app wasn't process because som symbols are not valid", entry.first)
+            }
+            return
+        }
         for (element in processedDeclarations.entries) {
             val (declaration, processingResult) = element.value
             when (processingResult) {
@@ -90,20 +94,32 @@ class KoraAppProcessor(
     }
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
-        this.resolver = resolver
-
+        val deferred = mutableListOf<KSAnnotated>()
         if (ctx == null) {
             ctx = ProcessingContext(resolver, kspLogger, codeGenerator)
         } else {
             ctx!!.resolver = resolver
         }
+        val oldModules = annotatedModules.size
+        val oldComponents = components.size
 
-        val newModules = this.processModules(resolver)
-        val newComponents = this.processComponents(resolver)
-        if (newModules || newComponents) {
+        this.processModules(resolver).let { deferred.addAll(it) }
+        try {
+            this.processComponents(resolver).let { deferred.addAll(it) }
+        } catch (e: ProcessingErrorException) {
+            e.printError(kspLogger)
+            return deferred
+        }
+
+        if (deferred.isNotEmpty()) {
+            deferred.addAll(resolver.getSymbolsWithAnnotation(CommonClassNames.koraApp.canonicalName))
+            return deferred
+        }
+
+        if (oldModules != annotatedModules.size || oldComponents != components.size) {
             val newDeclarations = hashMapOf<String, Pair<KSClassDeclaration, ProcessingState>>()
             for ((k, v) in processedDeclarations) {
-                val none = parseNone(v.first)
+                val none = parseNone(resolver, v.first)
                 newDeclarations[k] = v.first to none
             }
             processedDeclarations.clear()
@@ -112,18 +128,20 @@ class KoraAppProcessor(
         val results = linkedMapOf<String, Pair<KSClassDeclaration, ProcessingState>>()
 
         val koraAppElements = resolver.getSymbolsWithAnnotation(CommonClassNames.koraApp.canonicalName).toList()
-        val unableToProcess = koraAppElements.filterNot { it.validate() }.toMutableList()
-        for (symbol in koraAppElements) {
-            symbol.visitClass { declaration ->
-                if (declaration.classKind == ClassKind.INTERFACE) {
+
+        for (declaration in koraAppElements) {
+            if (declaration is KSClassDeclaration && declaration.classKind == ClassKind.INTERFACE) {
+                if (declaration.validateModule()) {
                     kspLogger.info("@KoraApp found: ${declaration.qualifiedName!!.asString()}", declaration)
                     val key = declaration.qualifiedName!!.asString()
                     processedDeclarations.computeIfAbsent(key) {
-                        declaration to parseNone(declaration)
+                        declaration to parseNone(resolver, declaration)
                     }
                 } else {
-                    kspLogger.error("@KoraApp can be placed only on interfaces", declaration)
+                    deferred.add(declaration)
                 }
+            } else {
+                kspLogger.error("@KoraApp can be placed only on interfaces", declaration)
             }
         }
 
@@ -135,7 +153,7 @@ class KoraAppProcessor(
                     continue
                 }
                 if (processingResult is ProcessingState.Failed) {
-                    processingResult = parseNone(declaration)
+                    processingResult = parseNone(resolver, declaration)
                 }
                 if (processingResult is ProcessingState.None) {
                     processingResult = this.processNone(processingResult)
@@ -150,7 +168,6 @@ class KoraAppProcessor(
                     results[actualKey] = declaration to result
                 }
             } catch (e: NewRoundException) {
-                unableToProcess.add(declaration)
                 results[actualKey] = declaration to ProcessingState.NewRoundRequired(
                     e.source,
                     e.type,
@@ -162,10 +179,8 @@ class KoraAppProcessor(
             }
         }
         processedDeclarations.putAll(results)
-        for (generatedFile in codeGenerator.generatedFile) {
-            kspLogger.info("Generated by extension: ${generatedFile.canonicalPath}")
-        }
-        return unableToProcess
+        hasDeferred = deferred.isNotEmpty()
+        return deferred
     }
 
     private fun processProcessing(processing: ProcessingState.Processing): ProcessingState {
@@ -173,16 +188,16 @@ class KoraAppProcessor(
     }
 
     private fun processNone(none: ProcessingState.None): ProcessingState {
-        val stack = ArrayDeque<ProcessingState.ResolutionFrame>()
+        val stack = java.util.ArrayDeque<ProcessingState.ResolutionFrame>()
         for (i in 0 until none.rootSet.size) {
             stack.addFirst(ProcessingState.ResolutionFrame.Root(i))
         }
         return ProcessingState.Processing(none.root, none.allModules, none.sourceDeclarations, none.templateDeclarations, none.rootSet, ArrayList(), stack)
     }
 
-    private fun parseNone(declaration: KSClassDeclaration): ProcessingState {
+    private fun parseNone(resolver: Resolver, declaration: KSClassDeclaration): ProcessingState {
         if (declaration.classKind != ClassKind.INTERFACE) {
-            return ProcessingState.Failed(ProcessingErrorException("@KoraApp is only applicable to interfaces", declaration), ArrayDeque())
+            return ProcessingState.Failed(ProcessingErrorException("@KoraApp is only applicable to interfaces", declaration), java.util.ArrayDeque())
         }
         try {
             val rootErasure = declaration.asStarProjectedType()
@@ -199,7 +214,7 @@ class KoraAppProcessor(
                 .toMutableList()
 
             val allInterfaces = declaration.getAllSuperTypes().toList()
-            val submodules = findKoraSubmoduleModules(allInterfaces, declaration)
+            val submodules = findKoraSubmoduleModules(resolver, allInterfaces, declaration)
             val allModules = (submodules + annotatedModules)
                 .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
                 .filter { it.qualifiedName?.asString() != "kotlin.Any" }
@@ -246,7 +261,7 @@ class KoraAppProcessor(
         }
     }
 
-    private fun findKoraSubmoduleModules(supers: List<KSType>, koraApp: KSClassDeclaration): List<KSClassDeclaration> {
+    private fun findKoraSubmoduleModules(resolver: Resolver, supers: List<KSType>, koraApp: KSClassDeclaration): List<KSClassDeclaration> {
         return supers
             .map { it.declaration as KSClassDeclaration }
             .filter {
@@ -276,46 +291,37 @@ class KoraAppProcessor(
             .toList()
     }
 
-    private fun processModules(resolver: Resolver): Boolean {
-        val moduleOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.module.canonicalName).toList()
-        for (moduleSymbol in moduleOfSymbols) {
-            moduleSymbol.visitClass { moduleDeclaration ->
-                if (moduleDeclaration.classKind == ClassKind.INTERFACE) {
-                    kspLogger.info("Module found: ${moduleDeclaration.qualifiedName!!.asString()}", moduleDeclaration)
-                    annotatedModules.add(moduleDeclaration)
+    private fun processModules(resolver: Resolver): List<KSAnnotated> {
+        val deferred = mutableListOf<KSAnnotated>()
+        val moduleOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.module.canonicalName)
+        for (module in moduleOfSymbols) {
+            if (module is KSClassDeclaration && module.classKind == ClassKind.INTERFACE) {
+                if (module.validateModule()) {
+                    annotatedModules.add(module)
+                } else {
+                    deferred.add(module)
                 }
             }
         }
-        return moduleOfSymbols.isNotEmpty()
+        return deferred
     }
 
-    private fun processComponents(resolver: Resolver): Boolean {
-        val componentOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.component.canonicalName).toList()
-
-        val logComponents = mutableListOf<KSClassDeclaration>()
-        val logWaitsProxy = mutableListOf<KSClassDeclaration>()
+    private fun processComponents(resolver: Resolver): List<KSAnnotated> {
+        val deferred = mutableListOf<KSAnnotated>()
+        val componentOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.component.canonicalName)
 
         for (componentSymbol in componentOfSymbols) {
-            componentSymbol.visitClass { componentDeclaration ->
-                if (componentDeclaration.classKind == ClassKind.CLASS && !componentDeclaration.modifiers.contains(Modifier.ABSTRACT)) {
-                    if (hasAopAnnotations(componentSymbol)) {
-                        logWaitsProxy.add(componentDeclaration)
+            if (componentSymbol is KSClassDeclaration && componentSymbol.classKind == ClassKind.CLASS && !componentSymbol.modifiers.contains(Modifier.ABSTRACT)) {
+                if (!hasAopAnnotations(componentSymbol)) {
+                    if (componentSymbol.validateComponent()) {
+                        components.add(componentSymbol)
                     } else {
-                        components.add(componentDeclaration)
-                        logComponents.add(componentDeclaration)
+                        deferred.add(componentSymbol)
                     }
                 }
             }
         }
-
-        if (logWaitsProxy.isNotEmpty()) {
-            kspLogger.info("Component waiting for aspects found: $logWaitsProxy")
-        }
-        if (logComponents.isNotEmpty()) {
-            kspLogger.info("Component found: $logComponents")
-        }
-
-        return componentOfSymbols.isNotEmpty()
+        return deferred
     }
 
 
@@ -323,9 +329,9 @@ class KoraAppProcessor(
         val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx!!, components)
         kspLogger.logging("Found interceptors: $interceptors")
         val applicationImplFile = this.generateImpl(declaration, allModules)
-        val applicationGraphFile = this.generateApplicationGraph(resolver, declaration, allModules, components, interceptors)
-        applicationImplFile.writeTo(codeGenerator = codeGenerator, aggregating = true)
-        applicationGraphFile.writeTo(codeGenerator = codeGenerator, aggregating = true)
+        val applicationGraphFile = this.generateApplicationGraph(declaration, allModules, components, interceptors)
+        applicationImplFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
+        applicationGraphFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
     }
 
     private fun generateImpl(declaration: KSClassDeclaration, modules: List<KSClassDeclaration>): FileSpec {
@@ -337,36 +343,27 @@ class KoraAppProcessor(
             fileName = moduleName
         )
         val classBuilder = TypeSpec.classBuilder(moduleName)
-            .addOriginatingKSFile(declaration)
             .generated(KoraAppProcessor::class)
             .addModifiers(KModifier.PUBLIC, KModifier.OPEN)
             .addSuperinterface(declaration.toClassName())
 
         for ((index, module) in modules.withIndex()) {
             val moduleClass = module.toClassName()
-            if (module.containingFile != null) {
-                classBuilder.addOriginatingKSFile(module)
-            }
             classBuilder.addProperty(
                 PropertySpec.builder("module$index", moduleClass)
-                    .initializer("@%T(%S) object : %T {}", Generated::class, KoraAppProcessor::class.qualifiedName, moduleClass)
+                    .initializer("@%T(%S) object : %T {}", CommonClassNames.generated, KoraAppProcessor::class.qualifiedName, moduleClass)
                     .build()
             )
-        }
-        for (component in components) {
-            classBuilder.addOriginatingKSFile(component)
         }
         return fileSpec.addType(classBuilder.build()).build()
     }
 
     private fun generateApplicationGraph(
-        resolver: Resolver,
         declaration: KSClassDeclaration,
         allModules: List<KSClassDeclaration>,
         graph: List<ResolvedComponent>,
         interceptors: ComponentInterceptors
     ): FileSpec {
-        val supplier: KSClassDeclaration = resolver.getClassDeclarationByName(Supplier::class.qualifiedName.toString())!!
         val packageName = declaration.packageName.asString()
         val graphName = "${declaration.simpleName.asString()}Graph"
         val graphTypeName = ClassName(packageName, graphName)
@@ -377,9 +374,8 @@ class KoraAppProcessor(
         )
 
         val implClass = ClassName(packageName, "\$${declaration.simpleName.asString()}Impl")
-        val supplierSuperInterface = supplier.toClassName().parameterizedBy(CommonClassNames.applicationGraphDraw)
+        val supplierSuperInterface = Supplier::class.asClassName().parameterizedBy(CommonClassNames.applicationGraphDraw)
         val classBuilder = TypeSpec.classBuilder(graphName)
-            .addOriginatingKSFile(declaration)
             .generated(KoraAppProcessor::class)
             .addSuperinterface(supplierSuperInterface)
             .addFunction(
@@ -390,12 +386,6 @@ class KoraAppProcessor(
                     .build()
             )
 
-        for (component in this.components) {
-            classBuilder.addOriginatingKSFile(component)
-        }
-        for (module in annotatedModules) {
-            classBuilder.addOriginatingKSFile(module)
-        }
         val companion = TypeSpec.companionObjectBuilder()
             .generated(KoraAppProcessor::class)
             .addProperty("graphDraw", CommonClassNames.applicationGraphDraw)
