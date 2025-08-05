@@ -1,18 +1,18 @@
 package ru.tinkoff.kora.kora.app.ksp
 
-import com.google.devtools.ksp.*
-import com.google.devtools.ksp.processing.CodeGenerator
+import com.google.devtools.ksp.getAllSuperTypes
+import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import org.slf4j.Logger
-import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
 import ru.tinkoff.kora.common.annotation.Generated
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
@@ -22,40 +22,35 @@ import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.kora.app.ksp.declaration.ModuleDeclaration
 import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.ksp.interceptor.ComponentInterceptors
-import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
+import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import java.io.IOException
+import ru.tinkoff.kora.ksp.common.visitClass
 import java.lang.reflect.ParameterizedType
 import java.lang.reflect.Type
 import java.util.*
 import java.util.function.Supplier
-import javax.annotation.processing.SupportedOptions
 
-@SupportedOptions("koraLogLevel")
 class KoraAppProcessor(
     private val environment: SymbolProcessorEnvironment
 ) : BaseSymbolProcessor(environment) {
     companion object {
         const val COMPONENTS_PER_HOLDER_CLASS = 500
-        const val OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled"
     }
 
     private val processedDeclarations = hashMapOf<String, Pair<KSClassDeclaration, ProcessingState>>()
 
-    private val codeGenerator: CodeGenerator = environment.codeGenerator
-    private val log: Logger = LoggerFactory.getLogger(KoraAppProcessor::class.java)
-    private val appParts = mutableSetOf<KSClassDeclaration>() // todo split in two
+    private val codeGenerator = environment.codeGenerator
     private val annotatedModules = mutableListOf<KSClassDeclaration>()
     private val components = mutableSetOf<KSClassDeclaration>()
 
     private lateinit var resolver: Resolver
     private var ctx: ProcessingContext? = null
-    private var isKoraAppSubmoduleEnabled = false
 
     override fun finish() {
         for (element in processedDeclarations.entries) {
@@ -92,15 +87,9 @@ class KoraAppProcessor(
                 is ProcessingState.Processing -> throw IllegalStateException()
             }
         }
-        try {
-            generateAppParts()
-        } catch (e: IOException) {
-            throw RuntimeException(e)
-        }
     }
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
-        this.isKoraAppSubmoduleEnabled = environment.options.getOrDefault(OPTION_SUBMODULE_GENERATION, "false").toBoolean()
         this.resolver = resolver
 
         if (ctx == null) {
@@ -111,7 +100,6 @@ class KoraAppProcessor(
 
         val newModules = this.processModules(resolver)
         val newComponents = this.processComponents(resolver)
-        this.processAppParts(resolver)
         if (newModules || newComponents) {
             val newDeclarations = hashMapOf<String, Pair<KSClassDeclaration, ProcessingState>>()
             for ((k, v) in processedDeclarations) {
@@ -288,28 +276,6 @@ class KoraAppProcessor(
             .toList()
     }
 
-    private fun processAppParts(resolver: Resolver) {
-        resolver.getSymbolsWithAnnotation(CommonClassNames.koraSubmodule.canonicalName)
-            .filterIsInstance<KSClassDeclaration>()
-            .filter { it.classKind == ClassKind.INTERFACE }
-            .forEach {
-                if (appParts.none { a -> a.toClassName() == it.toClassName() }) {
-                    appParts.add(it)
-                }
-            }
-
-        if (isKoraAppSubmoduleEnabled) {
-            resolver.getSymbolsWithAnnotation(CommonClassNames.koraApp.canonicalName)
-                .filterIsInstance<KSClassDeclaration>()
-                .filter { it.classKind == ClassKind.INTERFACE }
-                .forEach {
-                    if (appParts.none { a -> a.toClassName() == it.toClassName() }) {
-                        appParts.add(it)
-                    }
-                }
-        }
-    }
-
     private fun processModules(resolver: Resolver): Boolean {
         val moduleOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.module.canonicalName).toList()
         for (moduleSymbol in moduleOfSymbols) {
@@ -353,26 +319,6 @@ class KoraAppProcessor(
     }
 
 
-    private fun findSinglePublicConstructor(declaration: KSClassDeclaration): KSFunctionDeclaration {
-        val primaryConstructor = declaration.primaryConstructor
-        if (primaryConstructor != null && primaryConstructor.isPublic()) return primaryConstructor
-
-        val constructors = declaration.getConstructors()
-            .filter { c -> c.isPublic() }
-            .toList()
-        if (constructors.isEmpty()) {
-            throw ProcessingErrorException(
-                "Type annotated with @Component has no public constructors", declaration
-            )
-        }
-        if (constructors.size > 1) {
-            throw ProcessingErrorException(
-                "Type annotated with @Component has more then one public constructor", declaration
-            )
-        }
-        return constructors[0]
-    }
-
     private fun write(declaration: KSClassDeclaration, allModules: List<KSClassDeclaration>, components: List<ResolvedComponent>) {
         val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx!!, components)
         kspLogger.logging("Found interceptors: $interceptors")
@@ -412,86 +358,6 @@ class KoraAppProcessor(
             classBuilder.addOriginatingKSFile(component.containingFile!!)
         }
         return fileSpec.addType(classBuilder.build()).build()
-    }
-
-    private fun generateAppParts() {
-        for (appPart in this.appParts) {
-            val packageName = appPart.packageName.asString()
-            val b = TypeSpec.interfaceBuilder(appPart.simpleName.asString() + "SubmoduleImpl")
-                .generated(KoraAppProcessor::class)
-            var componentCounter = 0
-            for (component in components) {
-                b.addOriginatingKSFile(component.containingFile!!)
-                val constructor = findSinglePublicConstructor(component)
-                val mb = FunSpec.builder("_component" + componentCounter++)
-                    .returns(component.toClassName())
-                mb.addCode("return %T(", component.toClassName())
-                for (i in constructor.parameters.indices) {
-                    val parameter = constructor.parameters[i]
-                    val tag = parameter.parseTags()
-                    val ps = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.toTypeName())
-                    if (tag.isNotEmpty()) {
-                        ps.addAnnotation(tag.makeTagAnnotationSpec())
-                    }
-                    mb.addParameter(ps.build())
-                    if (i > 0) {
-                        mb.addCode(", ")
-                    }
-                    mb.addCode("%N", parameter.name?.asString())
-                }
-                val tag = component.parseTags()
-                if (tag.isNotEmpty()) {
-                    mb.addAnnotation(tag.makeTagAnnotationSpec())
-                }
-                if (component.findAnnotation(CommonClassNames.root) != null) {
-                    mb.addAnnotation(CommonClassNames.root)
-                }
-                mb.addCode(")\n")
-                b.addFunction(mb.build())
-            }
-            val companion = TypeSpec.companionObjectBuilder()
-                .generated(KoraAppProcessor::class)
-
-            for ((moduleCounter, module) in annotatedModules.withIndex()) {
-                val moduleName = "_module$moduleCounter"
-                val type = module.toClassName()
-                companion.addProperty(PropertySpec.builder(moduleName, type).initializer("object : %T {}", type).build())
-                for (component in module.getDeclaredFunctions()) {
-                    val componentType = component.returnType!!.toTypeName()
-                    val mb = FunSpec.builder("_component" + componentCounter++)
-                        .returns(componentType)
-                    mb.addCode("return %N.%N(", moduleName, component.simpleName.asString())
-                    for (i in component.parameters.indices) {
-                        val parameter = component.parameters[i]
-                        val tag = parameter.parseTags()
-                        val ps = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.toTypeName())
-                        if (tag.isNotEmpty()) {
-                            ps.addAnnotation(tag.makeTagAnnotationSpec())
-                        }
-                        mb.addParameter(ps.build())
-                        if (i > 0) {
-                            mb.addCode(", ")
-                        }
-                        mb.addCode("%N", parameter.name?.asString())
-                    }
-                    val tag = component.parseTags()
-                    if (tag.isNotEmpty()) {
-                        mb.addAnnotation(tag.makeTagAnnotationSpec())
-                    }
-                    if (component.findAnnotation(CommonClassNames.defaultComponent) != null) {
-                        mb.addAnnotation(CommonClassNames.defaultComponent)
-                    }
-                    if (component.findAnnotation(CommonClassNames.root) != null) {
-                        mb.addAnnotation(CommonClassNames.root)
-                    }
-                    mb.addCode(")\n")
-                    b.addFunction(mb.build())
-                }
-            }
-            val typeSpec = b.addType(companion.build()).build()
-            val fileSpec = FileSpec.builder(packageName, typeSpec.name!!).addType(typeSpec).build()
-            fileSpec.writeTo(codeGenerator, false)
-        }
     }
 
     private fun generateApplicationGraph(

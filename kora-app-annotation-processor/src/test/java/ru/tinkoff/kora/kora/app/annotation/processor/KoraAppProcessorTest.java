@@ -370,7 +370,7 @@ class KoraAppProcessorTest {
 
     @Test
     void appPart() throws Exception {
-        var classLoader = TestUtils.annotationProcess(AppWithAppPart.class, new KoraAppProcessor());
+        var classLoader = TestUtils.annotationProcess(AppWithAppPart.class, new KoraAppProcessor(), new KoraSubmoduleProcessor());
         var clazz = classLoader.loadClass(AppWithAppPart.class.getName() + "SubmoduleImpl");
         Assertions.assertThat(clazz).isNotNull()
             .isInterface()
@@ -386,7 +386,7 @@ class KoraAppProcessorTest {
 
     @Test
     void appPartAndAppSubmodule() throws Exception {
-        var classLoader = TestUtils.annotationProcessWithOptions(AppWithAppPart.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor());
+        var classLoader = TestUtils.annotationProcessWithOptions(AppWithAppPart.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor(), new KoraSubmoduleProcessor());
         var clazz = classLoader.loadClass(AppWithAppPart.class.getName() + "SubmoduleImpl");
         Assertions.assertThat(clazz).isNotNull()
             .isInterface()
@@ -395,7 +395,7 @@ class KoraAppProcessorTest {
         var targetFile1 = "src/test/java/" + AppWithAppPartAppWithSubmodule.class.getName().replace('.', '/') + ".java";
         var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";
 
-        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), List.of(), false, p -> true, List.of(new KoraAppProcessor()), List.of(ProcessorOptions.SUBMODULE_GENERATION));
+        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), List.of(), false, p -> true, List.of(new KoraAppProcessor(), new KoraSubmoduleProcessor()), List.of(ProcessorOptions.SUBMODULE_GENERATION));
         var appClazz = classLoader.loadClass(AppWithAppPartAppWithSubmodule.class.getName() + "Graph");
         assertThat(appClazz).isNotNull();
         var appClazzSubmodule = classLoader.loadClass(AppWithAppPartAppWithSubmodule.class.getName() + "SubmoduleImpl");
@@ -404,7 +404,7 @@ class KoraAppProcessorTest {
 
     @Test
     void appAndKoraApp() throws Exception {
-        var classLoader = TestUtils.annotationProcessWithOptions(App.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor());
+        var classLoader = TestUtils.annotationProcessWithOptions(App.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor(), new KoraSubmoduleProcessor());
         var clazz = classLoader.loadClass(App.class.getName() + "SubmoduleImpl");
         Assertions.assertThat(clazz).isNotNull()
             .isInterface()

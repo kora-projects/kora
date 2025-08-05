@@ -33,8 +33,6 @@ import java.util.stream.Stream;
 @SupportedOptions("koraLogLevel")
 public class KoraAppProcessor extends AbstractKoraProcessor {
 
-    private static final String OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled";
-
     public static final int COMPONENTS_PER_HOLDER_CLASS = 500;
 
     private static final Logger log = LoggerFactory.getLogger(KoraAppProcessor.class);
@@ -46,21 +44,11 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private final Map<TypeElement, ProcessingState> annotatedElements = new HashMap<>();
     private final List<TypeElement> modules = new ArrayList<>();
     private final List<TypeElement> components = new ArrayList<>();
-    private final ArrayList<TypeElement> appParts = new ArrayList<>();
-    private volatile boolean initialized = false;
-    private volatile boolean isKoraAppSubmoduleEnabled = false;
-    private TypeElement koraAppElement;
     private ProcessingContext ctx;
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        this.koraAppElement = this.elements.getTypeElement(CommonClassNames.koraApp.canonicalName());
-        if (this.koraAppElement == null) {
-            return;
-        }
-        this.initialized = true;
-        this.isKoraAppSubmoduleEnabled = Boolean.parseBoolean(processingEnv.getOptions().getOrDefault(OPTION_SUBMODULE_GENERATION, "false"));
         this.ctx = new ProcessingContext(processingEnv);
         log.info("@KoraApp processor started");
     }
@@ -71,18 +59,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     @Override
-    public Set<String> getSupportedOptions() {
-        return Set.of(OPTION_SUBMODULE_GENERATION);
-    }
-
-    @Override
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        if (!this.initialized) {
-            return;
-        }
         var newModules = this.processModules(annotatedElements);
         var newComponents = this.processComponents(annotatedElements);
-        this.processAppParts(annotatedElements);
         if (newModules || newComponents) {
             for (var app : new ArrayList<>(this.annotatedElements.keySet())) {
                 this.annotatedElements.put(app, parseNone(app));
@@ -187,11 +166,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         throw new RuntimeException(e);
                     }
                 }
-            }
-            try {
-                this.generateAppParts();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
             }
         }
     }
@@ -329,27 +303,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             return new ProcessingState.Failed(e, new ArrayDeque<>());
         }
     }
-
-    @Nullable
-    private ExecutableElement findSinglePublicConstructor(TypeElement element) {
-        var constructors = element.getEnclosedElements().stream()
-            .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR)
-            .filter(e -> e.getModifiers().contains(Modifier.PUBLIC))
-            .map(ExecutableElement.class::cast)
-            .toList();
-        if (constructors.isEmpty()) {
-            throw new ProcessingErrorException(
-                "Type annotated with @Component has no public constructors", element
-            );
-        }
-        if (constructors.size() > 1) {
-            throw new ProcessingErrorException(
-                "Type annotated with @Component has more then one public constructor", element
-            );
-        }
-        return constructors.get(0);
-    }
-
 
     private void write(TypeElement type, ProcessingState.Ok ok) throws IOException {
         var interceptors = ComponentInterceptors.parseInterceptors(this.ctx, ok.components());
@@ -611,132 +564,4 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             .build();
     }
 
-    private void processAppParts(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        annotatedElements.getOrDefault(CommonClassNames.koraSubmodule, List.of())
-            .stream()
-            .map(AnnotatedElement::element)
-            .filter(e -> e.getKind().isInterface())
-            .map(TypeElement.class::cast)
-            .forEach(this.appParts::add);
-
-        if (isKoraAppSubmoduleEnabled) {
-            annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of())
-                .stream()
-                .map(AnnotatedElement::element)
-                .filter(e -> e.getKind().isInterface())
-                .map(TypeElement.class::cast)
-                .forEach(this.appParts::add);
-        }
-    }
-
-    private void generateAppParts() throws IOException {
-        for (var appPart : this.appParts) {
-            var packageElement = this.elements.getPackageOf(appPart);
-            var b = TypeSpec.interfaceBuilder(appPart.getSimpleName() + "SubmoduleImpl")
-                .addModifiers(Modifier.PUBLIC);
-            var componentNumber = 0;
-            for (var component : this.components) {
-                var constructor = this.findSinglePublicConstructor(component);
-                if (constructor == null) {
-                    return;
-                }
-                var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
-                    .returns(TypeName.get(component.asType()))
-                    .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
-
-                if (component.getTypeParameters().isEmpty()) {
-                    mb.addCode("return new $T(", ClassName.get(component));
-                } else {
-                    for (var tp : component.getTypeParameters()) {
-                        mb.addTypeVariable(TypeVariableName.get(tp));
-                    }
-                    mb.addCode("return new $T<>(", ClassName.get(component));
-                }
-                for (int i = 0; i < constructor.getParameters().size(); i++) {
-                    var parameter = constructor.getParameters().get(i);
-                    var pb = ParameterSpec.get(parameter).toBuilder();
-                    var tag = TagUtils.parseTagValue(parameter);
-                    if (!tag.isEmpty()) {
-                        pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
-                    }
-                    if (CommonUtils.isNullable(parameter)) {
-                        pb.addAnnotation(CommonClassNames.nullable);
-                    }
-                    mb.addParameter(pb.build());
-                    if (i > 0) {
-                        mb.addCode(", ");
-                    }
-                    mb.addCode("$L", parameter);
-                }
-                var tag = TagUtils.parseTagValue(component);
-                if (!tag.isEmpty()) {
-                    mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
-                }
-                var root = AnnotationUtils.isAnnotationPresent(component, CommonClassNames.root);
-                if (root) {
-                    mb.addAnnotation(CommonClassNames.root);
-                }
-                mb.addCode(");\n");
-                b.addMethod(mb.build());
-            }
-            var moduleNumber = 0;
-            for (var module : this.modules) {
-                var moduleName = "_module" + moduleNumber++;
-                var typeName = TypeName.get(module.asType());
-                b.addField(FieldSpec.builder(typeName, moduleName, Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-                    .initializer("new $T(){}", typeName)
-                    .build());
-                for (var enclosedElement : module.getEnclosedElements()) {
-                    if (enclosedElement.getKind() != ElementKind.METHOD) {
-                        continue;
-                    }
-                    if (!enclosedElement.getModifiers().contains(Modifier.DEFAULT)) {
-                        continue;
-                    }
-                    var method = (ExecutableElement) enclosedElement;
-                    var mb = MethodSpec.methodBuilder("_component" + componentNumber++)
-                        .returns(TypeName.get(method.getReturnType()))
-                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT);
-                    for (var tp : method.getTypeParameters()) {
-                        mb.addTypeVariable(TypeVariableName.get(tp));
-                    }
-                    mb.addCode("return $L.$L(", moduleName, method.getSimpleName());
-                    for (int i = 0; i < method.getParameters().size(); i++) {
-                        var parameter = method.getParameters().get(i);
-                        var pb = ParameterSpec.get(parameter).toBuilder();
-                        var tag = TagUtils.parseTagValue(parameter);
-                        if (!tag.isEmpty()) {
-                            pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
-                        }
-                        if (CommonUtils.isNullable(parameter)) {
-                            pb.addAnnotation(CommonClassNames.nullable);
-                        }
-                        mb.addParameter(pb.build());
-                        if (i > 0) {
-                            mb.addCode(", ");
-                        }
-                        mb.addCode("$L", parameter);
-                    }
-                    var tag = TagUtils.parseTagValue(method);
-                    if (!tag.isEmpty()) {
-                        mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
-                    }
-                    if (AnnotationUtils.findAnnotation(method, CommonClassNames.defaultComponent) != null) {
-                        mb.addAnnotation(CommonClassNames.defaultComponent);
-                    }
-                    var root = AnnotationUtils.isAnnotationPresent(method, CommonClassNames.root);
-                    if (root) {
-                        mb.addAnnotation(CommonClassNames.root);
-                    }
-                    mb.addCode(");\n");
-                    b.addMethod(mb.build());
-                }
-            }
-
-            var typeSpec = b.build();
-            JavaFile.builder(packageElement.getQualifiedName().toString(), typeSpec)
-                .build()
-                .writeTo(this.processingEnv.getFiler());
-        }
-    }
 }
