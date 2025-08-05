@@ -12,10 +12,10 @@ import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum
 import ru.tinkoff.kora.json.ksp.KnownType.KnownTypesEnum.*
 import ru.tinkoff.kora.json.ksp.jsonReaderName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import java.util.*
-import java.util.UUID
 
 class JsonReaderGenerator(val resolver: Resolver) {
     companion object {
@@ -33,7 +33,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         val readerInterface = JsonTypes.jsonReader.parameterizedBy(typeName)
         val typeBuilder = TypeSpec.classBuilder(declaration.jsonReaderName())
             .generated(JsonReaderGenerator::class)
-        declaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
+            .addOriginatingKSFile(declaration)
 
         typeBuilder.addSuperinterface(readerInterface)
 

@@ -9,7 +9,6 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.config.ksp.ConfigClassNames
@@ -17,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.visitClass
 import java.io.IOException
@@ -55,7 +55,7 @@ class ConfigSourceSymbolProcessor(
                     .addAnnotation(CommonClassNames.module)
                     .generated(ConfigSourceSymbolProcessor::class)
                     .addModifiers(KModifier.PUBLIC)
-                    .addOriginatingKSFile(config.containingFile!!)
+                    .addOriginatingKSFile(config)
                     .build()
                 val packageElement = config.packageName.asString()
                 val fileSpec = FileSpec.builder(packageElement, type.name!!)

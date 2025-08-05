@@ -8,7 +8,6 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
@@ -16,6 +15,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.visitClass
@@ -44,13 +44,12 @@ class HttpControllerProcessor(
     }
 
     private fun processController(declaration: KSClassDeclaration) {
-        val containingFile = declaration.containingFile!!
-        val packageName = containingFile.packageName.asString()
+        val packageName = declaration.packageName.asString()
         val moduleName = "${declaration.toClassName().simpleName}Module"
         val moduleBuilder = TypeSpec.interfaceBuilder(moduleName)
             .generated(HttpControllerProcessor::class)
             .addAnnotation(CommonClassNames.module)
-            .addOriginatingKSFile(containingFile)
+            .addOriginatingKSFile(declaration)
 
         val fileSpec = FileSpec.builder(
             packageName = packageName,

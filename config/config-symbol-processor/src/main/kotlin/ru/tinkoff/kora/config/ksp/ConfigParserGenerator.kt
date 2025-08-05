@@ -16,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.JavaUtils.isRecord
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
@@ -34,7 +35,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName()))
             .generated(ConfigParserGenerator::class)
-        element.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
+            .addOriginatingKSFile(element)
 
         val fields = f.left()!!
         val defaultsType = buildDefaultsType(targetType, element, fields)

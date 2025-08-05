@@ -9,7 +9,6 @@ import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
@@ -28,6 +27,7 @@ import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.visitClass
@@ -329,8 +329,7 @@ class KoraAppProcessor(
     }
 
     private fun generateImpl(declaration: KSClassDeclaration, modules: List<KSClassDeclaration>): FileSpec {
-        val containingFile = declaration.containingFile!!
-        val packageName = containingFile.packageName.asString()
+        val packageName = declaration.packageName.asString()
         val moduleName = "\$${declaration.toClassName().simpleName}Impl"
 
         val fileSpec = FileSpec.builder(
@@ -338,7 +337,7 @@ class KoraAppProcessor(
             fileName = moduleName
         )
         val classBuilder = TypeSpec.classBuilder(moduleName)
-            .addOriginatingKSFile(containingFile)
+            .addOriginatingKSFile(declaration)
             .generated(KoraAppProcessor::class)
             .addModifiers(KModifier.PUBLIC, KModifier.OPEN)
             .addSuperinterface(declaration.toClassName())
@@ -346,7 +345,7 @@ class KoraAppProcessor(
         for ((index, module) in modules.withIndex()) {
             val moduleClass = module.toClassName()
             if (module.containingFile != null) {
-                classBuilder.addOriginatingKSFile(module.containingFile!!)
+                classBuilder.addOriginatingKSFile(module)
             }
             classBuilder.addProperty(
                 PropertySpec.builder("module$index", moduleClass)
@@ -355,7 +354,7 @@ class KoraAppProcessor(
             )
         }
         for (component in components) {
-            classBuilder.addOriginatingKSFile(component.containingFile!!)
+            classBuilder.addOriginatingKSFile(component)
         }
         return fileSpec.addType(classBuilder.build()).build()
     }
@@ -368,8 +367,7 @@ class KoraAppProcessor(
         interceptors: ComponentInterceptors
     ): FileSpec {
         val supplier: KSClassDeclaration = resolver.getClassDeclarationByName(Supplier::class.qualifiedName.toString())!!
-        val containingFile = declaration.containingFile!!
-        val packageName = containingFile.packageName.asString()
+        val packageName = declaration.packageName.asString()
         val graphName = "${declaration.simpleName.asString()}Graph"
         val graphTypeName = ClassName(packageName, graphName)
 
@@ -381,7 +379,7 @@ class KoraAppProcessor(
         val implClass = ClassName(packageName, "\$${declaration.simpleName.asString()}Impl")
         val supplierSuperInterface = supplier.toClassName().parameterizedBy(CommonClassNames.applicationGraphDraw)
         val classBuilder = TypeSpec.classBuilder(graphName)
-            .addOriginatingKSFile(containingFile)
+            .addOriginatingKSFile(declaration)
             .generated(KoraAppProcessor::class)
             .addSuperinterface(supplierSuperInterface)
             .addFunction(
@@ -393,10 +391,10 @@ class KoraAppProcessor(
             )
 
         for (component in this.components) {
-            classBuilder.addOriginatingKSFile(component.containingFile!!)
+            classBuilder.addOriginatingKSFile(component)
         }
         for (module in annotatedModules) {
-            classBuilder.addOriginatingKSFile(module.containingFile!!)
+            classBuilder.addOriginatingKSFile(module)
         }
         val companion = TypeSpec.companionObjectBuilder()
             .generated(KoraAppProcessor::class)

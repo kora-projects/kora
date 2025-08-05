@@ -5,10 +5,10 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.AnnotationSpec
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 class KafkaConsumerModuleGenerator(
@@ -18,7 +18,7 @@ class KafkaConsumerModuleGenerator(
 ) {
     fun generateModule(declaration: KSClassDeclaration): FileSpec {
         val classBuilder = TypeSpec.interfaceBuilder(declaration.simpleName.asString() + "Module")
-            .addOriginatingKSFile(declaration.containingFile!!)
+            .addOriginatingKSFile(declaration)
             .generated(KafkaConsumerModuleGenerator::class)
 
         classBuilder.addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
@@ -30,7 +30,7 @@ class KafkaConsumerModuleGenerator(
 
             val configTagData = kafkaConfigGenerator.generate(function, kafkaListener)
             classBuilder.addFunction(configTagData.configFunction)
-            if(configTagData.tag != null) {
+            if (configTagData.tag != null) {
                 classBuilder.addType(configTagData.tag)
             }
 

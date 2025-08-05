@@ -5,11 +5,11 @@ import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.json.ksp.*
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -29,7 +29,7 @@ class SealedInterfaceReaderGenerator {
             .generated(SealedInterfaceReaderGenerator::class)
             .addSuperinterface(readerInterface)
             .addModifiers(KModifier.PUBLIC)
-        jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
+            .addOriginatingKSFile(jsonClassDeclaration)
 
         jsonClassDeclaration.typeParameters.forEach {
             val typeVariableName = it.toTypeVariableName(typeParameterResolver)

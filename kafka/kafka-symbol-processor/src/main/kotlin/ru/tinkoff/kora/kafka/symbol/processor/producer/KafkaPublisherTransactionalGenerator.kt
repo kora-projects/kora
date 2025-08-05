@@ -6,13 +6,13 @@ import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.util.*
@@ -32,7 +32,7 @@ class KafkaPublisherTransactionalGenerator(
         val publisherImplementationTypeName = ClassName(publisherPackageName, publisher.generatedClassName("Impl"))
         val moduleName = txPublisher.generatedClassName("Module")
         val module = TypeSpec.interfaceBuilder(moduleName)
-            .addOriginatingKSFile(txPublisher.containingFile!!)
+            .addOriginatingKSFile(txPublisher)
             .addAnnotation(CommonClassNames.module)
             .generated(KafkaPublisherGenerator::class)
 
@@ -73,7 +73,7 @@ class KafkaPublisherTransactionalGenerator(
         val publisherImplementationTypeName = ClassName(publisherPackageName, publisherTypeElement.generatedClassName("Impl"))
         val b = typeElement.extendsKeepAop(implementationName, resolver)
             .addSuperinterface(CommonClassNames.lifecycle)
-            .addOriginatingKSFile(typeElement.containingFile!!)
+            .addOriginatingKSFile(typeElement)
             .addProperty(PropertySpec.builder("delegate", KafkaClassNames.transactionalPublisherImpl.parameterizedBy(publisherImplementationTypeName), KModifier.PRIVATE, KModifier.FINAL)
                 .initializer("%T(config, factory)", KafkaClassNames.transactionalPublisherImpl)
                 .build())
