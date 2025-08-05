@@ -11,12 +11,13 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
-import java.util.Date
+import java.util.*
 
 class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
     private val koraQuartzJobClassName: ClassName = ClassName("ru.tinkoff.kora.scheduling.quartz", "KoraQuartzJob")
@@ -129,7 +130,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
             CodeBlock.of("{ ctx -> target.%L(ctx) }", method.simpleName.getShortName())
         }
         val typeClassName = type.toClassName()
-        val typeSpec: TypeSpec = TypeSpec.classBuilder(className)
+        val typeSpec = TypeSpec.classBuilder(className)
             .generated(QuartzSchedulingGenerator::class)
             .superclass(koraQuartzJobClassName)
             .addSuperclassConstructorParameter(CodeBlock.of("telemetry"))
@@ -147,8 +148,18 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     .addParameter("trigger", triggerClassName)
                     .build()
             )
-            .build()
-        FileSpec.get(packageName, typeSpec).writeTo(env.codeGenerator, false, listOf(type.containingFile!!))
+        val quartzDisallowConcurrentExecution = ClassName("org.quartz", "DisallowConcurrentExecution");
+        val koraDisallowConcurrentExecution = ClassName("ru.tinkoff.kora.scheduling.quartz", "DisallowConcurrentExecution");
+        if (type.isAnnotationPresent(quartzDisallowConcurrentExecution) || method.isAnnotationPresent(koraDisallowConcurrentExecution)) {
+            typeSpec.addAnnotation(quartzDisallowConcurrentExecution);
+        }
+        val quartzPersistJobData = ClassName("org.quartz", "PersistJobDataAfterExecution");
+        val koraPersistJobData = ClassName("ru.tinkoff.kora.scheduling.quartz", "PersistJobDataAfterExecution");
+        if (type.isAnnotationPresent(quartzPersistJobData) || method.isAnnotationPresent(koraPersistJobData)) {
+            typeSpec.addAnnotation(quartzPersistJobData);
+        }
+
+        FileSpec.get(packageName, typeSpec.build()).writeTo(env.codeGenerator, false, listOf(type.containingFile!!))
         return ClassName(packageName, className)
     }
 
