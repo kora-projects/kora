@@ -1,11 +1,17 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
 import org.junit.jupiter.api.Test;
+import org.quartz.DisallowConcurrentExecution;
+import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import ru.tinkoff.kora.scheduling.annotation.processor.controller.*;
 
-class KoraSchedulingAnnotationProcessorTest {
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class KoraSchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     @Test
     void testScheduledJdkAtFixedRateTest() throws Exception {
         process(ScheduledJdkAtFixedRateTest.class);
@@ -30,6 +36,35 @@ class KoraSchedulingAnnotationProcessorTest {
     void testScheduledWithCron() throws Exception {
         process(ScheduledWithCron.class);
     }
+
+    @Test
+    public void testDisallowConcurrentExecutionOnClass() {
+        var cr = compile(List.of(new KoraSchedulingAnnotationProcessor()), """
+            @org.quartz.DisallowConcurrentExecution
+            public class TestClass {
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(@Tag(TestClass.class))
+                public void job() {}
+            }
+            """);
+        cr.assertSuccess();
+        var clazz = cr.loadClass("$TestClass_job_Job");
+        assertThat(clazz).hasAnnotation(DisallowConcurrentExecution.class);
+    }
+
+    @Test
+    public void testDisallowConcurrentExecutionOnMethod() {
+        var cr = compile(List.of(new KoraSchedulingAnnotationProcessor()), """
+            public class TestClass {
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(@Tag(TestClass.class))
+                @ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
+                public void job() {}
+            }
+            """);
+        cr.assertSuccess();
+        var clazz = cr.loadClass("$TestClass_job_Job");
+        assertThat(clazz).hasAnnotation(DisallowConcurrentExecution.class);
+    }
+
 
     private record ProcessResult(ClassLoader cl, Class<?> module) {}
 

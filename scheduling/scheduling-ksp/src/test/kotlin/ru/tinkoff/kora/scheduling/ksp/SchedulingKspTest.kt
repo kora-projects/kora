@@ -1,12 +1,16 @@
 package ru.tinkoff.kora.scheduling.ksp
 
+import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.squareup.kotlinpoet.asClassName
+import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import org.quartz.DisallowConcurrentExecution
+import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.scheduling.ksp.controller.*
 import kotlin.reflect.KClass
 
-internal class SchedulingKspTest {
+internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
     @Test
     internal fun testScheduledJdkAtFixedDelayTest() {
         process(ScheduledJdkAtFixedDelayTest::class)
@@ -37,4 +41,40 @@ internal class SchedulingKspTest {
 
         val module = cl.loadClass(type.asClassName().packageName + ".$" + type.simpleName + "_SchedulingModule")
     }
+
+
+    @Test
+    fun testDisallowConcurrentExecutionOnClass() {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
+            @org.quartz.DisallowConcurrentExecution
+            class TestClass {
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(Tag(TestClass::class))
+                fun job() {}
+            }
+            
+            """.trimIndent()
+        )
+        cr.assertSuccess()
+        val clazz = cr.loadClass("\$TestClass_job_Job")
+        Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
+    }
+
+    @Test
+    fun testDisallowConcurrentExecutionOnMethod() {
+        val cr = compile0(
+            listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
+            class TestClass {
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(Tag(TestClass::class))
+                @ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
+                fun job() {}
+            }
+            
+            """.trimIndent()
+        )
+        cr.assertSuccess()
+        val clazz = cr.loadClass("\$TestClass_job_Job")
+        Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
+    }
+
 }

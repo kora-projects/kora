@@ -173,10 +173,19 @@ public class QuartzSchedulingGenerator {
                 .addParameter(triggerClassName, "trigger")
                 .addCode("super(telemetry, $L, trigger);\n", callJob)
                 .addCode("this.object = object;\n")
-                .build())
-            .build();
+                .build());
+        var quartzDisallowConcurrentExecution = ClassName.get("org.quartz", "DisallowConcurrentExecution");
+        var koraDisallowConcurrentExecution = ClassName.get("ru.tinkoff.kora.scheduling.quartz", "DisallowConcurrentExecution");
+        if (AnnotationUtils.isAnnotationPresent(type, quartzDisallowConcurrentExecution) || AnnotationUtils.isAnnotationPresent(method, koraDisallowConcurrentExecution)) {
+            typeSpec.addAnnotation(quartzDisallowConcurrentExecution);
+        }
+        var quartzPersistJobData = ClassName.get("org.quartz", "PersistJobDataAfterExecution");
+        var koraPersistJobData = ClassName.get("ru.tinkoff.kora.scheduling.quartz", "PersistJobDataAfterExecution");
+        if (AnnotationUtils.isAnnotationPresent(type, quartzPersistJobData) || AnnotationUtils.isAnnotationPresent(method, koraPersistJobData)) {
+            typeSpec.addAnnotation(quartzPersistJobData);
+        }
 
-        var javaFile = JavaFile.builder(packageName, typeSpec).build();
+        var javaFile = JavaFile.builder(packageName, typeSpec.build()).build();
         CommonUtils.safeWriteTo(this.processingEnv, javaFile);
 
         return ClassName.get(packageName, className);
