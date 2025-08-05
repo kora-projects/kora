@@ -9,6 +9,8 @@ import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
+import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
@@ -31,9 +33,17 @@ public interface UndertowHttpServerModule extends UndertowModule {
         return new UndertowHttpServer(config, handler, worker, byteBufferPool);
     }
 
+    default UndertowHttpServerConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowHttpServerConfig> extractor) {
+        return extractor.extract(config.get("httpServer"));
+    }
+
     @DefaultComponent
-    default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker) {
-        return new BlockingRequestExecutor.Default(xnioWorker);
+    default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker, UndertowHttpServerConfig config) throws Throwable {
+        if (config.virtualThreadsEnabled()) {
+            return new VirtualThreadBlockingRequestExecutor();
+        } else {
+            return new BlockingRequestExecutor.Default(xnioWorker);
+        }
     }
 
     @Tag(Undertow.class)

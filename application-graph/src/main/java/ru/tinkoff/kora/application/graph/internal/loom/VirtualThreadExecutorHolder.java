@@ -7,8 +7,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Objects;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 
 public final class VirtualThreadExecutorHolder {
@@ -88,7 +86,7 @@ public final class VirtualThreadExecutorHolder {
 
         return runnable -> {
             try {
-                Thread thread = loomThreadFactory.newThread(runnable);
+                var thread = loomThreadFactory.newThread(runnable);
                 thread.start();
             } catch (RuntimeException | Error e) {
                 throw e;
@@ -96,20 +94,5 @@ public final class VirtualThreadExecutorHolder {
                 throw new IllegalStateException(e);
             }
         };
-    }
-
-    @Nullable
-    private static ExecutorService createExecutorService(@Nullable ThreadFactory loomThreadFactory) {
-        if (loomThreadFactory == null) {
-            return null;
-        }
-
-        try {
-            var lookup = MethodHandles.publicLookup();
-            var methodLoomExecutor = lookup.findStatic(Executors.class, "newThreadPerTaskExecutor", MethodType.methodType(ExecutorService.class, ThreadFactory.class));
-            return (ExecutorService) methodLoomExecutor.invoke(loomThreadFactory);
-        } catch (Throwable t) {
-            return null;
-        }
     }
 }
