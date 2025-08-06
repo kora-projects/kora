@@ -88,39 +88,48 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     }
 
     private Optional<CodeBlock> buildValidationReturnCode(ExecutableElement method, TypeMirror returnType, AspectContext aspectContext) {
+        if (CommonUtils.isVoid(returnType)) {
+            return Optional.empty();
+        }
+
         final boolean isMono = MethodUtils.isMono(method);
         final boolean isFlux = MethodUtils.isFlux(method);
         final boolean isFuture = MethodUtils.isFuture(method);
 
+        final boolean isValid = method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()));
         final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
-        final List<Validated> validates = (method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName())))
+        final List<Validated> validates = (isValid)
             ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(returnType), returnType)))
             : Collections.emptyList();
 
         var isPrimitive = returnType instanceof PrimitiveType;
         final boolean isNullable;
-        if (isFuture) {
+        if (isMono || isFlux || isFuture) {
             isNullable = MethodUtils.getGenericType(method.getReturnType())
                              .map(CommonUtils::isNullable)
-                             .orElseGet(() -> CommonUtils.isNullable(method)) || CommonUtils.isVoid(returnType);
+                             .orElse(false)
+                         || CommonUtils.isNullable(method);
         } else {
-            isNullable = (CommonUtils.isNullable(method) && !isPrimitive && !isMono && !isFlux) || CommonUtils.isVoid(returnType);
+            isNullable = CommonUtils.isNullable(method) && !isPrimitive;
         }
 
-        final boolean isNotNullable = !isNullable && !isPrimitive;
-        final boolean isNotNull = isNotNull(method);
+        final boolean isNotNull;
+        if (isMono || isFlux || isFuture) {
+            isNotNull = MethodUtils.getGenericType(method.getReturnType())
+                            .map(ValidUtils::isNotNull)
+                            .orElse(false) || isNotNull(method);
+        } else {
+            isNotNull = isNotNull(method);
+        }
+
+        final boolean isNotNullable = (isValid || isNotNull) && !isNullable && !isPrimitive;
         final boolean isJsonNullable = returnType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString());
         var haveValidators = !constraints.isEmpty() || !validates.isEmpty();
-        if (CommonUtils.isVoid(returnType) && !haveValidators && !isJsonNullable && isNotNullable) {
-            return Optional.empty();
-        }
-
-        if (!(haveValidators || ((isJsonNullable || isNotNullable) && !CommonUtils.isVoid(returnType)))) {
+        if (!haveValidators && !isNotNullable) {
             return Optional.empty();
         }
 
         var builder = CodeBlock.builder();
-
         final boolean isFailFast = method.getAnnotationMirrors().stream()
             .filter(a -> a.getAnnotationType().toString().equals(VALIDATE_TYPE.canonicalName()))
             .flatMap(a -> env.getElementUtils().getElementValuesWithDefaults(a).entrySet().stream()
@@ -134,7 +143,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             : CodeBlock.of("var _returnCtx = $T.full();\n", CONTEXT_TYPE);
 
         final String resultAccessor = (isJsonNullable) ? "_result.value()" : "_result";
-        if ((isJsonNullable && isNotNull) || isNotNullable) {
+        if ((isJsonNullable && isNotNull && !isNullable) || isNotNullable) {
             if (isJsonNullable && isNotNull) {
                 builder.beginControlFlow("if (_result == null || !_result.isDefined() || _result.isNull())");
             } else {
@@ -264,10 +273,11 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.endControlFlow();
         }
 
-        if ((isJsonNullable && isNotNull) || isNotNullable) {
+        if ((isJsonNullable && isNotNull && !isNullable) || isNotNullable) {
             builder.endControlFlow();
         }
-        if (isNullable) {
+
+        if (!isNotNullable) {
             builder.endControlFlow();
         }
 
