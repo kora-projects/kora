@@ -104,7 +104,7 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
             if (this.logger != null) {
                 this.logger.logRecord(record);
             }
-            return new DefaultKafkaConsumerRecordTelemetryContext<>(record, recordStart, this.logger, this.metrics, recordSpan);
+            return new DefaultKafkaConsumerRecordTelemetryContext<>(consumerName, record, recordStart, this.logger, this.metrics, recordSpan);
         }
 
         @Override
@@ -125,6 +125,7 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
     private static final class DefaultKafkaConsumerRecordTelemetryContext<K, V> implements KafkaConsumerRecordTelemetryContext<K, V> {
         private final ConsumerRecord<K, V> record;
         private final long recordStart;
+        private final String consumerName;
         @Nullable
         private final KafkaConsumerLogger<K, V> logger;
         @Nullable
@@ -132,7 +133,8 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
         @Nullable
         private final KafkaConsumerTracer.KafkaConsumerRecordSpan recordSpan;
 
-        public DefaultKafkaConsumerRecordTelemetryContext(ConsumerRecord<K, V> record, long recordStart, @Nullable KafkaConsumerLogger<K, V> logger, @Nullable KafkaConsumerMetrics metrics, @Nullable KafkaConsumerTracer.KafkaConsumerRecordSpan recordSpan) {
+        public DefaultKafkaConsumerRecordTelemetryContext(String consumerName, ConsumerRecord<K, V> record, long recordStart, @Nullable KafkaConsumerLogger<K, V> logger, @Nullable KafkaConsumerMetrics metrics, @Nullable KafkaConsumerTracer.KafkaConsumerRecordSpan recordSpan) {
+            this.consumerName = consumerName;
             this.record = record;
             this.recordStart = recordStart;
             this.logger = logger;
@@ -147,7 +149,7 @@ public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemet
                 this.recordSpan.close(ex);
             }
             if (this.metrics != null) {
-                this.metrics.onRecordProcessed(this.record, duration, ex);
+                this.metrics.onRecordProcessed(consumerName, this.record, duration, ex);
             }
             if (this.logger != null) {
                 this.logger.logRecordProcessed(this.record, ex);

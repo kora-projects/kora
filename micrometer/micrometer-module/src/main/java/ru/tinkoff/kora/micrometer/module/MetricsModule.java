@@ -37,6 +37,9 @@ import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTag
 import ru.tinkoff.kora.micrometer.module.http.server.tag.Opentelemetry123MicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.jms.consumer.MicrometerJmsConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.MicrometerKafkaConsumerMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.MicrometerKafkaConsumerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry120KafkaConsumerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry123KafkaConsumerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.kafka.producer.MicrometerKafkaProducerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
@@ -126,8 +129,18 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerKafkaConsumerMetricsFactory micrometerKafkaConsumerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerKafkaConsumerMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerKafkaConsumerTagsProvider micrometerKafkaConsumerTagsProvider(MetricsConfig globalMetricsConfig) {
+        return switch (globalMetricsConfig.opentelemetrySpec()) {
+            case V120 -> new Opentelemetry120KafkaConsumerTagsProvider();
+            case V123 -> new Opentelemetry123KafkaConsumerTagsProvider();
+        };
+    }
+
+    @DefaultComponent
+    default MicrometerKafkaConsumerMetricsFactory micrometerKafkaConsumerMetricsFactory(MicrometerKafkaConsumerTagsProvider consumerTagsProvider,
+                                                                                        MeterRegistry meterRegistry,
+                                                                                        MetricsConfig metricsConfig) {
+        return new MicrometerKafkaConsumerMetricsFactory(consumerTagsProvider, meterRegistry, metricsConfig);
     }
 
     @DefaultComponent
