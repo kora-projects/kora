@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-metrics.md#metric-httpserverrequestduration">link</a>
  */
-public final class Opentelemetry123MicrometerHttpServerTagsProvider implements MicrometerHttpServerTagsProvider {
+public class Opentelemetry123MicrometerHttpServerTagsProvider implements MicrometerHttpServerTagsProvider {
 
     @Override
     public Iterable<Tag> getActiveRequestsTags(ActiveRequestsKey key) {
