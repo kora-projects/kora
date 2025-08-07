@@ -33,11 +33,6 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             .generated(ValidatorGenerator::class)
             .addOriginatingKSFile(meta.sourceDeclaration)
             .addSuperinterface(typeName)
-            .addAnnotation(
-                AnnotationSpec.builder(CommonClassNames.generated)
-                    .addMember("%S", this.javaClass.canonicalName)
-                    .build()
-            )
 
         for (typeParameter in meta.sourceDeclaration.typeParameters) {
             validatorSpecBuilder.addTypeVariable(typeParameter.toTypeVariableName())
