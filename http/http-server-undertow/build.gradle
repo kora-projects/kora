@@ -1,4 +1,6 @@
 dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
     api project(":common")
     api project(":http:http-server-common")
     api project(":logging:logging-common")
