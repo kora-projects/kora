@@ -466,9 +466,9 @@ class JsonReaderGenerator(val resolver: Resolver) {
 
             KnownTypesEnum.UUID -> method.controlFlow("if (__token == %T.VALUE_STRING)", JsonTypes.jsonToken) {
                 if (isJsonNullable) {
-                    addStatement("return %T.ofNullable(%T.fromString(__parser.text))", JsonTypes.jsonNullable, UUID::class)
+                    addStatement("return %T.ofNullable(%T.fromString(__parser.text))", JsonTypes.jsonNullable, java.util.UUID::class)
                 } else {
-                    addStatement("return %T.fromString(__parser.text)", UUID::class)
+                    addStatement("return %T.fromString(__parser.text)", java.util.UUID::class)
                 }
             }
         }
