@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.validation.annotation.processor.testdata;
 
+import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.validation.common.annotation.*;
 
@@ -36,6 +37,7 @@ public class ValidateSync {
 
     @Range(from = 1, to = 2)
     @Validate
+    @NotNull
     public Integer validatedOutputNullable(@Nullable ValidTaz c4) {
         return (c4 == null)
                 ? null

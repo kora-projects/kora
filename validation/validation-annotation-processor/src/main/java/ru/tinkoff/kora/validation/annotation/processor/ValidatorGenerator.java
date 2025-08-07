@@ -59,8 +59,7 @@ public class ValidatorGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addSuperinterface(validatorType)
             .addAnnotation(AnnotationUtils.generated(ValidatorGenerator.class))
-            .addOriginatingElement(validatedElement)
-            ;
+            .addOriginatingElement(validatedElement);
         for (var typeParameter : validatedElement.getTypeParameters()) {
             validatorSpecBuilder.addTypeVariable(TypeVariableName.get(typeParameter));
         }
@@ -231,18 +230,30 @@ public class ValidatorGenerator {
             .addModifiers(Modifier.PUBLIC)
             .returns(ParameterizedTypeName.get(ClassName.get(List.class), VIOLATION_TYPE))
             .addParameter(ParameterSpec.builder(meta.source().asPoetType(), "value").build())
-            .addParameter(ParameterSpec.builder(CONTEXT_TYPE, "context").build())
-            .addCode(CodeBlock.join(List.of(
-                    CodeBlock.of("""
-                            if (value == null) {
-                                return $T.of(context.violates("$L input must be non null, but was null"));
-                            }
+            .addParameter(ParameterSpec.builder(CONTEXT_TYPE, "context").build());
 
-                            final $T<$T> _violations = new $T<>();""",
-                        List.class, meta.sourceElement().getSimpleName(), List.class, ValidTypes.violation, ArrayList.class),
-                    CodeBlock.join(fieldConstraintBuilder, "\n"),
-                    CodeBlock.of("return _violations;")),
-                "\n\n"));
+        if (fieldConstraintBuilder.isEmpty()) {
+            validateMethodSpecBuilder
+                .addCode(CodeBlock.of("""
+                           if (value == null) {
+                               return $T.of(context.violates("$L input must be non null, but was null"));
+                           }
+                           return $T.of();""",
+                    List.class, meta.sourceElement().getSimpleName(), List.class));
+        } else {
+            validateMethodSpecBuilder
+                .addCode(CodeBlock.join(List.of(
+                        CodeBlock.of("""
+                                if (value == null) {
+                                    return $T.of(context.violates("$L input must be non null, but was null"));
+                                }
+                                
+                                final $T<$T> _violations = new $T<>();""",
+                            List.class, meta.sourceElement().getSimpleName(), List.class, ValidTypes.violation, ArrayList.class),
+                        CodeBlock.join(fieldConstraintBuilder, "\n"),
+                        CodeBlock.of("return _violations;")),
+                    "\n\n"));
+        }
 
         final TypeSpec validatorSpec = validatorSpecBuilder
             .addMethod(constructorSpecBuilder.build())
