@@ -53,7 +53,7 @@ class KoraAppProcessor(
     override fun finish() {
         if (hasDeferred) {
             for (entry in processedDeclarations.values) {
-                kspLogger.warn("Kora app wasn't process because som symbols are not valid", entry.first)
+                kspLogger.warn("Kora app wasn't processed because some symbols are not valid", entry.first)
             }
             return
         }
