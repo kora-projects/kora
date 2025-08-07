@@ -10,8 +10,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.jvm.throws
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.Component
-import ru.tinkoff.kora.common.Module
 import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
@@ -128,7 +126,7 @@ class S3ClientSymbolProcessor(
     private fun generateClient(s3client: KSClassDeclaration, resolver: Resolver): TypeSpec {
         val implSpecBuilder: TypeSpec.Builder = s3client.extendsKeepAop(s3client.generatedClassName("Impl"), resolver)
             .generated(S3ClientSymbolProcessor::class)
-            .addAnnotation(Component::class)
+            .addAnnotation(CommonClassNames.component)
 
         val constructed = HashSet<Signature>()
         val constructorBuilder = FunSpec.constructorBuilder()
@@ -211,7 +209,7 @@ class S3ClientSymbolProcessor(
         val extractorClass = CommonClassNames.configValueExtractor.parameterizedBy(CLASS_CLIENT_CONFIG)
         return TypeSpec.interfaceBuilder(s3client.generatedClass("ClientConfigModule"))
             .generated(S3ClientSymbolProcessor::class)
-            .addAnnotation(AnnotationSpec.builder(Module::class).build())
+            .addAnnotation(CommonClassNames.module)
             .addOriginatingKSFile(s3client)
             .addFunction(
                 FunSpec.builder("clientConfig")

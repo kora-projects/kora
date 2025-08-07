@@ -4,10 +4,14 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.*
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
+import com.squareup.kotlinpoet.ksp.writeTo
 import jakarta.annotation.Nonnull
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -26,12 +30,9 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         val parameterSpecs = ArrayList<ParameterSpec>()
         val typeName = meta.validator.contract
         val validatorSpecBuilder = TypeSpec.classBuilder(meta.sourceDeclaration.generatedClassName("Validator"))
+            .generated(ValidatorGenerator::class)
+            .addOriginatingKSFile(meta.sourceDeclaration)
             .addSuperinterface(typeName)
-            .addAnnotation(
-                AnnotationSpec.builder(CommonClassNames.generated)
-                    .addMember("%S", this.javaClass.canonicalName)
-                    .build()
-            )
 
         for (typeParameter in meta.sourceDeclaration.typeParameters) {
             validatorSpecBuilder.addTypeVariable(typeParameter.toTypeVariableName())
@@ -294,7 +295,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         val validatorSpecBuilder = TypeSpec.classBuilder(symbol.generatedClassName("Validator"))
             .addSuperinterface(validatorTypeName)
             .generated(ValidatorGenerator::class)
-        symbol.containingFile?.let(validatorSpecBuilder::addOriginatingKSFile)
+            .addOriginatingKSFile(symbol)
         for (typeParameter in symbol.typeParameters) {
             validatorSpecBuilder.addTypeVariable(typeParameter.toTypeVariableName())
         }

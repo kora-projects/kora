@@ -10,7 +10,6 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
-import ru.tinkoff.kora.kora.app.ksp.isClassExists
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.visitClass
 
@@ -43,10 +42,7 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
 
         configModule.writeTo(environment.codeGenerator, false)
         FileSpec.get(packageName, client).writeTo(environment.codeGenerator, false)
-        if (!isClassExists(resolver, packageName + "." + config.name)) {
-            val fileSpec = FileSpec.get(packageName, config)
-            fileSpec.writeTo(environment.codeGenerator, false)
-        }
+        FileSpec.get(packageName, config).writeTo(environment.codeGenerator, false)
     }
 }
 

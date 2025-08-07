@@ -6,12 +6,7 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.squareup.kotlinpoet.AnnotationSpec
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FunSpec
-import com.squareup.kotlinpoet.ParameterSpec
-import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
+import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -23,6 +18,7 @@ import ru.tinkoff.kora.database.symbol.processor.vertx.VertxRepositoryGenerator
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -45,7 +41,7 @@ class RepositoryBuilder(
         val name = repositoryDeclaration.getOuterClassesAsPrefix() + repositoryDeclaration.simpleName.asString() + "_Impl"
         val builder = repositoryDeclaration.extendsKeepAop(name, resolver)
             .generated(RepositoryBuilder::class)
-            .addOriginatingKSFile(repositoryDeclaration.containingFile!!)
+            .addOriginatingKSFile(repositoryDeclaration)
 
         repositoryDeclaration.findAnnotation(CommonClassNames.tag)
             ?.let { builder.addAnnotation(it.toAnnotationSpec()) }

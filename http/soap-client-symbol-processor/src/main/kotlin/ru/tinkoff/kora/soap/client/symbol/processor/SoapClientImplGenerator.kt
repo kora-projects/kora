@@ -7,7 +7,6 @@ import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.jvm.throws
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import org.w3c.dom.Node
@@ -16,6 +15,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.doesImplement
@@ -57,7 +57,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         val type = TypeSpec.interfaceBuilder(moduleName)
             .generated(WebServiceClientSymbolProcessor::class)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
-            .addOriginatingKSFile(declaration.containingFile!!)
+            .addOriginatingKSFile(declaration)
             .addFunction(
                 FunSpec.builder(methodPrefix + "_SoapConfig")
                     .returns(soapConfig)
@@ -164,6 +164,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         val targetNamespace = webService.findValue<String>("targetNamespace")!!
         val builder = TypeSpec.classBuilder(service.getOuterClassesAsPrefix() + service.simpleName.asString() + "_SoapClientImpl")
             .generated(WebServiceClientSymbolProcessor::class)
+            .addOriginatingKSFile(service)
             .addProperty("envelopeProcessor", Function::class.parameterizedBy(SoapEnvelope::class, SoapEnvelope::class), KModifier.PRIVATE)
             .addProperty("jaxb", soapClasses.jaxbContextTypeName(), KModifier.PRIVATE)
             .primaryConstructor(
@@ -239,7 +240,11 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 reactiveM.addParameter(parameter.name!!.asString(), parameter.type.toTypeName())
             }
             addMapRequest(reactiveM, method, soapClasses, objectFactories)
-            reactiveM.addStatement("val __responseFuture = this.%L.callAsync(__requestEnvelope) as %T", executorFieldName, CompletionStage::class.asClassName().parameterizedBy(SoapResult::class.asTypeName().copy(true)))
+            reactiveM.addStatement(
+                "val __responseFuture = this.%L.callAsync(__requestEnvelope) as %T",
+                executorFieldName,
+                CompletionStage::class.asClassName().parameterizedBy(SoapResult::class.asTypeName().copy(true))
+            )
             reactiveM.addStatement("val __response = __responseFuture.%M()", CommonClassNames.await)
             addMapResponse(reactiveM, method, soapClasses, objectFactories)
             builder.addFunction(reactiveM.build())

@@ -22,7 +22,7 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
         )
 
         assertThat(compileResult.isFailed()).isTrue
-        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:13: Component type is not resolvable in the current round of processing: func unknownTypeComponent()") }
+        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:13:33: error: unresolved reference: some") }
     }
 
     @Test
@@ -39,6 +39,6 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
         )
 
         assertThat(compileResult.isFailed()).isTrue
-        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:12: Dependency type parameter is not resolvable in the current round of processing: dependency") }
+        assertThat(compileResult.messages).anyMatch { it.endsWith("TestApp.kt:12:26: error: unresolved reference: some") }
     }
 }

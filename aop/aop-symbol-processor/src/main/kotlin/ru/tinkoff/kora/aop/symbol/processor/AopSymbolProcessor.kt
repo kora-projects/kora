@@ -80,7 +80,7 @@ class AopSymbolProcessor(
                 fileName = typeSpec.name!!
             )
             try {
-                fileSpec.addType(typeSpec).build().writeTo(codeGenerator = codeGenerator, aggregating = false, originatingKSFiles = listOfNotNull(containingFile))
+                fileSpec.addType(typeSpec).build().writeTo(codeGenerator, false)
             } catch (_: FileAlreadyExistsException) {
             }
         }

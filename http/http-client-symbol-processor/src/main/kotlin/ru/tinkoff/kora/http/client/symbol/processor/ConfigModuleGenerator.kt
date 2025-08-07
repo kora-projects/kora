@@ -4,10 +4,10 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 class ConfigModuleGenerator(val resolver: Resolver) {
@@ -28,7 +28,7 @@ class ConfigModuleGenerator(val resolver: Resolver) {
         val type = TypeSpec.interfaceBuilder(moduleName)
             .generated(ConfigModuleGenerator::class)
             .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
-            .addOriginatingKSFile(declaration.containingFile!!)
+            .addOriginatingKSFile(declaration)
             .addFunction(
                 FunSpec.builder(lowercaseName.toString() + "Config")
                     .returns(configClass)

@@ -10,7 +10,10 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.jvm.volatile
-import com.squareup.kotlinpoet.ksp.*
+import com.squareup.kotlinpoet.ksp.toAnnotationSpec
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaTopicAnnotation
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerRecord
@@ -26,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
@@ -41,7 +45,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val packageName = publisher.packageName.asString()
         val moduleName = publisher.generatedClassName("PublisherModule")
         val module = TypeSpec.interfaceBuilder(moduleName)
-            .addOriginatingKSFile(publisher.containingFile!!)
+            .addOriginatingKSFile(publisher)
             .addAnnotation(CommonClassNames.module)
             .generated(KafkaPublisherGenerator::class)
 
@@ -200,7 +204,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
         val b = classDeclaration.extendsKeepAop(implementationName, resolver)
             .generated(KafkaPublisherSymbolProcessor::class)
-            .addOriginatingKSFile(classDeclaration.containingFile!!)
+            .addOriginatingKSFile(classDeclaration)
             .addSuperinterface(KafkaClassNames.generatedPublisher)
             .addProperty(PropertySpec.builder("telemetryFactory", producerTelemetryFactory, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryFactory").build())
             .addProperty(PropertySpec.builder("telemetryConfig", CommonClassNames.telemetryConfig, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryConfig").build())
@@ -246,11 +250,12 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     .addStatement("return telemetry!!")
                     .build()
             )
-            .addFunction(FunSpec.builder("producer")
-                .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
-                .returns(KafkaClassNames.producer.parameterizedBy(BYTE_ARRAY, BYTE_ARRAY))
-                .addStatement("return this.delegate!!")
-                .build()
+            .addFunction(
+                FunSpec.builder("producer")
+                    .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
+                    .returns(KafkaClassNames.producer.parameterizedBy(BYTE_ARRAY, BYTE_ARRAY))
+                    .addStatement("return this.delegate!!")
+                    .build()
             )
 
         val constructorBuilder = FunSpec.constructorBuilder()
@@ -309,7 +314,13 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
     private val resume = MemberName("kotlin.coroutines", "resume")
     private val resumeWithException = MemberName("kotlin.coroutines", "resumeWithException")
 
-    private fun generatePublisherExecutableMethod(publishMethod: KSFunctionDeclaration, publishData: KafkaPublisherUtils.PublisherData, topicVariable: String, keyParserName: String?, valueParserName: String): FunSpec {
+    private fun generatePublisherExecutableMethod(
+        publishMethod: KSFunctionDeclaration,
+        publishData: KafkaPublisherUtils.PublisherData,
+        topicVariable: String,
+        keyParserName: String?,
+        valueParserName: String
+    ): FunSpec {
         val b = publishMethod.overridingKeepAop(resolver)
         if (publishData.recordVar != null) {
             val record = publishData.recordVar.name?.asString().toString()
@@ -377,7 +388,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val b = TypeSpec.classBuilder(producer.generatedClassName("TopicConfig"))
             .generated(KafkaPublisherSymbolProcessor::class)
             .addModifiers(KModifier.DATA)
-            .addOriginatingKSFile(producer.containingFile!!)
+            .addOriginatingKSFile(producer)
         val constructor = FunSpec.constructorBuilder()
         var count = 0
         for ((i, method) in publishMethods.withIndex()) {

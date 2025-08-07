@@ -19,6 +19,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
@@ -69,6 +70,7 @@ class ZeebeWorkerSymbolProcessor(
 
             val implSpecBuilder = TypeSpec.classBuilder(ownerType.generatedClassName("${method.simpleName.asString()}_KoraJobWorker"))
                 .generated(ZeebeWorkerSymbolProcessor::class)
+                .addOriginatingKSFile(method)
                 .addAnnotation(CommonClassNames.component)
                 .addSuperinterface(CLASS_KORA_WORKER)
 

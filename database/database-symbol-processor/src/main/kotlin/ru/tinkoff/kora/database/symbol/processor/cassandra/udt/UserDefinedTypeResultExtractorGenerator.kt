@@ -4,13 +4,13 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraNativeTypes
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraTypes
 import ru.tinkoff.kora.database.symbol.processor.model.DbEntity
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.generatedClassName
 
 class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolProcessorEnvironment) {
@@ -25,7 +25,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
         val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("CassandraRowColumnMapper"))
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.rowColumnMapper.parameterizedBy(typeName))
-        classDeclaration.containingFile?.let { typeSpec.addOriginatingKSFile(it) }
+            .addOriginatingKSFile(classDeclaration)
         val constructor = FunSpec.constructorBuilder()
         val entity = DbEntity.parseEntity(type)!!
         this.addMappers(typeSpec, constructor, entity)
@@ -57,7 +57,7 @@ class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolPro
         val typeSpec = TypeSpec.classBuilder(classDeclaration.generatedClassName("List_CassandraRowColumnMapper"))
             .addModifiers(KModifier.PUBLIC, KModifier.FINAL)
             .addSuperinterface(CassandraTypes.rowColumnMapper.parameterizedBy(listTypeName))
-        classDeclaration.containingFile?.let { typeSpec.addOriginatingKSFile(it) }
+            .addOriginatingKSFile(classDeclaration)
         val constructor = FunSpec.constructorBuilder()
         val entity = DbEntity.parseEntity(type)!!
         this.addMappers(typeSpec, constructor, entity)

@@ -8,6 +8,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.declarativeHttpClientConfig
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientOperationConfig
 import ru.tinkoff.kora.ksp.common.CommonClassNames.configValueExtractorAnnotation
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 class ConfigClassGenerator {
@@ -19,6 +20,7 @@ class ConfigClassGenerator {
         val typeName = declaration.configName()
 
         val tb = TypeSpec.interfaceBuilder(typeName)
+            .addOriginatingKSFile(declaration)
             .generated(HttpClientSymbolProcessor::class)
             .addSuperinterface(declarativeHttpClientConfig)
             .addAnnotation(configValueExtractorAnnotation)

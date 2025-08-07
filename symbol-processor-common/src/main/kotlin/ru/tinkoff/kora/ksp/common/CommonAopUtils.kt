@@ -8,9 +8,13 @@ import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.TypeSpec
-import com.squareup.kotlinpoet.ksp.*
+import com.squareup.kotlinpoet.ksp.toAnnotationSpec
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.aopAnnotation
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 
 object CommonAopUtils {
@@ -18,7 +22,7 @@ object CommonAopUtils {
     fun KSClassDeclaration.extendsKeepAop(newName: String, resolver: Resolver): TypeSpec.Builder {
         val type = this
         val b: TypeSpec.Builder = TypeSpec.classBuilder(newName)
-            .addOriginatingKSFile(type.containingFile!!)
+            .addOriginatingKSFile(type)
         if (type.classKind == ClassKind.INTERFACE) {
             b.addSuperinterface(type.toClassName())
         } else {

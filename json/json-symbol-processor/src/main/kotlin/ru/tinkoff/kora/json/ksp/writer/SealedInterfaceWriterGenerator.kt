@@ -4,13 +4,13 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.detectSealedHierarchyTypeVariables
 import ru.tinkoff.kora.json.ksp.jsonWriterName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -27,8 +27,8 @@ class SealedInterfaceWriterGenerator {
         val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonWriterName())
             .generated(JsonWriterGenerator::class)
             .addSuperinterface(writerInterface)
+            .addOriginatingKSFile(jsonClassDeclaration)
 
-        jsonClassDeclaration.containingFile?.let { typeBuilder.addOriginatingKSFile(it) }
         jsonClassDeclaration.typeParameters.forEach {
             val typeVariableName = it.toTypeVariableName(typeParameterResolver)
             typeBuilder.addTypeVariable(TypeVariableName.invoke(typeVariableName.name, typeVariableName.bounds, null))
