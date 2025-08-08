@@ -17,6 +17,19 @@ paths:
       responses:
         '200':
           description: Updated
+
+  /form-urlencoded-object:
+    patch:
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ObjectForm'
+      responses:
+        '200':
+          description: Updated
+
   /form-urlencoded-with-json-schema:
     patch:
       requestBody:
@@ -32,6 +45,7 @@ paths:
       responses:
         '200':
           description: Updated
+
   /form-urlencoded-with-unknown-schema:
     patch:
       requestBody:
@@ -47,12 +61,68 @@ paths:
       responses:
         '200':
           description: Updated
+
 components:
   schemas:
     Pet:
       type: object
       required:
         - pet_type
+        - provided
+        - srcCurrency
+        - amount
+        - currency
       properties:
         pet_type:
           type: string
+        provided:
+          type: boolean
+        srcCurrency:
+          type: integer
+          format: int32
+        dstCurrency:
+          type: integer
+          format: int64
+        amount:
+          type: number
+        currency:
+          type: string
+          enum: [ RUB, USD, CNY ]
+    ObjectForm:
+      type: object
+      required:
+        - account
+        - amount
+        - currency
+      properties:
+        account:
+          type: string
+        provided:
+          type: boolean
+        srcCurrency:
+          type: integer
+          format: int32
+        dstCurrency:
+          type: integer
+          format: int64
+        amount:
+          type: number
+        currency:
+          type: string
+          enum: [ RUB, USD, CNY ]
+        type:
+          $ref: '#/components/schemas/CurrencyType'
+        info:
+          $ref: "#/components/schemas/Info"
+    Info:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+    CurrencyType:
+      type: string
+      enum:
+        - GOOD
+        - BAD
