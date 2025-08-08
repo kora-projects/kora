@@ -22,7 +22,17 @@ public interface KafkaConsumerMetrics {
         onRecordsProcessed(records, duration, ex);
     }
 
-    void onRecordProcessed(ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex);
+    /**
+     * @see #onRecordsProcessed(String, ConsumerRecords, long, Throwable)
+     */
+    @Deprecated
+    default void onRecordProcessed(ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex) {
+
+    }
+
+    default void onRecordProcessed(String consumerName, ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex) {
+        onRecordProcessed(record, duration, ex);
+    }
 
     @Deprecated
     default void reportLag(TopicPartition partition, long lag) {
