@@ -367,4 +367,26 @@ public class BlockingApiTest extends AbstractHttpClientTest {
         verify(mapper).apply(same(ctx), eq("test-value"));
     }
 
+    @Test
+    public void testSuperinterfacesSupported() {
+        var client = compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient extends TestBase {
+              @HttpRoute(method = "POST", path = "/test")
+              void request();
+            }
+            """, """
+            public interface TestBase {
+              @HttpRoute(method = "POST", path = "/test1")
+              void request1();
+            }
+            """);
+
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
+        client.invoke("request");
+        reset(httpClient);
+
+        onRequest("POST", "http://test-url:8080/test1", rs -> rs.withCode(200));
+        client.invoke("request1");
+    }
 }

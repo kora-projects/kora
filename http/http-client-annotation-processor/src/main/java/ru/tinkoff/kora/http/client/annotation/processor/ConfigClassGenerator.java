@@ -9,12 +9,16 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.Elements;
 
 import static ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames.*;
 
 public class ConfigClassGenerator {
 
-    public ConfigClassGenerator() {
+    private final Elements elements;
+
+    public ConfigClassGenerator(Elements elements) {
+        this.elements = elements;
     }
 
     public TypeSpec generate(TypeElement element) {
@@ -33,8 +37,11 @@ public class ConfigClassGenerator {
             .returns(telemetryHttpClientConfig)
             .build());
 
-        for (var enclosedElement : element.getEnclosedElements()) {
+        for (var enclosedElement : elements.getAllMembers(element)) {
             if (enclosedElement.getKind() != ElementKind.METHOD || enclosedElement.getModifiers().contains(Modifier.STATIC) || enclosedElement.getModifiers().contains(Modifier.DEFAULT)) {
+                continue;
+            }
+            if (enclosedElement.getEnclosingElement().toString().equals("java.lang.Object")) {
                 continue;
             }
             var method = (ExecutableElement) enclosedElement;

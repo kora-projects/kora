@@ -23,7 +23,7 @@ public class HttpClientAnnotationProcessor extends AbstractKoraProcessor {
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
         this.clientGenerator = new ClientClassGenerator(processingEnv);
-        this.configGenerator = new ConfigClassGenerator();
+        this.configGenerator = new ConfigClassGenerator(processingEnv.getElementUtils());
         this.configModuleGenerator = new ConfigModuleGenerator(processingEnv);
     }
 
