@@ -23,13 +23,6 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
 
     private static final Logger logger = LoggerFactory.getLogger(JdbcDatabase.class);
 
-    final Context.Key<Connection> connectionKey = new Context.Key<>() {
-        @Override
-        protected Connection copy(Connection object) {
-            return null;
-        }
-    };
-
     private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
     private final DataBaseTelemetry telemetry;
@@ -116,29 +109,38 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     @Nullable
     @Override
     public Connection currentConnection() {
-        var ctx = Context.current();
-        return ctx.get(this.connectionKey);
+        var ctx = ConnectionContext.get(Context.current());
+        if (ctx == null) {
+            return null;
+        }
+        return ctx.connection();
+    }
+
+    @Nullable
+    @Override
+    public ConnectionContext currentConnectionContext() {
+        return ConnectionContext.get(Context.current());
     }
 
     @Override
     public <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException {
         var ctx = Context.current();
 
-        var currentConnection = ctx.get(this.connectionKey);
-        if (currentConnection != null) {
+        var currentConnectionCtx = ConnectionContext.get(Context.current());
+        if (currentConnectionCtx != null) {
             try {
-                return callback.apply(currentConnection);
+                return callback.apply(currentConnectionCtx.connection());
             } catch (SQLException e) {
                 throw new RuntimeSqlException(e);
             }
         }
 
-        try (var connection = ctx.set(this.connectionKey, this.newConnection())) {
+        try (var connection = ConnectionContext.set(ctx, new ConnectionContext(this.newConnection())).connection()) {
             return callback.apply(connection);
         } catch (SQLException e) {
             throw new RuntimeSqlException(e);
         } finally {
-            ctx.remove(this.connectionKey);
+            ConnectionContext.remove(ctx);
         }
     }
 
