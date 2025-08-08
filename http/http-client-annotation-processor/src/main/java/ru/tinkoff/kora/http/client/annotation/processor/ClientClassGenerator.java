@@ -878,12 +878,15 @@ public class ClientClassGenerator {
 
     private List<MethodData> parseMethods(TypeElement element) {
         var result = new ArrayList<MethodData>();
-        for (var enclosedElement : element.getEnclosedElements()) {
+        for (var enclosedElement : elements.getAllMembers(element)) {
             if (enclosedElement.getKind() != ElementKind.METHOD) {
                 continue;
             }
             var method = (ExecutableElement) enclosedElement;
             if (method.getModifiers().contains(Modifier.DEFAULT) || method.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+            if (method.getEnclosingElement().toString().equals("java.lang.Object")) {
                 continue;
             }
             var parameters = new ArrayList<Parameter>();

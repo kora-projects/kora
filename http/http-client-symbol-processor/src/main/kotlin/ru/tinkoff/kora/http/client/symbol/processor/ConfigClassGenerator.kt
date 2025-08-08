@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.symbol.processor
 
-import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.FunSpec
 import com.squareup.kotlinpoet.KModifier
@@ -13,7 +12,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 
 class ConfigClassGenerator {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
-        val functions = declaration.getDeclaredFunctions()
+        val functions = declaration.getAllFunctions()
             .filter { f -> f.isAbstract }
             .map { it.simpleName.asString() }
 

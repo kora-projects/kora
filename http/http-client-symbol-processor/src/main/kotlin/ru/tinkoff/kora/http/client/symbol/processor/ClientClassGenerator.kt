@@ -63,7 +63,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
-        val methods: List<MethodData> = this.parseMethods(declaration)
+        val methods = this.parseMethods(declaration)
         val builder = declaration.extendsKeepAop(typeName, resolver)
             .generated(ClientClassGenerator::class)
 
@@ -103,7 +103,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
-                        } else if(parameterType.isMap()) {
+                        } else if (parameterType.isMap()) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
@@ -115,7 +115,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
-                        } else if(parameterType.isMap()) {
+                        } else if (parameterType.isMap()) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
@@ -260,7 +260,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             .beginControlFlow("if(!_k.isNullOrBlank())")
 
                         val argType = parameterType.arguments[1].type?.resolve()!!
-                        if(argType.isMarkedNullable) {
+                        if (argType.isMarkedNullable) {
                             b.beginControlFlow("if(_v == null)")
                                 .addStatement("_query.add(_k)")
                                 .nextControlFlow("else")
@@ -272,7 +272,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             b.addStatement("_query.add(_k, %L.convert(_v))", getConverterName(methodData, it.parameter))
                         }
 
-                        if(argType.isMarkedNullable) {
+                        if (argType.isMarkedNullable) {
                             b.endControlFlow()
                         }
                         b.endControlFlow().endControlFlow()
@@ -342,7 +342,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if(httpHeaders == parameterType.toClassName()) {
+            if (httpHeaders == parameterType.toClassName()) {
                 b.beginControlFlow("%L.forEach { _e -> ", literalName)
                 b.addStatement("_headers.add(_e.key, _e.value)", getConverterName(methodData, it.parameter))
                 b.endControlFlow()
@@ -356,7 +356,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     .beginControlFlow("if(!_k.isNullOrBlank())")
 
                 val argType = parameterType.arguments[1].type?.resolve()!!
-                if(argType.isMarkedNullable) {
+                if (argType.isMarkedNullable) {
                     b.beginControlFlow("if(_v != null)")
                 }
 
@@ -366,7 +366,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     b.addStatement("_headers.add(_k, %L.convert(_v))", getConverterName(methodData, it.parameter))
                 }
 
-                if(argType.isMarkedNullable) {
+                if (argType.isMarkedNullable) {
                     b.endControlFlow()
                 }
                 b.endControlFlow().endControlFlow()
@@ -767,8 +767,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
     private fun parseMethods(declaration: KSClassDeclaration): List<MethodData> {
         val result = ArrayList<MethodData>()
-        declaration.getDeclaredFunctions().forEach { function ->
-            if(function.isAbstract) {
+        declaration.getAllFunctions().forEach { function ->
+            if (function.isAbstract) {
                 val parameters = mutableListOf<Parameter>()
                 for (i in function.parameters.indices) {
                     val parameter = Parameter.parseParameter(function, i)
@@ -863,6 +863,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         } else {
             val tag = AnnotationSpec.builder(CommonClassNames.tag)
             val builder = CodeBlock.builder().add("value = [")
+
             @Suppress("UNCHECKED_CAST")
             val tags = interceptorTag.arguments[0].value!! as List<KSType>
             if (tags.isNotEmpty()) {

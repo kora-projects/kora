@@ -21,7 +21,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testComponentAnnotationPreserved() {
-        val client = compile(listOf<Any>(), """
+        val client = compile(
+            listOf<Any>(), """
             @Component
             @HttpClient
             interface TestClient {
@@ -29,7 +30,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
               fun request()
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         Assertions.assertThat(client.objectClass.annotations.any { a -> a is Component }).isTrue
 
@@ -39,14 +41,16 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testBlockingVoid() {
-        val client = compile(listOf<Any>(), """
+        val client = compile(
+            listOf<Any>(), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
               fun request()
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         client.invoke<Unit>("request")
 
@@ -62,14 +66,16 @@ class BlockingApiTest : AbstractHttpClientTest() {
     @Test
     fun testBlockingNonVoid() {
         val mapper = Mockito.mock(HttpClientResponseMapper::class.java)
-        compile(listOf(mapper), """
+        compile(
+            listOf(mapper), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
               fun request(): String
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         reset(httpClient, mapper)
 
@@ -94,7 +100,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testBlockingCustomFinalMapper() {
-        compile(listOf<Any>(), """
+        compile(
+            listOf<Any>(), """
             @HttpClient
             interface TestClient {
               @Mapping(TestMapper::class)
@@ -107,7 +114,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
                   return "test-string-from-mapper";
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
@@ -122,7 +130,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testBlockingCustomMapper() {
-        compile(listOf(newGenerated("TestMapper")), """
+        compile(
+            listOf(newGenerated("TestMapper")), """
             @HttpClient
             interface TestClient {
               @Mapping(TestMapper::class)
@@ -137,7 +146,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
               }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
@@ -152,7 +162,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testBlockingCustomMapperByTag() {
-        compile(listOf(newGenerated("TestMapper")), """
+        compile(
+            listOf(newGenerated("TestMapper")), """
             @HttpClient
             interface TestClient {
               @Tag(TestMapper::class)
@@ -167,7 +178,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
               }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         Assertions.assertThat(client.objectClass.primaryConstructor!!.parameters[3].hasAnnotation<Tag>())
 
         reset(httpClient)
@@ -183,7 +195,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testBlockingFinalCodeMapper() {
-        compile(listOf<Any>(), """
+        compile(
+            listOf<Any>(), """
             @HttpClient
             interface TestClient {
               @ResponseCodeMapper(code = 201, mapper = TestMapper::class)
@@ -196,7 +209,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
                   return "test-string-from-mapper";
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
@@ -214,7 +228,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testBlockingCodeMapper() {
-        compile(listOf(newGenerated("TestMapper")), """
+        compile(
+            listOf(newGenerated("TestMapper")), """
             @HttpClient
             public interface TestClient {
               @ResponseCodeMapper(code = 201, mapper = TestMapper::class)
@@ -229,7 +244,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
               }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
@@ -247,7 +263,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testCodeMapperByType() {
-        compile(listOf(newGenerated("Test200Mapper"), newGenerated("Test500Mapper")), """
+        compile(
+            listOf(newGenerated("Test200Mapper"), newGenerated("Test500Mapper")), """
             @HttpClient
             public interface TestClient {
               @ResponseCodeMapper(code = 200, type = TestResponse.Rs200::class)
@@ -270,7 +287,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
               class Rs500(): TestResponse { override fun toString() = "Rs500" }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
@@ -289,7 +307,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
     @Test
     fun testCodeMapperNoType() {
-        compile(listOf(newGenerated("TestMapper"), newGenerated("TestMapper")), """
+        compile(
+            listOf(newGenerated("TestMapper"), newGenerated("TestMapper")), """
             @HttpClient
             interface TestClient {
               @ResponseCodeMapper(code = 200)
@@ -308,7 +327,8 @@ class BlockingApiTest : AbstractHttpClientTest() {
               class Rs500(): TestResponse { override fun toString() = "Rs500" }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
@@ -329,13 +349,15 @@ class BlockingApiTest : AbstractHttpClientTest() {
     @SuppressWarnings("unchecked")
     fun testBlockingRequestBody() {
         val mapper = Mockito.mock(HttpClientRequestMapper::class.java) as HttpClientRequestMapper<String>
-        val client = compile(listOf(mapper), """
+        val client = compile(
+            listOf(mapper), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
               fun request(body: String)
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         val ctx = Context.current()
         whenever(mapper.apply(ArgumentMatchers.any(), ArgumentMatchers.any()))
             .thenAnswer { HttpBody.plaintext("test-value") }
@@ -351,4 +373,32 @@ class BlockingApiTest : AbstractHttpClientTest() {
         Assertions.assertThatThrownBy { client.invoke<Unit>("request", "test-value") }.isInstanceOf(HttpClientEncoderException::class.java)
         Mockito.verify(mapper).apply(ArgumentMatchers.same(ctx), ArgumentMatchers.eq("test-value"))
     }
+
+    @Test
+    fun testSuperinterfacesSupported() {
+        val client = compile(
+            listOf<Any>(), """
+            @HttpClient
+            interface TestClient: TestBase {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request()
+            }
+            
+            """.trimIndent(), """
+            interface TestBase {
+              @HttpRoute(method = "POST", path = "/test1")
+              fun request1()
+            }
+            
+            """.trimIndent()
+        )
+
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        client.invoke<Unit>("request")
+        reset(httpClient)
+
+        onRequest("POST", "http://test-url:8080/test1") { rs -> rs.withCode(200) }
+        client.invoke<Unit>("request1")
+    }
+
 }
