@@ -12,6 +12,10 @@ import java.time.ZonedDateTime;
  */
 public interface Cookie extends Comparable<Cookie> {
 
+    static Cookie of(String name, String value) {
+        return new CookieImpl(name, value);
+    }
+
     /**
      * @return <b>Русский</b>: Возвращает имя Cookie
      * <hr>
@@ -71,6 +75,8 @@ public interface Cookie extends Comparable<Cookie> {
     String sameSiteMode();
 
     Cookie setSameSiteMode(final String mode);
+
+    String toValue();
 
     @Override
     default int compareTo(final Cookie other) {

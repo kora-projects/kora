@@ -20,6 +20,7 @@ public class HttpClientClassNames {
     public static final ClassName httpClientTelemetryFactory = ClassName.get("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryFactory");
     public static final ClassName stringParameterConverter = ClassName.get("ru.tinkoff.kora.http.client.common.writer", "StringParameterConverter");
     public static final ClassName httpHeaders = ClassName.get("ru.tinkoff.kora.http.common.header", "HttpHeaders");
+    public static final ClassName httpCookie = ClassName.get("ru.tinkoff.kora.http.common.cookie", "Cookie");
     public static final ClassName httpRoute = ClassName.get("ru.tinkoff.kora.http.common.annotation", "HttpRoute");
     public static final ClassName httpClientUnknownException = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClientUnknownException");
     public static final ClassName httpClientOperationConfig = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig");
@@ -31,4 +32,5 @@ public class HttpClientClassNames {
     public static final ClassName header = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Header");
     public static final ClassName query = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Query");
     public static final ClassName path = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Path");
+    public static final ClassName cookie = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Cookie");
 }

@@ -36,12 +36,14 @@ import java.util.*;
  * @author <a href="mailto:ropalka@redhat.com">Richard Opalka</a>
  */
 public class Cookies {
-    private static final Logger log = LoggerFactory.getLogger(Cookies.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(Cookies.class);
 
     public static final String DOMAIN = "$Domain";
     public static final String VERSION = "$Version";
     public static final String PATH = "$Path";
 
+    private Cookies() { }
 
     /**
      * Parses a "Set-Cookie:" response header value into its cookie representation. The header value is parsed according to the
@@ -146,6 +148,38 @@ public class Cookies {
         return cookie;
     }
 
+    public static String toCookieValue(Cookie cookie) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(cookie.name()).append("=").append(cookie.value());
+
+        if (cookie.path() != null) {
+            sb.append("; Path=").append(cookie.path());
+        }
+        if (cookie.domain() != null) {
+            sb.append("; Domain=").append(cookie.domain());
+        }
+        if (cookie.maxAge() != null) {
+            sb.append("; Max-Age=").append(cookie.maxAge());
+        }
+        if (cookie.expires() != null) {
+            sb.append("; Expires=").append(cookie.expires().format(DateTimeFormatter.RFC_1123_DATE_TIME));
+        }
+        if (cookie.isSecure()) {
+            sb.append("; Secure");
+        }
+        if (cookie.isHttpOnly()) {
+            sb.append("; HttpOnly");
+        }
+        if (cookie.comment() != null) {
+            sb.append("; Comment=").append(cookie.comment());
+        }
+        if (cookie.isSameSite() && cookie.sameSiteMode() != null) {
+            sb.append("; SameSite=").append(cookie.sameSiteMode());
+        }
+
+        return sb.toString();
+    }
+
     private static void handleValue(CookieImpl cookie, String key, String value) {
         if (key == null) {
             return;
@@ -241,8 +275,8 @@ public class Cookies {
                     } else if (c == ';' || (commaIsSeperator && c == ',')) {
                         if (name != null) {
                             cookieCount = createCookie(name, cookie.substring(start, i), maxCookies, cookieCount, cookies, additional);
-                        } else if (log.isTraceEnabled()) {
-                            log.trace("Ignoring invalid cookies in header {}", cookie);
+                        } else if (logger.isTraceEnabled()) {
+                            logger.trace("Ignoring invalid cookies in header {}", cookie);
                         }
                         state = 0;
                         start = i + 1;
@@ -373,10 +407,6 @@ public class Cookies {
             dest++;
         }
         return new String(tmp, 0, dest);
-    }
-
-    private Cookies() {
-
     }
 
     private static final String RFC1036_PATTERN = "EEEE, dd-MMM-yy HH:mm:ss z";

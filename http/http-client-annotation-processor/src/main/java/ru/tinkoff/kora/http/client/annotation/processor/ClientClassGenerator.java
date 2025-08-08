@@ -79,7 +79,11 @@ public class ClientClassGenerator {
 
         var hasPathParameters = methodData.parameters.stream().anyMatch(p -> p instanceof Parameter.PathParameter);
         var hasQueryParameters = methodData.parameters.stream().anyMatch(p -> p instanceof Parameter.QueryParameter);
-        var bodyParameter = methodData.parameters.stream().filter(p -> p instanceof Parameter.BodyParameter).findFirst().map(Parameter.BodyParameter.class::cast).orElse(null);
+        var bodyParameter = methodData.parameters.stream().filter(p -> p instanceof Parameter.BodyParameter)
+            .findFirst()
+            .map(Parameter.BodyParameter.class::cast)
+            .orElse(null);
+
         if (hasPathParameters || hasQueryParameters) {
             var httpPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(httpRoute, "path"));
             final String uriWithPlaceholdersString;
@@ -251,11 +255,62 @@ public class ClientClassGenerator {
                     b.endControlFlow();
                 }
             }
+            if (parameter instanceof Parameter.CookieParameter cookie) {
+                boolean nullable = CommonUtils.isNullable(cookie.parameter());
+                if (nullable) {
+                    b.beginControlFlow("if ($L != null)", cookie.parameter());
+                }
+
+                var targetLiteral = cookie.parameter().getSimpleName().toString();
+                var type = cookie.parameter().asType();
+                var isList = CommonUtils.isCollection(type);
+                if (isList) {
+                    type = ((DeclaredType) type).getTypeArguments().get(0);
+                    var paramName = "_" + targetLiteral + "_element";
+                    b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
+                    targetLiteral = paramName;
+                }
+
+                var isMap = CommonUtils.isMap(type);
+                if (isMap) {
+                    var keyType = ((DeclaredType) type).getTypeArguments().get(0);
+                    if (!String.class.getCanonicalName().equals(keyType.toString())) {
+                        throw new ProcessingErrorException("@Cookie map key type must be String, but was: " + keyType, method);
+                    }
+
+                    type = ((DeclaredType) type).getTypeArguments().get(1);
+                    b.beginControlFlow("for (var $L_cookie : $L.entrySet())", targetLiteral, targetLiteral);
+                    b.beginControlFlow("if($L_cookie.getKey() != null && !$L_cookie.getKey().isBlank() && $L_cookie.getValue() != null)", targetLiteral, targetLiteral, targetLiteral);
+                    if (requiresConverter(type)) {
+                        b.addStatement("_headers.add(\"Cookie\", $L_cookie.getKey() + \"=\" + $L.convert($L_cookie.getValue()))", targetLiteral, getConverterName(methodData, cookie.parameter()), targetLiteral);
+                    } else {
+                        b.addStatement("_headers.add(\"Cookie\", $L_cookie.getKey() + \"=\" + $L_cookie.getValue())", targetLiteral, targetLiteral);
+                    }
+                    b.endControlFlow().endControlFlow();
+                } else if (ClassName.get(type).equals(httpCookie)) {
+                    b.addStatement("_headers.add(\"Cookie\", $L.toValue())", targetLiteral);
+                } else {
+                    if (requiresConverter(type)) {
+                        b.addCode("_headers.add(\"Cookie\", \"$L=\" + $L.convert($L));\n", cookie.cookieName(), getConverterName(methodData, cookie.parameter()), targetLiteral);
+                    } else {
+                        b.addCode("_headers.add(\"Cookie\", \"$L=\" + $T.toString($L));\n", cookie.cookieName(), Objects.class, targetLiteral);
+                    }
+                }
+
+                if (isList) {
+                    b.endControlFlow();
+                }
+
+                if (nullable) {
+                    b.endControlFlow();
+                }
+            }
         }
         if (bodyParameter == null) {
             b.addStatement("var _body = $T.empty()", httpBody);
         } else {
             var requestMapperName = method.getSimpleName() + "RequestMapper";
+            b.addCode("\n");
             b.addStatement("final $T _body", httpBodyOutput);
             b.addCode("try {$>\n");
             var ref = findMapperField(builder, requestMapperName).modifiers.contains(Modifier.STATIC)
@@ -267,7 +322,7 @@ public class ClientClassGenerator {
             b.addCode("}\n");
         }
 
-
+        b.addCode("\n");
         b.addStatement("var _request = $T.of($S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
         if (CommonUtils.isMono(method.getReturnType())) {
             b.addCode(buildCallMono(builder, methodData));
@@ -908,6 +963,21 @@ public class ClientClassGenerator {
                     if (requiresConverter(type) && !ClassName.get(headerParameter.parameter().asType()).equals(httpHeaders)) {
                         result.put(
                             getConverterName(method, headerParameter.parameter()),
+                            getConverterTypeName(type)
+                        );
+                    }
+                }
+                if (parameter instanceof Parameter.CookieParameter cookieParameter) {
+                    var type = cookieParameter.parameter().asType();
+                    if (CommonUtils.isCollection(type)) {
+                        type = ((DeclaredType) type).getTypeArguments().get(0);
+                    } else if (CommonUtils.isMap(type)) {
+                        type = ((DeclaredType) type).getTypeArguments().get(1);
+                    }
+
+                    if (requiresConverter(type) && !ClassName.get(cookieParameter.parameter().asType()).equals(httpCookie)) {
+                        result.put(
+                            getConverterName(method, cookieParameter.parameter()),
                             getConverterTypeName(type)
                         );
                     }
