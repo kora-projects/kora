@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.util.TimeUtils;
+import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerMetrics.CallAcquireStatus;
 
 import java.time.Clock;
 import java.util.concurrent.atomic.AtomicLong;
@@ -84,9 +86,10 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         return internalAccept(callable, fallback);
     }
 
-    private <T> T internalAccept(@Nonnull Supplier<T> supplier, Supplier<T> fallback) {
+    private <T> T internalAccept(@Nonnull Supplier<T> supplier, @Nullable Supplier<T> fallback) {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
+            metrics.recordCallAcquire(name, CallAcquireStatus.DISABLED);
             return supplier.get();
         }
 
@@ -99,12 +102,12 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             if (fallback == null) {
                 throw e;
             }
-
-            return fallback.get();
-        } catch (Exception e) {
+        } catch (Throwable e) {
             releaseOnError(e);
             throw e;
         }
+
+        return fallback.get();
     }
 
     private State getState(long value) {
@@ -139,8 +142,15 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         return clock.millis();
     }
 
-    private void onStateChange(@Nonnull State prevState, @Nonnull State newState) {
-        logger.info("CircuitBreaker '{}' switched from {} to {}", name, prevState, newState);
+    private void onStateChange(@Nonnull State prevState,
+                               @Nonnull State newState,
+                               String action,
+                               @Nullable Throwable throwable) {
+        if (throwable != null) {
+            logger.info("CircuitBreaker '{}' switched from {} to {} on {} due to: {}", name, prevState, newState, action, throwable.toString());
+        } else {
+            logger.info("CircuitBreaker '{}' switched from {} to {} on {}", name, prevState, newState, action);
+        }
         metrics.recordState(name, newState);
     }
 
@@ -148,6 +158,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     public void acquire() throws CallNotPermittedException {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
+            metrics.recordCallAcquire(name, CallAcquireStatus.DISABLED);
             return;
         }
 
@@ -160,44 +171,49 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     public boolean tryAcquire() {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
+            metrics.recordCallAcquire(name, CallAcquireStatus.DISABLED);
             return true;
         }
 
-        final long value = state.get();
-        final State state = getState(value);
+        final long stateLong = state.get();
+        final State state = getState(stateLong);
         if (state == State.CLOSED) {
             logger.trace("CircuitBreaker '{}' acquired in CLOSED state", name);
+            metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
             return true;
         }
 
         if (state == State.HALF_OPEN) {
-            final short acquired = countHalfOpenAcquired(value);
+            final short acquired = countHalfOpenAcquired(stateLong);
             if (acquired < config.permittedCallsInHalfOpenState()) {
-                final boolean isAcquired = this.state.compareAndSet(value, value + 1);
+                final boolean isAcquired = this.state.compareAndSet(stateLong, stateLong + 1);
                 if (isAcquired) {
                     if (logger.isTraceEnabled()) {
                         logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left", name, acquired - 1);
                     }
+                    metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
                     return true;
                 } else {
                     return tryAcquire();
                 }
             } else {
                 logger.trace("CircuitBreaker '{}' rejected in HALF_OPEN state due to all {} calls acquired", name, acquired);
+                metrics.recordCallAcquire(name, CallAcquireStatus.REJECTED);
                 return false;
             }
         }
 
         final long currentTimeInMillis = clock.millis();
-        final long beenInOpenState = currentTimeInMillis - value;
+        final long beenInOpenState = currentTimeInMillis - stateLong;
         // go to half open
         if (beenInOpenState >= waitDurationInOpenStateInMillis) {
-            if (this.state.compareAndSet(value, HALF_OPEN_STATE + 1)) {
-                onStateChange(State.OPEN, State.HALF_OPEN);
+            if (this.state.compareAndSet(stateLong, HALF_OPEN_STATE + 1)) {
                 if (logger.isTraceEnabled()) {
                     logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
                         name, config.permittedCallsInHalfOpenState() - 1);
                 }
+                onStateChange(State.OPEN, State.HALF_OPEN, "acquire", null);
+                metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
                 return true;
             } else {
                 // prob concurrently switched to half open and have to reacquire
@@ -208,6 +224,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 logger.trace("CircuitBreaker '{}' rejected in OPEN state for waiting '{}' when require minimum wait time '{}'",
                     name, TimeUtils.durationForLogging(beenInOpenState), TimeUtils.durationForLogging(waitDurationInOpenStateInMillis));
             }
+            metrics.recordCallAcquire(name, CallAcquireStatus.REJECTED);
             return false;
         }
     }
@@ -232,7 +249,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         }
 
         if (prevState != newState) {
-            onStateChange(prevState, newState);
+            onStateChange(prevState, newState, "success", null);
         }
 
         if (prevState == newState) {
@@ -295,7 +312,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         }
 
         if (prevState != newState) {
-            onStateChange(prevState, newState);
+            onStateChange(prevState, newState, "error", throwable);
         }
 
         if (prevState == newState) {
