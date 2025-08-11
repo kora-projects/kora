@@ -13,9 +13,9 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.DurationBatchKey;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.DurationKey;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.LagKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordsDurationKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordDurationKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.TopicLagKey;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.MicrometerKafkaConsumerTagsProvider;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
@@ -28,23 +28,24 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
 
-    private final MicrometerKafkaConsumerTagsProvider consumerTagsProvider;
+    private final ConcurrentHashMap<RecordDurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<RecordsDurationKey, DistributionSummary> metricsBatch = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<TopicLagKey, LagGauge> lagMetrics = new ConcurrentHashMap<>();
+
     private final MeterRegistry meterRegistry;
-    private final ConcurrentHashMap<DurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<DurationBatchKey, DistributionSummary> metricsBatch = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<LagKey, LagGauge> lagMetrics = new ConcurrentHashMap<>();
+    private final Properties driverProperties;
     private final TelemetryConfig.MetricsConfig config;
+    private final MicrometerKafkaConsumerTagsProvider tagsProvider;
     @Nullable
     private final String clientId;
     @Nullable
     private final String groupId;
-    private final Properties driverProperties;
 
-    public Opentelemetry123KafkaConsumerMetrics(MicrometerKafkaConsumerTagsProvider consumerTagsProvider,
-                                                MeterRegistry meterRegistry,
+    public Opentelemetry123KafkaConsumerMetrics(MeterRegistry meterRegistry,
                                                 Properties driverProperties,
-                                                TelemetryConfig.MetricsConfig config) {
-        this.consumerTagsProvider = consumerTagsProvider;
+                                                TelemetryConfig.MetricsConfig config,
+                                                MicrometerKafkaConsumerTagsProvider tagsProvider) {
+        this.tagsProvider = tagsProvider;
         this.meterRegistry = meterRegistry;
         this.config = config;
         this.driverProperties = driverProperties;
@@ -55,20 +56,20 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
         this.groupId = (groupIdObj instanceof String s) ? s : null;
     }
 
-    private DistributionSummary metrics(DurationKey key) {
+    private DistributionSummary metrics(RecordDurationKey key) {
         var builder = DistributionSummary.builder("messaging.receive.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
-            .tags(consumerTagsProvider.getDurationTags(clientId, groupId, driverProperties, key));
+            .tags(tagsProvider.getRecordDurationTags(clientId, groupId, driverProperties, key));
 
         return builder.register(this.meterRegistry);
     }
 
-    private DistributionSummary metricBatch(DurationBatchKey key) {
+    private DistributionSummary metricBatch(RecordsDurationKey key) {
         var builder = DistributionSummary.builder("messaging.process.batch.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
-            .tags(consumerTagsProvider.getDurationBatchTags(clientId, groupId, driverProperties, key));
+            .tags(tagsProvider.getRecordsDurationTags(clientId, groupId, driverProperties, key));
 
         return builder.register(this.meterRegistry);
     }
@@ -81,7 +82,7 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     @Override
     public void onRecordProcessed(String consumerName, ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex) {
         double durationDouble = ((double) duration) / 1_000_000_000;
-        var key = new DurationKey(consumerName, record.topic(), record.partition(), ex != null ? ex.getClass() : null);
+        var key = new RecordDurationKey(consumerName, record.topic(), record.partition(), ex != null ? ex.getClass() : null);
 
         this.metrics.computeIfAbsent(key, this::metrics).record(durationDouble);
     }
@@ -89,15 +90,15 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     @Override
     public void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
         double durationDouble = ((double) duration) / 1_000_000_000;
-        var key = new DurationBatchKey(consumerName, ex != null ? ex.getClass() : null);
+        var key = new RecordsDurationKey(consumerName, ex != null ? ex.getClass() : null);
 
         this.metricsBatch.computeIfAbsent(key, this::metricBatch).record(durationDouble);
     }
 
     @Override
     public void reportLag(String consumerName, TopicPartition partition, long lag) {
-        var key = new LagKey(consumerName, partition.topic(), partition.partition());
-        lagMetrics.computeIfAbsent(key, k -> new LagGauge(k, clientId, driverProperties, consumerTagsProvider, meterRegistry)).offsetLag = lag;
+        var key = new TopicLagKey(consumerName, partition.topic(), partition.partition());
+        lagMetrics.computeIfAbsent(key, k -> new LagGauge(k, clientId, driverProperties, tagsProvider, meterRegistry)).offsetLag = lag;
     }
 
     @Override
@@ -133,13 +134,13 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
         private final Gauge gauge;
         private volatile long offsetLag;
 
-        private LagGauge(LagKey key,
+        private LagGauge(TopicLagKey key,
                          @Nullable String clientId,
                          Properties driverProperties,
                          MicrometerKafkaConsumerTagsProvider consumerTagsProvider,
                          MeterRegistry meterRegistry) {
             gauge = Gauge.builder("messaging.kafka.consumer.lag", () -> offsetLag)
-                .tags(consumerTagsProvider.getLagTags(clientId, driverProperties, key))
+                .tags(consumerTagsProvider.getTopicLagTags(clientId, driverProperties, key))
                 .register(meterRegistry);
         }
     }

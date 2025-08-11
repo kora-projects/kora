@@ -13,16 +13,16 @@ import java.util.Properties;
 
 public final class MicrometerKafkaConsumerMetricsFactory implements KafkaConsumerMetricsFactory {
 
-    private final MicrometerKafkaConsumerTagsProvider consumerTagsProvider;
     private final MeterRegistry meterRegistry;
     private final MetricsConfig metricsConfig;
+    private final MicrometerKafkaConsumerTagsProvider tagsProvider;
 
-    public MicrometerKafkaConsumerMetricsFactory(MicrometerKafkaConsumerTagsProvider consumerTagsProvider,
-                                                 MeterRegistry meterRegistry,
-                                                 MetricsConfig metricsConfig) {
-        this.consumerTagsProvider = consumerTagsProvider;
+    public MicrometerKafkaConsumerMetricsFactory(MeterRegistry meterRegistry,
+                                                 MetricsConfig metricsConfig,
+                                                 MicrometerKafkaConsumerTagsProvider tagsProvider) {
         this.meterRegistry = meterRegistry;
         this.metricsConfig = metricsConfig;
+        this.tagsProvider = tagsProvider;
     }
 
     @Nullable
@@ -30,8 +30,8 @@ public final class MicrometerKafkaConsumerMetricsFactory implements KafkaConsume
     public KafkaConsumerMetrics get(Properties driverProperties, TelemetryConfig.MetricsConfig metrics) {
         if (Objects.requireNonNullElse(metrics.enabled(), true)) {
             return switch (metricsConfig.opentelemetrySpec()) {
-                case V120 -> new Opentelemetry120KafkaConsumerMetrics(this.consumerTagsProvider, this.meterRegistry, driverProperties, metrics);
-                case V123 -> new Opentelemetry123KafkaConsumerMetrics(this.consumerTagsProvider, this.meterRegistry, driverProperties, metrics);
+                case V120 -> new Opentelemetry120KafkaConsumerMetrics(this.meterRegistry, driverProperties, metrics, this.tagsProvider);
+                case V123 -> new Opentelemetry123KafkaConsumerMetrics(this.meterRegistry, driverProperties, metrics, this.tagsProvider);
             };
         }
         return null;

@@ -11,6 +11,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerMetrics;
+import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.MicrometerKafkaProducerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.RecordDurationKey;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
@@ -21,18 +23,30 @@ import java.util.concurrent.ConcurrentHashMap;
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
  */
 public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetrics, AutoCloseable {
+
+    private final ConcurrentHashMap<RecordDurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
+
     private final KafkaClientMetrics micrometerMetrics;
-    private final Properties properties;
+    private final Properties driverProperties;
     private final TelemetryConfig.MetricsConfig config;
     private final MeterRegistry meterRegistry;
-    private final ConcurrentHashMap<DurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
+    private final MicrometerKafkaProducerTagsProvider tagsProvider;
+    @Nullable
+    private final String clientId;
 
-    public Opentelemetry123KafkaProducerMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, Producer<?, ?> producer, Properties properties) {
+    public Opentelemetry123KafkaProducerMetrics(MeterRegistry meterRegistry,
+                                                TelemetryConfig.MetricsConfig config,
+                                                Producer<?, ?> producer,
+                                                Properties driverProperties,
+                                                MicrometerKafkaProducerTagsProvider tagsProvider) {
         this.micrometerMetrics = new KafkaClientMetrics(producer);
+        this.tagsProvider = tagsProvider;
         this.micrometerMetrics.bindTo(meterRegistry);
-        this.properties = properties;
+        this.driverProperties = driverProperties;
         this.config = config;
         this.meterRegistry = meterRegistry;
+        var clientIdObj = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
+        this.clientId = (clientIdObj instanceof String s) ? s : null;
     }
 
     @Override
@@ -52,14 +66,14 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
 
     @Override
     public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, Throwable e) {
-        var key = new DurationKey(record.topic(), Objects.requireNonNullElse(record.partition(), -1), e.getClass());
+        var key = new RecordDurationKey(record.topic(), Objects.requireNonNullElse(record.partition(), -1), e.getClass());
         var m = this.metrics.computeIfAbsent(key, this::metrics);
         m.record((double) durationNanos / 1_000_000_000);
     }
 
     @Override
     public void sendEnd(ProducerRecord<?, ?> record, long durationNanos, RecordMetadata metadata) {
-        var key = new DurationKey(record.topic(), Objects.requireNonNullElse(record.partition(), -1), null);
+        var key = new RecordDurationKey(record.topic(), Objects.requireNonNullElse(record.partition(), -1), null);
         var m = this.metrics.computeIfAbsent(key, this::metrics);
         m.record((double) durationNanos / 1_000_000_000);
     }
@@ -73,32 +87,16 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
             try {
                 entry.getValue().close();
             } catch (Throwable ignore) {
+                // ignore
             }
         }
     }
 
-    private record DurationKey(String topic, int partition, @Nullable Class<? extends Throwable> errorType) {}
-
-    private DistributionSummary metrics(DurationKey key) {
-        var clientId = this.properties.get(ProducerConfig.CLIENT_ID_CONFIG);
-        var partitionString = Integer.toString(key.partition());
-
-        @SuppressWarnings("deprecation")
+    private DistributionSummary metrics(RecordDurationKey key) {
         var builder = DistributionSummary.builder("messaging.publish.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
-            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
-            .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), partitionString)
-            .tag(MessagingIncubatingAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), partitionString)
-            .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
-            .tag(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString());
-
-        var errorType = key.errorType();
-        if (errorType != null) {
-            builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), errorType.getCanonicalName());
-        } else {
-            builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), "");
-        }
+            .tags(tagsProvider.getTopicPartitionTags(this.clientId, this.driverProperties, key));
 
         return builder.register(this.meterRegistry);
     }

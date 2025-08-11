@@ -8,17 +8,17 @@ import java.util.Properties;
 
 public interface MicrometerKafkaConsumerTagsProvider {
 
-    List<Tag> getDurationTags(@Nullable String clientId,
-                              @Nullable String groupId,
+    List<Tag> getRecordDurationTags(@Nullable String clientId,
+                                    @Nullable String groupId,
+                                    Properties driverProperties,
+                                    RecordDurationKey key);
+
+    List<Tag> getRecordsDurationTags(@Nullable String clientId,
+                                     @Nullable String groupId,
+                                     Properties driverProperties,
+                                     RecordsDurationKey key);
+
+    List<Tag> getTopicLagTags(@Nullable String clientId,
                               Properties driverProperties,
-                              DurationKey key);
-
-    List<Tag> getDurationBatchTags(@Nullable String clientId,
-                                   @Nullable String groupId,
-                                   Properties driverProperties,
-                                   DurationBatchKey key);
-
-    List<Tag> getLagTags(@Nullable String clientId,
-                         Properties driverProperties,
-                         LagKey key);
+                              TopicLagKey key);
 }

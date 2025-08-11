@@ -41,6 +41,7 @@ import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.MicrometerKafkaConsu
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry120KafkaConsumerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry123KafkaConsumerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.kafka.producer.MicrometerKafkaProducerMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.MicrometerKafkaProducerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
@@ -137,15 +138,17 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerKafkaConsumerMetricsFactory micrometerKafkaConsumerMetricsFactory(MicrometerKafkaConsumerTagsProvider consumerTagsProvider,
-                                                                                        MeterRegistry meterRegistry,
-                                                                                        MetricsConfig metricsConfig) {
-        return new MicrometerKafkaConsumerMetricsFactory(consumerTagsProvider, meterRegistry, metricsConfig);
+    default MicrometerKafkaConsumerMetricsFactory micrometerKafkaConsumerMetricsFactory(MeterRegistry meterRegistry,
+                                                                                        MetricsConfig metricsConfig,
+                                                                                        MicrometerKafkaConsumerTagsProvider tagsProvider) {
+        return new MicrometerKafkaConsumerMetricsFactory(meterRegistry, metricsConfig, tagsProvider);
     }
 
     @DefaultComponent
-    default MicrometerKafkaProducerMetricsFactory micrometerKafkaProducerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerKafkaProducerMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerKafkaProducerMetricsFactory micrometerKafkaProducerMetricsFactory(MeterRegistry meterRegistry,
+                                                                                        MetricsConfig metricsConfig,
+                                                                                        MicrometerKafkaProducerTagsProvider tagsProvider) {
+        return new MicrometerKafkaProducerMetricsFactory(meterRegistry, metricsConfig, tagsProvider);
     }
 
     @DefaultComponent

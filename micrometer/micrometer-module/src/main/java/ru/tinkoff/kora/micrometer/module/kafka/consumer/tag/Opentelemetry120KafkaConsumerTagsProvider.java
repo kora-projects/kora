@@ -18,10 +18,12 @@ public class Opentelemetry120KafkaConsumerTagsProvider implements MicrometerKafk
     protected static final AttributeKey<String> MESSAGING_KAFKA_CONSUMER_NAME = stringKey("messaging.kafka.consumer.name");
 
     @Override
-    public List<Tag> getDurationTags(@Nullable String clientId,
-                                     @Nullable String groupId,
-                                     Properties driverProperties,
-                                     DurationKey key) {
+    public List<Tag> getRecordDurationTags(@Nullable String clientId,
+                                           @Nullable String groupId,
+                                           Properties driverProperties,
+                                           RecordDurationKey key) {
+        var partitionString = Integer.toString(key.partition());
+
         var tags = new ArrayList<Tag>(6);
         if (key.errorType() != null) {
             tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
@@ -32,17 +34,18 @@ public class Opentelemetry120KafkaConsumerTagsProvider implements MicrometerKafk
         tags.add(Tag.of(MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
         tags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_NAME.getKey(), key.consumerName()));
         tags.add(Tag.of(MESSAGING_DESTINATION_NAME.getKey(), key.topic()));
-        tags.add(Tag.of(MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), String.valueOf(key.partition())));
+        tags.add(Tag.of(MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), partitionString));
+        tags.add(Tag.of(MESSAGING_DESTINATION_PARTITION_ID.getKey(), partitionString));
         tags.add(Tag.of(MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString()));
         tags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "").toString()));
         return tags;
     }
 
     @Override
-    public List<Tag> getDurationBatchTags(@Nullable String clientId,
-                                          @Nullable String groupId,
-                                          Properties driverProperties,
-                                          DurationBatchKey key) {
+    public List<Tag> getRecordsDurationTags(@Nullable String clientId,
+                                            @Nullable String groupId,
+                                            Properties driverProperties,
+                                            RecordsDurationKey key) {
         var tags = new ArrayList<Tag>(6);
         if (key.errorType() != null) {
             tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
@@ -59,9 +62,9 @@ public class Opentelemetry120KafkaConsumerTagsProvider implements MicrometerKafk
     }
 
     @Override
-    public List<Tag> getLagTags(@Nullable String clientId,
-                                Properties driverProperties,
-                                LagKey key) {
+    public List<Tag> getTopicLagTags(@Nullable String clientId,
+                                     Properties driverProperties,
+                                     TopicLagKey key) {
         var tags = new ArrayList<Tag>(6);
 
         tags.add(Tag.of(MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
