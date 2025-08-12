@@ -9,5 +9,9 @@ import java.util.List;
 
 public interface MicrometerGrpcClientTagsProvider {
 
-    List<Tag> getTags(URI uri, MetricsKey key, @Nullable Metadata metadata);
+    List<Tag> getMethodDurationTags(URI uri, MethodDurationKey key, @Nullable Metadata metadata);
+
+    List<Tag> getMessageSendTags(URI uri, MessageSendKey key, Object request);
+
+    List<Tag> getMessageReceivedTags(URI uri, MessageReceivedKey key, Object response);
 }

@@ -10,6 +10,7 @@ import ru.tinkoff.kora.micrometer.module.grpc.client.tag.MicrometerGrpcClientTag
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.net.URI;
+import java.util.Objects;
 
 public final class MicrometerGrpcClientMetricsFactory implements GrpcClientMetricsFactory {
 
@@ -28,12 +29,13 @@ public final class MicrometerGrpcClientMetricsFactory implements GrpcClientMetri
     @Nullable
     @Override
     public GrpcClientMetrics get(ServiceDescriptor service, TelemetryConfig.MetricsConfig config, URI uri) {
-        if (config.enabled() != null && !config.enabled()) {
+        if (Objects.requireNonNullElse(config.enabled(), true)) {
+            return switch (metricsConfig.opentelemetrySpec()) {
+                case V120 -> new Opentelemetry120GrpcClientMetrics(this.registry, service, config, uri, tagsProvider);
+                case V123 -> new Opentelemetry123GrpcClientMetrics(this.registry, service, config, uri, tagsProvider);
+            };
+        } else {
             return null;
         }
-        return switch (metricsConfig.opentelemetrySpec()) {
-            case V120 -> new Opentelemetry120GrpcClientMetrics(this.registry, service, config, uri, tagsProvider);
-            case V123 -> new Opentelemetry123GrpcClientMetrics(this.registry, service, config, uri, tagsProvider);
-        };
     }
 }

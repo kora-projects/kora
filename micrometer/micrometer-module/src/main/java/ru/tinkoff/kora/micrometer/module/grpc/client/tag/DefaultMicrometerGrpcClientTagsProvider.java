@@ -15,7 +15,7 @@ import java.util.Objects;
 public class DefaultMicrometerGrpcClientTagsProvider implements MicrometerGrpcClientTagsProvider {
 
     @Override
-    public List<Tag> getTags(URI uri, MetricsKey key, @Nullable Metadata metadata) {
+    public List<Tag> getMethodDurationTags(URI uri, MethodDurationKey key, @Nullable Metadata metadata) {
         var rpcService = Objects.requireNonNullElse(key.serviceName(), "GrpcService");
         var serverAddress = uri.getHost();
         var serverPort = uri.getPort();
@@ -42,6 +42,46 @@ public class DefaultMicrometerGrpcClientTagsProvider implements MicrometerGrpcCl
         } else {
             tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), ""));
         }
+
+        return tags;
+    }
+
+    @Override
+    public List<Tag> getMessageSendTags(URI uri, MessageSendKey key, Object request) {
+        var rpcService = Objects.requireNonNullElse(key.serviceName(), "GrpcService");
+        var serverAddress = uri.getHost();
+        var serverPort = uri.getPort();
+        if (serverPort == -1) {
+            serverPort = 80;
+        }
+
+        var tags = new ArrayList<Tag>(5);
+
+        tags.add(Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), key.methodName()));
+        tags.add(Tag.of(RpcIncubatingAttributes.RPC_SERVICE.getKey(), rpcService));
+        tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC));
+        tags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), serverAddress));
+        tags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(serverPort)));
+
+        return tags;
+    }
+
+    @Override
+    public List<Tag> getMessageReceivedTags(URI uri, MessageReceivedKey key, Object response) {
+        var rpcService = Objects.requireNonNullElse(key.serviceName(), "GrpcService");
+        var serverAddress = uri.getHost();
+        var serverPort = uri.getPort();
+        if (serverPort == -1) {
+            serverPort = 80;
+        }
+
+        var tags = new ArrayList<Tag>(5);
+
+        tags.add(Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), key.methodName()));
+        tags.add(Tag.of(RpcIncubatingAttributes.RPC_SERVICE.getKey(), rpcService));
+        tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC));
+        tags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), serverAddress));
+        tags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(serverPort)));
 
         return tags;
     }
