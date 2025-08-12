@@ -179,8 +179,6 @@ final class KafkaPublisherGenerator {
                 .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
                 .addAnnotation(Override.class)
                 .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", kafkaProducer, byteArraySerializer, byteArraySerializer)
-                .addCode("this.telemetry = this.telemetryFactory.get(this.telemetryConfig, this.delegate, driverProperties);\n", kafkaProducer)
-                .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", KafkaClassNames.kafkaProducer, byteArraySerializer, byteArraySerializer)
                 .addCode("this.telemetry = this.telemetryFactory.get($S, this.telemetryConfig, this.delegate, driverProperties);\n", configPath)
                 .build())
             .addMethod(MethodSpec.methodBuilder("release")
