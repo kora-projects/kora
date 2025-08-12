@@ -43,6 +43,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.openapitools.codegen.utils.ModelUtils.getSchemaItems;
 import static org.openapitools.codegen.utils.StringUtils.*;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
@@ -1193,7 +1194,7 @@ public class KoraCodegen extends DefaultCodegen {
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
         if (ModelUtils.isArraySchema(target)) {
-            var items = getSchemaItems((ArraySchema) schema);
+            var items = getSchemaItems(schema);
             return getSchemaType(target) + "<" + getTypeDeclaration(items) + ">";
         } else if (ModelUtils.isMapSchema(target)) {
             // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
@@ -2053,8 +2054,6 @@ public class KoraCodegen extends DefaultCodegen {
         if (!operation.implicitHeadersParams.isEmpty()) {
             operation.vendorExtensions.put("x-has-implicit-headers", true);
         }
-
-        operation.hasParams = !operation.allParams.isEmpty();
     }
 
     protected boolean shouldBeImplicitHeader(CodegenParameter parameter, @Nullable Pattern implicitHeadersRegex) {

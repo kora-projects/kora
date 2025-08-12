@@ -4,7 +4,6 @@ dependencies {
     api project(":annotation-processor-common")
     implementation project(":kora-app-annotation-processor")
 
-    testImplementation libs.mockito.inline
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":database:database-common")
     testImplementation project(":database:database-jdbc")

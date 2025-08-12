@@ -35,7 +35,7 @@ interface {{classname}}Delegate {
     {{/externalDocs}}
     */
     {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
-        _serverRequest: HttpServerRequest{{#hasParams}},{{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
+        _serverRequest: HttpServerRequest{{#getHasParams}},{{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
         {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{#-last}}
     {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
         form: {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam

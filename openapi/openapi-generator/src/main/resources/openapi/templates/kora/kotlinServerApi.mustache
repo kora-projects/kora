@@ -65,8 +65,8 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
     {{#vendorExtensions.allowAspects}}open {{/vendorExtensions.allowAspects}}{{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
-        _serverRequest: HttpServerRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
-        return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#hasParams}}, {{/hasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}} form{{/hasFormParams}})
+        _serverRequest: HttpServerRequest{{#getHasParams}}, {{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {
+        return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#getHasParams}}, {{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}} form{{/hasFormParams}})
     }
 {{#hasFormParams}}
 

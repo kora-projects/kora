@@ -34,11 +34,11 @@ public interface UndertowHttpServerModule extends UndertowModule {
     }
 
     default UndertowHttpServerConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowHttpServerConfig> extractor) {
-        return extractor.extract(config.get("httpServer"));
+        return extractor.extract(config.get("httpServer.undertow"));
     }
 
     @DefaultComponent
-    default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker, UndertowHttpServerConfig config) throws Throwable {
+    default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker, UndertowHttpServerConfig config) {
         if (config.virtualThreadsEnabled()) {
             return new VirtualThreadBlockingRequestExecutor();
         } else {
