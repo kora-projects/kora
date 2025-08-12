@@ -20,6 +20,8 @@ final class TestGraph implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraJUnit5Extension.class);
 
+    private static final Object LOCK = new Object();
+
     private final ApplicationGraphDraw graph;
     private final TestMethodMetadata metadata;
 
@@ -37,16 +39,18 @@ final class TestGraph implements AutoCloseable {
         final long started = TimeUtils.started();
 
         var config = metadata.classMetadata().config();
-        try {
-            config.setup(graph);
-            final RefreshableGraph initGraph = graph.init();
-            this.graphInitialized = new TestGraphContext(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
-            this.status = Status.INITIALIZED;
-            logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        } finally {
-            config.cleanup();
+        synchronized (LOCK) { // system property set/unset sync
+            try {
+                config.setup(graph);
+                final RefreshableGraph initGraph = graph.init();
+                this.graphInitialized = new TestGraphContext(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
+                this.status = Status.INITIALIZED;
+                logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
+            } catch (IOException e) {
+                throw new IllegalStateException(e);
+            } finally {
+                config.cleanup();
+            }
         }
     }
 
