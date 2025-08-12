@@ -76,17 +76,17 @@ public interface CircuitBreakerConfig {
                 .formatted("minimumRequiredCalls", name, DEFAULT));
 
         if (mergedConfig.minimumRequiredCalls() < 1)
-            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative value, but was: %s"
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative or zero value, but was: %s"
                 .formatted(name, "minimumRequiredCalls", mergedConfig.minimumRequiredCalls()));
         if (mergedConfig.slidingWindowSize() < 1)
-            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative value, but was: %s"
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative or zero value, but was: %s"
                 .formatted(name, "slidingWindowSize", mergedConfig.slidingWindowSize()));
+        if (mergedConfig.permittedCallsInHalfOpenState() < 1)
+            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' can't be negative or zero value, but was: %s"
+                .formatted(name, "permittedCallsInHalfOpenState", mergedConfig.slidingWindowSize()));
         if (mergedConfig.minimumRequiredCalls() > mergedConfig.slidingWindowSize())
             throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' has value %s, it can't be greater than property '%s' which value was: %s"
                 .formatted(name, "minimumRequiredCalls", mergedConfig.minimumRequiredCalls(), "slidingWindowSize", mergedConfig.slidingWindowSize()));
-        if (mergedConfig.permittedCallsInHalfOpenState() > mergedConfig.minimumRequiredCalls())
-            throw new IllegalArgumentException("CircuitBreaker '%s' property '%s' has value %s, it can't be greater than property '%s' which value was: %s"
-                .formatted(name, "permittedCallsInHalfOpenState", mergedConfig.permittedCallsInHalfOpenState(), "minimumRequiredCalls", mergedConfig.minimumRequiredCalls()));
         if (mergedConfig.failureRateThreshold() > 100 || mergedConfig.failureRateThreshold() < 1)
             throw new IllegalArgumentException("CircuitBreaker '%s' failureRateThreshold is percentage and must be in range from 1 to 100, but was: %s"
                 .formatted(name, mergedConfig.failureRateThreshold()));
