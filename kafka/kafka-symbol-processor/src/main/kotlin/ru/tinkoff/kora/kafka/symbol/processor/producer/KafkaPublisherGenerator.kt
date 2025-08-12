@@ -18,6 +18,7 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaTopicAnnotation
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerTelemetryFactory
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.telemetryProducerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.serializer
 import ru.tinkoff.kora.kafka.symbol.processor.utils.KafkaPublisherUtils
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
@@ -198,9 +199,10 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         return funBuilder.addCode(builder.build()).build()
     }
 
-    fun generatePublisherImpl(classDeclaration: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, topicConfig: ClassName?) {
+    fun generatePublisherImpl(classDeclaration: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, publisherAnnotation: KSAnnotation, topicConfig: ClassName?) {
         val packageName = classDeclaration.packageName.asString()
         val implementationName = classDeclaration.generatedClassName("Impl")
+        val configPath = publisherAnnotation.findValueNoDefault<String>("value")!!
 
         val b = classDeclaration.extendsKeepAop(implementationName, resolver)
             .generated(KafkaPublisherSymbolProcessor::class)
@@ -228,7 +230,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 FunSpec.builder("init")
                     .addModifiers(KModifier.OVERRIDE)
                     .addStatement("this.delegate = %T(driverProperties, %T(), %T())", KafkaClassNames.kafkaProducer, KafkaClassNames.byteArraySerializer, KafkaClassNames.byteArraySerializer)
-                    .addStatement("this.telemetry = this.telemetryFactory.get(this.telemetryConfig, this.delegate, driverProperties)")
+                    .addStatement("this.telemetry = this.telemetryFactory.get(%S, this.telemetryConfig, this.delegate, driverProperties)", configPath)
                     .build()
             )
             .addFunction(
@@ -328,6 +330,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             b.addStatement("val _key = %N.serialize(%N.topic(), _headers, %N.key())", keyParserName!!, record, record)
             b.addStatement("val _value = %N.serialize(%N.topic(), _headers, %N.value())", valueParserName, record, record)
             b.addStatement("val _record = %T(%N.topic(), %N.partition(), %N.timestamp(), _key, _value, _headers)", producerRecord, record, record, record)
+            b.addStatement("var _telemetryRecord = %T(%N.key(), %N.value(), _record)", telemetryProducerRecord, record, record)
         } else {
             require(publishData.valueVar != null)
             b.addStatement("val _topic = this.topicConfig.%N.topic()", topicVariable)
@@ -344,8 +347,17 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             }
             b.addStatement("val _value = %N.serialize(_topic, _headers, %N)", valueParserName, publishData.valueVar.name?.asString().toString())
             b.addStatement("val _record = %T(_topic, _partition, null, _key, _value, _headers)", producerRecord)
+            if (publishData.keyVar == null) {
+                b.addStatement("var _telemetryRecord = %T(_key, %N, _record)", telemetryProducerRecord, publishData.valueVar.name?.asString().toString())
+            } else {
+                b.addStatement("var _telemetryRecord = %T(%N, %N, _record)",
+                    telemetryProducerRecord,
+                    publishData.keyVar.name?.asString().toString(),
+                    publishData.valueVar.name?.asString().toString(),
+                )
+            }
         }
-        b.addStatement("val _tctx = this.telemetry!!.record(_record)")
+        b.addStatement("val _tctx = this.telemetry!!.record(_telemetryRecord)")
 
         if (publishMethod.isSuspend()) {
             b.controlFlow("return %M { _cont ->", suspendCancellableCoroutine) {
