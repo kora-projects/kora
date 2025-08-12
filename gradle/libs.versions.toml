@@ -167,7 +167,7 @@ glassfish-jaxb-javax = { module = "org.glassfish.jaxb:jaxb-runtime", version = "
 commons-codec = { module = "commons-codec:commons-codec", version = "1.16.1" }
 commons-io = { module = "commons-io:commons-io", version = "2.16.1" }
 
-openapi-generator = { module = "org.openapitools:openapi-generator", version = "7.16.0" }
+openapi-generator = { module = "org.openapitools:openapi-generator", version = "7.14.0" }
 translit-icu4j = { module = "com.ibm.icu:icu4j", version = "77.1" }
 swagger-core = { module = "io.swagger.core.v3:swagger-core", version.ref = "swagger" }
 swagger-models = { module = "io.swagger.core.v3:swagger-models", version.ref = "swagger" }
