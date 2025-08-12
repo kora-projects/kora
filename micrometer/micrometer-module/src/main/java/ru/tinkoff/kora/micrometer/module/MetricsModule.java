@@ -11,6 +11,7 @@ import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
+import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
@@ -24,6 +25,9 @@ import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetrics
 import ru.tinkoff.kora.micrometer.module.grpc.server.tag.DefaultMicrometerGrpcServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.grpc.server.tag.MicrometerGrpcServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.client.MicrometerHttpClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.module.http.client.tag.MicrometerHttpClientTagsProvider;
+import ru.tinkoff.kora.micrometer.module.http.client.tag.Opentelemetry120MicrometerHttpClientTagsProvider;
+import ru.tinkoff.kora.micrometer.module.http.client.tag.Opentelemetry123MicrometerHttpClientTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerHttpServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerPrivateApiMetrics;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DefaultMicrometerHttpServerTagsProvider;
@@ -68,8 +72,18 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerHttpClientMetricsFactory micrometerHttpClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerHttpClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerHttpClientTagsProvider micrometerHttpClientTagsProvider(HttpClientConfig httpClientConfig, MetricsConfig globalMetricsConfig) {
+        return switch (globalMetricsConfig.opentelemetrySpec()) {
+            case V120 -> new Opentelemetry120MicrometerHttpClientTagsProvider();
+            case V123 -> new Opentelemetry123MicrometerHttpClientTagsProvider();
+        };
+    }
+
+    @DefaultComponent
+    default MicrometerHttpClientMetricsFactory micrometerHttpClientMetricsFactory(MeterRegistry meterRegistry,
+                                                                                  MetricsConfig metricsConfig,
+                                                                                  MicrometerHttpClientTagsProvider tagsProvider) {
+        return new MicrometerHttpClientMetricsFactory(meterRegistry, metricsConfig, tagsProvider);
     }
 
     @DefaultComponent
