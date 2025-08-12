@@ -34,7 +34,7 @@ public interface UndertowHttpServerModule extends UndertowModule {
     }
 
     default UndertowHttpServerConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowHttpServerConfig> extractor) {
-        return extractor.extract(config.get("httpServer.undertow"));
+        return extractor.extract(config.get("httpServer"));
     }
 
     @DefaultComponent
