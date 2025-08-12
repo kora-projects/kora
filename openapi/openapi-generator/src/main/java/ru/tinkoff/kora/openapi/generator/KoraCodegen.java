@@ -1294,7 +1294,7 @@ public class KoraCodegen extends DefaultCodegen {
                     : "java.util.List.<%s>of(";
             }
 
-            Schema<?> itemOriginal = getSchemaItems((ArraySchema) schema);
+            Schema<?> itemOriginal = getSchemaItems(schema);
             Schema itemSchema = ModelUtils.getReferencedSchema(this.openAPI, itemOriginal);
             String typeDeclaration = getTypeDeclaration(ModelUtils.unaliasSchema(this.openAPI, itemOriginal));
             Object java8obj = additionalProperties.get("java8");
