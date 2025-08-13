@@ -9,6 +9,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.test.extension.junit5.KoraJUnit5Extension.TestMethodMetadata;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 
 final class TestGraph implements AutoCloseable {
 
@@ -20,7 +21,9 @@ final class TestGraph implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraJUnit5Extension.class);
 
-    private static final Object LOCK = new Object();
+    private static final Object LOCK_FOR_INIT = new Object();
+    private static final Object LOCK_FOR_CHECK = new Object();
+    private static final AtomicInteger LOCKED = new AtomicInteger(0);
 
     private final ApplicationGraphDraw graph;
     private final TestMethodMetadata metadata;
@@ -39,18 +42,41 @@ final class TestGraph implements AutoCloseable {
         final long started = TimeUtils.started();
 
         var config = metadata.classMetadata().config();
-        synchronized (LOCK) { // system property set/unset sync
-            try {
-                config.setup(graph);
-                final RefreshableGraph initGraph = graph.init();
-                this.graphInitialized = new TestGraphContext(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
-                this.status = Status.INITIALIZED;
-                logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
-            } catch (IOException e) {
-                throw new IllegalStateException(e);
-            } finally {
-                config.cleanup();
+
+        final boolean locked;
+        synchronized (LOCK_FOR_CHECK) {
+            locked = LOCKED.get() != 0;
+            if (!config.systemProperties().isEmpty()) {
+                LOCKED.incrementAndGet();
             }
+        }
+
+        if (!config.systemProperties().isEmpty()) {
+            // system property set/unset sync
+            synchronized (LOCK_FOR_INIT) {
+                initGraph(config, started);
+                LOCKED.decrementAndGet();
+            }
+        } else if (locked) {
+            synchronized (LOCK_FOR_INIT) {
+                initGraph(config, started);
+            }
+        } else {
+            initGraph(config, started);
+        }
+    }
+
+    private void initGraph(KoraJUnit5Extension.TestClassMetadata.Config config, long started) {
+        try {
+            config.setup(graph);
+            final RefreshableGraph initGraph = graph.init();
+            this.graphInitialized = new TestGraphContext(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
+            this.status = Status.INITIALIZED;
+            logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        } finally {
+            config.cleanup();
         }
     }
 
