@@ -83,7 +83,7 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
                         .toList()
 
                     val topicConfig = publisherGenerator.generateConfig(producer, publishMethods)
-                    publisherGenerator.generatePublisherImpl(producer, publishMethods, topicConfig)
+                    publisherGenerator.generatePublisherImpl(producer, publishMethods, annotation, topicConfig)
 
                     // we'll generate module after aop proxy generated
                     if (!CommonAopUtils.hasAopAnnotations(producer)) {

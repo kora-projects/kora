@@ -18,6 +18,10 @@ public interface KafkaProducerTelemetry extends AutoCloseable {
 
     KafkaProducerRecordTelemetryContext record(ProducerRecord<?, ?> record);
 
+    default KafkaProducerRecordTelemetryContext record(TelemetryProducerRecord<?, ?> record) {
+        return record(record.producerRecord());
+    }
+
     interface KafkaProducerTransactionTelemetryContext {
         void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata);
 
@@ -25,6 +29,8 @@ public interface KafkaProducerTelemetry extends AutoCloseable {
 
         void rollback(@Nullable Throwable e);
     }
+
+    record TelemetryProducerRecord<K, V>(K key, V value, ProducerRecord<?, ?> producerRecord) {};
 
     interface KafkaProducerRecordTelemetryContext extends Callback {
         void sendEnd(Throwable e);
