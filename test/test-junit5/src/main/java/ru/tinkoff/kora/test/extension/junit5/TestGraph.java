@@ -9,7 +9,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.test.extension.junit5.KoraJUnit5Extension.TestMethodMetadata;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.Semaphore;
 
 final class TestGraph implements AutoCloseable {
 
@@ -21,9 +21,9 @@ final class TestGraph implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraJUnit5Extension.class);
 
-    private static final Object LOCK_FOR_INIT = new Object();
-    private static final Object LOCK_FOR_CHECK = new Object();
-    private static final AtomicInteger LOCKED = new AtomicInteger(0);
+    private static final int PERMIT_WITH_PROPS = 32;
+    private static final int PERMIT_NO_PROPS = 1;
+    private static final Semaphore LOCK = new Semaphore(PERMIT_WITH_PROPS);
 
     private final ApplicationGraphDraw graph;
     private final TestMethodMetadata metadata;
@@ -43,26 +43,15 @@ final class TestGraph implements AutoCloseable {
 
         var config = metadata.classMetadata().config();
 
-        final boolean locked;
-        synchronized (LOCK_FOR_CHECK) {
-            locked = LOCKED.get() != 0;
-            if (!config.systemProperties().isEmpty()) {
-                LOCKED.incrementAndGet();
-            }
-        }
-
         if (!config.systemProperties().isEmpty()) {
-            // system property set/unset sync
-            synchronized (LOCK_FOR_INIT) {
-                initGraph(config, started);
-                LOCKED.decrementAndGet();
-            }
-        } else if (locked) {
-            synchronized (LOCK_FOR_INIT) {
-                initGraph(config, started);
-            }
-        } else {
+            // system property set/unset sync required or props reshare between different init graphs
+            LOCK.acquireUninterruptibly(PERMIT_WITH_PROPS);
             initGraph(config, started);
+            LOCK.release(PERMIT_WITH_PROPS);
+        } else {
+            LOCK.acquireUninterruptibly(PERMIT_NO_PROPS);
+            initGraph(config, started);
+            LOCK.release(PERMIT_NO_PROPS);
         }
     }
 
