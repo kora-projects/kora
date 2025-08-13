@@ -23,10 +23,10 @@ class CassandraDatabaseTest {
         var profiles = new HashMap<String, CassandraConfig.Profile>();
         profiles.put(
             "profile",
-            new $CassandraConfig_Profile_ConfigValueExtractor.Profile_Impl(new $CassandraConfig_Basic_ConfigValueExtractor.Basic_Impl(
+            new $CassandraConfig_Profile_ConfigValueExtractor.Profile_Impl(new $CassandraConfig_Profile_ProfileBasic_ConfigValueExtractor.ProfileBasic_Impl(
+                List.of(),
                 new $CassandraConfig_Basic_BasicRequestConfig_ConfigValueExtractor.BasicRequestConfig_Impl(Duration.ofSeconds(10), null, null, null, null),
                 null,
-                List.of(),
                 null,
                 null,
                 null,
