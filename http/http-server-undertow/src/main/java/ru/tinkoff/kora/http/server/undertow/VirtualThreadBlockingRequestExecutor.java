@@ -12,10 +12,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class VirtualThreadBlockingRequestExecutor implements BlockingRequestExecutor {
+
     private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
     private final VirtualThreadFactory threadFactory;
 
-    public VirtualThreadBlockingRequestExecutor() throws Throwable {
+    public VirtualThreadBlockingRequestExecutor() throws IllegalStateException{
         this.threadFactory = new VirtualThreadFactory();
     }
 

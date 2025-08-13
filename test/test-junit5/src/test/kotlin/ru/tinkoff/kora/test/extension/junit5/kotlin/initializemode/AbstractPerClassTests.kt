@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5.kotlin.initializemode
 
 import org.junit.jupiter.api.*
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertSame
 import ru.tinkoff.kora.test.extension.junit5.KoraAppGraph
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest
 import ru.tinkoff.kora.test.extension.junit5.TestComponent

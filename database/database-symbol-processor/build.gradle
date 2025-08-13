@@ -8,7 +8,6 @@ dependencies {
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
 
-    testImplementation libs.mockito.inline
     testImplementation libs.mockito.kotlin
 
     testImplementation testFixtures(project(":symbol-processor-common"))

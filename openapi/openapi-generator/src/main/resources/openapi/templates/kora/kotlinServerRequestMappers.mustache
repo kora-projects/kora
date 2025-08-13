@@ -29,14 +29,15 @@ interface {{classname}}ServerRequestMappers {
       return request.body().asArrayStage().thenApply { bytes ->
         val bodyString = bytes.decodeToString()
         val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString)
-        {{#formParams}}
+{{#formParams}}
         val {{paramName}}Part = formData.get("{{baseName}}"){{#isArray}}
         val {{paramName}} = if ({{paramName}}Part == null) emptyList() else {{paramName}}Part.values(){{/isArray}}{{^isArray}}{{#vendorExtensions.requiresMapper}}
         val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Converter.read({{paramName}}Part.values().first()){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
         val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first(){{/vendorExtensions.requiresMapper}}{{#required}}
         if ({{paramName}} == null) {
           throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required")
-        }{{/required}}{{/isArray}}{{/formParams}}
+        }
+{{/required}}{{/isArray}}{{/formParams}}
 
         {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
@@ -44,9 +45,10 @@ interface {{classname}}ServerRequestMappers {
       }{{^isSuspend}}.toCompletableFuture().get(){{/isSuspend}}{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
 
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
-          {{#formParams}}
+{{#formParams}}
           {{#isFile}}var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null
-          {{/isFile}}{{^isFile}}var {{paramName}}: {{{dataType}}}? = null{{/isFile}}{{/formParams}}
+          {{/isFile}}{{^isFile}}var {{paramName}}: {{{dataType}}}? = null{{/isFile}}
+{{/formParams}}
       }
 
       return MultipartReader.read(request).thenApply { parts ->

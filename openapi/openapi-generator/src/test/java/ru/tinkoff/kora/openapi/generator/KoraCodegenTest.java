@@ -104,36 +104,36 @@ class KoraCodegenTest {
         var result = new ArrayList<SwaggerParams>();
         var modes = new String[]{
             KoraCodegen.Mode.JAVA_CLIENT.getMode(),
-//            KoraCodegen.Mode.JAVA_ASYNC_CLIENT.getMode(),
-//            KoraCodegen.Mode.JAVA_REACTIVE_CLIENT.getMode(),
+            KoraCodegen.Mode.JAVA_ASYNC_CLIENT.getMode(),
+            KoraCodegen.Mode.JAVA_REACTIVE_CLIENT.getMode(),
             KoraCodegen.Mode.JAVA_SERVER.getMode(),
-//            KoraCodegen.Mode.JAVA_ASYNC_SERVER.getMode(),
-//            KoraCodegen.Mode.JAVA_REACTIVE_SERVER.getMode(),
+            KoraCodegen.Mode.JAVA_ASYNC_SERVER.getMode(),
+            KoraCodegen.Mode.JAVA_REACTIVE_SERVER.getMode(),
             KoraCodegen.Mode.KOTLIN_CLIENT.getMode(),
-//            KoraCodegen.Mode.KOTLIN_SUSPEND_CLIENT.getMode(),
+            KoraCodegen.Mode.KOTLIN_SUSPEND_CLIENT.getMode(),
             KoraCodegen.Mode.KOTLIN_SERVER.getMode(),
-//            KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
+            KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
         };
 
         var files = new String[]{
-//            "/example/petstoreV3_additional_props.yaml",
-//            "/example/petstoreV3_enum.yaml",
-//            "/example/petstoreV3_form.yaml",
-//            "/example/petstoreV3_request_parameters.yaml",
-//            "/example/petstoreV3_types.yaml",
-//            "/example/petstoreV3_validation.yaml",
-//            "/example/petstoreV3_single_response.yaml",
-//            "/example/petstoreV3_security_all.yaml",
-//            "/example/petstoreV3_security_api_key.yaml",
-//            "/example/petstoreV3_security_basic.yaml",
-//            "/example/petstoreV3_security_bearer.yaml",
-//            "/example/petstoreV3_security_oauth.yaml",
-//            "/example/petstoreV3_security_cookie.yaml",
-//            "/example/petstoreV3_discriminator.yaml",
-//            "/example/petstoreV3_nullable.yaml",
-//            "/example/petstoreV3_filter.yaml",
+            "/example/petstoreV3_additional_props.yaml",
+            "/example/petstoreV3_enum.yaml",
+            "/example/petstoreV3_form.yaml",
+            "/example/petstoreV3_request_parameters.yaml",
+            "/example/petstoreV3_types.yaml",
+            "/example/petstoreV3_validation.yaml",
+            "/example/petstoreV3_single_response.yaml",
+            "/example/petstoreV3_security_all.yaml",
+            "/example/petstoreV3_security_api_key.yaml",
+            "/example/petstoreV3_security_basic.yaml",
+            "/example/petstoreV3_security_bearer.yaml",
+            "/example/petstoreV3_security_oauth.yaml",
+            "/example/petstoreV3_security_cookie.yaml",
+            "/example/petstoreV3_discriminator.yaml",
+            "/example/petstoreV3_nullable.yaml",
+            "/example/petstoreV3_filter.yaml",
             "/example/petstoreV3.yaml",
-//            "/example/petstoreV2.yaml",
+            "/example/petstoreV2.yaml",
         };
 
         for (var fileName : files) {
@@ -228,7 +228,7 @@ class KoraCodegenTest {
         }
 
         if (spec.contains("_filter")) {
-            configurator.addOpenAPINormalizer("FILTER", "operationId:updatePets|getDeliveries|getSystems");
+            configurator.addOpenapiNormalizer("FILTER", "operationId:updatePets|getDeliveries|getSystems");
             configurator.addAdditionalProperty("filterWithModels", "true");
         }
 

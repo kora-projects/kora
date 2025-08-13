@@ -38,7 +38,7 @@ public interface UndertowHttpServerModule extends UndertowModule {
     }
 
     @DefaultComponent
-    default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker, UndertowHttpServerConfig config) throws Throwable {
+    default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker, UndertowHttpServerConfig config) {
         if (config.virtualThreadsEnabled()) {
             return new VirtualThreadBlockingRequestExecutor();
         } else {
