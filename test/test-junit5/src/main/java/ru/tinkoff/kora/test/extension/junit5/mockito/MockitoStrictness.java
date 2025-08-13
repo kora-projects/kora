@@ -22,7 +22,6 @@ import java.lang.annotation.*;
  *     <li>{@link Strictness#LENIENT}: Allows unstubbed calls and does not report unused stubs.</li>
  *     <li>{@link Strictness#WARN}: Warns about potential issues without failing the test.</li>
  * </ul>
- * </p>
  *
  * @see Strictness
  */
