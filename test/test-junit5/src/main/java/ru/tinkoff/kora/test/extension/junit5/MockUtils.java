@@ -14,7 +14,7 @@ final class MockUtils {
     private static final boolean isMockitoAvailable = isClassPresent("org.mockito.internal.util.MockUtil");
     private static final boolean isMockkAvailable = isClassPresent("io.mockk.MockKKt");
 
-    private MockUtils() { }
+    private MockUtils() {}
 
     private static boolean isClassPresent(String className) {
         try {

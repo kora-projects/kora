@@ -59,7 +59,7 @@ public interface KoraConfigModification {
      * }
      * }
      * </pre>
-     *
+     * <p>
      * Use system property to set `ENV_FIRST` and 'ENV_SECOND' at once
      * <pre>
      * {@code
@@ -102,7 +102,7 @@ public interface KoraConfigModification {
      * @return self
      */
     @Nonnull
-    static KoraConfigString ofString(@Nonnull String config) {
+    static KoraConfigModification ofString(@Nonnull String config) {
         return new KoraConfigString(config);
     }
 
@@ -118,7 +118,7 @@ public interface KoraConfigModification {
      * @return self
      */
     @Nonnull
-    static KoraConfigFile ofResourceFile(@Nonnull String configFile) {
+    static KoraConfigModification ofResourceFile(@Nonnull String configFile) {
         return new KoraConfigFile(configFile);
     }
 
@@ -136,7 +136,7 @@ public interface KoraConfigModification {
      * @return self
      */
     @Nonnull
-    static KoraConfigSystemProperties ofSystemProperty(@Nonnull String key, @Nonnull String value) {
+    static KoraConfigModification ofSystemProperty(@Nonnull String key, @Nonnull String value) {
         return new KoraConfigSystemProperties().withSystemProperty(key, value);
     }
 }
