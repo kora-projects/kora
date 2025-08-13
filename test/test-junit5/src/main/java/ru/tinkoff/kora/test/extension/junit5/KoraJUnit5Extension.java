@@ -109,6 +109,12 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         interface Config {
 
             Config NONE = new Config() {
+
+                @Override
+                public Map<String, String> systemProperties() {
+                    return Map.of();
+                }
+
                 @Override
                 public void setup(ApplicationGraphDraw graphDraw) {
                     // do nothing
@@ -119,6 +125,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     // do nothing
                 }
             };
+
+            Map<String, String> systemProperties();
 
             void setup(ApplicationGraphDraw graphDraw) throws IOException;
 
@@ -135,6 +143,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             public FileConfig(KoraConfigModification config) {
                 this.config = config;
                 this.systemProperties = config.systemProperties();
+            }
+
+            @Override
+            public Map<String, String> systemProperties() {
+                return systemProperties;
             }
 
             @Override
