@@ -30,6 +30,7 @@ import java.lang.annotation.*;
 @Target({ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MockitoStrictness {
+
     /**
      * Specifies the strictness level for all mocks in the test class.
      *

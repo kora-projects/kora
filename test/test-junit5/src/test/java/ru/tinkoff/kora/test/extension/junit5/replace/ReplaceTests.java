@@ -22,7 +22,7 @@ public class ReplaceTests implements KoraAppTestGraphModifier {
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-                .replaceComponent(TypeRef.of(Function.class, String.class, Integer.class), () -> (Function<String, Integer>) (s) -> 25);
+            .replaceComponent(TypeRef.of(Function.class, String.class, Integer.class), () -> (Function<String, Integer>) (s) -> 25);
     }
 
     @Test

@@ -39,6 +39,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     private static final Map<Class<?>, Supplier<ApplicationGraphDraw>> GRAPH_SUPPLIER_MAP = new ConcurrentHashMap<>();
 
     private static final ExtensionContext.Namespace MOCKITO = ExtensionContext.Namespace.create("org.mockito.kora");
+
     static class KoraTestContext {
 
         volatile TestGraph graph;
@@ -396,12 +397,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     @Override
     public void afterEach(ExtensionContext context) {
-        var koraTestContext = getKoraTestContext(context);
-        var mockSet = removeMockSet(context);
-
-        var reporter = new MockitoUnusedStubbingReporter(mockSet, findStrictness(context));
-        reporter.reportUnused(context);
-
         var koraTestContext = getKoraTestContext(context);
         var mockSet = removeMockSet(context);
 

@@ -31,7 +31,7 @@ public class MockitoUnusedStubbingReporter {
         var listener = new UniversalTestListener(strictness, new ReporterLogger());
 
         for (Object mock : unused) {
-            listener.onMockCreated(mock, (MockCreationSettings)withSettings());
+            listener.onMockCreated(mock, (MockCreationSettings) withSettings());
         }
 
         listener.testFinished(
