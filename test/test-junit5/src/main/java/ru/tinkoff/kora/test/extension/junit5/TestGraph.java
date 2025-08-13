@@ -9,7 +9,6 @@ import ru.tinkoff.kora.application.graph.RefreshableGraph;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.test.extension.junit5.KoraJUnit5Extension.TestMethodMetadata;
 
-import java.io.IOException;
 import java.util.concurrent.Semaphore;
 
 final class TestGraph implements AutoCloseable {

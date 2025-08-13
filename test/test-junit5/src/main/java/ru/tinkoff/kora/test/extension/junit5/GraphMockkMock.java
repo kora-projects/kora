@@ -4,7 +4,6 @@ import io.mockk.MockKKt;
 import io.mockk.impl.annotations.MockK;
 import kotlin.jvm.JvmClassMappingKt;
 import kotlin.reflect.KClass;
-import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.Wrapped;

@@ -59,7 +59,7 @@ public interface KoraConfigModification {
      * }
      * }
      * </pre>
-     *
+     * <p>
      * Use system property to set `ENV_FIRST` and 'ENV_SECOND' at once
      * <pre>
      * {@code
