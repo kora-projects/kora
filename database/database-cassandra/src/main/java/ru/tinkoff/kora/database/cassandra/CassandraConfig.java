@@ -47,6 +47,7 @@ public interface CassandraConfig {
         @ConfigValueExtractor
         interface ProfileBasic extends Basic {
             @Override
+            @Nullable
             default List<String> contactPoints() {
                 return List.of();
             }
