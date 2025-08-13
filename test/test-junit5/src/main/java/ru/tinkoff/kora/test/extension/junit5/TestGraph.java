@@ -21,7 +21,7 @@ final class TestGraph implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraJUnit5Extension.class);
 
-    private static final int PERMIT_WITH_PROPS = 32;
+    private static final int PERMIT_WITH_PROPS = 64;
     private static final int PERMIT_NO_PROPS = 1;
     private static final Semaphore LOCK = new Semaphore(PERMIT_WITH_PROPS);
 
