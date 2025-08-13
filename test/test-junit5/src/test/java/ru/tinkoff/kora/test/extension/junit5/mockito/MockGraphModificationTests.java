@@ -28,8 +28,8 @@ public class MockGraphModificationTests implements KoraAppTestGraphModifier {
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-                .replaceComponent(TestComponent1.class, () -> Mockito.mock(TestComponent1.class))
-                .replaceComponent(TestComponent2.class, List.of(LifecycleComponent.class), () -> Mockito.mock(TestComponent2.class));
+            .replaceComponent(TestComponent1.class, () -> Mockito.mock(TestComponent1.class))
+            .replaceComponent(TestComponent2.class, List.of(LifecycleComponent.class), () -> Mockito.mock(TestComponent2.class));
     }
 
     @Test

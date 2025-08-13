@@ -18,15 +18,15 @@ public class ReplaceWithGraphTests implements KoraAppTestGraphModifier {
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-                .replaceComponent(TestComponent12.class, graph -> {
-                    var component1 = graph.getFirst(TestComponent1.class);
-                    return new TestComponent12(component1) {
-                        @Override
-                        public String get() {
-                            return "?" + component1.get();
-                        }
-                    };
-                });
+            .replaceComponent(TestComponent12.class, graph -> {
+                var component1 = graph.getFirst(TestComponent1.class);
+                return new TestComponent12(component1) {
+                    @Override
+                    public String get() {
+                        return "?" + component1.get();
+                    }
+                };
+            });
     }
 
     @Test

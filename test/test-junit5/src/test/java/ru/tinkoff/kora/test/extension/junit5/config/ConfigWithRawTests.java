@@ -19,12 +19,12 @@ public class ConfigWithRawTests implements KoraAppTestConfigModifier {
     @Override
     public @Nonnull KoraConfigModification config() {
         return KoraConfigModification.ofString("""
-                myconfig {
-                  myinnerconfig {
-                    myproperty = 1
-                  }
-                }
-                """);
+            myconfig {
+              myinnerconfig {
+                myproperty = 1
+              }
+            }
+            """);
     }
 
     @Test

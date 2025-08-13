@@ -29,7 +29,7 @@ public class AddComponentTests implements KoraAppTestGraphModifier {
     @Override
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
-                .addComponent(LifecycleComponent.class, List.of(TestComponent23.class), () -> (LifecycleComponent) () -> "?");
+            .addComponent(LifecycleComponent.class, List.of(TestComponent23.class), () -> (LifecycleComponent) () -> "?");
     }
 
     @Test
