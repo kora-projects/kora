@@ -4,6 +4,7 @@ import io.lettuce.core.RedisURI;
 import io.lettuce.core.SocketOptions;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 import java.util.List;
@@ -33,6 +34,8 @@ public interface LettuceClientConfig {
     default Duration commandTimeout() {
         return Duration.ofSeconds(RedisURI.DEFAULT_TIMEOUT);
     }
+
+    TelemetryConfig telemetry();
 
     enum Protocol {
 

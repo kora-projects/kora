@@ -6,6 +6,7 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.lettuce.$LettuceClientConfig_SslConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.redis.lettuce.LettuceClientConfig;
 import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
+import ru.tinkoff.kora.telemetry.common.*;
 import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.time.Duration;
@@ -62,9 +63,16 @@ abstract class CacheRunner extends Assertions implements RedisCacheModule {
             public SslConfig ssl() {
                 return new $LettuceClientConfig_SslConfig_ConfigValueExtractor.SslConfig_Defaults();
             }
+
+            @Override
+            public TelemetryConfig telemetry() {
+                return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(false),
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new double[]{}));
+            }
         };
 
-        var lettuceClient = lettuceRedisClient(lettuceClientFactory, lettuceClientConfig);
+        var lettuceClient = lettuceRedisClient(lettuceClientFactory, lettuceClientConfig, null, null, null);
         if (lettuceClient instanceof Lifecycle lc) {
             lc.init();
         }
