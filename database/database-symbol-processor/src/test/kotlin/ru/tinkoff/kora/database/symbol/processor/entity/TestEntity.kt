@@ -9,10 +9,6 @@ import ru.tinkoff.kora.database.symbol.processor.jdbc.TestEntityFieldJdbcParamet
 import ru.tinkoff.kora.database.symbol.processor.jdbc.TestEntityFieldJdbcParameterColumnMapperNonFinal
 import ru.tinkoff.kora.database.symbol.processor.jdbc.TestEntityFieldJdbcResultColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.jdbc.TestEntityFieldJdbcResultColumnMapperNonFinal
-import ru.tinkoff.kora.database.symbol.processor.vertx.TestEntityFieldVertxParameterColumnMapper
-import ru.tinkoff.kora.database.symbol.processor.vertx.TestEntityFieldVertxParameterColumnMapperNonFinal
-import ru.tinkoff.kora.database.symbol.processor.vertx.TestEntityFieldVertxResultColumnMapper
-import ru.tinkoff.kora.database.symbol.processor.vertx.TestEntityFieldVertxResultColumnMapperNonFinal
 
 data class TestEntity(
     val field1: String,
@@ -24,16 +20,12 @@ data class TestEntity(
     @Mapping(TestEntityFieldJdbcParameterColumnMapper::class)
     @Mapping(TestEntityFieldCassandraResultColumnMapper::class)
     @Mapping(TestEntityFieldCassandraParameterColumnMapper::class)
-    @Mapping(TestEntityFieldVertxResultColumnMapper::class)
-    @Mapping(TestEntityFieldVertxParameterColumnMapper::class)
     val mappedField1: MappedField1,
     // mappers
     @Mapping(TestEntityFieldJdbcResultColumnMapperNonFinal::class)
     @Mapping(TestEntityFieldJdbcParameterColumnMapperNonFinal::class)
     @Mapping(TestEntityFieldCassandraResultColumnMapperNonFinal::class)
     @Mapping(TestEntityFieldCassandraParameterColumnMapperNonFinal::class)
-    @Mapping(TestEntityFieldVertxResultColumnMapperNonFinal::class)
-    @Mapping(TestEntityFieldVertxParameterColumnMapperNonFinal::class)
     val mappedField2: MappedField2
 ) {
     class UnknownField

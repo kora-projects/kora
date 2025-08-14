@@ -8,7 +8,6 @@ jackson = "2.19.2"
 mockserver = "5.15.0"
 netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
 kafka = "3.9.1"
-vertx = "4.3.8"
 testcontainers = "1.18.3"
 cassandra = "4.19.0"
 grpc-java = "1.74.0"
@@ -100,10 +99,6 @@ netty-codec-http = { module = "io.netty:netty-codec-http", version.ref = "netty"
 netty-codec-http2 = { module = "io.netty:netty-codec-http2", version.ref = "netty" }
 netty-codec-socks = { module = "io.netty:netty-codec-socks", version.ref = "netty" }
 
-
-vertx-core = { module = "io.vertx:vertx-core", version.ref = "vertx" }
-vertx-pg-client = { module = "io.vertx:vertx-pg-client", version.ref = "vertx" }
-vertx-sql-client = { module = "io.vertx:vertx-sql-client", version.ref = "vertx" }
 
 byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version = "1.17.6" }
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.17.6" }

@@ -1,8 +1,0 @@
-[
-    {
-        "tags": [],
-        "typeRegex": "ru.tinkoff.kora.database.vertx.VertxConnectionFactory",
-        "moduleName": "ru.tinkoff.kora.database.vertx.VertxDatabaseModule",
-        "artifact": "ru.tinkoff.kora:database-vertx"
-    }
-]
