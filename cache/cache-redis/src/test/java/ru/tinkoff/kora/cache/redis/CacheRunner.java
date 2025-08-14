@@ -70,11 +70,6 @@ abstract class CacheRunner extends Assertions implements RedisCacheModule {
                     new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false),
                     new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new double[]{}));
             }
-
-            @Override
-            public SslConfig ssl() {
-                return new SslConfig() {};
-            }
         };
 
         var lettuceClient = lettuceRedisClient(lettuceClientFactory, lettuceClientConfig, null, null, null);
