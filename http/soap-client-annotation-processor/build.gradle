@@ -38,7 +38,7 @@ dependencies {
 
     testImplementation project(':http:http-client-common')
     testImplementation project(':http:soap-client')
-    testImplementation project(':http:http-client-async')
+    testImplementation project(':http:http-client-jdk')
 }
 
 ext {
