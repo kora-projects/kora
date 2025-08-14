@@ -130,6 +130,7 @@ def createPublishArchive = tasks.register("createPublishArchive", Zip) {
     exclude('*/**/maven-metadata.*')
     group = 'publishing'
     getArchiveFile().set(rootProject.layout.buildDirectory.file('deployment.zip'))
+    dependsOn(':maven-parent:publishMavenPublicationToBuildRepository')
 }
 
 tasks.register('uploadPublishArchive', ru.tinkoff.kora.gradle.SonatypePublishTask) {
