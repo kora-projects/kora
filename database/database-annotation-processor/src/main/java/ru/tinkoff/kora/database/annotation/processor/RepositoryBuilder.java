@@ -5,7 +5,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcRepositoryGenerator;
-import ru.tinkoff.kora.database.annotation.processor.vertx.VertxRepositoryGenerator;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
@@ -23,7 +22,6 @@ public class RepositoryBuilder {
     public RepositoryBuilder(ProcessingEnvironment processingEnv) {
         this.queryMethodGenerators = List.of(
             new JdbcRepositoryGenerator(processingEnv),
-            new VertxRepositoryGenerator(processingEnv),
             new CassandraRepositoryGenerator(processingEnv)
         );
     }

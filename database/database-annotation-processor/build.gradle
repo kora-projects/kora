@@ -7,8 +7,6 @@ dependencies {
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":database:database-common")
     testImplementation project(":database:database-jdbc")
-    testImplementation project(":database:database-vertx")
-    testImplementation libs.vertx.pg.client
     testImplementation project(":database:database-cassandra")
 }
 
