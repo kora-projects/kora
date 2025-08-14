@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.vertx.repository;
 
 import jakarta.annotation.Nullable;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.common.annotation.Batch;
 import ru.tinkoff.kora.database.common.annotation.Query;
 import ru.tinkoff.kora.database.common.annotation.Repository;
@@ -14,26 +13,27 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletionStage;
 
 @Repository
 public interface AllowedParametersRepository extends VertxRepository {
     @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
-    Mono<Void> nativeParameter(String value1, int value2);
+    CompletionStage<Void> nativeParameter(String value1, int value2);
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    Mono<Void> dtoJavaBeanParameter(TestEntityJavaBean entity);
+    CompletionStage<Void> dtoJavaBeanParameter(TestEntityJavaBean entity);
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field2, :entity.field1, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    Mono<Void> dtoRecordParameterMapping(TestEntityRecord entity);
+    CompletionStage<Void> dtoRecordParameterMapping(TestEntityRecord entity);
 
     @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
-    Mono<Void> nativeParameterBatch(@Batch List<String> value1, int value2);
+    CompletionStage<Void> nativeParameterBatch(@Batch List<String> value1, int value2);
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    Mono<Void> dtoBatch(@Batch List<TestEntityJavaBean> entity);
+    CompletionStage<Void> dtoBatch(@Batch List<TestEntityJavaBean> entity);
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    Mono<Void> mappedBatch(@Batch List<TestEntityJavaBean> entity);
+    CompletionStage<Void> mappedBatch(@Batch List<TestEntityJavaBean> entity);
 
     @Query("""
         INSERT INTO test(...) VALUES (
@@ -52,7 +52,7 @@ public interface AllowedParametersRepository extends VertxRepository {
           :localDate
          )
         """)
-    Mono<Void> allNativeParameters(
+    CompletionStage<Void> allNativeParameters(
         boolean booleanPrimitive,
         @Nullable Boolean booleanBoxed,
         int integerPrimitive,
@@ -85,5 +85,5 @@ public interface AllowedParametersRepository extends VertxRepository {
           :entity.localDate
         )
         """)
-    Mono<Void> allNativeParametersDto(JdbcEntity.AllNativeTypesEntity entity);
+    CompletionStage<Void> allNativeParametersDto(JdbcEntity.AllNativeTypesEntity entity);
 }

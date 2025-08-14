@@ -105,10 +105,6 @@ vertx-core = { module = "io.vertx:vertx-core", version.ref = "vertx" }
 vertx-pg-client = { module = "io.vertx:vertx-pg-client", version.ref = "vertx" }
 vertx-sql-client = { module = "io.vertx:vertx-sql-client", version.ref = "vertx" }
 
-r2dbc-spi = { module = "io.r2dbc:r2dbc-spi", version = "1.0.0.RELEASE" }
-r2dbc-pool = { module = "io.r2dbc:r2dbc-pool", version = "1.0.2.RELEASE" }
-r2dbc-postgres = { module = "org.postgresql:r2dbc-postgresql", version = "1.0.7.RELEASE" }
-
 byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version = "1.17.6" }
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.17.6" }
 

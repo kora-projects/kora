@@ -5,7 +5,6 @@ import ru.tinkoff.kora.common.NamingStrategy;
 import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter;
 import ru.tinkoff.kora.database.common.annotation.processor.cassandra.CassandraEntity;
 import ru.tinkoff.kora.database.common.annotation.processor.jdbc.JdbcEntity;
-import ru.tinkoff.kora.database.common.annotation.processor.r2dbc.R2dbcEntity;
 import ru.tinkoff.kora.database.common.annotation.processor.vertx.VertxEntity;
 
 import jakarta.annotation.Nullable;
@@ -23,8 +22,6 @@ public record TestEntityRecord(
     @Mapping(JdbcEntity.TestEntityFieldJdbcParameterColumnMapper.class)
     @Mapping(CassandraEntity.TestEntityFieldCassandraResultColumnMapper.class)
     @Mapping(CassandraEntity.TestEntityFieldCassandraParameterColumnMapper.class)
-    @Mapping(R2dbcEntity.TestEntityFieldR2dbcResultColumnMapper.class)
-    @Mapping(R2dbcEntity.TestEntityFieldR2dbcParameterColumnMapper.class)
     @Mapping(VertxEntity.TestEntityFieldVertxResultColumnMapper.class)
     @Mapping(VertxEntity.TestEntityFieldVertxParameterColumnMapper.class)
     MappedField1 mappedField1,
@@ -32,8 +29,6 @@ public record TestEntityRecord(
     @Mapping(JdbcEntity.TestEntityFieldJdbcParameterColumnMapperNonFinal.class)
     @Mapping(CassandraEntity.TestEntityFieldCassandraResultColumnMapperNonFinal.class)
     @Mapping(CassandraEntity.TestEntityFieldCassandraParameterColumnMapperNonFinal.class)
-    @Mapping(R2dbcEntity.TestEntityFieldR2dbcResultColumnMapperNonFinal.class)
-    @Mapping(R2dbcEntity.TestEntityFieldR2dbcParameterColumnMapperNonFinal.class)
     @Mapping(VertxEntity.TestEntityFieldVertxResultColumnMapperNonFinal.class)
     @Mapping(VertxEntity.TestEntityFieldVertxParameterColumnMapperNonFinal.class)
     MappedField2 mappedField2
