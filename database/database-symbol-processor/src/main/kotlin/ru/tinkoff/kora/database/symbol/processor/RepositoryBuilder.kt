@@ -13,7 +13,6 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraRepositoryGenerator
 import ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcRepositoryGenerator
-import ru.tinkoff.kora.database.symbol.processor.vertx.VertxRepositoryGenerator
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
@@ -28,7 +27,6 @@ class RepositoryBuilder(
 ) {
     private val availableGenerators = listOf(
         JdbcRepositoryGenerator(resolver),
-        VertxRepositoryGenerator(resolver, kspLogger),
         CassandraRepositoryGenerator(resolver),
     )
     private val log = LoggerFactory.getLogger(RepositoryBuilder::class.java)

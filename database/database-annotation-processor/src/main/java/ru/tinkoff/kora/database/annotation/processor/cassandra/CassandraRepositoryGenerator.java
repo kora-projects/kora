@@ -8,7 +8,6 @@ import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
-import ru.tinkoff.kora.database.annotation.processor.vertx.VertxRepositoryGenerator;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
