@@ -27,25 +27,6 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    void testRowMapper() {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule{
-              @Root
-              default String root(CassandraRowMapper<TestRecord> r) {return "";}
-            }
-            """, """
-            public record TestRecord(int value) {}
-            """);
-
-        compileResult.assertSuccess();
-        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
-            .isNotNull()
-            .isFinal()
-            .matches(doesImplement(CassandraRowMapper.class));
-    }
-
-    @Test
     void testEntityRowMapper() {
         compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
@@ -63,44 +44,6 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
             .isNotNull()
             .isFinal()
             .matches(doesImplement(CassandraRowMapper.class));
-    }
-
-    @Test
-    public void testListResultSetMapper() throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
-            
-              @Root
-              default String root(CassandraResultSetMapper<java.util.List<TestRecord>> r) {return "";}
-            }
-            """, """
-            public record TestRecord(int value) {}
-            """);
-
-        compileResult.assertSuccess();
-        var listMapper = compileResult.loadClass("$TestRecord_ListCassandraResultSetMapper");
-        assertThat(listMapper)
-            .isNotNull()
-            .isFinal()
-            .matches(doesImplement(CassandraResultSetMapper.class));
-
-        var columnDefinition = Mockito.mock(ColumnDefinitions.class);
-        var rs = Mockito.mock(ResultSet.class);
-        @SuppressWarnings("unchecked")
-        var mapper = (CassandraResultSetMapper<List<?>>) listMapper.getConstructor().newInstance();
-
-        when(rs.getColumnDefinitions()).thenReturn(columnDefinition);
-        when(columnDefinition.firstIndexOf("value")).thenReturn(0);
-
-        var row = Mockito.mock(Row.class);
-
-        when(rs.iterator()).thenReturn(List.of(row, row).iterator());
-        var result = mapper.apply(rs);
-        assertThat(result).hasSize(2);
-
-        when(columnDefinition.firstIndexOf("value")).thenReturn(0);
-        verify(row, times(2)).getInt(0);
     }
 
     @Test
@@ -143,25 +86,6 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    public void testSingleResultSetMapper() {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
-              @Root
-              default String root(CassandraResultSetMapper<TestRecord> r) {return "";}
-            }
-            """, """
-            public record TestRecord(int value) {}
-            """);
-
-        compileResult.assertSuccess();
-        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
-            .isNotNull()
-            .isFinal()
-            .matches(doesImplement(CassandraRowMapper.class));
-    }
-
-    @Test
     public void testEntitySingleResultSetMapper() {
         compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
@@ -182,33 +106,15 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    public void testSingleAsyncResultSetMapper() {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
-              @Root
-              default String root(CassandraAsyncResultSetMapper<TestRecord> r) {return "";}
-            }
-            """, """
-            public record TestRecord(int value) {}
-            """);
-
-        compileResult.assertSuccess();
-        assertThat(compileResult.loadClass("$TestRecord_CassandraRowMapper"))
-            .isNotNull()
-            .isFinal()
-            .matches(doesImplement(CassandraRowMapper.class));
-    }
-
-    @Test
     public void testListAsyncResultSetMapper() {
-        compile(List.of(new KoraAppProcessor()), """
+        compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
               @Root
               default String root(CassandraAsyncResultSetMapper<java.util.List<TestRecord>> r) {return "";}
             }
             """, """
+            @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
             public record TestRecord(int value) {}
             """);
 
@@ -221,7 +127,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
 
     @Test
     public void testSingleReactiveResultSetMapper() {
-        compile(List.of(new KoraAppProcessor()), """
+        compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
             import reactor.core.publisher.Mono;
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
@@ -229,6 +135,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
               default String root(CassandraReactiveResultSetMapper<TestRecord, Mono<TestRecord>> r) {return "";}
             }
             """, """
+            @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
             public record TestRecord(int value) {}
             """);
 
@@ -257,7 +164,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
 
     @Test
     public void testListReactiveResultSetMapper() {
-        compile(List.of(new KoraAppProcessor()), """
+        compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
             import java.util.List;
             import reactor.core.publisher.Mono;
             
@@ -267,6 +174,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
               default String root(CassandraReactiveResultSetMapper<List<TestRecord>, Mono<List<TestRecord>>> r) {return "";}
             }
             """, """
+            @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
             public record TestRecord(int value) {}
             """);
 
@@ -279,7 +187,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
 
     @Test
     public void testFluxReactiveResultSetMapper() {
-        compile(List.of(new KoraAppProcessor()), """
+        compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
             import reactor.core.publisher.Flux;
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp extends ru.tinkoff.kora.database.cassandra.CassandraModule {
@@ -287,6 +195,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
               default String root(CassandraReactiveResultSetMapper<TestRecord, Flux<TestRecord>> r) {return "";}
             }
             """, """
+            @ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
             public record TestRecord(int value) {}
             """);
 

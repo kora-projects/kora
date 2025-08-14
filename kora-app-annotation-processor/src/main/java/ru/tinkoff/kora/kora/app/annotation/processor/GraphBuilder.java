@@ -11,7 +11,6 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.CircularDependencyException;
-import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.UnresolvedDependencyException;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 
@@ -129,8 +128,6 @@ public class GraphBuilder {
 
                         try {
                             results.add(processProcessing(ctx, roundEnv, newProcessing, dependencyClaim));
-                        } catch (NewRoundException e) {
-                            results.add(e.getResolving());
                         } catch (UnresolvedDependencyException e) {
                             if (exception != null) {
                                 exception.addSuppressed(e);
@@ -189,12 +186,7 @@ public class GraphBuilder {
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
-                    if (extensionResult instanceof ExtensionResult.RequiresCompilingResult) {
-                        stack.addLast(componentFrame.withCurrentDependency(currentDependency));
-                        throw new NewRoundException(
-                            processing, extension, dependencyClaim.type(), dependencyClaim.tags()
-                        );
-                    } else if (extensionResult instanceof ExtensionResult.CodeBlockResult codeBlockResult) {
+                    if (extensionResult instanceof ExtensionResult.CodeBlockResult codeBlockResult) {
                         var extensionComponent = ComponentDeclaration.fromExtension(codeBlockResult);
                         if (extensionComponent.isTemplate()) {
                             processing.templates().add(extensionComponent);
@@ -394,7 +386,7 @@ public class GraphBuilder {
         var dependencyClaim = prevComponent.dependenciesToFind().get(prevComponent.currentDependency());
         var dependencyClaimType = dependencyClaim.type();
         var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
-        if(!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
+        if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
             throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), declaration);
         }
         for (var inStackFrame : processing.resolutionStack()) {

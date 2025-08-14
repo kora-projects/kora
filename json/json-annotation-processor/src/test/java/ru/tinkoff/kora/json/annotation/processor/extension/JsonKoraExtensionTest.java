@@ -51,22 +51,6 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
-    public void testReaderFoundForNotAnnotatedRecord() {
-        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp {
-              record TestRecord() {}
-            
-              @Root
-              default Integer root1(ru.tinkoff.kora.json.common.JsonReader<TestRecord> r) {return 42;}
-            }
-            """);
-        compileResult.assertSuccess();
-        var app = loadGraph("TestApp");
-        assertThat(app.draw().getNodes()).hasSize(2);
-    }
-
-    @Test
     public void testWriterFromExtensionNotFoundForInterface() {
         compile(List.of(new KoraAppProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
@@ -102,30 +86,17 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
-    public void testWriterFoundForNotAnnotatedRecord() {
-        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp {
-              record TestRecord() {}
-            
-              @Root
-              default Integer root1(ru.tinkoff.kora.json.common.JsonWriter<TestRecord> r) {return 42;}
-            }
-            """);
-        compileResult.assertSuccess();
-        var app = loadGraph("TestApp");
-        assertThat(app.draw().getNodes()).hasSize(2);
-    }
-
-    @Test
     public void testReaderFromExtensionGeneratedForSealedInterface() {
-        compile(List.of(new KoraAppProcessor()), """
+        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
             
               @JsonDiscriminatorField("type")
+              @ru.tinkoff.kora.json.common.annotation.Json
               sealed interface TestInterface {
+                @ru.tinkoff.kora.json.common.annotation.Json
                 record Impl1(String value) implements TestInterface { }
+                @ru.tinkoff.kora.json.common.annotation.Json
                 record Impl2(int value) implements TestInterface { }
               }
             
@@ -143,13 +114,16 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
 
     @Test
     public void testWriterFromExtensionGeneratedForSealedInterface() {
-        compile(List.of(new KoraAppProcessor()), """
+        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
             
               @JsonDiscriminatorField("type")
+              @ru.tinkoff.kora.json.common.annotation.Json
               sealed interface TestInterface {
+                @ru.tinkoff.kora.json.common.annotation.Json
                 record Impl1(String value) implements TestInterface { }
+                @ru.tinkoff.kora.json.common.annotation.Json
                 record Impl2(int value) implements TestInterface { }
               }
             

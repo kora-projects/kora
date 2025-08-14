@@ -37,7 +37,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             @Json
             public enum TestEnum {
               VALUE1, VALUE2;
-
+            
               @Json
               public int intValue() {
                 return ordinal();
@@ -54,49 +54,6 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         mapper.verify(enumConstant("TestEnum", "VALUE2"), "1");
     }
 
-
-    @Test
-    public void testReaderFromExtension() {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp {
-              enum TestEnum {
-                VALUE1, VALUE2
-              }
-
-              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
-              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
-
-              @Root
-              default String root(ru.tinkoff.kora.json.common.JsonReader<TestEnum> r) {return "";}
-            }
-            """);
-
-        compileResult.assertSuccess();
-        assertThat(reader("TestApp_TestEnum", stringReader)).isNotNull();
-    }
-
-    @Test
-    public void testWriterFromExtension() {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp {
-              enum TestEnum {
-                VALUE1, VALUE2
-              }
-
-              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
-              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
-
-              @Root
-              default String root(ru.tinkoff.kora.json.common.JsonWriter<TestEnum> r) {return "";}
-            }
-            """);
-
-        compileResult.assertSuccess();
-        assertThat(writer("TestApp_TestEnum", stringWriter)).isNotNull();
-    }
-
     @Test
     public void testAnnotationProcessedReaderFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
@@ -106,10 +63,10 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
               enum TestEnum {
                 VALUE1, VALUE2
               }
-
+            
               default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
               default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
-
+            
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonReader<TestEnum> r) {return "";}
             }
@@ -128,10 +85,10 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
               enum TestEnum {
                 VALUE1, VALUE2
               }
-
+            
               default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
               default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
-
+            
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonWriter<TestEnum> r) {return "";}
             }

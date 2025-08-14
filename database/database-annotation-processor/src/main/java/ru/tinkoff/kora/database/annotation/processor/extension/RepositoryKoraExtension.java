@@ -1,10 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.extension;
 
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
-import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -46,25 +44,7 @@ public class RepositoryKoraExtension implements KoraExtension {
             return null;
         }
         var typeElement = (TypeElement) this.types.asElement(typeMirror);
-        var packageElement = this.elements.getPackageOf(typeElement);
         var repositoryName = NameUtils.generatedType(typeElement, "Impl");
-        var packageName = packageElement.getQualifiedName();
-        return () -> {
-            var repositoryElement = this.elements.getTypeElement(packageElement.getQualifiedName() + "." + repositoryName);
-            if (repositoryElement == null) {
-                // annotation processor will handle it
-                return ExtensionResult.nextRound();
-            }
-            if (!CommonUtils.hasAopAnnotations(repositoryElement)) {
-                return CommonUtils.findConstructors(repositoryElement, m -> m.contains(Modifier.PUBLIC)).stream().map(ExtensionResult::fromExecutable).findFirst().orElseThrow();
-            }
-            var aopProxy = NameUtils.generatedType(repositoryElement, "_AopProxy");
-            var aopProxyElement = this.elements.getTypeElement(packageName + "." + aopProxy);
-            if (aopProxyElement == null) {
-                // aop annotation processor will handle it
-                return ExtensionResult.nextRound();
-            }
-            return CommonUtils.findConstructors(aopProxyElement, m -> m.contains(Modifier.PUBLIC)).stream().map(ExtensionResult::fromExecutable).findFirst().orElseThrow();
-        };
+        return KoraExtensionDependencyGenerator.generatedFromWithName(this.elements, typeElement, repositoryName);
     }
 }

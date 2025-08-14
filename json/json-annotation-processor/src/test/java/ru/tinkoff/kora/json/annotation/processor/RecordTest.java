@@ -22,39 +22,6 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
         mapper.verify(newObject("TestRecord", 42), "{\"value\":42}");
     }
 
-
-    @Test
-    public void testReaderFromExtension() {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp {
-              record TestRecord(int value){}
-
-              @Root
-              default String root(ru.tinkoff.kora.json.common.JsonReader<TestRecord> r) {return "";}
-            }
-            """);
-
-        compileResult.assertSuccess();
-        assertThat(reader("TestApp_TestRecord")).isNotNull();
-    }
-
-    @Test
-    public void testWriterFromExtension() {
-        compile(List.of(new KoraAppProcessor()), """
-            @ru.tinkoff.kora.common.KoraApp
-            public interface TestApp {
-              record TestRecord(int value){}
-
-              @Root
-              default String root(ru.tinkoff.kora.json.common.JsonWriter<TestRecord> r) {return "";}
-            }
-            """);
-
-        compileResult.assertSuccess();
-        assertThat(writer("TestApp_TestRecord")).isNotNull();
-    }
-
     @Test
     public void testAnnotationProcessedReaderFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
@@ -62,7 +29,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
             public interface TestApp {
               @Json
               record TestRecord(int value){}
-
+            
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonReader<TestRecord> r) {return "";}
             }
@@ -79,7 +46,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
             public interface TestApp {
               @Json
               record TestRecord(int value){}
-
+            
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonWriter<TestRecord> r) {return "";}
             }

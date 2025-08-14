@@ -8,8 +8,10 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
 import javax.lang.model.element.TypeElement;
-import javax.lang.model.type.TypeMirror;
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 
 public sealed interface ProcessingState {
     sealed interface ResolutionFrame {
@@ -50,8 +52,6 @@ public sealed interface ProcessingState {
     }
 
     record Ok(TypeElement root, List<TypeElement> allModules, List<ResolvedComponent> components) implements ProcessingState {}
-
-    record NewRoundRequired(Object source, TypeMirror type, Set<String> tag, Processing processing) implements ProcessingState {}
 
     record Failed(ProcessingErrorException detailedException, Deque<ResolutionFrame> stack) implements ProcessingState {}
 }

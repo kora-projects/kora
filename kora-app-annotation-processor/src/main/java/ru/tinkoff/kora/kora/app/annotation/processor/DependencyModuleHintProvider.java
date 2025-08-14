@@ -21,12 +21,15 @@ public class DependencyModuleHintProvider {
 
     public DependencyModuleHintProvider(ProcessingEnvironment processingEnvironment) {
         this.processingEnvironment = processingEnvironment;
+        List<ModuleHint> hints;
         try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-modules.json");
              var parser = new JsonFactory(new JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES)).createParser(r)) {
-            this.hints = ModuleHint.parseList(parser);
+            hints = ModuleHint.parseList(parser);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.warn("Error while reading hint list", e);
+            hints = List.of();
         }
+        this.hints = hints;
     }
 
 

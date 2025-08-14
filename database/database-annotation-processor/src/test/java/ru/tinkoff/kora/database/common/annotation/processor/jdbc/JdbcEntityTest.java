@@ -48,43 +48,4 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
 
         assertThat(graph.get(draw.getNodes().get(0))).isInstanceOf(JdbcResultSetMapper.class);
     }
-
-    @Test
-    public void testNonAnnotatedRecordRowMapper() {
-        var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
-
-        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "public record TestRecord(Integer f1, Integer f2){}"
-        );
-        assertThat(draw.getNodes()).hasSize(2);
-        assertThat(compileResult.warnings()).hasSize(3);
-
-        assertThat(graph.get(draw.getNodes().get(0))).isInstanceOf(JdbcRowMapper.class);
-    }
-
-    @Test
-    public void testNonAnnotatedRecordResultSetMapper() {
-        var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcResultSetMapper.class), className("TestRecord"));
-
-        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "public record TestRecord(Integer f1, Integer f2){}"
-        );
-        assertThat(draw.getNodes()).hasSize(3);
-        assertThat(compileResult.warnings()).hasSize(3);
-
-        assertThat(graph.get(draw.getNodes().get(1))).isInstanceOf(JdbcResultSetMapper.class);
-    }
-
-    @Test
-    public void testNonAnnotatedRecorListResultSetMapper() {
-        var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcResultSetMapper.class), ParameterizedTypeName.get(ClassName.get(List.class), className("TestRecord")));
-
-        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "public record TestRecord(Integer f1, Integer f2){}"
-        );
-        assertThat(draw.getNodes()).hasSize(2);
-        assertThat(compileResult.warnings()).hasSize(3);
-
-        assertThat(graph.get(draw.getNodes().get(0))).isInstanceOf(JdbcResultSetMapper.class);
-    }
 }

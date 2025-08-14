@@ -130,8 +130,7 @@ public interface AppWithProcessorExtension {
                 return ExtensionResult.fromExecutable(constructor);
             }
 
-            // annotation processor will handle it
-            return ExtensionResult.nextRound();
+            throw new IllegalStateException();
         }
     }
 
