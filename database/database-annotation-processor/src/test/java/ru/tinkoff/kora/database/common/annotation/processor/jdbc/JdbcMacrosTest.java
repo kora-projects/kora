@@ -4,7 +4,6 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
-import ru.tinkoff.kora.database.common.annotation.Column;
 
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -15,26 +14,24 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.Executors;
-import java.util.function.Consumer;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
-
-    interface Some extends Consumer<@Column("id") String> {
-
-    }
 
     @Test
     void returnTable() throws SQLException {
         var repository = compileJdbc(List.of(newGeneratedObject("TestRowMapper")), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                        
                 @Table("entities")
                 record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
-            
+                        
                 @Query("SELECT * FROM %{return#table} WHERE id = :id")
                 @Nullable
                 Entity findById(String id);
@@ -56,10 +53,10 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(Executors.newCachedThreadPool(), newGeneratedObject("TestRowMapper")), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                        
                 @Table("entities")
                 record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
-            
+                        
                 @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
                 @Nullable
                 CompletionStage<Entity> findById(String id);
@@ -81,7 +78,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("INSERT INTO %{entity#inserts}")
                 UpdateCount insert(Entity entity);
             }
@@ -99,7 +96,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("INSERT INTO %{entity#inserts}")
                 UpdateCount insert(@Batch java.util.List<Entity> entity);
             }
@@ -108,7 +105,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
                 record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
             """);
 
-        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{1L});
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[] {1L});
         repository.invoke("insert", List.of(newGeneratedObject("Entity", "1", 1, "1", "1").get()));
         verify(executor.mockConnection).prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?)");
     }
@@ -118,7 +115,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("INSERT INTO %{entity#inserts -= @id}")
                 UpdateCount insert(Entity entity);
             }
@@ -136,7 +133,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends ParentRepository<Entity> {
-            
+                
             }
             """, """
             public interface ParentRepository<T> extends JdbcRepository { 
@@ -158,7 +155,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("INSERT INTO %{entity#inserts -= field1}")
                 UpdateCount insert(Entity entity);
             }
@@ -176,7 +173,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
                 UpdateCount insert(Entity entity);
             }
@@ -194,7 +191,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
                 UpdateCount insert(@Batch java.util.List<Entity> entity);
             }
@@ -203,7 +200,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
                 record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
             """);
 
-        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{1L});
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[] {1L});
         repository.invoke("insert", List.of(newGeneratedObject("Entity", "1", 1, "1", "1").get()));
         verify(executor.mockConnection).prepareStatement("INSERT INTO entities(id, value1, value2, value3) VALUES (?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET value1 = ?, value2 = ?, value3 = ?");
     }
@@ -213,7 +210,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
                 UpdateCount insert(Entity entity);
             }
@@ -227,69 +224,11 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    void whereTypeUseParameter() throws SQLException {
-        var repository = compileJdbc(List.of(newGeneratedObject("TestRowMapper")),
-            """
-            public interface AbstractJdbcRepository<K, V> extends JdbcRepository {
-
-                @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{keyArg#where}")
-                @Nullable
-                V findById(K keyArg);
-            }
-            """,
-            """
-            @Repository
-            public interface TestRepository extends AbstractJdbcRepository<@Column("id") String, TestRepository.Entity> {
-            
-                @Table("entities")
-                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
-            }
-            """,
-            """
-            public class TestRowMapper implements JdbcResultSetMapper<TestRepository.Entity> {
-                public TestRepository.Entity apply(ResultSet rs) {
-                  return null;
-                }
-            }
-            """);
-
-        repository.invoke("findById", "1");
-        verify(executor.mockConnection).prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?");
-    }
-
-    @Test
-    void whereMethodArgumentParameter() throws SQLException {
-        var repository = compileJdbc(List.of(newGeneratedObject("TestRowMapper")),
-            """
-            @Repository
-            public interface TestRepository extends JdbcRepository {
-            
-                @Table("entities")
-                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
-            
-                @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{keyArg#where}")
-                @Nullable
-                Entity findById(@Column("id") String keyArg);
-            }
-            """,
-            """
-            public class TestRowMapper implements JdbcResultSetMapper<TestRepository.Entity> {
-                public TestRepository.Entity apply(ResultSet rs) {
-                  return null;
-                }
-            }
-            """);
-
-        repository.invoke("findById", "1");
-        verify(executor.mockConnection).prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?");
-    }
-
-    @Test
     void entityTableAndUpdateBatch() throws SQLException {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
                 UpdateCount insert(@Batch java.util.List<Entity> entity);
             }
@@ -298,7 +237,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
                 record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
             """);
 
-        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[]{1L});
+        when(executor.preparedStatement.executeLargeBatch()).thenReturn(new long[] {1L});
         repository.invoke("insert", List.of(newGeneratedObject("Entity", "1", 1, "1", "1").get()));
         verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ?, value2 = ?, value3 = ? WHERE id = ?");
     }
@@ -308,7 +247,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
                 UpdateCount insert(Entity entity);
             }
@@ -478,7 +417,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("UPDATE %{entity#table} SET %{entity#updates -= field1} WHERE %{entity#where = @id}")
                 UpdateCount insert(Entity entity);
             }
@@ -496,7 +435,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-            
+                            
                 @Query("UPDATE %{entity#table} SET %{entity#updates = field1} WHERE %{entity#where = @id}")
                 UpdateCount insert(Entity entity);
             }

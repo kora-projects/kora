@@ -30,7 +30,7 @@ final class QueryMacrosParser {
         this.types = types;
     }
 
-    record Field(Element field, String column, String path, boolean isId, boolean isEmbedded) {}
+    record Field(Element field, String column, String path, boolean isId) {}
 
     record Target(DeclaredType type, String name) {}
 
@@ -40,8 +40,7 @@ final class QueryMacrosParser {
         while (true) {
             var cmdIndexStart = sqlWithSyntax.indexOf(MACROS_START, prevCmdIndex);
             if (cmdIndexStart == -1) {
-                String sqlResult = sqlWithSyntax.substring(prevCmdIndex);
-                return sqlBuilder.append(sqlResult).toString();
+                return sqlBuilder.append(sqlWithSyntax.substring(prevCmdIndex)).toString();
             }
 
             var cmdIndexEnd = sqlWithSyntax.indexOf(MACROS_END, cmdIndexStart);
@@ -55,24 +54,9 @@ final class QueryMacrosParser {
     }
 
     private List<Field> getPathField(ExecutableElement method, DeclaredType target, String rootPath, String columnPrefix) {
-        var treatAsNativeParameterColumn = target.getAnnotationMirrors().stream()
-            .filter(a -> ClassName.get(a.getAnnotationType()).equals(DbUtils.COLUMN_ANNOTATION))
-            .findFirst();
-        if (treatAsNativeParameterColumn.isPresent()) {
-            Collection<? extends AnnotationValue> values = treatAsNativeParameterColumn.get().getElementValues().values();
-            if (!values.isEmpty()) {
-                Object columnTypeUseName = values.iterator().next().getValue();
-                if (columnTypeUseName != null) {
-                    return List.of(new Field(target.asElement(), columnTypeUseName.toString(), rootPath, false, false));
-                }
-            }
-
-            throw new ProcessingErrorException("Can't treat argument '" + rootPath + "' as macros native cause failed to extract @Column value: " + target, method);
-        }
-
         final JdbcNativeType nativeType = JdbcNativeTypes.findNativeType(TypeName.get(target));
         if (nativeType != null) {
-            throw new ProcessingErrorException("Can't process argument '" + rootPath + "' as macros cause it is Native Type without @Column specified: " + target, method);
+            throw new ProcessingErrorException("Can't process argument '" + rootPath + "' as macros cause it is Native Type: " + target, method);
         }
 
         var result = new ArrayList<Field>();
@@ -86,16 +70,15 @@ final class QueryMacrosParser {
             if (embedded != null) {
                 if (field.asType() instanceof DeclaredType dt) {
                     var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
-                    List<Field> pathFields = getPathField(method, dt, path, prefix);
-                    for (var f : pathFields) {
-                        result.add(new Field(f.field(), f.column(), f.path(), isId, true));
+                    for (var f : getPathField(method, dt, path, prefix)) {
+                        result.add(new Field(f.field(), f.column(), f.path(), isId));
                     }
                 } else {
                     throw new IllegalArgumentException("@Embedded annotation placed on field that can't be embedded: " + target);
                 }
             } else {
                 var columnName = getColumnName(target, field, columnPrefix);
-                result.add(new Field(field, columnName, path, isId, false));
+                result.add(new Field(field, columnName, path, isId));
             }
         }
         return result;
