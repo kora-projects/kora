@@ -18,27 +18,25 @@ interface {{classname}}ServerRequestMappers {
 {{#operation}}
 
 {{#hasFormParams}}
+
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
-    private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}>,
-{{/vendorExtensions.formParamMappers}}
+    private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}>,{{/vendorExtensions.formParamMappers}}
   ){{/vendorExtensions.requiresFormParamMappers}}: HttpServerRequestMapper<{{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}}> {
 
     override fun apply(request: HttpServerRequest): {{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}} {
 {{#vendorExtensions.urlEncodedForm}}
       return request.body().asArrayStage().thenApply { bytes ->
         val bodyString = bytes.decodeToString()
-        val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString)
-{{#formParams}}
+        val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString){{#formParams}}
         val {{paramName}}Part = formData.get("{{baseName}}"){{#isArray}}
-        val {{paramName}} = if ({{paramName}}Part == null) emptyList() else {{paramName}}Part.values(){{/isArray}}{{^isArray}}{{#vendorExtensions.requiresMapper}}
-        val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Converter.read({{paramName}}Part.values().first()){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}
-        val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first(){{/vendorExtensions.requiresMapper}}{{#required}}
+        val {{paramName}} = if ({{paramName}}Part == null) emptyList() else {{paramName}}Part.values(){{/isArray}}{{^isArray}}{{#vendorExtensions.isPrimitive}}{{^isString}}
+        val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first().to{{dataType}}(){{/isString}}{{/vendorExtensions.isPrimitive}}{{#vendorExtensions.requiresMapper}}
+        val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Converter.read({{paramName}}Part.values().first()){{/vendorExtensions.requiresMapper}}{{^vendorExtensions.requiresMapper}}{{#isString}}
+        val {{paramName}} = if ({{paramName}}Part == null || {{paramName}}Part.values().isEmpty()) null else {{paramName}}Part.values().first(){{/isString}}{{/vendorExtensions.requiresMapper}}{{#required}}
         if ({{paramName}} == null) {
           throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required")
-        }
-{{/required}}{{/isArray}}{{/formParams}}
-
+        }{{/required}}{{/isArray}}{{/formParams}}
         {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
         )
