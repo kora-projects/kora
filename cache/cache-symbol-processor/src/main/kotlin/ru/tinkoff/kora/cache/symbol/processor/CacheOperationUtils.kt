@@ -15,9 +15,9 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import jakarta.annotation.Nullable
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isPublisher
@@ -155,12 +155,22 @@ class CacheOperationUtils {
                     if (parameter != parameters) {
                         throw ProcessingErrorException(
                             ProcessingError(
-                                "${annotation.javaClass} parameters mismatch for different annotations for $origin",
+                                "@${annotation.shortName.asString()} parameters mismatch for different annotations for $origin",
                                 method,
                                 Diagnostic.Kind.ERROR
                             )
                         )
                     }
+                }
+
+                if (parameters.isEmpty() && type != CacheOperation.Type.EVICT_ALL) {
+                    throw ProcessingErrorException(
+                        ProcessingError(
+                            "@${annotation.shortName.asString()} method must declare any method parameters for cache key",
+                            method,
+                            Diagnostic.Kind.ERROR,
+                        )
+                    )
                 }
 
                 val cacheImpl = annotation.arguments.filter { a -> a.name!!.asString() == "value" }

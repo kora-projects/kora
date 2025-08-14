@@ -16,8 +16,7 @@ import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.*;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
 
@@ -102,6 +101,91 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
             public interface OuterType {
               @ru.tinkoff.kora.cache.annotation.Cache("test")
               interface MyCache extends ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>{}
+            }
+            """);
+        compileResult.assertSuccess();
+    }
+
+    @Test
+    public void testCacheableNoParametersFails() {
+        compile(List.of(new CacheAnnotationProcessor(), new AopAnnotationProcessor()), """
+            public interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache extends ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>{}
+            
+              class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.Cacheable(OuterType.MyCache.class)
+                 public String getValue() { return "1"; }
+              }
+            }
+            """);
+        assertTrue(compileResult.isFailed());
+    }
+
+    @Test
+    public void testCacheableNoParametersNonStringFails() {
+        compile(List.of(new CacheAnnotationProcessor(), new AopAnnotationProcessor()), """
+            public interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache extends ru.tinkoff.kora.cache.caffeine.CaffeineCache<Integer, String>{}
+            
+              class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.Cacheable(OuterType.MyCache.class)
+                 public String getValue() { return "1"; }
+              }
+            }
+            """);
+        assertTrue(compileResult.isFailed());
+    }
+
+    @Test
+    public void testCachePutNoParametersFails() {
+        compile(List.of(new CacheAnnotationProcessor(), new AopAnnotationProcessor()), """
+            public interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache extends ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>{}
+            
+              class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.CachePut(OuterType.MyCache.class)
+                 public String getValue() { return "1"; }
+              }
+            }
+            """);
+        assertTrue(compileResult.isFailed());
+    }
+
+    @Test
+    public void testCacheEvictNoParametersFails() {
+        compile(List.of(new CacheAnnotationProcessor(), new AopAnnotationProcessor()), """
+            public interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache extends ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>{}
+            
+              class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.CacheInvalidate(OuterType.MyCache.class)
+                 public String getValue() { return "1"; }
+              }
+            }
+            """);
+        assertTrue(compileResult.isFailed());
+    }
+
+    @Test
+    public void testCacheEvictAllNoParametersSuccess() {
+        compile(List.of(new CacheAnnotationProcessor(), new AopAnnotationProcessor()), """
+            public interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache extends ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>{}
+            
+              class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.CacheInvalidate(value = OuterType.MyCache.class, invalidateAll = true)
+                 public String getValue() { return "1"; }
+              }
             }
             """);
         compileResult.assertSuccess();

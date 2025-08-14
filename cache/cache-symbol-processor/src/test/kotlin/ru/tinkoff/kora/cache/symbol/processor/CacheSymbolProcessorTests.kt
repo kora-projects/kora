@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.cache.symbol.processor
 
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
@@ -110,12 +111,93 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun testInnerTypeCache() {
-        compile0("""
-        interface OuterType {
-          @ru.tinkoff.kora.cache.annotation.Cache("test")
-          interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
-        }
-        """.trimIndent()
+        compile0(
+            """
+            interface OuterType {
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testCacheableNoParametersFails() {
+        compile0(
+            """
+            interface OuterType {
+            
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
+            
+              open class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.Cacheable(MyCache::class)
+                 open fun getValue(): String = "1"
+              }
+            }
+            """.trimIndent()
+        )
+        assertTrue(compileResult.isFailed())
+    }
+
+    @Test
+    fun testCachePutNoParametersFails() {
+        compile0(
+            """
+            interface OuterType {
+            
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
+            
+              open class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.CachePut(MyCache::class)
+                 open fun getValue(): String = "1"
+              }
+            }
+            """.trimIndent()
+        )
+        assertTrue(compileResult.isFailed())
+    }
+
+    @Test
+    fun testCacheEvictNoParametersFails() {
+        compile0(
+            """
+            interface OuterType {
+            
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
+            
+              open class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.CacheInvalidate(MyCache::class)
+                 open fun getValue(): String = "1"
+              }
+            }
+            """.trimIndent()
+        )
+        assertTrue(compileResult.isFailed())
+    }
+
+    @Test
+    fun testCacheEvictAllNoParametersFails() {
+        compile0(
+            """
+            interface OuterType {
+            
+              @ru.tinkoff.kora.cache.annotation.Cache("test")
+              interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>
+            
+              open class CacheableSync {
+            
+                 @ru.tinkoff.kora.cache.annotation.CacheInvalidate(value = MyCache::class, invalidateAll = true)
+                 open fun getValue(): String = "1"
+              }
+            }
+            """.trimIndent()
         )
         compileResult.assertSuccess()
     }
