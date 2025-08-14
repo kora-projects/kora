@@ -3,7 +3,6 @@ package ru.tinkoff.kora.database.common.annotation.processor.cassandra;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper;
@@ -107,42 +106,6 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
 
         verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test");
         verify(executor.mockSession).executeAsync(any(Statement.class));
-    }
-
-    @Test
-    public void testReturnMonoObject() {
-        var mapper = Mockito.mock(CassandraReactiveResultSetMapper.class);
-        var repository = compileCassandra(List.of(mapper), """
-            @Repository
-            public interface TestRepository extends CassandraRepository {
-                @Query("SELECT count(*) FROM test")
-                Mono<Integer> test();
-            }
-            """);
-
-        when(mapper.apply(any())).thenReturn(Mono.just(42));
-        var result = repository.invoke("test");
-
-        assertThat(result).isEqualTo(42);
-        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test");
-        verify(executor.mockSession).executeReactive(any(Statement.class));
-        verify(mapper).apply(executor.reactiveResultSet);
-    }
-
-    @Test
-    public void testReturnMonoVoid() {
-        var repository = compileCassandra(List.of(), """
-            @Repository
-            public interface TestRepository extends CassandraRepository {
-                @Query("SELECT count(*) FROM test")
-                Mono<Void> test();
-            }
-            """);
-
-        repository.invoke("test");
-
-        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test");
-        verify(executor.mockSession).executeReactive(any(Statement.class));
     }
 
     @Test

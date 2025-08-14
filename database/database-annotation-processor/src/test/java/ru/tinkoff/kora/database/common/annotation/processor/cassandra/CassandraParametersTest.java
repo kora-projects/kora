@@ -9,14 +9,11 @@ import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinitions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.annotation.processor.common.TestContext;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.cassandra.CassandraConnectionFactory;
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
-import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.cassandra.repository.AllowedParametersRepository;
@@ -39,8 +36,6 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     public void oldTest() {
         var ctx = new TestContext();
         ctx.addContextElement(TypeRef.of(CassandraConnectionFactory.class), executor);
-        ctx.addMock(TypeRef.of(CassandraReactiveResultSetMapper.class, Void.class, TypeRef.of(Mono.class, Void.class)));
-        ctx.addMock(TypeRef.of(CassandraReactiveResultSetMapper.class, Void.class, TypeRef.of(Flux.class, Void.class)));
         ctx.addMock(TypeRef.of(CassandraEntity.TestEntityFieldCassandraParameterColumnMapperNonFinal.class));
         ctx.addMock(TypeRef.of(CassandraParameterColumnMapper.class, TestUnknownType.class));
         ctx.addMock(TypeRef.of(CassandraParameterColumnMapper.class, UnknownTypeField.class));
