@@ -43,7 +43,7 @@ jobs:
         shell: bash
 
       - name: Gradle ${{ matrix.task }} test classes
-        run: ./gradlew testClasses-${{ matrix.task }} --scan --parallel
+        run: ./gradlew testClasses-${{ matrix.task }} --scan
         shell: bash
 
       - name: Gradle ${{ matrix.task }} test
