@@ -62,7 +62,6 @@ include(
     'http:http-server-common',
     'http:http-server-undertow',
     'http:http-client-common',
-    'http:http-client-async',
     'http:http-client-ok',
     'http:http-client-jdk',
     'http:http-server-annotation-processor',

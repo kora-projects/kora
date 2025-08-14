@@ -49,7 +49,7 @@ dependencies {
     testImplementation 'org.apache.cxf:cxf-rt-transports-http-jetty:3.4.5'
     testImplementation 'org.apache.cxf:cxf-rt-frontend-jaxws:3.4.5'
 
-    testImplementation project(':http:http-client-async')
+    testImplementation project(':http:http-client-jdk')
 }
 
 ext {
