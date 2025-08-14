@@ -4,9 +4,6 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
-import io.opentelemetry.api.common.AttributeKey;
-import io.opentelemetry.semconv.ErrorAttributes;
-import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -16,81 +13,63 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordsDurationKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordDurationKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.TopicLagKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.MicrometerKafkaConsumerTagsProvider;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
 /**
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
  */
 public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
 
-    private static final AttributeKey<String> MESSAGING_KAFKA_CONSUMER_NAME = stringKey("messaging.kafka.consumer.name");
+    private final ConcurrentHashMap<RecordDurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<RecordsDurationKey, DistributionSummary> metricsBatch = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<TopicLagKey, LagGauge> lagMetrics = new ConcurrentHashMap<>();
 
     private final MeterRegistry meterRegistry;
-    private final ConcurrentHashMap<DurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<DurationBatchKey, DistributionSummary> metricsBatch = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<TopicPartition, LagGauge> lagMetrics = new ConcurrentHashMap<>();
-    private final TelemetryConfig.MetricsConfig config;
     private final Properties driverProperties;
+    private final TelemetryConfig.MetricsConfig config;
+    private final MicrometerKafkaConsumerTagsProvider tagsProvider;
+    @Nullable
+    private final String clientId;
+    @Nullable
+    private final String groupId;
 
-    public Opentelemetry123KafkaConsumerMetrics(MeterRegistry meterRegistry, Properties driverProperties, TelemetryConfig.MetricsConfig config) {
+    public Opentelemetry123KafkaConsumerMetrics(MeterRegistry meterRegistry,
+                                                Properties driverProperties,
+                                                TelemetryConfig.MetricsConfig config,
+                                                MicrometerKafkaConsumerTagsProvider tagsProvider) {
+        this.tagsProvider = tagsProvider;
         this.meterRegistry = meterRegistry;
         this.config = config;
         this.driverProperties = driverProperties;
+
+        var clientIdObj = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
+        var groupIdObj = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
+        this.clientId = (clientIdObj instanceof String s) ? s : null;
+        this.groupId = (groupIdObj instanceof String s) ? s : null;
     }
 
-    private record DurationKey(String topic, int partition, @Nullable Class<? extends Throwable> errorType) {}
-
-    private record DurationBatchKey(String consumerName, @Nullable Class<? extends Throwable> errorType) {}
-
-    private DistributionSummary metrics(DurationKey key) {
-        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
-        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
-
-        @SuppressWarnings("deprecation")
+    private DistributionSummary metrics(RecordDurationKey key) {
         var builder = DistributionSummary.builder("messaging.receive.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
-            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
-            .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), key.topic())
-            .tag(MessagingIncubatingAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), String.valueOf(key.partition()))
-            .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), String.valueOf(key.partition()))
-            .tag(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString())
-            .tag(MessagingIncubatingAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "").toString());
-
-        if (key.errorType() != null) {
-            builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName());
-        } else {
-            builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), "");
-        }
+            .tags(tagsProvider.getRecordDurationTags(clientId, groupId, driverProperties, key));
 
         return builder.register(this.meterRegistry);
     }
 
-    private DistributionSummary metricBatch(DurationBatchKey key) {
-        var clientId = driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG);
-        var groupId = driverProperties.get(ConsumerConfig.GROUP_ID_CONFIG);
-
+    private DistributionSummary metricBatch(RecordsDurationKey key) {
         var builder = DistributionSummary.builder("messaging.process.batch.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
-            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
-            .tag(MESSAGING_KAFKA_CONSUMER_NAME.getKey(), key.consumerName())
-            .tag(MessagingIncubatingAttributes.MESSAGING_OPERATION.getKey(), key.consumerName())
-            .tag(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), Objects.requireNonNullElse(clientId, "").toString())
-            .tag(MessagingIncubatingAttributes.MESSAGING_KAFKA_CONSUMER_GROUP.getKey(), Objects.requireNonNullElse(groupId, "").toString());
-
-        if (key.errorType() != null) {
-            builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName());
-        } else {
-            builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), "");
-        }
+            .tags(tagsProvider.getRecordsDurationTags(clientId, groupId, driverProperties, key));
 
         return builder.register(this.meterRegistry);
     }
@@ -101,9 +80,9 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     }
 
     @Override
-    public void onRecordProcessed(ConsumerRecord<?, ?> record, long duration, Throwable ex) {
+    public void onRecordProcessed(String consumerName, ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex) {
         double durationDouble = ((double) duration) / 1_000_000_000;
-        var key = new DurationKey(record.topic(), record.partition(), ex != null ? ex.getClass() : null);
+        var key = new RecordDurationKey(consumerName, record.topic(), record.partition(), ex != null ? ex.getClass() : null);
 
         this.metrics.computeIfAbsent(key, this::metrics).record(durationDouble);
     }
@@ -111,14 +90,15 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     @Override
     public void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
         double durationDouble = ((double) duration) / 1_000_000_000;
-        var key = new DurationBatchKey(consumerName, ex != null ? ex.getClass() : null);
+        var key = new RecordsDurationKey(consumerName, ex != null ? ex.getClass() : null);
 
         this.metricsBatch.computeIfAbsent(key, this::metricBatch).record(durationDouble);
     }
 
     @Override
     public void reportLag(String consumerName, TopicPartition partition, long lag) {
-        lagMetrics.computeIfAbsent(partition, p -> new LagGauge(consumerName, p, meterRegistry)).offsetLag = lag;
+        var key = new TopicLagKey(consumerName, partition.topic(), partition.partition());
+        lagMetrics.computeIfAbsent(key, k -> new LagGauge(k, clientId, driverProperties, tagsProvider, meterRegistry)).offsetLag = lag;
     }
 
     @Override
@@ -150,17 +130,17 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
     }
 
     private static class LagGauge {
+
         private final Gauge gauge;
         private volatile long offsetLag;
 
-        @SuppressWarnings("deprecation")
-        private LagGauge(String consumerName, TopicPartition partition, MeterRegistry meterRegistry) {
+        private LagGauge(TopicLagKey key,
+                         @Nullable String clientId,
+                         Properties driverProperties,
+                         MicrometerKafkaConsumerTagsProvider consumerTagsProvider,
+                         MeterRegistry meterRegistry) {
             gauge = Gauge.builder("messaging.kafka.consumer.lag", () -> offsetLag)
-                .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), "kafka")
-                .tag(MESSAGING_KAFKA_CONSUMER_NAME.getKey(), consumerName)
-                .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic())
-                .tag(MessagingIncubatingAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), Objects.toString(partition.partition()))
-                .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Objects.toString(partition.partition()))
+                .tags(consumerTagsProvider.getTopicLagTags(clientId, driverProperties, key))
                 .register(meterRegistry);
         }
     }
