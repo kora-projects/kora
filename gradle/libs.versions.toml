@@ -85,7 +85,6 @@ jboss-threads = { module = "org.jboss.threads:jboss-threads", version = "3.9.1" 
 jboss-logging = { module = "org.jboss.logging:jboss-logging", version = "3.6.1.Final" }
 undertow-core = { module = "io.undertow:undertow-core", version.ref = "undertow" }
 undertow-servlet = { module = "io.undertow:undertow-servlet", version.ref = "undertow" }
-async-http-client = { module = "org.asynchttpclient:async-http-client", version = "2.12.4" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.0.0-alpha.14" } # Cant up cause Kotlin 2.0+ in newer versions
 okhttp-jvm = { module = "com.squareup.okhttp3:okhttp-jvm", version = "5.0.0-alpha.12" } # Cant up cause Kotlin 2.0+ in newer versions
 okio = { module = "com.squareup.okio:okio", version = "3.9.1" }
