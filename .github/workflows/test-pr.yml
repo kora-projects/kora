@@ -39,7 +39,7 @@ jobs:
         shell: bash
 
       - name: Gradle ${{ matrix.task }} javadoc
-        run: ./gradlew javadoc-${{ matrix.task }} --scan
+        run: ./gradlew javadoc-${{ matrix.task }} --scan --parallel
         shell: bash
 
       - name: Gradle ${{ matrix.task }} test classes
@@ -47,7 +47,7 @@ jobs:
         shell: bash
 
       - name: Gradle ${{ matrix.task }} test
-        run: ./gradlew test-${{ matrix.task }} --scan
+        run: ./gradlew test-${{ matrix.task }} --scan --parallel
         shell: bash
 
       - name: Publish ${{ matrix.task }} test report
