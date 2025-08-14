@@ -2,8 +2,6 @@ package ru.tinkoff.kora.database.common.annotation.processor.cassandra.repositor
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import jakarta.annotation.Nullable;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.database.cassandra.CassandraRepository;
 import ru.tinkoff.kora.database.common.annotation.Batch;
 import ru.tinkoff.kora.database.common.annotation.Query;
@@ -27,12 +25,6 @@ public interface AllowedParametersRepository extends CassandraRepository {
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
     void dtoJavaBeanParameter(TestEntityJavaBean entity);
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    Mono<Void> dtoJavaBeanParameterMono(TestEntityJavaBean entity);
-
-    @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
-    Flux<Void> dtoJavaBeanParameterFlux(TestEntityJavaBean entity);
 
     @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
     void dtoRecordParameterMapping(TestEntityRecord entity);
