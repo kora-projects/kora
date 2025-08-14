@@ -8,17 +8,15 @@ import org.apache.cxf.transport.http_jetty.JettyHTTPDestination;
 import org.apache.cxf.transport.http_jetty.JettyHTTPServerEngine;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactory;
-import org.asynchttpclient.Dsl;
 import org.eclipse.jetty.server.ServerConnector;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
-import ru.tinkoff.kora.http.client.async.AsyncHttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.Sl4fjHttpClientLogger;
+import ru.tinkoff.kora.http.client.jdk.JdkHttpClient;
 import ru.tinkoff.kora.soap.client.common.SoapServiceConfig;
 import ru.tinkoff.kora.soap.client.common.telemetry.DefaultSoapClientTelemetryFactory;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory;
@@ -49,13 +47,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class WebServiceClientAnnotationProcessorTest {
-    private final AsyncHttpClient httpClient = new AsyncHttpClient(Dsl.asyncHttpClient());
+    private final JdkHttpClient httpClient = new JdkHttpClient(java.net.http.HttpClient.newHttpClient());
     private static final org.slf4j.Logger log = LoggerFactory.getLogger(WebServiceClientAnnotationProcessorTest.class);
-
-    @AfterEach
-    void afterEach() throws IOException {
-        httpClient.release();
-    }
 
     @Test
     void testGenerate() throws Exception {
