@@ -5,6 +5,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.AbstractExtensionTes
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 
 import static org.mockito.Mockito.doAnswer;

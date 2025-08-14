@@ -146,10 +146,12 @@ public class DbEntity {
         boolean isNullable();
 
         String accessor();
+
+        EntityField entityField();
     }
 
     private record ColumnImpl(VariableElement element, TypeMirror type, String sqlParameterName, String variableName, String columnName, String[] names, boolean isNullable,
-                              String accessor) implements Column {
+                              String accessor, EntityField entityField) implements Column {
         public ColumnImpl(SimpleEntityField simple) {
             this(
                 simple.element,
@@ -159,7 +161,9 @@ public class DbEntity {
                 simple.columnName(),
                 new String[]{simple.element.getSimpleName().toString()},
                 simple.nullable,
-                simple.accessor());
+                simple.accessor(),
+                simple
+            );
         }
 
         public ColumnImpl(EmbeddedEntityField.Field f) {
@@ -171,7 +175,8 @@ public class DbEntity {
                 f.columnName(),
                 new String[]{f.parent.element.getSimpleName().toString(), f.element.getSimpleName().toString()},
                 f.nullable,
-                f.parent.accessor() + "()." + f.element.getSimpleName().toString()// todo
+                f.parent.accessor() + "()." + f.element.getSimpleName().toString(), // todo,
+                f.parent
             );
         }
 
@@ -186,13 +191,16 @@ public class DbEntity {
         RECORD, BEAN
     }
 
-    private sealed interface EntityField {
+    public sealed interface EntityField {
+
+        String accessor();
+
         VariableElement element();
 
         TypeMirror typeMirror();
     }
 
-    private record SimpleEntityField(VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType, boolean nullable) implements EntityField {
+    public record SimpleEntityField(VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType, boolean nullable) implements EntityField {
         public String accessor() {
             return switch (entityType) {
                 case RECORD -> this.element.getSimpleName().toString();
@@ -201,7 +209,13 @@ public class DbEntity {
         }
     }
 
-    private record EmbeddedEntityField(EntityField parent, TypeMirror typeMirror, VariableElement element, List<Field> fields) implements EntityField {
+    public record EmbeddedEntityField(EntityField parent, TypeMirror typeMirror, VariableElement element, List<Field> fields) implements EntityField {
+
+        @Override
+        public String accessor() {
+            return parent.accessor();
+        }
+
         public CodeBlock buildInstance() {
             var eb = CodeBlock.builder();
             eb.add("new $T(", TypeName.get(this.typeMirror())).indent().add("\n");
