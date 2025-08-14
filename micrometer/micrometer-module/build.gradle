@@ -1,11 +1,4 @@
 dependencies {
-    api libs.micrometer.core
-    api libs.micrometer.registry.prometheus
-    api libs.opentelemetry.semconv
-    api libs.opentelemetry.semconv.incubating
-    api libs.opentelemetry.api
-    api libs.opentelemetry.micrometer.meter.provider
-
     annotationProcessor project(':config:config-annotation-processor')
 
     compileOnly libs.caffeine
@@ -34,8 +27,10 @@ dependencies {
     compileOnly project(':experimental:camunda-zeebe-worker')
 
     api project(':micrometer:micrometer-registry-kora')
-
     api libs.micrometer.core
+    api libs.micrometer.registry.prometheus
     api libs.opentelemetry.semconv
+    api libs.opentelemetry.semconv.incubating
     api libs.opentelemetry.api
+    api libs.opentelemetry.micrometer.meter.provider
 }

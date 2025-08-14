@@ -13,27 +13,36 @@ import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
-import ru.tinkoff.kora.micrometer.prometheus.kora.KoraMeterRegistry;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.function.Supplier;
 
 public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<PrometheusMeterRegistry> {
+
     private static final String KORA_VERSION = readVersion();
 
     private final List<PrometheusMeterRegistryInitializer> initializers;
+    private final Supplier<PrometheusMeterRegistry> registrySupplier;
+
     private volatile PrometheusMeterRegistry registry;
     private volatile JvmGcMetrics gcMetrics;
     private volatile Gauge koraVersionMetric;
 
     public PrometheusMeterRegistryWrapper(List<PrometheusMeterRegistryInitializer> initializers) {
+        this(initializers, () -> new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+    }
+
+    public PrometheusMeterRegistryWrapper(List<PrometheusMeterRegistryInitializer> initializers,
+                                          Supplier<PrometheusMeterRegistry> registrySupplier) {
         this.initializers = initializers;
+        this.registrySupplier = registrySupplier;
     }
 
     @Override
     public void init() {
-        PrometheusMeterRegistry meterRegistry = new KoraMeterRegistry(PrometheusConfig.DEFAULT);
+        PrometheusMeterRegistry meterRegistry = registrySupplier.get();
         for (var initializer : initializers) {
             meterRegistry = initializer.apply(meterRegistry);
         }
@@ -51,7 +60,6 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
             .tag("version", KORA_VERSION)
             .register(this.registry);
     }
-
 
     @Override
     public void release() {
@@ -93,5 +101,4 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
             return "UNKNOWN";
         }
     }
-
 }

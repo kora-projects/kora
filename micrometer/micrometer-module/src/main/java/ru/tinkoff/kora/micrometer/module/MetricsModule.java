@@ -1,11 +1,13 @@
 package ru.tinkoff.kora.micrometer.module;
 
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import io.opentelemetry.contrib.metrics.micrometer.CallbackRegistrar;
 import io.opentelemetry.contrib.metrics.micrometer.MicrometerMeterProvider;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
+import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
@@ -52,18 +54,24 @@ import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3ClientMetricsFact
 import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3KoraClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
+import ru.tinkoff.kora.micrometer.prometheus.kora.KoraMeterRegistry;
 
 import java.util.Optional;
 
 public interface MetricsModule {
+
     default MetricsConfig globalMetricsConfig(Config config, ConfigValueExtractor<MetricsConfig> extractor) {
         var configValue = config.get("metrics");
         return Optional.ofNullable(extractor.extract(configValue)).orElseThrow(() -> ConfigValueExtractionException.missingValueAfterParse(configValue));
     }
 
     @Root
-    default PrometheusMeterRegistryWrapper prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
-        return new PrometheusMeterRegistryWrapper(initializers);
+    default Wrapped<PrometheusMeterRegistry> prometheusMeterRegistry(MetricsConfig globalMetricsConfig,
+                                                                     All<PrometheusMeterRegistryInitializer> initializers) {
+        return switch (globalMetricsConfig.opentelemetrySpec()) {
+            case V120 -> new PrometheusMeterRegistryWrapper(initializers, () -> new PrometheusMeterRegistry(PrometheusConfig.DEFAULT));
+            case V123 -> new PrometheusMeterRegistryWrapper(initializers, () -> new KoraMeterRegistry(PrometheusConfig.DEFAULT));
+        };
     }
 
     @DefaultComponent
