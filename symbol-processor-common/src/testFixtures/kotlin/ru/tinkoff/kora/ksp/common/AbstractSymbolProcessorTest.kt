@@ -167,12 +167,12 @@ abstract class AbstractSymbolProcessorTest {
         }
     }
 
-    protected fun symbolProcessFiles(srcFiles: List<String>): CompileResult {
+    protected open fun symbolProcessFiles(srcFiles: List<String>): CompileResult {
         return symbolProcessFiles(srcFiles, listOf())
     }
 
     @OptIn(ExperimentalPathApi::class)
-    protected fun symbolProcessFiles(srcFiles: List<String>, processorOptions: List<ProcessorOptions>): CompileResult {
+    protected open fun symbolProcessFiles(srcFiles: List<String>, processorOptions: List<ProcessorOptions>): CompileResult {
         val k2JvmArgs = K2JVMCompilerArguments()
         val kotlinOutPath = Path.of("build/in-test-generated-ksp").toAbsolutePath()
         val inTestGeneratedDestination = kotlinOutPath.resolveSibling("in-test-generated-destination")
@@ -243,7 +243,7 @@ abstract class AbstractSymbolProcessorTest {
             compileResult = CompileResult(testPackage(), code, cl, sw.toString(StandardCharsets.UTF_8).split("\n"))
             return compileResult
         }
-        cl = URLClassLoader("test-cl", arrayOf(URL("file://$inTestGeneratedDestination/")), Thread.currentThread().contextClassLoader)
+        cl = URLClassLoader("test-cl", arrayOf(URL("file://$inTestGeneratedDestination/")), cl)
         println("$code:\n$sw")
         compileResult = CompileResult(testPackage(), code, cl, sw.toString(StandardCharsets.UTF_8).split("\n"))
         return compileResult
@@ -302,7 +302,7 @@ abstract class AbstractSymbolProcessorTest {
 
 
     companion object {
-        var classpath: List<String>
+        var classpath: MutableList<String>
 
         init {
 
@@ -320,9 +320,7 @@ abstract class AbstractSymbolProcessorTest {
                 .filterNotNull()
                 .map { it.toString() }
                 .distinct()
-                .toList()
+                .toMutableList()
         }
     }
-
-
 }
