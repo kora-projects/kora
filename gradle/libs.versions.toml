@@ -70,7 +70,6 @@ jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin"
 jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
 jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.7" }
 hikari = { module = "com.zaxxer:HikariCP", version = "5.1.0" }
-jdbi-core = { module = "org.jdbi:jdbi3-core", version = "3.49.5" }
 flyway = { module = "org.flywaydb:flyway-core", version = "9.22.3" }
 liquibase = { module = "org.liquibase:liquibase-core", version = "4.29.2" }
 

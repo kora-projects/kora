@@ -50,7 +50,6 @@ include(
     'database:database-symbol-processor',
     'database:database-common',
     'database:database-jdbc',
-    'database:database-jdbi',
     'database:database-flyway',
     'database:database-cassandra',
     'database:database-liquibase',
