@@ -6,6 +6,7 @@ import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper
 import java.sql.PreparedStatement
 import java.sql.ResultSet
+import java.sql.SQLException
 import java.time.OffsetDateTime
 import java.util.concurrent.Executors
 
@@ -14,8 +15,7 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun returnTable() {
         val repository = compile(
-            listOf(newGenerated("TestRowMapper")),
-            """
+            listOf(newGenerated("TestRowMapper")), """
             @Repository
             interface TestRepository : JdbcRepository {
                         
@@ -29,13 +29,14 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
                 @Nullable
                 fun findById(id: String): Entity?
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
             class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
                 override fun apply(rs: ResultSet): TestRepository.Entity? {
                   return null
                 }
             }
+            
             """.trimIndent()
         )
         repository.invoke<Any>("findById", "1")
@@ -45,8 +46,7 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun returnSelectsAndTable() {
         val repository = compile(
-            listOf(Executors.newSingleThreadExecutor(), newGenerated("TestRowMapper")),
-            """
+            listOf(Executors.newSingleThreadExecutor(), newGenerated("TestRowMapper")), """
             @Repository
             interface TestRepository : JdbcRepository {
                         
@@ -59,13 +59,14 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
                 @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
                 suspend fun findById(id: String): Entity?
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
             class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
                 override fun apply(rs: ResultSet): TestRepository.Entity? {
                   return null
                 }
             }
+            
             """.trimIndent()
         )
         repository.invoke<Any>("findById", "1")
@@ -83,8 +84,8 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
                 @Query("INSERT INTO %{entity#inserts}")
                 fun insert(entity: Entity): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
@@ -107,13 +108,14 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
                 @Query("INSERT INTO %{entity#inserts}")
                 fun insert(@Batch entity: List<Entity>): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
                                   val value2: String, 
                                   val value3: String?)
+            
             """.trimIndent()
         )
 
@@ -126,21 +128,21 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun insertsWithoutId() {
         val repository = compile(
-            listOf<Any>(),
-            """
+            listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                             
                 @Query("INSERT INTO %{entity#inserts -= @id}")
                 fun insert(entity: Entity): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
                                   val value2: String, 
                                   val value3: String?)
+            
             """.trimIndent()
         )
         repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())
@@ -151,24 +153,26 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun insertsExtended() {
         val repository = compile(
-            listOf<Any>(),
-            """
+            listOf<Any>(), """
             @Repository
-            interface TestRepository : ParentRepository<Entity>
-            """.trimIndent(),
-            """
+            interface TestRepository : ParentRepository<Entity> {
+                            
+            }
+            
+            """.trimIndent(), """
             interface ParentRepository<T> : JdbcRepository {
                             
                 @Query("INSERT INTO %{entity#inserts -= @id}")
                 fun insert(entity: T): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
                                   val value2: String, 
                                   val value3: String?)
+            
             """.trimIndent()
         )
         repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())
@@ -179,21 +183,21 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun insertsWithoutField() {
         val repository = compile(
-            listOf<Any>(),
-            """
+            listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                             
                 @Query("INSERT INTO %{entity#inserts -= field1}")
                 fun insert(entity: Entity): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
                                   val value2: String, 
                                   val value3: String?)
+            
             """.trimIndent()
         )
         repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())
@@ -204,21 +208,21 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun upsert() {
         val repository = compile(
-            listOf<Any>(),
-            """
+            listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                             
                 @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
                 fun upsert(entity: Entity): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
                                   val value2: String, 
                                   val value3: String?)
+            
             """.trimIndent()
         )
         repository.invoke<Any>("upsert", newGenerated("Entity", "1", 1, "1", "1").invoke())
@@ -229,21 +233,21 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun upsertBatch() {
         val repository = compile(
-            listOf<Any>(),
-            """
+            listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                             
                 @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
                 fun upsert(@Batch entity: List<Entity>): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
                                   val value2: String, 
                                   val value3: String?)
+            
             """.trimIndent()
         )
 
@@ -256,16 +260,15 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun entityTableAndUpdate() {
         val repository = compile(
-            listOf<Any>(),
-            """
+            listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                             
                 @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
                 fun insert(entity: Entity): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
@@ -280,75 +283,6 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
-    fun whereTypeUseParameter() {
-        val repository = compile(
-            listOf(newGenerated("TestRowMapper")),
-            """
-            interface AbstractJdbcRepository<K, V> : JdbcRepository {
-
-                @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{keyArg#where}")
-                fun findById(keyArg: K): V?
-            }
-            """.trimIndent(),
-            """
-            @Repository
-            interface TestRepository : AbstractJdbcRepository<@Column("id") String, TestRepository.Entity> {
-                            
-                @Table("entities")
-                data class Entity(@field:Id val id: String, 
-                                  @field:Column("value1") val field1: Long, 
-                                  val value2: String, 
-                                  val value3: String?)
-            }
-            """.trimIndent(),
-            """
-            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
-                override fun apply(rs: ResultSet): TestRepository.Entity? {
-                  return null
-                }
-            }
-            """.trimIndent()
-        )
-
-        repository.invoke<Any>("findById", "1")
-        Mockito.verify(executor.mockConnection)
-            .prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?")
-    }
-
-    @Test
-    fun whereMethodArgumentParameter() {
-        val repository = compile(
-            listOf(newGenerated("TestRowMapper")),
-            """
-            @Repository
-            interface TestRepository : JdbcRepository {
-                            
-                @Table("entities")
-                data class Entity(@field:Id val id: String, 
-                                  @field:Column("value1") val field1: Long, 
-                                  val value2: String, 
-                                  val value3: String?)
-                                  
-                @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{keyArg#where}")
-                @Nullable
-                fun findById(@Column("id") keyArg: String): Entity?
-            }
-            """.trimIndent(),
-            """
-            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
-                override fun apply(rs: ResultSet): TestRepository.Entity? {
-                  return null
-                }
-            }
-            """.trimIndent()
-        )
-
-        repository.invoke<Any>("findById", "1")
-        Mockito.verify(executor.mockConnection)
-            .prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?")
-    }
-
-    @Test
     fun entityTableAndUpdateBatch() {
         val repository = compile(
             listOf<Any>(), """
@@ -358,13 +292,14 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
                 @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
                 fun insert(@Batch entity: List<Entity>): UpdateCount
             }
-            """.trimIndent(),
-            """
+            
+            """.trimIndent(), """
                 @Table("entities")
                 data class Entity(@field:Id val id: String, 
                                   @field:Column("value1") val field1: Long, 
                                   val value2: String, 
                                   val value3: String?)
+            
             """.trimIndent()
         )
 

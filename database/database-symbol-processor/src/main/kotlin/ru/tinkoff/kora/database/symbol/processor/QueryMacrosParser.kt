@@ -1,6 +1,9 @@
 package ru.tinkoff.kora.database.symbol.processor
 
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter
@@ -25,9 +28,8 @@ class QueryMacrosParser {
         private const val SPECIAL_ID = "@id"
     }
 
-    data class Target(val typeRef: KSTypeReference, val type: KSClassDeclaration, val annotated: KSAnnotated, val name: String)
-
-    data class Field(val column: String, val path: String, val isId: Boolean, val isEmbedded: Boolean)
+    data class Target(val type: KSClassDeclaration, val name: String)
+    data class Field(val field: KSPropertyDeclaration, val column: String, val path: String, val isId: Boolean)
 
     fun parse(sql: String, method: KSFunctionDeclaration): String {
         val sqlBuilder = StringBuilder()
@@ -45,39 +47,9 @@ class QueryMacrosParser {
         }
     }
 
-    private fun getPathField(
-        method: KSFunctionDeclaration,
-        target: KSClassDeclaration,
-        targetRef: KSTypeReference,
-        targetAnnotated: KSAnnotated,
-        rootPath: String,
-        columnPrefix: String
-    ): Sequence<Field> {
-        val treatAsNativeParameterColumn = targetRef.annotations
-            .filter { a -> a.annotationType.resolve().toClassName() == DbUtils.columnAnnotation }
-            .firstOrNull()
-            ?: targetAnnotated.annotations
-                .filter { a -> a.annotationType.resolve().toClassName() == DbUtils.columnAnnotation }
-                .firstOrNull()
-
-        if (treatAsNativeParameterColumn != null) {
-            val value = treatAsNativeParameterColumn.arguments[0].value
-            if (value != null) {
-                return sequenceOf(
-                    Field(
-                        value.toString(),
-                        rootPath,
-                        isId = false,
-                        isEmbedded = false
-                    )
-                )
-            }
-
-            throw ProcessingErrorException("Can't treat argument '$rootPath' as macros native cause failed to extract @Column value: $target", method)
-        }
-
+    private fun getPathField(method: KSFunctionDeclaration, target: KSClassDeclaration, rootPath: String, columnPrefix: String): Sequence<Field> {
         val nativeType = JdbcNativeTypes.findNativeType(target.toClassName())
-        if (nativeType != null) {
+        if(nativeType != null) {
             throw ProcessingErrorException("Can't process argument '$rootPath' as macros cause it is Native Type: $target", method)
         }
 
@@ -99,12 +71,11 @@ class QueryMacrosParser {
                 }
                 val prefix = isEmbedded.findValueNoDefault("value") ?: ""
 
-                val pathFields = getPathField(method, declaration, field.type, field, path, prefix)
-                return@flatMap pathFields
-                    .map { f -> Field(f.column, f.path, isId, true) }
+                return@flatMap getPathField(method, declaration, path, prefix)
+                    .map { f -> Field(f.field, f.column, f.path, isId) }
             } else {
                 val columnName = getColumnName(target, field, columnPrefix)
-                return@flatMap sequenceOf(Field(columnName, path, isId, false))
+                return@flatMap sequenceOf(Field(field, columnName, path, isId))
             }
         }
     }
@@ -188,9 +159,9 @@ class QueryMacrosParser {
                 setOf()
 
             val fields = if (paths.isEmpty()) {
-                getPathField(method, target.type, target.typeRef, target.annotated, target.name, "").toList()
+                getPathField(method, target.type, target.name, "").toList()
             } else {
-                getPathField(method, target.type, target.typeRef, target.annotated, target.name, "").filter { include == paths.contains(it.path) }.toList()
+                getPathField(method, target.type, target.name, "").filter { include == paths.contains(it.path) }.toList()
             }
 
             val nameConverter = target.type.getNameConverter(SnakeCaseNameConverter.INSTANCE)
@@ -221,7 +192,7 @@ class QueryMacrosParser {
     }
 
     private fun getTarget(targetName: String, method: KSFunctionDeclaration): Target {
-        val refPair: Pair<KSTypeReference, KSAnnotated>
+        val reference: KSTypeReference
 
         if (TARGET_RETURN == targetName) {
             if (method.isVoid()) {
@@ -229,7 +200,7 @@ class QueryMacrosParser {
                     "Macros command specified 'return' target, but return value is type Void",
                     method
                 )
-            } else if (method.returnType?.toTypeName() == DbUtils.updateCount) {
+            } else if(method.returnType?.toTypeName() == DbUtils.updateCount) {
                 throw ProcessingErrorException(
                     "Macros command specified 'return' target, but return value is type UpdateCount",
                     method
@@ -237,32 +208,34 @@ class QueryMacrosParser {
             }
 
             val resolved = method.returnType!!.resolve()
-            refPair = if (method.isCompletionStage() || method.isMono() || method.isFlux() || resolved.isCollection()) {
-                Pair(resolved.arguments[0].type!!, method)
+            reference = if (method.isCompletionStage() || method.isMono() || method.isFlux() || resolved.isCollection()) {
+                resolved.arguments[0].type!!
             } else {
-                Pair(method.returnType!!, method)
+                method.returnType!!
             }
         } else {
-            refPair = method.parameters
+            reference = method.parameters.stream()
                 .filter { p -> p.name!!.asString().contentEquals(targetName) }
-                .map { param ->
-                    val resolved = param.type.resolve()
+                .findFirst()
+                .map { obj ->
+                    val resolved = obj.type.resolve()
                     if (resolved.isCollection()) {
-                        Pair(resolved.arguments[0].type!!, param as KSAnnotated)
+                        resolved.arguments[0].type!!
                     } else {
-                        Pair(param.type, param as KSAnnotated)
+                        obj.type
                     }
                 }
-                .firstOrNull()
-                ?: throw ProcessingErrorException(
-                    "Macros command unspecified target received: $targetName",
-                    method
-                )
+                .orElseThrow {
+                    ProcessingErrorException(
+                        "Macros command unspecified target received: $targetName",
+                        method
+                    )
+                }
         }
 
-        val resolved = refPair.first.resolve().declaration
+        val resolved = reference.resolve().declaration
         return if (resolved is KSClassDeclaration) {
-            Target(refPair.first, resolved, refPair.second, targetName)
+            Target(resolved, targetName)
         } else {
             throw ProcessingErrorException(
                 "Macros command unprocessable target type: $targetName",
