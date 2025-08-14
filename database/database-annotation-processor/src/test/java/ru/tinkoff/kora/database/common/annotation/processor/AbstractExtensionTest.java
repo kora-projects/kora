@@ -7,6 +7,7 @@ import org.intellij.lang.annotations.Language;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.RefreshableGraph;
+import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import javax.annotation.processing.Processor;
