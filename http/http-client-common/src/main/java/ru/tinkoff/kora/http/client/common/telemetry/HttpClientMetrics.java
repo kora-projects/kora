@@ -23,6 +23,7 @@ public interface HttpClientMetrics {
                         HttpHeaders headers,
                         long processingTimeNanos,
                         @Nullable Throwable throwable) {
-        record(statusCode, processingTimeNanos, method, host, scheme, pathTemplate);
+        int code = statusCode == null ? -1 : statusCode;
+        record(code, processingTimeNanos, method, host, scheme, pathTemplate);
     }
 }
