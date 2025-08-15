@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.validation.common.annotation;
 
 import org.jetbrains.annotations.Range;
+import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.validation.common.constraint.factory.SizeValidatorFactory;
 
 import java.lang.annotation.*;
@@ -11,6 +12,7 @@ import java.util.Map;
 /**
  * Validates {@link List}, {@link Collection}, {@link Map}, {@link String} or {@link CharSequence} size
  */
+@AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
 @Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})

@@ -392,8 +392,7 @@ public class CommonUtils {
                 if (CommonUtils.isAopAnnotation(annotationMirror)
                     || annotationMirror.getAnnotationType().toString().endsWith(".Nullable")
                     || annotationMirror.getAnnotationType().toString().endsWith(".Nonnull")
-                    || annotationMirror.getAnnotationType().toString().endsWith(".NotNull")
-                    || annotationMirror.getAnnotationType().toString().startsWith("ru.tinkoff.kora.")) {
+                    || annotationMirror.getAnnotationType().toString().endsWith(".NotNull")) {
                     pb.addAnnotation(AnnotationSpec.get(annotationMirror));
                 }
             }

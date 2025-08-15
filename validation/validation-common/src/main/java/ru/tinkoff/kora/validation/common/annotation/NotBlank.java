@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.validation.common.annotation;
 
+import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.validation.common.constraint.factory.NotBlankValidatorFactory;
 
 import java.lang.annotation.*;
@@ -13,6 +14,7 @@ import java.lang.annotation.*;
  * <li>{@code String} (at least one non-whitespace character)</li>
  * </ul>
  */
+@AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
 @Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})

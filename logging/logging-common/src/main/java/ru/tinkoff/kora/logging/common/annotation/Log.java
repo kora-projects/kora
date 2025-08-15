@@ -30,12 +30,14 @@ public @interface Log {
         Level value() default Level.INFO;
     }
 
+    @AopAnnotation
     @Target(METHOD)
     @Retention(RetentionPolicy.RUNTIME)
     @interface result {
         Level value() default Level.DEBUG;
     }
 
+    @AopAnnotation
     @Target({PARAMETER, METHOD})
     @Retention(RetentionPolicy.RUNTIME)
     @interface off {}

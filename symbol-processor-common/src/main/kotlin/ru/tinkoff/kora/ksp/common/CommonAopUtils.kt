@@ -104,7 +104,8 @@ object CommonAopUtils {
             for (annotation in parameter.annotations) {
                 val resolvedAnnotation = annotation.annotationType.resolveToUnderlying()
                 if (isAopAnnotation(resolvedAnnotation)
-                    || resolvedAnnotation.declaration.packageName.asString().startsWith("ru.tinkoff.kora.")
+                    || resolvedAnnotation.declaration.packageName.asString().endsWith(".Nonnull")
+                    || resolvedAnnotation.declaration.packageName.asString().endsWith(".NotNull")
                 ) {
                     pb.addAnnotation(annotation.toAnnotationSpec())
                 }
