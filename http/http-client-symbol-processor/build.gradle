@@ -11,6 +11,7 @@ dependencies {
     testImplementation testFixtures(project(':symbol-processor-common'))
     testImplementation project(':http:http-client-common')
     testImplementation project(':config:config-symbol-processor')
+    testImplementation project(':validation:validation-common')
     testImplementation libs.mockito.kotlin
 
     testImplementation(libs.kotlin.stdlib.lib)

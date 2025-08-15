@@ -7,6 +7,7 @@ dependencies {
     testImplementation project(':config:config-annotation-processor')
     testImplementation libs.reactor.core
     testImplementation project(':common')
+    testImplementation project(':validation:validation-common')
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
