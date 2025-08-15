@@ -69,12 +69,12 @@ object ComponentDependencyHelper {
 
     fun parseClaim(parameterType: KSType, tags: Set<String>, element: KSAnnotated): DependencyClaim {
         if (parameterType.isError) {
-            throw ProcessingErrorException(ProcessingError("Dependency type parameter is not resolvable in the current round of processing: $element\nTry disabling Kora KSP processor dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", element, Diagnostic.Kind.WARNING))
+            throw ProcessingErrorException(ProcessingError("Dependency type parameter is not resolvable in the current round of processing: $element\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", element, Diagnostic.Kind.WARNING))
         }
         val typeName = try {
             parameterType.toTypeName()
         } catch (e: IllegalArgumentException) {
-            throw ProcessingErrorException(ProcessingError("Dependency type parameter is not resolvable in the current round of processing: $element\nTry disabling Kora KSP processor dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", element, Diagnostic.Kind.WARNING))
+            throw ProcessingErrorException(ProcessingError("Dependency type parameter is not resolvable in the current round of processing: $element\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", element, Diagnostic.Kind.WARNING))
         }
         if (typeName is ParameterizedTypeName) {
             val firstTypeParam = parameterType.arguments[0].type!!.resolve()

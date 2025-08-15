@@ -44,6 +44,8 @@ import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry120Kafk
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry123KafkaConsumerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.kafka.producer.MicrometerKafkaProducerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.MicrometerKafkaProducerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.Opentelemetry120KafkaProviderTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.Opentelemetry123KafkaProviderTagsProvider;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
@@ -56,6 +58,7 @@ import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetrics
 import java.util.Optional;
 
 public interface MetricsModule {
+
     default MetricsConfig globalMetricsConfig(Config config, ConfigValueExtractor<MetricsConfig> extractor) {
         var configValue = config.get("metrics");
         return Optional.ofNullable(extractor.extract(configValue)).orElseThrow(() -> ConfigValueExtractionException.missingValueAfterParse(configValue));
@@ -147,6 +150,14 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
+    default MicrometerKafkaProducerTagsProvider micrometerKafkaProducerTagsProvider(MetricsConfig globalMetricsConfig) {
+        return switch (globalMetricsConfig.opentelemetrySpec()) {
+            case V120 -> new Opentelemetry120KafkaProviderTagsProvider();
+            case V123 -> new Opentelemetry123KafkaProviderTagsProvider();
+        };
+    }
+
+    @DefaultComponent
     default MicrometerKafkaProducerMetricsFactory micrometerKafkaProducerMetricsFactory(MeterRegistry meterRegistry,
                                                                                         MetricsConfig metricsConfig,
                                                                                         MicrometerKafkaProducerTagsProvider tagsProvider) {
@@ -224,14 +235,14 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
+    default CommandLatencyRecorderFactory micrometerLettuceCommandLatencyRecorderFactory(MeterRegistry registry, MetricsConfig metricsConfig) {
+        return new MicrometerLettuceCommandLatencyRecorderFactory(registry, metricsConfig);
+    }
+
+    @DefaultComponent
     default MicrometerMeterProvider micrometerMeterProvider(MeterRegistry registry, @Nullable CallbackRegistrar callbackRegistrar) {
         return MicrometerMeterProvider.builder(registry)
             .setCallbackRegistrar(callbackRegistrar)
             .build();
-    }
-
-    @DefaultComponent
-    default CommandLatencyRecorderFactory micrometerLettuceCommandLatencyRecorderFactory(MeterRegistry registry, MetricsConfig metricsConfig) {
-        return new MicrometerLettuceCommandLatencyRecorderFactory(registry, metricsConfig);
     }
 }
