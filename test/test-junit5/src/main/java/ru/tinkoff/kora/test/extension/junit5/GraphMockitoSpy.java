@@ -2,6 +2,7 @@ package ru.tinkoff.kora.test.extension.junit5;
 
 import jakarta.annotation.Nullable;
 import org.mockito.Mockito;
+import org.mockito.internal.creation.MockSettingsImpl;
 import org.mockito.internal.util.MockUtil;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
@@ -11,20 +12,27 @@ import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.util.Map;
 import java.util.Optional;
 
 record GraphMockitoSpy(GraphCandidate candidate,
                        Class<?> mockClass,
-                       @Nullable Object value) implements GraphModification {
+                       @Nullable Object value,
+                       GraphMockitoContext mockitoContext) implements GraphModification {
 
-    public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element) {
+    public static GraphModification ofAnnotated(GraphCandidate candidate,
+                                                GraphMockitoContext mockitoContext,
+                                                AnnotatedElement element) {
         var classToMock = getClassToMock(candidate);
-        return new GraphMockitoSpy(candidate, classToMock, null);
+        return new GraphMockitoSpy(candidate, classToMock, null, mockitoContext);
     }
 
-    public static GraphModification ofField(GraphCandidate candidate, Field field, Object fieldValue) {
+    public static GraphModification ofField(GraphCandidate candidate,
+                                            GraphMockitoContext mockitoContext,
+                                            Field field,
+                                            Object fieldValue) {
         var classToMock = getClassToMock(candidate);
-        return new GraphMockitoSpy(candidate, classToMock, fieldValue);
+        return new GraphMockitoSpy(candidate, classToMock, fieldValue, mockitoContext);
     }
 
     public boolean isSpyGraph() {
@@ -73,6 +81,7 @@ record GraphMockitoSpy(GraphCandidate candidate,
         final T spy = MockUtil.isSpy(spyCandidate)
             ? spyCandidate
             : Mockito.spy(spyCandidate);
+        mockitoContext.spySet().add(spy);
 
         Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
         if (wrappedType.isPresent() && wrappedType.get().isInstance(spy)) {

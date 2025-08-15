@@ -17,10 +17,10 @@ import java.lang.annotation.*;
  * {@link Strictness}, with the default being {@link Strictness#STRICT_STUBS}.
  * <b>Strictness Levels:</b>
  * <ul>
- *     <li>{@link Strictness#STRICT_STUBS} (default): Ensures that only stubbed methods are called and
+ *     <li>{@link Strictness#STRICT_STUBS} Ensures that only stubbed methods are called and
  *         reports unused stubs.</li>
+ *     <li>{@link Strictness#WARN}: (default) Warns about potential issues without failing the test.</li>
  *     <li>{@link Strictness#LENIENT}: Allows unstubbed calls and does not report unused stubs.</li>
- *     <li>{@link Strictness#WARN}: Warns about potential issues without failing the test.</li>
  * </ul>
  *
  * @see Strictness

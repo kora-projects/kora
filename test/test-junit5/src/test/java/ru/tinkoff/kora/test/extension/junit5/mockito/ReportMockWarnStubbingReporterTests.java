@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.mockito;
 
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
@@ -18,13 +17,12 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SuppressWarnings(value = {"JUnitMalformedDeclaration", "EqualsWithItself"})
-public class MockStrictStubbingReporterTests {
+public class ReportMockWarnStubbingReporterTests {
 
     @Test
-    public void mockStrict() {
+    public void mockWarn() {
         var request = LauncherDiscoveryRequestBuilder.request()
-            .configurationParameter("junit.jupiter.conditions.deactivate", "*")
-            .selectors(DiscoverySelectors.selectClass(MockStrictTest.class)).build();
+            .selectors(DiscoverySelectors.selectClass(MockWarnTest.class)).build();
 
         var launcher = LauncherFactory.create();
         var listener = new SummaryGeneratingListener();
@@ -32,13 +30,12 @@ public class MockStrictStubbingReporterTests {
         launcher.registerTestExecutionListeners(listener);
         launcher.execute(request);
 
-        assertEquals(2, listener.getSummary().getTestsFailedCount());
+        assertEquals(2, listener.getSummary().getTestsSucceededCount());
     }
 
-    @Disabled
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    @MockitoStrictness(Strictness.STRICT_STUBS)
-    static class MockStrictTest {
+    @MockitoStrictness(Strictness.WARN)
+    static class MockWarnTest {
         @Mock
         @TestComponent
         private TestComponent1 mock;

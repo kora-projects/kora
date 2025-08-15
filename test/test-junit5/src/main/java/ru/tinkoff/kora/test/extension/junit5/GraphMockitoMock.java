@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
 import org.mockito.Mock;
-import org.mockito.MockSettings;
 import org.mockito.Mockito;
 import org.mockito.internal.creation.MockSettingsImpl;
+import org.mockito.mock.MockCreationSettings;
 import org.mockito.quality.Strictness;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
@@ -11,20 +11,25 @@ import ru.tinkoff.kora.application.graph.Wrapped;
 
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.ParameterizedType;
+import java.util.Map;
 import java.util.Optional;
 
 record GraphMockitoMock(GraphCandidate candidate,
                         Class<?> mockClass,
                         String name,
-                        Mock annotation) implements GraphModification {
+                        Mock annotation,
+                        GraphMockitoContext mockitoContext) implements GraphModification {
 
-    public static GraphModification ofAnnotated(GraphCandidate candidate, AnnotatedElement element, String defaultName) {
+    public static GraphModification ofAnnotated(GraphCandidate candidate,
+                                                GraphMockitoContext mockitoContext,
+                                                AnnotatedElement element,
+                                                String defaultName) {
         var annotation = element.getAnnotation(Mock.class);
         var name = Optional.of(annotation.name())
             .filter(n -> !n.isBlank())
             .orElse(defaultName);
 
-        return new GraphMockitoMock(candidate, getClassToMock(candidate), name, annotation);
+        return new GraphMockitoMock(candidate, getClassToMock(candidate), name, annotation, mockitoContext);
     }
 
     @Override
@@ -53,6 +58,7 @@ record GraphMockitoMock(GraphCandidate candidate,
         graphDraw.replaceNode(node, g -> {
             var settings = getMockSettings();
             var mock = (T) Mockito.mock(mockClass, settings);
+            mockitoContext.mocksMap().put(mock, settings);
 
             Optional<Class<?>> wrappedType = GraphUtils.findWrappedType(node.type());
             if (wrappedType.isPresent() && wrappedType.get().isInstance(mock)) {
@@ -72,8 +78,9 @@ record GraphMockitoMock(GraphCandidate candidate,
         });
     }
 
-    private MockSettings getMockSettings() {
-        var settings = new MockSettingsImpl<>()
+    private MockSettingsImpl<?> getMockSettings() {
+        MockSettingsImpl<?> creationSettings = new MockSettingsImpl<>();
+        var settings = creationSettings
             .name(name)
             .defaultAnswer(annotation.answer());
 
@@ -106,6 +113,6 @@ record GraphMockitoMock(GraphCandidate candidate,
             settings = settings.serializable();
         }
 
-        return settings;
+        return creationSettings;
     }
 }

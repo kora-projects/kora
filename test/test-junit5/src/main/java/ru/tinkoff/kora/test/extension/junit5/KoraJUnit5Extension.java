@@ -7,7 +7,6 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.*;
 import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.util.ReflectionUtils;
-import org.mockito.internal.util.MockUtil;
 import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -186,19 +185,17 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     @Nonnull
-    @SuppressWarnings("unchecked")
-    private static Set<Object> getMockSet(ExtensionContext context) {
-        return context.getStore(MOCKITO).getOrComputeIfAbsent(HashSet.class, (k) -> new HashSet<>(), HashSet.class);
+    private static GraphMockitoContext getMockitoContext(ExtensionContext context) {
+        return context.getStore(MOCKITO).getOrComputeIfAbsent(GraphMockitoContext.class, (k) -> new GraphMockitoContext(), GraphMockitoContext.class);
     }
 
-    @Nonnull
-    @SuppressWarnings("unchecked")
-    private static Set<Object> removeMockSet(ExtensionContext context) {
-        var set = context.getStore(MOCKITO).remove(HashSet.class, HashSet.class);
-        if (set == null) {
-            return Set.of();
+    @Nullable
+    private static GraphMockitoContext removeMockitoContext(ExtensionContext context) {
+        final GraphMockitoContext mockitoContext = context.getStore(MOCKITO).get(GraphMockitoContext.class, GraphMockitoContext.class);
+        if (mockitoContext != null) {
+            context.getStore(MOCKITO).remove(GraphMockitoContext.class, GraphMockitoContext.class);
         }
-        return set;
+        return mockitoContext;
     }
 
     @Nonnull
@@ -252,13 +249,12 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             return;
         }
 
-        var mockSet = getMockSet(context);
         var testInstance = context.getTestInstance()
             .map(inst -> inst.getClass().isAnnotationPresent(Nested.class) && metadata.outerTestClass == null
                 ? getOuterClassFromNested(inst) // when per class lifecycle, we need to find outer class
                 : inst)
             .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
-        injectToInstanceFields(testInstance, metadata.fieldsForInjection, mockSet, graph, context);
+        injectToInstanceFields(testInstance, metadata.fieldsForInjection, graph, context);
 
         if (metadata.outerTestClass != null && context.getRequiredTestClass().isAnnotationPresent(Nested.class)) {
             var outerTestInstance = context.getTestInstance()
@@ -266,14 +262,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
 
             if (outerTestInstance != null) {
-                injectToInstanceFields(outerTestInstance, metadata.outerFieldsForInjection, mockSet, graph, context);
+                injectToInstanceFields(outerTestInstance, metadata.outerFieldsForInjection, graph, context);
             }
         }
     }
 
     private static void injectToInstanceFields(Object testInstance,
                                                List<Field> fieldsForInjection,
-                                               Set<Object> mocks,
                                                TestGraphContext graphInitialized,
                                                ExtensionContext context) {
         for (var field : fieldsForInjection) {
@@ -284,9 +279,6 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
             final Object component = getComponentFromGraph(graphInitialized, candidate);
             injectToField(testInstance, field, component);
-            if (MockUtil.isMock(component) || MockUtil.isSpy(component)) {
-                mocks.add(component);
-            }
         }
     }
 
@@ -398,12 +390,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public void afterEach(ExtensionContext context) {
         var koraTestContext = getKoraTestContext(context);
-        var mockSet = removeMockSet(context);
-
-        if (!mockSet.isEmpty()) {
-            var reporter = new MockitoUnusedStubbingReporter(mockSet, findStrictness(context));
-            reporter.reportUnused(context);
-        }
+        var mockitoContext = removeMockitoContext(context);
 
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_METHOD) {
             if (koraTestContext.graph != null) {
@@ -421,6 +408,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     }
                 }
             }
+        }
+
+        if (mockitoContext != null && !mockitoContext.isEmpty()) {
+            var reporter = new MockitoUnusedStubbingReporter(mockitoContext, findStrictness(context));
+            reporter.reportUnused(context);
         }
     }
 
@@ -475,7 +467,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private Strictness findStrictness(ExtensionContext context) {
-        return findMockStrictness(context).map(MockitoStrictness::value).orElse(Strictness.STRICT_STUBS);
+        return findMockStrictness(context).map(MockitoStrictness::value).orElse(Strictness.WARN);
     }
 
     @Override
@@ -497,13 +489,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             logger.debug("Looking for test method '{}' parameter '{}' inject candidate: {}",
                 getTestMethodName(context), parameterContext.getParameter().getName(), graphCandidate);
         }
-        var component = getComponentFromGraph(koraTestContext.graph.initialized(), graphCandidate);
 
-        if (MockUtil.isMock(component) || MockUtil.isSpy(component)) {
-            getMockSet(context).add(component);
-        }
-
-        return component;
+        return getComponentFromGraph(koraTestContext.graph.initialized(), graphCandidate);
     }
 
     private static String getTestClassName(ExtensionContext context) {
@@ -552,12 +539,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             });
         }
 
+        final GraphMockitoContext mockitoContext = getMockitoContext(context);
         final Set<GraphModification> parameterMocks = context.getTestMethod()
             .filter(method -> !method.isSynthetic())
             .stream()
             .flatMap(m -> Stream.of(m.getParameters()))
             .filter(KoraJUnit5Extension::isMock)
-            .map(KoraJUnit5Extension::mockParameter)
+            .map(p -> mockParameter(p, mockitoContext))
             .collect(Collectors.toSet());
 
         if (classMetadata.lifecycle == TestInstance.Lifecycle.PER_CLASS && !parameterMocks.isEmpty()) {
@@ -591,7 +579,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         return new TestMethodMetadata(classMetadata, methodName, parameterComponents, parameterMocks);
     }
 
-    private static TestClassMetadata getClassMetadata(KoraTestContext koraAppTest, InitializeOrigin initializeOrigin, ExtensionContext context) {
+    private static TestClassMetadata getClassMetadata(KoraTestContext koraAppTest,
+                                                      InitializeOrigin initializeOrigin,
+                                                      ExtensionContext context) {
         var testClass = context.getTestClass()
             .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
 
@@ -655,6 +645,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             })
             .collect(Collectors.toSet());
 
+        final GraphMockitoContext mockitoContext = getMockitoContext(context);
         final Set<GraphModification> fieldMocks = Stream.concat(fieldsForInjection.stream(), outerFieldsForInjection.stream())
             .filter(KoraJUnit5Extension::isMock)
             .map(f -> {
@@ -674,7 +665,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                         .orElse(null);
                 }
 
-                return mockField(f, fieldValue);
+                return mockField(f, fieldValue, mockitoContext);
             })
             .collect(Collectors.toSet());
 
@@ -689,7 +680,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                     var type = parameter.getParameterizedType();
                     constructorComponents.add(new GraphCandidate(type, tag));
                 } else if (isMock(parameter)) {
-                    constructorMocks.add(mockParameter(parameter));
+                    constructorMocks.add(mockParameter(parameter, mockitoContext));
                 }
             }
         }
@@ -834,7 +825,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .findFirst();
     }
 
-    private static GraphModification mockField(Field field, Object fieldValue) {
+    private static GraphModification mockField(Field field, Object fieldValue, GraphMockitoContext mockitoContext) {
         if (KoraAppGraph.class.isAssignableFrom(field.getType())) {
             throw new ExtensionConfigurationException("KoraAppGraph can't be target of @Mock");
         }
@@ -846,9 +837,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tags);
 
         if (isMockitoMock(field)) {
-            return GraphMockitoMock.ofAnnotated(candidate, field, field.getName());
+            return GraphMockitoMock.ofAnnotated(candidate, mockitoContext, field, field.getName());
         } else if (isMockitoSpy(field)) {
-            return GraphMockitoSpy.ofField(candidate, field, fieldValue);
+            return GraphMockitoSpy.ofField(candidate, mockitoContext, field, fieldValue);
         } else if (isMockKMock(field)) {
             return GraphMockkMock.ofAnnotated(candidate, field, field.getName());
         } else if (isMockKSpyk(field)) {
@@ -858,7 +849,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
     }
 
-    private static GraphModification mockParameter(Parameter parameter) {
+    private static GraphModification mockParameter(Parameter parameter, GraphMockitoContext mockitoContext) {
         if (KoraAppGraph.class.isAssignableFrom(parameter.getType())) {
             throw new ExtensionConfigurationException("KoraAppGraph can't be target of @Mock");
         }
@@ -870,9 +861,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         final GraphCandidate candidate = new GraphCandidate(parameter.getParameterizedType(), tag);
 
         if (isMockitoMock(parameter)) {
-            return GraphMockitoMock.ofAnnotated(candidate, parameter, parameter.getName());
+            return GraphMockitoMock.ofAnnotated(candidate, mockitoContext, parameter, parameter.getName());
         } else if (isMockitoSpy(parameter)) {
-            return GraphMockitoSpy.ofAnnotated(candidate, parameter);
+            return GraphMockitoSpy.ofAnnotated(candidate, mockitoContext, parameter);
         } else if (isMockKMock(parameter)) {
             return GraphMockkMock.ofAnnotated(candidate, parameter, parameter.getName());
         } else if (isMockKSpyk(parameter)) {
