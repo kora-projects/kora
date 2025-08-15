@@ -8,7 +8,7 @@ dependencies {
 
     jmh "com.fasterxml.jackson.module:jackson-module-blackbird:${libs.versions.jackson.get()}"
     jmh "com.fasterxml.jackson.module:jackson-module-afterburner:${libs.versions.jackson.get()}"
-    jmh "org.apache.commons:commons-lang3:3.11"
+    jmh "org.apache.commons:commons-lang3:3.18.0"
     jmh project(":json:json-common")
     jmhAnnotationProcessor project(":json:json-annotation-processor")
 
