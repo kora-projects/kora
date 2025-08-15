@@ -55,9 +55,26 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         this.processModules(annotatedElements);
         this.processComponents(annotatedElements);
+        this.processApps(annotatedElements);
 
-        var koraAppElements = annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of());
-        for (var annotated : koraAppElements) {
+        if (roundEnv.processingOver()) {
+            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements", this.koraAppElements);
+
+            for (var element : this.koraAppElements) {
+                try {
+                    var result = buildGraph(roundEnv, element);
+                    this.write(element, result);
+                } catch (ProcessingErrorException e) {
+                    e.printError(this.processingEnv);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    private void processApps(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of())) {
             var element = annotated.element();
             if (element.getKind() == ElementKind.INTERFACE) {
                 if (log.isInfoEnabled()) {
@@ -68,59 +85,10 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@KoraApp can be placed only on interfaces", element);
             }
         }
-        if (roundEnv.processingOver()) {
-            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements", this.koraAppElements);
-
-            for (var element : this.koraAppElements) {
-                try {
-                    var none = parseNone(element);
-                    var processing = processNone(none);
-                    var result = processProcessing(roundEnv, processing);
-                    if (result instanceof ProcessingState.Failed failed) {
-                        failed.detailedException().printError(this.processingEnv);
-                        if (!failed.stack().isEmpty()) {
-                            log.error("Processing exception", failed.detailedException());
-
-                            var i = failed.stack().descendingIterator();
-                            var frames = new ArrayList<ProcessingState.ResolutionFrame.Component>();
-                            while (i.hasNext()) {
-                                var frame = i.next();
-                                if (frame instanceof ProcessingState.ResolutionFrame.Component c) {
-                                    frames.add(0, c);
-                                } else {
-                                    break;
-                                }
-                            }
-                            var chain = frames.stream()
-                                .map(c -> c.declaration().declarationString() + "   " + c.dependenciesToFind().get(c.currentDependency()))
-                                .collect(Collectors.joining("\n            ^            \n            |            \n"));
-                            this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Dependency resolve process: \n" + chain);
-                        }
-                    } else if (result instanceof ProcessingState.Ok ok) {
-                        try {
-                            this.write(element, ok);
-                        } catch (ProcessingErrorException e) {
-                            e.printError(this.processingEnv);
-                        } catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
-                    } else {
-                        throw new IllegalStateException();
-                    }
-                } catch (ProcessingErrorException e) {
-                    e.printError(processingEnv);
-                }
-            }
-        }
-    }
-
-    private ProcessingState processProcessing(RoundEnvironment roundEnv, ProcessingState.Processing processing) {
-        return GraphBuilder.processProcessing(ctx, roundEnv, processing);
     }
 
     private void processComponents(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        var componentOfElements = annotatedElements.getOrDefault(CommonClassNames.component, List.of());
-        for (var annotated : componentOfElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.component, List.of())) {
             var componentElement = annotated.element();
             if (componentElement.getKind() != ElementKind.CLASS) {
                 continue;
@@ -137,8 +105,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     }
 
     private void processModules(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        var moduleElements = annotatedElements.getOrDefault(CommonClassNames.module, List.of());
-        for (var annotated : moduleElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.module, List.of())) {
             if (annotated.element().getKind() != ElementKind.INTERFACE) {
                 continue;
             }
@@ -147,15 +114,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
     }
 
-    private ProcessingState.Processing processNone(ProcessingState.None none) {
-        var stack = new ArrayDeque<ProcessingState.ResolutionFrame>();
-        for (int i = 0; i < none.rootSet().size(); i++) {
-            stack.addFirst(new ProcessingState.ResolutionFrame.Root(i));
-        }
-        return new ProcessingState.Processing(none.root(), none.allModules(), none.sourceDeclarations(), none.templates(), none.rootSet(), new ArrayList<>(256), stack);
-    }
-
-    private ProcessingState.None parseNone(Element classElement) {
+    private ResolvedGraph buildGraph(RoundEnvironment roundEnv, Element classElement) {
         if (classElement.getKind() != ElementKind.INTERFACE) {
             throw new ProcessingErrorException("@KoraApp is only applicable to interfaces", classElement);
         }
@@ -189,15 +148,17 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             Components::new
         ));
 
-        var sourceDescriptors = components.nonTemplates;
-        var rootSet = sourceDescriptors.stream()
+        var rootSet = components.nonTemplates.stream()
             .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
                 || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
             .toList();
-        return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);
+
+        var graphBuilder = new GraphBuilder(ctx, roundEnv, type, allModules, components.nonTemplates, components.templates, rootSet);
+
+        return graphBuilder.build();
     }
 
-    private void write(TypeElement type, ProcessingState.Ok ok) throws IOException {
+    private void write(TypeElement type, ResolvedGraph ok) throws IOException {
         var interceptors = ComponentInterceptors.parseInterceptors(this.ctx, ok.components());
 
         var applicationImplFile = this.generateImpl(type, ok.allModules());
