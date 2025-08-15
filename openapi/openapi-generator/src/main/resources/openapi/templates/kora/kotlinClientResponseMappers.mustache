@@ -20,7 +20,7 @@ interface {{classname}}ClientResponseMappers {
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper({{#dataType}}{{#vendorExtensions.hasMapperTag}}
-    @param:{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
+    @{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
     private val delegate: HttpClientResponseMapper<{{{dataType}}}>
   {{/dataType}}) : HttpClientResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {
 
