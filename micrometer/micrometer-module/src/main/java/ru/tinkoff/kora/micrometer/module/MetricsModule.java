@@ -6,7 +6,6 @@ import io.opentelemetry.contrib.metrics.micrometer.CallbackRegistrar;
 import io.opentelemetry.contrib.metrics.micrometer.MicrometerMeterProvider;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
@@ -234,8 +233,9 @@ public interface MetricsModule {
         return new MicrometerZeebeClientWorkerJobMetricsFactory(meterRegistry);
     }
 
+    // Always return impl from 'micrometer-module' and not interface, or KSP will fail with: `Component type is not resolvable in the current round of processing`
     @DefaultComponent
-    default CommandLatencyRecorderFactory micrometerLettuceCommandLatencyRecorderFactory(MeterRegistry registry, MetricsConfig metricsConfig) {
+    default MicrometerLettuceCommandLatencyRecorderFactory micrometerLettuceCommandLatencyRecorderFactory(MeterRegistry registry, MetricsConfig metricsConfig) {
         return new MicrometerLettuceCommandLatencyRecorderFactory(registry, metricsConfig);
     }
 
