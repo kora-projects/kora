@@ -102,7 +102,11 @@ object CommonAopUtils {
                 pb.addModifiers(KModifier.VARARG)
             }
             for (annotation in parameter.annotations) {
-                if (isAopAnnotation(annotation)) {
+                val resolvedAnnotation = annotation.annotationType.resolveToUnderlying()
+                if (isAopAnnotation(resolvedAnnotation)
+                    || resolvedAnnotation.declaration.packageName.asString().endsWith(".Nonnull")
+                    || resolvedAnnotation.declaration.packageName.asString().endsWith(".NotNull")
+                ) {
                     pb.addAnnotation(annotation.toAnnotationSpec())
                 }
             }
@@ -140,4 +144,7 @@ object CommonAopUtils {
         return annotation.annotationType.resolveToUnderlying().declaration.isAnnotationPresent(aopAnnotation)
     }
 
+    fun isAopAnnotation(annotation: KSType): Boolean {
+        return annotation.declaration.isAnnotationPresent(aopAnnotation)
+    }
 }

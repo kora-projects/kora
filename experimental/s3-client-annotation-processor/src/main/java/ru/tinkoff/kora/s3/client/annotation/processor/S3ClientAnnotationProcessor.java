@@ -128,7 +128,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                     throw new ProcessingErrorException("@S3.Client method without operation annotation can't be non default", method);
                 } else if (operationType.isPresent()) {
                     S3Operation operation = getOperation(method, operationType.get());
-                    var methodSpecBuilder = MethodSpec.overriding(method)
+                    var methodSpecBuilder = CommonUtils.overridingKeepAop(method)
                         .addCode(operation.code());
 
                     if (operation.impl() == ImplType.AWS) {

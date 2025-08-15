@@ -389,7 +389,10 @@ public class CommonUtils {
                 : parameter.getSimpleName().toString();
             var pb = ParameterSpec.builder(TypeName.get(parameterType), name);
             for (var annotationMirror : parameter.getAnnotationMirrors()) {
-                if (CommonUtils.isAopAnnotation(annotationMirror) || annotationMirror.getAnnotationType().toString().endsWith(".Nullable")) {
+                if (CommonUtils.isAopAnnotation(annotationMirror)
+                    || annotationMirror.getAnnotationType().toString().endsWith(".Nullable")
+                    || annotationMirror.getAnnotationType().toString().endsWith(".Nonnull")
+                    || annotationMirror.getAnnotationType().toString().endsWith(".NotNull")) {
                     pb.addAnnotation(AnnotationSpec.get(annotationMirror));
                 }
             }

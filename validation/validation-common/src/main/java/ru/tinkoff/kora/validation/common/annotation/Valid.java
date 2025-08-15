@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.validation.common.annotation;
 
+import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.validation.common.Validator;
 
 import java.lang.annotation.*;
@@ -9,6 +10,7 @@ import java.lang.annotation.*;
  * <p>
  * When Class/Record is annotated then {@link Validator} for such type will be generated
  */
+@AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
 @Target(value = {ElementType.METHOD, ElementType.TYPE, ElementType.FIELD, ElementType.PARAMETER})

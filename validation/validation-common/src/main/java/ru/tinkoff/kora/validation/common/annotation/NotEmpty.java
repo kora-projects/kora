@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.validation.common.annotation;
 
+import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.validation.common.constraint.factory.NotEmptyValidatorFactory;
 
 import java.lang.annotation.*;
@@ -18,6 +19,7 @@ import java.lang.annotation.*;
  * <li>{@code Map} (map size is evaluated)</li>
  * </ul>
  */
+@AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
 @Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})

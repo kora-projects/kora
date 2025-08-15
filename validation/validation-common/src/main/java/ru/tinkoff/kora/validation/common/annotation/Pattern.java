@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.validation.common.annotation;
 
 import org.intellij.lang.annotations.Language;
+import ru.tinkoff.kora.common.AopAnnotation;
 import ru.tinkoff.kora.validation.common.constraint.factory.PatternValidatorFactory;
 
 import java.lang.annotation.*;
@@ -8,6 +9,7 @@ import java.lang.annotation.*;
 /**
  * Validates that {@link String} or {@link CharSequence} matches RegEx
  */
+@AopAnnotation
 @Documented
 @Retention(value = RetentionPolicy.CLASS)
 @Target(value = {ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER})
