@@ -6,6 +6,8 @@ import org.mockito.Mockito
 import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
+import ru.tinkoff.kora.logging.common.annotation.Log
+import kotlin.reflect.full.declaredFunctions
 
 class HttpClientCommonTest : AbstractHttpClientTest() {
 
@@ -18,7 +20,7 @@ class HttpClientCommonTest : AbstractHttpClientTest() {
             @HttpClient
             interface TestClient {
             
-              @ru.tinkoff.kora.validation.common.annotation.Validate
+              @ru.tinkoff.kora.logging.common.annotation.Log
               @HttpRoute(method = "POST", path = "/test")
               fun request(): String
             }
@@ -26,6 +28,7 @@ class HttpClientCommonTest : AbstractHttpClientTest() {
         )
 
         assertThat(client.objectClass.annotations.any { a -> a is Component }).isTrue
+        assertThat(client.objectClass.declaredFunctions.first().annotations.any { a -> a is Log }).isTrue
     }
 
     @Test
@@ -39,11 +42,12 @@ class HttpClientCommonTest : AbstractHttpClientTest() {
             interface TestClient {
             
               @HttpRoute(method = "POST", path = "/test")
-              fun request(@ru.tinkoff.kora.validation.common.annotation.NotBlank arg: String): String
+              fun request(@ru.tinkoff.kora.logging.common.annotation.Log arg: String): String
             }
             """.trimIndent()
         )
 
         assertThat(client.objectClass.annotations.any { a -> a is Component }).isTrue
+        assertThat(client.objectClass.declaredFunctions.first().parameters.first().annotations.any { a -> a is Log }).isTrue
     }
 }

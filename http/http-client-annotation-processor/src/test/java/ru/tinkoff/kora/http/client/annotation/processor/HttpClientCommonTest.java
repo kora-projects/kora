@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
+import ru.tinkoff.kora.logging.common.annotation.Log;
 
 import java.util.Arrays;
 import java.util.List;
@@ -21,13 +22,14 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
             @HttpClient
             public interface TestClient {
             
-              @ru.tinkoff.kora.validation.common.annotation.Validate
+              @ru.tinkoff.kora.logging.common.annotation.Log
               @HttpRoute(method = "POST", path = "/test")
               String request();
             }
             """);
 
         assertThat(Arrays.stream(client.objectClass.getAnnotations()).anyMatch(a -> a.annotationType().equals(Component.class))).isTrue();
+        assertThat(client.objectClass.getDeclaredMethods()[0].getDeclaredAnnotation(Log.class)).isNotNull();
     }
 
     @Test
@@ -40,10 +42,11 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
             public interface TestClient {
             
               @HttpRoute(method = "POST", path = "/test")
-              String request(@ru.tinkoff.kora.validation.common.annotation.NotBlank String arg);
+              String request(@ru.tinkoff.kora.logging.common.annotation.Log String arg);
             }
             """);
 
         assertThat(Arrays.stream(client.objectClass.getAnnotations()).anyMatch(a -> a.annotationType().equals(Component.class))).isTrue();
+        assertThat(client.objectClass.getDeclaredMethods()[0].getParameters()[0].getDeclaredAnnotation(Log.class)).isNotNull();
     }
 }
