@@ -8,6 +8,7 @@ import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.mockito.Mock;
 import org.mockito.Mockito;
+import org.mockito.quality.Strictness;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
@@ -17,13 +18,13 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SuppressWarnings(value = {"JUnitMalformedDeclaration", "EqualsWithItself"})
-public class MockDefaultStubbingReporterTests {
+public class ReportMockConstructorStrictStubbingReporterTests {
 
     @Test
-    public void mockDefault() {
+    public void mockStrict() {
         var request = LauncherDiscoveryRequestBuilder.request()
             .configurationParameter("junit.jupiter.conditions.deactivate", "*")
-            .selectors(DiscoverySelectors.selectClass(MockDefaultTest.class)).build();
+            .selectors(DiscoverySelectors.selectClass(MockStrictTest.class)).build();
 
         var launcher = LauncherFactory.create();
         var listener = new SummaryGeneratingListener();
@@ -34,12 +35,16 @@ public class MockDefaultStubbingReporterTests {
         assertEquals(2, listener.getSummary().getTestsFailedCount());
     }
 
-    @Disabled
+    @Disabled("IS CHECKED IN SELECTOR")
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    static class MockDefaultTest {
-        @Mock
-        @TestComponent
-        private TestComponent1 mock;
+    @MockitoStrictness(Strictness.STRICT_STUBS)
+    static class MockStrictTest {
+
+        private final TestComponent1 mock;
+
+        MockStrictTest(@Mock @TestComponent TestComponent1 mock) {
+            this.mock = mock;
+        }
 
         @Test
         void mockField() {

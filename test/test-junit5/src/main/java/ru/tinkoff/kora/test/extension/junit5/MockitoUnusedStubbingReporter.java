@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.mockito.Mockito;
 import org.mockito.internal.junit.TestFinishedEvent;
 import org.mockito.internal.junit.UniversalTestListener;
 import org.mockito.mock.MockCreationSettings;
@@ -9,29 +10,27 @@ import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Collection;
+final class MockitoUnusedStubbingReporter {
 
-import static org.mockito.Mockito.withSettings;
-
-public class MockitoUnusedStubbingReporter {
-    private final Collection<?> unused;
+    private final GraphMockitoContext mockitoContext;
     private final Strictness strictness;
 
-    public MockitoUnusedStubbingReporter(Collection<?> unused, Strictness strictness) {
-        this.unused = unused;
+    public MockitoUnusedStubbingReporter(GraphMockitoContext mockitoContext, Strictness strictness) {
+        this.mockitoContext = mockitoContext;
         this.strictness = strictness;
     }
 
-    @SuppressWarnings("rawtypes")
     public void reportUnused(ExtensionContext context) {
-        if (unused.isEmpty()) {
+        if (mockitoContext.isEmpty()) {
             return;
         }
 
-        var listener = new UniversalTestListener(strictness, new ReporterLogger());
-
-        for (Object mock : unused) {
-            listener.onMockCreated(mock, (MockCreationSettings) withSettings());
+        var listener = new UniversalTestListener(strictness, new Slf4jReporterLogger());
+        for (var mockEntry : mockitoContext.mocksMap().entrySet()) {
+            listener.onMockCreated(mockEntry.getKey(), mockEntry.getValue());
+        }
+        for (var spy : mockitoContext.spySet()) {
+            listener.onMockCreated(spy, (MockCreationSettings<?>) Mockito.withSettings());
         }
 
         listener.testFinished(
@@ -48,12 +47,19 @@ public class MockitoUnusedStubbingReporter {
             });
     }
 
-    static class ReporterLogger implements MockitoLogger {
-        private static final Logger logger = LoggerFactory.getLogger(ReporterLogger.class);
+    private static class Slf4jReporterLogger implements MockitoLogger {
 
+        private static final Logger logger = LoggerFactory.getLogger(MockitoUnusedStubbingReporter.class);
+
+        // warn also here cause MockitoLogger#warn is never used in Mockito actually...
         @Override
         public void log(Object o) {
-            logger.info(String.valueOf(o));
+            logger.warn(String.valueOf(o));
+        }
+
+        @Override
+        public void warn(Object what) {
+            logger.warn(String.valueOf(what));
         }
     }
 }

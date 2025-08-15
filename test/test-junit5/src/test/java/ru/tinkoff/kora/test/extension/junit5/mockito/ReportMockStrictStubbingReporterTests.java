@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5.mockito;
 
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.engine.discovery.DiscoverySelectors;
 import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
@@ -17,12 +19,13 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SuppressWarnings(value = {"JUnitMalformedDeclaration", "EqualsWithItself"})
-public class MockWarnStubbingReporterTests {
+public class ReportMockStrictStubbingReporterTests {
 
     @Test
-    public void mockWarn() {
+    public void mockStrict() {
         var request = LauncherDiscoveryRequestBuilder.request()
-            .selectors(DiscoverySelectors.selectClass(MockWarnTest.class)).build();
+            .configurationParameter("junit.jupiter.conditions.deactivate", "*")
+            .selectors(DiscoverySelectors.selectClass(MockStrictTest.class)).build();
 
         var launcher = LauncherFactory.create();
         var listener = new SummaryGeneratingListener();
@@ -30,12 +33,14 @@ public class MockWarnStubbingReporterTests {
         launcher.registerTestExecutionListeners(listener);
         launcher.execute(request);
 
-        assertEquals(2, listener.getSummary().getTestsSucceededCount());
+        assertEquals(2, listener.getSummary().getTestsFailedCount());
     }
 
+    @Disabled("IS CHECKED IN SELECTOR")
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    @MockitoStrictness(Strictness.WARN)
-    static class MockWarnTest {
+    @MockitoStrictness(Strictness.STRICT_STUBS)
+    static class MockStrictTest {
+
         @Mock
         @TestComponent
         private TestComponent1 mock;

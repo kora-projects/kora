@@ -7,7 +7,6 @@ import org.junit.platform.launcher.core.LauncherFactory;
 import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
 import org.mockito.Mock;
 import org.mockito.Mockito;
-import org.mockito.quality.Strictness;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
@@ -17,12 +16,13 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @SuppressWarnings(value = {"JUnitMalformedDeclaration", "EqualsWithItself"})
-public class MockLenientStubbingReporterTests {
+public class ReportMockConstructorDefaultStubbingReporterTests {
 
     @Test
-    public void mockWarn() {
+    public void mockDefault() {
         var request = LauncherDiscoveryRequestBuilder.request()
-            .selectors(DiscoverySelectors.selectClass(MockLenientTest.class)).build();
+            .configurationParameter("junit.jupiter.conditions.deactivate", "*")
+            .selectors(DiscoverySelectors.selectClass(MockDefaultTest.class)).build();
 
         var launcher = LauncherFactory.create();
         var listener = new SummaryGeneratingListener();
@@ -30,15 +30,17 @@ public class MockLenientStubbingReporterTests {
         launcher.registerTestExecutionListeners(listener);
         launcher.execute(request);
 
-        assertEquals(2, listener.getSummary().getTestsSucceededCount());
+        assertEquals(0, listener.getSummary().getTestsFailedCount());
     }
 
     @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
-    @MockitoStrictness(Strictness.LENIENT)
-    static class MockLenientTest {
-        @Mock
-        @TestComponent
-        private TestComponent1 mock;
+    static class MockDefaultTest {
+
+        private final TestComponent1 mock;
+
+        MockDefaultTest(@Mock @TestComponent TestComponent1 mock) {
+            this.mock = mock;
+        }
 
         @Test
         void mockField() {
