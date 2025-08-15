@@ -42,11 +42,11 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
             public interface TestClient {
             
               @HttpRoute(method = "POST", path = "/test")
-              String request(@ru.tinkoff.kora.logging.common.annotation.Log String arg);
+              String request(@ru.tinkoff.kora.logging.common.annotation.Log.off String arg);
             }
             """);
 
         assertThat(Arrays.stream(client.objectClass.getAnnotations()).anyMatch(a -> a.annotationType().equals(Component.class))).isTrue();
-        assertThat(client.objectClass.getDeclaredMethods()[0].getParameters()[0].getDeclaredAnnotation(Log.class)).isNotNull();
+        assertThat(client.objectClass.getDeclaredMethods()[0].getParameters()[0].getDeclaredAnnotation(Log.off.class)).isNotNull();
     }
 }

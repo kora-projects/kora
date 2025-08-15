@@ -42,12 +42,12 @@ class HttpClientCommonTest : AbstractHttpClientTest() {
             interface TestClient {
             
               @HttpRoute(method = "POST", path = "/test")
-              fun request(@ru.tinkoff.kora.logging.common.annotation.Log arg: String): String
+              fun request(@ru.tinkoff.kora.logging.common.annotation.Log.off arg: String): String
             }
             """.trimIndent()
         )
 
         assertThat(client.objectClass.annotations.any { a -> a is Component }).isTrue
-        assertThat(client.objectClass.declaredFunctions.first().parameters.first().annotations.any { a -> a is Log }).isTrue
+        assertThat(client.objectClass.declaredFunctions.first().parameters.last().annotations.any { a -> a is Log.off }).isTrue
     }
 }
