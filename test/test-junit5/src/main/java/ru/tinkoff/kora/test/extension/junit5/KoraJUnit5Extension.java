@@ -284,8 +284,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
             final Object component = getComponentFromGraph(graphInitialized, candidate);
             injectToField(testInstance, field, component);
-            if (MockUtil.isMock(component) || MockUtil.isSpy(component)) {
-                mocks.add(component);
+            if(MockUtils.isMockitoAvailable()) {
+                if (MockUtil.isMock(component) || MockUtil.isSpy(component)) {
+                    mocks.add(component);
+                }
             }
         }
     }
@@ -475,7 +477,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private Strictness findStrictness(ExtensionContext context) {
-        return findMockStrictness(context).map(MockitoStrictness::value).orElse(Strictness.STRICT_STUBS);
+        return findMockStrictness(context).map(MockitoStrictness::value).orElse(Strictness.WARN);
     }
 
     @Override
@@ -499,8 +501,10 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
         var component = getComponentFromGraph(koraTestContext.graph.initialized(), graphCandidate);
 
-        if (MockUtil.isMock(component) || MockUtil.isSpy(component)) {
-            getMockSet(context).add(component);
+        if(MockUtils.isMockitoAvailable()) {
+            if (MockUtil.isMock(component) || MockUtil.isSpy(component)) {
+                getMockSet(context).add(component);
+            }
         }
 
         return component;
