@@ -317,8 +317,11 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
         compile(
             """
             @JsonDiscriminatorField("@type")
+            @Json
             sealed interface TestInterface {
+                @Json
                 data class Impl1(val value: String) : TestInterface
+                @Json
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent(),
@@ -342,8 +345,11 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
         compile(
             """
             @JsonDiscriminatorField("@type")
+            @Json
             sealed interface TestInterface {
+                @Json
                 data class Impl1(val value: String) : TestInterface
+                @Json
                 data class Impl2(val value: Int) : TestInterface
             }
             """.trimIndent(),

@@ -10,6 +10,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
     fun testGenericJsonReaderExtension() {
         compile(
             """
+            @Json
             data class TestClass <T> (val value:T)             
             """.trimIndent(),
             """
@@ -31,6 +32,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
     fun testGenericJsonWriterExtension() {
         compile(
             """
+            @Json
             data class TestClass <T> (val value:T)             
             """.trimIndent(),
             """
@@ -55,6 +57,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
             import ru.tinkoff.kora.json.common.annotation.JsonInclude
             
             @JsonInclude(JsonInclude.IncludeType.ALWAYS)
+            @Json
             data class TestClass <T> (val value: T?, val values: List<T>?)             
             """.trimIndent(),
             """

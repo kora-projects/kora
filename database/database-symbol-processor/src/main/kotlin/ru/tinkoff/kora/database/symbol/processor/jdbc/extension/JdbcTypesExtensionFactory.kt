@@ -6,5 +6,5 @@ import com.google.devtools.ksp.processing.Resolver
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionFactory
 
 class JdbcTypesExtensionFactory : ExtensionFactory {
-    override fun create(resolver: Resolver, kspLogger: KSPLogger, codeGenerator: CodeGenerator) = JdbcTypesExtension(resolver, kspLogger, codeGenerator)
+    override fun create(resolver: Resolver, kspLogger: KSPLogger, codeGenerator: CodeGenerator) = JdbcTypesExtension()
 }

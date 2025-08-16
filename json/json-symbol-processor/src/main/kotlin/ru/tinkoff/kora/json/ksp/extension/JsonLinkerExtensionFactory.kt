@@ -14,7 +14,7 @@ class JsonLinkerExtensionFactory : ExtensionFactory {
         return if (json == null) {
             null
         } else {
-            JsonKoraExtension(resolver, kspLogger, codeGenerator)
+            JsonKoraExtension()
         }
     }
 }
