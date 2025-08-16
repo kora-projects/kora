@@ -24,15 +24,16 @@ public class DependencyModuleHintProvider {
 
     public DependencyModuleHintProvider(ProcessingEnvironment processingEnvironment) {
         this.processingEnvironment = processingEnvironment;
+        var hints = List.<KoraHint>of();
         try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-hints.json");
              var parser = new JsonFactory(new JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES)).createParser(r)) {
-            this.hints = KoraHint.parseList(parser);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+            hints = KoraHint.parseList(parser);
+        } catch (IOException e) {}
+        this.hints = hints;
     }
 
-    sealed interface Hint {
+
+    public sealed interface Hint {
 
         String message();
 

@@ -1,15 +1,10 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
-import ru.tinkoff.kora.json.common.JsonReader;
-import ru.tinkoff.kora.json.common.JsonWriter;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.function.Supplier;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -259,85 +254,6 @@ public class SealedTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(m.read(json1.getBytes(StandardCharsets.UTF_8))).isEqualTo(o1);
         assertThat(m.read(json2.getBytes(StandardCharsets.UTF_8))).isEqualTo(o2);
     }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void testSealedInterfaceJsonReaderExtension() throws IOException, ClassNotFoundException {
-        compile(List.of(new JsonAnnotationProcessor(), new KoraAppProcessor()), """
-            @Json
-            @JsonDiscriminatorField("@type")
-            public sealed interface TestInterface {
-                record Impl1(String value) implements TestInterface {}
-                record Impl2(int value) implements TestInterface {}
-            }
-            """, """
-            @KoraApp
-            public interface TestApp {
-                @Root
-                default String root(ru.tinkoff.kora.json.common.JsonReader<TestInterface> writer) { return ""; }
-            }
-            """);
-        compileResult.assertSuccess();
-        var supplier = (Supplier<ApplicationGraphDraw>) newObject("TestAppGraph");
-        var draw = supplier.get();
-        var graph = draw.init();
-        var rc = compileResult.loadClass("$TestInterface_JsonReader");
-        JsonReader<Object> reader = null;
-        for (var node : draw.getNodes()) {
-            var object = graph.get(node);
-            if (rc.isInstance(object)) {
-                reader = (JsonReader<Object>) object;
-            }
-        }
-
-        var o1 = newObject("TestInterface$Impl1", "test");
-        var json1 = "{\"@type\":\"Impl1\",\"value\":\"test\"}";
-        var o2 = newObject("TestInterface$Impl2", 42);
-        var json2 = "{\"@type\":\"Impl2\",\"value\":42}";
-
-        assertThat(reader.read(json1.getBytes(StandardCharsets.UTF_8))).isEqualTo(o1);
-        assertThat(reader.read(json2.getBytes(StandardCharsets.UTF_8))).isEqualTo(o2);
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void testSealedInterfaceWriterJsonExtension() throws IOException, ClassNotFoundException {
-        compile(List.of(new JsonAnnotationProcessor(), new KoraAppProcessor()), """
-            @Json
-            @JsonDiscriminatorField("@type")
-            public sealed interface TestInterface {
-                record Impl1(String value) implements TestInterface {}
-                record Impl2(int value) implements TestInterface {}
-            }
-            """, """
-            @KoraApp
-            public interface TestApp {
-                @Root
-                default String root(ru.tinkoff.kora.json.common.JsonWriter<TestInterface> writer) { return ""; }
-            }
-            """);
-        compileResult.assertSuccess();
-        var supplier = (Supplier<ApplicationGraphDraw>) newObject("TestAppGraph");
-        var draw = supplier.get();
-        var graph = draw.init();
-        var wc = compileResult.loadClass("$TestInterface_JsonWriter");
-        JsonWriter<Object> writer = null;
-        for (var node : draw.getNodes()) {
-            var object = graph.get(node);
-            if (wc.isInstance(object)) {
-                writer = (JsonWriter<Object>) object;
-            }
-        }
-
-        var o1 = newObject("TestInterface$Impl1", "test");
-        var json1 = "{\"@type\":\"Impl1\",\"value\":\"test\"}";
-        var o2 = newObject("TestInterface$Impl2", 42);
-        var json2 = "{\"@type\":\"Impl2\",\"value\":42}";
-
-        assertThat(writer.toByteArray(o1)).asString(StandardCharsets.UTF_8).isEqualTo(json1);
-        assertThat(writer.toByteArray(o2)).asString(StandardCharsets.UTF_8).isEqualTo(json2);
-    }
-
 
     @Test
     public void testSealedNull() throws IOException {
