@@ -4,6 +4,7 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper;
@@ -25,9 +26,9 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testSimpleEmbeddedRecord() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "public record TestRecord (@Embedded EmbeddedRecord f1){}"
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -45,9 +46,9 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testSimpleEmbeddedRecordWithValue() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -65,9 +66,9 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testSimpleEmbeddedRecordWithMapper() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord(int f1, java.time.OffsetDateTime f2) {}",
-            "public record TestRecord(@Embedded(\"f1_\") EmbeddedRecord f1) {}",
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord(@Embedded(\"f1_\") EmbeddedRecord f1) {}",
             """
             @ru.tinkoff.kora.common.Component
             public final class TimeJdbcResultColumnMapper implements ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper<java.time.OffsetDateTime> {
@@ -94,9 +95,9 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testEmbeddedRecordWithNullableField() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (@Nullable String f1, int f2){}",
-            "public record TestRecord (@Embedded EmbeddedRecord f1){}"
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -126,7 +127,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testEmbeddedNullableRecordConstructor() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             """
                 public record EmbeddedRecord(String f1, int f2) {
                     public EmbeddedRecord(@Nullable String f1, int f2) {
@@ -134,7 +135,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
                         this.f2 = f2;
                     }
                 }""",
-            "public record TestRecord (@Embedded EmbeddedRecord f1){}"
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -164,7 +165,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testJavaBeanEmbeddedNullableRecordConstructor() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestBean"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             """
                 public record EmbeddedRecord(String f1, int f2) {
                     public EmbeddedRecord(@Nullable String f1, int f2) {
@@ -173,6 +174,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
                     }
                 }""",
             """
+                @ru.tinkoff.kora.database.jdbc.EntityJdbc
                 public class TestBean {
                     @Embedded
                     private EmbeddedRecord f1;
@@ -184,7 +186,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
                     public void setF1(EmbeddedRecord f1) {
                         this.f1 = f1;
                     }
-                    
+
                     @Override
                     public boolean equals(Object o) {
                         if (this == o) return true;
@@ -228,9 +230,9 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testEmbeddedRecordWithNullableFieldWithValue() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (@Nullable String f1, int f2){}",
-            "public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -260,9 +262,9 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testNullableEmbeddedRecord() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "public record TestRecord (@Nullable @Embedded EmbeddedRecord f1){}"
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord (@Nullable @Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -299,9 +301,9 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
     public void testNullableEmbeddedRecordWithValue() throws SQLException {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
-        var graph = compile(expectedType, List.of(),
+        var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "public record TestRecord (@Nullable @Embedded(\"f1_\") EmbeddedRecord f1){}"
+            "@ru.tinkoff.kora.database.jdbc.EntityJdbc public record TestRecord (@Nullable @Embedded(\"f1_\") EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 

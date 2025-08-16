@@ -160,7 +160,7 @@ class KoraAppProcessorTest {
                 s.assertThat(e.getMessage()).startsWith("""
                     Required dependency type wasn't found in graph and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 (no tags)
                       Please check class for @Component annotation or that required module with component factory is plugged in.
-                    """);
+                      Dependency requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency#class2(ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
                 s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(327);
                 s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(14);
                 s.assertThat(e.diagnostics.get(0).getSource().getName()).isEqualTo("src/test/java/ru/tinkoff/kora/kora/app/annotation/processor/app/AppWithUnresolvedDependency.java");
@@ -237,14 +237,6 @@ class KoraAppProcessorTest {
     @Test
     void appWithFactoryWithIntersectedGenerics() throws Throwable {
         testClass(AppWithFactories13.class).init();
-    }
-
-    @Test
-    void appWithExtension() throws Throwable {
-        var graphDraw = testClass(AppWithExtension.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
-        var materializedGraph = graphDraw.init();
-        Assertions.assertThat(materializedGraph).isNotNull();
     }
 
     @Test
@@ -470,7 +462,7 @@ class KoraAppProcessorTest {
             return constructors[0].newInstance().get();
         } catch (Exception e) {
             if (e.getCause() != null) {
-                if(e.getCause() instanceof Exception ee) {
+                if (e.getCause() instanceof Exception ee) {
                     throw ee;
                 } else {
                     throw new IllegalStateException(e.getCause());
