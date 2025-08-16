@@ -247,14 +247,6 @@ class KoraAppProcessorTest {
     }
 
     @Test
-    void appWithExtension() throws Throwable {
-        var graphDraw = testClass(AppWithExtension.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(3);
-        var materializedGraph = graphDraw.init();
-        Assertions.assertThat(materializedGraph).isNotNull();
-    }
-
-    @Test
     void extensionShouldHandleAnnotationsItProvidesAnnotationProcessorFor() throws Throwable {
         var graphDraw = testClass(AppWithProcessorExtension.class, List.of(new AppWithProcessorExtension.TestProcessor()));
         Assertions.assertThat(graphDraw.getNodes()).hasSize(2);
@@ -481,7 +473,7 @@ class KoraAppProcessorTest {
             return constructors[0].newInstance().get();
         } catch (Exception e) {
             if (e.getCause() != null) {
-                if(e.getCause() instanceof Exception ee) {
+                if (e.getCause() instanceof Exception ee) {
                     throw ee;
                 } else {
                     throw new IllegalStateException(e.getCause());

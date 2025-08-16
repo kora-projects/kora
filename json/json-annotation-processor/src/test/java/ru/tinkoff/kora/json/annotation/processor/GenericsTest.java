@@ -54,30 +54,4 @@ public class GenericsTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(reader.read(json.getBytes(StandardCharsets.UTF_8))).isEqualTo(o);
         assertThat(writer.toByteArray(o)).asString(StandardCharsets.UTF_8).isEqualTo(json);
     }
-
-    @Test
-    public void testRecordWithTypeParametersFromExtensionNoAnnotations() throws IOException, ClassNotFoundException {
-        compile(List.of(new JsonAnnotationProcessor(), new KoraAppProcessor()), """
-            public record TestRecord <T>(T value, java.util.List<T> values) {
-            }
-            """, """
-            @KoraApp
-            public interface TestApp extends ru.tinkoff.kora.json.common.JsonCommonModule {
-                @Root
-                default String root1(ru.tinkoff.kora.json.common.JsonWriter<TestRecord<Integer>> w, ru.tinkoff.kora.json.common.JsonReader<TestRecord<Integer>> r) { return ""; }
-                @Root
-                default String root2(ru.tinkoff.kora.json.common.JsonWriter<TestRecord<String>> w, ru.tinkoff.kora.json.common.JsonReader<TestRecord<String>> r) { return ""; }
-            }
-            """);
-        compileResult.assertSuccess();
-        var graph = loadGraph("TestApp");
-        var reader = (JsonReader) graph.findByType(compileResult.loadClass("$TestRecord_JsonReader"));
-        var writer = (JsonWriter) graph.findByType(compileResult.loadClass("$TestRecord_JsonWriter"));
-
-        var o = newObject("TestRecord", 42, List.of(42, 43));
-        var json = "{\"value\":42,\"values\":[42,43]}";
-
-        assertThat(reader.read(json.getBytes(StandardCharsets.UTF_8))).isEqualTo(o);
-        assertThat(writer.toByteArray(o)).asString(StandardCharsets.UTF_8).isEqualTo(json);
-    }
 }

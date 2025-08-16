@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.squareup.javapoet.*;
-import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -11,10 +10,8 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ModuleDeclaration;
-import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException;
 import ru.tinkoff.kora.kora.app.annotation.processor.interceptor.ComponentInterceptors;
 
-import javax.annotation.processing.FilerException;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedOptions;
@@ -37,11 +34,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(KoraAppProcessor.class);
 
-    private final Set<TypeElement> loggedComponents = new LinkedHashSet<>();
-    private final Set<TypeElement> loggedApplicationModules = new LinkedHashSet<>();
-    private final Set<TypeElement> loggedExternalModules = new LinkedHashSet<>();
-
-    private final Map<TypeElement, ProcessingState> annotatedElements = new HashMap<>();
+    private final List<TypeElement> koraAppElements = new ArrayList<>();
     private final List<TypeElement> modules = new ArrayList<>();
     private final List<TypeElement> components = new ArrayList<>();
     private ProcessingContext ctx;
@@ -60,127 +53,42 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     @Override
     protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        var newModules = this.processModules(annotatedElements);
-        var newComponents = this.processComponents(annotatedElements);
-        if (newModules || newComponents) {
-            for (var app : new ArrayList<>(this.annotatedElements.keySet())) {
-                this.annotatedElements.put(app, parseNone(app));
+        this.processModules(annotatedElements);
+        this.processComponents(annotatedElements);
+        this.processApps(annotatedElements);
+
+        if (roundEnv.processingOver()) {
+            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements", this.koraAppElements);
+
+            for (var element : this.koraAppElements) {
+                try {
+                    var result = buildGraph(roundEnv, element);
+                    this.write(element, result);
+                } catch (ProcessingErrorException e) {
+                    e.printError(this.processingEnv);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
         }
+    }
 
-        var koraAppElements = annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of());
-        for (var annotated : koraAppElements) {
+    private void processApps(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of())) {
             var element = annotated.element();
             if (element.getKind() == ElementKind.INTERFACE) {
                 if (log.isInfoEnabled()) {
                     log.info("@KoraApp element found:\n{}", element.toString().indent(4));
                 }
-                this.annotatedElements.computeIfAbsent((TypeElement) element, k -> parseNone(element));
+                this.koraAppElements.add((TypeElement) element);
             } else {
                 this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@KoraApp can be placed only on interfaces", element);
             }
         }
-
-        var results = new HashMap<TypeElement, ProcessingState>();
-        if (!roundEnv.processingOver()) {
-            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements this Round", this.annotatedElements.keySet());
-
-            for (var annotatedClass : this.annotatedElements.entrySet()) {
-                var processingResult = annotatedClass.getValue();
-                if (processingResult instanceof ProcessingState.Ok) {
-                    continue;
-                }
-                try {
-                    if (processingResult instanceof ProcessingState.Failed failed) {
-                        processingResult = this.parseNone(annotatedClass.getKey());
-                    }
-                    if (processingResult instanceof ProcessingState.None none) {
-                        processingResult = this.processNone(none);
-                    }
-                    if (processingResult instanceof ProcessingState.NewRoundRequired newRound) {
-                        var newState = this.processProcessing(roundEnv, newRound.processing());
-                        results.put(annotatedClass.getKey(), newState);
-                        continue;
-                    }
-                    if (processingResult instanceof ProcessingState.Processing processing) {
-                        var newState = this.processProcessing(roundEnv, processing);
-                        results.put(annotatedClass.getKey(), newState);
-                    }
-                } catch (NewRoundException e) {
-                    if (!roundEnv.processingOver() || processingResult instanceof ProcessingState.None) {
-                        results.put(annotatedClass.getKey(), new ProcessingState.NewRoundRequired(e.getSource(), e.getType(), e.getTag(), e.getResolving()));// todo
-                    }
-                } catch (ProcessingErrorException e) {
-                    results.put(annotatedClass.getKey(), new ProcessingState.Failed(e, processingResult.stack()));
-                } catch (Exception e) {
-                    if (e instanceof FilerException || e.getCause() instanceof FilerException) {
-                        this.processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING, e.getMessage());
-                    } else {
-                        throw new IllegalStateException(e);
-                    }
-                }
-            }
-        }
-        this.annotatedElements.putAll(results);
-        if (roundEnv.processingOver()) {
-            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements this Round", this.annotatedElements.keySet());
-
-            for (var element : this.annotatedElements.entrySet()) {
-                var processingResult = element.getValue();
-                if (processingResult instanceof ProcessingState.NewRoundRequired newRound) {
-                    this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                        "Component was expected to be generated by extension %s but was not: %s/%s".formatted(newRound.source(), newRound.type(), newRound.tag())
-                    );
-                }
-                if (processingResult instanceof ProcessingState.Failed failed) {
-                    failed.detailedException().printError(this.processingEnv);
-                    if (!failed.stack().isEmpty()) {
-                        log.error("Processing exception", failed.detailedException());
-
-                        var i = processingResult.stack().descendingIterator();
-                        var frames = new ArrayList<ProcessingState.ResolutionFrame.Component>();
-                        while (i.hasNext()) {
-                            var frame = i.next();
-                            if (frame instanceof ProcessingState.ResolutionFrame.Component c) {
-                                frames.add(0, c);
-                            } else {
-                                break;
-                            }
-                        }
-                        var chain = frames.stream()
-                            .map(c -> c.declaration().declarationString() + "   " + c.dependenciesToFind().get(c.currentDependency()))
-                            .collect(Collectors.joining("\n            ^            \n            |            \n"));
-                        this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Dependency resolve process: \n" + chain);
-                    }
-                }
-                if (processingResult instanceof ProcessingState.Ok ok) {
-                    try {
-                        this.write(element.getKey(), ok);
-                    } catch (NewRoundException e) {
-                        this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR,
-                            "Component was expected to be generated by extension %s but was not: %s/%s".formatted(e.getSource(), e.getType(), e.getTag())
-                        );
-                    } catch (ProcessingErrorException e) {
-                        e.printError(this.processingEnv);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
-            }
-        }
     }
 
-    private ProcessingState processProcessing(RoundEnvironment roundEnv, ProcessingState.Processing processing) {
-        return GraphBuilder.processProcessing(ctx, roundEnv, processing);
-    }
-
-    private boolean processComponents(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        var componentOfElements = annotatedElements.getOrDefault(CommonClassNames.component, List.of());
-
-        var processedComponents = new ArrayList<TypeElement>();
-        var processedWaitsProxy = new ArrayList<TypeElement>();
-
-        for (var annotated : componentOfElements) {
+    private void processComponents(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.component, List.of())) {
             var componentElement = annotated.element();
             if (componentElement.getKind() != ElementKind.CLASS) {
                 continue;
@@ -190,121 +98,67 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             }
 
             var typeElement = (TypeElement) componentElement;
-            if (CommonUtils.hasAopAnnotations(typeElement)) {
-                processedWaitsProxy.add(typeElement);
-            } else {
+            if (!CommonUtils.hasAopAnnotations(typeElement)) {
                 this.components.add(typeElement);
-                processedComponents.add(typeElement);
             }
         }
-
-        if (!processedWaitsProxy.isEmpty()) {
-            LogUtils.logElementsFull(log, Level.TRACE, "Components waiting for aspects found", processedWaitsProxy);
-        }
-        if (!processedComponents.isEmpty()) {
-            var logComponents = processedComponents.stream()
-                .filter(c -> !loggedComponents.contains(c))
-                .toList();
-            if (!logComponents.isEmpty()) {
-                LogUtils.logElementsFull(log, Level.TRACE, "Components ready for injection found", logComponents);
-                loggedComponents.addAll(logComponents);
-            }
-        }
-
-        return !componentOfElements.isEmpty();
     }
 
-    private boolean processModules(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
-        var moduleElements = annotatedElements.getOrDefault(CommonClassNames.module, List.of());
-        var processedModules = new ArrayList<TypeElement>();
-        for (var annotated : moduleElements) {
+    private void processModules(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.module, List.of())) {
             if (annotated.element().getKind() != ElementKind.INTERFACE) {
                 continue;
             }
             var te = (TypeElement) annotated.element();
             this.modules.add(te);
-            processedModules.add(te);
         }
-
-        if (!processedModules.isEmpty()) {
-            var logModules = processedModules.stream()
-                .filter(c -> !loggedApplicationModules.contains(c))
-                .toList();
-            if (!logModules.isEmpty()) {
-                LogUtils.logElementsFull(log, Level.INFO, "Application modules found", logModules);
-                loggedApplicationModules.addAll(logModules);
-            }
-        }
-
-        return !moduleElements.isEmpty();
     }
 
-    private ProcessingState.Processing processNone(ProcessingState.None none) {
-        var stack = new ArrayDeque<ProcessingState.ResolutionFrame>();
-        for (int i = 0; i < none.rootSet().size(); i++) {
-            stack.addFirst(new ProcessingState.ResolutionFrame.Root(i));
-        }
-        return new ProcessingState.Processing(none.root(), none.allModules(), none.sourceDeclarations(), none.templates(), none.rootSet(), new ArrayList<>(256), stack);
-    }
-
-    private ProcessingState parseNone(Element classElement) {
+    private ResolvedGraph buildGraph(RoundEnvironment roundEnv, Element classElement) {
         if (classElement.getKind() != ElementKind.INTERFACE) {
-            return new ProcessingState.Failed(new ProcessingErrorException("@KoraApp is only applicable to interfaces", classElement), new ArrayDeque<>());
+            throw new ProcessingErrorException("@KoraApp is only applicable to interfaces", classElement);
         }
-        try {
-            var type = (TypeElement) classElement;
-            var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
-
-            if (!interfaces.isEmpty()) {
-                var logExtModules = interfaces.stream()
-                    .filter(c -> !loggedExternalModules.contains(c))
-                    .toList();
-                if (!logExtModules.isEmpty()) {
-                    LogUtils.logElementsFull(log, Level.INFO, "External modules found", logExtModules);
-                    loggedExternalModules.addAll(logExtModules);
-                }
-            }
-
-            if (log.isTraceEnabled()) {
-                log.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.modules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
-                    .map(Object::toString).sorted()
-                    .collect(Collectors.joining("\n")).indent(4));
-            }
-            var mixedInModuleComponents = KoraAppUtils.parseComponents(this.ctx, interfaces.stream().map(ModuleDeclaration.MixedInModule::new).toList());
-            if (log.isTraceEnabled()) {
-                log.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
-            }
-            var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
-            var discoveredModules = this.modules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
-            var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
-            var annotatedModulesComponents = KoraAppUtils.parseComponents(this.ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
-            var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
-            for (var component : this.components) {
-                allComponents.add(ComponentDeclaration.fromAnnotated(ctx, component));
-            }
-            allComponents.addAll(mixedInModuleComponents);
-            allComponents.addAll(annotatedModulesComponents);
-            allComponents.sort(Comparator.comparing(Objects::toString));
-
-            record Components(List<ComponentDeclaration> templates, List<ComponentDeclaration> nonTemplates) {}
-            var components = allComponents.stream().collect(Collectors.teeing(
-                Collectors.filtering(ComponentDeclaration::isTemplate, Collectors.toList()),
-                Collectors.filtering(Predicate.not(ComponentDeclaration::isTemplate), Collectors.toCollection(ArrayList::new)),
-                Components::new
-            ));
-
-            var sourceDescriptors = components.nonTemplates;
-            var rootSet = sourceDescriptors.stream()
-                .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
-                    || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
-                .toList();
-            return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);
-        } catch (ProcessingErrorException e) {
-            return new ProcessingState.Failed(e, new ArrayDeque<>());
+        var type = (TypeElement) classElement;
+        var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
+        if (log.isTraceEnabled()) {
+            log.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.modules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
+                .map(Object::toString).sorted()
+                .collect(Collectors.joining("\n")).indent(4));
         }
+        var mixedInModuleComponents = KoraAppUtils.parseComponents(this.ctx, interfaces.stream().map(ModuleDeclaration.MixedInModule::new).toList());
+        if (log.isTraceEnabled()) {
+            log.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
+        }
+        var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
+        var discoveredModules = this.modules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
+        var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
+        var annotatedModulesComponents = KoraAppUtils.parseComponents(this.ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
+        var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
+        for (var component : this.components) {
+            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, component));
+        }
+        allComponents.addAll(mixedInModuleComponents);
+        allComponents.addAll(annotatedModulesComponents);
+        allComponents.sort(Comparator.comparing(Objects::toString));
+
+        record Components(List<ComponentDeclaration> templates, List<ComponentDeclaration> nonTemplates) {}
+        var components = allComponents.stream().collect(Collectors.teeing(
+            Collectors.filtering(ComponentDeclaration::isTemplate, Collectors.toList()),
+            Collectors.filtering(Predicate.not(ComponentDeclaration::isTemplate), Collectors.toCollection(ArrayList::new)),
+            Components::new
+        ));
+
+        var rootSet = components.nonTemplates.stream()
+            .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
+                || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
+            .toList();
+
+        var graphBuilder = new GraphBuilder(ctx, roundEnv, type, allModules, components.nonTemplates, components.templates, rootSet);
+
+        return graphBuilder.build();
     }
 
-    private void write(TypeElement type, ProcessingState.Ok ok) throws IOException {
+    private void write(TypeElement type, ResolvedGraph ok) throws IOException {
         var interceptors = ComponentInterceptors.parseInterceptors(this.ctx, ok.components());
 
         var applicationImplFile = this.generateImpl(type, ok.allModules());
