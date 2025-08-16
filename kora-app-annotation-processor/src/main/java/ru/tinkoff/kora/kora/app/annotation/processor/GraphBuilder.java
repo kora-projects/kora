@@ -36,6 +36,11 @@ public class GraphBuilder {
     private final List<ComponentDeclaration> templates;
     private final List<ComponentDeclaration> rootSet;
 
+    private final List<ResolvedComponent> resolvedComponents;
+    private final Deque<ResolutionFrame> stack;
+
+    // todo we should have fast matching map here for resolved components and non template components here
+
     public GraphBuilder(ProcessingContext ctx, RoundEnvironment roundEnv, TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates, List<ComponentDeclaration> rootSet) {
         this.ctx = ctx;
         this.roundEnv = roundEnv;
@@ -44,10 +49,25 @@ public class GraphBuilder {
         this.sourceDeclarations = sourceDeclarations;
         this.templates = templates;
         this.rootSet = rootSet;
+        this.stack = new ArrayDeque<>();
+        this.resolvedComponents = new ArrayList<>();
+
+        for (int i = 0; i < rootSet.size(); i++) {
+            this.stack.push(new ResolutionFrame.Root(i));
+        }
     }
 
-    public ResolvedGraph build() {
-        return build(new ArrayList<>(), new ArrayDeque<>());
+    public GraphBuilder(GraphBuilder from) {
+        this.ctx = from.ctx;
+        this.roundEnv = from.roundEnv;
+        this.root = from.root;
+        this.allModules = from.allModules;
+        this.sourceDeclarations = new ArrayList<>(from.sourceDeclarations);
+        this.templates = new ArrayList<>(from.templates);
+        this.rootSet = from.rootSet;
+        this.stack = new ArrayDeque<>(from.stack);
+        this.resolvedComponents = new ArrayList<>(from.resolvedComponents);
+
     }
 
     private sealed interface ResolutionFrame {
@@ -65,7 +85,7 @@ public class GraphBuilder {
     }
 
 
-    private ResolvedGraph build(List<ResolvedComponent> resolvedComponents, Deque<ResolutionFrame> stack) {
+    public ResolvedGraph build() {
         if (rootSet.isEmpty()) {
             throw new ProcessingErrorException(
                 "@KoraApp has no root components, expected at least one component annotated with @Root",
@@ -91,7 +111,7 @@ public class GraphBuilder {
             var declaration = componentFrame.declaration();
             var dependenciesToFind = componentFrame.dependenciesToFind();
             var resolvedDependencies = componentFrame.resolvedDependencies();
-            if (checkCycle(ctx, stack, resolvedComponents, declaration)) {
+            if (checkCycle(declaration)) {
                 continue;
             }
 
@@ -99,7 +119,7 @@ public class GraphBuilder {
             for (int currentDependency = componentFrame.currentDependency(); currentDependency < dependenciesToFind.size(); currentDependency++) {
                 var dependencyClaim = dependenciesToFind.get(currentDependency);
                 if (dependencyClaim.claimType() == ALL_OF_ONE || dependencyClaim.claimType() == ALL_OF_PROMISE || dependencyClaim.claimType() == ALL_OF_VALUE) {
-                    var allOfDependency = processAllOf(ctx, resolvedComponents, stack, componentFrame, currentDependency);
+                    var allOfDependency = processAllOf(componentFrame, currentDependency);
                     if (allOfDependency == null) {
                         continue frame;
                     } else {
@@ -120,11 +140,7 @@ public class GraphBuilder {
                 var dependencyDeclaration = GraphResolutionHelper.findDependencyDeclaration(ctx, declaration, sourceDeclarations, dependencyClaim);
                 if (dependencyDeclaration != null) {
                     // component not yet resolved - adding it to the tail, resolving
-                    stack.addLast(componentFrame.withCurrentDependency(currentDependency));
-                    stack.addLast(new ResolutionFrame.Component(
-                        dependencyDeclaration, ComponentDependencyHelper.parseDependencyClaims(ctx, dependencyDeclaration)
-                    ));
-                    stack.addAll(findInterceptors(ctx, resolvedComponents, stack, dependencyDeclaration));
+                    this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), dependencyDeclaration);
                     continue frame;
                 }
                 var matchingTemplates = GraphResolutionHelper.findDependencyDeclarationsFromTemplate(ctx, declaration, templates, dependencyClaim);
@@ -132,29 +148,18 @@ public class GraphBuilder {
                     if (matchingTemplates.size() == 1) {
                         var template = matchingTemplates.get(0);
                         sourceDeclarations.add(template);
-                        stack.addLast(componentFrame.withCurrentDependency(currentDependency));
-                        stack.addLast(new ResolutionFrame.Component(
-                            template, ComponentDependencyHelper.parseDependencyClaims(ctx, template)
-                        ));
-                        stack.addAll(findInterceptors(ctx, resolvedComponents, stack, template));
+                        this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), template);
                         continue frame;
                     }
                     UnresolvedDependencyException exception = null;
-                    var results = new ArrayList<ResolvedGraph>(templates.size());
-                    for (var template : templates) {
-                        var fork = new GraphBuilder(ctx, roundEnv, root, new ArrayList<>(allModules), new ArrayList<>(sourceDeclarations), new ArrayList<>(templates), new ArrayList<>(rootSet));
-                        var forkStack = new ArrayDeque<>(stack);
-                        var forkComponents = new ArrayList<>(resolvedComponents);
-                        fork.build(forkComponents, forkStack);
+                    var results = new ArrayList<ResolvedGraph>(matchingTemplates.size());
+                    for (var template : matchingTemplates) {
+                        var fork = new GraphBuilder(this);
                         fork.sourceDeclarations.add(template);
-                        forkStack.addLast(componentFrame.withCurrentDependency(currentDependency));
-                        forkStack.addLast(new ResolutionFrame.Component(
-                            template, ComponentDependencyHelper.parseDependencyClaims(ctx, template)
-                        ));
-                        forkStack.addAll(fork.findInterceptors(ctx, forkComponents, forkStack, template));
+                        fork.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), template);
 
                         try {
-                            results.add(fork.build(forkComponents, forkStack));
+                            results.add(fork.build());
                         } catch (UnresolvedDependencyException e) {
                             if (exception != null) {
                                 exception.addSuppressed(e);
@@ -193,11 +198,7 @@ public class GraphBuilder {
                 var finalClassComponent = GraphResolutionHelper.findFinalDependency(ctx, dependencyClaim);
                 if (finalClassComponent != null) {
                     sourceDeclarations.add(finalClassComponent);
-                    stack.addLast(componentFrame.withCurrentDependency(currentDependency));
-                    stack.addLast(new ResolutionFrame.Component(
-                        finalClassComponent, ComponentDependencyHelper.parseDependencyClaims(ctx, finalClassComponent)
-                    ));
-                    stack.addAll(findInterceptors(ctx, resolvedComponents, stack, finalClassComponent));
+                    this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), finalClassComponent);
                     continue frame;
                 }
                 var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type(), dependencyClaim.tags());
@@ -276,6 +277,14 @@ public class GraphBuilder {
         return new ResolvedGraph(root, allModules, resolvedComponents);
     }
 
+    private void addResolveComponentFrame(ResolutionFrame.Component currentFrame, ComponentDeclaration declaration) {
+        stack.addLast(currentFrame);
+        stack.addLast(new ResolutionFrame.Component(
+            declaration, ComponentDependencyHelper.parseDependencyClaims(ctx, declaration)
+        ));
+        stack.addAll(findInterceptors(ctx, resolvedComponents, stack, declaration));
+    }
+
     @Nullable
     public static ResolvedComponent findResolvedComponent(List<ResolvedComponent> resolvedComponents, ComponentDeclaration declaration) {
         for (var resolvedComponent : resolvedComponents) {
@@ -287,7 +296,7 @@ public class GraphBuilder {
     }
 
     @Nullable
-    private ComponentDependency processAllOf(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, Deque<ResolutionFrame> resolutionStack, ResolutionFrame.Component componentFrame, int currentDependency) {
+    private ComponentDependency processAllOf(ResolutionFrame.Component componentFrame, int currentDependency) {
         var dependencyClaim = componentFrame.dependenciesToFind().get(currentDependency);
         var dependencies = GraphResolutionHelper.findDependencyDeclarations(ctx, sourceDeclarations, dependencyClaim);
         for (var dependency : dependencies) {
@@ -298,11 +307,7 @@ public class GraphBuilder {
             if (resolved != null) {
                 continue;
             }
-            resolutionStack.addLast(componentFrame.withCurrentDependency(currentDependency));
-            resolutionStack.addLast(new ResolutionFrame.Component(
-                dependency, ComponentDependencyHelper.parseDependencyClaims(ctx, dependency)
-            ));
-            resolutionStack.addAll(findInterceptors(ctx, resolvedComponents, resolutionStack, dependency));
+            addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), dependency);
             return null;
         }
         if (dependencyClaim.claimType() == ALL_OF_ONE) {
@@ -402,8 +407,8 @@ public class GraphBuilder {
         return new ComponentDeclaration.PromisedProxyComponent(typeElement, ClassName.get(packageElement.getQualifiedName().toString(), resultClassName));
     }
 
-    private boolean checkCycle(ProcessingContext ctx, Deque<ResolutionFrame> resolutionStack, List<ResolvedComponent> resolvedComponents, ComponentDeclaration declaration) {
-        var prevFrame = resolutionStack.peekLast();
+    private boolean checkCycle(ComponentDeclaration declaration) {
+        var prevFrame = stack.peekLast();
         if (!(prevFrame instanceof ResolutionFrame.Component prevComponent)) {
             return false;
         }
@@ -416,7 +421,7 @@ public class GraphBuilder {
         if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
             throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), declaration);
         }
-        for (var inStackFrame : resolutionStack) {
+        for (var inStackFrame : stack) {
             if (!(inStackFrame instanceof ResolutionFrame.Component componentFrame) || componentFrame.declaration() != declaration) {
                 continue;
             }
@@ -431,9 +436,9 @@ public class GraphBuilder {
             );
             var alreadyGenerated = GraphResolutionHelper.findDependency(ctx, prevComponent.declaration(), resolvedComponents, proxyDependencyClaim);
             if (alreadyGenerated != null) {
-                resolutionStack.removeLast();
+                stack.removeLast();
                 prevComponent.resolvedDependencies().add(alreadyGenerated);
-                resolutionStack.addLast(prevComponent.withCurrentDependency(prevComponent.currentDependency() + 1));
+                stack.addLast(prevComponent.withCurrentDependency(prevComponent.currentDependency() + 1));
                 return true;
             }
             var proxyComponentDeclaration = GraphResolutionHelper.findDependencyDeclarationFromTemplate(
