@@ -21,7 +21,7 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun test() {
-        val classLoader = symbolProcess(TestKoraApp::class, KoraAppProcessorProvider(), RepositorySymbolProcessorProvider())
+        val classLoader = symbolProcess(listOf(KoraAppProcessorProvider(), RepositorySymbolProcessorProvider()), listOf(TestKoraApp::class))
         val clazz = classLoader.loadClass(TestKoraApp::class.qualifiedName + "Graph")
         val constructors = clazz.constructors as Array<Constructor<out Supplier<out ApplicationGraphDraw>>>
         val graphDraw: ApplicationGraphDraw = constructors[0].newInstance().get()
@@ -31,7 +31,7 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testTagged() {
-        val classLoader = symbolProcess(TestKoraAppTagged::class, KoraAppProcessorProvider(), RepositorySymbolProcessorProvider())
+        val classLoader = symbolProcess(listOf(KoraAppProcessorProvider(), RepositorySymbolProcessorProvider()), listOf(TestKoraAppTagged::class))
         val clazz = classLoader.loadClass("ru.tinkoff.kora.database.symbol.processor.app.\$TestKoraAppTagged_TestRepository_Impl")
         val constructor = clazz.constructors[0]
         constructor.parameters.forEach { p ->
@@ -45,7 +45,7 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testTaggedRepo() {
-        val result = compile0(
+        val result = compile0(listOf(KoraAppProcessorProvider(), RepositorySymbolProcessorProvider()),
             """
             import org.mockito.Mockito
 
@@ -76,7 +76,7 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
 
         result.assertSuccess()
 
-        val graph = compileResult.loadClass("ApplicationGraph").toGraph()
+        val graph = loadClass("ApplicationGraph").toGraph()
 
         val testRoot = graph.graph.get(graph.draw.findNodeByType(String::class.java))
 

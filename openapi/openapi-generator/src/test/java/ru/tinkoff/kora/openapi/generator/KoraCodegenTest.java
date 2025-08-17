@@ -8,8 +8,6 @@ import org.jetbrains.kotlin.cli.common.messages.MessageRenderer;
 import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector;
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler;
 import org.jetbrains.kotlin.config.Services;
-import org.junit.jupiter.api.parallel.Execution;
-import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openapitools.codegen.DefaultGenerator;
@@ -174,7 +172,6 @@ class KoraCodegenTest {
 
     @ParameterizedTest
     @MethodSource("generateParams")
-    @Execution(ExecutionMode.CONCURRENT)
     void generateTest(SwaggerParams params) throws Exception {
         generate(
             params.name(),

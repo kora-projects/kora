@@ -37,7 +37,7 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
     }
 
     private fun <T : Any> process(type: KClass<T>) {
-        val cl = symbolProcess(type)
+        val cl = symbolProcess(listOf(SchedulingKspProvider()), listOf(type))
 
         val module = cl.loadClass(type.asClassName().packageName + ".$" + type.simpleName + "_SchedulingModule")
     }
@@ -56,7 +56,7 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         cr.assertSuccess()
-        val clazz = cr.loadClass("\$TestClass_job_Job")
+        val clazz = loadClass("\$TestClass_job_Job")
         Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
     }
 
@@ -73,7 +73,7 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         cr.assertSuccess()
-        val clazz = cr.loadClass("\$TestClass_job_Job")
+        val clazz = loadClass("\$TestClass_job_Job")
         Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
     }
 

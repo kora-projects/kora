@@ -72,7 +72,7 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
                 """.trimIndent()
             )
         }
-        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        compileResult.assertFailure()
 //        Assertions.assertThat<Diagnostic<out JavaFileObject?>>(compileResult.errors()).hasSize(1)
 //        Assertions.assertThat(compileResult.errors().get(0).getMessage(Locale.ENGLISH)).startsWith(
 //            "Required dependency wasn't found: " +

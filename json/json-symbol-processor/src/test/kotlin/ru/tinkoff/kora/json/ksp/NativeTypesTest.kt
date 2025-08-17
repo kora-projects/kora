@@ -50,7 +50,7 @@ class NativeTypesTest : AbstractJsonSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        compileResult.isFailed()
+        compileResult.assertFailure()
     }
 
     @Test
@@ -69,6 +69,6 @@ class NativeTypesTest : AbstractJsonSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        compileResult.isFailed()
+        compileResult.assertFailure()
     }
 }

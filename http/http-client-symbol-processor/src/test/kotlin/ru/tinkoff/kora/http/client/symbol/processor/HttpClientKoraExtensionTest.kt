@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.client.symbol.processor
 
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraphDraw
 
@@ -16,7 +17,7 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testExtension() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider(), HttpClientSymbolProcessorProvider()),
             """
             import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
             import java.util.concurrent.CompletionStage
@@ -40,7 +41,7 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
                     """.trimIndent()
         )
         compileResult.assertSuccess()
-        val graph = compileResult.loadClass("TestAppGraph").toGraphDraw()
+        val graph = loadClass("TestAppGraph").toGraphDraw()
         Assertions.assertThat(graph.nodes)
             .hasSize(7)
     }

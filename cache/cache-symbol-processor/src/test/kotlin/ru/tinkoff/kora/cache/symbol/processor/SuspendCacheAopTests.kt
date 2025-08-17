@@ -31,9 +31,8 @@ class SuspendCacheAopTests : CaffeineCacheModule {
 
         return try {
             val classLoader = symbolProcess(
+                listOf(CacheSymbolProcessorProvider(), AopSymbolProcessorProvider()),
                 listOf(DummyCache21::class, CacheableSuspend::class),
-                CacheSymbolProcessorProvider(),
-                AopSymbolProcessorProvider(),
             )
 
             val cacheClass = classLoader.loadClass(CACHE_CLASS)
@@ -47,7 +46,7 @@ class SuspendCacheAopTests : CaffeineCacheModule {
             val serviceClass = classLoader.loadClass(SERVICE_CLASS)
                 ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
             val mapper = CacheKeyMapper2<DummyCache21.Key, String, BigDecimal?>
-                { arg1, arg2 -> DummyCache21.Key(arg1, arg2 ?: BigDecimal.ZERO) }
+            { arg1, arg2 -> DummyCache21.Key(arg1, arg2 ?: BigDecimal.ZERO) }
             val inst = serviceClass.constructors[0].newInstance(cache, mapper) as CacheableSuspend
             inst
         } catch (e: Exception) {

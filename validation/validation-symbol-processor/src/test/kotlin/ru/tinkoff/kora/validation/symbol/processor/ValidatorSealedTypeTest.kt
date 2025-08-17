@@ -25,7 +25,7 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
                 """.trimIndent()
         )
         compileResult.assertSuccess()
-        val validatorClass = compileResult.loadClass("\$TestInterface_Validator")
+        val validatorClass = loadClass("\$TestInterface_Validator")
         assertThat(validatorClass).isNotNull()
     }
 
@@ -54,9 +54,9 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
                 """.trimIndent()
         )
         compileResult.assertSuccess()
-        val validatorClass = compileResult.loadClass("\$TestInterface_Validator")
+        val validatorClass = loadClass("\$TestInterface_Validator")
         assertThat(validatorClass).isNotNull()
-        val graph = compileResult.loadClass("TestAppGraph")
+        val graph = loadClass("TestAppGraph")
         assertThat(graph).isNotNull()
     }
 }

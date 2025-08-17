@@ -110,8 +110,8 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 b.endControlFlow()
             }
         }
-        val keyTag = recordParameter.key.parseTags()
-        val valueTag = recordParameter.value.parseTags()
+        val keyTag = recordParameter.key?.parseTags() ?: setOf()
+        val valueTag = recordParameter.value?.parseTags() ?: setOf()
 
         return HandlerFunction(b.build(), keyType, keyTag, valueType, valueTag)
     }
@@ -119,10 +119,10 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
     fun generateRecords(b: FunSpec.Builder, function: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         val recordsParameter = parameters.first { it is ConsumerParameter.Records } as ConsumerParameter.Records
 
-        var keyTypeName = recordsParameter.key.toTypeName().copy(false)
-        val valueTypeName = recordsParameter.value.toTypeName().copy(false)
+        var keyTypeName = recordsParameter.key?.toTypeName()?.copy(false)
+        val valueTypeName = recordsParameter.value?.toTypeName()?.copy(false)
 
-        if (keyTypeName == STAR || keyTypeName == ANY) {
+        if (keyTypeName == null || keyTypeName == STAR || keyTypeName == ANY) {
             keyTypeName = BYTE_ARRAY
         } else if (keyTypeName !is ParameterizedTypeName && keyTypeName !is ClassName) {
             val message = "Kafka listener method has invalid key type $keyTypeName"
@@ -159,7 +159,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             }
         }
 
-        val keyTag = recordsParameter.key.parseTags()
+        val keyTag = recordsParameter.key?.parseTags() ?: setOf()
         val valueTag = recordsParameter.value.parseTags()
 
         return HandlerFunction(b.build(), keyTypeName, keyTag, valueTypeName, valueTag)
@@ -245,7 +245,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 endControlFlow()
             }
             if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context,  context)
+                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context, context)
             }
 
             add("controller.%N(", functionDeclaration.simpleName.asString())

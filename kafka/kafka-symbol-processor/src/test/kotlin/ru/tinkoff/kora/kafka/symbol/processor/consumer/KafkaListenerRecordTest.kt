@@ -52,7 +52,7 @@ class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
             """.trimIndent()
         )
 
-        val module = compileResult.loadClass("KafkaListenerModule")
+        val module = loadClass("KafkaListenerModule")
         val container = module.getMethod(
             "kafkaListenerProcessContainer",
             KafkaListenerConfig::class.java,
@@ -69,9 +69,9 @@ class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
         val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
 
         Assertions.assertThat(keyTag).isNotNull()
-        Assertions.assertThat(keyTag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("KafkaListener")))
+        Assertions.assertThat(keyTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListener")))
         Assertions.assertThat(valueTag).isNotNull()
-        Assertions.assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("KafkaListener")))
+        Assertions.assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListener")))
     }
 
     @Test

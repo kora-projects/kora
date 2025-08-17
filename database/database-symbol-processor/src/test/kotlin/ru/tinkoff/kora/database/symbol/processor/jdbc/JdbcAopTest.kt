@@ -4,6 +4,8 @@ import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.verify
+import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+import ru.tinkoff.kora.database.symbol.processor.RepositorySymbolProcessorProvider
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 
 class JdbcAopTest : AbstractJdbcRepositoryTest() {
@@ -23,7 +25,7 @@ class JdbcAopTest : AbstractJdbcRepositoryTest() {
     }
 
     fun compile(@Language("kotlin") vararg sources: String) {
-        val classAsStrs: MutableList<String> = mutableListOf(
+        val classAsStrs = mutableListOf(
             """
                 @ru.tinkoff.kora.common.Module
                 interface ConfigModule : ru.tinkoff.kora.database.jdbc.JdbcDatabaseModule, ru.tinkoff.kora.config.common.DefaultConfigExtractorsModule, ru.tinkoff.kora.logging.logback.LogbackModule {
@@ -39,7 +41,7 @@ class JdbcAopTest : AbstractJdbcRepositoryTest() {
         )
         classAsStrs.addAll(sources)
 
-        compile0(*classAsStrs.toTypedArray())
+        compile0(listOf(RepositorySymbolProcessorProvider(), AopSymbolProcessorProvider()), *classAsStrs.toTypedArray())
         compileResult.assertSuccess()
     }
 

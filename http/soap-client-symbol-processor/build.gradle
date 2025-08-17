@@ -39,7 +39,6 @@ dependencies {
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation testFixtures(project(':symbol-processor-common'))
 
-    testImplementation libs.kotlin.compile.testing
     testImplementation 'javax.xml.bind:jaxb-api:2.3.1'
     testImplementation 'com.sun.xml.bind:jaxb-impl:2.3.5'
     testImplementation 'javax.jws:javax.jws-api:1.1'

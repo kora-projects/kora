@@ -22,7 +22,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
 
         val validator = newObject("\$TestRecord_Validator").objectInstance as Validator<Any>
@@ -42,7 +42,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
 
         val validator = newObject("\$TestRecord_Validator").objectInstance as Validator<Any>
@@ -62,7 +62,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
 
         val validator = newObject("\$TestRecord_Validator").objectInstance as Validator<Any>
@@ -82,7 +82,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
 
         val validator = newObject("\$TestRecord_Validator").objectInstance as Validator<Any>
@@ -102,7 +102,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
 
         val validator = newObject("\$TestRecord_Validator").objectInstance as Validator<Any>
@@ -122,7 +122,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
 
         val validator = newObject("\$TestRecord_Validator").objectInstance as Validator<Any>
@@ -142,7 +142,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
@@ -163,7 +163,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
@@ -184,7 +184,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
@@ -205,7 +205,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
@@ -226,7 +226,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
@@ -247,7 +247,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 

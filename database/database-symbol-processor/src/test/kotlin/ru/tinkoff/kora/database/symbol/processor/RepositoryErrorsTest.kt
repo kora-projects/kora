@@ -20,6 +20,6 @@ class RepositoryErrorsTest {
     }
 
     fun <T: Any> process(repository: KClass<T>) {
-        symbolProcess(repository, RepositorySymbolProcessorProvider())
+        symbolProcess(listOf(RepositorySymbolProcessorProvider()), listOf(repository))
     }
 }

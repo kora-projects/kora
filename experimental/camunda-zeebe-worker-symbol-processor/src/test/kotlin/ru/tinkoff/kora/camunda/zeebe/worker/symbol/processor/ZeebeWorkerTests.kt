@@ -18,7 +18,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerNoVars() {
-        compile0(
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
             """
             @Component
             class Handler {
@@ -42,7 +42,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerVars() {
-        compile0(
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
             """
             @Component
             class Handler {
@@ -69,7 +69,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerVar() {
-        compile0(
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
             """
             @Component
             class Handler {
@@ -94,7 +94,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerReturnVars() {
-        compile0(
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
             """
             @Component
             class Handler {
@@ -121,7 +121,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerContext() {
-        compile0(
+        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
             """
             @Component
             class Handler {

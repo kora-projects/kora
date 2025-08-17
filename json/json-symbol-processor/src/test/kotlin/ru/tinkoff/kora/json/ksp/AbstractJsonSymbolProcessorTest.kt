@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions
 import org.intellij.lang.annotations.Language
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
+import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import java.nio.charset.StandardCharsets
 
@@ -21,20 +22,18 @@ abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     protected open fun compile(@Language("kotlin") vararg sources: String) {
-        val compileResult = compile0(*sources)
-        if (compileResult.isFailed()) {
-            throw compileResult.compilationException()
-        }
+        compile0(listOf(JsonSymbolProcessorProvider(), KoraAppProcessorProvider()), *sources)
+            .assertSuccess()
     }
 
-    protected open fun readerClass(forClass: String) = compileResult.classLoader.readerClass(testPackage(), forClass)
-    protected open fun writerClass(forClass: String) = compileResult.classLoader.writerClass(testPackage(), forClass)
+    protected open fun readerClass(forClass: String) = compileResult.assertSuccess().classLoader.readerClass(testPackage(), forClass)
+    protected open fun writerClass(forClass: String) = compileResult.assertSuccess().classLoader.writerClass(testPackage(), forClass)
 
-    protected open fun reader(forClass: String, vararg params: Any?) = compileResult.classLoader.reader(testPackage(), forClass, *params)
-    protected open fun writer(forClass: String, vararg params: Any?) = compileResult.classLoader.writer(testPackage(), forClass, *params)
+    protected open fun reader(forClass: String, vararg params: Any?) = compileResult.assertSuccess().classLoader.reader(testPackage(), forClass, *params)
+    protected open fun writer(forClass: String, vararg params: Any?) = compileResult.assertSuccess().classLoader.writer(testPackage(), forClass, *params)
 
-    protected open fun mapper(forClass: String) = compileResult.classLoader.mapper(testPackage(), forClass)
-    protected open fun mapper(forClass: String, readerParams: List<*>, writerParams: List<*>) = compileResult.classLoader.mapper(testPackage(), forClass, readerParams, writerParams)
+    protected open fun mapper(forClass: String) = compileResult.assertSuccess().classLoader.mapper(testPackage(), forClass)
+    protected open fun mapper(forClass: String, readerParams: List<*>, writerParams: List<*>) = compileResult.assertSuccess().classLoader.mapper(testPackage(), forClass, readerParams, writerParams)
 
 
     class ReaderAndWriter<T>(private val reader: JsonReader<T>, private val writer: JsonWriter<T>) :

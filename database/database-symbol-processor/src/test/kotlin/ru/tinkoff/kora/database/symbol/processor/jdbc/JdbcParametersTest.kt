@@ -304,7 +304,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
-        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
     }
 
     @Test
@@ -326,7 +326,7 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
-        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
     }
 
     @Test
@@ -373,6 +373,6 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         Assertions.assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(JdbcParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         Assertions.assertThat(tag).isNotNull()
-        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+        Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
     }
 }
