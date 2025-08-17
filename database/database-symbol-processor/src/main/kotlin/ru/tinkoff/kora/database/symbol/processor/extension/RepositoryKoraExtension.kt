@@ -1,9 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor.extension
 
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
@@ -14,7 +11,6 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
 import ru.tinkoff.kora.ksp.common.TagUtils.tagsMatch
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -35,28 +31,7 @@ class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension 
         if (!tags.tagsMatch(declaration.parseTags())) {
             return null
         }
-        return lambda@{
-            val packageName = declaration.packageName.asString()
-            val repositoryName: String = declaration.getOuterClassesAsPrefix() + declaration.simpleName.asString() + "_Impl"
-            val repositoryElement = resolver.getClassDeclarationByName("$packageName.$repositoryName")
-            if (repositoryElement == null) {
-                // annotation processor will handle it
-                return@lambda ExtensionResult.RequiresCompilingResult
-            }
-            if (!hasAopAnnotations(repositoryElement)) {
-                return@lambda repositoryElement.getConstructors().map { ExtensionResult.fromConstructor(it, repositoryElement) }.first()
-            }
-
-            val aopProxy = repositoryElement.getOuterClassesAsPrefix() + repositoryElement.simpleName.getShortName() + "__AopProxy"
-            val aopProxyElement = resolver.getClassDeclarationByName("$packageName.$aopProxy")
-            if (aopProxyElement == null) {
-                return@lambda ExtensionResult.RequiresCompilingResult
-            }
-            val constructor = aopProxyElement.getConstructors().filter { it.isPublic() }.firstOrNull()
-            if (constructor == null) {
-                throw IllegalStateException()
-            }
-            ExtensionResult.fromConstructor(constructor, aopProxyElement)
-        }
+        val repositoryName: String = declaration.getOuterClassesAsPrefix() + declaration.simpleName.asString() + "_Impl"
+        return generatedByProcessorWithName(resolver, declaration, repositoryName)
     }
 }

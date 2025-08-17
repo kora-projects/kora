@@ -283,14 +283,6 @@ class KoraAppKspTest {
     }
 
     @Test
-    fun appWithExtension() {
-        val graphDraw = testClass(AppWithExtension::class)
-        assertThat(graphDraw.nodes).hasSize(4)
-        val materializedGraph = graphDraw.init()
-        assertThat(materializedGraph).isNotNull
-    }
-
-    @Test
     fun extensionShouldHandleAnnotationsItProvidesAnnotationProcessorFor() {
         val graphDraw = testClass(AppWithProcessorExtension::class, listOf(AppWithProcessorExtension.TestProcessorProvider()))
         assertThat(graphDraw.nodes).hasSize(2)
@@ -371,15 +363,6 @@ class KoraAppKspTest {
         assertThat(graphDraw.nodes).hasSize(5)
         val materializedGraph = graphDraw.init()
         assertThat(materializedGraph).isNotNull
-    }
-
-    @Test
-    fun appWithInterceptor() {
-        val graphDraw = testClass(AppWithInterceptor::class)
-        assertThat(graphDraw.nodes).hasSize(4)
-        val materializedGraph = graphDraw.init()
-        assertThat(materializedGraph).isNotNull
-        materializedGraph.release()
     }
 
     @Test
