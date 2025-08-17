@@ -10,7 +10,8 @@ import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
     @Test
     fun testReaderFromAnnotatedClass() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
             interface TestApp {
                 @ru.tinkoff.kora.json.common.annotation.Json
@@ -19,24 +20,8 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 @Root
                 fun test(r: ru.tinkoff.kora.json.common.JsonReader<TestClass>) {}
             }
-        """.trimIndent())
-
-        compileResult.assertSuccess()
-        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
-        assertThat(graph.nodes).hasSize(2)
-    }
-
-    @Test
-    fun testReaderFromNonAnnotatedClass() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
-            @KoraApp
-            interface TestApp  : ru.tinkoff.kora.json.common.JsonCommonModule{
-                data class TestClass(val a: String)
-
-                @Root
-                fun test(r: ru.tinkoff.kora.json.common.JsonReader<ru.tinkoff.kora.json.ksp.dto.JavaBeanDto>) {}
-            }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         compileResult.assertSuccess()
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
@@ -45,7 +30,8 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testWriterFromAnnotatedClass() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
             interface TestApp {
                 @ru.tinkoff.kora.json.common.annotation.Json
@@ -54,24 +40,8 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 @Root
                 fun test(r: ru.tinkoff.kora.json.common.JsonWriter<TestClass>) {}
             }
-        """.trimIndent())
-
-        compileResult.assertSuccess()
-        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
-        assertThat(graph.nodes).hasSize(2)
-    }
-
-    @Test
-    fun testWriterFromNonAnnotatedClass() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
-            @KoraApp
-            interface TestApp {
-                data class TestClass(val a: String)
-
-                @Root
-                fun test(r: ru.tinkoff.kora.json.common.JsonWriter<TestClass>) {}
-            }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         compileResult.assertSuccess()
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
@@ -80,7 +50,8 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testReaderFromAnnotatedEnum() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
             interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
                 @ru.tinkoff.kora.json.common.annotation.Json
@@ -89,24 +60,8 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 @Root
                 fun test(r: ru.tinkoff.kora.json.common.JsonReader<TestEnum>) {}
             }
-        """.trimIndent())
-
-        compileResult.assertSuccess()
-        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
-        assertThat(graph.nodes).hasSize(3)
-    }
-
-    @Test
-    fun testReaderFromNonAnnotatedEnum() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
-            @KoraApp
-            interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
-                enum class TestEnum { INSTANCE }
-
-                @Root
-                fun test(r: ru.tinkoff.kora.json.common.JsonReader<TestEnum>) {}
-            }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         compileResult.assertSuccess()
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
@@ -115,7 +70,8 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testWriterFromAnnotatedEnum() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
             interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
                 @ru.tinkoff.kora.json.common.annotation.Json
@@ -124,81 +80,35 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 @Root
                 fun test(r: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         compileResult.assertSuccess()
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
         assertThat(graph.nodes).hasSize(3)
-    }
-
-    @Test
-    fun testWriterFromNonAnnotatedEnum() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
-            @KoraApp
-            interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
-                enum class TestEnum { INSTANCE }
-
-                @Root
-                fun test(r: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) {}
-            }
-        """.trimIndent())
-
-        compileResult.assertSuccess()
-        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
-        assertThat(graph.nodes).hasSize(3)
-    }
-
-
-    @Test
-    fun testReaderFromJavaClass() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
-            @KoraApp
-            interface TestApp  : ru.tinkoff.kora.json.common.JsonCommonModule{
-                data class TestClass(val a: String)
-
-                @Root
-                fun test(r: ru.tinkoff.kora.json.common.JsonReader<ru.tinkoff.kora.json.ksp.dto.JavaBeanDto>) {}
-            }
-        """.trimIndent())
-
-        compileResult.assertSuccess()
-        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
-        assertThat(graph.nodes).hasSize(2)
-    }
-
-    @Test
-    fun testWriterFromJavaClass() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
-            @KoraApp
-            interface TestApp  : ru.tinkoff.kora.json.common.JsonCommonModule{
-                data class TestClass(val a: String)
-
-                @Root
-                fun test(r: ru.tinkoff.kora.json.common.JsonWriter<ru.tinkoff.kora.json.ksp.dto.JavaBeanDto>) {}
-            }
-        """.trimIndent())
-
-        compileResult.assertSuccess()
-        val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
-        assertThat(graph.nodes).hasSize(2)
     }
 
     @Test
     fun testReaderFromExtensionGeneratedForSealedInterface() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
             interface TestApp {
             
                 @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("type")
+                @ru.tinkoff.kora.json.common.annotation.Json
                 sealed interface TestInterface {
+                    @ru.tinkoff.kora.json.common.annotation.Json
                     data class Impl1(val value: String) : TestInterface
+                    @ru.tinkoff.kora.json.common.annotation.Json
                     data class Impl2(val value: Int) : TestInterface
                 }
 
                 @Root
                 fun test(r: ru.tinkoff.kora.json.common.JsonReader<TestInterface>) {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         compileResult.assertSuccess()
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!
@@ -207,20 +117,25 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testWriterFromExtensionGeneratedForSealedInterface() {
-        compile0(listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        compile0(
+            listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
             interface TestApp {
             
                 @ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField("type")
+                @ru.tinkoff.kora.json.common.annotation.Json
                 sealed interface TestInterface {
+                    @ru.tinkoff.kora.json.common.annotation.Json
                     data class Impl1(val value: String) : TestInterface
+                    @ru.tinkoff.kora.json.common.annotation.Json
                     data class Impl2(val value: Int) : TestInterface
                 }
 
                 @Root
                 fun test(r: ru.tinkoff.kora.json.common.JsonWriter<TestInterface>) {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         compileResult.assertSuccess()
         val graph = newObject("TestAppGraph").invoke<ApplicationGraphDraw>("graph")!!

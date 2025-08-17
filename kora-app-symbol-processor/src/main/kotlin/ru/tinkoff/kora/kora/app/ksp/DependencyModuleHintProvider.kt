@@ -1,15 +1,13 @@
 package ru.tinkoff.kora.kora.app.ksp
 
 import com.fasterxml.jackson.core.*
-import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.LoggerFactory
 import java.io.IOException
 import java.util.regex.Pattern
 
-class DependencyModuleHintProvider(private val resolver: Resolver) {
-
+class DependencyModuleHintProvider {
     private val log = LoggerFactory.getLogger(this::class.java)
 
     private var hints: List<KoraHint> = mutableListOf()

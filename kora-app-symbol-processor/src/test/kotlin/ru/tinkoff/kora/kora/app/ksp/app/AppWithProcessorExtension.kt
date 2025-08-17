@@ -75,14 +75,7 @@ interface AppWithProcessorExtension {
             }
             val packageName = interfaceDeclaration.packageName.asString()
             val typeName = "AppWithExtensionInterface1Impl"
-            return lambda@{
-                val maybeGenerated = resolver.getClassDeclarationByName("$packageName.$typeName")
-                if (maybeGenerated != null) {
-                    val constructor = maybeGenerated.getConstructors().first()
-                    return@lambda ExtensionResult.fromConstructor(constructor, maybeGenerated)
-                }
-                return@lambda ExtensionResult.RequiresCompilingResult
-            }
+            return generatedByProcessorWithName(resolver, interfaceDeclaration, "AppWithExtensionInterface1Impl")
         }
     }
 }

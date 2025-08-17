@@ -47,48 +47,6 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
 
     @Test
-    fun testReaderFromExtension() {
-        compile("""
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp {
-              enum class TestEnum {
-                VALUE1, VALUE2
-              }
-              
-              fun stringReader(): ru.tinkoff.kora.json.common.JsonReader<String> = ru.tinkoff.kora.json.common.JsonReader<String> { obj -> obj.valueAsString }
-              fun stringWriter(): ru.tinkoff.kora.json.common.JsonWriter<String> = ru.tinkoff.kora.json.common.JsonWriter<String> { obj, text -> obj.writeString(text) }
-
-              @Root
-              fun root(r: ru.tinkoff.kora.json.common.JsonReader<TestEnum>) = ""
-            }
-            
-            """.trimIndent())
-        compileResult.assertSuccess()
-        Assertions.assertThat(reader("TestApp_TestEnum", stringReader)).isNotNull()
-    }
-
-    @Test
-    fun testWriterFromExtension() {
-        compile("""
-            @ru.tinkoff.kora.common.KoraApp
-            interface TestApp {
-              enum class TestEnum {
-                VALUE1, VALUE2
-              }
-
-              fun stringReader(): ru.tinkoff.kora.json.common.JsonReader<String> = ru.tinkoff.kora.json.common.JsonReader<String> { obj -> obj.valueAsString }
-              fun stringWriter(): ru.tinkoff.kora.json.common.JsonWriter<String> = ru.tinkoff.kora.json.common.JsonWriter<String> { obj, text -> obj.writeString(text) }
-
-              @Root
-              fun root(r: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) = ""
-            }
-            
-            """.trimIndent())
-        compileResult.assertSuccess()
-        Assertions.assertThat(writer("TestApp_TestEnum", stringWriter)).isNotNull()
-    }
-
-    @Test
     fun testAnnotationProcessedReaderFromExtension() {
         compile("""
             @ru.tinkoff.kora.common.KoraApp
