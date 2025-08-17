@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.mapstruct.ksp.extension
 
-import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -34,17 +32,8 @@ object MapstructKoraExtension : KoraExtension {
         if (tag != tags) {
             return null
         }
-        val packageName = declaration.packageName.asString()
         val expectedName = getMapstructMapperName(declaration)
-        return {
-            val implementation = resolver.getClassDeclarationByName("$packageName.$expectedName")
-            if (implementation == null) {
-                ExtensionResult.RequiresCompilingResult
-            } else {
-                val constructor = implementation.getConstructors().first()
-                ExtensionResult.fromConstructor(constructor, implementation)
-            }
-        }
+        return generatedByProcessorWithName(resolver, declaration, expectedName)
     }
 
     private fun getMapstructMapperName(declaration: KSDeclaration): String {

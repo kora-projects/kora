@@ -11,6 +11,6 @@ import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 class ConfigLinkerExtensionFactory : ExtensionFactory {
     override fun create(resolver: Resolver, kspLogger: KSPLogger, codeGenerator: CodeGenerator): KoraExtension? {
         val configValueExtractor = resolver.getClassDeclarationByName(ConfigClassNames.configValueExtractor.canonicalName)
-        return configValueExtractor?.let { ConfigKoraExtension(resolver, codeGenerator) }
+        return configValueExtractor?.let { ConfigKoraExtension() }
     }
 }

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.symbol.processor.cassandra.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getFunctionDeclarationsByName
+import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
@@ -56,17 +57,9 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
             return null
         }
         if (!rowSetParam.isList()) {
-            val entity = DbEntity.parseEntity(rowSetParam)
-            if (entity != null) {
-                if (entity.type.declaration.isAnnotationPresent(CassandraTypes.entity)) {
-                    return fromProcessor(resolver, rowSetParam.resultSetMapperClassName())
-                } else {
-                    return fromExtension(resolver, rowSetKSType, rowSetParam.resultSetMapperClassName()) {
-                        entityGenerator.generateResultSetMapper(entity, true)
-                    }
-                }
+            if (rowSetParam.declaration.isAnnotationPresent(CassandraTypes.entity)) {
+                return generatedByProcessor(resolver, rowSetParam.declaration as KSClassDeclaration, CassandraTypes.resultSetMapper)
             }
-
             val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.resultSetMapper.canonicalName)!!
             val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
             val resultSetMapperType = resultSetMapperDecl.asType(listOf(resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(rowSetParam), Variance.INVARIANT)))
@@ -80,15 +73,8 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         }
         val rowType = rowSetParam.arguments[0]
         val rowResolvedType = rowType.type!!.resolve()
-        val entity = DbEntity.parseEntity(rowResolvedType)
-        if (entity != null) {
-            if (entity.type.declaration.isAnnotationPresent(CassandraTypes.entity)) {
-                return fromProcessor(resolver, rowResolvedType.listResultSetMapperClassName())
-            } else {
-                return fromExtension(resolver, rowSetKSType, rowResolvedType.listResultSetMapperClassName()) {
-                    entityGenerator.generateListResultSetMapper(entity, true)
-                }
-            }
+        if (rowResolvedType.declaration.isAnnotationPresent(CassandraTypes.entity)) {
+            return generatedByProcessor(resolver, rowResolvedType.declaration as KSClassDeclaration, "ListCassandraResultSetMapper")
         }
         val resultSetMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.resultSetMapper.canonicalName)!!
         val rowMapperDecl = resolver.getClassDeclarationByName(CassandraTypes.rowMapper.canonicalName)!!
@@ -113,17 +99,10 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
 
     private fun generateRowMapper(resolver: Resolver, rowKSType: KSType): (() -> ExtensionResult)? {
         val rowType = rowKSType.arguments[0].type!!.resolve()
-        val entity = DbEntity.parseEntity(rowType)
-        if (entity == null) {
-            return null
+        if (rowType.declaration.isAnnotationPresent(CassandraTypes.entity)) {
+            return generatedByProcessor(resolver, rowType.declaration as KSClassDeclaration, CassandraTypes.rowMapper)
         }
-        if (entity.classDeclaration.isAnnotationPresent(CassandraTypes.entity)) {
-            return fromProcessor(resolver, rowType.rowMapperClassName())
-        } else {
-            return fromExtension(resolver, rowKSType, rowType.rowMapperClassName()) {
-                entityGenerator.generateRowMapper(entity, true)
-            }
-        }
+        return null
     }
 
     private fun generateAsyncResultSetMapper(resolver: Resolver, type: KSType): (() -> ExtensionResult)? {
@@ -222,42 +201,6 @@ class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, 
         }
 
         return null
-    }
-
-    private fun parseIndexes(entity: DbEntity, rsName: String): CodeBlock {
-        val cb = CodeBlock.builder()
-        for (field in entity.columns) {
-            cb.add("val %N = %N.columnDefinitions.firstIndexOf(%S)\n", "_idx_${field.variableName}", rsName, field.columnName)
-        }
-        return cb.build()
-    }
-
-    private fun fromProcessor(resolver: Resolver, mapper: ClassName): (() -> ExtensionResult) {
-        val generated = resolver.getClassDeclarationByName(mapper)
-        if (generated != null) {
-            return {
-                val constructor = generated.primaryConstructor!!
-                ExtensionResult.fromConstructor(constructor, generated)
-            }
-        } else {
-            return { ExtensionResult.RequiresCompilingResult }
-        }
-    }
-
-    private fun fromExtension(resolver: Resolver, mapperType: KSType, mapper: ClassName, generator: () -> Unit): (() -> ExtensionResult) {
-        val generated = resolver.getClassDeclarationByName(mapper)
-        if (generated != null) {
-            return {
-                val constructor = generated.primaryConstructor!!
-                ExtensionResult.fromConstructor(constructor, generated)
-            }
-        } else {
-            return {
-                kspLogger.warn("Type is not annotated with @EntityCassandra, but mapper $mapperType is requested by graph. Generating one in graph building process will lead to another round of compiling which will slow down you build")
-                generator()
-                ExtensionResult.RequiresCompilingResult
-            }
-        }
     }
 
 }

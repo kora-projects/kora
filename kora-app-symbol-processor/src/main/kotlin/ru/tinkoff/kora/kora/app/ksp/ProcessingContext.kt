@@ -12,5 +12,5 @@ class ProcessingContext(
 ) {
     val serviceTypesHelper = ServiceTypesHelper(resolver)
     val extensions = Extensions.load(ProcessingContext::class.java.classLoader, resolver, kspLogger, codeGenerator)
-    val dependencyHintProvider = DependencyModuleHintProvider(resolver)
+    val dependencyHintProvider = DependencyModuleHintProvider()
 }
