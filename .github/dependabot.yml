@@ -9,10 +9,10 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
-ignore:
-  - dependency-name: "io.netty:*"
-    versions: [ ">=4.1.110.Final" ]
-  - dependency-name: "io.vertx:*"
-    versions: [ ">=4.3.8" ]
-  - dependency-name: "com.squareup.okio:okio"
-    versions: [ ">=3.10.2" ]
+    ignore:
+      - dependency-name: "io.netty:*"
+        versions: [ ">=4.1.110.Final" ]
+      - dependency-name: "io.vertx:*"
+        versions: [ ">=4.3.8" ]
+      - dependency-name: "com.squareup.okio:okio"
+        versions: [ ">=3.10.2" ]
