@@ -44,7 +44,7 @@ opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semco
 opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.34.0-alpha" }
 opentelemetry-micrometer-meter-provider = { module = "io.opentelemetry.contrib:opentelemetry-micrometer-meter-provider", version = "1.48.0-alpha" }
 
-typesafe-config = { module = "com.typesafe:config", version = "1.4.3" }
+typesafe-config = { module = "com.typesafe:config", version = "1.4.4" }
 snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "2.7" }
 
 cassandra-driver = { module = "org.apache.cassandra:java-driver-core", version.ref = "cassandra" }
