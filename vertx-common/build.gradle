@@ -18,4 +18,5 @@ dependencies {
     }
 
     api libs.netty.codec.http2
+    api libs.netty.resolver.dns
 }

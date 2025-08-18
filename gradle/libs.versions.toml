@@ -189,6 +189,6 @@ zeebe-client = { module = "io.camunda:zeebe-client-java", version.ref = "zeebe" 
 
 ["bundles"]
 netty = [
-    "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common", "netty-handlers",
-    "netty-handler-proxy", "netty-resolver", "netty-resolver-dns", "netty-transports", "netty-transport-unix"
+    "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common",
+    "netty-handlers", "netty-handler-proxy", "netty-resolver", "netty-transports"
 ]
