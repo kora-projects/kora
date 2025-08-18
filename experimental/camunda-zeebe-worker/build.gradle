@@ -8,8 +8,12 @@ dependencies {
     api project(":common")
     api project(":json:json-common")
     api project(":grpc:grpc-client")
-    api libs.zeebe.client
     api libs.zeebe.model
+    api(libs.zeebe.client) {
+        exclude group: 'io.netty'
+    }
+    api libs.netty.handlers
+    api libs.netty.common
 
     testImplementation project(":internal:test-logging")
     testImplementation project(":test:test-junit5")

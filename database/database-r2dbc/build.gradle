@@ -9,10 +9,11 @@ dependencies {
 
     api project(":database:database-common")
     api project(":netty-common")
-    api libs.netty.resolver.dns
+
     api libs.reactor.core
     api libs.r2dbc.spi
     api(libs.r2dbc.pool) {
+        exclude group: 'io.netty'
         exclude group: 'io.projectreactor', module: 'reactor-core'
     }
 
