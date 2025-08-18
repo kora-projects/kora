@@ -92,6 +92,7 @@ netty-resolver = { module = "io.netty:netty-resolver", version.ref = "netty" }
 netty-resolver-dns = { module = "io.netty:netty-resolver-dns", version.ref = "netty" }
 netty-resolver-macos = { module = "io.netty:netty-resolver-dns-native-macos", version.ref = "netty" }
 netty-transports = { module = "io.netty:netty-transport", version.ref = "netty" }
+netty-transport-unix = { module = "io.netty:netty-transport-native-unix-common", version.ref = "netty" }
 netty-transport-kqueue = { module = "io.netty:netty-transport-native-kqueue", version.ref = "netty" }
 netty-transport-epoll = { module = "io.netty:netty-transport-native-epoll", version.ref = "netty" }
 netty-handlers = { module = "io.netty:netty-handler", version.ref = "netty" }
@@ -188,6 +189,6 @@ zeebe-client = { module = "io.camunda:zeebe-client-java", version.ref = "zeebe" 
 
 ["bundles"]
 netty = [
-    "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common", "netty-handlers", "netty-handler-proxy",
-    "netty-resolver", "netty-transports"
+    "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common",
+    "netty-handlers", "netty-handler-proxy", "netty-resolver", "netty-transports"
 ]

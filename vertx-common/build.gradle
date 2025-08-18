@@ -17,7 +17,6 @@ dependencies {
         exclude group: 'io.netty', module: 'netty-resolver-dns'
     }
 
-    libs.netty.handler.proxy
-    libs.netty.resolver.dns
-    libs.netty.codec.http2
+    api libs.netty.codec.http2
+    api libs.netty.resolver.dns
 }

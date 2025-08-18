@@ -5,17 +5,16 @@ dependencies {
     api project(":telemetry:telemetry-common")
     api libs.netty.transports
 
+    api libs.reactor.core
+    api libs.bundles.netty
+    api(libs.lettuce.core) {
+        exclude group: 'io.netty'
+        exclude group: 'io.projectreactor', module: 'reactor-core'
+    }
+
     implementation project(":json:json-common")
     implementation project(":config:config-common")
-    implementation(libs.lettuce.core) {
-        exclude group: 'io.projectreactor', module: 'reactor-core'
-        exclude group: 'io.netty', module: 'netty-common'
-        exclude group: 'io.netty', module: 'netty-handler'
-        exclude group: 'io.netty', module: 'netty-transport'
-    }
-    implementation libs.reactor.core
-    implementation libs.netty.common
-    implementation libs.netty.handlers
+
     implementation libs.apache.pool
 
     testImplementation project(":internal:test-logging")

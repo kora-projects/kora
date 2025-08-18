@@ -2,16 +2,12 @@ dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
     api project(":http:http-client-common")
-    api(libs.async.http.client) {
-        exclude group: 'io.netty', module: 'netty-buffer'
-        exclude group: 'io.netty', module: 'netty-codec-http'
-        exclude group: 'io.netty', module: 'netty-handler'
-        exclude group: 'io.netty', module: 'netty-codec-socks'
-        exclude group: 'io.netty', module: 'netty-handler-proxy'
-        exclude group: 'io.netty', module: 'netty-transport-native-epoll'
-        exclude group: 'io.netty', module: 'netty-transport-native-kqueue'
-    }
     api project(":netty-common")
+
+    api libs.netty.codec.http2
+    api(libs.async.http.client) {
+        exclude group: 'io.netty'
+    }
 
     testImplementation(testFixtures(project(":http:http-client-common")))
     testImplementation libs.jackson.datatype.jsr310

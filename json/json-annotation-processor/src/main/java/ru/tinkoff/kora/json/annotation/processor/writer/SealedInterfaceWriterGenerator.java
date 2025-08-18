@@ -80,6 +80,6 @@ public class SealedInterfaceWriterGenerator {
 
     @Nonnull
     private String getWriterFieldName(Element elem) {
-        return decapitalize(elem.getSimpleName().toString() + "Reader");
+        return decapitalize(elem.getSimpleName().toString() + "Writer");
     }
 }
