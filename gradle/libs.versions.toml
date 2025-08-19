@@ -2,7 +2,7 @@
 slf4j = "2.0.17"
 micrometer = "1.12.13"
 reactor = "3.6.18"
-kotlin_ = "1.9.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
+kotlin_ = "2.2.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
 kotlin-coroutines = "1.7.3"
 jackson = "2.19.2"
 mockserver = "5.15.0"
