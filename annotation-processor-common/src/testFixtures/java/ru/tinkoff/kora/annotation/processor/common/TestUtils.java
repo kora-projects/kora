@@ -209,7 +209,7 @@ public class TestUtils {
             cp.add(outClasses);
             standardFileManager.setLocationFromPaths(StandardLocation.CLASS_PATH, cp);
 
-            var defaultOptions = new LinkedHashSet<>(List.of("-parameters", "-g", "--enable-preview", "--source", "17", "-XprintRounds"));
+            var defaultOptions = new LinkedHashSet<>(List.of("-parameters", "-g", "--enable-preview", "--source", "24", "-XprintRounds"));
             defaultOptions.addAll(processorOptions.stream().map(o -> o.value).toList());
             var task = compiler.getTask(out, standardFileManager, l, defaultOptions, targetClasses, inputSourceFiles);
             task.setProcessors(processors);
