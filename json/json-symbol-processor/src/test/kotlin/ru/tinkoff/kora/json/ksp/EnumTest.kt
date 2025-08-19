@@ -91,7 +91,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
     }
 
     private fun enumConstant(className: String, name: String): Any {
-        val clazz = this.compileResult.loadClass(className);
+        val clazz = this.loadClass(className);
         require(clazz.isEnum)
         for (enumConstant in clazz.enumConstants) {
             val e = enumConstant as Enum<*>

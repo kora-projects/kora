@@ -29,9 +29,8 @@ class SyncCacheOneAopTests : CaffeineCacheModule {
 
         return try {
             val classLoader = symbolProcess(
+                listOf(CacheSymbolProcessorProvider(), AopSymbolProcessorProvider()),
                 listOf(DummyCache11::class, CacheableSyncOne::class),
-                CacheSymbolProcessorProvider(),
-                AopSymbolProcessorProvider(),
             )
 
             val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")

@@ -2,12 +2,11 @@ package ru.tinkoff.kora.http.server.symbol.procesor
 
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import java.util.*
 
 
 object ExtractorFunctions {
     private val extractorsPackage = ClassName("ru.tinkoff.kora.http.server.common.handler", "RequestHandlerUtils")
-    private val UUID = UUID::class.asClassName()
+    private val UUID = ClassName("java.util", "UUID")
 
     val path = mapOf<TypeName, MemberName>(
         BOOLEAN to MemberName(extractorsPackage, "parseBooleanPathParameter"),

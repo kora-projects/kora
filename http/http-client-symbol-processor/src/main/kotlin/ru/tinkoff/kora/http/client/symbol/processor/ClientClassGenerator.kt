@@ -805,9 +805,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 type != null -> declaration.returnType!!.resolve().isAssignableFrom(type)
                 mapperType != null -> {
                     val supertype = mapperType.findSupertype(resolver, httpClientResponseMapper)!!
-                    var typeArg = supertype.arguments[0].type!!.resolve()
+                    var typeArg = supertype.arguments[0].type?.resolve() ?: resolver.builtIns.anyType
                     if (typeArg.isCompletionStage()) {
-                        typeArg = typeArg.arguments[0].type!!.resolve()
+                        typeArg = typeArg.arguments[0].type?.resolve() ?: resolver.builtIns.anyType
                     }
                     typeArg.declaration is KSTypeParameter
                         || declaration.returnType!!.resolve().isAssignableFrom(typeArg)

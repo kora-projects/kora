@@ -45,7 +45,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
     @Test
     fun testEntitySingleResultSetMapper() {
         compile0(
-            listOf(KoraAppProcessorProvider()),
+            listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
             @KoraApp
             interface TestApp : CassandraModule {

@@ -27,7 +27,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
@@ -51,7 +51,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
@@ -75,7 +75,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
@@ -100,7 +100,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
@@ -125,7 +125,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
@@ -150,7 +150,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy")
@@ -176,7 +176,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
@@ -202,7 +202,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
@@ -229,7 +229,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
@@ -255,7 +255,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
@@ -281,7 +281,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
@@ -308,7 +308,7 @@ class ValidationJsonNullableResultRequiredSyncTests : AbstractValidationSymbolPr
         )
         compileResult.assertSuccess()
 
-        val validatorClass = compileResult.loadClass("\$TestComponent__AopProxy")
+        val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
         val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())

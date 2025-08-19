@@ -15,7 +15,7 @@ class HttpClientInterceptorsTest : AbstractHttpClientTest() {
         val clientLevelInterceptor = AtomicReference<HttpClientInterceptor>()
         val clientLevelInterceptorFactory = object : GeneratedObject<HttpClientInterceptor> {
             override fun invoke(): HttpClientInterceptor {
-                val clazz = compileResult.loadClass("ClientLevelInterceptor") as Class<out HttpClientInterceptor>
+                val clazz = loadClass("ClientLevelInterceptor") as Class<out HttpClientInterceptor>
                 clientLevelInterceptor.set(Mockito.mock(clazz))
                 return clientLevelInterceptor.get()
             }
@@ -23,7 +23,7 @@ class HttpClientInterceptorsTest : AbstractHttpClientTest() {
         val methodLevelInterceptor = AtomicReference<HttpClientInterceptor>()
         val methodLevelInterceptorFactory = object : GeneratedObject<HttpClientInterceptor> {
             override fun invoke(): HttpClientInterceptor {
-                val clazz = compileResult.loadClass("MethodLevelInterceptor") as Class<out HttpClientInterceptor>
+                val clazz = loadClass("MethodLevelInterceptor") as Class<out HttpClientInterceptor>
                 methodLevelInterceptor.set(Mockito.mock(clazz))
                 return methodLevelInterceptor.get()
             }

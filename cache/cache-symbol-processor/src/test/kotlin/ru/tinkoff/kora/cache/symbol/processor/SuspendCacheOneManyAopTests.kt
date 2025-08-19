@@ -35,9 +35,8 @@ class SuspendCacheOneManyAopTests : CaffeineCacheModule, RedisCacheMapperModule 
 
         return try {
             val classLoader = symbolProcess(
-                listOf(DummyCache11::class, DummyCache12::class, CacheableSuspendOneMany::class),
-                AopSymbolProcessorProvider(),
-                CacheSymbolProcessorProvider()
+                listOf(CacheSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+                listOf(DummyCache11::class, DummyCache12::class, CacheableSuspendOneMany::class)
             )
 
 

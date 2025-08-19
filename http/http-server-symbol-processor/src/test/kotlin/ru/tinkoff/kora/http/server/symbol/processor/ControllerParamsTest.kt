@@ -47,7 +47,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+        loadClass("ControllerModule").verifyNoDependencies()
     }
 
     @Test
@@ -151,7 +151,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+        loadClass("ControllerModule").verifyNoDependencies()
     }
 
     @Test
@@ -183,7 +183,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("ControllerModule")
+        val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
             Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
@@ -312,7 +312,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+        loadClass("ControllerModule").verifyNoDependencies()
     }
 
     @Test
@@ -345,7 +345,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("ControllerModule")
+        val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
             Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
@@ -381,7 +381,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("ControllerModule")
+        val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
             Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
@@ -417,7 +417,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("ControllerModule")
+        val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
             Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
@@ -461,7 +461,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+        loadClass("ControllerModule").verifyNoDependencies()
     }
 
     @Test
@@ -487,7 +487,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+        loadClass("ControllerModule").verifyNoDependencies()
     }
 
     @Test
@@ -505,7 +505,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+        loadClass("ControllerModule").verifyNoDependencies()
     }
 
     @Test
@@ -522,7 +522,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        compileResult.loadClass("ControllerModule").verifyNoDependencies()
+        loadClass("ControllerModule").verifyNoDependencies()
     }
 
     @Test
@@ -539,7 +539,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        val componentMethod = loadClass("ControllerModule").methods[0]
         Assertions.assertThat(componentMethod.parameters).hasSize(2)
         Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
             HttpServerRequestMapper::class.ref(
@@ -564,7 +564,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        val componentMethod = loadClass("ControllerModule").methods[0]
         Assertions.assertThat(componentMethod.parameters).hasSize(3)
         Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
             HttpServerRequestMapper::class.ref(
@@ -593,7 +593,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        val componentMethod = loadClass("ControllerModule").methods[0]
         Assertions.assertThat(componentMethod.parameters).hasSize(2)
         Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
     }
@@ -617,7 +617,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val componentMethod = compileResult.loadClass("ControllerModule").methods[0]
+        val componentMethod = loadClass("ControllerModule").methods[0]
         Assertions.assertThat(componentMethod.parameters).hasSize(3)
         Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
     }
@@ -751,9 +751,9 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
 
         compileResult.assertSuccess()
-        val module = compileResult.loadClass("ControllerModule")
+        val module = loadClass("ControllerModule")
         module.verifyNoDependencies()
-        val controller = compileResult.loadClass("Controller")
+        val controller = loadClass("Controller")
         Assertions.assertThat(controller.kotlin.annotations.first()).isInstanceOf(Tag::class.java)
         Assertions.assertThat(module.kotlin.functions.first().annotations.first()).isInstanceOf(Tag::class.java)
         Assertions.assertThat(module.kotlin.functions.first().parameters.last().annotations.first()).isInstanceOf(Tag::class.java)

@@ -16,7 +16,8 @@ dependencies {
 
     testFixturesImplementation libs.classgraph
     testFixturesImplementation libs.kotlin.compiler
-    testFixturesImplementation libs.kotlin.compiler
+    testFixturesImplementation "com.google.devtools.ksp:symbol-processing-aa-embeddable:${libs.versions.ksp.get()}"
+    testFixturesImplementation "com.google.devtools.ksp:symbol-processing-common-deps:${libs.versions.ksp.get()}"
     testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.ksp
     testFixturesImplementation libs.ksp.api

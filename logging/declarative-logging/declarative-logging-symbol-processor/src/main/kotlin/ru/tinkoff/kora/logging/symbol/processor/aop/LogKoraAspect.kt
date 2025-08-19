@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.event.Level
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findEnumValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
@@ -359,8 +360,8 @@ class LogKoraAspect : KoraAspect {
 
     private fun KSAnnotated.parseLogLevel(annotation: ClassName): Level? {
         return this.findAnnotation(annotation)
-            ?.findValue<KSType>("value")
-            ?.declaration?.toString() // ugly enum handling
+            ?.findEnumValue("value")
+            ?.simpleName
             ?.let { Level.valueOf(it) }
     }
 

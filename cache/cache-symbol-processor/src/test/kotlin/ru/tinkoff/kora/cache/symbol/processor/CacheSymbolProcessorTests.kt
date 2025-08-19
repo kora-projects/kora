@@ -15,102 +15,104 @@ import ru.tinkoff.kora.cache.symbol.processor.testdata.reactive.publisher.Cachea
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.CompilationErrorException
 import ru.tinkoff.kora.ksp.common.symbolProcess
+import kotlin.reflect.KClass
 
 class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
+    fun processClass(clazz: KClass<*>) = symbolProcess(listOf(AopSymbolProcessorProvider()), listOf(clazz))
 
     @Test
     fun cacheKeyArgumentMissing() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheableArgumentMissing::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheableArgumentMissing::class) }
     }
 
     @Test
     fun cacheKeyMapper() {
-        assertDoesNotThrow { symbolProcess(CacheableMapper::class, AopSymbolProcessorProvider()) }
+        assertDoesNotThrow { processClass(CacheableMapper::class) }
     }
 
     @Test
     fun cacheRedisKeyMapperTagged() {
-        assertDoesNotThrow { symbolProcess(DummyCacheTagged::class, CacheSymbolProcessorProvider()) }
+        assertDoesNotThrow { processClass(DummyCacheTagged::class) }
     }
 
     @Test
     fun cacheKeyArgumentWrongOrderMapper() {
-        assertDoesNotThrow { symbolProcess(CacheableArgumentWrongOrderMapper::class, AopSymbolProcessorProvider()) }
+        assertDoesNotThrow { processClass(CacheableArgumentWrongOrderMapper::class) }
     }
 
     @Test
     fun cacheKeyArgumentWrongTypeMapper() {
-        assertDoesNotThrow { symbolProcess(CacheableArgumentWrongTypeMapper::class, AopSymbolProcessorProvider()) }
+        assertDoesNotThrow { processClass(CacheableArgumentWrongTypeMapper::class) }
     }
 
     @Test
     fun cacheNamePatternMismatch() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheableNameInvalid::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheableNameInvalid::class) }
     }
 
     @Test
     fun cacheGetForVoidSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheableGetVoid::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheableGetVoid::class) }
     }
 
     @Test
     fun cachePutForVoidSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheablePutVoid::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheablePutVoid::class) }
     }
 
     @Test
     fun cacheGetForMonoSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheableGetMono::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheableGetMono::class) }
     }
 
     @Test
     fun cachePutForMonoSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheablePutMono::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheablePutMono::class) }
     }
 
     @Test
     fun cacheGetForFluxSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheableGetFlux::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheableGetFlux::class) }
     }
 
     @Test
     fun cachePutForFluxSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheablePutFlux::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheablePutFlux::class) }
     }
 
     @Test
     fun cacheGetForPublisherSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheableGetPublisher::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheableGetPublisher::class) }
     }
 
     @Test
     fun cachePutForPublisherSignature() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(CacheablePutPublisher::class, AopSymbolProcessorProvider()) }
+        ) { processClass(CacheablePutPublisher::class) }
     }
 
     @Test
     fun testInnerTypeCache() {
-        compile0("""
+        compile0(listOf(AopSymbolProcessorProvider()), """
         interface OuterType {
           @ru.tinkoff.kora.cache.annotation.Cache("test")
           interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>

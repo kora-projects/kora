@@ -9,6 +9,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponse
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper
+import ru.tinkoff.kora.http.server.symbol.procesor.HttpControllerProcessorProvider
 import ru.tinkoff.kora.http.server.symbol.processor.server.HttpResponseAssert
 import ru.tinkoff.kora.http.server.symbol.processor.server.SimpleHttpServerRequest
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
@@ -65,12 +66,10 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun compile(@Language("kotlin") vararg sources: String): HttpControllerModule {
-        val compileResult = compile0(*sources)
-        if (compileResult.isFailed()) {
-            throw compileResult.compilationException()
-        }
-        val moduleClass = compileResult.loadClass("ControllerModule")
-        val controllerClass = compileResult.loadClass("Controller")
+        val compileResult = compile0(listOf(HttpControllerProcessorProvider()), *sources)
+            .assertSuccess()
+        val moduleClass = loadClass("ControllerModule")
+        val controllerClass = loadClass("Controller")
         val moduleObject = Proxy.newProxyInstance(compileResult.classLoader, arrayOf(moduleClass)) { proxy: Any, method: Method?, args: Array<Any?> ->
             MethodHandles.privateLookupIn(moduleClass, MethodHandles.lookup())
                 .`in`(moduleClass)

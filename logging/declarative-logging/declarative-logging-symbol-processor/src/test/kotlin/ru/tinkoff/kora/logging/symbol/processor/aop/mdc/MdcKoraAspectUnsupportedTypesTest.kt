@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.logging.symbol.processor.aop.mdc
 
 import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
@@ -16,7 +15,7 @@ class MdcKoraAspectUnsupportedTypesTest : AbstractMdcAspectTest() {
             source
         )
 
-        assertTrue(compileResult.isFailed())
+        compileResult.assertFailure()
     }
 
     companion object {

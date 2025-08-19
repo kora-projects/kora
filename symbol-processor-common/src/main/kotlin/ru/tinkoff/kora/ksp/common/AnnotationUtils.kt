@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.ksp.common
 
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSAnnotation
-import com.google.devtools.ksp.symbol.KSTypeReference
+import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -59,6 +57,14 @@ object AnnotationUtils {
         .map { it.value!! }
         .map { it as T }
         .firstOrNull()
+
+    fun KSAnnotation.findEnumValue(name: String) = this.arguments.asSequence()
+        .filter { it.name!!.asString() == name }
+        .map { it.value!! }
+        .map { it as KSClassDeclaration }
+        .onEach { require(it.classKind == ClassKind.ENUM_ENTRY) }
+        .firstOrNull()
+        ?.toClassName()
 
     inline fun <reified T> KSAnnotation.findValueNoDefault(name: String): T? {
         val defaultValues = defaultArguments

@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.validation.symbol.processor.aop
 
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.ClassKind
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
@@ -143,10 +145,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
             val parameters = CodeBlock.of(constraint.factory.parameters.values.asSequence()
                 .map {
-                    if (it is String) {
-                        CodeBlock.of("%S", it)
-                    } else {
-                        CodeBlock.of("%L", it)
+                    when (it) {
+                        is String -> CodeBlock.of("%S", it)
+                        is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (it.parentDeclaration as KSClassDeclaration).toClassName(), it.simpleName.asString())
+                        else -> CodeBlock.of("%L", it)
                     }
                 }
                 .joinToString(", ", "(", ")"))
@@ -278,10 +280,10 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
                 val parameters = CodeBlock.of(constraint.factory.parameters.values.asSequence()
                     .map {
-                        if (it is String) {
-                            CodeBlock.of("%S", it)
-                        } else {
-                            CodeBlock.of("%L", it)
+                        when (it) {
+                            is String -> CodeBlock.of("%S", it)
+                            is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (it.parentDeclaration as KSClassDeclaration).toClassName(), it.simpleName.asString())
+                            else -> CodeBlock.of("%L", it)
                         }
                     }
                     .joinToString(", ", "(", ")"))

@@ -3,6 +3,7 @@ package ru.tinkoff.grpc.client.ksp
 import org.assertj.core.api.Assertions
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 import java.util.*
@@ -25,7 +26,7 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               }
             }
             """.trimIndent()
-        super.compile0(*patchedSources)
+        super.compile0(listOf(GrpcClientStubForSymbolProcessorProvider(), KoraAppProcessorProvider()), *patchedSources)
         compileResult.assertSuccess()
         loadClass("TestAppGraph").toGraph().use { g ->
             /*
@@ -58,7 +59,8 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testBlockingStub() {
-        compile("""
+        compile(
+            """
             @KoraApp
             interface TestApp {
               @Root
@@ -67,12 +69,14 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testFutureStub() {
-        compile("""
+        compile(
+            """
             @KoraApp
             interface TestApp {
               @Root
@@ -81,12 +85,14 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testAsyncStub() {
-        compile("""
+        compile(
+            """
             @KoraApp
             interface TestApp {
               @Root
@@ -95,12 +101,14 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               }
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
     @Test
     fun testCoroutineStubStub() {
-        compile("""
+        compile(
+            """
             @KoraApp
             interface TestApp {
               @Root
@@ -178,7 +186,8 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
                     )).build()
                   }
                 }
-            """.trimIndent())
+            """.trimIndent()
+        )
     }
 
 }

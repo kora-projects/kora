@@ -2,6 +2,7 @@ package ru.tinkoff.kora.kafka.symbol.processor.producer
 
 import org.apache.kafka.common.serialization.Serializer
 import org.assertj.core.api.Assertions.assertThat
+import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.kafka.common.producer.KafkaPublisherConfig
@@ -24,6 +25,8 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             import java.util.concurrent.Future
         """.trimIndent()
     }
+
+    fun compile0(@Language("kotlin") vararg sources: String) = compile0(listOf(KafkaPublisherSymbolProcessorProvider()), *sources)
 
     @Test
     fun testPublisherWithRecord() {
@@ -109,9 +112,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -126,9 +135,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -143,9 +158,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -160,8 +181,14 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_PublisherModule")
-        val m = clazz.getMethod("testProducer_PublisherFactory", KafkaProducerTelemetryFactory::class.java, KafkaPublisherConfig::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        val clazz = loadClass("\$TestProducer_PublisherModule")
+        val m = clazz.getMethod(
+            "testProducer_PublisherFactory",
+            KafkaProducerTelemetryFactory::class.java,
+            KafkaPublisherConfig::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
         assertThat(m).isNotNull()
         assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)).isNotEmpty()
         assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(arrayOf(String::class))
@@ -179,9 +206,16 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java, Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java,
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -196,9 +230,16 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java, Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java,
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -213,8 +254,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_PublisherModule")
-        val m = clazz.getMethod("testProducer_PublisherFactory", KafkaProducerTelemetryFactory::class.java, KafkaPublisherConfig::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java, Serializer::class.java)
+        val clazz = loadClass("\$TestProducer_PublisherModule")
+        val m = clazz.getMethod(
+            "testProducer_PublisherFactory",
+            KafkaProducerTelemetryFactory::class.java,
+            KafkaPublisherConfig::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java,
+            Serializer::class.java
+        )
         assertThat(m).isNotNull()
         assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)).isEmpty()
         assertThat(m.parameters[4].getAnnotationsByType(Tag::class.java)).isNotEmpty()
@@ -233,9 +281,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -253,7 +307,7 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
                         """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TxProducer_Impl")
+        val clazz = loadClass("\$TxProducer_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -269,9 +323,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -286,9 +346,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -303,9 +369,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -320,9 +392,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test
@@ -337,9 +415,15 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$TestProducer_Impl")
+        val clazz = loadClass("\$TestProducer_Impl")
         assertThat(clazz).isNotNull()
-        clazz.getConstructor(KafkaProducerTelemetryFactory::class.java, TelemetryConfig::class.java, Properties::class.java, compileResult.loadClass("\$TestProducer_TopicConfig"), Serializer::class.java)
+        clazz.getConstructor(
+            KafkaProducerTelemetryFactory::class.java,
+            TelemetryConfig::class.java,
+            Properties::class.java,
+            loadClass("\$TestProducer_TopicConfig"),
+            Serializer::class.java
+        )
     }
 
     @Test

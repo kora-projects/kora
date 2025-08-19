@@ -115,8 +115,8 @@ class S3ClientSymbolProcessor(
                     .addType(configSpec)
                     .build()
                 configImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
-            } catch (e: IOException) {
-                throw IllegalStateException(e)
+            } catch (e: ProcessingErrorException) {
+                e.printError(kspLogger)
             }
         }
 

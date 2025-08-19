@@ -67,7 +67,7 @@ open class AppRunner : Assertions() {
     }
 
     private fun getClassLoader(classes: List<KClass<*>>): ClassLoader {
-        return symbolProcess(classes)
+        return symbolProcess(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), classes)
     }
 
     fun getGraphForClasses(targetClasses: List<KClass<*>>): InitializedGraph {

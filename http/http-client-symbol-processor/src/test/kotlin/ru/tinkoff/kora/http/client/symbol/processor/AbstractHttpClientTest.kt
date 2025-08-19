@@ -12,6 +12,8 @@ import ru.tinkoff.kora.config.common.extractor.DurationConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.SetConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.StringConfigValueExtractor
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory
+import ru.tinkoff.kora.config.ksp.processor.ConfigParserSymbolProcessorProvider
+import ru.tinkoff.kora.config.ksp.processor.ConfigSourceSymbolProcessorProvider
 import ru.tinkoff.kora.http.client.common.HttpClient
 import ru.tinkoff.kora.http.client.common.declarative.`$HttpClientOperationConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest
@@ -79,12 +81,10 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun compile(arguments: List<Any?>, @Language("kotlin") vararg sources: String): TestObject {
-        val compileResult = compile0(*sources)
-        if (compileResult.isFailed()) {
-            throw compileResult.compilationException()
-        }
+        compile0(listOf(HttpClientSymbolProcessorProvider(), ConfigSourceSymbolProcessorProvider(), ConfigParserSymbolProcessorProvider()),*sources)
+            .assertSuccess()
 
-        val clientClass = compileResult.loadClass("\$TestClient_ClientImpl")
+        val clientClass = loadClass("\$TestClient_ClientImpl")
         val durationCVE = DurationConfigValueExtractor()
         val telemetryCVE = `$HttpClientTelemetryConfig_ConfigValueExtractor`(
             `$HttpClientLoggerConfig_ConfigValueExtractor`(SetConfigValueExtractor(StringConfigValueExtractor())),
