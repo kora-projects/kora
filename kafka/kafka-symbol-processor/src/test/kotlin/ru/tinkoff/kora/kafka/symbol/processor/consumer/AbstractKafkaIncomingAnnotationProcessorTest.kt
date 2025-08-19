@@ -19,7 +19,7 @@ abstract class AbstractKafkaListenerAnnotationProcessorTest : AbstractSymbolProc
 
 
     protected fun compile(@Language("kotlin") vararg sources: String) {
-        super.compile0(*sources)
+        super.compile0(listOf(KafkaListenerSymbolProcessorProvider()), *sources)
         compileResult.assertSuccess()
 //        val kafkaListenerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListener"))
 //        val kafkaListenerModule = Objects.requireNonNull(compileResult.loadClass("KafkaListenerModule"))

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.validation.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Assertions
+import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.validation.common.Validator
@@ -73,7 +74,7 @@ open class ValidateRunner : Assertions(),
                     ValidateSuspend::class,
                     ValidateFlow::class,
                 )
-                classLoader = symbolProcess(classes)
+                classLoader = symbolProcess(listOf(ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()), classes)
             }
             classLoader!!
         } catch (e: Exception) {

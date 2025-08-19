@@ -8,22 +8,25 @@ class AbstractClassTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testAbstractClassRepository() {
-        compile0("""
+        compile0(
+            listOf(RepositorySymbolProcessorProvider()), """
             @Repository
             abstract class AbstractClassRepository(private val field: String?) : JdbcRepository {
                 @Query("INSERT INTO table(value) VALUES (:value)")
                 abstract fun abstractMethod(value: String?)
                 fun nonAbstractMethod() {}
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
 
         compileResult.assertSuccess()
-        assertThat(compileResult.loadClass("\$AbstractClassRepository_Impl")).isFinal
+        assertThat(loadClass("\$AbstractClassRepository_Impl")).isFinal
     }
 
     @Test
     fun testAbstractClassRepositoryExtension() {
-        compile0("""
+        compile0(
+            listOf(RepositorySymbolProcessorProvider()), """
             @Repository
             abstract class AbstractClassRepository : JdbcRepository {
                 @Query("INSERT INTO table(value) VALUES (:value)")
@@ -39,9 +42,10 @@ class AbstractClassTest : AbstractJdbcRepositoryTest() {
                         @Root
                         fun root(repository: AbstractClassRepository) : String = "test"
                     }
-                """.trimIndent())
+                """.trimIndent()
+        )
 
         compileResult.assertSuccess()
-        assertThat(compileResult.loadClass("\$AbstractClassRepository_Impl")).isFinal
+        assertThat(loadClass("\$AbstractClassRepository_Impl")).isFinal
     }
 }

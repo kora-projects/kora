@@ -77,9 +77,9 @@ internal class SuspendJdbcDatabaseTest {
     @Test
     fun testTransaction(params: PostgresParams) {
         val tableName = "test_table_" + PostgresTestContainer.randomName("test_table")
-        params.execute("CREATE TABLE %s(id BIGSERIAL, value VARCHAR);".formatted(tableName))
-        val id = "INSERT INTO %s(value) VALUES ('test1');".formatted(tableName)
-        val sql = "INSERT INTO %s(value) VALUES ('test1');".formatted(tableName)
+        params.execute("CREATE TABLE $tableName(id BIGSERIAL, value VARCHAR);")
+        val id = "INSERT INTO $tableName(value) VALUES ('test1');"
+        val sql = "INSERT INTO $tableName(value) VALUES ('test1');"
         val extractor =
             ResultSetMapper<List<String>, RuntimeException> { rs: ResultSet ->
                 val result = ArrayList<String>()
@@ -112,7 +112,7 @@ internal class SuspendJdbcDatabaseTest {
             Assertions.assertThat(latch.count).isEqualTo(0)
 
             var values = params.query(
-                "SELECT value FROM %s".formatted(tableName), extractor
+                "SELECT value FROM $tableName", extractor
             )
             Assertions.assertThat(values).hasSize(0)
 
@@ -127,7 +127,7 @@ internal class SuspendJdbcDatabaseTest {
             Assertions.assertThat(latch1.count).isEqualTo(0)
 
             values = params.query(
-                "SELECT value FROM %s".formatted(tableName), extractor
+                "SELECT value FROM $tableName", extractor
             )
             Assertions.assertThat(values).hasSize(1)
         }

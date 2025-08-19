@@ -11,7 +11,7 @@ class RepositoryTagPropagationTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun tagsFromInterfaceArePropagatedToImpl() {
-        compile0(
+        compile0(listOf(RepositorySymbolProcessorProvider()),
             """
             @Repository
             @Tag(value = [TestRepository::class, JdbcRepository::class, Int::class])
@@ -24,7 +24,7 @@ class RepositoryTagPropagationTest : AbstractJdbcRepositoryTest() {
 
         compileResult.assertSuccess()
 
-        val repository = compileResult.loadClass("\$TestRepository_Impl").kotlin
+        val repository = loadClass("\$TestRepository_Impl").kotlin
 
         val repoInterfaceClass = repository.supertypes
             .map { it.classifier }

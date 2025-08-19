@@ -15,11 +15,13 @@ import ru.tinkoff.kora.kora.app.ksp.app.*
 import ru.tinkoff.kora.kora.app.ksp.app.AppWithOptionalComponents.*
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest.ProcessorOptions
 import ru.tinkoff.kora.ksp.common.CompilationErrorException
+import ru.tinkoff.kora.ksp.common.TestUtils
+import ru.tinkoff.kora.ksp.common.TestUtils.symbolProcessFiles
 import ru.tinkoff.kora.ksp.common.symbolProcess
-import ru.tinkoff.kora.ksp.common.symbolProcessFiles
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.lang.reflect.Constructor
+import java.nio.file.Path
 import java.util.function.Supplier
 import java.util.stream.Collectors
 import kotlin.reflect.KClass
@@ -399,7 +401,7 @@ class KoraAppKspTest {
 
     @Test
     fun appPart() {
-        val classLoader: ClassLoader = symbolProcess(AppWithAppPart::class, KoraAppProcessorProvider())
+        val classLoader = symbolProcess(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()), listOf(AppWithAppPart::class))
         val clazz = classLoader.loadClass(AppWithAppPart::class.java.name + "SubmoduleImpl")
         assertThat(clazz).isNotNull
             .isInterface
@@ -408,14 +410,16 @@ class KoraAppKspTest {
 
         val targetFile1 = "build/in-test-generated-ksp/sources/" + AppWithAppPart::class.java.name.replace('.', '/') + "SubmoduleImpl.kt"
         val targetFile2 = "src/test/kotlin/" + AppWithAppPartApp::class.java.name.replace('.', '/') + ".kt"
-        val classLoaderApp = symbolProcessFiles(listOf(targetFile1, targetFile2))
-        val appClazz = classLoaderApp.loadClass(AppWithAppPartApp::class.java.name + "Graph")
+        val classLoaderApp = TestUtils.runProcessing(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()),listOf(targetFile1, targetFile2).map { Path.of(it) })
+            .assertSuccess()
+            .classLoader
+        val appClazz = classLoader.loadClass(AppWithAppPartApp::class.java.name + "Graph")
         assertThat(appClazz).isNotNull
     }
 
     @Test
     fun appPartAndAppSubmodule() {
-        val classLoader: ClassLoader = symbolProcess(AppWithAppPart::class, listOf(ProcessorOptions.SUBMODULE_GENERATION))
+        val classLoader = symbolProcess(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()), listOf(AppWithAppPart::class), mapOf("kora.app.submodule.enabled" to "true"))
         val clazz = classLoader.loadClass(AppWithAppPart::class.java.name + "SubmoduleImpl")
         assertThat(clazz).isNotNull
             .isInterface
@@ -424,8 +428,10 @@ class KoraAppKspTest {
 
         val targetFile1 = "build/in-test-generated-ksp/sources/" + AppWithAppPart::class.java.name.replace('.', '/') + "SubmoduleImpl.kt"
         val targetFile2 = "src/test/kotlin/" + AppWithAppPartApp::class.java.name.replace('.', '/') + ".kt"
-        val classLoaderApp = symbolProcessFiles(listOf(targetFile1, targetFile2), listOf(ProcessorOptions.SUBMODULE_GENERATION))
-        val appClazz = classLoaderApp.loadClass(AppWithAppPartApp::class.java.name + "Graph")
+        val classLoaderApp = TestUtils.runProcessing(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()),listOf(targetFile1, targetFile2).map { Path.of(it) }, mapOf("kora.app.submodule.enabled" to "true"))
+            .assertSuccess()
+            .classLoader
+        val appClazz = classLoader.loadClass(AppWithAppPartApp::class.java.name + "Graph")
         assertThat(appClazz).isNotNull
         val appClazzSubmodule = classLoaderApp.loadClass(AppWithAppPartApp::class.java.name + "SubmoduleImpl")
         assertThat(appClazzSubmodule).isNotNull
@@ -458,8 +464,8 @@ class KoraAppKspTest {
     fun testClass(targetClass: KClass<*>, processorProviders: List<SymbolProcessorProvider> = listOf()): ApplicationGraphDraw {
         return try {
             val graphClass = targetClass.qualifiedName + "Graph"
-            val processorsArray = (processorProviders + KoraAppProcessorProvider()).toTypedArray()
-            val classLoader = symbolProcess(targetClass, *processorsArray)
+            val processorsArray = (processorProviders + KoraAppProcessorProvider())
+            val classLoader = symbolProcess(processorsArray, listOf(targetClass) )
             val clazz = try {
                 classLoader.loadClass(graphClass)
             } catch (e: ClassNotFoundException) {

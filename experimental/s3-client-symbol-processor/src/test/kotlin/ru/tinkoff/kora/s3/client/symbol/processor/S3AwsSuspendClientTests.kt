@@ -18,6 +18,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             import software.amazon.awssdk.services.s3.model.*
             """.trimIndent()
     }
+    fun compile0(vararg src: String) = compile0(listOf(S3ClientSymbolProcessorProvider()), *src)
 
     @Test
     fun clientGetAws() {
@@ -32,7 +33,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -49,7 +50,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -67,7 +68,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -84,7 +85,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -101,7 +102,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -118,7 +119,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -136,7 +137,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -154,7 +155,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -171,7 +172,7 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 }

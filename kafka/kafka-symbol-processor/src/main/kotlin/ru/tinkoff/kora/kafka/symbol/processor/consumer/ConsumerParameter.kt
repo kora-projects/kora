@@ -14,9 +14,9 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isValueDeserializationE
 sealed interface ConsumerParameter {
     val parameter: KSValueParameter
 
-    data class Consumer(override val parameter: KSValueParameter, val key: KSType, val value: KSType) : ConsumerParameter
+    data class Consumer(override val parameter: KSValueParameter, val key: KSType?, val value: KSType?) : ConsumerParameter
 
-    data class Records(override val parameter: KSValueParameter, val key: KSType, val value: KSType) : ConsumerParameter
+    data class Records(override val parameter: KSValueParameter, val key: KSType?, val value: KSType?) : ConsumerParameter
 
     data class Exception(override val parameter: KSValueParameter) : ConsumerParameter
 
@@ -24,9 +24,9 @@ sealed interface ConsumerParameter {
 
     data class ValueDeserializationException(override val parameter: KSValueParameter) : ConsumerParameter
 
-    data class Record(override val parameter: KSValueParameter, val key: KSType, val value: KSType) : ConsumerParameter
+    data class Record(override val parameter: KSValueParameter, val key: KSType?, val value: KSType?) : ConsumerParameter
 
-    data class RecordsTelemetry(override val parameter: KSValueParameter, val key: KSType, val value: KSType) : ConsumerParameter
+    data class RecordsTelemetry(override val parameter: KSValueParameter, val key: KSType?, val value: KSType?) : ConsumerParameter
 
     data class Unknown(override val parameter: KSValueParameter) : ConsumerParameter
 
@@ -34,10 +34,10 @@ sealed interface ConsumerParameter {
         fun parseParameters(function: KSFunctionDeclaration) = function.parameters.map {
             val type = it.type.resolve()
             when {
-                type.isConsumerRecord() -> Record(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
-                type.isConsumerRecords() -> Records(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
-                type.isConsumer() -> Consumer(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
-                type.isRecordsTelemetry() -> RecordsTelemetry(it, type.arguments[0].type!!.resolve(), type.arguments[1].type!!.resolve())
+                type.isConsumerRecord() -> Record(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
+                type.isConsumerRecords() -> Records(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
+                type.isConsumer() -> Consumer(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
+                type.isRecordsTelemetry() -> RecordsTelemetry(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
                 type.isKeyDeserializationException() -> KeyDeserializationException(it)
                 type.isValueDeserializationException() -> ValueDeserializationException(it)
                 type.isAnyException() -> Exception(it)

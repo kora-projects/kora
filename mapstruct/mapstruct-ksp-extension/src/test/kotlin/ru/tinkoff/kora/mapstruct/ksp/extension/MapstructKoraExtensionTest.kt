@@ -5,6 +5,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.GraphUtil
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
@@ -26,17 +27,17 @@ class MapstructKoraExtensionTest : AbstractSymbolProcessorTest() {
 
         @Language("kotlin")
         val main = """
-                    @KoraApp
-                    interface TestApp {
-                        @Root
-                        fun root(carMapper: CarMapper): String {
-                            return ""
-                        }
-                    }
+            @KoraApp
+            interface TestApp {
+                @Root
+                fun root(carMapper: CarMapper): String {
+                    return ""
+                }
+            }
             """.trimIndent()
 
         patchedSources[sources.size] = main
-        super.compile0(*patchedSources)
+        super.compile0(listOf(KoraAppProcessorProvider()), *patchedSources)
         compileResult.assertSuccess()
         return loadClass("TestAppGraph").toGraph()
     }

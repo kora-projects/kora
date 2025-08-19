@@ -34,14 +34,14 @@ class FallbackTests : AppRunner() {
     fun incorrectArgumentFallback() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(FallbackIllegalArgumentTarget::class, AopSymbolProcessorProvider()) }
+        ) { symbolProcess(listOf(AopSymbolProcessorProvider()), listOf(FallbackIllegalArgumentTarget::class)) }
     }
 
     @Test
     fun incorrectSignatureFallback() {
         assertThrows(
             CompilationErrorException::class.java
-        ) { symbolProcess(FallbackIllegalSignatureTarget::class, AopSymbolProcessorProvider()) }
+        ) { symbolProcess(listOf(AopSymbolProcessorProvider()), listOf(FallbackIllegalSignatureTarget::class)) }
     }
 
     @Test

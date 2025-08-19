@@ -7,10 +7,8 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.cache.CacheKeyMapper
-import ru.tinkoff.kora.cache.CacheKeyMapper.CacheKeyMapper3
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache21
-import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache22
 import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSync
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.math.BigDecimal
@@ -32,10 +30,9 @@ class SyncCacheAopTests : CaffeineCacheModule {
 
         return try {
             val classLoader = symbolProcess(
+                listOf(CacheSymbolProcessorProvider(), AopSymbolProcessorProvider()),
                 listOf(DummyCache21::class, CacheableSync::class),
-                CacheSymbolProcessorProvider(),
-                AopSymbolProcessorProvider(),
-            )
+                )
 
             val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")
             cache = cacheClass.constructors[0].newInstance(
