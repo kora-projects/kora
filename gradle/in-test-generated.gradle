@@ -4,7 +4,7 @@ javaPlugin.sourceSets {
         java {
             compileClasspath += main.output + test.output + main.compileClasspath + test.compileClasspath
             runtimeClasspath += main.output + test.output + main.runtimeClasspath + test.runtimeClasspath
-            srcDir project.file('build/in-test-generated/sources')
+            srcDir this.project.file('build/in-test-generated/sources')
         }
     }
 }

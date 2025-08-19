@@ -20,17 +20,3 @@ dependencies {
     testImplementation(libs.kotlin.stdlib.lib)
     testImplementation(libs.kotlin.coroutines.jdk8)
 }
-
-kotlin {
-    sourceSets {
-        testGenerated {
-            kotlin.srcDir("build/generated/ksp/sources/kotlin")
-        }
-    }
-    sourceSets.main {
-        kotlin.srcDir("build/generated/ksp/main/kotlin")
-    }
-    sourceSets.test {
-        kotlin.srcDir("build/generated/ksp/test/kotlin")
-    }
-}
