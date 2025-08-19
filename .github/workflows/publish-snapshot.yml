@@ -35,7 +35,7 @@ jobs:
         run: ./gradlew assemble
 
       - name: Gradle publish
-        run: ./gradlew publishMavenPublicationToSnapshotRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg --no-daemon
+        run: ./gradlew publishMavenPublicationToSnapshotRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg --no-daemon --parallel
         env:
           REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
           REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
