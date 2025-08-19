@@ -14,10 +14,8 @@ abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun compile(connectionFactory: Any, arguments: List<*>, @Language("kotlin") vararg sources: String): TestObject {
-        val compileResult = compile0(*sources)
-        if (compileResult.isFailed()) {
-            throw compileResult.compilationException()
-        }
+        compile0(listOf(RepositorySymbolProcessorProvider()), *sources)
+            .assertSuccess()
 
         val realArgs = arrayOfNulls<Any>(arguments.size + 1)
         realArgs[0] = connectionFactory
@@ -28,18 +26,16 @@ abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
             }
         }
 
-        val repositoryClass = compileResult.loadClass("\$TestRepository_Impl")
+        val repositoryClass = loadClass("\$TestRepository_Impl")
         val repository = repositoryClass.constructors[0].newInstance(*realArgs)
         return TestObject(repositoryClass.kotlin, repository)
     }
 
     protected fun compileForArgs(arguments: Array<Any?>, @Language("kotlin") vararg sources: String): TestObject {
-        val compileResult = compile0(*sources)
-        if (compileResult.isFailed()) {
-            throw compileResult.compilationException()
-        }
+        compile0(listOf(RepositorySymbolProcessorProvider()), *sources)
+            .assertSuccess()
 
-        val repositoryClass = compileResult.loadClass("\$TestRepository_Impl")
+        val repositoryClass = loadClass("\$TestRepository_Impl")
         val repository = repositoryClass.constructors[0].newInstance(*arguments)
         return TestObject(repositoryClass.kotlin, repository)
     }

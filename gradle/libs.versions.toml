@@ -2,7 +2,7 @@
 slf4j = "2.0.17"
 micrometer = "1.12.13"
 reactor = "3.6.18"
-kotlin-stdlib = "1.9.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
+kotlin-stdlib = "2.2.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
 kotlin-coroutines = "1.7.3"
 jackson = "2.19.2"
 mockserver = "5.15.0"
@@ -12,8 +12,7 @@ testcontainers = "1.18.3"
 cassandra = "4.19.0"
 grpc-java = "1.74.0"
 grpc-kotlin = "1.4.3"
-kotlin-testing = "1.5.0"
-ksp = "1.9.10-1.0.13"
+ksp = "2.2.10-2.0.2"
 kotlinpoet = "1.18.1"
 jetbrains-annotations = "24.1.0"
 swagger = "2.2.35"
@@ -146,7 +145,6 @@ testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "tes
 
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp = { module = "com.google.devtools.ksp:symbol-processing", version.ref = "ksp" }
-kotlin-compile-testing = { module = "com.github.tschuchortdev:kotlin-compile-testing", version.ref = "kotlin-testing" }
 
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }

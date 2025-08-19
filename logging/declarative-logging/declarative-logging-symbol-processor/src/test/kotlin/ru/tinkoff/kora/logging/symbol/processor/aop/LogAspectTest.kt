@@ -5,6 +5,7 @@ import org.junit.jupiter.api.assertThrows
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.slf4j.event.Level
+import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import java.util.*
 
 class LogAspectTest : AbstractLogAspectTest() {
@@ -349,7 +350,7 @@ class LogAspectTest : AbstractLogAspectTest() {
 
     @Test
     fun testLogArgWithMapper() {
-        compile0(
+        compile0(listOf(AopSymbolProcessorProvider()),
             """
             open class Target {
                 @Log.`in`

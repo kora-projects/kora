@@ -65,7 +65,7 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val module = compileResult.loadClass("KafkaListenerClassModule")
+        val module = loadClass("KafkaListenerClassModule")
         val container = module.getMethod(
             "kafkaListenerClassProcessContainer",
             KafkaListenerConfig::class.java,
@@ -80,7 +80,7 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
         val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
 
         assertThat(valueTag).isNotNull()
-        assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("KafkaListenerClass")))
+        assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListenerClass")))
     }
 
     @Test
@@ -109,7 +109,7 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
             
             """.trimIndent()
         )
-        val module = compileResult.loadClass("KafkaListenerClassModule")
+        val module = loadClass("KafkaListenerClassModule")
         val container = module.getMethod(
             "kafkaListenerClassProcessContainer",
             KafkaListenerConfig::class.java,
@@ -126,7 +126,7 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
         val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
 
         assertThat(keyTag).isNotNull()
-        assertThat(keyTag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("KafkaListenerClass")))
+        assertThat(keyTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListenerClass")))
         assertThat(valueTag).isNotNull()
         assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(String::class.java))
     }

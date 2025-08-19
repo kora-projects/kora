@@ -31,9 +31,9 @@ class ValidationExtensionTest : AbstractSymbolProcessorTest() {
                 """.trimIndent()
         )
         compileResult.assertSuccess()
-        val validatorClass = compileResult.loadClass("\$TestRecord_Validator")
+        val validatorClass = loadClass("\$TestRecord_Validator")
         assertThat(validatorClass).isNotNull()
-        val graph = compileResult.loadClass("TestAppGraph")
+        val graph = loadClass("TestAppGraph")
         assertThat(graph).isNotNull()
     }
 }

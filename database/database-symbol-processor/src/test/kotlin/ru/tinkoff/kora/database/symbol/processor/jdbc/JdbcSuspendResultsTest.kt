@@ -9,8 +9,10 @@ import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
-import ru.tinkoff.kora.database.symbol.processor.DbTestUtils
+import ru.tinkoff.kora.database.symbol.processor.RepositorySymbolProcessorProvider
 import ru.tinkoff.kora.database.symbol.processor.jdbc.repository.AllowedSuspendResultsRepository
+import ru.tinkoff.kora.ksp.common.TestUtils
+import java.nio.file.Path
 import java.util.*
 import java.util.concurrent.Executor
 
@@ -35,7 +37,15 @@ class JdbcSuspendResultsTest {
         ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, Int::class.javaObjectType))
         ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, TypeRef.of(List::class.java, Int::class.javaObjectType)))
         ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, TypeRef.of(Optional::class.java, Int::class.javaObjectType)))
-        repository = ctx.newInstance(DbTestUtils.compileClass(AllowedSuspendResultsRepository::class).java)
+
+
+        val repositoryClass = TestUtils.runProcessing(listOf(RepositorySymbolProcessorProvider()), listOf(Path.of("src/test/kotlin/ru/tinkoff/kora/database/symbol/processor/jdbc/repository/AllowedSuspendResultsRepository.kt")))
+            .assertSuccess()
+            .classLoader
+            .loadClass("ru.tinkoff.kora.database.symbol.processor.jdbc.repository.\$AllowedSuspendResultsRepository_Impl")
+
+
+        repository = ctx.newInstance(repositoryClass) as AllowedSuspendResultsRepository
     }
 
     @BeforeEach

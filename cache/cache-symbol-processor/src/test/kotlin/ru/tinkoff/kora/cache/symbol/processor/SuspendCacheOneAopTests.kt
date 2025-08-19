@@ -30,9 +30,8 @@ class SuspendCacheOneAopTests : CaffeineCacheModule {
 
         return try {
             val classLoader = symbolProcess(
-                listOf(DummyCache11::class, CacheableSuspendOne::class),
-                CacheSymbolProcessorProvider(),
-                AopSymbolProcessorProvider(),
+                listOf(CacheSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+                listOf(DummyCache11::class, CacheableSuspendOne::class)
             )
 
             val cacheClass = classLoader.loadClass(CACHE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE_CLASS")

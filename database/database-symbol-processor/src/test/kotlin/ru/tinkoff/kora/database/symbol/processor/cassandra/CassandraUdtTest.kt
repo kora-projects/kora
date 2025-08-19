@@ -7,40 +7,56 @@ import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.AbstractRepositoryTest
-import ru.tinkoff.kora.database.symbol.processor.cassandra.repository.Udt
+import ru.tinkoff.kora.database.symbol.processor.RepositorySymbolProcessorProvider
 import ru.tinkoff.kora.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider
-import ru.tinkoff.kora.ksp.common.symbolProcess
 import kotlin.reflect.KClass
 
 class CassandraUdtTest : AbstractRepositoryTest() {
     @Test
     fun testUdt() {
-        val cl = symbolProcess(Udt::class, CassandraUdtSymbolProcessorProvider())
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_UdtEntity_CassandraRowColumnMapper"))
+        compile0(
+            listOf(CassandraUdtSymbolProcessorProvider()),
+            """
+                @ru.tinkoff.kora.database.cassandra.annotation.UDT
+                data class UdtEntity(val string: String, val innerUdt: InnerUdt)
+            """.trimIndent(),
+            """
+                @ru.tinkoff.kora.database.cassandra.annotation.UDT
+                data class InnerUdt(val id: Int, val deep: DeepUdt)
+            """.trimIndent(),
+            """
+                @ru.tinkoff.kora.database.cassandra.annotation.UDT
+                data class DeepUdt(val doubleValue: Double?)
+            """.trimIndent()
+        )
+
+        assertThat(loadClass("\$UdtEntity_CassandraRowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_UdtEntity_List_CassandraRowColumnMapper"))
+        assertThat(loadClass("\$UdtEntity_List_CassandraRowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_UdtEntity_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$UdtEntity_CassandraParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_UdtEntity_List_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$UdtEntity_List_CassandraParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_InnerUdt_CassandraRowColumnMapper"))
+        assertThat(loadClass("\$InnerUdt_CassandraRowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_InnerUdt_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$InnerUdt_CassandraParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_DeepUdt_CassandraRowColumnMapper"))
+        assertThat(loadClass("\$DeepUdt_CassandraRowColumnMapper"))
             .isNotNull
             .implements(CassandraRowColumnMapper::class)
-        assertThat(cl.loadClass("ru.tinkoff.kora.database.symbol.processor.cassandra.repository.\$Udt_DeepUdt_CassandraParameterColumnMapper"))
+        assertThat(loadClass("\$DeepUdt_CassandraParameterColumnMapper"))
             .isNotNull
             .implements(CassandraParameterColumnMapper::class)
+
     }
+
 
     private fun ClassAssert.implements(expectedSuperinterface: KClass<*>) {
         this.`is`(
@@ -66,6 +82,7 @@ class CassandraUdtTest : AbstractRepositoryTest() {
     @Test
     fun testUdtExtension() {
         compile0(
+            listOf(RepositorySymbolProcessorProvider()),
             """
                 @ru.tinkoff.kora.database.cassandra.annotation.UDT
                 data class UdtEntity(val value1: String, val value2: String)

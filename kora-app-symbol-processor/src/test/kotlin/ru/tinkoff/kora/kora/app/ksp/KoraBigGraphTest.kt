@@ -17,12 +17,10 @@ class KoraBigGraphTest : AbstractSymbolProcessorTest() {
             sb.append("  fun component").append(i).append("() = \"\";\n")
         }
         sb.append("}\n")
-        val compileResult = compile0(sb.toString())
-        if (compileResult.isFailed()) {
-            throw compileResult.compilationException()
-        }
+        compile0(listOf(KoraAppProcessorProvider()), sb.toString())
+            .assertSuccess()
 
-        val appClass = compileResult.loadClass("ExampleApplicationGraph")
+        val appClass = loadClass("ExampleApplicationGraph")
         val `object` = appClass.getConstructor().newInstance() as Supplier<ApplicationGraphDraw>
         val draw = `object`.get()
         Assertions.assertThat(draw.nodes).hasSize(1500)

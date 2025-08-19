@@ -3,14 +3,14 @@ package ru.tinkoff.kora.logging.symbol.processor.aop.mdc
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Assertions.assertDoesNotThrow
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertNotNull
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.MethodSource
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+import ru.tinkoff.kora.ksp.common.TestUtils
 import ru.tinkoff.kora.logging.common.MDC
-import java.util.UUID
+import java.util.*
 
 class MdcKoraAspectTest : AbstractMdcAspectTest() {
 
@@ -104,7 +104,7 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
     @MethodSource("provideGlobalSuspendTestCases")
     fun testGlobalMdcWithCoroutines(source: String) {
         val aopProxy = compile0(listOf(AopSymbolProcessorProvider()), source.trimIndent())
-        assertTrue(aopProxy.isFailed())
+        aopProxy.assertFailure()
     }
 
     @Test
@@ -137,10 +137,10 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
         clearCurrentContext()
     }
 
-    private fun invokeMethod(aopProxy: CompileResult) {
+    private fun invokeMethod(aopProxy: TestUtils.ProcessingResult) {
         aopProxy.assertSuccess()
 
-        val generatedClass = aopProxy.loadClass("\$TestMdc__AopProxy")
+        val generatedClass = loadClass("\$TestMdc__AopProxy")
         val constructor = generatedClass.constructors.first()
 
         val testObject = TestObject(generatedClass.kotlin, constructor.newInstance(contextHolder))

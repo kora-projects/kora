@@ -19,6 +19,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             import software.amazon.awssdk.services.s3.model.*;
             """.trimIndent()
     }
+    fun compile0(vararg src: String) = compile0(listOf(S3ClientSymbolProcessorProvider()), *src)
 
     // Get
     @Test
@@ -34,7 +35,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -51,7 +52,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -68,7 +69,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -85,7 +86,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -102,7 +103,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -119,7 +120,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -136,7 +137,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -152,7 +153,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 
     @Test
@@ -168,7 +169,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -184,7 +185,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 
     // List
@@ -201,7 +202,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -218,7 +219,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -235,7 +236,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -252,7 +253,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -269,7 +270,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -286,7 +287,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -303,7 +304,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -319,7 +320,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 
     @Test
@@ -335,7 +336,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -351,7 +352,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 
     // Delete
@@ -368,7 +369,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -385,7 +386,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -401,7 +402,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 
     @Test
@@ -417,7 +418,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -433,7 +434,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 
     // Deletes
@@ -450,7 +451,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -468,7 +469,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -485,7 +486,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -502,7 +503,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -519,7 +520,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -536,7 +537,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -553,7 +554,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -570,7 +571,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -587,7 +588,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -603,7 +604,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 
     @Test
@@ -619,7 +620,7 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
         )
         compileResult.assertSuccess()
-        val clazz = compileResult.loadClass("\$Client_Impl")
+        val clazz = loadClass("\$Client_Impl")
         assertThat(clazz).isNotNull()
     }
 
@@ -635,6 +636,6 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
                 }
                 """.trimIndent()
         )
-        assertThat(result.isFailed()).isTrue()
+        result.assertFailure()
     }
 }

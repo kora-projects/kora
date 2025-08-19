@@ -7,7 +7,7 @@ import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 class ConflictResolutionTest : AbstractSymbolProcessorTest() {
     @Test
     fun testMultipleComponentSameType() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider()),
             """
             interface TestInterface            
             """.trimIndent(),
@@ -27,12 +27,12 @@ class ConflictResolutionTest : AbstractSymbolProcessorTest() {
                                                 """.trimIndent()
         )
 
-        assertThat(compileResult.isFailed()).isTrue()
+        compileResult.assertFailure()
     }
 
     @Test
     fun testDefaultComponentOverride() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider()),
             """
             interface TestInterface            
             """.trimIndent(),
@@ -54,12 +54,12 @@ class ConflictResolutionTest : AbstractSymbolProcessorTest() {
                                                 """.trimIndent()
         )
 
-        assertThat(compileResult.isFailed()).isFalse()
+        compileResult.assertSuccess()
     }
 
     @Test
     fun testDefaultComponentTemplateOverride() {
-        compile0(
+        compile0(listOf(KoraAppProcessorProvider()),
             """
             interface TestInterface <T>
             """.trimIndent(),

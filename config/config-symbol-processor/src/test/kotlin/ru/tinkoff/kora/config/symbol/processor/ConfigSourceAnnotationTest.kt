@@ -18,8 +18,8 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
             
             """.trimIndent()
         )
-        assertThat(extractor!!.extract(MapConfigFactory.fromMap(mapOf("value" to 42)).root()))
-            .isEqualTo(new("\$TestConfig_ConfigValueExtractor\$TestConfig_Impl", 42))
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 42)).root()))
+            .isEqualTo(new($$"$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42))
     }
 
     @Test
@@ -33,7 +33,7 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
             
             """.trimIndent()
         )
-        val moduleClass = compileResult.loadClass("TestConfigModule")
+        val moduleClass = loadClass("TestConfigModule")
         assertThat(moduleClass)
             .isNotNull()
             .isInterface()
@@ -41,7 +41,7 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
 
         val method = moduleClass.getMethod("testConfig", Config::class.java, ConfigValueExtractor::class.java)
         assertThat(method).isNotNull()
-        assertThat(method.returnType).isEqualTo(compileResult.loadClass("TestConfig"))
+        assertThat(method.returnType).isEqualTo(loadClass("TestConfig"))
         assertThat(method.isDefault).isTrue()
     }
 }

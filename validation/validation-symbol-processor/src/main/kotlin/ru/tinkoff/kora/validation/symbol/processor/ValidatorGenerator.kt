@@ -152,13 +152,13 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             val factory = entry.key
             val fieldName = entry.value
             val validatorType = factory.validator()
-            val createParameters = factory.parameters.values.joinToString(", ") {
-                if (it is String) {
-                    CodeBlock.of("%S", it).toString()
-                } else {
-                    CodeBlock.of("%L", it).toString()
+            val createParameters = factory.parameters.values.map {
+                when (it) {
+                    is String -> CodeBlock.of("%S", it)
+                    is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (it.parentDeclaration as KSClassDeclaration).toClassName(), it.simpleName.asString())
+                    else -> CodeBlock.of("%L", it)
                 }
-            }
+            }.joinToCode(", ")
 
             validatorSpecBuilder.addProperty(
                 PropertySpec.builder(

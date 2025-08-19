@@ -34,9 +34,8 @@ class SyncCacheOneManyAopTests : CaffeineCacheModule, RedisCacheMapperModule {
 
         return try {
             val classLoader = symbolProcess(
+                listOf(CacheSymbolProcessorProvider(), AopSymbolProcessorProvider()),
                 listOf(DummyCache11::class, DummyCache12::class, CacheableSyncOneMany::class),
-                AopSymbolProcessorProvider(),
-                CacheSymbolProcessorProvider()
             )
 
 

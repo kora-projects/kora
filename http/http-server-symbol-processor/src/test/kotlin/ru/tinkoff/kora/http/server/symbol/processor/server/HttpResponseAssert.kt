@@ -47,9 +47,9 @@ class HttpResponseAssert(httpResponse: HttpServerResponse) {
     fun hasBody(expected: ByteArray?): HttpResponseAssert {
         Assertions.assertThat(body)
             .withFailMessage {
-                val expectedBase64 = Base64.getEncoder().encodeToString(expected).indent(4)
-                val gotBase64 = Base64.getEncoder().encodeToString(body).indent(4)
-                "Expected response body: \n%s\n\n\tgot: \n%s".formatted(expectedBase64, gotBase64)
+                val expectedBase64 = Base64.getEncoder().encodeToString(expected).prependIndent("    ")
+                val gotBase64 = Base64.getEncoder().encodeToString(body).prependIndent("    ")
+                "Expected response body: \n$expectedBase64\n\n\tgot: \n$gotBase64"
             }
             .isEqualTo(expected)
         return this
