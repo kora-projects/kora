@@ -47,7 +47,7 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
             @Override
             public HttpExecuteResponse call() {
                 final HttpClientRequest request = asKoraRequest(httpExecuteRequest);
-                final HttpClientResponse response = httpClient.execute(request).toCompletableFuture().join();
+                final HttpClientResponse response = httpClient.execute(request);
                 return asAwsResponse(response);
             }
 
@@ -61,17 +61,18 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
     @Override
     public CompletableFuture<Void> execute(AsyncExecuteRequest asyncExecuteRequest) {
         final HttpClientRequest request = asKoraRequest(asyncExecuteRequest);
-        return httpClient.execute(request)
-            .thenAccept(response -> {
-                final SdkHttpResponse sdkHttpResponse = asSdkResponse(response);
-                asyncExecuteRequest.responseHandler().onHeaders(sdkHttpResponse);
-                asyncExecuteRequest.responseHandler().onStream(JdkFlowAdapter.flowPublisherToFlux(response.body()));
-            })
-            .exceptionally(e -> {
-                asyncExecuteRequest.responseHandler().onError(e);
-                return null;
-            })
-            .toCompletableFuture();
+        final HttpClientResponse response;
+        try {
+            response = httpClient.execute(request);
+        } catch (Exception e) {
+            asyncExecuteRequest.responseHandler().onError(e);
+            return CompletableFuture.completedFuture(null);
+        }
+        final SdkHttpResponse sdkHttpResponse = asSdkResponse(response);
+        asyncExecuteRequest.responseHandler().onHeaders(sdkHttpResponse);
+        asyncExecuteRequest.responseHandler().onStream(JdkFlowAdapter.flowPublisherToFlux(response.body()));
+
+        return CompletableFuture.completedFuture(null);
     }
 
     private HttpClientRequest asKoraRequest(HttpExecuteRequest httpExecuteRequest) {

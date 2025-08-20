@@ -108,27 +108,13 @@ class WebServiceClientAnnotationProcessorTest {
             assertThat(response)
                 .hasFieldOrPropertyWithValue("val1", "test");
 
-            var monoResponse = (CompletionStage<?>) invoke(client, "testAsync", CompletionStage.class, request);
-            var monoResolvedResponse = monoResponse.toCompletableFuture().get();
-            assertThat(monoResolvedResponse)
-                .hasFieldOrPropertyWithValue("val1", "test");
-
             rsKind.set(RsKind.FAILURE1);
             assertThatThrownBy(() -> invoke(client, "test", responseType, request))
                 .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError1Msg"));
-            assertThat(((CompletionStage<?>) invoke(client, "testAsync", CompletionStage.class, request)))
-                .failsWithin(Duration.ofSeconds(10))
-                .withThrowableOfType(ExecutionException.class)
-                .withCauseInstanceOf((Class<? extends Throwable>) cl.loadClass("ru.tinkoff.kora.simple.service.TestError1Msg"));
-
 
             rsKind.set(RsKind.FAILURE2);
             assertThatThrownBy(() -> invoke(client, "test", responseType, request))
                 .isInstanceOf(cl.loadClass("ru.tinkoff.kora.simple.service.TestError2Msg"));
-            assertThat(((CompletionStage<?>) invoke(client, "testAsync", CompletionStage.class, request)))
-                .failsWithin(Duration.ofSeconds(10))
-                .withThrowableOfType(ExecutionException.class)
-                .withCauseInstanceOf((Class<? extends Throwable>) cl.loadClass("ru.tinkoff.kora.simple.service.TestError2Msg"));
         }
     }
 

@@ -16,7 +16,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -52,7 +51,7 @@ public class ClientClassGenerator {
         }
 
         for (var method : methods) {
-            builder.addField(HttpClientClassNames.httpClient, method.element().getSimpleName() + "Client", Modifier.PRIVATE, Modifier.FINAL);
+            builder.addField(httpClient, method.element().getSimpleName() + "Client", Modifier.PRIVATE, Modifier.FINAL);
             builder.addField(Duration.class, method.element().getSimpleName() + "RequestTimeout", Modifier.PRIVATE, Modifier.FINAL);
             builder.addField(String.class, method.element().getSimpleName() + "UriTemplate", Modifier.PRIVATE, Modifier.FINAL);
             var hasUriParameters = method.parameters.stream().anyMatch(p -> p instanceof Parameter.QueryParameter || p instanceof Parameter.PathParameter);
@@ -135,19 +134,19 @@ public class ClientClassGenerator {
                 var hasFirstParam = hasQMark && !uriWithPlaceholders.getQuery().isBlank();
                 b.addStatement("var _query = new $T($L, $L)", uriQueryBuilder, !hasQMark, hasFirstParam);
                 for (var parameter : methodData.parameters) {
-                    if (parameter instanceof Parameter.QueryParameter p) {
-                        boolean nullable = CommonUtils.isNullable(p.parameter());
+                    if (parameter instanceof Parameter.QueryParameter(var p, var queryParameterName)) {
+                        boolean nullable = CommonUtils.isNullable(p);
                         if (nullable) {
-                            b.beginControlFlow("if ($L != null)", p.parameter());
+                            b.beginControlFlow("if ($L != null)", p);
                         }
-                        var targetLiteral = p.parameter().getSimpleName().toString();
-                        var type = p.parameter().asType();
+                        var targetLiteral = p.getSimpleName().toString();
+                        var type = p.asType();
                         var isList = CommonUtils.isCollection(type);
                         if (isList) {
-                            type = ((DeclaredType) type).getTypeArguments().get(0);
+                            type = ((DeclaredType) type).getTypeArguments().getFirst();
                             var paramName = "_" + targetLiteral + "_element";
                             b.beginControlFlow("if ($N.isEmpty())", targetLiteral);
-                            b.addStatement("_query.unsafeAdd($S)", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8));
+                            b.addStatement("_query.unsafeAdd($S)", URLEncoder.encode(queryParameterName, StandardCharsets.UTF_8));
                             b.nextControlFlow("else");
                             b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
                             targetLiteral = paramName;
@@ -171,16 +170,16 @@ public class ClientClassGenerator {
                             b.nextControlFlow("else");
                             b.addCode("_query.add($L.getKey(), ", paramName);
                             if (requiresConverter(type)) {
-                                b.addCode("$L.convert($L.getValue())", getConverterName(methodData, p.parameter()), targetLiteral);
+                                b.addCode("$L.convert($L.getValue())", getConverterName(methodData, p), targetLiteral);
                             } else {
                                 b.addCode("$T.toString($L.getValue())", Objects.class, targetLiteral);
                             }
                             b.addStatement(")", StandardCharsets.class);
                             b.endControlFlow().endControlFlow().endControlFlow();
                         } else {
-                            b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8), URLEncoder.class);
+                            b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(queryParameterName, StandardCharsets.UTF_8), URLEncoder.class);
                             if (requiresConverter(type)) {
-                                b.addCode("$L.convert($L)", getConverterName(methodData, p.parameter()), targetLiteral);
+                                b.addCode("$L.convert($L)", getConverterName(methodData, p), targetLiteral);
                             } else {
                                 b.addCode("$T.toString($L)", Objects.class, targetLiteral);
                             }
@@ -202,108 +201,111 @@ public class ClientClassGenerator {
             b.addStatement("var _uri = this.$L", method.getSimpleName() + "Uri");
         }
         b.addCode("\n");
-        for (var parameter : methodData.parameters()) {
-            if (parameter instanceof Parameter.HeaderParameter header) {
-                boolean nullable = CommonUtils.isNullable(header.parameter());
-                if (nullable) {
-                    b.beginControlFlow("if ($L != null)", header.parameter());
-                }
-
-                var targetLiteral = header.parameter().getSimpleName().toString();
-                var type = header.parameter().asType();
-                var isList = CommonUtils.isCollection(type);
-                if (isList) {
-                    type = ((DeclaredType) type).getTypeArguments().get(0);
-                    var paramName = "_" + targetLiteral + "_element";
-                    b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
-                    targetLiteral = paramName;
-                }
-
-                var isMap = CommonUtils.isMap(type);
-                if (isMap) {
-                    var keyType = ((DeclaredType) type).getTypeArguments().get(0);
-                    if (!String.class.getCanonicalName().equals(keyType.toString())) {
-                        throw new ProcessingErrorException("@Header map key type must be String, but was: " + keyType, method);
+        for (var p : methodData.parameters()) {
+            switch (p) {
+                case Parameter.HeaderParameter(var parameter, var headerName) -> {
+                    boolean nullable = CommonUtils.isNullable(parameter);
+                    if (nullable) {
+                        b.beginControlFlow("if ($L != null)", parameter);
                     }
 
-                    type = ((DeclaredType) type).getTypeArguments().get(1);
-                    b.beginControlFlow("for (var $L_header : $L.entrySet())", targetLiteral, targetLiteral);
-                    b.beginControlFlow("if($L_header.getKey() != null && !$L_header.getKey().isBlank() && $L_header.getValue() != null)", targetLiteral, targetLiteral, targetLiteral);
-                    if (requiresConverter(type)) {
-                        b.addStatement("_headers.add($L_header.getKey(), $L.convert($L_header.getValue()))", targetLiteral, getConverterName(methodData, header.parameter()), targetLiteral);
-                    } else {
+                    var targetLiteral = parameter.getSimpleName().toString();
+                    var type = parameter.asType();
+                    var isList = CommonUtils.isCollection(type);
+                    if (isList) {
+                        type = ((DeclaredType) type).getTypeArguments().get(0);
+                        var paramName = "_" + targetLiteral + "_element";
+                        b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
+                        targetLiteral = paramName;
+                    }
+
+                    var isMap = CommonUtils.isMap(type);
+                    if (isMap) {
+                        var keyType = ((DeclaredType) type).getTypeArguments().get(0);
+                        if (!String.class.getCanonicalName().equals(keyType.toString())) {
+                            throw new ProcessingErrorException("@Header map key type must be String, but was: " + keyType, method);
+                        }
+
+                        type = ((DeclaredType) type).getTypeArguments().get(1);
+                        b.beginControlFlow("for (var $L_header : $L.entrySet())", targetLiteral, targetLiteral);
+                        b.beginControlFlow("if($L_header.getKey() != null && !$L_header.getKey().isBlank() && $L_header.getValue() != null)", targetLiteral, targetLiteral, targetLiteral);
+                        if (requiresConverter(type)) {
+                            b.addStatement("_headers.add($L_header.getKey(), $L.convert($L_header.getValue()))", targetLiteral, getConverterName(methodData, parameter), targetLiteral);
+                        } else {
+                            b.addStatement("_headers.add($L_header.getKey(), $L_header.getValue())", targetLiteral, targetLiteral);
+                        }
+                        b.endControlFlow().endControlFlow();
+                    } else if (ClassName.get(type).equals(httpHeaders)) {
+                        b.beginControlFlow("for (var $L_header : $L)", targetLiteral, targetLiteral);
                         b.addStatement("_headers.add($L_header.getKey(), $L_header.getValue())", targetLiteral, targetLiteral);
-                    }
-                    b.endControlFlow().endControlFlow();
-                } else if (ClassName.get(type).equals(httpHeaders)) {
-                    b.beginControlFlow("for (var $L_header : $L)", targetLiteral, targetLiteral);
-                    b.addStatement("_headers.add($L_header.getKey(), $L_header.getValue())", targetLiteral, targetLiteral);
-                    b.endControlFlow();
-                } else {
-                    if (requiresConverter(type)) {
-                        b.addCode("_headers.add($S, $L.convert($L));\n", header.headerName(), getConverterName(methodData, header.parameter()), targetLiteral);
+                        b.endControlFlow();
                     } else {
-                        b.addCode("_headers.add($S, $T.toString($L));\n", header.headerName(), Objects.class, targetLiteral);
-                    }
-                }
-
-                if (isList) {
-                    b.endControlFlow();
-                }
-
-                if (nullable) {
-                    b.endControlFlow();
-                }
-            }
-            if (parameter instanceof Parameter.CookieParameter cookie) {
-                boolean nullable = CommonUtils.isNullable(cookie.parameter());
-                if (nullable) {
-                    b.beginControlFlow("if ($L != null)", cookie.parameter());
-                }
-
-                var targetLiteral = cookie.parameter().getSimpleName().toString();
-                var type = cookie.parameter().asType();
-                var isList = CommonUtils.isCollection(type);
-                if (isList) {
-                    type = ((DeclaredType) type).getTypeArguments().get(0);
-                    var paramName = "_" + targetLiteral + "_element";
-                    b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
-                    targetLiteral = paramName;
-                }
-
-                var isMap = CommonUtils.isMap(type);
-                if (isMap) {
-                    var keyType = ((DeclaredType) type).getTypeArguments().get(0);
-                    if (!String.class.getCanonicalName().equals(keyType.toString())) {
-                        throw new ProcessingErrorException("@Cookie map key type must be String, but was: " + keyType, method);
+                        if (requiresConverter(type)) {
+                            b.addCode("_headers.add($S, $L.convert($L));\n", headerName, getConverterName(methodData, parameter), targetLiteral);
+                        } else {
+                            b.addCode("_headers.add($S, $T.toString($L));\n", headerName, Objects.class, targetLiteral);
+                        }
                     }
 
-                    type = ((DeclaredType) type).getTypeArguments().get(1);
-                    b.beginControlFlow("for (var $L_cookie : $L.entrySet())", targetLiteral, targetLiteral);
-                    b.beginControlFlow("if($L_cookie.getKey() != null && !$L_cookie.getKey().isBlank() && $L_cookie.getValue() != null)", targetLiteral, targetLiteral, targetLiteral);
-                    if (requiresConverter(type)) {
-                        b.addStatement("_headers.add(\"Cookie\", $L_cookie.getKey() + \"=\" + $L.convert($L_cookie.getValue()))", targetLiteral, getConverterName(methodData, cookie.parameter()), targetLiteral);
+                    if (isList) {
+                        b.endControlFlow();
+                    }
+
+                    if (nullable) {
+                        b.endControlFlow();
+                    }
+                }
+                case Parameter.CookieParameter(var parameter, var cookieName) -> {
+                    boolean nullable = CommonUtils.isNullable(parameter);
+                    if (nullable) {
+                        b.beginControlFlow("if ($L != null)", parameter);
+                    }
+
+                    var targetLiteral = parameter.getSimpleName().toString();
+                    var type = parameter.asType();
+                    var isList = CommonUtils.isCollection(type);
+                    if (isList) {
+                        type = ((DeclaredType) type).getTypeArguments().get(0);
+                        var paramName = "_" + targetLiteral + "_element";
+                        b.beginControlFlow("for (var $L : $L)", paramName, targetLiteral);
+                        targetLiteral = paramName;
+                    }
+
+                    var isMap = CommonUtils.isMap(type);
+                    if (isMap) {
+                        var keyType = ((DeclaredType) type).getTypeArguments().get(0);
+                        if (!String.class.getCanonicalName().equals(keyType.toString())) {
+                            throw new ProcessingErrorException("@Cookie map key type must be String, but was: " + keyType, method);
+                        }
+
+                        type = ((DeclaredType) type).getTypeArguments().get(1);
+                        b.beginControlFlow("for (var $L_cookie : $L.entrySet())", targetLiteral, targetLiteral);
+                        b.beginControlFlow("if($L_cookie.getKey() != null && !$L_cookie.getKey().isBlank() && $L_cookie.getValue() != null)", targetLiteral, targetLiteral, targetLiteral);
+                        if (requiresConverter(type)) {
+                            b.addStatement("_headers.add(\"Cookie\", $L_cookie.getKey() + \"=\" + $L.convert($L_cookie.getValue()))", targetLiteral, getConverterName(methodData, parameter), targetLiteral);
+                        } else {
+                            b.addStatement("_headers.add(\"Cookie\", $L_cookie.getKey() + \"=\" + $L_cookie.getValue())", targetLiteral, targetLiteral);
+                        }
+                        b.endControlFlow().endControlFlow();
+                    } else if (ClassName.get(type).equals(httpCookie)) {
+                        b.addStatement("_headers.add(\"Cookie\", $L.toValue())", targetLiteral);
                     } else {
-                        b.addStatement("_headers.add(\"Cookie\", $L_cookie.getKey() + \"=\" + $L_cookie.getValue())", targetLiteral, targetLiteral);
+                        if (requiresConverter(type)) {
+                            b.addCode("_headers.add(\"Cookie\", \"$L=\" + $L.convert($L));\n", cookieName, getConverterName(methodData, parameter), targetLiteral);
+                        } else {
+                            b.addCode("_headers.add(\"Cookie\", \"$L=\" + $T.toString($L));\n", cookieName, Objects.class, targetLiteral);
+                        }
                     }
-                    b.endControlFlow().endControlFlow();
-                } else if (ClassName.get(type).equals(httpCookie)) {
-                    b.addStatement("_headers.add(\"Cookie\", $L.toValue())", targetLiteral);
-                } else {
-                    if (requiresConverter(type)) {
-                        b.addCode("_headers.add(\"Cookie\", \"$L=\" + $L.convert($L));\n", cookie.cookieName(), getConverterName(methodData, cookie.parameter()), targetLiteral);
-                    } else {
-                        b.addCode("_headers.add(\"Cookie\", \"$L=\" + $T.toString($L));\n", cookie.cookieName(), Objects.class, targetLiteral);
+
+                    if (isList) {
+                        b.endControlFlow();
+                    }
+
+                    if (nullable) {
+                        b.endControlFlow();
                     }
                 }
-
-                if (isList) {
-                    b.endControlFlow();
-                }
-
-                if (nullable) {
-                    b.endControlFlow();
-                }
+                default -> {}
             }
         }
         if (bodyParameter == null) {
@@ -324,13 +326,16 @@ public class ClientClassGenerator {
 
         b.addCode("\n");
         b.addStatement("var _request = $T.of($S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
-        if (CommonUtils.isMono(method.getReturnType())) {
-            b.addCode(buildCallMono(builder, methodData));
-        } else if (CommonUtils.isFuture(method.getReturnType())) {
-            b.addCode(buildCallFuture(builder, methodData));
-        } else {
-            b.addCode(buildCallBlocking(builder, methodData));
+        if (CommonUtils.isMono(method.getReturnType()) || CommonUtils.isFuture(method.getReturnType())) {
+            this.processingEnv.getMessager().printWarning("Method has async signature, this might not work correctly", method);
         }
+        b.beginControlFlow("try (var _response = _client.execute(_request))");
+        b.addCode(mapBlockingResponse(builder, methodData, method.getReturnType()));
+        b.nextControlFlow("catch (RuntimeException e)")
+            .addStatement("throw e");
+        b.nextControlFlow("catch (Exception e)")
+            .addStatement("throw new $T(e)", httpClientUnknownException);
+        b.endControlFlow();// try response
         return b.build();
     }
 
@@ -419,7 +424,7 @@ public class ClientClassGenerator {
                 b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
             }
             b.nextControlFlow("else");
-            b.addStatement("throw $T.fromResponseFuture(_response).get()", httpClientResponseException);
+            b.addStatement("throw $T.fromResponse(_response)", httpClientResponseException);
             b.endControlFlow();
         } else {
             b.addStatement("var _code = _response.code()");
@@ -445,7 +450,7 @@ public class ClientClassGenerator {
             }
             if (defaultMapper == null) {
                 b.add("  default -> {\n");
-                b.add("    throw $T.fromResponseFuture(_response).get();\n", httpClientResponseException);
+                b.add("    throw $T.fromResponse(_response);\n", httpClientResponseException);
                 b.add("  }\n");
             } else {
                 var responseMapperName = methodData.element().getSimpleName() + "DefaultResponseMapper";
@@ -460,133 +465,6 @@ public class ClientClassGenerator {
             }
             b.add("};\n");
         }
-        return b.build();
-    }
-
-    private CodeBlock buildCallBlocking(TypeSpec.Builder builder, MethodData method) {
-        var b = CodeBlock.builder();
-        b.beginControlFlow("try (var _response = _client.execute(_request).toCompletableFuture().get())");
-        b.add(mapBlockingResponse(builder, method, method.element().getReturnType()));
-        b.nextControlFlow("catch (java.util.concurrent.ExecutionException e)")
-            .addStatement("if (e.getCause() instanceof RuntimeException re) throw re")
-            .addStatement("if (e.getCause() instanceof Error er) throw er")
-            .addStatement("throw new $T(e.getCause())", httpClientUnknownException);
-        b.nextControlFlow("catch (RuntimeException e)")
-            .addStatement("throw e");
-        b.nextControlFlow("catch (Exception e)")
-            .addStatement("throw new $T(e)", httpClientUnknownException);
-        b.endControlFlow();// try response
-        return b.build();
-    }
-
-    private CodeBlock mapFutureResponse(TypeSpec.Builder builder, MethodData methodData, TypeMirror resultType) {
-        var b = CodeBlock.builder();
-        if (methodData.responseMapper != null && methodData.responseMapper.mapperClass() != null) {
-            var responseMapperName = methodData.element.getSimpleName() + "ResponseMapper";
-            var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
-                ? CodeBlock.of("$T", implClassName(methodData.element))
-                : CodeBlock.of("this");
-            b.addStatement("_result = $L.$N.apply(_response)", ref, responseMapperName);
-        } else if (methodData.codeMappers().isEmpty()) {
-            b.addStatement("var _code = _response.code()");
-            b.beginControlFlow("if (_code >= 200 && _code < 300)");
-            if (resultType instanceof DeclaredType dt && dt.asElement().toString().equals("java.lang.Void")) {
-                b.addStatement("_result = $T.completedFuture(null)", CompletableFuture.class);
-            } else {
-                var responseMapperName = methodData.element().getSimpleName() + "ResponseMapper";
-                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
-                    ? CodeBlock.of("$T", implClassName(methodData.element))
-                    : CodeBlock.of("this");
-                b.addStatement("_result = $L.$N.apply(_response)", ref, responseMapperName);
-            }
-            b.nextControlFlow("else");
-            b.addStatement("return $T.fromResponse(_response)", httpClientResponseException);
-            b.endControlFlow();
-        } else {
-            b.addStatement("var _code = _response.code()");
-            b.add("_result = switch (_code) {\n");
-            ResponseCodeMapperData defaultMapper = null;
-            for (var codeMapper : methodData.codeMappers()) {
-                if (codeMapper.code() == -1) {
-                    defaultMapper = codeMapper;
-                } else {
-                    var responseMapperName = "" + methodData.element().getSimpleName() + codeMapper.code() + "ResponseMapper";
-                    var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
-                        ? CodeBlock.of("$T", implClassName(methodData.element))
-                        : CodeBlock.of("this");
-                    if (isMapperAssignable(resultType, codeMapper.type, codeMapper.mapper)) {
-                        b.add("  case $L -> $L.$L.apply(_response);\n", codeMapper.code(), ref, responseMapperName);
-                    } else {
-                        b.add("  case $L -> $L.$L.apply(_response).thenCompose($T::failedFuture);\n", codeMapper.code(), ref, responseMapperName, CompletableFuture.class);
-                    }
-                }
-            }
-            if (defaultMapper == null) {
-                b.add("  default -> $T.fromResponse(_response);\n", httpClientResponseException);
-            } else {
-                var responseMapperName = methodData.element().getSimpleName() + "DefaultResponseMapper";
-                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
-                    ? CodeBlock.of("$T", implClassName(methodData.element))
-                    : CodeBlock.of("this");
-                if (isMapperAssignable(resultType, defaultMapper.type, defaultMapper.mapper)) {
-                    b.add("  default -> $L.$L.apply(_response);\n", ref, responseMapperName);
-                } else {
-                    b.add("  default -> $L.$L.apply(_response).thenCompose($T::failedFuture);\n", ref, responseMapperName, CompletableFuture.class);
-                }
-            }
-            b.add("};\n");
-        }
-        return b.build();
-    }
-
-    private CodeBlock buildCallFuture(TypeSpec.Builder builder, MethodData method) {
-        var returnType = (DeclaredType) method.element().getReturnType();
-        var returnTypeContent = returnType.getTypeArguments().get(0);
-        var b = CodeBlock.builder();
-        b.add("return _client.execute(_request)$>\n")
-            .add(".thenCompose(_response -> {$>\n");
-        b.addStatement("$T _result", ParameterizedTypeName.get(ClassName.get(CompletionStage.class), WildcardTypeName.subtypeOf(TypeName.get(returnTypeContent))));
-        b.beginControlFlow("try");
-        b.add(mapFutureResponse(builder, method, returnTypeContent));
-        b.nextControlFlow("catch (Throwable _e)");
-        b.addStatement("_result = $T.failedFuture(_e)", CompletableFuture.class);
-        b.endControlFlow();
-        b.add("return _result.whenComplete((__r, _err) -> {$>\n");
-        b.add("try {\n");
-        b.add("  _response.close();\n");
-        b.add("} catch (Exception _ex) {\n");
-        b.add("   _err.addSuppressed(_ex);\n");
-        b.add("}$<\n"); // try
-        b.add("});$<\n");// whenComplete
-        b.add("}).<$T>thenApply(_r -> _r)", TypeName.get(returnTypeContent));// thenCompose response
-        if (method.element.getReturnType() instanceof DeclaredType dt && dt.asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
-            b.add(".toCompletableFuture()");
-        }
-        b.add(";$<\n");
-        return b.build();
-    }
-
-    private CodeBlock buildCallMono(TypeSpec.Builder builder, MethodData method) {
-        var returnType = (DeclaredType) method.element().getReturnType();
-        var returnTypeContent = returnType.getTypeArguments().get(0);
-        var b = CodeBlock.builder();
-        b.add("return $T.fromFuture(() -> _client.execute(_request)$>\n", CommonClassNames.mono)
-            .add(".thenCompose(_response -> {$>\n");
-        b.addStatement("$T _result", ParameterizedTypeName.get(ClassName.get(CompletionStage.class), WildcardTypeName.subtypeOf(TypeName.get(returnTypeContent))));
-        b.beginControlFlow("try");
-        b.add(mapFutureResponse(builder, method, returnTypeContent));
-        b.nextControlFlow("catch (Throwable _e)");
-        b.addStatement("_result = $T.failedFuture(_e)", CompletableFuture.class);
-        b.endControlFlow();
-        b.add("return _result.whenComplete((__r, _err) -> {$>\n");
-        b.add("try {\n");
-        b.add("  _response.close();\n");
-        b.add("} catch (Exception _ex) {\n");
-        b.add("   _err.addSuppressed(_ex);\n");
-        b.add("}$<\n"); // try
-        b.add("});$<\n");// whenComplete
-        b.add("}).<$T>thenApply(_r -> _r).toCompletableFuture()", TypeName.get(returnTypeContent));// thenCompose response
-        b.add(");$<\n");
         return b.build();
     }
 
@@ -702,7 +580,7 @@ public class ClientClassGenerator {
                             responseMapperType = TypeName.get(methodData.responseMapper().mapperClass());
                         } else if (CommonUtils.isMono(methodData.element.getReturnType()) || CommonUtils.isFuture(methodData.element.getReturnType())) {
                             responseMapperType = ParameterizedTypeName.get(
-                                HttpClientClassNames.httpClientResponseMapper,
+                                httpClientResponseMapper,
                                 ParameterizedTypeName.get(
                                     ClassName.get(CompletionStage.class),
                                     ((ParameterizedTypeName) methodData.returnType()).typeArguments.get(0)
@@ -710,7 +588,7 @@ public class ClientClassGenerator {
                             );
                         } else {
                             responseMapperType = ParameterizedTypeName.get(
-                                HttpClientClassNames.httpClientResponseMapper,
+                                httpClientResponseMapper,
                                 methodData.returnType()
                             );
                         }

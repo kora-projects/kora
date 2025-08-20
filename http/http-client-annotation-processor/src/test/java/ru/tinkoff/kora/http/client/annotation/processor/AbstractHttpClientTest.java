@@ -17,12 +17,9 @@ import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Flow;
 import java.util.function.Function;
 
 import static org.mockito.Mockito.mock;
@@ -42,30 +39,8 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
     protected void onRequest(String method, String path, Function<TestHttpClientResponse, TestHttpClientResponse> responseConsumer) {
         when(httpClient.execute(Mockito.argThat(argument -> argument.method().equalsIgnoreCase(method) && argument.uri().toString().equalsIgnoreCase(path))))
             .thenAnswer(invocation -> {
-                var f = new CompletableFuture<Void>();
-                invocation.getArgument(0, HttpClientRequest.class).body().subscribe(new Flow.Subscriber<ByteBuffer>() {
-                    @Override
-                    public void onSubscribe(Flow.Subscription subscription) {
-                        subscription.request(Long.MAX_VALUE);
-                    }
-
-                    @Override
-                    public void onNext(ByteBuffer item) {
-
-                    }
-
-                    @Override
-                    public void onError(Throwable throwable) {
-                        f.completeExceptionally(throwable);
-                    }
-
-                    @Override
-                    public void onComplete() {
-                        f.complete(null);
-                    }
-                });
-                f.get();
-                return CompletableFuture.completedFuture(responseConsumer.apply(TestHttpClientResponse.response(200)));
+                invocation.getArgument(0, HttpClientRequest.class).body().close();
+                return responseConsumer.apply(TestHttpClientResponse.response(200));
             });
     }
 

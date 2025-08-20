@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.soap.client.common;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClientException;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
@@ -19,8 +18,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
 
 public class SoapRequestExecutor {
     private final HttpClient httpClient;
@@ -54,7 +51,7 @@ public class SoapRequestExecutor {
         if (this.soapAction != null) {
             httpClientRequest.header("SOAPAction", this.soapAction);
         }
-        try (var httpClientResponse = this.httpClient.execute(httpClientRequest.build()).toCompletableFuture().get()) {
+        try (var httpClientResponse = this.httpClient.execute(httpClientRequest.build())) {
             if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
                 try (var body = httpClientResponse.body();
                      var is = body.asInputStream()) {
@@ -109,89 +106,13 @@ public class SoapRequestExecutor {
                     }
                 }
             }
-        } catch (IOException | HttpClientException | InterruptedException e) {
+        } catch (IOException | HttpClientException e) {
             telemetry.failure(new ProcessException(e), null);
-            throw new SoapException(e);
-        } catch (ExecutionException e) {
-            if (e.getCause() != null) {
-                telemetry.failure(new ProcessException(e.getCause()), null);
-                if (e.getCause() instanceof IOException || e.getCause() instanceof HttpClientException) {
-                    throw new SoapException(e.getCause());
-                } else if (e.getCause() instanceof RuntimeException re) {
-                    throw re;
-                }
-            } else {
-                telemetry.failure(new ProcessException(e), null);
-            }
             throw new SoapException(e);
         } catch (Exception e) {
             telemetry.failure(new ProcessException(e), null);
             throw e;
         }
-    }
-
-    public CompletionStage<SoapResult> callAsync(SoapEnvelope requestEnvelope) {
-        var telemetry = this.telemetry.get(requestEnvelope);
-        var requestXml = this.xmlTools.marshal(requestEnvelope);
-        telemetry.prepared(requestEnvelope, requestXml);
-        var httpClientRequest = HttpClientRequest.post(this.url)
-            .body(HttpBody.of("text/xml", requestXml));
-        if (this.soapAction != null) {
-            httpClientRequest.header("SOAPAction", this.soapAction);
-        }
-        return this.httpClient.execute(httpClientRequest.build())
-            .whenComplete((response, error) -> {
-                if (error != null) {
-                    telemetry.failure(new ProcessException(error), null);
-                }
-            })
-            .thenCompose(httpClientResponse -> {
-                if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
-                    return FlowUtils.toByteArrayFuture(httpClientResponse.body())
-                        .handle((body, sink) -> {
-                            telemetry.failure(new InvalidHttpCode(httpClientResponse.code()), body);
-                            throw new InvalidHttpResponseSoapException(httpClientResponse.code(), body);
-                        });
-                }
-                return FlowUtils.toByteArrayFuture(httpClientResponse.body())
-                    .handle((body, error) -> {
-                        if (error != null) {
-                            telemetry.failure(new ProcessException(error), body);
-                            throw new SoapException(error);
-                        }
-                        try {
-                            if (httpClientResponse.code() == 200) {
-                                var contentType = httpClientResponse.headers().getFirst("content-type");
-                                if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
-                                    var readMultipartResult = readMultipart(contentType, new ByteArrayInputStream(body));
-                                    var result = readMultipartResult.result;
-                                    if (telemetry.logResponseBody()) {
-                                        telemetry.success(result, readMultipartResult.xmlPart().getContentArray());
-                                    } else {
-                                        telemetry.success(result, null);
-                                    }
-                                    return result;
-                                } else {
-                                    var responseEnvelope = this.xmlTools.unmarshal(new ByteArrayInputStream(body));
-                                    var result = new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
-                                    if (telemetry.logResponseBody()) {
-                                        telemetry.success(result, body);
-                                    } else {
-                                        telemetry.success(result, null);
-                                    }
-                                    return result;
-                                }
-                            }
-
-                            var result = readFailure(new ByteArrayInputStream(body));
-                            telemetry.failure(new InternalServerError(result), body);
-                            return result;
-                        } catch (IOException e) {
-                            telemetry.failure(new ProcessException(e), body);
-                            throw new SoapException(e);
-                        }
-                    });
-            });
     }
 
     private SoapResult.Success readSuccess(InputStream body) throws IOException {

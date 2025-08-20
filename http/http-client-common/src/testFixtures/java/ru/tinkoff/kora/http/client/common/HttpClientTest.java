@@ -3,9 +3,8 @@ package ru.tinkoff.kora.http.client.common;
 import ch.qos.logback.classic.Level;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -38,9 +37,8 @@ import static ru.tinkoff.kora.http.common.HttpMethod.POST;
 
 @TestMethodOrder(MethodOrderer.Random.class)
 public abstract class HttpClientTest extends HttpClientTestBase {
-    @ParameterizedTest
-    @EnumSource
-    protected void testHappyPath(CallType type) {
+    @Test
+    protected void testHappyPath() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/")
             .withMethod(POST)
@@ -64,7 +62,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .body(HttpBody.plaintext("test-request"))
             .build();
 
-        call(type, request)
+        call(request)
             .assertCode(200)
             .assertHeader("Content-type", "text/plain; charset=UTF-8")
             .assertBody()
@@ -80,20 +78,18 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         verify(this.metrics).record(eq(200), eq(HttpResultCode.SUCCESS), eq("http"), eq("localhost"), eq("POST"), eq("/"), any(), ArgumentMatchers.longThat(l -> l > 0), any());
     }
 
-    @ParameterizedTest
-    @EnumSource
-    protected void requests(CallType type) {
+    @Test
+    protected void requests() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         for (int i = 0; i < 100; i++) {
-            testHappyPath(type);
+            testHappyPath();
             Mockito.clearInvocations(metrics, logger);
             // todo assert connection pool?
         }
     }
 
-    @ParameterizedTest
-    @EnumSource
-    protected void testLargePayload(CallType type) {
+    @Test
+    protected void testLargePayload() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var responseBody = new byte[1024 * 1024 * 4];
         ThreadLocalRandom.current().nextBytes(responseBody);
@@ -107,16 +103,16 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .body(HttpBody.plaintext("test-request"))
             .build();
 
-        call(type, request)
+        call(request)
             .assertCode(200)
             .assertHeader("Content-type", "text/plain; charset=ISO_8859_1")
             .assertBody()
             .isEqualTo(responseBody);
     }
 
-    @ParameterizedTest
-    @EnumSource
-    protected void testInvalidResponse(CallType type) {
+
+    @Test
+    protected void testInvalidResponse() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/");
         server.when(expectedRequest).error(error().withDropConnection(true).withResponseBytes("test respons\r\n".getBytes(StandardCharsets.UTF_8)));
@@ -125,13 +121,13 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .body(HttpBody.plaintext("test-request"))
             .build();
 
-        assertThatThrownBy(() -> call(type, request))
+        assertThatThrownBy(() -> call(request))
             .isInstanceOf(HttpClientConnectionException.class);
     }
 
-    @ParameterizedTest
-    @EnumSource
-    protected void testTimeout(CallType type) {
+
+    @Test
+    protected void testTimeout() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/");
         server.when(expectedRequest).respond(response()
@@ -145,7 +141,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .requestTimeout(1000)
             .build();
 
-        assertThatThrownBy(() -> call(type, request))
+        assertThatThrownBy(() -> call(request))
             .isInstanceOf(HttpClientTimeoutException.class);
 
         verify(this.metrics).record(
@@ -161,9 +157,9 @@ public abstract class HttpClientTest extends HttpClientTestBase {
     }
 
 
-    @ParameterizedTest
-    @EnumSource
-    protected void testRequestTimeout(CallType type) {
+
+    @Test
+    protected void testRequestTimeout() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/");
         server.when(expectedRequest).respond(response()
@@ -177,7 +173,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .requestTimeout(200)
             .build();
 
-        assertThatThrownBy(() -> call(type, request))
+        assertThatThrownBy(() -> call(request))
             .isInstanceOf(HttpClientTimeoutException.class);
 
         verify(this.metrics).record(
@@ -192,10 +188,10 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             any());
     }
 
-    @ParameterizedTest
-    @EnumSource
+
     @Disabled("Something in a new version of MockServer broke this test")
-    protected void testErrorOnConnectRetried(CallType type) {
+    @Test
+    protected void testErrorOnConnectRetried() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/");
         server.when(expectedRequest, Times.once()).error(error()
@@ -210,7 +206,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .body(HttpBody.plaintext("test-request"))
             .build();
 
-        call(type, request);
+        call(request);
 
         verify(this.metrics).record(
             eq(200),
@@ -224,9 +220,9 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             any());
     }
 
-    @ParameterizedTest
-    @EnumSource
-    protected void testConnectionError(CallType type) throws Exception {
+
+    @Test
+    protected void testConnectionError() throws Exception {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
 
         var request = HttpClientRequest.post("http://google.com:1488/foo/{bar}/baz")
@@ -246,7 +242,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             if (base instanceof Lifecycle lifecycle) {
                 lifecycle.init();
             }
-            assertThatThrownBy(() -> call(client, type, request))
+            assertThatThrownBy(() -> call(client, request))
                 .isInstanceOf(HttpClientConnectionException.class);
         } finally {
             if (base instanceof Lifecycle lifecycle) {
@@ -267,9 +263,8 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         );
     }
 
-    @ParameterizedTest
-    @EnumSource
-    protected void testNoResponseBody(CallType type) {
+    @Test
+    protected void testNoResponseBody() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/")
             .withMethod(POST)
@@ -278,7 +273,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         var request = HttpClientRequest.post("/").build();
 
-        call(type, request)
+        call(request)
             .assertCode(200)
             .assertBody()
             .isEmpty();
@@ -286,9 +281,8 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         server.verify(expectedRequest);
     }
 
-    @ParameterizedTest
-    @EnumSource
-    protected void testRequestBodyPublisherError(CallType type) {
+    @Test
+    protected void testRequestBodyPublisherError() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var request = HttpClientRequest.post("/")
             .body(HttpBodyOutput.octetStream(FlowUtils.fromCallable(Context.current(), () -> {
@@ -296,7 +290,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             })))
             .build();
 
-        assertThatThrownBy(() -> call(type, request)
+        assertThatThrownBy(() -> call(request)
             .assertCode(200)
             .assertBody()
             .isEmpty()
