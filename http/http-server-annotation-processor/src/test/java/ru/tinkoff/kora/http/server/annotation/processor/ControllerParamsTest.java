@@ -850,8 +850,8 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
 
         compileResult.assertSuccess();
         Class<?> module = compileResult.loadClass("ControllerModule");
-        Class<?> controller = compileResult.loadClass("Controller");
         verifyNoDependencies(module);
+        Class<?> controller = compileResult.loadClass("Controller");
         Assertions.assertThat(controller.getAnnotation(Tag.class)).isNotNull();
         Assertions.assertThat(module.getDeclaredMethods()[0].getAnnotation(Tag.class)).isNotNull();
         Assertions.assertThat(module.getDeclaredMethods()[0].getParameters()[0].getAnnotation(Tag.class)).isNotNull();
