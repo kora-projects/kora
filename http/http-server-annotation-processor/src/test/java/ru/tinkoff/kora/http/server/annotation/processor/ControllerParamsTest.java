@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
@@ -835,6 +836,26 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             .hasBody("test-error");
     }
 
+    @Test
+    void testControllerTag() {
+        compile("""
+            @Tag(String.class)
+            @HttpController
+            public class Controller {
+            
+                @HttpRoute(method = GET, path = "/pathString/{someValue}")
+                void pathString(@Path(value = "someValue") String string) { }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        Class<?> module = compileResult.loadClass("ControllerModule");
+        Class<?> controller = compileResult.loadClass("Controller");
+        verifyNoDependencies(module);
+        Assertions.assertThat(controller.getAnnotation(Tag.class)).isNotNull();
+        Assertions.assertThat(module.getDeclaredMethods()[0].getAnnotation(Tag.class)).isNotNull();
+        Assertions.assertThat(module.getDeclaredMethods()[0].getParameters()[0].getAnnotation(Tag.class)).isNotNull();
+    }
 
     private void verifyNoDependencies(Class<?> controllerModule) {
         for (var moduleMethod : controllerModule.getMethods()) {
