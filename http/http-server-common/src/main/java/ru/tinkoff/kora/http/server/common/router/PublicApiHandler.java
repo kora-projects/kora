@@ -40,7 +40,7 @@ public class PublicApiHandler {
                             List<HttpServerInterceptor> interceptors,
                             HttpServerTelemetryFactory httpServerTelemetry,
                             HttpServerConfig config) {
-        this.telemetry = Objects.requireNonNullElse(httpServerTelemetry.get(config.telemetry(), config), HttpServerTelemetry.EMPTY);
+        this.telemetry = Objects.requireNonNullElse(httpServerTelemetry.get(config.telemetry()), HttpServerTelemetry.EMPTY);
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
