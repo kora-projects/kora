@@ -8,10 +8,8 @@ import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResultCode;
-import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
@@ -24,21 +22,9 @@ import java.util.Map;
 import static io.opentelemetry.context.Context.root;
 
 public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
-
-    @Nullable
-    private final HttpServerConfig config;
     private final Tracer tracer;
 
-    /**
-     * @see #OpentelemetryHttpServerTracer(Tracer, HttpServerConfig)
-     */
-    @Deprecated
     public OpentelemetryHttpServerTracer(Tracer tracer) {
-        this(tracer, null);
-    }
-
-    public OpentelemetryHttpServerTracer(Tracer tracer, @Nullable HttpServerConfig config) {
-        this.config = config;
         this.tracer = tracer;
     }
 
@@ -53,9 +39,10 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
 
     @Override
     public HttpServerSpan createSpan(String template, PublicApiRequest routerRequest) {
+
         var context = Context.current();
         var parentCtx = W3CTraceContextPropagator.getInstance().extract(root(), routerRequest, PublicApiRequestTextMapGetter.INSTANCE);
-        var spanBuilder = this.tracer
+        var span = this.tracer
             .spanBuilder(routerRequest.method() + " " + template)
             .setSpanKind(SpanKind.SERVER)
             .setParent(parentCtx)
@@ -63,13 +50,8 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
             .setAttribute(UrlAttributes.URL_SCHEME, routerRequest.scheme())
             .setAttribute(ServerAttributes.SERVER_ADDRESS, routerRequest.hostName())
             .setAttribute(UrlAttributes.URL_PATH, routerRequest.path())
-            .setAttribute(HttpAttributes.HTTP_ROUTE, template);
-
-        if (config != null) {
-            spanBuilder.setAttribute(ServerAttributes.SERVER_PORT, config.publicApiHttpPort());
-        }
-
-        var span = spanBuilder.startSpan();
+            .setAttribute(HttpAttributes.HTTP_ROUTE, template)
+            .startSpan();
 
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
@@ -117,4 +99,5 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
             return carrier.headers().getFirst(key);
         }
     }
+
 }
