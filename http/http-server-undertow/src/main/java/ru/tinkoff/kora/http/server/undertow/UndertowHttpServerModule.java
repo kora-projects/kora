@@ -21,7 +21,7 @@ public interface UndertowHttpServerModule extends UndertowModule {
     default UndertowPublicApiHandler undertowPublicApiHandler(PublicApiHandler publicApiHandler,
                                                               @Nullable HttpServerTracerFactory tracerFactory,
                                                               HttpServerConfig config) {
-        var tracer = tracerFactory == null ? null : tracerFactory.get(config.telemetry().tracing(), config);
+        var tracer = tracerFactory == null ? null : tracerFactory.get(config.telemetry().tracing());
         return new UndertowPublicApiHandler(publicApiHandler, tracer);
     }
 
