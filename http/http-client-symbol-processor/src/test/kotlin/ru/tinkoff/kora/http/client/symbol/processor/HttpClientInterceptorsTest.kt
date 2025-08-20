@@ -39,15 +39,15 @@ class HttpClientInterceptorsTest : AbstractHttpClientTest() {
             
             """.trimIndent(), """
              open class ClientLevelInterceptor : HttpClientInterceptor {
-                 override fun processRequest(ctx: Context, chain: InterceptChain, request: HttpClientRequest) : CompletionStage<HttpClientResponse>{
-                     return chain.process(ctx, request);
+                 override fun processRequest(ctx: Context, chain: InterceptChain, request: HttpClientRequest) : HttpClientResponse{
+                     return chain.process(ctx, request)
                  }
              }
             
             """.trimIndent(), """
              open class MethodLevelInterceptor : HttpClientInterceptor {
-                 override fun processRequest(ctx: Context, chain: InterceptChain, request: HttpClientRequest) : CompletionStage<HttpClientResponse>{
-                     return chain.process(ctx, request);
+                 override fun processRequest(ctx: Context, chain: InterceptChain, request: HttpClientRequest) : HttpClientResponse{
+                     return chain.process(ctx, request)
                  }
              }
             

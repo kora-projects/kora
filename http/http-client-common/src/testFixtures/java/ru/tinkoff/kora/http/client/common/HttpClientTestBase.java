@@ -16,9 +16,8 @@ import org.mockserver.integration.ClientAndServer;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.http.client.HttpClientTestBaseKt;
-import ru.tinkoff.kora.http.client.common.interceptor.RootUriInterceptor;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
+import ru.tinkoff.kora.http.client.common.request.DefaultHttpClientRequest;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLogger;
@@ -27,7 +26,7 @@ import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
+import java.net.URI;
 
 import static java.time.Duration.ofMillis;
 
@@ -52,7 +51,14 @@ public abstract class HttpClientTestBase {
             this.metrics,
             this.logger
         )))
-        .with(new RootUriInterceptor("http://localhost:" + server.getPort()));
+        .with((ctx, chain, request) -> chain.process(ctx, new DefaultHttpClientRequest(
+            request.method(),
+            URI.create("http://localhost:" + server.getPort() + request.uri().toString()),
+            request.uriTemplate(),
+            request.headers(),
+            request.body(),
+            request.requestTimeout()
+        )));
 
     protected abstract HttpClient createClient(HttpClientConfig config);
 
@@ -76,52 +82,22 @@ public abstract class HttpClientTestBase {
         Mockito.clearInvocations(metrics, logger);
     }
 
-
-    protected enum CallType {
-        BLOCKING,
-        REACTIVE,
-        KOTLIN,
-    }
-
-    protected ResponseWithBody call(HttpClientTest.CallType type, HttpClientRequest request) {
-        return this.call(this.client, type, request);
-    }
-
-    protected ResponseWithBody call(HttpClient client, HttpClientTest.CallType type, HttpClientRequest request) {
-        return switch (type) {
-            case BLOCKING -> this.callBlocking(client, request);
-            case REACTIVE -> this.callReactive(client, request);
-            case KOTLIN -> HttpClientTestBaseKt.call(client, request);
-        };
-    }
-
-    private ResponseWithBody callReactive(HttpClient client, HttpClientRequest request) {
-        try (var response = client.execute(request).toCompletableFuture().get()) {
-            var body = response.body().asArrayStage().toCompletableFuture().get();
-            return new ResponseWithBody(response, body);
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException re) {
-                throw re;
-            }
-            throw new RuntimeException(e.getCause());
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
+    protected ResponseWithBody call(HttpClient client, HttpClientRequest request) {
+        try (var response = client.execute(request);
+             var body = response.body();
+             var is = body.asInputStream()) {
+            return new ResponseWithBody(response, is.readAllBytes());
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private ResponseWithBody callBlocking(HttpClient client, HttpClientRequest request) {
-        try (var response = client.execute(request).toCompletableFuture().get();
+    protected ResponseWithBody call(HttpClientRequest request) {
+        try (var response = client.execute(request);
              var body = response.body();
              var is = body.asInputStream()) {
             return new ResponseWithBody(response, is.readAllBytes());
-        } catch (ExecutionException e) {
-            if (e.getCause() instanceof RuntimeException re) {
-                throw re;
-            }
-            throw new RuntimeException(e.getCause());
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }

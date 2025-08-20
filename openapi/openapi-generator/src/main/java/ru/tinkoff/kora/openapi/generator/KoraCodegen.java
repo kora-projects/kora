@@ -57,13 +57,10 @@ public class KoraCodegen extends DefaultCodegen {
     public enum Mode {
         JAVA_CLIENT("java-client"),
         JAVA_SERVER("java-server"),
-        JAVA_ASYNC_CLIENT("java-async-client"),
         JAVA_ASYNC_SERVER("java-async-server"),
-        JAVA_REACTIVE_CLIENT("java-reactive-client"),
         JAVA_REACTIVE_SERVER("java-reactive-server"),
         KOTLIN_CLIENT("kotlin-client"),
         KOTLIN_SERVER("kotlin-server"),
-        KOTLIN_SUSPEND_CLIENT("kotlin-suspend-client"),
         KOTLIN_SUSPEND_SERVER("kotlin-suspend-server");
 
         private final String mode;
@@ -97,14 +94,11 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         public boolean isClient() {
-            return switch (this) {
-                case JAVA_CLIENT, JAVA_ASYNC_CLIENT, JAVA_REACTIVE_CLIENT, KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> true;
-                default -> false;
-            };
+            return this == JAVA_CLIENT || this == KOTLIN_CLIENT;
         }
 
         public boolean isJava() {
-            return this != KOTLIN_CLIENT && this != KOTLIN_SERVER && this != KOTLIN_SUSPEND_CLIENT && this != KOTLIN_SUSPEND_SERVER;
+            return this != KOTLIN_CLIENT && this != KOTLIN_SERVER && this != KOTLIN_SUSPEND_SERVER;
         }
 
         public boolean isKotlin() {
@@ -322,11 +316,6 @@ public class KoraCodegen extends DefaultCodegen {
                     additionalProperties.put("isClient", true);
                     additionalProperties.put("isBlocking", true);
                 }
-                case JAVA_REACTIVE_CLIENT, JAVA_ASYNC_CLIENT -> {
-                    additionalProperties.put("isClient", true);
-                    additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_CLIENT);
-                    additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_CLIENT);
-                }
                 case JAVA_SERVER -> {
                     additionalProperties.put("isClient", false);
                     additionalProperties.put("isBlocking", true);
@@ -336,9 +325,8 @@ public class KoraCodegen extends DefaultCodegen {
                     additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_SERVER);
                     additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_SERVER);
                 }
-                case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
+                case KOTLIN_CLIENT -> {
                     additionalProperties.put("isClient", true);
-                    additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT);
                 }
                 case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
                     additionalProperties.put("isClient", false);
@@ -492,13 +480,6 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
-            case JAVA_REACTIVE_CLIENT, JAVA_ASYNC_CLIENT -> {
-                modelTemplateFiles.put("javaModel.mustache", ".java");
-                apiTemplateFiles.put("javaClientApi.mustache", ".java");
-                apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
-                apiTemplateFiles.put("javaClientAsyncResponseMappers.mustache", "ClientResponseMappers.java");
-                apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
-            }
             case JAVA_SERVER, JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
@@ -511,15 +492,11 @@ public class KoraCodegen extends DefaultCodegen {
                     apiTemplateFiles.put("javaServerApiModule.mustache", "Module.java");
                 }
             }
-            case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
+            case KOTLIN_CLIENT -> {
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinClientApi.mustache", ".kt");
                 apiTemplateFiles.put("kotlinApiResponses.mustache", "Responses.kt");
-                if (params.codegenMode == Mode.KOTLIN_SUSPEND_CLIENT) {
-                    apiTemplateFiles.put("kotlinClientAsyncResponseMappers.mustache", "ClientResponseMappers.kt");
-                } else {
-                    apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
-                }
+                apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
                 apiTemplateFiles.put("kotlinClientRequestMappers.mustache", "ClientRequestMappers.kt");
             }
             case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
@@ -2926,7 +2903,7 @@ public class KoraCodegen extends DefaultCodegen {
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (!Objects.requireNonNullElse(securitySchemas, Map.of()).isEmpty()) {
             switch (params.codegenMode) {
-                case JAVA_CLIENT, JAVA_ASYNC_CLIENT, JAVA_REACTIVE_CLIENT -> {
+                case JAVA_CLIENT -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaClientSecuritySchema.mustache", securitySchemaClass));
                 }
@@ -2934,7 +2911,7 @@ public class KoraCodegen extends DefaultCodegen {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaServerSecuritySchema.mustache", securitySchemaClass));
                 }
-                case KOTLIN_CLIENT, KOTLIN_SUSPEND_CLIENT -> {
+                case KOTLIN_CLIENT -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.kt";
                     this.supportingFiles.add(new SupportingFile("kotlinClientSecuritySchema.mustache", securitySchemaClass));
                 }

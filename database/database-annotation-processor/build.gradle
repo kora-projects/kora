@@ -8,6 +8,7 @@ dependencies {
     testImplementation project(":database:database-common")
     testImplementation project(":database:database-jdbc")
     testImplementation project(":database:database-cassandra")
+    testImplementation libs.reactor.core
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
