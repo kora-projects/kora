@@ -4,15 +4,11 @@ import jakarta.annotation.Nullable;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.internal.http.HttpMethod;
-import ru.tinkoff.kora.http.client.common.HttpClient;
-import ru.tinkoff.kora.http.client.common.HttpClientConnectionException;
-import ru.tinkoff.kora.http.client.common.HttpClientTimeoutException;
+import ru.tinkoff.kora.http.client.common.*;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
 import java.io.IOException;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 public final class OkHttpClient implements HttpClient {
     private final okhttp3.OkHttpClient client;
@@ -22,7 +18,7 @@ public final class OkHttpClient implements HttpClient {
     }
 
     @Override
-    public CompletionStage<HttpClientResponse> execute(HttpClientRequest request) {
+    public HttpClientResponse execute(HttpClientRequest request) {
         try {
             var b = new Request.Builder();
             b.method(request.method(), toRequestBody(request))
@@ -39,17 +35,19 @@ public final class OkHttpClient implements HttpClient {
             }
             var call = okHttpClient.newCall(okHttpRequest);
             var rs = call.execute();
-            return CompletableFuture.completedFuture(new OkHttpResponse(rs));
+            return new OkHttpResponse(rs);
+        } catch (HttpClientException e) {
+            throw e;
         } catch (java.io.InterruptedIOException t) {
             if ("timeout".equals(t.getMessage())) {
-                return CompletableFuture.failedFuture(new HttpClientTimeoutException(t));
+                throw new HttpClientTimeoutException(t);
             } else {
-                return CompletableFuture.failedFuture(new HttpClientConnectionException(t));
+                throw new HttpClientConnectionException(t);
             }
         } catch (IOException t) {
-            return CompletableFuture.failedFuture(new HttpClientConnectionException(t));
+            throw new HttpClientConnectionException(t);
         } catch (Throwable t) {
-            return CompletableFuture.failedFuture(t);
+            throw new HttpClientUnknownException(t);
         }
     }
 

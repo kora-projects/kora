@@ -5,12 +5,7 @@ import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
-import ru.tinkoff.kora.config.common.extractor.BooleanConfigValueExtractor
-import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
-import ru.tinkoff.kora.config.common.extractor.DoubleArrayConfigValueExtractor
-import ru.tinkoff.kora.config.common.extractor.DurationConfigValueExtractor
-import ru.tinkoff.kora.config.common.extractor.SetConfigValueExtractor
-import ru.tinkoff.kora.config.common.extractor.StringConfigValueExtractor
+import ru.tinkoff.kora.config.common.extractor.*
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory
 import ru.tinkoff.kora.config.ksp.processor.ConfigParserSymbolProcessorProvider
 import ru.tinkoff.kora.config.ksp.processor.ConfigSourceSymbolProcessorProvider
@@ -36,7 +31,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
         whenever(it.body()).thenReturn(HttpBody.octetStream(ByteArray(0)))
     }
     val httpClient = mock<HttpClient>().also {
-        whenever(it.execute(any())).thenReturn(CompletableFuture.completedFuture(httpResponse))
+        whenever(it.execute(any())).thenReturn(httpResponse)
     }
     val telemetryFactory = mock<HttpClientTelemetryFactory>()
     lateinit var client: TestObject
@@ -58,7 +53,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
                     }
                 })
                 f.get()
-                CompletableFuture.completedFuture(responseConsumer(TestHttpClientResponse(code = 200)))
+                responseConsumer(TestHttpClientResponse(code = 200))
             }
     }
 
@@ -81,7 +76,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun compile(arguments: List<Any?>, @Language("kotlin") vararg sources: String): TestObject {
-        compile0(listOf(HttpClientSymbolProcessorProvider(), ConfigSourceSymbolProcessorProvider(), ConfigParserSymbolProcessorProvider()),*sources)
+        compile0(listOf(HttpClientSymbolProcessorProvider(), ConfigSourceSymbolProcessorProvider(), ConfigParserSymbolProcessorProvider()), *sources)
             .assertSuccess()
 
         val clientClass = loadClass("\$TestClient_ClientImpl")
@@ -95,9 +90,13 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
 
 
         val configValueExtractor = new("\$\$TestClient_Config_ConfigValueExtractor", telemetryCVE, configCVE, durationCVE) as ConfigValueExtractor<*>
-        val config = configValueExtractor.extract(MapConfigFactory.fromMap(mapOf(
-            "url" to "http://test-url:8080"
-        )).root())
+        val config = configValueExtractor.extract(
+            MapConfigFactory.fromMap(
+                mapOf(
+                    "url" to "http://test-url:8080"
+                )
+            ).root()
+        )
 
 
         val realArgs = arrayOfNulls<Any>(arguments.size + 3)

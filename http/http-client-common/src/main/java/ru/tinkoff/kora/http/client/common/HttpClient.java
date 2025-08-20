@@ -5,9 +5,6 @@ import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-
 /**
  * <b>Русский</b>: Базовый интерфейс HTTP клиента для всех реализаций
  * <hr>
@@ -15,7 +12,7 @@ import java.util.concurrent.CompletionStage;
  */
 public interface HttpClient {
 
-    CompletionStage<HttpClientResponse> execute(HttpClientRequest request);
+    HttpClientResponse execute(HttpClientRequest request) throws HttpClientException;
 
     default HttpClient with(HttpClientInterceptor interceptor) {
         return request -> {
@@ -29,8 +26,10 @@ public interface HttpClient {
                         ctx.inject();
                     }
                 }, request);
-            } catch (Throwable e) {
-                return CompletableFuture.failedFuture(e);
+            } catch (HttpClientException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new HttpClientUnknownException(e);
             }
         };
     }

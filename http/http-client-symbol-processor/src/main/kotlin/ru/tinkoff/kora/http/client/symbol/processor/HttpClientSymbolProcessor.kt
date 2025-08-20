@@ -11,6 +11,7 @@ import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.visitClass
 
 class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
@@ -27,7 +28,11 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
         symbols.forEach {
             it.visitClass { declaration ->
                 if (declaration.classKind == ClassKind.INTERFACE) {
-                    generateClient(declaration, resolver)
+                    try {
+                        generateClient(declaration, resolver)
+                    } catch (e: ProcessingErrorException) {
+                        e.printError(kspLogger)
+                    }
                 }
             }
         }

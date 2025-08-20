@@ -29,7 +29,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Flow;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
@@ -233,16 +236,12 @@ public abstract class AbstractAnnotationProcessorTest {
                 throw re;
             }
             throw new RuntimeException(e);
-        } catch (ExecutionException | CompletionException | InterruptedException e) {
-            throw (e.getCause() instanceof RuntimeException re)
-                ? re
-                : new RuntimeException(e);
         } catch (IllegalAccessException e) {
             throw new RuntimeException(e);
+        } catch (RuntimeException e) {
+            throw e;
         } catch (Exception e) {
-            if (e instanceof RuntimeException) {
-                throw e;
-            } else if (e.getCause() instanceof RuntimeException re) {
+            if (e.getCause() instanceof RuntimeException re) {
                 throw re;
             } else {
                 throw new RuntimeException(e);

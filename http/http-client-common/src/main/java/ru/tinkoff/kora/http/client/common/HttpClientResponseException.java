@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.http.client.common;
 
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 public class HttpClientResponseException extends HttpClientException {
     private final int code;
@@ -20,44 +18,20 @@ public class HttpClientResponseException extends HttpClientException {
         this.bytes = bytes;
     }
 
-    public static <T> CompletionStage<T> fromResponse(HttpClientResponse response) {
-        var full = response.body().getFullContentIfAvailable();
-        if (full != null) {
-            var bytes = new byte[full.remaining()];
-            full.get(bytes);
-            return CompletableFuture.failedFuture(new HttpClientResponseException(response.code(), response.headers(), bytes));
-        }
-        return FlowUtils.toByteArrayFuture(response.body(), 4096)
-            .handle((bytes, error) -> {
-                if (bytes == null) {
-                    bytes = new byte[0];
-                }
-                var e = new HttpClientResponseException(response.code(), response.headers(), bytes);
-                if (error != null) {
-                    e.addSuppressed(error);
-                }
-                throw e;
-            });
-    }
 
-    public static CompletableFuture<HttpClientResponseException> fromResponseFuture(HttpClientResponse response) {
-        var full = response.body().getFullContentIfAvailable();
-        if (full != null) {
-            var bytes = new byte[full.remaining()];
-            full.get(bytes);
-            return CompletableFuture.completedFuture(new HttpClientResponseException(response.code(), response.headers(), bytes));
+    public static HttpClientResponseException fromResponse(HttpClientResponse response) throws IOException {
+        try (var body = response.body()) {
+            var full = body.getFullContentIfAvailable();
+            if (full != null) {
+                var bytes = new byte[full.remaining()];
+                full.get(bytes);
+                return new HttpClientResponseException(response.code(), response.headers(), bytes);
+            }
+            try (var is = body.asInputStream()) {
+                var bytes = is.readNBytes(4096);
+                return new HttpClientResponseException(response.code(), response.headers(), bytes);
+            }
         }
-        return FlowUtils.toByteArrayFuture(response.body(), 4096)
-            .handle((bytes, error) -> {
-                if (bytes == null) {
-                    bytes = new byte[0];
-                }
-                var e = new HttpClientResponseException(response.code(), response.headers(), bytes);
-                if (error != null) {
-                    e.addSuppressed(error);
-                }
-                return e;
-            });
     }
 
     public int getCode() {

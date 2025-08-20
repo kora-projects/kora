@@ -35,5 +35,3 @@ dependencies {
     testFixturesImplementation(libs.kotlin.stdlib.lib)
     testFixturesImplementation(libs.kotlin.coroutines.jdk8)
 }
-
-apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
