@@ -73,7 +73,7 @@ class PublicApiHandlerProcessTests {
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
-        when(telemetryFactory.get(any())).thenReturn(telemetry);
+        when(telemetryFactory.get(any(), any())).thenReturn(telemetry);
         var config = config(false);
         var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
 
@@ -122,7 +122,7 @@ class PublicApiHandlerProcessTests {
         var telemetry = Mockito.mock(HttpServerTelemetry.class);
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
-        when(telemetryFactory.get(any())).thenReturn(telemetry);
+        when(telemetryFactory.get(any(), any())).thenReturn(telemetry);
         var config = config(true);
         var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
 
@@ -145,7 +145,7 @@ class PublicApiHandlerProcessTests {
         when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var config = config(false);
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
-        when(telemetryFactory.get(any())).thenReturn(telemetry);
+        when(telemetryFactory.get(any(), any())).thenReturn(telemetry);
         var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
 
         var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
