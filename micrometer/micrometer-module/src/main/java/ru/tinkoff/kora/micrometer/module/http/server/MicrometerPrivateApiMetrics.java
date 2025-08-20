@@ -4,6 +4,7 @@ import io.micrometer.prometheus.PrometheusMeterRegistry;
 import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
 
 public final class MicrometerPrivateApiMetrics implements PrivateApiMetrics {
+
     private final PrometheusMeterRegistry meterRegistry;
 
     public MicrometerPrivateApiMetrics(PrometheusMeterRegistry meterRegistry) {

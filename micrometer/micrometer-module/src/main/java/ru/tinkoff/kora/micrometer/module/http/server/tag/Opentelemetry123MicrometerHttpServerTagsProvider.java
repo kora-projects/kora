@@ -7,7 +7,6 @@ import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
 
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/http/http-metrics.md#metric-httpserverrequestduration">link</a>
@@ -16,28 +15,34 @@ public class Opentelemetry123MicrometerHttpServerTagsProvider implements Microme
 
     @Override
     public Iterable<Tag> getActiveRequestsTags(ActiveRequestsKey key) {
-        return List.of(
-            Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), key.target()),
-            Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method()),
-            Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), key.host()),
-            Tag.of(UrlAttributes.URL_SCHEME.getKey(), key.scheme())
-        );
+        var tags = new ArrayList<Tag>(5);
+
+        tags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method()));
+        tags.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), key.target()));
+        tags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), key.scheme()));
+        tags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), key.host()));
+        tags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(key.port())));
+
+        return tags;
     }
 
     @Override
     public Iterable<Tag> getDurationTags(DurationKey key) {
-        var list = new ArrayList<Tag>(6);
-        if (key.errorType() != null) {
-            list.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
-        } else {
-            list.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), ""));
-        }
-        list.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method()));
-        list.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(key.statusCode())));
-        list.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), key.route()));
-        list.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), key.scheme()));
-        list.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), key.host()));
-        return list;
-    }
+        var tags = new ArrayList<Tag>(7);
 
+        if (key.errorType() != null) {
+            tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
+        } else {
+            tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), ""));
+        }
+
+        tags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method()));
+        tags.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(key.statusCode())));
+        tags.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), key.route()));
+        tags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), key.scheme()));
+        tags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), key.host()));
+        tags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(key.port())));
+
+        return tags;
+    }
 }

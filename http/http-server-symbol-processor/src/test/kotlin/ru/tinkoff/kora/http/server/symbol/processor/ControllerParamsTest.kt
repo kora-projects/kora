@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.server.symbol.processor
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.application.graph.TypeRef
+import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.http.common.header.HttpHeaders
 import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper
@@ -11,6 +12,7 @@ import java.lang.reflect.ParameterizedType
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.ForkJoinPool
 import kotlin.reflect.KClass
+import kotlin.reflect.full.functions
 
 class ControllerParamsTest : AbstractHttpControllerTest() {
 
@@ -734,6 +736,28 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             .hasBody("test-error");
     }
 
+    @Test
+    fun testControllerTag() {
+        compile(
+            """
+            @Tag(String::class)
+            @HttpController
+            class Controller {
+            
+                @HttpRoute(method = GET, path = "/pathString/{valueSome}")
+                suspend fun pathString(@Path(value = "valueSome") value: String) { }
+            }
+            """.trimIndent()
+        )
+
+        compileResult.assertSuccess()
+        val module = compileResult.loadClass("ControllerModule")
+        module.verifyNoDependencies()
+        val controller = compileResult.loadClass("Controller")
+        Assertions.assertThat(controller.kotlin.annotations.first()).isInstanceOf(Tag::class.java)
+        Assertions.assertThat(module.kotlin.functions.first().annotations.first()).isInstanceOf(Tag::class.java)
+        Assertions.assertThat(module.kotlin.functions.first().parameters.last().annotations.first()).isInstanceOf(Tag::class.java)
+    }
 
     private fun <T> Class<T>.verifyNoDependencies() {
         this.methods.forEach {
