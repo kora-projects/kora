@@ -8,7 +8,6 @@ import org.slf4j.event.Level;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
-import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import java.util.*;
@@ -18,34 +17,18 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
 
     private static final int AVERAGE_HEADER_SIZE = 15;
 
-    private static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
-
-    @Nullable
-    private final HttpServerConfig serverConfig;
+    private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
     private final boolean logStacktrace;
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
     private final String mask;
     private final Boolean pathTemplate;
 
-    /**
-     * @see #Slf4jHttpServerLogger(boolean, Set, Set, String, Boolean, HttpServerConfig)
-     */
-    @Deprecated
     public Slf4jHttpServerLogger(boolean stacktrace,
                                  Set<String> maskedQueryParams,
                                  Set<String> maskedHeaders,
                                  String mask,
                                  Boolean pathTemplate) {
-        this(stacktrace, maskedQueryParams, maskedHeaders, mask, pathTemplate, null);
-    }
-
-    public Slf4jHttpServerLogger(boolean stacktrace,
-                                 Set<String> maskedQueryParams,
-                                 Set<String> maskedHeaders,
-                                 String mask,
-                                 Boolean pathTemplate,
-                                 @Nullable HttpServerConfig serverConfig) {
         this.logStacktrace = stacktrace;
         this.maskedQueryParams = maskedQueryParams.stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
@@ -55,12 +38,11 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
             .collect(Collectors.toSet());
         this.mask = mask;
         this.pathTemplate = pathTemplate;
-        this.serverConfig = serverConfig;
     }
 
     @Override
     public boolean isEnabled() {
-        return logger.isInfoEnabled();
+        return log.isInfoEnabled();
     }
 
     @Override
@@ -69,7 +51,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
                          String pathTemplate,
                          Map<String, ? extends Collection<String>> queryParams,
                          @Nullable HttpHeaders headers) {
-        if (!logger.isInfoEnabled()) {
+        if (!log.isInfoEnabled()) {
             return;
         }
 
@@ -81,7 +63,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
             gen.writeEndObject();
         });
 
-        if (logger.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             logServerReceivedRequest(marker, Level.DEBUG, operation, queryParams, headers);
         } else {
             logServerReceivedRequest(marker, Level.INFO, operation, null, null);
@@ -98,7 +80,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
                        Map<String, ? extends Collection<String>> queryParams,
                        @Nullable HttpHeaders headers,
                        @Nullable Throwable exception) {
-        if (!logger.isWarnEnabled()) {
+        if (!log.isWarnEnabled()) {
             return;
         }
 
@@ -120,7 +102,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         if (exception != null) {
             logServerRespondedWithException(marker, statusCode, operation, queryParams, headers, exception);
         } else {
-            if (logger.isDebugEnabled()) {
+            if (log.isDebugEnabled()) {
                 logServerResponded(marker, Level.DEBUG, statusCode, operation, queryParams, headers);
             } else {
                 logServerResponded(marker, Level.INFO, statusCode, operation, null, null);
@@ -143,18 +125,18 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
         if (shouldWriteQueryParams) {
             if (shouldWriteHeaders) {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer received request for {}?{}\n{}", operation, requestQueryParamsString(queryParams), requestHeaderString(headers));
             } else {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer received request for {}?{}", operation, requestQueryParamsString(queryParams));
             }
         } else {
             if (shouldWriteHeaders) {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer received request for {}\n{}", operation, requestHeaderString(headers));
             } else {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer received request for {}", operation);
             }
         }
@@ -168,29 +150,29 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         if (logStacktrace) {
             if (shouldWriteQueryParams) {
                 if (shouldWriteHeaders) {
-                    logger.warn(marker, "HttpServer responded error {} for {}?{}\n{}", statusCode, operation, requestQueryParamsString(queryParams), requestHeaderString(headers), exception);
+                    log.warn(marker, "HttpServer responded error {} for {}?{}\n{}", statusCode, operation, requestQueryParamsString(queryParams), requestHeaderString(headers), exception);
                 } else {
-                    logger.warn(marker, "HttpServer responded error {} for {}?{}", statusCode, operation, requestQueryParamsString(queryParams), exception);
+                    log.warn(marker, "HttpServer responded error {} for {}?{}", statusCode, operation, requestQueryParamsString(queryParams), exception);
                 }
             } else {
                 if (shouldWriteHeaders) {
-                    logger.warn(marker, "HttpServer responded error {} for {}\n{}", statusCode, operation, requestHeaderString(headers), exception);
+                    log.warn(marker, "HttpServer responded error {} for {}\n{}", statusCode, operation, requestHeaderString(headers), exception);
                 } else {
-                    logger.warn(marker, "HttpServer responded error {} for {}", statusCode, operation, exception);
+                    log.warn(marker, "HttpServer responded error {} for {}", statusCode, operation, exception);
                 }
             }
         } else {
             if (shouldWriteQueryParams) {
                 if (shouldWriteHeaders) {
-                    logger.warn(marker, "HttpServer responded error {} for {}?{} due to: {}\n{}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage(), requestHeaderString(headers));
+                    log.warn(marker, "HttpServer responded error {} for {}?{} due to: {}\n{}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage(), requestHeaderString(headers));
                 } else {
-                    logger.warn(marker, "HttpServer responded error {} for {}?{} due to: {}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage());
+                    log.warn(marker, "HttpServer responded error {} for {}?{} due to: {}", statusCode, operation, requestQueryParamsString(queryParams), exception.getMessage());
                 }
             } else {
                 if (shouldWriteHeaders) {
-                    logger.warn(marker, "HttpServer responded error {} for {} due to: {}\n{}", statusCode, operation, exception.getMessage(), requestHeaderString(headers));
+                    log.warn(marker, "HttpServer responded error {} for {} due to: {}\n{}", statusCode, operation, exception.getMessage(), requestHeaderString(headers));
                 } else {
-                    logger.warn(marker, "HttpServer responded error {} for {} due to: {}", statusCode, operation, exception.getMessage());
+                    log.warn(marker, "HttpServer responded error {} for {} due to: {}", statusCode, operation, exception.getMessage());
                 }
             }
         }
@@ -203,18 +185,18 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
         boolean shouldWriteHeaders = headers != null && !headers.isEmpty();
         if (shouldWriteQueryParams) {
             if (shouldWriteHeaders) {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer responded {} for {}?{}\n{}", statusCode, operation, requestQueryParamsString(queryParams), requestHeaderString(headers));
             } else {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer responded {} for {}?{}", statusCode, operation, requestQueryParamsString(queryParams));
             }
         } else {
             if (shouldWriteHeaders) {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer responded {} for {}\n{}", statusCode, operation, requestHeaderString(headers));
             } else {
-                logger.atLevel(level).addMarker(marker)
+                log.atLevel(level).addMarker(marker)
                     .log("HttpServer responded {} for {}", statusCode, operation);
             }
         }
@@ -256,7 +238,7 @@ public class Slf4jHttpServerLogger implements HttpServerLogger {
     }
 
     private boolean shouldWritePath() {
-        return pathTemplate != null ? !pathTemplate : logger.isTraceEnabled();
+        return pathTemplate != null ? !pathTemplate : log.isTraceEnabled();
     }
 
     private String getOperation(String method, String path, String pathTemplate) {
