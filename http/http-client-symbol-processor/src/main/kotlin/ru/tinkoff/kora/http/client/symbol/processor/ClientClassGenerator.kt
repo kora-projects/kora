@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.client.symbol.processor
 
 import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
@@ -36,7 +35,6 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.CommonClassNames.await
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMap
@@ -53,7 +51,6 @@ import java.net.URI
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.Duration
-import java.util.concurrent.CompletionStage
 import java.util.concurrent.ExecutionException
 import java.util.regex.Pattern
 
@@ -75,6 +72,10 @@ class ClientClassGenerator(private val resolver: Resolver) {
         builder.addProperty("rootUrl", String::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);
 
         for (method in methods) {
+            if (method.declaration.isSuspend()) {
+                throw ProcessingErrorException("Suspend methods are not supported", method.declaration)
+            }
+
             builder.addProperty(method.declaration.simpleName.asString() + "Client", httpClient, KModifier.PRIVATE, KModifier.FINAL)
             builder.addProperty(method.declaration.simpleName.asString() + "RequestTimeout", Duration::class.asClassName().copy(true), KModifier.PRIVATE, KModifier.FINAL)
             builder.addProperty(method.declaration.simpleName.asString() + "UriTemplate", String::class, KModifier.PRIVATE, KModifier.FINAL);
@@ -82,7 +83,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             if (!hasUriParameters) {
                 builder.addProperty(method.declaration.simpleName.asString() + "Uri", URI::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);
             }
-            val funSpec: FunSpec = this.buildFunction(method)
+            val funSpec = this.buildFunction(method)
             builder.addFunction(funSpec)
         }
         return builder.build()
@@ -99,6 +100,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
+
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -111,6 +113,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
+
                     is Parameter.HeaderParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -123,11 +126,12 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
+
                     is Parameter.CookieParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
-                        } else if(parameterType.isMap()) {
+                        } else if (parameterType.isMap()) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
@@ -412,7 +416,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if(httpCookie == parameterType.toClassName()) {
+            if (httpCookie == parameterType.toClassName()) {
                 b.addStatement("_headers.add(\"Cookie\", %L.toValue())", literalName)
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
@@ -424,7 +428,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     .beginControlFlow("if(!_k.isNullOrBlank())")
 
                 val argType = parameterType.arguments[1].type?.resolve()!!
-                if(argType.isMarkedNullable) {
+                if (argType.isMarkedNullable) {
                     b.beginControlFlow("if(_v != null)")
                 }
 
@@ -434,7 +438,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     b.addStatement("_headers.add(\"Cookie\", _k + \"=\" + %L.convert(_v))", getConverterName(methodData, it.parameter))
                 }
 
-                if(argType.isMarkedNullable) {
+                if (argType.isMarkedNullable) {
                     b.endControlFlow()
                 }
                 b.endControlFlow().endControlFlow()
@@ -487,16 +491,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
         b.addStatement("val _request = %T.of(%S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
 
-        if (method.isSuspend()) {
-            b.add("_client.execute(_request).%M().%M { _response ->", await, MemberName("kotlin.io", "use")).indent().add("\n")
-        } else {
-            b.add("try {").indent().add("\n")
-            b.add("_client.execute(_request).toCompletableFuture().get().%M { _response ->", MemberName("kotlin.io", "use")).indent().add("\n")
-        }
+        b.add("try {").indent().add("\n")
+        b.add("_client.execute(_request).%M { _response ->", MemberName("kotlin.io", "use")).indent().add("\n")
         if (methodData.responseMapper?.mapper != null) {
             val responseMapperName = method.simpleName.asString() + "ResponseMapper"
             b.add("return %N.apply(_response)", responseMapperName)
-            if (method.isSuspend()) b.add(".%M()", await)
         } else if (methodData.codeMappers.isEmpty()) {
             b.addStatement("val _code = _response.code()")
             b.controlFlow("if (_code in 200..299)") {
@@ -505,15 +504,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 } else {
                     val responseMapperName = method.simpleName.asString() + "ResponseMapper"
                     addStatement("return %N.apply(_response)", responseMapperName)
-                    if (method.isSuspend()) b.add(".%M()", await)
                 }
                 nextControlFlow("else")
-                add("throw %T.fromResponseFuture(_response)", httpClientResponseException)
-                if (method.isSuspend()) {
-                    add(".%M()\n", await)
-                } else {
-                    add(".get()\n")
-                }
+                add("throw %T.fromResponse(_response)", httpClientResponseException)
             }
         } else {
             b.add("val _code = _response.code()\n")
@@ -529,47 +522,36 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         } else {
                             add("%L -> throw %L.apply(_response)", codeMapper.code, responseMapperName)
                         }
-                        if (method.isSuspend()) b.add(".%M()", await)
                         b.add("\n")
                     }
                 }
                 if (defaultMapper == null) {
-                    add("else -> throw %T.fromResponseFuture(_response)", httpClientResponseException)
-                    if (method.isSuspend()) {
-                        add(".%M()\n", await)
-                    } else {
-                        add(".get()\n")
-                    }
+                    add("else -> throw %T.fromResponse(_response)", httpClientResponseException)
                 } else {
                     if (defaultMapper!!.assignable) {
                         add("else -> %L.apply(_response)", method.simpleName.asString() + "DefaultResponseMapper")
                     } else {
                         add("else -> throw %L.apply(_response)", method.simpleName.asString() + "DefaultResponseMapper")
                     }
-                    if (method.isSuspend()) b.add(".%M()", await)
                     b.add("\n")
                 }
             }
         }
 
-        if (method.isSuspend()) {
-            b.unindent().add("\n}\n")
-        } else {
-            b.unindent()
-            b.add("\n}")// use
-            b.unindent()
-            b.add("\n} catch (_e: %T) {\n", ExecutionException::class.asClassName())
-            b.add("  _e.cause?.let {\n")
-            b.add("    if (it is %T) throw it\n", RuntimeException::class.asClassName())
-            b.add("    throw %T(it)\n", httpClientUnknownException)
-            b.add("  }\n")
-            b.add("  throw %T(_e)\n", httpClientUnknownException)
-            b.add("} catch (_e: %T) {\n", RuntimeException::class.asClassName())
-            b.add("  throw _e\n")
-            b.add("} catch (_e: Exception) {\n")
-            b.add("  throw %T(_e)\n", httpClientUnknownException)
-            b.add("}\n")
-        }
+        b.unindent()
+        b.add("\n}")// use
+        b.unindent()
+        b.add("\n} catch (_e: %T) {\n", ExecutionException::class.asClassName())
+        b.add("  _e.cause?.let {\n")
+        b.add("    if (it is %T) throw it\n", RuntimeException::class.asClassName())
+        b.add("    throw %T(it)\n", httpClientUnknownException)
+        b.add("  }\n")
+        b.add("  throw %T(_e)\n", httpClientUnknownException)
+        b.add("} catch (_e: %T) {\n", RuntimeException::class.asClassName())
+        b.add("  throw _e\n")
+        b.add("} catch (_e: Exception) {\n")
+        b.add("  throw %T(_e)\n", httpClientUnknownException)
+        b.add("}\n")
         return m.addCode(b.build()).build()
     }
 
@@ -695,7 +677,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             } else {
                 for (codeMapper in methodData.codeMappers) {
                     val responseMapperName = method.simpleName.asString() + (if (codeMapper.code > 0) codeMapper.code else "Default").toString() + "ResponseMapper"
-                    val responseMapperType = codeMapper.responseMapperType(method.returnType!!.resolve(), method.isSuspend())
+                    val responseMapperType = codeMapper.responseMapperType(method.returnType!!.resolve())
                     addResponseMapper(responseMapperName, codeMapper.mapper, responseMapperType, methodData, tb, builder)
                 }
             }
@@ -816,26 +798,14 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val codeMappers: List<ResponseCodeMapperData>,
         val parameters: List<Parameter>
     ) {
-        fun responseMapperType() = if (declaration.isSuspend()) {
-            httpClientResponseMapper.parameterizedBy(
-                CompletionStage::class.asClassName().parameterizedBy(
-                    returnType.toTypeName()
-                )
-            )
-        } else {
-            httpClientResponseMapper.parameterizedBy(returnType.toTypeName())
-        }
+        fun responseMapperType() = httpClientResponseMapper.parameterizedBy(returnType.toTypeName())
     }
 
     data class ResponseCodeMapperData(val code: Int, val type: KSType?, val mapper: KSType?, val assignable: Boolean) {
-        fun responseMapperType(returnType: KSType, suspend: Boolean): TypeName {
+        fun responseMapperType(returnType: KSType): TypeName {
             if (type != null) {
                 val typeName = type.toTypeName().copy(nullable = false)
-                if (suspend) {
-                    return httpClientResponseMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(typeName))
-                } else {
-                    return httpClientResponseMapper.parameterizedBy(typeName)
-                }
+                return httpClientResponseMapper.parameterizedBy(typeName)
             } else if (mapper != null) {
                 if (mapper.declaration is KSClassDeclaration && mapper.declaration.typeParameters.isNotEmpty()) {
                     val typeArg = returnType.toTypeName().copy(false)
@@ -844,11 +814,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 return mapper.toTypeName()
             } else {
                 val returnTypeName = returnType.toTypeName().copy(nullable = false)
-                if (suspend) {
-                    return httpClientResponseMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(returnTypeName))
-                } else {
-                    return httpClientResponseMapper.parameterizedBy(returnTypeName)
-                }
+                return httpClientResponseMapper.parameterizedBy(returnTypeName)
             }
         }
     }

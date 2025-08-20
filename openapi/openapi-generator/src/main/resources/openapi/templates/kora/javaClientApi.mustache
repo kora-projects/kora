@@ -7,11 +7,6 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
-{{#isAsync}}
-import java.util.concurrent.CompletionStage;
-{{/isAsync}}{{#isReactive}}
-import reactor.core.publisher.Mono;
-{{/isReactive}}
 
 import java.util.List;
 import java.util.Map;
@@ -65,16 +60,16 @@ public interface {{classname}} {
     {{#isDeprecated}}
     @Deprecated
     {{/isDeprecated}}
-    {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{>javaAnnotatedParams}});
+    {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{>javaAnnotatedParams}});
     {{#vendorExtensions.x-have-optional}}
     {{^hasFormParams}}
 
-    default {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.x-required-params}}
+    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{#vendorExtensions.x-required-params}}
         {{{dataType}}} {{paramName}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-required-params}}) {
         return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}{{#defaultValue}}{{#isEnum}}{{{enumDefaultValue}}}{{/isEnum}}{{^isEnum}}{{{defaultValue}}}{{/isEnum}}{{/defaultValue}}{{^defaultValue}}({{{dataType}}}) null{{/defaultValue}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}});
     }
 
-    default {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.x-required-params}}
+    default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{#vendorExtensions.x-required-params}}
         {{{dataType}}} {{paramName}},{{/vendorExtensions.x-required-params}}
         {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs optionalArguments) {
         return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}optionalArguments.{{paramName}}(){{/required}}{{^-last}}, {{/-last}}{{/allParams}});

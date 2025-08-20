@@ -39,14 +39,14 @@ public class HttpClientInterceptorsTest extends AbstractHttpClientTest {
             """, """
              public class ClientLevelInterceptor implements HttpClientInterceptor {
                  @Override
-                 public CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+                 public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
                      return chain.process(ctx, request);
                  }
              }
             """, """
              public class MethodLevelInterceptor implements HttpClientInterceptor {
                  @Override
-                 public CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+                 public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
                      return chain.process(ctx, request);
                  }
              }

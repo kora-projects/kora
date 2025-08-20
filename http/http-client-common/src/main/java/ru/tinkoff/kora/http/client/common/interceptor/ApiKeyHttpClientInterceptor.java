@@ -5,7 +5,6 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
 
 public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor {
     private final String parameterName;
@@ -23,7 +22,7 @@ public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor 
     }
 
     @Override
-    public CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+    public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
         var modifiedRequest = switch (this.parameterLocation) {
             case HEADER -> request.toBuilder().header(this.parameterName, this.secret);
             case QUERY -> request.toBuilder().queryParam(this.parameterName, this.secret);

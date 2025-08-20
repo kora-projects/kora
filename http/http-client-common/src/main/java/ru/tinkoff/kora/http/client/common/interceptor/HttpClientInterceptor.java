@@ -19,7 +19,7 @@ import java.util.concurrent.CompletionStage;
  * public final class MyHttpClientInterceptor implements HttpClientInterceptor {
  *
  *    @Override
- *    public CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+ *    public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
  *      return chain.process(ctx, request);
  *    }
  * }
@@ -38,10 +38,10 @@ import java.util.concurrent.CompletionStage;
  */
 public interface HttpClientInterceptor {
 
-    CompletionStage<HttpClientResponse> processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception;
+    HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception;
 
     interface InterceptChain {
-        CompletionStage<HttpClientResponse> process(Context ctx, HttpClientRequest request) throws Exception;
+        HttpClientResponse process(Context ctx, HttpClientRequest request) throws Exception;
     }
 
 

@@ -56,7 +56,7 @@ interface {{classname}} {
     {{#isDeprecated}}
     @Deprecated(message = "Deprecated")
     {{/isDeprecated}}
-    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
+    fun {{operationId}}({{>kotlinAnnotatedParams}}): {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
 
 {{>kotlinFormParams}}
 {{/operation}}
