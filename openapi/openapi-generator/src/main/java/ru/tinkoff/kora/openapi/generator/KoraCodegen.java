@@ -841,6 +841,8 @@ public class KoraCodegen extends DefaultCodegen {
                                     }
                                 }
                             }
+                        } else if (model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name))) {
+                            prop.isOverridden = true;
                         }
                     }
 
@@ -1297,7 +1299,7 @@ public class KoraCodegen extends DefaultCodegen {
 
             final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
                                            || (target.getExtensions() != null && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-items-nullable"))));
-            if(params.codegenMode.isKotlin() && isItemNullable) {
+            if (params.codegenMode.isKotlin() && isItemNullable) {
                 return getSchemaType(target) + "<" + itemsDataType + "?>";
             } else {
                 return getSchemaType(target) + "<" + itemsDataType + ">";
@@ -1315,7 +1317,7 @@ public class KoraCodegen extends DefaultCodegen {
             final boolean isKeyNullable = target.getExtensions() != null
                                           && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-key-nullable")));
             final boolean isValueNullable = target.getExtensions() != null
-                                          && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-items-nullable")));
+                                            && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-items-nullable")));
 
             String mapType = getSchemaType(target);
             String keyType = (target.getExtensions() == null)
