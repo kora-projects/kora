@@ -84,11 +84,13 @@ public record {{classname}}(
   """;
   {{/isArray}}{{#additionalConstructor}}
 
-  public {{classname}}({{#requiredVars}}{{^vendorExtensions.x-discriminator-single}}{{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-discriminator-single}}{{/requiredVars}}) {
+  public {{classname}}({{#requiredVars}}{{^vendorExtensions.x-discriminator-single}}{{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}},
+             {{/-last}}{{/vendorExtensions.x-discriminator-single}}{{/requiredVars}}) {
     this({{#allVars}}{{#required}}{{#vendorExtensions.x-discriminator-single}}{{vendorExtensions.x-discriminator-single}}{{/vendorExtensions.x-discriminator-single}}{{^vendorExtensions.x-discriminator-single}}{{name}}{{/vendorExtensions.x-discriminator-single}}{{/required}}{{^required}}null{{/required}}{{^-last}}, {{/-last}}{{/allVars}});
   }{{/additionalConstructor}}{{#vendorExtensions.x-discriminator-single}}
 
-  public {{classname}}({{#allVars}}{{^isDiscriminator}}{{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}}, {{/-last}}{{/isDiscriminator}}{{/allVars}}) {
+  public {{classname}}({{#allVars}}{{^isDiscriminator}}{{^vendorExtensions.x-json-nullable}}{{^required}}@Nullable {{/required}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}} {{name}}{{^-last}},
+             {{/-last}}{{/isDiscriminator}}{{/allVars}}) {
     this({{#allVars}}{{#isDiscriminator}}{{vendorExtensions.x-discriminator-single}}{{/isDiscriminator}}{{^isDiscriminator}}{{name}}{{/isDiscriminator}}{{^-last}}, {{/-last}}{{/allVars}});
   }{{/vendorExtensions.x-discriminator-single}}
 

@@ -14,7 +14,10 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.examples.Example;
-import io.swagger.v3.oas.models.media.*;
+import io.swagger.v3.oas.models.media.ComposedSchema;
+import io.swagger.v3.oas.models.media.ObjectSchema;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.servers.Server;
@@ -665,7 +668,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if(params.forceIncludeOptional) {
+                    } else if (params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
                     } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
@@ -703,7 +706,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if(params.forceIncludeOptional) {
+                    } else if (params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
                     } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
@@ -849,40 +852,47 @@ public class KoraCodegen extends DefaultCodegen {
                     if (!requiredVar.required) {
                         continue;
                     }
-                    if (requiredVar.isInteger) {
-                        if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
-                            requiredVar.dataType = "int";
-                            requiredVar.datatypeWithEnum = "int";
-                        }
-                    }
-                    if (requiredVar.isLong) {
-                        if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
-                            requiredVar.dataType = "long";
-                            requiredVar.datatypeWithEnum = "long";
-                        }
-                    }
-                    if (requiredVar.isFloat) {
-                        if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
-                            requiredVar.dataType = "float";
-                            requiredVar.datatypeWithEnum = "float";
-                        }
-                    }
-                    if (requiredVar.isDouble) {
-                        if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
-                            requiredVar.dataType = "double";
-                            requiredVar.datatypeWithEnum = "double";
-                        }
-                    }
-                    if (requiredVar.isBoolean) {
-                        if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
-                            requiredVar.dataType = "boolean";
-                            requiredVar.datatypeWithEnum = "boolean";
-                        }
-                    }
+                    processRequiredModelVar(requiredVar);
+                }
+                for (var requiredVar : model.requiredVars) {
+                    processRequiredModelVar(requiredVar);
                 }
             }
         }
         return objs;
+    }
+
+    private void processRequiredModelVar(CodegenProperty requiredVar) {
+        if (requiredVar.isInteger) {
+            if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
+                requiredVar.dataType = "int";
+                requiredVar.datatypeWithEnum = "int";
+            }
+        }
+        if (requiredVar.isLong) {
+            if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
+                requiredVar.dataType = "long";
+                requiredVar.datatypeWithEnum = "long";
+            }
+        }
+        if (requiredVar.isFloat) {
+            if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
+                requiredVar.dataType = "float";
+                requiredVar.datatypeWithEnum = "float";
+            }
+        }
+        if (requiredVar.isDouble) {
+            if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
+                requiredVar.dataType = "double";
+                requiredVar.datatypeWithEnum = "double";
+            }
+        }
+        if (requiredVar.isBoolean) {
+            if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
+                requiredVar.dataType = "boolean";
+                requiredVar.datatypeWithEnum = "boolean";
+            }
+        }
     }
 
     private String getUpperSnakeCase(String value, Locale locale) {
@@ -1222,10 +1232,21 @@ public class KoraCodegen extends DefaultCodegen {
     /**
      * Same as original, but have different mapping for Map of String to T
      */
-    public String getTypeDeclarationAndProp(Schema p, CodegenProperty property) {
+    public String getTypeDeclarationForProperty(Schema p, CodegenProperty property) {
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
-        if (ModelUtils.isMapSchema(target)) {
+        if (ModelUtils.isArraySchema(target)) {
+            var items = getSchemaItems(target);
+            var itemsDataType = getTypeDeclarationForProperty(items, property);
+
+            final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
+                                           || (target.getExtensions() != null && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-items-nullable"))));
+            if(params.codegenMode.isKotlin() && isItemNullable) {
+                return getSchemaType(target) + "<" + itemsDataType + "?>";
+            } else {
+                return getSchemaType(target) + "<" + itemsDataType + ">";
+            }
+        } else if (ModelUtils.isMapSchema(target)) {
             // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
             // additionalproperties: true
             var inner = ModelUtils.getAdditionalProperties(target);
@@ -1235,24 +1256,30 @@ public class KoraCodegen extends DefaultCodegen {
                 p.setAdditionalProperties(inner);
             }
 
-            if (params.codegenMode.isKotlin() && property.isNullable) {
-                if (params.enableJsonNullable) {
-                    if (property.required) {
-                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
-                    } else {
-                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>?";
-                    }
-                } else {
-                    return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + "?>";
-                }
-            } else if (property.isNullable && !property.required && params.enableJsonNullable) {
-                return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
-            } else {
-                return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + ">";
-            }
-        }
+            final boolean isKeyNullable = target.getExtensions() != null
+                                          && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-key-nullable")));
+            final boolean isValueNullable = target.getExtensions() != null
+                                          && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-items-nullable")));
 
-        return super.getTypeDeclaration(target);
+            String mapType = getSchemaType(target);
+            String keyType = (target.getExtensions() == null)
+                ? "String"
+                : String.valueOf(target.getExtensions().getOrDefault("x-key-type", "String"));
+            String valueType = getTypeDeclaration(inner);
+
+            if (params.codegenMode.isKotlin()) {
+                if (isKeyNullable) {
+                    keyType = keyType + "?";
+                }
+                if (isValueNullable) {
+                    valueType = valueType + "?";
+                }
+            }
+
+            return "%s<%s, %s>".formatted(mapType, keyType, valueType);
+        } else {
+            return getTypeDeclaration(target);
+        }
     }
 
     @Override
@@ -1260,11 +1287,17 @@ public class KoraCodegen extends DefaultCodegen {
         var property = super.fromProperty(name, p, required, schemaIsFromAdditionalProperties);
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
-        if (ModelUtils.isMapSchema(target)) {
-            var dataType = getTypeDeclarationAndProp(p, property);
+        if (ModelUtils.isArraySchema(target)) {
+            var dataType = getTypeDeclarationForProperty(target, property);
             property.dataType = dataType;
             if (!property.isEnum) {
-                property.datatypeWithEnum = property.dataType;
+                property.datatypeWithEnum = dataType;
+            }
+        } else if (ModelUtils.isMapSchema(target)) {
+            var dataType = getTypeDeclarationForProperty(p, property);
+            property.dataType = dataType;
+            if (!property.isEnum) {
+                property.datatypeWithEnum = dataType;
             }
         }
         return property;
@@ -2247,7 +2280,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (formParam.isModel || isEnum) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     String type;
-                    if(isEnum) {
+                    if (isEnum) {
                         type = allModels.stream()
                             .filter(m -> m.getModel().name.equals(formParam.dataType))
                             .findFirst()
@@ -2257,7 +2290,7 @@ public class KoraCodegen extends DefaultCodegen {
                                 .findFirst()
                                 .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum))
                             .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
-                        if(formParam.datatypeWithEnum != null) {
+                        if (formParam.datatypeWithEnum != null) {
                             formParam.dataType = type;
                         }
                     } else {
@@ -2285,12 +2318,12 @@ public class KoraCodegen extends DefaultCodegen {
                             "last", false
                         )));
                     }
-                } else if(formParam.isString
-                          || formParam.isBoolean
-                          || formParam.isDouble
-                          || formParam.isFloat
-                          || formParam.isInteger
-                          || formParam.isLong) {
+                } else if (formParam.isString
+                           || formParam.isBoolean
+                           || formParam.isDouble
+                           || formParam.isFloat
+                           || formParam.isInteger
+                           || formParam.isLong) {
                     formParam.vendorExtensions.put("isPrimitive", true);
                 } else {
                     formParam.vendorExtensions.put("requiresMapper", true);
