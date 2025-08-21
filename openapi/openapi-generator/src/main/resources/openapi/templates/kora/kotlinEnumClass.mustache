@@ -1,14 +1,11 @@
-  /**
-   * {{^description}}Gets or Sets {{{name}}}{{/description}}{{#description}}{{{description}}}{{/description}}
-   */
+  /** {{^description}}Gets or Sets {{{name}}}{{/description}}{{#description}}{{{description}}}{{/description}} */
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
   {{#additionalEnumTypeAnnotations}}
   {{{.}}}
   {{/additionalEnumTypeAnnotations}}
   enum class {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{classname}}{{/datatypeWithEnum}}(private val value: {{{dataType}}}) {
 {{#allowableValues}}{{#enumVars}}
-    {{{name}}}(Constants.{{{name}}}){{^-last}},{{/-last}}{{#-last}};{{/-last}}
-{{/enumVars}}{{/allowableValues}}
+    {{{name}}}(Constants.{{{name}}}){{^-last}},{{/-last}}{{#-last}};{{/-last}}{{/enumVars}}{{/allowableValues}}
 
     override fun toString(): String = {{#dataType}}{{#isString}}value{{/isString}}{{^isString}}"${value}"{{/isString}}{{/dataType}}
 
@@ -29,13 +26,16 @@
       const val {{{name}}}: {{dataType}} = {{{value}}}{{/enumVarsDeprecated}}{{/allowableValues}}
     }
 
-
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
     @ru.tinkoff.kora.common.Component
     class JsonWriter(valueWriter: ru.tinkoff.kora.json.common.JsonWriter<{{{dataType}}}>)
         : ru.tinkoff.kora.json.common.JsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}> {
 
-      private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.entries.toTypedArray(), {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}::value, valueWriter)
+      private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter(
+          {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.entries.toTypedArray(),
+          {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}::value,
+          valueWriter
+      )
 
       override fun write(gen: com.fasterxml.jackson.core.JsonGenerator, value: {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?) {
         this.delegate.write(gen, value)
@@ -63,7 +63,11 @@
     class NullableJsonWriter(valueWriter: ru.tinkoff.kora.json.common.JsonWriter<{{{dataType}}}>)
         : ru.tinkoff.kora.json.common.JsonWriter<{{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?> {
 
-      private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter({{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.entries.toTypedArray(), {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}::value, valueWriter)
+      private val delegate = ru.tinkoff.kora.json.common.EnumJsonWriter(
+          {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}.entries.toTypedArray(),
+          {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}::value,
+          valueWriter
+      )
 
       override fun write(gen: com.fasterxml.jackson.core.JsonGenerator, value: {{#datatypeWithEnum}}{{{.}}}{{/datatypeWithEnum}}{{^datatypeWithEnum}}{{{classname}}}{{/datatypeWithEnum}}?) {
         this.delegate.write(gen, value)

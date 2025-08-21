@@ -80,6 +80,7 @@ sourceSets {
             addOpenapiDir("petstoreV3_implicit_headers_regex")
             addOpenapiDir("petstoreV3_server_request")
             addOpenapiDir("petstoreV3_additional_props")
+            addOpenapiDir("petstoreV3_additional_props_enable_json_nullable")
             addOpenapiDir("petstoreV3_discriminator")
             addOpenapiDir("petstoreV3_discriminator_enable_json_nullable")
             addOpenapiDir("petstoreV3_default_delegate")
@@ -87,6 +88,7 @@ sourceSets {
             addOpenapiDir("petstoreV3_filter")
             addOpenapiDir("petstoreV3_form")
             addOpenapiDir("petstoreV3_nullable")
+            addOpenapiDir("petstoreV3_nullable_enable_json_nullable")
             addOpenapiDir("petstoreV3_request_parameters")
             addOpenapiDir("petstoreV3_security_all")
             addOpenapiDir("petstoreV3_security_api_key")
@@ -97,6 +99,7 @@ sourceSets {
             addOpenapiDir("petstoreV3_single_response")
             addOpenapiDir("petstoreV3_types")
             addOpenapiDir("petstoreV3_validation")
+            addOpenapiDir("petstoreV3_validation_enable_json_nullable")
         }
     }
 }
