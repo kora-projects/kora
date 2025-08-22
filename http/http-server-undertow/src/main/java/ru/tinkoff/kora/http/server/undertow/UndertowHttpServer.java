@@ -16,6 +16,7 @@ import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
+import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicReference;
@@ -67,14 +68,24 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     @Override
     public void init() {
-        logger.debug("Public HTTP Server (Undertow) starting...");
-        final long started = TimeUtils.started();
-        this.gracefulShutdown.start();
-        this.undertow = this.createServer();
-        this.undertow.start();
-        this.state.set(HttpServerState.RUN);
-        var data = StructuredArgument.marker("port", this.port());
-        logger.info(data, "Public HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
+        try {
+            logger.debug("Public HTTP Server (Undertow) starting...");
+            final long started = TimeUtils.started();
+            this.gracefulShutdown.start();
+            this.undertow = this.createServer();
+            this.undertow.start();
+            this.state.set(HttpServerState.RUN);
+            var data = StructuredArgument.marker("port", this.port());
+            logger.info(data, "Public HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
+        } catch (Exception e) {
+            if (e.getCause() instanceof BindException be) {
+                throw new IllegalStateException("Public HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
+                    .formatted(config.get().publicApiHttpPort()), be);
+            } else {
+                throw new IllegalStateException("Public HTTP Server (Undertow) failed to start on port '%s', due to: %s"
+                    .formatted(config.get().publicApiHttpPort(), e.getMessage()), e);
+            }
+        }
     }
 
     private Undertow createServer() {

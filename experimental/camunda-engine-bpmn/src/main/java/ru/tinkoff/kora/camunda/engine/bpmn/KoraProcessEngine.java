@@ -33,38 +33,42 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
 
     @Override
     public void init() {
-        if (engineConfig.parallelInitialization().enabled() && engineConfiguration instanceof KoraProcessEngineConfiguration) {
-            logger.info("Camunda BPMN Engine parallel initialization enabled");
+        try {
+            if (engineConfig.parallelInitialization().enabled() && engineConfiguration instanceof KoraProcessEngineConfiguration) {
+                logger.info("Camunda BPMN Engine parallel initialization enabled");
 
-            logger.debug("Camunda BPMN Engine starting first stage...");
-            final long started = TimeUtils.started();
+                logger.debug("Camunda BPMN Engine starting first stage...");
+                final long started = TimeUtils.started();
 
-            this.processEngine = engineConfiguration.buildProcessEngine();
-            ProcessEngines.registerProcessEngine(processEngine);
-            logger.info("Camunda BPMN Engine started first stage in {}", TimeUtils.tookForLogging(started));
-        } else {
-            logger.debug("Camunda BPMN Engine starting...");
-            final long started = TimeUtils.started();
+                this.processEngine = engineConfiguration.buildProcessEngine();
+                ProcessEngines.registerProcessEngine(processEngine);
+                logger.info("Camunda BPMN Engine started first stage in {}", TimeUtils.tookForLogging(started));
+            } else {
+                logger.debug("Camunda BPMN Engine starting...");
+                final long started = TimeUtils.started();
 
-            this.processEngine = engineConfiguration.buildProcessEngine();
-            ProcessEngines.registerProcessEngine(processEngine);
-            logger.info("Camunda BPMN Engine started in {}", TimeUtils.tookForLogging(started));
+                this.processEngine = engineConfiguration.buildProcessEngine();
+                ProcessEngines.registerProcessEngine(processEngine);
+                logger.info("Camunda BPMN Engine started in {}", TimeUtils.tookForLogging(started));
 
-            logger.debug("Camunda BPMN Engine configuring...");
-            final long startedConfiguring = TimeUtils.started();
+                logger.debug("Camunda BPMN Engine configuring...");
+                final long startedConfiguring = TimeUtils.started();
 
-            var setups = camundaConfigurators.stream()
-                .map(c -> CompletableFuture.runAsync(() -> {
-                    try {
-                        c.setup(processEngine);
-                    } catch (Exception e) {
-                        throw new IllegalStateException(e);
-                    }
-                }))
-                .toArray(CompletableFuture[]::new);
+                var setups = camundaConfigurators.stream()
+                    .map(c -> CompletableFuture.runAsync(() -> {
+                        try {
+                            c.setup(processEngine);
+                        } catch (Exception e) {
+                            throw new IllegalStateException(e);
+                        }
+                    }))
+                    .toArray(CompletableFuture[]::new);
 
-            CompletableFuture.allOf(setups).join();
-            logger.info("Camunda BPMN Engine configured in {}", TimeUtils.tookForLogging(startedConfiguring));
+                CompletableFuture.allOf(setups).join();
+                logger.info("Camunda BPMN Engine configured in {}", TimeUtils.tookForLogging(startedConfiguring));
+            }
+        } catch (Exception e) {
+            throw new IllegalStateException("Camunda BPMN Engine failed to start, due to: " + e.getMessage(), e);
         }
     }
 
