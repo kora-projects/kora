@@ -43,10 +43,9 @@ interface {{classname}}ServerRequestMappers {
       }{{^isSuspend}}.toCompletableFuture().get(){{/isSuspend}}{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
 
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
-{{#formParams}}
-          {{#isFile}}var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null
-          {{/isFile}}{{^isFile}}var {{paramName}}: {{{dataType}}}? = null{{/isFile}}
-{{/formParams}}
+        {{#formParams}}
+        {{#isFile}}var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null
+        {{/isFile}}{{^isFile}}var {{paramName}}: {{{dataType}}}? = null{{/isFile}}{{/formParams}}
       }
 
       return MultipartReader.read(request).thenApply { parts ->
