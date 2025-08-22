@@ -76,8 +76,15 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
 
             try (var connection = this.dataSource.getConnection()) {
                 connection.isValid((int) this.databaseConfig.initializationFailTimeout().toMillis());
+            } catch (SQLException e) {
+                throw new IllegalStateException("JdbcDatabase pool '%s' failed to start, due to: %s".formatted(
+                    databaseConfig.poolName(), e.getMessage()), e);
             }
+
             logger.info("JdbcDatabase pool '{}' started in {}", databaseConfig.poolName(), TimeUtils.tookForLogging(started));
+        } else {
+            logger.debug("JdbcDatabase pool '{}' initialization is skipped cause `initializationFailTimeout` is not specified...",
+                databaseConfig.poolName());
         }
     }
 

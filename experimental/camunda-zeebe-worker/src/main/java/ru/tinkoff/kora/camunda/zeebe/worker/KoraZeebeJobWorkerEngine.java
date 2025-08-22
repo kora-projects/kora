@@ -17,6 +17,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
@@ -57,26 +58,45 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
             final long started = TimeUtils.started();
 
             var workersByType = jobWorkers.stream().collect(Collectors.groupingBy(KoraJobWorker::type));
-            for (List<KoraJobWorker> value : workersByType.values()) {
-                if (value.size() > 1) {
-                    logger.warn("Found '{}' Zeebe JobWorkers with same JobType: {}", value.size(), value.get(0).type());
+            try {
+                for (List<KoraJobWorker> value : workersByType.values()) {
+                    if (value.size() > 1) {
+                        logger.warn("Found '{}' Zeebe JobWorkers with same JobType: {}", value.size(), value.get(0).type());
+                    }
+                }
+
+                var jobOpeners = jobWorkers.stream()
+                    .map(koraJobWorker -> CompletableFuture.runAsync(() -> {
+                        try {
+                            JobConfig jobConfig = workerConfig.getJobConfig(koraJobWorker.type());
+                            if (jobConfig.enabled()) {
+                                JobWorker jobWorker = createJobWorker(koraJobWorker, jobConfig);
+                                workers.add(jobWorker);
+                            }
+                        } catch (Exception e) {
+                            throw new IllegalStateException("Zeebe JobWorker '%s' failed to start, due to: ".formatted(
+                                koraJobWorker.type(), e.getMessage()), e);
+                        }
+                    }))
+                    .toArray(CompletableFuture[]::new);
+
+                CompletableFuture.allOf(jobOpeners).join();
+
+                final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::type).toList();
+                logger.info("Zeebe JobWorkers {} started in {}", workerNames, TimeUtils.tookForLogging(started));
+            } catch (Exception e) {
+                Throwable cause = e;
+                if (e instanceof CompletionException ce) {
+                    cause = ce.getCause();
+                }
+
+                if (cause instanceof IllegalStateException ie) {
+                    throw ie;
+                } else {
+                    throw new IllegalStateException("Zeebe JobWorkers with types %s failed to start, due to: %s".formatted(
+                        workersByType.keySet(), e.getMessage()), cause);
                 }
             }
-
-            var jobOpeners = jobWorkers.stream()
-                .map(koraJobWorker -> CompletableFuture.runAsync(() -> {
-                    JobConfig jobConfig = workerConfig.getJobConfig(koraJobWorker.type());
-                    if (jobConfig.enabled()) {
-                        JobWorker jobWorker = createJobWorker(koraJobWorker, jobConfig);
-                        workers.add(jobWorker);
-                    }
-                }))
-                .toArray(CompletableFuture[]::new);
-
-            CompletableFuture.allOf(jobOpeners).join();
-
-            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::type).toList();
-            logger.info("Zeebe JobWorkers {} started in {}", workerNames, TimeUtils.tookForLogging(started));
         }
     }
 

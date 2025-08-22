@@ -142,7 +142,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     @Override
     public void init() {
         if (config.threads() > 0 && this.isActive.compareAndSet(false, true)) {
-            logger.debug("Kafka Consumer '{}' starting...", consumerPrefix);
+            logger.debug("Kafka Consumer '{}' starting in subscribe mode...", consumerPrefix);
             final long started = TimeUtils.started();
 
             executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(consumerPrefix));
@@ -204,7 +204,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         try {
             return this.buildConsumer();
         } catch (Exception e) {
-            logger.error("Kafka Consumer '{}' initialization failed", consumerPrefix, e);
+            logger.error("Kafka Consumer '{}' failed to start in subscribe mode, due to: {}", consumerPrefix, e.getMessage(), e);
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException ie) {

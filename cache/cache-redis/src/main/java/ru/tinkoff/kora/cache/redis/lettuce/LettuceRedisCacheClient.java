@@ -157,23 +157,27 @@ final class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
 
     @Override
     public void init() {
-        logger.debug("Redis Client (Lettuce) starting...");
-        final long started = TimeUtils.started();
+        try {
+            logger.debug("Redis Client (Lettuce) starting...");
+            final long started = TimeUtils.started();
 
-        final BoundedPoolConfig poolConfig = BoundedPoolConfig.builder()
-            .maxTotal(Math.max(Runtime.getRuntime().availableProcessors(), 1) * 4)
-            .maxIdle(Math.max(Runtime.getRuntime().availableProcessors(), 1) * 4)
-            .minIdle(0)
-            .testOnAcquire(false)
-            .testOnCreate(false)
-            .testOnRelease(false)
-            .build();
+            final BoundedPoolConfig poolConfig = BoundedPoolConfig.builder()
+                .maxTotal(Math.max(Runtime.getRuntime().availableProcessors(), 1) * 4)
+                .maxIdle(Math.max(Runtime.getRuntime().availableProcessors(), 1) * 4)
+                .minIdle(0)
+                .testOnAcquire(false)
+                .testOnCreate(false)
+                .testOnRelease(false)
+                .build();
 
-        this.pool = AsyncConnectionPoolSupport.createBoundedObjectPool(() -> redisClient.connectAsync(ByteArrayCodec.INSTANCE, redisURI), poolConfig);
-        this.connection = redisClient.connect(ByteArrayCodec.INSTANCE);
-        this.commands = this.connection.async();
+            this.pool = AsyncConnectionPoolSupport.createBoundedObjectPool(() -> redisClient.connectAsync(ByteArrayCodec.INSTANCE, redisURI), poolConfig);
+            this.connection = redisClient.connect(ByteArrayCodec.INSTANCE);
+            this.commands = this.connection.async();
 
-        logger.info("Redis Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
+            logger.info("Redis Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
+        } catch (Exception e) {
+            throw new IllegalStateException("Redis Client (Lettuce) failed to start in single mode, due to: " + e.getMessage(), e);
+        }
     }
 
     @Override
