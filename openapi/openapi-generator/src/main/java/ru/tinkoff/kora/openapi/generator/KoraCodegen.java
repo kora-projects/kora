@@ -646,6 +646,22 @@ public class KoraCodegen extends DefaultCodegen {
         importMapping.put("Objects", "java.util.Objects");
     }
 
+    protected void processCodegenPropertyValidation(CodegenProperty variable, Map<String, CodegenModel> allModels) {
+        if (variable.getRef() != null) {
+            var variableModelField = allModels.get(variable.openApiType);
+            if (variableModelField != null && !variableModelField.isEnum) {
+                variable.vendorExtensions.put("x-has-valid-model", true);
+            }
+        }
+        if (variable.getItems() != null && variable.getItems().getRef() != null) {
+            var variableModelField = allModels.get(variable.getItems().openApiType);
+            if (variableModelField != null && !variableModelField.isEnum) {
+                variable.vendorExtensions.put("x-has-valid-model", true);
+            }
+        }
+        this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
+    }
+
     @Override
     public Map<String, ModelsMap> updateAllModels(Map<String, ModelsMap> objs) {
         objs = super.updateAllModels(objs);
@@ -656,13 +672,7 @@ public class KoraCodegen extends DefaultCodegen {
             // All-vars visit
             for (var variable : model.allVars) {
                 if (params.enableValidation) {
-                    if (variable.getRef() != null) {
-                        var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null && !variableModelField.isEnum) {
-                            variable.vendorExtensions.put("x-has-valid-model", true);
-                        }
-                    }
-                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
+                    processCodegenPropertyValidation(variable, allModels);
                 }
 
                 if (variable.isNullable && !variable.required) {
@@ -681,26 +691,14 @@ public class KoraCodegen extends DefaultCodegen {
             // Required-vars visit
             for (var variable : model.requiredVars) {
                 if (params.enableValidation) {
-                    if (variable.getRef() != null) {
-                        var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null && !variableModelField.isEnum) {
-                            variable.vendorExtensions.put("x-has-valid-model", true);
-                        }
-                    }
-                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
+                    processCodegenPropertyValidation(variable, allModels);
                 }
             }
 
             // Optional-vars visit
             for (var variable : model.optionalVars) {
                 if (params.enableValidation) {
-                    if (variable.getRef() != null) {
-                        var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null && !variableModelField.isEnum) {
-                            variable.vendorExtensions.put("x-has-valid-model", true);
-                        }
-                    }
-                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
+                    processCodegenPropertyValidation(variable, allModels);
                 }
 
                 if (variable.isNullable && !variable.required) {
@@ -1863,6 +1861,21 @@ public class KoraCodegen extends DefaultCodegen {
         });
     }
 
+    private List<CodegenModel> getCodegenModelsRecursive(String targetName,
+                                                         Schema<?> targetSchema,
+                                                         Map<String, Schema> schemas,
+                                                         Map<String, Set<String>> schemaToAllSimpleRefs,
+                                                         Set<String> visited,
+                                                         boolean checkVisited,
+                                                         List<ModelMap> allModels) {
+        Set<String> simpleRefs = getSimpleRefRecursive(targetName, targetSchema, schemas, schemaToAllSimpleRefs, visited, checkVisited);
+        return allModels.stream()
+            .map(mm -> mm.get("model"))
+            .map(CodegenModel.class::cast)
+            .filter(m -> simpleRefs.contains(m.name))
+            .toList();
+    }
+
     private Set<String> getSimpleRefRecursive(String targetName,
                                               Schema<?> targetSchema,
                                               Map<String, Schema> schemas,
@@ -2494,6 +2507,7 @@ public class KoraCodegen extends DefaultCodegen {
                 }
                 op.vendorExtensions.put("allowAspects", params.enableValidation() || !additionalAnnotations.isEmpty());
 
+                Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
                 for (var p : op.allParams) {
                     var validation = false;
                     if (p.isModel) {
@@ -2502,7 +2516,43 @@ public class KoraCodegen extends DefaultCodegen {
                                 validation = true;
                                 break;
                             }
+                            if (variable.getItems() != null) {
+                                if (variable.getItems().hasValidation) {
+                                    validation = true;
+                                    break;
+                                }
+                            }
                         }
+
+                        Schema targetSchema = schemas.get(p.baseName);
+                        if (targetSchema != null) {
+                            List<CodegenModel> modelRefs = getCodegenModelsRecursive(targetSchema.getName(), targetSchema, schemas, new HashMap<>(), new HashSet<>(), true, allModels);
+                            for (CodegenModel modelRef : modelRefs) {
+                                if (modelRef.hasValidation) {
+                                    validation = true;
+                                    break;
+                                }
+                                if (modelRef.getItems() != null) {
+                                    if (modelRef.getItems().hasValidation) {
+                                        validation = true;
+                                        break;
+                                    }
+                                }
+                                for (CodegenProperty variable : modelRef.vars) {
+                                    if (variable.hasValidation) {
+                                        validation = true;
+                                        break;
+                                    }
+                                    if (variable.getItems() != null) {
+                                        if (variable.getItems().hasValidation) {
+                                            validation = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         if (!validation) {
                             var model = allModels.stream()
                                 .map(mm -> mm.get("model"))
@@ -2538,6 +2588,7 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
+
             if (params.codegenMode.isJava()) {
                 for (var allParam : op.allParams) {
                     if (!allParam.required) {
