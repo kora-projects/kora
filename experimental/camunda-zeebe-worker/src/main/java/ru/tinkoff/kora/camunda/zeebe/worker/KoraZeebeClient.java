@@ -45,10 +45,13 @@ public final class KoraZeebeClient implements Wrapped<ZeebeClient>, Lifecycle {
             try {
                 var topology = this.zeebeClient.newTopologyRequest().send().join(initTimeout.toMillis(), TimeUnit.MILLISECONDS);
                 if (topology.getBrokers().isEmpty()) {
-                    throw new IllegalStateException("ZeebeClient is unavailable for gRPC URL: " + clientConfiguration.getGrpcAddress());
+                    throw new IllegalStateException("ZeebeClient topology is unavailable for gRPC URL: " + clientConfiguration.getGrpcAddress());
                 }
+            } catch (IllegalStateException e) {
+                throw e;
             } catch (Exception e) {
-                throw new IllegalStateException("ZeebeClient initialization failed after timeout " + initTimeout + " for gRPC URL: " + clientConfiguration.getGrpcAddress());
+                throw new IllegalStateException("ZeebeClient failed to start after timeout '%s' for gRPC URL '%s', due to: %s".formatted(
+                    initTimeout, clientConfiguration.getGrpcAddress(), e.getMessage()), e);
             }
         }
 

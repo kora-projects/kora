@@ -259,7 +259,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             var realConsumer = new KafkaConsumer<>(this.config.driverProperties(), new ByteArrayDeserializer(), new ByteArrayDeserializer());
             return new ConsumerWrapper<>(realConsumer, keyDeserializer, valueDeserializer);
         } catch (Exception e) {
-            logger.error("Kafka Consumer '{}' initialization failed", consumerPrefix, e);
+            logger.error("Kafka Consumer '{}' failed to start in assign mode, due to: {}", consumerPrefix, e.getMessage(), e);
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException ie) {
@@ -279,7 +279,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
                     var number = i;
                     executorService.execute(() -> {
                         while (isActive.get()) {
-                            logger.debug("Kafka Consumer '{}' starting...", consumerPrefix);
+                            logger.debug("Kafka Consumer '{}' starting in assign mode...", consumerPrefix);
                             final long started = TimeUtils.started();
 
                             var consumer = initializeConsumer();

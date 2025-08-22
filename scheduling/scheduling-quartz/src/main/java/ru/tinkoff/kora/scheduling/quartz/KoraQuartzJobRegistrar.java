@@ -26,17 +26,22 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
     }
 
     @Override
-    public final void init() throws SchedulerException {
-        var quartzJobsNames = quartzJobList.stream()
-            .map(q -> q.get().getClass().getCanonicalName())
-            .toList();
+    public final void init() {
+        try {
+            var quartzJobsNames = quartzJobList.stream()
+                .map(q -> q.get().getClass().getCanonicalName())
+                .toList();
 
-        logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
-        var started = System.nanoTime();
+            logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
+            var started = System.nanoTime();
 
-        this.scheduleJobs();
+            this.scheduleJobs();
 
-        logger.info("Quartz Jobs {} started in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
+            logger.info("Quartz Jobs {} started in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
+        } catch (SchedulerException e) {
+            throw new IllegalStateException("Quartz Jobs %s failed to start, due to: %s".formatted(
+                quartzJobList, e.getMessage()), e);
+        }
     }
 
     @Override
@@ -76,7 +81,7 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
                     .build();
                 this.scheduler.scheduleJob(triggerToSchedule);
             }
-            for (var entry: existingTriggers.entrySet()) {
+            for (var entry : existingTriggers.entrySet()) {
                 this.scheduler.unscheduleJob(entry.getKey());
             }
         }
