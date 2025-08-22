@@ -81,7 +81,18 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
         HttpServerRequest _serverRequest{{#getHasParams}},{{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}){{#isBlocking}} throws Exception{{/isBlocking}} {
         return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#getHasParams}}, {{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}form{{/hasFormParams}});
     }
-{{>javaFormParams}}
+    {{#hasFormParams}}
+
+   /**
+    * {{#formParams}}{{#description}}
+    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
+    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/formParams}}
+    */
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
+    public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam({{#formParams}}
+      {{^required}}@Nullable {{/required}}{{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{^isFile}}{{{dataType}}} {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{/formParams}}
+    ) {}
+    {{/hasFormParams}}
 {{/operation}}
 }
 {{/operations}}
