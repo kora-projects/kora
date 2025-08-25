@@ -9,8 +9,6 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class RapidocHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
@@ -30,37 +28,33 @@ public final class RapidocHttpServerHandler implements HttpServerRequestHandler.
     }
 
     @Override
-    public CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request) {
-        byte[] bytes = content.get();
+    public HttpServerResponse apply(Context context, HttpServerRequest request) {
+        var bytes = content.get();
         if (bytes != null) {
-            return CompletableFuture.completedFuture(HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, bytes)));
+            return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, bytes));
         }
-
-        return CompletableFuture.supplyAsync(() -> {
-            byte[] loadedBytes = loadRapidoc();
-            content.set(loadedBytes);
-            return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, loadedBytes));
-        });
+        var loadedBytes = loadRapidoc();
+        content.set(loadedBytes);
+        return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, loadedBytes));
     }
 
     private byte[] loadRapidoc() {
-        return ResourceUtils.getFileAsString(FILE_PATH)
-            .map(file -> {
-                var tagRapidoc = "${rapidocPath}";
-                int ri = file.lastIndexOf(tagRapidoc);
-                var result = file.substring(0, ri) + rapidocPath + file.substring(ri + tagRapidoc.length());
+        var file = ResourceUtils.getFileAsString(FILE_PATH);
+        if (file == null) {
+            throw HttpServerResponseException.of(404, "Rapidoc file not found");
+        }
+        var tagRapidoc = "${rapidocPath}";
+        var ri = file.lastIndexOf(tagRapidoc);
+        var result = file.substring(0, ri) + rapidocPath + file.substring(ri + tagRapidoc.length());
 
-                String openapiFilePath = (openapiFiles.size() == 1)
-                    ? openapiPath
-                    : openapiPath + "/" + ResourceUtils.getFileName(openapiFiles.get(0));
+        var openapiFilePath = (openapiFiles.size() == 1)
+            ? openapiPath
+            : openapiPath + "/" + ResourceUtils.getFileName(openapiFiles.get(0));
 
-                var tagOpenapi = "${openapiPath}";
-                int oi = result.lastIndexOf(tagOpenapi);
-                result = result.substring(0, oi) + openapiFilePath + result.substring(oi + tagOpenapi.length());
+        var tagOpenapi = "${openapiPath}";
+        var oi = result.lastIndexOf(tagOpenapi);
+        result = result.substring(0, oi) + openapiFilePath + result.substring(oi + tagOpenapi.length());
 
-                return result;
-            })
-            .map(file -> file.getBytes(StandardCharsets.UTF_8))
-            .orElseThrow(() -> HttpServerResponseException.of(404, "Rapidoc file not found"));
+        return result.getBytes(StandardCharsets.UTF_8);
     }
 }

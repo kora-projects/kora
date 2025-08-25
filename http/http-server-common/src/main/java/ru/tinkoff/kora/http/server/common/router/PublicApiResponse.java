@@ -4,10 +4,12 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
-import java.util.concurrent.CompletableFuture;
-
 public interface PublicApiResponse {
-    CompletableFuture<HttpServerResponse> response();
+    @Nullable
+    HttpServerResponse response();
+
+    @Nullable
+    Throwable error();
 
     void closeSendResponseSuccess(int responseCode, @Nullable HttpHeaders headers, @Nullable Throwable t);
 

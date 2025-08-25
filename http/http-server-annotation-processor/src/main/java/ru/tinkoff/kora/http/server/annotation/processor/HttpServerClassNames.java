@@ -22,6 +22,5 @@ public class HttpServerClassNames {
     public static final ClassName httpServerRequestMapper = ClassName.get("ru.tinkoff.kora.http.server.common.handler", "HttpServerRequestMapper");
     public static final ClassName httpServerRequest = ClassName.get("ru.tinkoff.kora.http.server.common", "HttpServerRequest");
     public static final ClassName httpRoute = ClassName.get("ru.tinkoff.kora.http.common.annotation", "HttpRoute");
-    public static final ClassName blockingRequestExecutor = ClassName.get("ru.tinkoff.kora.http.server.common.handler", "BlockingRequestExecutor");
     public static final ClassName requestHandlerUtils = ClassName.get("ru.tinkoff.kora.http.server.common.handler", "RequestHandlerUtils");
 }

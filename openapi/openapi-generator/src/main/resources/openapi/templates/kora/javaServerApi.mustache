@@ -7,11 +7,6 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
-{{#isAsync}}
-import java.util.concurrent.CompletionStage;
-{{/isAsync}}{{#isReactive}}
-import reactor.core.publisher.Mono;
-{{/isReactive}}
 
 import java.util.List;
 import java.util.Map;
@@ -77,8 +72,8 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     {{#vendorExtensions.x-validate}}
     @ru.tinkoff.kora.validation.common.annotation.Validate
     {{/vendorExtensions.x-validate}}
-    public {{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
-        HttpServerRequest _serverRequest{{#getHasParams}},{{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}){{#isBlocking}} throws Exception{{/isBlocking}} {
+    public {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
+        HttpServerRequest _serverRequest{{#getHasParams}},{{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{>javaAnnotatedParams}}) throws Exception {
         return this.delegate.{{operationId}}({{#vendorExtensions.requestInDelegateParams}}_serverRequest{{#getHasParams}}, {{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{#hasFormParams}}{{^isFormParam}}{{paramName}}, {{/isFormParam}}{{/hasFormParams}}{{^hasFormParams}}{{paramName}}{{^-last}}, {{/-last}}{{/hasFormParams}}{{/allParams}}{{#hasFormParams}}form{{/hasFormParams}});
     }
 {{>javaFormParams}}

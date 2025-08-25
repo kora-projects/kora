@@ -39,7 +39,7 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
                 var worker = Xnio.getInstance(Undertow.class.getClassLoader())
                     .createWorkerBuilder()
                     .setCoreWorkerPoolSize(1)
-                    .setMaxWorkerPoolSize(httpServerConfig.blockingThreads())
+                    .setMaxWorkerPoolSize(1)
                     .setWorkerIoThreads(httpServerConfig.ioThreads())
                     .setWorkerKeepAlive(((int) httpServerConfig.threadKeepAliveTimeout().toMillis()))
                     .setDaemon(false)

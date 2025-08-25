@@ -1,25 +1,22 @@
 package ru.tinkoff.kora.http.server.common.form;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 
-import jakarta.annotation.Nullable;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.Flow;
 import java.util.regex.Pattern;
 
 public class MultipartReader {
     private static final Pattern boundaryPattern = Pattern.compile(".*(\\s|;)boundary=\"?(?<boundary>[^;\"]+).*");
 
-    public static CompletionStage<List<MultipartFile>> read(HttpServerRequest r) {
+    public static List<MultipartFile> read(HttpServerRequest r) throws IOException {
         var contentType = r.headers().getFirst("content-type");
         if (contentType == null) {
             throw HttpServerResponseException.of(400, "content-type header is required");
@@ -29,19 +26,37 @@ public class MultipartReader {
             throw HttpServerResponseException.of(400, "content-type header is invalid");
         }
         var boundary = m.group("boundary");
-        var future = new CompletableFuture<List<MultipartFile>>();
-        var decoder = new MultipartDecoder(boundary, future);
-        r.body().subscribe(decoder);
-        return future;
+        var decoder = new MultipartDecoder(boundary);
+        try (var body = r.body();
+             var is = body.asInputStream()) {
+            var buf = new byte[16 * 1024];
+            while (true) {
+                var read = is.read(buf, 0, buf.length);
+                if (read < 0) {
+                    if (decoder.state != MultipartDecoder.State.COMPLETED) {
+                        throw HttpServerResponseException.of(400, "Unexpected end of stream");
+                    } else {
+                        return decoder.parts;
+                    }
+                }
+                if (read == 0) {
+                    continue;
+                }
+                decoder.onNext(buf, 0, read);
+                if (decoder.state == MultipartDecoder.State.COMPLETED) {
+                    return decoder.parts;
+                }
+            }
+        }
+
     }
 
-    private static class MultipartDecoder implements Flow.Subscriber<ByteBuffer> {
+    private static class MultipartDecoder {
         private static final Pattern namePattern = Pattern.compile(".*form-data;.*(\\s|;)name=\"(?<name>.*?)\".*", Pattern.CASE_INSENSITIVE);
         private static final Pattern fileNamePattern = Pattern.compile(".*form-data;.*(\\s|;)filename=\"(?<filename>.*?)\".*", Pattern.CASE_INSENSITIVE);
         private static final int SIZE_STEP = 4 * 1024 * 1024; // 4 mb
         private final byte[] boundary;
         private final byte[] boundaryBuf;
-        private final CompletableFuture<List<MultipartFile>> future;
         private ByteBuffer buf = null;
         private State state = State.BEGIN;
         private int readPosition = 0;
@@ -49,26 +64,16 @@ public class MultipartReader {
         private ContentDisposition currentContentDisposition;
         private int lastBodyPosition = 0;
 
-        private final List<MultipartFile> parts = Collections.synchronizedList(new ArrayList<>());
+        private final List<MultipartFile> parts = new ArrayList<>();
 
-        public MultipartDecoder(String boundary, CompletableFuture<List<MultipartFile>> future) {
+        public MultipartDecoder(String boundary) {
             this.boundary = boundary.getBytes(StandardCharsets.US_ASCII);
             this.boundaryBuf = new byte[this.boundary.length];
-            this.future = future;
         }
 
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
-            subscription.request(Long.MAX_VALUE);
-        }
-
-        @Override
-        public void onNext(ByteBuffer byteBuffer) {
-            if (future.isDone()) {
-                return;
-            }
-            this.ensureWritable(byteBuffer);
-            this.buf.put(byteBuffer);
+        public void onNext(byte[] buf, int offset, int len) {
+            this.ensureWritable(len);
+            this.buf.put(buf, offset, len);
             loop:
             for (; ; ) {
                 var readPosition = this.readPosition;
@@ -78,17 +83,16 @@ public class MultipartReader {
                             break loop;
                         }
                         if (this.buf.get(this.readPosition) != '-' || this.buf.get(this.readPosition + 1) != '-') {
-                            future.completeExceptionally(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
-                            return;
+                            throw HttpServerResponseException.of(400, "Invalid beginning of multipart body");
                         }
                         readPosition += 2;
                         this.buf.get(readPosition, this.boundaryBuf);
                         if (!Arrays.equals(this.boundary, this.boundaryBuf)) {
-                            future.completeExceptionally(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
+                            throw HttpServerResponseException.of(400, "Invalid beginning of multipart body");
                         }
                         readPosition += this.boundary.length;
                         if (this.buf.get(readPosition) != '\r' || this.buf.get(readPosition + 1) != '\n') {
-                            future.completeExceptionally(HttpServerResponseException.of(400, "Invalid beginning of multipart body"));
+                            throw HttpServerResponseException.of(400, "Invalid beginning of multipart body");
                         }
                         readPosition += 2;
                         this.readPosition = readPosition;
@@ -108,8 +112,7 @@ public class MultipartReader {
                         } else {
                             var contentDisposition = this.parseContentDisposition();
                             if (contentDisposition == null) {
-                                future.completeExceptionally(HttpServerResponseException.of(400, "Multipart part is missing content-disposition header"));
-                                return;
+                                throw HttpServerResponseException.of(400, "Multipart part is missing content-disposition header");
                             }
                             this.currentContentDisposition = contentDisposition;
                             this.state = State.READ_BODY;
@@ -139,7 +142,7 @@ public class MultipartReader {
                                     array
                                 ));
                                 if (this.buf.get(i + 4 + this.boundary.length) == '-' || this.buf.get(i + 4 + this.boundary.length + 1) == '-') {
-                                    this.future.complete(this.parts);
+                                    state = State.COMPLETED;
                                     break loop;
                                 }
                                 this.readPosition = i + 4 + this.boundary.length + 2;
@@ -158,20 +161,6 @@ public class MultipartReader {
                         break loop;
                     }
                 }
-            }
-        }
-
-        @Override
-        public void onError(Throwable throwable) {
-            if (!future.isDone()) {
-                future.completeExceptionally(throwable);
-            }
-        }
-
-        @Override
-        public void onComplete() {
-            if (!future.isDone()) {
-                future.complete(this.parts);
             }
         }
 
@@ -233,26 +222,25 @@ public class MultipartReader {
 
 
         private enum State {
-            BEGIN, READ_HEADERS, READ_BODY
+            BEGIN, READ_HEADERS, READ_BODY, COMPLETED
         }
 
-        private void ensureWritable(ByteBuffer byteBuffer) {
-            var bytesToWrite = byteBuffer.remaining();
+        private void ensureWritable(int len) {
             if (this.buf == null) {
                 var newCapacity = SIZE_STEP;
-                while (newCapacity <= bytesToWrite) {
+                while (newCapacity <= len) {
                     newCapacity += SIZE_STEP;
                 }
                 this.buf = ByteBuffer.allocate(newCapacity);
                 return;
             }
             var writableBytes = this.buf.capacity() - this.buf.position();
-            if (writableBytes >= bytesToWrite) {
+            if (writableBytes >= len) {
                 return;
             }
             var position = this.buf.position();
             var newCapacity = this.buf.capacity();
-            while (newCapacity <= bytesToWrite + position) {
+            while (newCapacity <= len + position) {
                 newCapacity += SIZE_STEP;
             }
             this.buf = ByteBuffer.allocate(newCapacity)

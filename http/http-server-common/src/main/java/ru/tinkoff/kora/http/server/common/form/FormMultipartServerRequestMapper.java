@@ -7,7 +7,7 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 public final class FormMultipartServerRequestMapper implements HttpServerRequestMapper<FormMultipart> {
     @Override
     public FormMultipart apply(HttpServerRequest request) throws Exception {
-        var parts = MultipartReader.read(request).toCompletableFuture().get();
+        var parts = MultipartReader.read(request);
         return new FormMultipart(parts);
     }
 }

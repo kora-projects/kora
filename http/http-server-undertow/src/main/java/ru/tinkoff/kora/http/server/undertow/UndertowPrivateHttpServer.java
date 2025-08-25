@@ -21,18 +21,15 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
     private final ValueOf<HttpServerConfig> config;
     private final ValueOf<UndertowPrivateApiHandler> privateApiHandler;
     private final XnioWorker xnioWorker;
-    private final ByteBufferPool byteBufferPool;
 
     private volatile Undertow undertow;
 
     public UndertowPrivateHttpServer(ValueOf<HttpServerConfig> config,
                                      ValueOf<UndertowPrivateApiHandler> privateApiHandler,
-                                     @Nullable XnioWorker xnioWorker,
-                                     ByteBufferPool byteBufferPool) {
+                                     @Nullable XnioWorker xnioWorker) {
         this.config = config;
         this.privateApiHandler = privateApiHandler;
         this.xnioWorker = xnioWorker;
-        this.byteBufferPool = byteBufferPool;
     }
 
     @Override
@@ -60,7 +57,6 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
         return Undertow.builder()
             .addHttpListener(this.config.get().privateApiHttpPort(), "0.0.0.0", exchange -> this.privateApiHandler.get().handleRequest(exchange))
             .setWorker(this.xnioWorker)
-            .setByteBufferPool(this.byteBufferPool)
             .build();
     }
 

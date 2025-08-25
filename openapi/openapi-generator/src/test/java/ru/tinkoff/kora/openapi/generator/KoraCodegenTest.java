@@ -105,11 +105,8 @@ class KoraCodegenTest {
         var modes = new String[]{
             KoraCodegen.Mode.JAVA_CLIENT.getMode(),
             KoraCodegen.Mode.JAVA_SERVER.getMode(),
-            KoraCodegen.Mode.JAVA_ASYNC_SERVER.getMode(),
-            KoraCodegen.Mode.JAVA_REACTIVE_SERVER.getMode(),
             KoraCodegen.Mode.KOTLIN_CLIENT.getMode(),
-            KoraCodegen.Mode.KOTLIN_SERVER.getMode(),
-            KoraCodegen.Mode.KOTLIN_SUSPEND_SERVER.getMode(),
+            KoraCodegen.Mode.KOTLIN_SERVER.getMode()
         };
 
         var files = new String[]{

@@ -14,16 +14,12 @@ import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.util.Elements;
-import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -33,30 +29,10 @@ import static ru.tinkoff.kora.http.server.annotation.processor.RequestHandlerGen
 
 public class RequestHandlerGenerator {
 
-    private final Elements elements;
-    private final Types types;
     private final ProcessingEnvironment processingEnvironment;
-    @Nullable
-    private final DeclaredType publisherTypeErasure;
-    private final DeclaredType jdkPublisherTypeErasure;
-    private final DeclaredType completionStageTypeErasure;
 
-    public RequestHandlerGenerator(Elements elements, Types types, ProcessingEnvironment processingEnvironment) {
-        this.elements = elements;
-        this.types = types;
+    public RequestHandlerGenerator(ProcessingEnvironment processingEnvironment) {
         this.processingEnvironment = processingEnvironment;
-        this.publisherTypeErasure = dtFromString(elements, types, "org.reactivestreams.Publisher");
-        this.jdkPublisherTypeErasure = Objects.requireNonNull(dtFromString(elements, types, "java.util.concurrent.Flow.Publisher"));
-        this.completionStageTypeErasure = Objects.requireNonNull(dtFromString(elements, types, "java.util.concurrent.CompletionStage"));
-    }
-
-    @Nullable
-    private static DeclaredType dtFromString(Elements elements, Types types, String name) {
-        var te = elements.getTypeElement(name);
-        if (te == null) {
-            return null;
-        }
-        return types.getDeclaredType(te, types.getWildcardType(null, null));
     }
 
 
@@ -78,11 +54,6 @@ public class RequestHandlerGenerator {
         var responseMapper = this.detectResponseMapper(requestMappingData, requestMappingData.executableElement());
         if (responseMapper != null) {
             methodBuilder.addParameter(responseMapper);
-        }
-
-        var isBlocking = isBlocking(requestMappingData);
-        if (isBlocking) {
-            methodBuilder.addParameter(blockingRequestExecutor, "_executor");
         }
 
         var handlerCode = this.buildRequestHandler(controller, requestMappingData, parameters, methodBuilder);
@@ -117,7 +88,7 @@ public class RequestHandlerGenerator {
             var interceptorName = "_interceptor" + (i + 1);
             var newRequestName = "_request" + (i + 1);
             var ctxName = "_ctx_" + (i + 1);
-            requestMappingBlock.beginControlFlow("try").add("return ");
+            requestMappingBlock.add("return ");
             requestMappingBlock.add("$L.intercept(_ctx, $L, ($N, $N) -> $>{\n", interceptorName, requestName, ctxName, newRequestName);
             requestName = newRequestName;
             var builder = ParameterSpec.builder(interceptor.type(), interceptorName);
@@ -159,164 +130,27 @@ public class RequestHandlerGenerator {
         if (hasNonBodyParams) {
             handler.nextControlFlow("catch (Exception _e)");
             handler.beginControlFlow("if (_e instanceof $T)", httpServerResponse);
-            handler.addStatement("return $T.failedFuture(_e)", CompletableFuture.class);
+            handler.addStatement("throw _e");
             handler.nextControlFlow("else");
-            handler.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
+            handler.addStatement("throw $T.of(400, _e)", httpServerResponseException);
             handler.endControlFlow();
             handler.endControlFlow();
             handler.add("\n");
         }
 
-        final CodeBlock controllerCall;
         if (CommonUtils.isMono(returnType)) {
-            controllerCall = this.generateMonoCall(requestMappingData, parameters, requestName);
+            processingEnvironment.getMessager().printWarning("Method return type is Mono<T> which is unsupported and has no meaning", requestMappingData.executableElement());
         } else if (CommonUtils.isFuture(returnType)) {
-            controllerCall = this.generateFutureCall(requestMappingData, parameters, requestName);
-        } else {
-            controllerCall = this.generateBlockingCall(requestMappingData, parameters, requestName);
+            processingEnvironment.getMessager().printWarning("Method return type is CompletionStage<T> which is unsupported and has no meaning", requestMappingData.executableElement());
         }
+        var controllerCall = this.generateBlockingCall(requestMappingData, parameters, requestName);
 
         handler.add(controllerCall);
 
         for (int i = 0; i < interceptors.size(); i++) {
             handler.addStatement("$<})");
-            handler.nextControlFlow("catch (Exception _e)")
-                .addStatement("return $T.failedFuture(_e)", CompletableFuture.class)
-                .endControlFlow();
         }
         return handler.build();
-    }
-
-    private CodeBlock generateMonoCall(RequestMappingData requestMappingData, List<Parameter> parameters, String requestName) {
-        var executeParameters = parameters.stream()
-            .map(_p -> _p.variableElement.getSimpleName())
-            .collect(Collectors.joining(", "));
-        var mappedParameters = parameters.stream().filter(p -> p.parameterType == MAPPED_HTTP_REQUEST).toList();
-        var b = CodeBlock.builder();
-        for (var mappedParameter : mappedParameters) {
-            b.addStatement("final $T $N", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
-            b.beginControlFlow("try");
-            b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
-            b.nextControlFlow("catch ($T _e)", CompletionException.class);
-            b.addStatement("if (_e.getCause() instanceof $T && _e.getCause() instanceof $T) throw ($T) _e.getCause()", httpServerResponse, RuntimeException.class, RuntimeException.class);
-            b.addStatement("throw $T.of(400, _e.getCause())", httpServerResponseException);
-            b.nextControlFlow("catch (Exception _e)");
-            b.addStatement("if (_e instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
-            b.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
-            b.endControlFlow();
-        }
-        if (!mappedParameters.isEmpty()) {
-            b.add("return $T.allOf(", CompletableFuture.class);
-            for (int i = 0; i < mappedParameters.size(); i++) {
-                if (i > 0) b.add(", ");
-                b.add("$N", "_future_" + mappedParameters.get(i).name);
-            }
-            b.add(").thenCompose(_unused_ -> {$>\n");
-            for (var mappedParameter : mappedParameters) {
-                b.addStatement("final $T $N", mappedParameter.type, mappedParameter.name);
-                b.beginControlFlow("try");
-                b.addStatement("$N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
-                b.nextControlFlow("catch ($T _e)", CompletionException.class);
-                b.addStatement("if (_e.getCause() instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
-                b.addStatement("return $T.failedFuture($T.of(400, _e.getCause()))", CompletableFuture.class, httpServerResponseException);
-                b.endControlFlow();
-            }
-        }
-        b.addStatement("var oldCtx = $T.current()", CommonClassNames.context);
-        b.addStatement("_ctx.inject()");
-        b.beginControlFlow("try");
-        var returnType = (DeclaredType) requestMappingData.executableType().getReturnType();
-        if (returnType.getTypeArguments().get(0).toString().equals("java.lang.Void")) {
-            b.add("return _controller.$N($L).contextWrite(_rctx -> $T.inject(_rctx, _ctx)).toFuture()\n", requestMappingData.executableElement().getSimpleName(), executeParameters, CommonClassNames.context.nestedClass("Reactor"));
-            b.add("  .thenApply(__unused_ -> $T.of(200));\n", HttpServerClassNames.httpServerResponse);
-        } else if (returnType.getTypeArguments().get(0).toString().equals(httpServerResponse.canonicalName())) {
-            b.add("return _controller.$N($L).contextWrite(_rctx -> $T.inject(_rctx, _ctx)).toFuture();\n", requestMappingData.executableElement().getSimpleName(), executeParameters, CommonClassNames.context.nestedClass("Reactor"));
-        } else {
-            b.add("return _controller.$N($L).contextWrite(_rctx -> $T.inject(_rctx, _ctx)).toFuture()$>\n", requestMappingData.executableElement().getSimpleName(), executeParameters, CommonClassNames.context.nestedClass("Reactor"));
-            b.add(".thenApply(_result -> {$>\n");
-            b.add("try {\n");
-            b.add("  return _responseMapper.apply(_ctx, _request, _result);\n");
-            b.add("} catch (Exception e) {\n");
-            b.add("  throw new $T(e);\n", CompletionException.class);
-            b.add("}");
-            b.add("$<$<\n});\n");
-        }
-        b.nextControlFlow("catch (Exception e)");
-        b.addStatement("return $T.failedFuture(e)", CompletableFuture.class);
-        b.nextControlFlow("finally");
-        b.addStatement("oldCtx.inject()");
-        b.endControlFlow();
-
-        if (!mappedParameters.isEmpty()) {
-            b.add("$<\n});\n");
-        }
-        return b.build();
-    }
-
-    private CodeBlock generateFutureCall(RequestMappingData requestMappingData, List<Parameter> parameters, String requestName) {
-        var executeParameters = parameters.stream()
-            .map(_p -> _p.variableElement.getSimpleName())
-            .collect(Collectors.joining(", "));
-        var mappedParameters = parameters.stream().filter(p -> p.parameterType == MAPPED_HTTP_REQUEST).toList();
-        var b = CodeBlock.builder();
-        for (var mappedParameter : mappedParameters) {
-            b.addStatement("final $T $N", ParameterizedTypeName.get(ClassName.get(CompletableFuture.class), TypeName.get(mappedParameter.type)), "_future_" + mappedParameter.name);
-            b.beginControlFlow("try");
-            b.addStatement("$N = $LHttpRequestMapper.apply($L).toCompletableFuture()", "_future_" + mappedParameter.name, mappedParameter.name, requestName);
-            b.nextControlFlow("catch ($T _e)", CompletionException.class);
-            b.addStatement("if (_e.getCause() instanceof $T && _e.getCause() instanceof $T) throw ($T) _e.getCause()", httpServerResponse, RuntimeException.class, RuntimeException.class);
-            b.addStatement("throw $T.of(400, _e.getCause())", httpServerResponseException);
-            b.nextControlFlow("catch (Exception _e)");
-            b.addStatement("if (_e instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
-            b.addStatement("return $T.failedFuture($T.of(400, _e))", CompletableFuture.class, httpServerResponseException);
-            b.endControlFlow();
-        }
-        if (!mappedParameters.isEmpty()) {
-            b.add("return $T.allOf(", CompletableFuture.class);
-            for (int i = 0; i < mappedParameters.size(); i++) {
-                if (i > 0) b.add(", ");
-                b.add("$N", "_future_" + mappedParameters.get(i).name);
-            }
-            b.add(").thenCompose(_unused_ -> {$>\n");
-            for (var mappedParameter : mappedParameters) {
-                b.addStatement("final $T $N", mappedParameter.type, mappedParameter.name);
-                b.beginControlFlow("try");
-                b.addStatement("$N = $N.getNow(null)", mappedParameter.name, "_future_" + mappedParameter.name);
-                b.nextControlFlow("catch ($T _e)", CompletionException.class);
-                b.addStatement("if (_e.getCause() instanceof $T) return $T.failedFuture(_e)", httpServerResponse, CompletableFuture.class);
-                b.addStatement("return $T.failedFuture($T.of(400, _e.getCause()))", CompletableFuture.class, httpServerResponseException);
-                b.endControlFlow();
-            }
-        }
-        b.addStatement("var oldCtx = $T.current()", CommonClassNames.context);
-        b.addStatement("_ctx.inject()");
-        b.beginControlFlow("try");
-        var returnType = (DeclaredType) requestMappingData.executableType().getReturnType();
-        if (returnType.getTypeArguments().get(0).toString().equals("java.lang.Void")) {
-            b.add("return _controller.$N($L)\n", requestMappingData.executableElement().getSimpleName(), executeParameters);
-            b.add("  .thenApply(__unused_ -> $T.of(200));\n", HttpServerClassNames.httpServerResponse);
-        } else if (returnType.getTypeArguments().get(0).toString().equals(httpServerResponse.canonicalName())) {
-            b.add("return _controller.$N($L);\n", requestMappingData.executableElement().getSimpleName(), executeParameters);
-        } else {
-            b.add("return _controller.$N($L)$>\n", requestMappingData.executableElement().getSimpleName(), executeParameters);
-            b.add(".thenApply(_result -> {$>\n");
-            b.add("try {\n");
-            b.add("  return _responseMapper.apply(_ctx, _request, _result);\n");
-            b.add("} catch (Exception e) {\n");
-            b.add("  throw new $T(e);\n", CompletionException.class);
-            b.add("}");
-            b.add("$<$<\n});\n");
-        }
-        b.nextControlFlow("catch (Exception e)");
-        b.addStatement("return $T.failedFuture(e)", CompletableFuture.class);
-        b.nextControlFlow("finally");
-        b.addStatement("oldCtx.inject()");
-        b.endControlFlow();
-
-        if (!mappedParameters.isEmpty()) {
-            b.add("$<\n});\n");
-        }
-        return b.build();
     }
 
     private CodeBlock generateBlockingCall(RequestMappingData requestMappingData, List<Parameter> parameters, String requestName) {
@@ -325,7 +159,6 @@ public class RequestHandlerGenerator {
             .collect(Collectors.joining(", "));
         var mappedParameters = parameters.stream().filter(p -> p.parameterType == MAPPED_HTTP_REQUEST).toList();
         var b = CodeBlock.builder();
-        b.add("return _executor.execute(_ctx, () -> {$>\n");
         for (var mappedParameter : mappedParameters) {
             b.addStatement("final $T $N", TypeName.get(mappedParameter.type), mappedParameter.name);
             b.beginControlFlow("try");
@@ -340,14 +173,13 @@ public class RequestHandlerGenerator {
         }
         if (CommonUtils.isVoid(requestMappingData.executableType().getReturnType())) {
             b.addStatement("_controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
-            b.add("return $T.of(200);", HttpServerClassNames.httpServerResponse);
+            b.addStatement("return $T.of(200)", HttpServerClassNames.httpServerResponse);
         } else if (HttpServerClassNames.httpServerResponse.canonicalName().equals(requestMappingData.executableElement().getReturnType().toString())) {
-            b.add("return _controller.$N($L);", requestMappingData.executableElement().getSimpleName(), executeParameters);
+            b.addStatement("return _controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
         } else {
             b.addStatement("var _result = _controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
-            b.add("return _responseMapper.apply(_ctx, _request, _result);");
+            b.addStatement("return _responseMapper.apply(_ctx, _request, _result)");
         }
-        b.add("$<\n});");
         return b.build();
     }
 
@@ -949,14 +781,6 @@ public class RequestHandlerGenerator {
             .collect(Collectors.joining("_", "_", suffix));
     }
 
-    private boolean isBlocking(RequestMappingData requestMappingData) {
-        var returnType = requestMappingData.executableType().getReturnType();
-        var isAsync = this.types.isAssignable(returnType, this.completionStageTypeErasure)
-                      || this.publisherTypeErasure != null && this.types.isAssignable(returnType, this.publisherTypeErasure)
-                      || this.types.isAssignable(returnType, this.jdkPublisherTypeErasure);
-        return !isAsync;
-    }
-
 
     private void addParameterMappers(MethodSpec.Builder methodBuilder, RequestMappingData requestMappingData, List<Parameter> bodyParameterType) {
         for (var parameter : bodyParameterType) {
@@ -974,11 +798,7 @@ public class RequestHandlerGenerator {
                 mapperType = TypeName.get(mapper.mapperClass());
             } else {
                 var typeMirror = parameter.type;
-                if (isBlocking(requestMappingData)) {
-                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, TypeName.get(typeMirror).box());
-                } else {
-                    mapperType = ParameterizedTypeName.get(httpServerRequestMapper, ParameterizedTypeName.get(ClassName.get(CompletionStage.class), TypeName.get(typeMirror).box()));
-                }
+                mapperType = ParameterizedTypeName.get(httpServerRequestMapper, TypeName.get(typeMirror).box());
             }
             var b = ParameterSpec.builder(mapperType, mapperName);
             if (tags != null) {
@@ -1008,20 +828,15 @@ public class RequestHandlerGenerator {
             return null;
         }
 
-        var isAsync = !isBlocking(requestMappingData);
-
-        var returnTypeName = TypeName.get(returnType).box();
-        var resultTypeName = isAsync
-            ? ((ParameterizedTypeName) returnTypeName).typeArguments.get(0)
-            : returnTypeName;
-        if (resultTypeName.box().toString().equals("java.lang.Void") && tags == null) {
+        var returnTypeName = TypeName.get(returnType);
+        if (returnTypeName.withoutAnnotations().equals(TypeName.VOID) && tags == null) {
             return null;
         }
-        if (resultTypeName.box().toString().equals(httpServerResponse.canonicalName()) && tags == null) {
+        if (returnTypeName.withoutAnnotations().equals(httpServerResponse) && tags == null) {
             return null;
         }
 
-        var mapperType = ParameterizedTypeName.get(httpServerResponseMapper, resultTypeName);
+        var mapperType = ParameterizedTypeName.get(httpServerResponseMapper, returnTypeName.box());
         var b = ParameterSpec.builder(mapperType, "_responseMapper");
         if (tags != null) {
             b.addAnnotation(tags);

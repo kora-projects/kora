@@ -36,10 +36,6 @@ public interface HttpServerConfig {
         return Math.max(Runtime.getRuntime().availableProcessors(), 2);
     }
 
-    default int blockingThreads() {
-        return Math.min(Math.max(Runtime.getRuntime().availableProcessors(), 2) * 8, 200);
-    }
-
     default Duration threadKeepAliveTimeout() {
         return Duration.ofSeconds(60);
     }

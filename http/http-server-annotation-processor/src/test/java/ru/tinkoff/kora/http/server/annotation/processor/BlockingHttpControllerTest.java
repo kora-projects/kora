@@ -1,15 +1,11 @@
 package ru.tinkoff.kora.http.server.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper;
 
 import java.util.concurrent.ForkJoinPool;
 
 public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
-    private final BlockingRequestExecutor executor = new BlockingRequestExecutor.Default(ForkJoinPool.commonPool());
-
     @Test
     public void testReturnBlockingResponse() throws Exception {
         var module = this.compile("""
@@ -22,7 +18,7 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             }
             """);
 
-        var handler = module.getHandler("get_test", executor);
+        var handler = module.getHandler("get_test");
 
         assertThat(handler, "GET", "/test")
             .hasStatus(200)
@@ -41,7 +37,7 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             }
             """);
 
-        var handler = module.getHandler("get_test", executor);
+        var handler = module.getHandler("get_test");
 
         assertThat(handler, "GET", "/test?queryParameter=test")
             .hasStatus(200)
@@ -63,7 +59,7 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             }
             """);
 
-        var handler = module.getHandler("get_test", stringRequestMapper(), executor);
+        var handler = module.getHandler("get_test", stringRequestMapper());
 
         assertThat(handler, "POST", "/test", "test")
             .hasStatus(200)
@@ -81,7 +77,7 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             }
             """);
 
-        var handler = module.getHandler("get_test", executor);
+        var handler = module.getHandler("get_test");
 
         assertThat(handler, "GET", "/test")
             .hasStatus(200)
@@ -100,7 +96,7 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             }
             """);
 
-        var handler = module.getHandler("get_test", strResponseMapper(), executor);
+        var handler = module.getHandler("get_test", strResponseMapper());
 
         assertThat(handler, "GET", "/test")
             .hasStatus(200)
@@ -119,7 +115,7 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             }
             """);
 
-        var handler = module.getHandler("get_test", new HttpServerResponseEntityMapper<>(strResponseMapper()), executor);
+        var handler = module.getHandler("get_test", new HttpServerResponseEntityMapper<>(strResponseMapper()));
 
         assertThat(handler, "GET", "/test")
             .hasStatus(403)
@@ -142,22 +138,22 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             """, """
             public class TestInterceptor1 implements HttpServerInterceptor {
                 @Override
-                public CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
+                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
                     return chain.process(context, request);
                 }
             }
             """, """
             public class TestInterceptor2 implements HttpServerInterceptor {
                 @Override
-                public CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
+                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
                     return chain.process(context, request);
                 }
             }
             """);
 
-        var handler = module.getHandler("get_test", executor, newObject("TestInterceptor1"), newObject("TestInterceptor2"));
+        var handler = module.getHandler("get_test", newObject("TestInterceptor1"), newObject("TestInterceptor2"));
 
         assertThat(handler, "GET", "/test?test")
             .hasStatus(200)
@@ -182,22 +178,22 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             """, """
             public class TestInterceptor1 implements HttpServerInterceptor {
                 @Override
-                public CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
+                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
                     return chain.process(context, request);
                 }
             }
             """, """
             public class TestInterceptor2 implements HttpServerInterceptor {
                 @Override
-                public CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
+                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
                     return chain.process(context, request);
                 }
             }
             """);
 
-        var handler = module.getHandler("get_test", executor, newObject("TestInterceptor1"), newObject("TestInterceptor2"));
+        var handler = module.getHandler("get_test", newObject("TestInterceptor1"), newObject("TestInterceptor2"));
 
         assertThat(handler, "GET", "/test?queryParameter=test")
             .hasStatus(200)

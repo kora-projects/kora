@@ -6,17 +6,12 @@ import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.handler.StringParameterReader;
 
 import java.lang.reflect.ParameterizedType;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ForkJoinPool;
 
 public class ControllerParamsTest extends AbstractHttpControllerTest {
-
-    private final BlockingRequestExecutor executor = new BlockingRequestExecutor.Default(ForkJoinPool.commonPool());
 
     @Test
     void testPath() {
@@ -26,7 +21,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             
                 @HttpRoute(method = GET, path = "/pathBoolean/{value}")
                 void pathBoolean(@Path Boolean value) { }
-
+            
                 @HttpRoute(method = GET, path = "/pathString/{someValue}")
                 void pathString(@Path(value = "someValue") String string) { }
             
@@ -56,7 +51,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 /*
                 Headers: String, Integer, List<String>, List<Integer>
                  */
-
+            
                 @HttpRoute(method = GET, path = "/headerString")
                 void headerString(@Header(value = "string-header") String string) { }
             
@@ -200,16 +195,16 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         compileResult.assertSuccess();
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
-            Assertions.assertThat(moduleMethod.getParameters()).hasSize(3);
-            Assertions.assertThat(moduleMethod.getParameters()[2].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
 
-            var type = ((ParameterizedType) moduleMethod.getParameters()[2].getParameterizedType());
+            var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("BigInteger");
         }
     }
 
     @Test
-    void testQuery() {
+    public void testQuery() {
         compile("""
             @HttpController
             public class Controller {
@@ -219,7 +214,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 public enum TestEnum {
                     VAL1, VAL2
                 }
-
+            
                 @HttpRoute(method = GET, path = "/queryString")
                 void queryString(@Query(value = "string-query") String string) { }
             
@@ -384,10 +379,10 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         compileResult.assertSuccess();
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
-            Assertions.assertThat(moduleMethod.getParameters()).hasSize(3);
-            Assertions.assertThat(moduleMethod.getParameters()[2].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
 
-            var type = ((ParameterizedType) moduleMethod.getParameters()[2].getParameterizedType());
+            var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("BigInteger");
         }
     }
@@ -401,7 +396,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 public enum TestEnum {
                     VAL1, VAL2
                 }
-
+            
                 @HttpRoute(method = GET, path = "/queryEnum")
                 void queryEnum(@Query("valueSome") TestEnum value) { }
             
@@ -422,10 +417,10 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         compileResult.assertSuccess();
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
-            Assertions.assertThat(moduleMethod.getParameters()).hasSize(3);
-            Assertions.assertThat(moduleMethod.getParameters()[2].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
 
-            var type = ((ParameterizedType) moduleMethod.getParameters()[2].getParameterizedType());
+            var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("TestEnum");
         }
     }
@@ -439,19 +434,19 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 public enum TestEnum {
                     VAL1, VAL2
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerEnum")
                 void queryString(@Header TestEnum value1) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableEnum")
                 void queryNullableString(@Header @Nullable TestEnum value) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerOptionalEnum")
                 void queryOptionalString(@Header Optional<TestEnum> value) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerListEnum")
                 void queryStringList(@Header List<TestEnum> value) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableListEnum")
                 void queryNullableStringList(@Header @Nullable List<TestEnum> value) { }
             }
@@ -460,10 +455,10 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         compileResult.assertSuccess();
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
-            Assertions.assertThat(moduleMethod.getParameters()).hasSize(3);
-            Assertions.assertThat(moduleMethod.getParameters()[2].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
 
-            var type = ((ParameterizedType) moduleMethod.getParameters()[2].getParameterizedType());
+            var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("TestEnum");
         }
     }
@@ -476,35 +471,35 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 /*
                 Headers: String, Integer, List<String>, List<Integer>
                  */
-
+            
                 @HttpRoute(method = GET, path = "/headerString")
                 void headerString(@Header(value = "string-header") String string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableString")
                 void headerNullableString(@Header @Nullable String string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerOptionalString")
                 void headerNullableString(@Header Optional<String> string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerStringList")
                 void headerNullableString(@Header List<String> string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerInteger")
                 void headerInteger(@Header(value = "integer-header") Integer integer) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableInteger")
                 void headerNullableInteger(@Header(value = "integer-header") @Nullable Integer integer) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerOptionalInteger")
                 void headerOptionalInteger(@Header(value = "integer-header") Optional<Integer> integer) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerIntegerList")
                 void headerStringList(@Header(value = "integer-header") List<Integer> integers) {
                 }
@@ -522,19 +517,19 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             public class Controller {
                 @HttpRoute(method = GET, path = "/cookieString")
                 void cookieString(@Cookie(value = "someCookie") String string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieNullableString")
                 void cookieNullableString(@Cookie @Nullable String string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieOptionalString")
                 void cookieOptionalString(@Cookie Optional<String> string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieCookie")
                 void cookieCookie(@Cookie ru.tinkoff.kora.http.common.cookie.Cookie string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieNullableCookie")
                 void cookieNullableCookie(@Cookie @Nullable ru.tinkoff.kora.http.common.cookie.Cookie string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieOptionalCookie")
                 void cookieNullableCookie(@Cookie Optional<ru.tinkoff.kora.http.common.cookie.Cookie> string) {}
             }
@@ -548,7 +543,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     void testContext() {
         var m = compile("""
             import ru.tinkoff.kora.common.Context;
-
+            
             @HttpController
             public class Controller {
                 @HttpRoute(method = GET, path = "/ctx")
@@ -577,27 +572,6 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     }
 
     @Test
-    void testMappedRequestAsync() {
-        var m = compile("""
-            @HttpController
-            public class Controller {
-                @HttpRoute(method = GET, path = "/request")
-                public CompletionStage<Void> request(String request) {
-                  return CompletableFuture.completedFuture(null);
-                }
-            }
-            """);
-        compileResult.assertSuccess();
-        var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
-        Assertions.assertThat(componentMethod.getParameters()).hasSize(2);
-        Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(
-            TypeRef.of(HttpServerRequestMapper.class, TypeRef.of(
-                CompletionStage.class, String.class
-            ))
-        );
-    }
-
-    @Test
     void testMappedRequest() {
         var m = compile("""
             @HttpController
@@ -609,36 +583,10 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             """);
         compileResult.assertSuccess();
         var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
-        Assertions.assertThat(componentMethod.getParameters()).hasSize(3);
+        Assertions.assertThat(componentMethod.getParameters()).hasSize(2);
         Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(
             TypeRef.of(HttpServerRequestMapper.class, String.class)
         );
-    }
-
-    @Test
-    void testMappedRequestWithMappingAsync() {
-        var m = compile("""
-                @HttpController
-                public class Controller {
-                    @HttpRoute(method = GET, path = "/request")
-                    public CompletionStage<Void> request(@Mapping(Mapper.class) String request) {
-                      return CompletableFuture.completedFuture(null);
-                    }
-                }
-                """,
-            """
-                public class Mapper implements HttpServerRequestMapper<CompletionStage<String>> {
-
-                    @Override
-                    public CompletionStage<String> apply(HttpServerRequest request) {
-                        return CompletableFuture.completedFuture(request.toString());
-                    }
-                }
-                """);
-        compileResult.assertSuccess();
-        var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
-        Assertions.assertThat(componentMethod.getParameters()).hasSize(2);
-        Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(compileResult.loadClass("Mapper"));
     }
 
     @Test
@@ -653,7 +601,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 """,
             """
                 public class Mapper implements HttpServerRequestMapper<String> {
-
+                
                     @Override
                     public String apply(HttpServerRequest request) {
                       return request.toString();
@@ -662,7 +610,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 """);
         compileResult.assertSuccess();
         var componentMethod = compileResult.loadClass("ControllerModule").getMethods()[0];
-        Assertions.assertThat(componentMethod.getParameters()).hasSize(3);
+        Assertions.assertThat(componentMethod.getParameters()).hasSize(2);
         Assertions.assertThat(componentMethod.getGenericParameterTypes()[1]).isEqualTo(compileResult.loadClass("Mapper"));
     }
 
@@ -685,7 +633,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             }
         };
 
-        var handler = module.getHandler("get_test", executor, parser);
+        var handler = module.getHandler("get_test", parser);
 
         assertThat(handler, request("GET", "/test", "", HttpHeaders.of("some-header", "test")))
             .hasStatus(400)
@@ -711,7 +659,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             }
         };
 
-        var handler = module.getHandler("get_test", executor, parser);
+        var handler = module.getHandler("get_test", parser);
 
         assertThat(handler, request("GET", "/test?q=test", ""))
             .hasStatus(400)
@@ -737,67 +685,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             }
         };
 
-        var handler = module.getHandler("get_string_test", executor, parser);
-
-        var rq = request("GET", "/test/test", "");
-        rq.pathParams().put("string", "test");
-        assertThat(handler, rq)
-            .hasStatus(400)
-            .hasBody("test-error");
-    }
-
-    @Test
-    void testParseBodyMonoException() {
-        var module = compile("""
-            @HttpController
-            public class Controller {
-                @HttpRoute(method = "POST", path = "/test")
-                public Mono<Void> test(Object string) {
-                  return null;
-                }
-            }
-            """);
-        compileResult.assertSuccess();
-
-        var parser = new HttpServerRequestMapper<Object>() {
-            @Nullable
-            @Override
-            public Object apply(HttpServerRequest request) throws Exception {
-                throw new RuntimeException("test-error");
-            }
-        };
-
-        var handler = module.getHandler("post_test", parser);
-
-        var rq = request("GET", "/test/test", "");
-        rq.pathParams().put("string", "test");
-        assertThat(handler, rq)
-            .hasStatus(400)
-            .hasBody("test-error");
-    }
-
-    @Test
-    void testParseBodyFutureException() {
-        var module = compile("""
-            @HttpController
-            public class Controller {
-                @HttpRoute(method = "POST", path = "/test")
-                public CompletionStage<Void> test(Object string) {
-                  return null;
-                }
-            }
-            """);
-        compileResult.assertSuccess();
-
-        var parser = new HttpServerRequestMapper<Object>() {
-            @Nullable
-            @Override
-            public Object apply(HttpServerRequest request) throws Exception {
-                throw new RuntimeException("test-error");
-            }
-        };
-
-        var handler = module.getHandler("post_test", parser);
+        var handler = module.getHandler("get_string_test", parser);
 
         var rq = request("GET", "/test/test", "");
         rq.pathParams().put("string", "test");
@@ -826,7 +714,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             }
         };
 
-        var handler = module.getHandler("post_test", parser, executor);
+        var handler = module.getHandler("post_test", parser);
 
         var rq = request("GET", "/test/test", "");
         rq.pathParams().put("string", "test");
@@ -838,7 +726,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
 
     private void verifyNoDependencies(Class<?> controllerModule) {
         for (var moduleMethod : controllerModule.getMethods()) {
-            Assertions.assertThat(moduleMethod.getParameters()).withFailMessage(moduleMethod + " has dependencies").hasSize(2);
+            Assertions.assertThat(moduleMethod.getParameters()).withFailMessage(moduleMethod + " has dependencies").hasSize(1);
         }
     }
 }

@@ -7,28 +7,33 @@ import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 final class ResourceUtils {
 
-    private ResourceUtils() { }
+    private ResourceUtils() {}
 
     @Nullable
     public static InputStream getFileAsStream(@Nonnull String path) {
-        return Optional.ofNullable(ResourceUtils.class.getResourceAsStream(path))
-            .or(() -> Optional.ofNullable(ResourceUtils.class.getResourceAsStream("/" + path)))
-            .map(BufferedInputStream::new)
-            .orElse(null);
+        var resourceAsStream = ResourceUtils.class.getResourceAsStream(path);
+        if (resourceAsStream != null) {
+            return new BufferedInputStream(resourceAsStream);
+        }
+        var resourceWithSlashStream = ResourceUtils.class.getResourceAsStream("/" + path);
+        if (resourceWithSlashStream != null) {
+            return new BufferedInputStream(resourceWithSlashStream);
+        }
+        return null;
     }
 
-    public static Optional<String> getFileAsString(@Nonnull String path) {
-        final InputStream is = ResourceUtils.getFileAsStream(path);
+    @Nullable
+    public static String getFileAsString(@Nonnull String path) {
+        var is = ResourceUtils.getFileAsStream(path);
         if (is == null) {
-            return Optional.empty();
+            return null;
         }
 
         try (var stream = is) {
-            return Optional.of(new String(stream.readAllBytes(), StandardCharsets.UTF_8));
+            return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
             throw new IllegalArgumentException("Can't read file: " + path, e);
         }

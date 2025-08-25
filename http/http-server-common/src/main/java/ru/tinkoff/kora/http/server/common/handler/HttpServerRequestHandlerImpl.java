@@ -4,12 +4,6 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
-import java.util.Objects;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
-
 import static ru.tinkoff.kora.http.common.HttpMethod.*;
 
 public final class HttpServerRequestHandlerImpl implements HttpServerRequestHandler {
@@ -90,13 +84,7 @@ public final class HttpServerRequestHandlerImpl implements HttpServerRequestHand
     }
 
     @Override
-    public CompletionStage<HttpServerResponse> handle(Context ctx, HttpServerRequest request) throws Exception {
-        try {
-            return this.handler.apply(ctx, request);
-        } catch (CompletionException | ExecutionException e) {
-            return CompletableFuture.failedFuture(e.getCause());
-        } catch (Exception e) {
-            return CompletableFuture.failedFuture(e);
-        }
+    public HttpServerResponse handle(Context ctx, HttpServerRequest request) throws Exception {
+        return this.handler.apply(ctx, request);
     }
 }

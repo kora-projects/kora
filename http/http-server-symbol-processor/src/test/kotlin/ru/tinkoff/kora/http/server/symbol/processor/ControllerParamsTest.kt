@@ -4,17 +4,12 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.http.common.header.HttpHeaders
-import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper
 import ru.tinkoff.kora.http.server.common.handler.StringParameterReader
 import java.lang.reflect.ParameterizedType
-import java.util.concurrent.CompletionStage
-import java.util.concurrent.ForkJoinPool
 import kotlin.reflect.KClass
 
 class ControllerParamsTest : AbstractHttpControllerTest() {
-
-    private val executor: BlockingRequestExecutor = BlockingRequestExecutor.Default(ForkJoinPool.commonPool())
 
     @Test
     fun testPath() {
@@ -541,9 +536,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         Assertions.assertThat(componentMethod.parameters).hasSize(2)
         Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
             HttpServerRequestMapper::class.ref(
-                CompletionStage::class.ref(
-                    String::class
-                )
+                String::class
             )
         )
     }
@@ -563,13 +556,12 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
         compileResult.assertSuccess()
         val componentMethod = loadClass("ControllerModule").methods[0]
-        Assertions.assertThat(componentMethod.parameters).hasSize(3)
+        Assertions.assertThat(componentMethod.parameters).hasSize(2)
         Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(
             HttpServerRequestMapper::class.ref(
                 String::class
             )
         )
-        Assertions.assertThat(componentMethod.genericParameterTypes[2]).isEqualTo(BlockingRequestExecutor::class.java)
     }
 
     @Test
@@ -616,7 +608,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         )
         compileResult.assertSuccess()
         val componentMethod = loadClass("ControllerModule").methods[0]
-        Assertions.assertThat(componentMethod.parameters).hasSize(3)
+        Assertions.assertThat(componentMethod.parameters).hasSize(2)
         Assertions.assertThat(componentMethod.genericParameterTypes[1]).isEqualTo(loadClass("Mapper"))
     }
 
@@ -636,7 +628,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         compileResult.assertSuccess();
         val parser = StringParameterReader<Any> { throw RuntimeException("test-error") }
 
-        val handler = module.getHandler("get_test", parser, executor);
+        val handler = module.getHandler("get_test", parser);
 
         assertThat(handler, request("GET", "/test", "", HttpHeaders.of("some-header", "test")))
             .hasStatus(400)
@@ -658,7 +650,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         compileResult.assertSuccess();
         val parser = StringParameterReader<Any> { throw RuntimeException("test-error") }
 
-        val handler = module.getHandler("get_test", parser, executor);
+        val handler = module.getHandler("get_test", parser);
 
         assertThat(handler, request("GET", "/test?q=test", ""))
             .hasStatus(400)
@@ -680,7 +672,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         compileResult.assertSuccess();
         val parser = StringParameterReader<Any> { throw RuntimeException("test-error") }
 
-        val handler = module.getHandler("get_string_test", parser, executor);
+        val handler = module.getHandler("get_string_test", parser);
 
         assertThat(handler, request("GET", "/test/test", "").apply { pathParams()["string"] = "test" })
             .hasStatus(400)
@@ -726,7 +718,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         compileResult.assertSuccess();
         val parser = HttpServerRequestMapper { throw RuntimeException("test-error") }
 
-        val handler = module.getHandler("post_test", parser, executor);
+        val handler = module.getHandler("post_test", parser);
 
         val rq = request("GET", "/test/test", "");
         assertThat(handler, rq)

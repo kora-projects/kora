@@ -18,7 +18,6 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 class PublicApiHandlerTest {
     private HttpServerTelemetryFactory telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
@@ -155,7 +154,6 @@ class PublicApiHandlerTest {
             "/system/liveness",
             ignoreTrailingSlash,
             1,
-            10,
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
@@ -169,6 +167,6 @@ class PublicApiHandlerTest {
     }
 
     private HttpServerRequestHandler handler(String method, String route) {
-        return new HttpServerRequestHandlerImpl(method, route, (ctx, httpServerRequest) -> CompletableFuture.completedFuture(HttpServerResponse.of(200)));
+        return new HttpServerRequestHandlerImpl(method, route, (ctx, httpServerRequest) -> HttpServerResponse.of(200));
     }
 }

@@ -24,7 +24,6 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.CommonClassNames.await
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isSet
@@ -32,10 +31,6 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseMappingData
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.CompletionException
-import java.util.concurrent.CompletionStage
-import java.util.concurrent.ExecutionException
 
 
 class RouteProcessor {
@@ -61,7 +56,6 @@ class RouteProcessor {
             .returns(httpServerRequestHandler)
             .addParameter("_controller", parent.toClassName())
         val isSuspend = function.modifiers.contains(Modifier.SUSPEND)
-        val isBlocking = !isSuspend
         val bodyParams = mutableListOf<KSValueParameter>()
         function.parameters.forEach {
             when {
@@ -86,25 +80,32 @@ class RouteProcessor {
                 else -> {
                     val type = it.type.toTypeName()
                     if (type != CommonClassNames.context && type != httpServerRequest) {
-                        funBuilder.addRequestParameterMapper(it, isBlocking)
+                        funBuilder.addRequestParameterMapper(it)
                         bodyParams.add(it)
                     }
                 }
             }
         }
         funBuilder.addResponseMapper(function)
-        if (isBlocking) {
-            funBuilder.addParameter("_executor", HttpServerClassNames.blockingRequestExecutor)
-        }
 
-        funBuilder.controlFlow("return %T.of(%S, %S) { _ctx, _request ->", httpServerRequestHandlerImpl, requestMappingData.method, requestMappingData.pathTemplate) {
+        val processLabel = if (interceptors.isEmpty()) {
+            CodeBlock.of("process@")
+        } else {
+            CodeBlock.of("")
+        }
+        funBuilder.controlFlow("return %T.of(%S, %S) %L{ _ctx, _request ->", httpServerRequestHandlerImpl, requestMappingData.method, requestMappingData.pathTemplate, processLabel) {
             var requestName = "_request"
             for (i in interceptors.indices) {
                 val interceptor = interceptors[i]
                 val interceptorName = "_interceptor" + (i + 1)
                 val newRequestName = "_request" + (i + 1)
-                funBuilder.beginControlFlow("try")
-                funBuilder.beginControlFlow("%N.intercept(_ctx, %N) { _ctx, %N ->", interceptorName, requestName, newRequestName)
+                val label = if (i == interceptors.size - 1) {
+                    CodeBlock.of("process@")
+                } else {
+                    CodeBlock.of("")
+                }
+
+                funBuilder.beginControlFlow("%N.intercept(_ctx, %N) %L{ _ctx, %N ->", interceptorName, requestName, label, newRequestName)
                 requestName = newRequestName
                 val builder = ParameterSpec.builder(interceptorName, interceptor.type)
                 if (interceptor.tag != null) {
@@ -113,77 +114,42 @@ class RouteProcessor {
                 funBuilder.addParameter(builder.build())
             }
 
-            funBuilder.beginControlFlow("try")
-
             function.parameters.forEach { funBuilder.generateParameterDeclaration(it, requestName) }
 
             val params = function.parameters.joinToString(",") { it.name!!.asString() }
-            if (isBlocking) {
-                funBuilder.controlFlow("_executor.execute(_ctx) {") {
-                    for (param in bodyParams) {
-                        val paramName = param.name!!.asString()
-                        val paramType = param.type.toTypeName()
-                        val mapperName = "_${paramName}Mapper"
-                        val castedMapperName = httpServerRequestMapper.parameterizedBy(paramType.copy(true))
-                        addCode("val %N = ", paramName).check400 {
-                            addStatement("(%N as %T).apply(%N)", mapperName, castedMapperName, requestName)
-                        }
-                        if (!paramType.isNullable) {
-                            controlFlow("if (%N == null)", paramName) {
-                                addStatement("throw %T.of(400, %S)", httpServerResponseException, "Parameter $paramName is not nullable, but got null from mapper")
-                            }
-                        }
-                    }
-                    addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
-                    if (returnTypeName == UNIT) {
-                        addStatement("return@execute %T.of(200)", httpServerResponse)
-                    } else if (returnTypeName == httpServerResponse) {
-                        addStatement("return@execute _result")
-                    } else {
-                        addStatement("return@execute _responseMapper.apply(_ctx, _request, _result)")
-                    }
+            for (param in bodyParams) {
+                val paramName = param.name!!.asString()
+                val paramType = param.type.toTypeName()
+                val mapperName = "_${paramName}Mapper"
+                val castedMapperName = httpServerRequestMapper.parameterizedBy(paramType.copy(true))
+                addCode("val %N = ", paramName).check400 {
+                    addStatement("(%N as %T).apply(%N)", mapperName, castedMapperName, requestName)
                 }
-            } else {
-                funBuilder.controlFlow("%M(%T.Unconfined + %T.Kotlin.asCoroutineContext(_ctx)).%M {", coroutineScope, dispatchers, CommonClassNames.context, future) {
-                    for (param in bodyParams) {
-                        val paramName = param.name!!.asString()
-                        val paramType = param.type.toTypeName()
-                        val mapperName = "_${paramName}Mapper"
-                        val castedMapperName = httpServerRequestMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(paramType.copy(true)))
-                        addCode("val %N = ", paramName).check400 {
-                            addStatement("(%N as %T).apply(%N).%M()", mapperName, castedMapperName, requestName, await)
-                        }
-                        if (!paramType.isNullable) {
-                            funBuilder.controlFlow("if (%N == null)", paramName) {
-                                addStatement("throw %T.of(400, %S)", httpServerResponseException, "Parameter $paramName is not nullable, but got null from mapper")
-                            }
-                        }
-                    }
-                    addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
-                    if (returnTypeName == UNIT) {
-                        addStatement("return@future %T.of(200)", httpServerResponse)
-                    } else if (returnTypeName == httpServerResponse) {
-                        addStatement("return@future _result")
-                    } else {
-                        addStatement("return@future _responseMapper.apply(_ctx, _request, _result)")
+                if (!paramType.isNullable) {
+                    controlFlow("if (%N == null)", paramName) {
+                        addStatement("throw %T.of(400, %S)", httpServerResponseException, "Parameter $paramName is not nullable, but got null from mapper")
                     }
                 }
             }
 
-            funBuilder
-                .nextControlFlow("catch (_e: Exception)")
-                .beginControlFlow("if (_e is %T)", httpServerResponse)
-                .addStatement("%T.failedFuture(_e)", CompletableFuture::class)
-                .nextControlFlow("else")
-                .addStatement("%T.failedFuture(%T.of(400, _e))", CompletableFuture::class, httpServerResponseException)
-                .endControlFlow()
-                .endControlFlow()
+            if (isSuspend) {
+                controlFlow("val _result = %M", MemberName("kotlinx.coroutines", "runBlocking")) {
+                    addStatement("_controller.%L(%L)", function.simpleName.asString(), params)
+                }
+            } else {
+                addStatement("val _result = _controller.%L(%L)", function.simpleName.asString(), params)
+            }
+            if (returnTypeName == UNIT) {
+                addStatement("return@process %T.of(200)", httpServerResponse)
+            } else if (returnTypeName == httpServerResponse) {
+                addStatement("return@process _result")
+            } else {
+                addStatement("return@process _responseMapper.apply(_ctx, _request, _result)")
+            }
+
         }
 
         for (i in interceptors) {
-            funBuilder.nextControlFlow("catch (_e: Exception)")
-                .addStatement("%T.failedFuture(_e)", CompletableFuture::class)
-                .endControlFlow()
             funBuilder.endControlFlow()
         }
 
@@ -261,19 +227,19 @@ class RouteProcessor {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeListHeaderParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
-                } else {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListHeaderParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
-            } else if (parameter.type.resolve().isSet()) {
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                if (parameterTypeName.isNullable) {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetHeaderParameter")
+            } else {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListHeaderParameter")
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                }
+            }
+        } else if (parameter.type.resolve().isSet()) {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            if (parameterTypeName.isNullable) {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetHeaderParameter")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
@@ -348,19 +314,19 @@ class RouteProcessor {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeListQueryParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
-                } else {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListQueryParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
-            } else if (parameter.type.resolve().isSet()) {
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                if (parameterTypeName.isNullable) {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetQueryParameter")
+            } else {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListQueryParameter")
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                }
+            }
+        } else if (parameter.type.resolve().isSet()) {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            if (parameterTypeName.isNullable) {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetQueryParameter")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
@@ -392,18 +358,6 @@ class RouteProcessor {
             val b = CodeBlock.builder()
             callback(b)
             addCode(b.build())
-            nextControlFlow("catch (_e: %T)", CompletionException::class.asClassName())
-            controlFlow("_e.cause?.let") {
-                addStatement("if (it is %T) throw it", httpServerResponse)
-                addStatement("throw %T.of(400, it)", httpServerResponseException)
-            }
-            addStatement("throw %T.of(400, _e)", httpServerResponseException)
-            nextControlFlow("catch (_e: %T)", ExecutionException::class.asClassName())
-            controlFlow("_e.cause?.let") {
-                addStatement("if (it is %T) throw it", httpServerResponse)
-                addStatement("throw %T.of(400, it)", httpServerResponseException)
-            }
-            addStatement("throw %T.of(400, _e)", httpServerResponseException)
             nextControlFlow("catch (_e: Exception)")
             controlFlow("if (_e is %T)", httpServerResponse) {
                 addStatement("throw _e")
@@ -418,17 +372,13 @@ class RouteProcessor {
     private fun FunSpec.Builder.addHeaderParameterMapper(parameter: KSValueParameter, parameterTypeName: TypeName) = addStringParameterMapper(ExtractorFunctions.header, parameter, parameterTypeName)
     private fun FunSpec.Builder.addPathParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.path, parameter, parameter.type.toTypeName())
     private fun FunSpec.Builder.addCookieParameterMapper(parameter: KSValueParameter) = addStringParameterMapper(ExtractorFunctions.cookie, parameter, parameter.type.toTypeName())
-    private fun FunSpec.Builder.addRequestParameterMapper(parameter: KSValueParameter, isBlocking: Boolean) {
+    private fun FunSpec.Builder.addRequestParameterMapper(parameter: KSValueParameter) {
         val paramName = parameter.name!!.asString()
         val paramType = parameter.type.toTypeName()
         val mapperName = "_${paramName}Mapper"
         val mapping = parameter.parseMappingData().getMapping(httpServerRequestMapper)
         val mappingMapper = mapping?.mapper
-        val mapperType = when {
-            mappingMapper == null && isBlocking -> httpServerRequestMapper.parameterizedBy(paramType.copy(false))
-            mappingMapper == null && !isBlocking -> httpServerRequestMapper.parameterizedBy(CompletionStage::class.asClassName().parameterizedBy(paramType.copy(false)))
-            else -> mappingMapper!!.toTypeName()
-        }
+        val mapperType = mappingMapper?.toTypeName() ?: httpServerRequestMapper.parameterizedBy(paramType.copy(false))
         val b = ParameterSpec.builder(mapperName, mapperType)
         mapping?.toTagAnnotation()?.let(b::addAnnotation)
         addParameter(b.build())

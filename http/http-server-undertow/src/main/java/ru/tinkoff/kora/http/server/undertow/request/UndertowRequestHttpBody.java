@@ -92,12 +92,8 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     @Override
     public InputStream asInputStream() {
         if (this.exchange.isInIoThread()) {
-            return null;
+            throw new IllegalStateException();
         }
-        if (this.exchange.isBlocking()) {
-            return this.exchange.getInputStream();
-        }
-        this.exchange.startBlocking();
         return this.exchange.getInputStream();
     }
 

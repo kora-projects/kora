@@ -7,11 +7,6 @@ package {{package}};
 
 {{#imports}}import {{import}};
 {{/imports}}
-{{#isAsync}}
-import java.util.concurrent.CompletionStage;
-{{/isAsync}}{{#isReactive}}
-import reactor.core.publisher.Mono;
-{{/isReactive}}
 
 import java.util.List;
 import java.util.Map;
@@ -43,12 +38,12 @@ public interface {{classname}}Delegate {
     * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
     */
-    {{#hasDelegateMethodBodyMode}}default {{/hasDelegateMethodBodyMode}}{{#isAsync}}CompletionStage<{{/isAsync}}{{#isReactive}}Mono<{{/isReactive}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse{{#isAsync}}>{{/isAsync}}{{#isReactive}}>{{/isReactive}} {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
+    {{#hasDelegateMethodBodyMode}}default {{/hasDelegateMethodBodyMode}}{{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
         HttpServerRequest _serverRequest{{#getHasParams}},{{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
         {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{#-last}}
     {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}
         {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
-    {{/hasFormParams}}){{#isBlocking}} throws Exception{{/isBlocking}}{{^hasDelegateMethodBodyMode}};{{/hasDelegateMethodBodyMode}}{{#hasDelegateMethodBodyMode}} { {{/hasDelegateMethodBodyMode}}
+    {{/hasFormParams}}) throws Exception{{^hasDelegateMethodBodyMode}};{{/hasDelegateMethodBodyMode}}{{#hasDelegateMethodBodyMode}} { {{/hasDelegateMethodBodyMode}}
     {{#hasDelegateMethodBodyMode}}
     {{#isThrowExceptionDelegateMethodBodyMode}}
         throw new UnsupportedOperationException("Not yet implemented");

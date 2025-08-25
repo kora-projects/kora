@@ -1,45 +1,59 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
-import io.undertow.connector.ByteBufferPool;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.GracefulShutdownHandler;
+import io.undertow.util.AttachmentKey;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.Options;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
+import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import java.net.InetSocketAddress;
 import java.time.Duration;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class UndertowHttpServer implements HttpServer, ReadinessProbe {
+public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(UndertowHttpServer.class);
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
+    private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
     private final ValueOf<HttpServerConfig> config;
     private final GracefulShutdownHandler gracefulShutdown;
+    private final String name;
+    @Nullable
+    private final HttpServerTracer tracer;
     private final XnioWorker xnioWorker;
-    private final ByteBufferPool byteBufferPool;
+    private final ValueOf<PublicApiHandler> publicApiHandler;
 
     private volatile Undertow undertow;
 
     public UndertowHttpServer(ValueOf<HttpServerConfig> config,
-                              ValueOf<UndertowPublicApiHandler> publicApiHandler,
-                              @Nullable XnioWorker xnioWorker,
-                              ByteBufferPool byteBufferPool) {
+                              ValueOf<PublicApiHandler> publicApiHandler,
+                              String name,
+                              @Nullable HttpServerTracer tracer,
+                              @Nullable XnioWorker xnioWorker) {
         this.config = config;
+        this.name = name;
+        this.tracer = tracer;
         this.xnioWorker = xnioWorker;
-        this.byteBufferPool = byteBufferPool;
-        this.gracefulShutdown = new GracefulShutdownHandler(exchange -> publicApiHandler.get().handleRequest(exchange));
+        this.publicApiHandler = publicApiHandler;
+        this.gracefulShutdown = new GracefulShutdownHandler(this);
     }
 
     @Override
@@ -82,12 +96,38 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         return Undertow.builder()
             .addHttpListener(config.publicApiHttpPort(), "0.0.0.0", this.gracefulShutdown)
             .setWorker(this.xnioWorker)
-            .setByteBufferPool(this.byteBufferPool)
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
             .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
             .build();
     }
+
+    @Override
+    public void handleRequest(HttpServerExchange exchange) throws Exception {
+        var context = Context.clear();
+        var exchangeProcessor = new UndertowExchangeProcessor(this.publicApiHandler.get(), context, this.tracer);
+        var executor = getOrCreateExecutor(exchange, executorServiceAttachmentKey, this.name);
+        exchange.dispatch(executor, exchangeProcessor);
+    }
+
+    public static ExecutorService getOrCreateExecutor(HttpServerExchange exchange, AttachmentKey<ExecutorService> key, String serverName) {
+        var connection = exchange.getConnection();
+        var existingExecutor = connection.getAttachment(key);
+        if (existingExecutor != null) {
+            return existingExecutor;
+        }
+        var threadName = serverName + "-" + connection.getId();
+        var executor = Executors.newSingleThreadExecutor(r -> Thread.ofVirtual().name(threadName).unstarted(r));
+        connection.addCloseListener(c -> {
+            var e = c.removeAttachment(key);
+            if (e != null) {
+                e.shutdownNow();
+            }
+        });
+        connection.putAttachment(key, executor);
+        return executor;
+    }
+
 
     @Override
     public int port() {
