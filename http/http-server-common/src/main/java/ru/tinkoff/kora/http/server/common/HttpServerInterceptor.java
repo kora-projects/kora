@@ -2,11 +2,6 @@ package ru.tinkoff.kora.http.server.common;
 
 import ru.tinkoff.kora.common.Context;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
-
 /**
  * <b>Русский</b>: Аннотация позволяет указывать обработчики HTTP ответов на определенные HTTP статус коды для контроллеров
  * <hr>
@@ -19,7 +14,7 @@ import java.util.concurrent.ExecutionException;
  * public final class MyHttpServerInterceptor implements HttpServerInterceptor {
  *
  *    @Override
- *    public CompletionStage<HttpServerResponse> processRequest(Context context, HttpServerRequest request, InterceptChain chain) throws Exception {
+ *    public HttpServerResponse processRequest(Context context, HttpServerRequest request, InterceptChain chain) throws Exception {
  *      return chain.process(context, request);
  *    }
  * }
@@ -38,25 +33,13 @@ import java.util.concurrent.ExecutionException;
  */
 public interface HttpServerInterceptor {
 
-    CompletionStage<HttpServerResponse> intercept(Context context, HttpServerRequest request, InterceptChain chain) throws Exception;
+    HttpServerResponse intercept(Context context, HttpServerRequest request, InterceptChain chain) throws Exception;
 
     interface InterceptChain {
-        CompletionStage<HttpServerResponse> process(Context ctx, HttpServerRequest request) throws Exception;
+        HttpServerResponse process(Context ctx, HttpServerRequest request) throws Exception;
     }
 
     static HttpServerInterceptor noop() {
         return (context, request, chain) -> chain.process(context, request);
-    }
-
-    static HttpServerInterceptor wrapped(HttpServerInterceptor interceptor) {
-        return (context, request, chain) -> {
-            try {
-                return interceptor.intercept(context, request, chain);
-            } catch (CompletionException | ExecutionException e) {
-                return CompletableFuture.failedFuture(e.getCause());
-            } catch (Exception e) {
-                return CompletableFuture.failedFuture(e);
-            }
-        };
     }
 }

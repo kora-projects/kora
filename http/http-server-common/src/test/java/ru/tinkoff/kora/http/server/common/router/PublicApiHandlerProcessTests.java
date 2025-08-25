@@ -26,7 +26,6 @@ import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -82,7 +81,7 @@ class PublicApiHandlerProcessTests {
 
         // then
         var rs = handler.process(Context.clear(), request);
-        var httpRs = rs.response().join();
+        var httpRs = rs.response();
         assertThat(httpRs.code()).isEqualTo(expectedCode);
     }
 
@@ -131,7 +130,7 @@ class PublicApiHandlerProcessTests {
 
         // then
         var rs = handler.process(Context.clear(), request);
-        var httpRs = rs.response().join();
+        var httpRs = rs.response();
         assertThat(httpRs.code()).isEqualTo(expectedCode);
     }
 
@@ -150,7 +149,7 @@ class PublicApiHandlerProcessTests {
 
         var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
         var rs = handler.process(Context.clear(), request);
-        var httpRs = rs.response().join();
+        var httpRs = rs.response();
 
         assertThat(httpRs.code()).isEqualTo(200);
     }
@@ -163,7 +162,6 @@ class PublicApiHandlerProcessTests {
             "/system/readiness",
             "/system/liveness",
             ignoreTrailingSlash,
-            10,
             10,
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
@@ -179,7 +177,7 @@ class PublicApiHandlerProcessTests {
     }
 
     private HttpServerRequestHandler handler(String method, String route) {
-        return new HttpServerRequestHandlerImpl(method, route, (ctx, httpServerRequest) -> CompletableFuture.completedFuture(HttpServerResponse.of(200)));
+        return new HttpServerRequestHandlerImpl(method, route, (ctx, httpServerRequest) -> HttpServerResponse.of(200));
     }
 
     private record PublicApiRequestImpl(

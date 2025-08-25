@@ -22,17 +22,14 @@ import java.util.concurrent.CompletionStage;
  * public final class UserContextExtractor implements HttpServerPrincipalExtractor<UserContext> {
  *
  *     @Override
- *     public CompletionStage<UserContext> extract(HttpServerRequest request,
- *                                                 @Nullable String value) {
- *         if(value == null) {
- *             return CompletableFuture.failedFuture(
- *                  new IllegalAccessException("No token")
- *              );
+ *     public UserContext extract(HttpServerRequest request, @Nullable String value) {
+ *         if (value == null) {
+ *             throw new IllegalAccessException("No token");
  *         }
  *
  *         final String traceId = request.headers().getFirst("x-trace-id");
  *         final String userId = someAuthService.getUserId(value);
- *         return CompletableFuture.completedFuture(new UserContext(userId, traceId));
+ *         return new UserContext(userId, traceId);
  *     }
  * }
  * }
@@ -40,5 +37,5 @@ import java.util.concurrent.CompletionStage;
  * @see Principal
  */
 public interface HttpServerPrincipalExtractor<T extends Principal> {
-    CompletionStage<T> extract(HttpServerRequest request, @Nullable String value);
+    T extract(HttpServerRequest request, @Nullable String value);
 }

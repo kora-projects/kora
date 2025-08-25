@@ -10,9 +10,6 @@ import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -26,9 +23,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class PublicApiHandler {
 
-    private static final CompletionStage<HttpServerResponse> NOT_FOUND_RESPONSE = CompletableFuture.completedFuture(
-        HttpServerResponse.of(404)
-    );
+    private static final HttpServerResponse NOT_FOUND_RESPONSE = HttpServerResponse.of(404);
     private static final HttpServerRequestHandler.HandlerFunction NOT_FOUND_HANDLER = (ctx, request) -> NOT_FOUND_RESPONSE;
 
     private final Map<String, PathTemplateMatcher<HttpServerRequestHandler>> pathTemplateMatcher;
@@ -41,7 +36,7 @@ public class PublicApiHandler {
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
-            if(!h.enabled()) {
+            if (!h.enabled()) {
                 continue;
             }
 
@@ -77,6 +72,7 @@ public class PublicApiHandler {
         }
     }
 
+    // should not throw
     public PublicApiResponse process(Context context, PublicApiRequest publicApiRequest) {
         final HttpServerRequestHandler.HandlerFunction handlerFunction;
         final Map<String, String> templateParameters;
@@ -88,7 +84,9 @@ public class PublicApiHandler {
             var allMethodMatch = this.allMethodMatchers.match(publicApiRequest.path());
             if (allMethodMatch != null) {
                 var allowed = String.join(", ", allMethodMatch.value());
-                handlerFunction = (ctx, request) -> CompletableFuture.failedFuture(HttpServerResponseException.of(405, "Method Not Allowed", HttpHeaders.of("allow", allowed)));
+                handlerFunction = (_, _) -> {
+                    throw HttpServerResponseException.of(405, "Method Not Allowed", HttpHeaders.of("allow", allowed));
+                };
                 routeTemplate = allMethodMatch.matchedTemplate();
                 templateParameters = Map.of();
             } else {
@@ -106,23 +104,21 @@ public class PublicApiHandler {
         var tctx = this.telemetry.get(publicApiRequest, routeTemplate);
 
         try {
-            var future = this.requestHandler.get().apply(context, request, handlerFunction);
-            return new PublicApiResponseImpl(tctx, future.toCompletableFuture());
-        } catch (CompletionException error) {
-            return new PublicApiResponseImpl(tctx, CompletableFuture.failedFuture(Objects.requireNonNullElse(error.getCause(), error)));
+            var response = this.requestHandler.get().apply(context, request, handlerFunction);
+            return new PublicApiResponseImpl(tctx, response, null);
         } catch (Throwable error) {
-            return new PublicApiResponseImpl(tctx, CompletableFuture.failedFuture(error));
+            return new PublicApiResponseImpl(tctx, null, error);
         }
     }
 
 
     private interface RequestHandler {
-        CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception;
+        HttpServerResponse apply(Context context, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception;
     }
 
     private static class SimpleRequestHandler implements RequestHandler {
         @Override
-        public CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
+        public HttpServerResponse apply(Context context, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
             return lastHandlerInChain.apply(context, request);
         }
     }
@@ -149,7 +145,7 @@ public class PublicApiHandler {
         }
 
         @Override
-        public CompletionStage<HttpServerResponse> apply(Context ctx, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
+        public HttpServerResponse apply(Context ctx, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
             return this.chain.apply(ctx, request, lastHandlerInChain);
         }
     }

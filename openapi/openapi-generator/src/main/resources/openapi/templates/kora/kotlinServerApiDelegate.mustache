@@ -34,7 +34,7 @@ interface {{classname}}Delegate {
     * @see <a href="{{url}}">{{summary}} Documentation</a>
     {{/externalDocs}}
     */
-    {{#isSuspend}}suspend {{/isSuspend}}fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
+    fun {{operationId}}({{#vendorExtensions.requestInDelegateParams}}
         _serverRequest: HttpServerRequest{{#getHasParams}},{{/getHasParams}}{{/vendorExtensions.requestInDelegateParams}}{{#allParams}}{{^isFormParam}}
         {{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{#hasFormParams}}, {{/hasFormParams}}{{^hasFormParams}}{{^-last}}, {{/-last}}{{#-last}}
     {{/-last}}{{/hasFormParams}}{{/isFormParam}}{{/allParams}}{{#hasFormParams}}

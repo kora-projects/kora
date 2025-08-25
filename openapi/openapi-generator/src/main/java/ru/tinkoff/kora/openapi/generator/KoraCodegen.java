@@ -14,7 +14,10 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.examples.Example;
-import io.swagger.v3.oas.models.media.*;
+import io.swagger.v3.oas.models.media.ComposedSchema;
+import io.swagger.v3.oas.models.media.ObjectSchema;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.servers.Server;
@@ -54,11 +57,8 @@ public class KoraCodegen extends DefaultCodegen {
     public enum Mode {
         JAVA_CLIENT("java-client"),
         JAVA_SERVER("java-server"),
-        JAVA_ASYNC_SERVER("java-async-server"),
-        JAVA_REACTIVE_SERVER("java-reactive-server"),
         KOTLIN_CLIENT("kotlin-client"),
-        KOTLIN_SERVER("kotlin-server"),
-        KOTLIN_SUSPEND_SERVER("kotlin-suspend-server");
+        KOTLIN_SERVER("kotlin-server");
 
         private final String mode;
 
@@ -84,10 +84,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         public boolean isServer() {
-            return switch (this) {
-                case JAVA_SERVER, JAVA_ASYNC_SERVER, JAVA_REACTIVE_SERVER, KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> true;
-                default -> false;
-            };
+            return this == JAVA_SERVER || this == KOTLIN_SERVER;
         }
 
         public boolean isClient() {
@@ -95,11 +92,11 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         public boolean isJava() {
-            return this != KOTLIN_CLIENT && this != KOTLIN_SERVER && this != KOTLIN_SUSPEND_SERVER;
+            return this == JAVA_CLIENT || this == JAVA_SERVER;
         }
 
         public boolean isKotlin() {
-            return !isJava();
+            return this == KOTLIN_CLIENT || this == KOTLIN_SERVER;
         }
     }
 
@@ -298,26 +295,8 @@ public class KoraCodegen extends DefaultCodegen {
             additionalProperties.put("isDelegateMethodBodyModeNeedsDefaultComponent", delegateMethodBodyMode.isDelegateMethodBodyModeNeedsDefaultComponent());
 
             switch (codegenMode) {
-                case JAVA_CLIENT -> {
-                    additionalProperties.put("isClient", true);
-                    additionalProperties.put("isBlocking", true);
-                }
-                case JAVA_SERVER -> {
-                    additionalProperties.put("isClient", false);
-                    additionalProperties.put("isBlocking", true);
-                }
-                case JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
-                    additionalProperties.put("isClient", false);
-                    additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_SERVER);
-                    additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_SERVER);
-                }
-                case KOTLIN_CLIENT -> {
-                    additionalProperties.put("isClient", true);
-                }
-                case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
-                    additionalProperties.put("isClient", false);
-                    additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_SERVER);
-                }
+                case JAVA_CLIENT, KOTLIN_CLIENT -> additionalProperties.put("isClient", true);
+                case JAVA_SERVER, KOTLIN_SERVER -> additionalProperties.put("isClient", false);
             }
         }
     }
@@ -464,7 +443,7 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
-            case JAVA_SERVER, JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
+            case JAVA_SERVER -> {
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -483,7 +462,7 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
                 apiTemplateFiles.put("kotlinClientRequestMappers.mustache", "ClientRequestMappers.kt");
             }
-            case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
+            case KOTLIN_SERVER -> {
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinServerApi.mustache", "Controller.kt");
                 apiTemplateFiles.put("kotlinServerApiDelegate.mustache", "Delegate.kt");
@@ -642,7 +621,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if(params.forceIncludeOptional) {
+                    } else if (params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
                     } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
@@ -680,7 +659,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if(params.forceIncludeOptional) {
+                    } else if (params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
                     } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
@@ -962,9 +941,9 @@ public class KoraCodegen extends DefaultCodegen {
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
             var additionalConstructor = codegenModel.getHasVars()
-                                        && !codegenModel.getVars().isEmpty()
-                                        && !codegenModel.getAllVars().isEmpty()
-                                        && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
+                && !codegenModel.getVars().isEmpty()
+                && !codegenModel.getAllVars().isEmpty()
+                && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
             for (var requiredVar : codegenModel.requiredVars) {
                 // discriminator is somehow present in both optional and required vars, so we should clean it up
                 codegenModel.optionalVars.removeIf(p -> Objects.equals(p.name, requiredVar.name));
@@ -2224,7 +2203,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (formParam.isModel || isEnum) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     String type;
-                    if(isEnum) {
+                    if (isEnum) {
                         type = allModels.stream()
                             .filter(m -> m.getModel().name.equals(formParam.dataType))
                             .findFirst()
@@ -2234,7 +2213,7 @@ public class KoraCodegen extends DefaultCodegen {
                                 .findFirst()
                                 .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum))
                             .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
-                        if(formParam.datatypeWithEnum != null) {
+                        if (formParam.datatypeWithEnum != null) {
                             formParam.dataType = type;
                         }
                     } else {
@@ -2262,12 +2241,12 @@ public class KoraCodegen extends DefaultCodegen {
                             "last", false
                         )));
                     }
-                } else if(formParam.isString
-                          || formParam.isBoolean
-                          || formParam.isDouble
-                          || formParam.isFloat
-                          || formParam.isInteger
-                          || formParam.isLong) {
+                } else if (formParam.isString
+                    || formParam.isBoolean
+                    || formParam.isDouble
+                    || formParam.isFloat
+                    || formParam.isInteger
+                    || formParam.isLong) {
                     formParam.vendorExtensions.put("isPrimitive", true);
                 } else {
                     formParam.vendorExtensions.put("requiresMapper", true);
@@ -2544,10 +2523,10 @@ public class KoraCodegen extends DefaultCodegen {
         } else if (authMethod.isKeyInCookie) {
             fakeAuthParameter.isCookieParam = true;
         } else if (authMethod.isOAuth
-                   || authMethod.isOpenId
-                   || authMethod.isBasicBearer
-                   || authMethod.isBasic
-                   || authMethod.isBasicBasic) {
+            || authMethod.isOpenId
+            || authMethod.isBasicBearer
+            || authMethod.isBasic
+            || authMethod.isBasicBasic) {
             fakeAuthParameter.isHeaderParam = true;
 
             for (CodegenParameter parameter : parameters) {
@@ -2597,8 +2576,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static boolean isContentJson(CodegenParameter parameter) {
         return parameter.containerType != null
-               && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
-               || isContentJson(parameter.getContent());
+            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+            || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {
@@ -2675,7 +2654,7 @@ public class KoraCodegen extends DefaultCodegen {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaClientSecuritySchema.mustache", securitySchemaClass));
                 }
-                case JAVA_SERVER, JAVA_ASYNC_SERVER, JAVA_REACTIVE_SERVER -> {
+                case JAVA_SERVER -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaServerSecuritySchema.mustache", securitySchemaClass));
                 }
@@ -2683,7 +2662,7 @@ public class KoraCodegen extends DefaultCodegen {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.kt";
                     this.supportingFiles.add(new SupportingFile("kotlinClientSecuritySchema.mustache", securitySchemaClass));
                 }
-                case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
+                case KOTLIN_SERVER -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.kt";
                     this.supportingFiles.add(new SupportingFile("kotlinServerSecuritySchema.mustache", securitySchemaClass));
                 }
