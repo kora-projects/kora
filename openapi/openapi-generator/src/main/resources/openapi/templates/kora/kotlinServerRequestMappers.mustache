@@ -13,19 +13,14 @@ import java.util.concurrent.CompletionStage;
 {{/isSuspend}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-interface {{classname}}ServerRequestMappers {
-{{#operations}}
-{{#operation}}
-
-{{#hasFormParams}}
+interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#hasFormParams}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper{{#vendorExtensions.requiresFormParamMappers}}({{#vendorExtensions.formParamMappers}}
     private val {{paramName}}Converter: ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}>,{{/vendorExtensions.formParamMappers}}
   ){{/vendorExtensions.requiresFormParamMappers}}: HttpServerRequestMapper<{{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}}> {
 
-    override fun apply(request: HttpServerRequest): {{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}} {
-{{#vendorExtensions.urlEncodedForm}}
+    override fun apply(request: HttpServerRequest): {{#isSuspend}}CompletionStage<{{/isSuspend}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{#isSuspend}}>{{/isSuspend}} { {{#vendorExtensions.urlEncodedForm}}
       return request.body().asArrayStage().thenApply { bytes ->
         val bodyString = bytes.decodeToString()
         val formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString){{#formParams}}
@@ -42,18 +37,15 @@ interface {{classname}}ServerRequestMappers {
         )
       }{{^isSuspend}}.toCompletableFuture().get(){{/isSuspend}}{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
 
-      class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
-{{#formParams}}
-          {{#isFile}}var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null
-          {{/isFile}}{{^isFile}}var {{paramName}}: {{{dataType}}}? = null{{/isFile}}
-{{/formParams}}
+      class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState { {{#formParams}}{{#isFile}}
+        var {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile? = null {{/isFile}}{{^isFile}}
+        var {{paramName}}: {{{dataType}}}? = null{{/isFile}}{{/formParams}}
       }
 
       return MultipartReader.read(request).thenApply { parts ->
           val state = {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState()
           for (part in parts) {
-            when (part.name()) {
-              {{#formParams}}
+            when (part.name()) { {{#formParams}}
               "{{baseName}}" -> { {{#isFile}}
                 state.{{paramName}} = part{{/isFile}}{{^isFile}}
                 state.{{paramName}} = part.content().decodeToString(){{/isFile}}
