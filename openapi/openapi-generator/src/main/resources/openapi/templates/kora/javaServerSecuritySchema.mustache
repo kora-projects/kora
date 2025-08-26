@@ -18,9 +18,6 @@ import ru.tinkoff.kora.http.server.common.HttpServerInterceptor.InterceptChain;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
 
 import ru.tinkoff.kora.http.common.auth.*;
 import ru.tinkoff.kora.http.server.common.auth.*;
@@ -52,9 +49,8 @@ public interface ApiSecurity {
         }
 
         @Override
-        public CompletionStage<HttpServerResponse> intercept(Context ctx, HttpServerRequest request, InterceptChain chain) {
-            var future = new CompletableFuture<Principal>();
-            {{#methods}}{{#vendorExtensions.isFirst}}{{#isApiKey}}{{#isKeyInHeader}}
+        public HttpServerResponse intercept(Context ctx, HttpServerRequest request, InterceptChain chain) throws Exception {
+            {{#methods}}{{#isApiKey}}{{#isKeyInHeader}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}");{{/isKeyInHeader}}{{#isKeyInQuery}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query = request.queryParams().get("{{keyParamName}}");
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty()
@@ -66,68 +62,21 @@ public interface ApiSecurity {
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");{{/isBasicBasic}}{{#isBasicBearer}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");{{/isBasicBearer}}{{#isOAuth}}
             var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");{{/isOAuth}}
-            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token){{^isOAuth}};{{/isOAuth}}{{#isOAuth}}{{#vendorExtensions.hasScopes}}
-              .<Principal>thenCompose((principal) -> { {{#scopes}}
-                 if (!principal.scopes().contains("{{scope}}")) {
-                    return CompletableFuture.failedFuture(HttpServerResponseException.of(403, "Forbidden"));
-                 }{{/scopes}}
-                 return CompletableFuture.completedFuture(principal);
-              }){{/vendorExtensions.hasScopes}};{{/isOAuth}}
-
-            {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.whenComplete(({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error) -> {
-                if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error != null) {
-                    future.completeExceptionally({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error);
-                } else if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal != null) {
-                    future.complete({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal);
-                } else {
-                  {{#vendorExtensions.isLast}}
-                  future.completeExceptionally(HttpServerResponseException.of(403, "Forbidden"));
-                  {{/vendorExtensions.isLast}}
-            {{/vendorExtensions.isFirst}}{{/methods}}{{#methods}}{{^vendorExtensions.isFirst}}{{#lambda.indented}}{{#isApiKey}}{{#isKeyInHeader}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}");{{/isKeyInHeader}}{{#isKeyInQuery}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query = request.queryParams().get("{{keyParamName}}");
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query == null || {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.isEmpty()
-                  ? null
-                  : {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_query.iterator().next();{{/isKeyInQuery}}{{#isKeyInCookie}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.cookies().stream().filter(c -> "{{keyParamName}}".equals(c.name())).map(c -> c.value()).findFirst().orElse(null);{{/isKeyInCookie}}{{/isApiKey}}{{#isBasicBasic}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");{{/isBasicBasic}}{{#isBasicBearer}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");{{/isBasicBearer}}{{#isOAuth}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("Authorization");{{/isOAuth}}
-                var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token){{^isOAuth}};{{/isOAuth}}{{#isOAuth}}{{#vendorExtensions.hasScopes}}
-                  .<Principal>thenCompose((principal) -> { {{#scopes}}
-                     if (!principal.scopes().contains("{{scope}}")) {
-                        return CompletableFuture.failedFuture(HttpServerResponseException.of(403, "Forbidden"));
-                     }{{/scopes}}
-                     return CompletableFuture.completedFuture(principal);
-                  }){{/vendorExtensions.hasScopes}};{{/isOAuth}}
-
-                {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.whenComplete(({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error) -> {
-                    if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error != null) {
-                        future.completeExceptionally({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_error);
-                    } else if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal != null) {
-                        future.complete({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal);
-                    } else {
-                      {{#vendorExtensions.isLast}}
-                      future.completeExceptionally(HttpServerResponseException.of(403, "Forbidden"));
-                      {{/vendorExtensions.isLast}}
-            {{/lambda.indented}}{{/vendorExtensions.isFirst}}{{/methods}}
-            {{#methods}}
-                }
-            });
-            {{/methods}}
-
-            return future
-              .thenCompose(principal -> {
-                if (principal == null) {
-                  return CompletableFuture.failedFuture(HttpServerResponseException.of(403, "Forbidden"));
-                }
-                Principal.set(ctx, principal);
-                try {
-                  return chain.process(ctx, request);
-                } catch (Exception e) {
-                  return CompletableFuture.failedFuture(e);
-                }
-              });
+            var {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} = this.{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.extract(request, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token);
+            if ({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}} != null) {
+{{#isOAuth}}{{#vendorExtensions.hasScopes}}
+{{#scopes}}
+                 if (!{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.scopes().contains("{{scope}}")) {
+                    throw HttpServerResponseException.of(403, "Forbidden");
+                 }
+{{/scopes}}{{/vendorExtensions.hasScopes}}{{/isOAuth}}
+                Principal.set(ctx, {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}});
+                return chain.process(ctx, request);
+            }
+{{#vendorExtensions.isLast}}
+            throw HttpServerResponseException.of(403, "Forbidden");
+{{/vendorExtensions.isLast}}
+{{/methods}}
         }
     }
 

@@ -1,17 +1,14 @@
 package ru.tinkoff.kora.http.server.symbol.processor
 
 import org.junit.jupiter.api.Test
-import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper
-import java.util.concurrent.ForkJoinPool
 
 class BlockingHttpControllerTest : AbstractHttpControllerTest() {
-    private val executor: BlockingRequestExecutor = BlockingRequestExecutor.Default(ForkJoinPool.commonPool())
-
     @Test
     fun testReturnBlockingResponse() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
@@ -20,8 +17,9 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
                 }
             }
             
-            """.trimIndent())
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", executor)
+            """.trimIndent()
+        )
+        val handler: HttpServerRequestHandler = module.getHandler("get_test")
         assertThat(handler, "GET", "/test")
             .hasStatus(200)
             .hasBody(ByteArray(0))
@@ -29,7 +27,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
 
     @Test
     fun testReturnBlockingResponseWithQueryParameter() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
@@ -38,8 +37,9 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
                 }
             }
             
-            """.trimIndent())
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", executor)
+            """.trimIndent()
+        )
+        val handler: HttpServerRequestHandler = module.getHandler("get_test")
         assertThat(handler, "GET", "/test?queryParameter=test")
             .hasStatus(200)
             .hasBody(ByteArray(0))
@@ -50,7 +50,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
 
     @Test
     fun testReturnBlockingResponseWithRequestParameter() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
@@ -59,8 +60,9 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
                 }
             }
             
-            """.trimIndent())
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", stringRequestMapper(), executor)
+            """.trimIndent()
+        )
+        val handler: HttpServerRequestHandler = module.getHandler("get_test", stringRequestMapper())
         assertThat(handler, "POST", "/test", "test")
             .hasStatus(200)
             .hasBody("test")
@@ -68,7 +70,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
 
     @Test
     fun testReturnBlockingVoid() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
@@ -76,8 +79,9 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
                 }
             }
             
-            """.trimIndent())
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", executor)
+            """.trimIndent()
+        )
+        val handler: HttpServerRequestHandler = module.getHandler("get_test")
         assertThat(handler, "GET", "/test")
             .hasStatus(200)
             .hasBody(ByteArray(0))
@@ -85,7 +89,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
 
     @Test
     fun testReturnBlockingObject() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
@@ -94,8 +99,9 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
                 }
             }
             
-            """.trimIndent())
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", strResponseMapper(), executor)
+            """.trimIndent()
+        )
+        val handler: HttpServerRequestHandler = module.getHandler("get_test", strResponseMapper())
         assertThat(handler, "GET", "/test")
             .hasStatus(200)
             .hasBody("test")
@@ -103,7 +109,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
 
     @Test
     fun testReturnBlockingResponseEntityObject() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             class Controller {
                 @HttpRoute(method = "GET", path = "/test")
@@ -112,8 +119,9 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
                 }
             }
             
-            """.trimIndent())
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", HttpServerResponseEntityMapper(strResponseMapper()), executor)
+            """.trimIndent()
+        )
+        val handler: HttpServerRequestHandler = module.getHandler("get_test", HttpServerResponseEntityMapper(strResponseMapper()))
         assertThat(handler, "GET", "/test")
             .hasStatus(403)
             .hasBody("test")
@@ -122,7 +130,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
 
     @Test
     fun testWithInterceptor() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             @InterceptWith(TestInterceptor1::class)
             class Controller {
@@ -135,22 +144,23 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
             
             """.trimIndent(), """
             class TestInterceptor1 : HttpServerInterceptor {
-                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : CompletionStage<HttpServerResponse> {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
-                    return chain.process(context, request);
+                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400)
+                    return chain.process(context, request)
                 }
             }
             
             """.trimIndent(), """
             class TestInterceptor2 : HttpServerInterceptor {
-                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : CompletionStage<HttpServerResponse> {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
-                    return chain.process(context, request);
+                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400)
+                    return chain.process(context, request)
                 }
             }
             
-            """.trimIndent())
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", executor, new("TestInterceptor1"), new("TestInterceptor2"))
+            """.trimIndent()
+        )
+        val handler: HttpServerRequestHandler = module.getHandler("get_test", new("TestInterceptor1"), new("TestInterceptor2"))
         assertThat(handler, "GET", "/test?test")
             .hasStatus(200)
             .hasBody(ByteArray(0))
@@ -161,7 +171,8 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
 
     @Test
     fun testWithInterceptorWithParameters() {
-        val module = this.compile("""
+        val module = this.compile(
+            """
             @HttpController
             @InterceptWith(TestInterceptor1::class)
             class Controller {
@@ -173,21 +184,22 @@ class BlockingHttpControllerTest : AbstractHttpControllerTest() {
             }
             """.trimIndent(), """
             class TestInterceptor1 : HttpServerInterceptor {
-                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : CompletionStage<HttpServerResponse> {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
-                    return chain.process(context, request);
+                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400)
+                    return chain.process(context, request)
                 }
             }
             """.trimIndent(), """
             class TestInterceptor2 : HttpServerInterceptor {
-                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : CompletionStage<HttpServerResponse> {
-                    if (request.queryParams().isEmpty()) return CompletableFuture.completedFuture(HttpServerResponse.of(400));
-                    return chain.process(context, request);
+                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
+                    if (request.queryParams().isEmpty()) return HttpServerResponse.of(400)
+                    return chain.process(context, request)
                 }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
 
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", executor, new("TestInterceptor1"), new("TestInterceptor2"))
+        val handler: HttpServerRequestHandler = module.getHandler("get_test", new("TestInterceptor1"), new("TestInterceptor2"))
         assertThat(handler, "GET", "/test?queryParameter=test")
             .hasStatus(200)
             .hasBody(ByteArray(0))

@@ -8,15 +8,12 @@ package {{package}};
 import ru.tinkoff.kora.http.server.common.form.MultipartReader;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-{{^isBlocking}}
-import java.util.concurrent.CompletionStage;
-{{/isBlocking}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
 public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#hasFormParams}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
-  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<{{#isBlocking}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}}> {
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> {
 {{#vendorExtensions.requiresFormParamMappers}}
 
     {{#vendorExtensions.formParamMappers}}
@@ -34,8 +31,9 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
 {{/vendorExtensions.requiresFormParamMappers}}
 
     @Override
-    public {{#isBlocking}} {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}} apply(HttpServerRequest request) throws Exception { {{#vendorExtensions.urlEncodedForm}}
-      return request.body().asArrayStage().toCompletableFuture().thenApply(bytes -> {
+    public {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam apply(HttpServerRequest request) throws Exception { {{#vendorExtensions.urlEncodedForm}}
+      try (var _body = request.body(); var is = _body.asInputStream()) {
+        var bytes = is.readAllBytes();
         var bodyString = new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
         var formData = ru.tinkoff.kora.http.server.common.form.FormUrlEncodedServerRequestMapper.read(bodyString);{{#formParams}}
         var {{paramName}}Part = formData.get("{{baseName}}");{{#isArray}}
@@ -54,15 +52,14 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
         return new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
         );
-      }){{#isBlocking}}.get(){{/isBlocking}};{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
+      }{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
 
       class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState { {{#formParams}}
         @jakarta.annotation.Nullable{{#isFile}}
         ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;{{/isFile}}{{^isFile}}
         {{{dataType}}} {{paramName}} = null;{{/isFile}}{{/formParams}}
       }
-
-      return MultipartReader.read(request).thenApply(parts -> {
+      var parts = MultipartReader.read(request);
         var state = new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState();
         for (var part : parts) {
           switch (part.name()) { {{#formParams}}
@@ -83,7 +80,7 @@ public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation
         return new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
           {{#formParams}}state.{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
         );
-      }){{#isBlocking}}.toCompletableFuture().join(){{/isBlocking}};{{/vendorExtensions.multipartForm}}
+{{/vendorExtensions.multipartForm}}
     }
   }
 {{/hasFormParams}}

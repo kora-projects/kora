@@ -34,7 +34,7 @@ public class HttpControllerProcessor extends AbstractKoraProcessor {
     }
 
     private void processController(Element controller, RoundEnvironment roundEnv) {
-        var methodGenerator = new RequestHandlerGenerator(this.elements, this.types, this.processingEnv);
+        var methodGenerator = new RequestHandlerGenerator(this.processingEnv);
         var generator = new ControllerModuleGenerator(this.types, this.elements, roundEnv, methodGenerator);
         JavaFile file;
         try {

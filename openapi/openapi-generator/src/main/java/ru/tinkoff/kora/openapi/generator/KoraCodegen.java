@@ -57,11 +57,8 @@ public class KoraCodegen extends DefaultCodegen {
     public enum Mode {
         JAVA_CLIENT("java-client"),
         JAVA_SERVER("java-server"),
-        JAVA_ASYNC_SERVER("java-async-server"),
-        JAVA_REACTIVE_SERVER("java-reactive-server"),
         KOTLIN_CLIENT("kotlin-client"),
-        KOTLIN_SERVER("kotlin-server"),
-        KOTLIN_SUSPEND_SERVER("kotlin-suspend-server");
+        KOTLIN_SERVER("kotlin-server");
 
         private final String mode;
 
@@ -87,10 +84,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         public boolean isServer() {
-            return switch (this) {
-                case JAVA_SERVER, JAVA_ASYNC_SERVER, JAVA_REACTIVE_SERVER, KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> true;
-                default -> false;
-            };
+            return this == JAVA_SERVER || this == KOTLIN_SERVER;
         }
 
         public boolean isClient() {
@@ -98,11 +92,11 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         public boolean isJava() {
-            return this != KOTLIN_CLIENT && this != KOTLIN_SERVER && this != KOTLIN_SUSPEND_SERVER;
+            return this == JAVA_CLIENT || this == JAVA_SERVER;
         }
 
         public boolean isKotlin() {
-            return !isJava();
+            return this == KOTLIN_CLIENT || this == KOTLIN_SERVER;
         }
     }
 
@@ -312,26 +306,8 @@ public class KoraCodegen extends DefaultCodegen {
             additionalProperties.put("isDelegateMethodBodyModeNeedsDefaultComponent", delegateMethodBodyMode.isDelegateMethodBodyModeNeedsDefaultComponent());
 
             switch (codegenMode) {
-                case JAVA_CLIENT -> {
-                    additionalProperties.put("isClient", true);
-                    additionalProperties.put("isBlocking", true);
-                }
-                case JAVA_SERVER -> {
-                    additionalProperties.put("isClient", false);
-                    additionalProperties.put("isBlocking", true);
-                }
-                case JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
-                    additionalProperties.put("isClient", false);
-                    additionalProperties.put("isAsync", this.codegenMode == Mode.JAVA_ASYNC_SERVER);
-                    additionalProperties.put("isReactive", this.codegenMode == Mode.JAVA_REACTIVE_SERVER);
-                }
-                case KOTLIN_CLIENT -> {
-                    additionalProperties.put("isClient", true);
-                }
-                case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
-                    additionalProperties.put("isClient", false);
-                    additionalProperties.put("isSuspend", this.codegenMode == Mode.KOTLIN_SUSPEND_SERVER);
-                }
+                case JAVA_CLIENT, KOTLIN_CLIENT -> additionalProperties.put("isClient", true);
+                case JAVA_SERVER, KOTLIN_SERVER -> additionalProperties.put("isClient", false);
             }
         }
     }
@@ -480,7 +456,7 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaClientResponseMappers.mustache", "ClientResponseMappers.java");
                 apiTemplateFiles.put("javaClientRequestMappers.mustache", "ClientRequestMappers.java");
             }
-            case JAVA_SERVER, JAVA_REACTIVE_SERVER, JAVA_ASYNC_SERVER -> {
+            case JAVA_SERVER -> {
                 apiTemplateFiles.put("javaServerApi.mustache", "Controller.java");
                 apiTemplateFiles.put("javaServerApiDelegate.mustache", "Delegate.java");
                 apiTemplateFiles.put("javaApiResponses.mustache", "Responses.java");
@@ -499,7 +475,7 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinClientResponseMappers.mustache", "ClientResponseMappers.kt");
                 apiTemplateFiles.put("kotlinClientRequestMappers.mustache", "ClientRequestMappers.kt");
             }
-            case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
+            case KOTLIN_SERVER -> {
                 modelTemplateFiles.put("kotlinModel.mustache", ".kt");
                 apiTemplateFiles.put("kotlinServerApi.mustache", "Controller.kt");
                 apiTemplateFiles.put("kotlinServerApiDelegate.mustache", "Delegate.kt");
@@ -716,35 +692,7 @@ public class KoraCodegen extends DefaultCodegen {
                         l.addAll(l2);
                         return l;
                     }, LinkedHashMap::new));
-
-                // try to fill parent models with allOf properties
-                if (model.interfaceModels != null
-                    && model.getComposedSchemas() != null
-                    && model.getComposedSchemas().getAllOf() != null) {
-                    for (CodegenModel interfaceModel : model.interfaceModels) {
-                        if (model.getComposedSchemas().getAllOf().stream().anyMatch(sp -> sp.openApiType.equals(interfaceModel.name))) {
-                            for (CodegenProperty ip : interfaceModel.allVars) {
-                                if (model.allVars.stream().noneMatch(mp -> mp.name.equals(ip.name))) {
-                                    model.allVars.add(ip);
-                                }
-                            }
-                            for (CodegenProperty ip : interfaceModel.requiredVars) {
-                                if (model.requiredVars.stream().noneMatch(mp -> mp.name.equals(ip.name))) {
-                                    model.requiredVars.add(ip);
-                                }
-                            }
-                            for (CodegenProperty ip : interfaceModel.optionalVars) {
-                                if (model.optionalVars.stream().noneMatch(mp -> mp.name.equals(ip.name))) {
-                                    model.optionalVars.add(ip);
-                                }
-                            }
-                        }
-                    }
-                }
                 model.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
-                model.requiredVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
-                model.optionalVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
-
                 var discriminatorProperty = new CodegenProperty();
                 discriminatorProperty.name = model.discriminator.getPropertyName();
                 discriminatorProperty.baseName = model.discriminator.getPropertyBaseName();
@@ -778,23 +726,11 @@ public class KoraCodegen extends DefaultCodegen {
                 discriminatorProperty.dataType = "String";
                 discriminatorProperty.isDiscriminator = true;
                 discriminatorProperty.required = true;
-
-                Set<String> parentModelRemoveFieldsTypeMissmatch = new HashSet<>();
                 for (var mappedModel : model.discriminator.getMappedModels()) {
                     var childModel = allModels.get(mappedModel.getModelName());
                     if (childModel == null) {
                         throw new IllegalArgumentException("Child model '%s' not found, it is probably a free form object and is ignored by OpenAPI generator"
                             .formatted(mappedModel.getModelName()));
-                    }
-
-                    for (CodegenProperty childVar : childModel.allVars) {
-                        childVar.isOverridden = false;
-                    }
-                    for (CodegenProperty childVar : childModel.requiredVars) {
-                        childVar.isOverridden = false;
-                    }
-                    for (CodegenProperty childVar : childModel.optionalVars) {
-                        childVar.isOverridden = false;
                     }
 
                     childModel.parentModel = model;
@@ -807,35 +743,21 @@ public class KoraCodegen extends DefaultCodegen {
                     childModel.allVars.add(0, property);
                     childModel.requiredVars.add(0, property);
 
-                    for (CodegenProperty var : model.allVars) {
-                        for (CodegenProperty childVar : childModel.allVars) {
-                            childVar.isOverridden = false;
-                            if (var.name.equals(childVar.name)) {
-                                boolean sameRequire = var.required == childVar.required;
-                                boolean sameType = Objects.equals(var.datatypeWithEnum, childVar.datatypeWithEnum);
-                                boolean override = sameRequire && sameType;
-                                if (override) {
-                                    childVar.isOverridden = true;
-                                } else {
-                                    parentModelRemoveFieldsTypeMissmatch.add(var.name);
-                                    childVar.isOverridden = false;
-                                }
+                    for (CodegenProperty prop : childModel.optionalVars) {
+                        if (prop.isOverridden != null && prop.isOverridden) {
+                            if (model.optionalVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
+                                prop.isOverridden = false;
+                            }
+                        }
+                    }
 
-                                if (childVar.required) {
-                                    for (CodegenProperty requiredVar : childModel.requiredVars) {
-                                        if (requiredVar.name.equals(childVar.name)) {
-                                            requiredVar.isOverridden = override;
-                                        }
-                                    }
-                                } else {
-                                    for (CodegenProperty optionalVar : childModel.optionalVars) {
-                                        if (optionalVar.name.equals(childVar.name)) {
-                                            optionalVar.isOverridden = override;
-                                        }
-                                    }
-                                }
-                            } else if (model.requiredVars.stream().anyMatch(p -> p.name.equals(property.name))) {
-                                property.isOverridden = true;
+                    for (CodegenProperty prop : childModel.requiredVars) {
+                        if (prop.isOverridden != null) {
+                            boolean haveReqVar = model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name));
+                            if (prop.isOverridden && !haveReqVar) {
+                                prop.isOverridden = false;
+                            } else {
+                                prop.isOverridden = haveReqVar;
                             }
                         }
                     }
@@ -885,12 +807,6 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
 
-                for (String field : parentModelRemoveFieldsTypeMissmatch) {
-                    model.allVars.removeIf(p -> p.name.equals(field));
-                    model.optionalVars.removeIf(p -> p.name.equals(field));
-                    model.requiredVars.removeIf(p -> p.name.equals(field));
-                }
-
                 model.vendorExtensions.put("x-discriminator-property", discriminatorProperty);
                 model.discriminator.getVendorExtensions().put("x-discriminator-property", discriminatorProperty);
 
@@ -904,47 +820,40 @@ public class KoraCodegen extends DefaultCodegen {
                     if (!requiredVar.required) {
                         continue;
                     }
-                    processRequiredModelVar(requiredVar);
-                }
-                for (var requiredVar : model.requiredVars) {
-                    processRequiredModelVar(requiredVar);
+                    if (requiredVar.isInteger) {
+                        if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
+                            requiredVar.dataType = "int";
+                            requiredVar.datatypeWithEnum = "int";
+                        }
+                    }
+                    if (requiredVar.isLong) {
+                        if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
+                            requiredVar.dataType = "long";
+                            requiredVar.datatypeWithEnum = "long";
+                        }
+                    }
+                    if (requiredVar.isFloat) {
+                        if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
+                            requiredVar.dataType = "float";
+                            requiredVar.datatypeWithEnum = "float";
+                        }
+                    }
+                    if (requiredVar.isDouble) {
+                        if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
+                            requiredVar.dataType = "double";
+                            requiredVar.datatypeWithEnum = "double";
+                        }
+                    }
+                    if (requiredVar.isBoolean) {
+                        if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
+                            requiredVar.dataType = "boolean";
+                            requiredVar.datatypeWithEnum = "boolean";
+                        }
+                    }
                 }
             }
         }
         return objs;
-    }
-
-    private void processRequiredModelVar(CodegenProperty requiredVar) {
-        if (requiredVar.isInteger) {
-            if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
-                requiredVar.dataType = "int";
-                requiredVar.datatypeWithEnum = "int";
-            }
-        }
-        if (requiredVar.isLong) {
-            if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
-                requiredVar.dataType = "long";
-                requiredVar.datatypeWithEnum = "long";
-            }
-        }
-        if (requiredVar.isFloat) {
-            if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
-                requiredVar.dataType = "float";
-                requiredVar.datatypeWithEnum = "float";
-            }
-        }
-        if (requiredVar.isDouble) {
-            if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
-                requiredVar.dataType = "double";
-                requiredVar.datatypeWithEnum = "double";
-            }
-        }
-        if (requiredVar.isBoolean) {
-            if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
-                requiredVar.dataType = "boolean";
-                requiredVar.datatypeWithEnum = "boolean";
-            }
-        }
     }
 
     private String getUpperSnakeCase(String value, Locale locale) {
@@ -1047,9 +956,9 @@ public class KoraCodegen extends DefaultCodegen {
             var models = (List<Map<String, Object>>) model.get("models");
             var codegenModel = (CodegenModel) models.get(0).get("model");
             var additionalConstructor = codegenModel.getHasVars()
-                                        && !codegenModel.getVars().isEmpty()
-                                        && !codegenModel.getAllVars().isEmpty()
-                                        && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
+                && !codegenModel.getVars().isEmpty()
+                && !codegenModel.getAllVars().isEmpty()
+                && codegenModel.getAllVars().size() != codegenModel.getRequiredVars().size();
             for (var requiredVar : codegenModel.requiredVars) {
                 // discriminator is somehow present in both optional and required vars, so we should clean it up
                 codegenModel.optionalVars.removeIf(p -> Objects.equals(p.name, requiredVar.name));
@@ -1284,23 +1193,10 @@ public class KoraCodegen extends DefaultCodegen {
     /**
      * Same as original, but have different mapping for Map of String to T
      */
-    public String getTypeDeclarationForProperty(Schema p, CodegenProperty property, boolean required) {
+    public String getTypeDeclarationAndProp(Schema p, CodegenProperty property) {
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
-        if (ModelUtils.isArraySchema(target)) {
-            var items = getSchemaItems(target);
-            var valueType = getTypeDeclarationForProperty(items, property, required);
-            final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
-                                           || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
-
-            if (params.codegenMode.isJava() && params.enableJsonNullable && isItemNullable) {
-                valueType = "ru.tinkoff.kora.json.common.JsonNullable<" + valueType + ">";
-            } else if (params.codegenMode.isKotlin() && isItemNullable) {
-                valueType = valueType + "?";
-            }
-
-            return getSchemaType(target) + "<" + valueType + ">";
-        } else if (ModelUtils.isMapSchema(target)) {
+        if (ModelUtils.isMapSchema(target)) {
             // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
             // additionalproperties: true
             var inner = ModelUtils.getAdditionalProperties(target);
@@ -1310,43 +1206,36 @@ public class KoraCodegen extends DefaultCodegen {
                 p.setAdditionalProperties(inner);
             }
 
-            String mapType = getSchemaType(target);
-            String keyType = "String";
-            String valueType = getTypeDeclaration(inner);
-
-            var items = getSchemaAdditionalProperties(target);
-            final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
-                                           || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
-
-            if (params.codegenMode.isJava() && params.enableJsonNullable && isItemNullable) {
-                valueType = "ru.tinkoff.kora.json.common.JsonNullable<" + valueType + ">";
-            } else if (params.codegenMode.isKotlin() && isItemNullable) {
-                valueType = valueType + "?";
+            if (params.codegenMode.isKotlin() && property.isNullable) {
+                if (params.enableJsonNullable) {
+                    if (property.required) {
+                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
+                    } else {
+                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>?";
+                    }
+                } else {
+                    return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + "?>";
+                }
+            } else if (property.isNullable && !property.required && params.enableJsonNullable) {
+                return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
+            } else {
+                return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + ">";
             }
-
-            return "%s<%s, %s>".formatted(mapType, keyType, valueType);
-        } else {
-            return getTypeDeclaration(target);
         }
+
+        return super.getTypeDeclaration(target);
     }
 
     @Override
     public CodegenProperty fromProperty(String name, Schema p, boolean required, boolean schemaIsFromAdditionalProperties) {
         var property = super.fromProperty(name, p, required, schemaIsFromAdditionalProperties);
-        property.required = required;
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
-        if (ModelUtils.isArraySchema(target)) {
-            var dataType = getTypeDeclarationForProperty(target, property, required);
+        if (ModelUtils.isMapSchema(target)) {
+            var dataType = getTypeDeclarationAndProp(p, property);
             property.dataType = dataType;
             if (!property.isEnum) {
-                property.datatypeWithEnum = dataType;
-            }
-        } else if (ModelUtils.isMapSchema(target)) {
-            var dataType = getTypeDeclarationForProperty(p, property, required);
-            property.dataType = dataType;
-            if (!property.isEnum) {
-                property.datatypeWithEnum = dataType;
+                property.datatypeWithEnum = property.dataType;
             }
         }
         return property;
@@ -2433,13 +2322,13 @@ public class KoraCodegen extends DefaultCodegen {
                         )));
                     }
                 } else if (formParam.isString
-                           || formParam.isBoolean
-                           || formParam.isDouble
-                           || formParam.isFloat
-                           || formParam.isInteger
-                           || formParam.isLong) {
+                    || formParam.isBoolean
+                    || formParam.isDouble
+                    || formParam.isFloat
+                    || formParam.isInteger
+                    || formParam.isLong) {
                     formParam.vendorExtensions.put("isPrimitive", true);
-                } else if (!formParam.isFile) {
+                } else if(!formParam.isFile) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     formParamsWithMappers.add(new HashMap<>(Map.of(
                         "paramName", formParam.paramName,
@@ -2776,10 +2665,10 @@ public class KoraCodegen extends DefaultCodegen {
         } else if (authMethod.isKeyInCookie) {
             fakeAuthParameter.isCookieParam = true;
         } else if (authMethod.isOAuth
-                   || authMethod.isOpenId
-                   || authMethod.isBasicBearer
-                   || authMethod.isBasic
-                   || authMethod.isBasicBasic) {
+            || authMethod.isOpenId
+            || authMethod.isBasicBearer
+            || authMethod.isBasic
+            || authMethod.isBasicBasic) {
             fakeAuthParameter.isHeaderParam = true;
 
             for (CodegenParameter parameter : parameters) {
@@ -2829,8 +2718,8 @@ public class KoraCodegen extends DefaultCodegen {
 
     public static boolean isContentJson(CodegenParameter parameter) {
         return parameter.containerType != null
-               && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
-               || isContentJson(parameter.getContent());
+            && (parameter.containerType.startsWith("application/json") || parameter.containerType.startsWith("text/json"))
+            || isContentJson(parameter.getContent());
     }
 
     public static boolean isContentJson(@Nullable Map<String, CodegenMediaType> content) {
@@ -2907,7 +2796,7 @@ public class KoraCodegen extends DefaultCodegen {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaClientSecuritySchema.mustache", securitySchemaClass));
                 }
-                case JAVA_SERVER, JAVA_ASYNC_SERVER, JAVA_REACTIVE_SERVER -> {
+                case JAVA_SERVER -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.java";
                     this.supportingFiles.add(new SupportingFile("javaServerSecuritySchema.mustache", securitySchemaClass));
                 }
@@ -2915,7 +2804,7 @@ public class KoraCodegen extends DefaultCodegen {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.kt";
                     this.supportingFiles.add(new SupportingFile("kotlinClientSecuritySchema.mustache", securitySchemaClass));
                 }
-                case KOTLIN_SERVER, KOTLIN_SUSPEND_SERVER -> {
+                case KOTLIN_SERVER -> {
                     var securitySchemaClass = apiFileFolder() + File.separator + "ApiSecurity.kt";
                     this.supportingFiles.add(new SupportingFile("kotlinServerSecuritySchema.mustache", securitySchemaClass));
                 }

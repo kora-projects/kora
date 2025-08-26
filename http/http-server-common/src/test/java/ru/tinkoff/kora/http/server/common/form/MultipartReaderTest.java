@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class MultipartReaderTest {
     @RepeatedTest(100)
-    void test() {
+    void test() throws Exception {
         var e = """
             --boundary\r
             Content-Disposition: form-data; name="field1"\r
@@ -56,8 +56,7 @@ class MultipartReaderTest {
         var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
             Map.entry("content-type", "multipart/form-data; boundary=\"boundary\"")
         }, Map.of());
-        var result = MultipartReader.read(request)
-            .toCompletableFuture().join();
+        var result = MultipartReader.read(request);
 
         assertThat(result)
             .satisfies(part -> {
@@ -75,7 +74,7 @@ class MultipartReaderTest {
     }
 
     @RepeatedTest(100)
-    void lastBytesErrorTest() {
+    void lastBytesErrorTest() throws IOException {
         var e = """
             --boundary\r
             Content-Disposition: form-data; name="field1"\r
@@ -119,8 +118,7 @@ class MultipartReaderTest {
         var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
             Map.entry("content-type", "multipart/form-data; boundary=\"boundary\"")
         }, Map.of());
-        var result = MultipartReader.read(request)
-            .toCompletableFuture().join();
+        var result = MultipartReader.read(request);
 
         assertThat(result)
             .satisfies(part -> {
@@ -138,7 +136,7 @@ class MultipartReaderTest {
     }
 
     @Test
-    void insomniaMultipart() {
+    void insomniaMultipart() throws IOException {
         var body = """
             --X-INSOMNIA-BOUNDARY\r
             Content-Disposition: form-data; name="field1"\r
@@ -166,8 +164,7 @@ class MultipartReaderTest {
         var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
             Map.entry("content-type", "multipart/form-data; boundary=X-INSOMNIA-BOUNDARY")
         }, Map.of());
-        var result = MultipartReader.read(request)
-            .toCompletableFuture().join();
+        var result = MultipartReader.read(request);
 
         assertThat(result)
             .satisfies(part -> {
@@ -185,17 +182,17 @@ class MultipartReaderTest {
     }
 
     @Test
-    void filenetMultipart() {
+    void filenetMultipart() throws IOException {
         var body = """
             --A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z
             Content-Disposition: form-data; name="field1"
             Content-Type: text/plain
-                        
+            
             value1
             --A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z
             Content-Disposition: form-data; name="field2"; filename="example.txt"
             Content-Type: text/plain
-                        
+            
             """;
         var length = 12;
         var f = Flux.fromStream(body.lines())
@@ -210,8 +207,7 @@ class MultipartReaderTest {
         var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
             Map.entry("content-type", " multipart/related; boundary=A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z; type=\"application/xop+xml\"; start-info=\"application/soap+xml\"")
         }, Map.of());
-        var result = MultipartReader.read(request)
-            .toCompletableFuture().join();
+        var result = MultipartReader.read(request);
 
         assertThat(result)
             .satisfies(part -> {

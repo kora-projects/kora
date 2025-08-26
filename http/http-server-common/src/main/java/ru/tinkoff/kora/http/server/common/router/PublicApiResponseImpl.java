@@ -6,20 +6,26 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 
-import java.util.concurrent.CompletableFuture;
-
 final class PublicApiResponseImpl implements PublicApiResponse {
     private final HttpServerTelemetry.HttpServerTelemetryContext ctx;
-    private final CompletableFuture<HttpServerResponse> response;
+    private final HttpServerResponse response;
+    private final Throwable error;
 
-    PublicApiResponseImpl(HttpServerTelemetry.HttpServerTelemetryContext ctx, CompletableFuture<HttpServerResponse> response) {
+    PublicApiResponseImpl(HttpServerTelemetry.HttpServerTelemetryContext ctx, HttpServerResponse response, Throwable error) {
         this.ctx = ctx;
         this.response = response;
+        this.error = error;
     }
 
     @Override
-    public CompletableFuture<HttpServerResponse> response() {
+    public HttpServerResponse response() {
         return this.response;
+    }
+
+    @Nullable
+    @Override
+    public Throwable error() {
+        return this.error;
     }
 
     @Override
