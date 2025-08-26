@@ -85,10 +85,6 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
         return HttpServerResponseMapper { ctx: Context?, request: HttpServerRequest, result: String -> HttpServerResponse.of(200, HttpBody.plaintext(result)) }
     }
 
-    protected fun asyncStringRequestMapper(): HttpServerRequestMapper<CompletionStage<String>> {
-        return HttpServerRequestMapper { request: HttpServerRequest -> request.body().asArrayStage().thenApply { b: ByteArray? -> String(b!!, StandardCharsets.UTF_8) } }
-    }
-
     protected fun stringRequestMapper(): HttpServerRequestMapper<String> {
         return HttpServerRequestMapper { request: HttpServerRequest -> String(request.body().asInputStream().readAllBytes(), StandardCharsets.UTF_8) }
     }
@@ -103,7 +99,7 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
 
     protected fun assertThat(handler: HttpServerRequestHandler, rq: HttpServerRequest): HttpResponseAssert {
         try {
-            return HttpResponseAssert(handler.handle(Context.clear(), rq).toCompletableFuture().join())
+            return HttpResponseAssert(handler.handle(Context.clear(), rq))
         } catch (e: CompletionException) {
             e.cause?.let {
                 if (it is HttpServerResponse) {

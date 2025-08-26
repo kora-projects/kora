@@ -8,10 +8,10 @@ import io.undertow.server.handlers.PathHandler;
 import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletContainer;
+import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderMap;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
-import io.undertow.util.SameThreadExecutor;
 import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.Application;
 import org.jboss.resteasy.core.ResteasyDeploymentImpl;
@@ -36,7 +36,9 @@ import ru.tinkoff.kora.http.common.cookie.Cookie;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.undertow.UndertowHttpHeaders;
+import ru.tinkoff.kora.http.server.undertow.UndertowHttpServer;
 import ru.tinkoff.kora.http.server.undertow.request.UndertowPublicApiRequest;
 import ru.tinkoff.kora.openapi.management.OpenApiHttpServerHandler;
 import ru.tinkoff.kora.openapi.management.RapidocHttpServerHandler;
@@ -46,8 +48,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutorService;
 
 final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHandler> {
 
@@ -564,6 +565,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         private final OpenApiHttpServerHandler openApiHandler;
         private final SwaggerUIHttpServerHandler swaggerUIHandler;
         private final RapidocHttpServerHandler rapidocHandler;
+        private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
 
         private OpenApiHttpHandler(CamundaRestConfig restConfig,
                                    CamundaRestTelemetry telemetry,
@@ -607,32 +609,30 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
 
         @Override
         public void handleRequest(HttpServerExchange exchange) {
-            exchange.dispatch(SameThreadExecutor.INSTANCE, () -> {
-                final String requestPath = exchange.getRequestPath();
-                var match = pathMatcher.getMatch(exchange.getRequestMethod().toString(), requestPath);
-                if (match.isPresent()) {
-                    Context context = Context.clear();
+            var requestPath = exchange.getRequestPath();
+            var match = pathMatcher.getMatch(exchange.getRequestMethod().toString(), requestPath);
+            if (match.isEmpty()) {
+                exchange.setStatusCode(404);
+                exchange.endExchange();
+                return;
+            }
+            var executor = UndertowHttpServer.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "undertow-kora-camunda");
+            exchange.dispatch(executor, exchange1 -> {
+                var context = Context.clear();
 
-                    var req = new UndertowPublicApiRequest(exchange, context);
-                    var telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), req.body());
+                var req = new UndertowPublicApiRequest(exchange1, context);
+                var telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), req.body());
 
-                    var fakeRequest = getFakeRequest(match.get());
-                    var openapi = restConfig.openapi();
-                    if (openapi.enabled() && requestPath.startsWith(openapi.endpoint())) {
-                        var response = openApiHandler.apply(context, fakeRequest).toCompletableFuture();
-                        sendResponse(exchange, response, context, telemetryContext);
-                    } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().endpoint())) {
-                        var response = swaggerUIHandler.apply(context, fakeRequest).toCompletableFuture();
-                        sendResponse(exchange, response, context, telemetryContext);
-                    } else if (openapi.rapidoc().enabled() && requestPath.startsWith(openapi.rapidoc().endpoint())) {
-                        var response = rapidocHandler.apply(context, fakeRequest).toCompletableFuture();
-                        sendResponse(exchange, response, context, telemetryContext);
-                    } else {
-                        telemetryContext.close(404, HttpResultCode.CLIENT_ERROR, HttpHeaders.empty(), null);
-                        exchange.setStatusCode(404);
-                        exchange.endExchange();
-                    }
+                var fakeRequest = getFakeRequest(match.get());
+                var openapi = restConfig.openapi();
+                if (openapi.enabled() && requestPath.startsWith(openapi.endpoint())) {
+                    executeHandler(context, telemetryContext, exchange1, openApiHandler, fakeRequest);
+                } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().endpoint())) {
+                    executeHandler(context, telemetryContext, exchange1, swaggerUIHandler, fakeRequest);
+                } else if (openapi.rapidoc().enabled() && requestPath.startsWith(openapi.rapidoc().endpoint())) {
+                    executeHandler(context, telemetryContext, exchange1, rapidocHandler, fakeRequest);
                 } else {
+                    telemetryContext.close(404, HttpResultCode.CLIENT_ERROR, HttpHeaders.empty(), null);
                     exchange.setStatusCode(404);
                     exchange.endExchange();
                 }
@@ -685,35 +685,16 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
             };
         }
 
-        private void sendResponse(HttpServerExchange exchange,
-                                  CompletableFuture<HttpServerResponse> responseFuture,
-                                  Context context,
-                                  CamundaRestTelemetryContext telemetryContext) {
+        private void executeHandler(Context ctx, CamundaRestTelemetryContext telemetryContext, HttpServerExchange exchange, HttpServerRequestHandler.HandlerFunction handler, HttpServerRequest request) {
+            final HttpServerResponse response;
             try {
-                if (responseFuture.isDone()) {
-                    sendResponse(exchange, responseFuture.join(), context, telemetryContext);
-                } else {
-                    responseFuture.whenComplete((httpServerResponse, throwable) -> {
-                        if (httpServerResponse != null) {
-                            sendResponse(exchange, httpServerResponse, context, telemetryContext);
-                        } else if (throwable != null) {
-                            var cause = (throwable instanceof CompletionException)
-                                ? throwable.getCause()
-                                : throwable;
-
-                            sendException(exchange, context, telemetryContext, cause);
-                        } else {
-                            sendException(exchange, context, telemetryContext, new IllegalStateException("Illegal state: response future is empty"));
-                        }
-                    });
-                }
+                response = handler.apply(ctx, request);
             } catch (Throwable e) {
-                var cause = (e instanceof CompletionException)
-                    ? e.getCause()
-                    : e;
-
-                sendException(exchange, context, telemetryContext, cause);
+                sendException(exchange, ctx, telemetryContext, e);
+                return;
             }
+            sendResponse(exchange, response, ctx, telemetryContext);
+
         }
 
         private void sendResponse(HttpServerExchange exchange,
