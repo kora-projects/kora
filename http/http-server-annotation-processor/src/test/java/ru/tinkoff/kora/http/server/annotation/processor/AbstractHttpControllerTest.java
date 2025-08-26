@@ -25,8 +25,6 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
-import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 
 public abstract class AbstractHttpControllerTest extends AbstractAnnotationProcessorTest {
@@ -148,16 +146,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
 
     protected HttpResponseAssert assertThat(HttpServerRequestHandler handler, HttpServerRequest request) {
         try {
-            return new HttpResponseAssert(handler.handle(Context.clear(), request).toCompletableFuture().join());
-        } catch (CompletionException ce) {
-            var e = ce.getCause();
-            if (e instanceof HttpServerResponse rs) {
-                return new HttpResponseAssert(rs);
-            }
-            if (e instanceof RuntimeException re) {
-                throw re;
-            }
-            throw new RuntimeException(e);
+            return new HttpResponseAssert(handler.handle(Context.clear(), request));
         } catch (Throwable e) {
             if (e instanceof HttpServerResponse rs) {
                 return new HttpResponseAssert(rs);
