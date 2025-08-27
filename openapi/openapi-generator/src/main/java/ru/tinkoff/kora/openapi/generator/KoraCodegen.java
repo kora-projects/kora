@@ -724,7 +724,6 @@ public class KoraCodegen extends DefaultCodegen {
                         l.addAll(l2);
                         return l;
                     }, LinkedHashMap::new));
-                model.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
 
                 // try to fill parent models with allOf properties
                 if (model.interfaceModels != null
@@ -750,6 +749,9 @@ public class KoraCodegen extends DefaultCodegen {
                         }
                     }
                 }
+                model.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                model.requiredVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                model.optionalVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
 
                 var discriminatorProperty = new CodegenProperty();
                 discriminatorProperty.name = model.discriminator.getPropertyName();
@@ -784,6 +786,8 @@ public class KoraCodegen extends DefaultCodegen {
                 discriminatorProperty.dataType = "String";
                 discriminatorProperty.isDiscriminator = true;
                 discriminatorProperty.required = true;
+
+                Set<String> parentModelRemoveFieldsTypeMissmatch = new HashSet<>();
                 for (var mappedModel : model.discriminator.getMappedModels()) {
                     var childModel = allModels.get(mappedModel.getModelName());
                     if (childModel == null) {
@@ -801,21 +805,32 @@ public class KoraCodegen extends DefaultCodegen {
                     childModel.allVars.add(0, property);
                     childModel.requiredVars.add(0, property);
 
-                    for (CodegenProperty prop : childModel.optionalVars) {
-                        if (prop.isOverridden != null && prop.isOverridden) {
-                            if (model.optionalVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
-                                prop.isOverridden = false;
-                            }
-                        }
-                    }
+                    for (CodegenProperty var : model.allVars) {
+                        for (CodegenProperty childVar : childModel.allVars) {
+                            if (var.name.equals(childVar.name)) {
+                                boolean sameRequire = var.required == childVar.required;
+                                boolean sameType = Objects.equals(var.datatypeWithEnum, childVar.datatypeWithEnum);
+                                boolean override = sameRequire && sameType;
+                                if (override) {
+                                    childVar.isOverridden = true;
+                                } else {
+                                    parentModelRemoveFieldsTypeMissmatch.add(var.name);
+                                    childVar.isOverridden = false;
+                                }
 
-                    for (CodegenProperty prop : childModel.requiredVars) {
-                        if (prop.isOverridden != null) {
-                            boolean haveReqVar = model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name));
-                            if (prop.isOverridden && !haveReqVar) {
-                                prop.isOverridden = false;
-                            } else {
-                                prop.isOverridden = haveReqVar;
+                                if (childVar.required) {
+                                    for (CodegenProperty requiredVar : childModel.requiredVars) {
+                                        if (requiredVar.name.equals(childVar.name)) {
+                                            requiredVar.isOverridden = override;
+                                        }
+                                    }
+                                } else {
+                                    for (CodegenProperty optionalVar : childModel.optionalVars) {
+                                        if (optionalVar.name.equals(childVar.name)) {
+                                            optionalVar.isOverridden = override;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -863,6 +878,12 @@ public class KoraCodegen extends DefaultCodegen {
                             .append("}\n");
                         childModel.vendorExtensions.put("x-discriminator-values-check", valuesCheck.toString().indent(4));
                     }
+                }
+
+                for (String field : parentModelRemoveFieldsTypeMissmatch) {
+                    model.allVars.removeIf(p -> p.name.equals(field));
+                    model.optionalVars.removeIf(p -> p.name.equals(field));
+                    model.requiredVars.removeIf(p -> p.name.equals(field));
                 }
 
                 model.vendorExtensions.put("x-discriminator-property", discriminatorProperty);
