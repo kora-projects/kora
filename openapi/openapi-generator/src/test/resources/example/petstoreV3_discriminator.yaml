@@ -212,17 +212,107 @@ components:
             contractName:
               type: string
 
+    ParcelAllOfOneOf:
+      allOf:
+        - $ref: '#/components/schemas/ParcelAllOfOneOfCommon'
+      oneOf:
+        - $ref: '#/components/schemas/ParcelAllOfOneOfSmall'
+        - $ref: '#/components/schemas/ParcelAllOfOneOfBig'
+      discriminator:
+        propertyName: type
+        mapping:
+          SMALL: '#/components/schemas/ParcelAllOfOneOfSmall'
+          BIG: '#/components/schemas/ParcelAllOfOneOfBig'
+
+    ParcelAllOfOneOfCommon:
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    ParcelAllOfOneOfType:
+      type: string
+      enum:
+        - SMALL
+        - BIG
+
+    ParcelAllOfOneOfSmall:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ParcelAllOfOneOfCommon'
+        - type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+
+    ParcelAllOfOneOfBig:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ParcelAllOfOneOfCommon'
+        - type: object
+          properties:
+            contractName:
+              type: string
+
     ParcelOneOf:
+      required:
+        - name
       oneOf:
         - $ref: '#/components/schemas/ParcelOneOfSmall'
         - $ref: '#/components/schemas/ParcelOneOfBig'
+      properties:
+        name:
+          type: string
+        description:
+          type: string
       discriminator:
         propertyName: type
         mapping:
           SMALL: '#/components/schemas/ParcelOneOfSmall'
           BIG: '#/components/schemas/ParcelOneOfBig'
 
+    ParcelOneOfType:
+      type: string
+      enum:
+        - SMALL
+        - BIG
+
     ParcelOneOfSmall:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+
+    ParcelOneOfBig:
+      type: object
+      properties:
+        contractName:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+
+    ParcelInnerTypeOneOf:
+      oneOf:
+        - $ref: '#/components/schemas/ParcelInnerTypeOneOfSmall'
+        - $ref: '#/components/schemas/ParcelInnerTypeOneOfBig'
+      discriminator:
+        propertyName: type
+        mapping:
+          SMALL: '#/components/schemas/ParcelInnerTypeOneOfSmall'
+          BIG: '#/components/schemas/ParcelInnerTypeOneOfBig'
+
+    ParcelInnerTypeOneOfSmall:
       type: object
       properties:
         type:
@@ -231,7 +321,7 @@ components:
           type: string
           format: uuid
 
-    ParcelOneOfBig:
+    ParcelInnerTypeOneOfBig:
       type: object
       properties:
         type:
