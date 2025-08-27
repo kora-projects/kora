@@ -795,6 +795,16 @@ public class KoraCodegen extends DefaultCodegen {
                             .formatted(mappedModel.getModelName()));
                     }
 
+                    for (CodegenProperty childVar : childModel.allVars) {
+                        childVar.isOverridden = false;
+                    }
+                    for (CodegenProperty childVar : childModel.requiredVars) {
+                        childVar.isOverridden = false;
+                    }
+                    for (CodegenProperty childVar : childModel.optionalVars) {
+                        childVar.isOverridden = false;
+                    }
+
                     childModel.parentModel = model;
                     childModel.parent = model.classname;
                     var mappings = map.get(mappedModel.getModelName());
@@ -807,6 +817,7 @@ public class KoraCodegen extends DefaultCodegen {
 
                     for (CodegenProperty var : model.allVars) {
                         for (CodegenProperty childVar : childModel.allVars) {
+                            childVar.isOverridden = false;
                             if (var.name.equals(childVar.name)) {
                                 boolean sameRequire = var.required == childVar.required;
                                 boolean sameType = Objects.equals(var.datatypeWithEnum, childVar.datatypeWithEnum);
