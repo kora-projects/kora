@@ -12,7 +12,6 @@ import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.common.UpdateCount
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper
 import java.sql.Statement
-import java.util.concurrent.Executor
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 
@@ -81,17 +80,17 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testReturnSuspendObject() {
-        val e = Executor { command -> Thread(command).start() }
         val ctxKey = object : Context.Key<String>() {
             override fun copy(`object`: String?) = `object`
         }
         Context.current()[ctxKey] = "test"
         val mapper = Mockito.mock(JdbcResultSetMapper::class.java)
-        val repository = compile(listOf(e, mapper), """
+        val repository = compile(
+            listOf(mapper), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("SELECT count(*) FROM test")
-                suspend fun test(): Int
+                fun test(): Int
             }
             
             """.trimIndent())
@@ -109,12 +108,12 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
 
     @Test
     fun testReturnSuspendVoid() {
-        val e = Executor { command -> command.run() }
-        val repository = compile(listOf<Any>(e), """
+        val repository = compile(
+            listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {
                 @Query("SELECT count(*) FROM test")
-                suspend fun test()
+                fun test()
             }
             
             """.trimIndent())
