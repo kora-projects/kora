@@ -27,13 +27,10 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
-import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.sql.Statement
-import java.util.concurrent.Executor
 
 class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenerator {
     private val withContext = MemberName("kotlinx.coroutines", "withContext")
@@ -43,7 +40,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
 
     override fun generate(repositoryType: KSClassDeclaration, typeBuilder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder): TypeSpec {
         val queryMethods = repositoryType.findQueryMethods()
-        enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder, queryMethods)
+        enrichWithExecutor(repositoryType, typeBuilder, constructorBuilder)
         val repositoryResolvedType = repositoryType.asStarProjectedType()
         val resultMappers = FieldFactory(typeBuilder, constructorBuilder, "_result_mapper_")
         val parameterMappers = FieldFactory(typeBuilder, constructorBuilder, "_parameter_mapper_")
@@ -102,22 +99,11 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("_jdbcConnectionFactory.currentConnection()")
 
         val b = method.queryMethodBuilder(resolver)
-        if (method.isSuspend()) {
-            b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-            b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._executor.%M()) {", withContext, asCoroutineDispatcher)
-        }
         b.addStatement("val _query = %L", queryContextFieldName)
 
-        if (method.isSuspend()) {
-            b.addStatement("var _conToUse = %L", connection)
-            b.addStatement("val _ctxFork = _ctxCurrent.fork()")
-            b.addStatement("_ctxFork.inject()")
-            b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxFork, _query)")
-        } else {
-            b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-            b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
-            b.addStatement("var _conToUse = %L", connection)
-        }
+        b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
+        b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
+        b.addStatement("var _conToUse = %L", connection)
         b.addStatement("val _conToClose = ")
         b.controlFlow("if (_conToUse == null)") {
             addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
@@ -148,9 +134,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                     }
                     addStatement("_telemetry.close(null)")
                     addCode("return")
-                    if (method.isSuspend()) {
-                        addCode("@withContext")
-                    }
                     addCode(" %T(_updateCount)\n", updateCount)
                 } else if (isGeneratedKeys) {
                     if (batchParam != null) {
@@ -165,9 +148,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         }
                         addStatement("_telemetry.close(null)")
                         addCode("return")
-                        if (method.isSuspend()) {
-                            addCode("@withContext")
-                        }
                         addStatement(" _result")
                     }
                 } else {
@@ -178,9 +158,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                         }
                         addStatement("_telemetry.close(null)")
                         addCode("return")
-                        if (method.isSuspend()) {
-                            addCode("@withContext")
-                        }
                         addStatement(" _result")
                     }
                 }
@@ -195,9 +172,6 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             addStatement("throw _e")
             nextControlFlow("finally")
             addStatement("_ctxCurrent.inject()")
-        }
-        if (method.isSuspend()) {
-            b.endControlFlow()
         }
         return b.build()
     }
@@ -248,7 +222,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         return Mapper(mapperType, mapperName)
     }
 
-    private fun enrichWithExecutor(repositoryElement: KSClassDeclaration, builder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder, queryMethods: Sequence<KSFunctionDeclaration>) {
+    private fun enrichWithExecutor(repositoryElement: KSClassDeclaration, builder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder) {
         builder.addProperty("_jdbcConnectionFactory", JdbcTypes.connectionFactory, KModifier.PRIVATE)
         builder.addSuperinterface(JdbcTypes.jdbcRepository)
         builder.addFunction(
@@ -269,28 +243,5 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             constructorBuilder.addParameter("_jdbcConnectionFactory", JdbcTypes.connectionFactory)
         }
         constructorBuilder.addStatement("this._jdbcConnectionFactory = _jdbcConnectionFactory")
-
-        if (queryMethods.any { it.isSuspend() }) {
-            val executor = Executor::class.asClassName()
-            builder.addProperty("_executor", executor, KModifier.PRIVATE, KModifier.FINAL)
-            constructorBuilder.addStatement("this._executor = _executor")
-            if (executorTag != null) {
-                constructorBuilder.addParameter(
-                    ParameterSpec.builder("_executor", executor)
-                        .addAnnotation(
-                            AnnotationSpec.builder(CommonClassNames.tag)
-                                .addMember("value = %L", executorTag)
-                                .build()
-                        )
-                        .build()
-                )
-            } else {
-                constructorBuilder.addParameter(
-                    ParameterSpec.builder("_executor", executor)
-                        .addTag(JdbcTypes.jdbcDatabase)
-                        .build()
-                )
-            }
-        }
     }
 }

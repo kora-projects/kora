@@ -95,25 +95,8 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             profile = AnnotationUtils.parseAnnotationValueWithoutDefault(profileAnnotation, "value");
         }
         var returnType = methodType.getReturnType();
-        var isFlux = CommonUtils.isFlux(returnType);
-        var isMono = CommonUtils.isMono(returnType);
         var isFuture = CommonUtils.isFuture(returnType);
-        if (isMono || isFlux) {
-            b.addCode("return ");
-            b.beginControlFlow("$T.deferContextual(_reactorCtx ->", isFlux ? CommonClassNames.flux : CommonClassNames.mono);
-            b.addStatement("var _ctxCurrent = $T.current(_reactorCtx)", CommonClassNames.contextReactor);
-            b.addStatement("var _ctxFork = _ctxCurrent.fork()");
-            b.addStatement("_ctxFork.inject()");
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)");
-            b.addStatement("var _session = this._connectionFactory.currentSession()");
-            b.addCode("return $T.fromCompletionStage(_session.prepareAsync(_query.sql()))", CommonClassNames.mono);
-            if (isMono) {
-                b.beginControlFlow(".flatMap(_st ->");
-            } else {
-                b.beginControlFlow(".flatMapMany(_st ->");
-            }
-            b.addStatement("var _stmt = _st.boundStatementBuilder()");
-        } else if (isFuture) {
+        if (isFuture) {
             b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
             b.addStatement("var _ctxFork = _ctxCurrent.fork()");
             b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)", CommonClassNames.context);
@@ -133,28 +116,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         }
 
         StatementSetterGenerator.generate(b, method, query, parameters, batchParam, parameterMappers);
-        if (isMono || isFlux) {
-            b.addStatement("var _rrs = _session.executeReactive(_s)");
-            if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
-                b.addStatement("return $T.from(_rrs).then()", CommonClassNames.flux);
-            } else {
-                Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
-                b.addStatement("return $N.apply(_rrs)", resultMapperName);
-            }
-            b.endControlFlow().addCode(")\n");// flatMap Statement
-            b.addCode("""
-                  .doOnEach(_s -> {
-                    if (_s.isOnComplete()) {
-                      _telemetry.close(null);
-                      _ctxCurrent.inject();
-                    } else if (_s.isOnError()) {
-                      _telemetry.close(_s.getThrowable());
-                      _ctxCurrent.inject();
-                    }
-                  });
-                """);
-            b.endControlFlow(")");// defer
-        } else if (isFuture) {
+        if (isFuture) {
             if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
                 b.addStatement("return _session.executeAsync(_s).thenApply(_rs -> (Void)null)");
             } else {
@@ -202,49 +164,13 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         var mappings = CommonUtils.parseMapping(method);
         var resultSetMapper = mappings.getMapping(CassandraTypes.RESULT_SET_MAPPER);
-        var reactiveResultSetMapper = mappings.getMapping(CassandraTypes.REACTIVE_RESULT_SET_MAPPER);
         var rowMapper = mappings.getMapping(CassandraTypes.ROW_MAPPER);
-        if (CommonUtils.isFlux(returnType)) {
-            var fluxParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
-            if (CommonUtils.isVoid(fluxParam)) {
-                return Optional.empty();
-            }
-            var mapperType = ParameterizedTypeName.get(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, TypeName.get(fluxParam), TypeName.get(returnType));
-            if (reactiveResultSetMapper != null) {
-                return Optional.of(new DbUtils.Mapper(reactiveResultSetMapper.mapperClass(), mapperType, reactiveResultSetMapper.mapperTags()));
-            }
-            if (rowMapper != null) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.flux($L)", CassandraTypes.REACTIVE_RESULT_SET_MAPPER, c)));
-            }
-            return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
-        }
-        if (CommonUtils.isMono(returnType)) {
-            var monoParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
-            var mapperType = ParameterizedTypeName.get(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, TypeName.get(monoParam), TypeName.get(returnType));
-            if (CommonUtils.isVoid(monoParam)) {
-                return Optional.empty();
-            }
-            if (reactiveResultSetMapper != null) {
-                return Optional.of(new DbUtils.Mapper(reactiveResultSetMapper.mapperClass(), mapperType, reactiveResultSetMapper.mapperTags()));
-            }
-            if (rowMapper != null) {
-                if (CommonUtils.isList(monoParam)) {
-                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.monoList($L)", CassandraTypes.REACTIVE_RESULT_SET_MAPPER, c)));
-                } else {
-                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.mono($L)", CassandraTypes.REACTIVE_RESULT_SET_MAPPER, c)));
-                }
-            }
-            return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
-        }
         if (CommonUtils.isFuture(returnType)) {
             var futureParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             if (CommonUtils.isVoid(futureParam)) {
                 return Optional.empty();
             }
             var mapperType = ParameterizedTypeName.get(CassandraTypes.ASYNC_RESULT_SET_MAPPER, TypeName.get(futureParam));
-            if (reactiveResultSetMapper != null) {
-                return Optional.of(new DbUtils.Mapper(reactiveResultSetMapper.mapperClass(), mapperType, reactiveResultSetMapper.mapperTags()));
-            }
             if (rowMapper != null) {
                 if (CommonUtils.isList(futureParam)) {
                     return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.list($L)", CassandraTypes.ASYNC_RESULT_SET_MAPPER, c)));

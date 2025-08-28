@@ -7,7 +7,6 @@ import ru.tinkoff.kora.database.common.annotation.Repository;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcRepository;
 
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -18,7 +17,7 @@ public interface TestKoraAppExecutorTagged {
     @Repository(executorTag = @Tag(ExampleTag.class))
     interface TestRepository extends JdbcRepository {
         @Query("INSERT INTO table(value) VALUES (:value)")
-        CompletionStage<Void> abstractMethod(String value);
+        void abstractMethod(String value);
     }
 
     @Tag(ExampleTag.class)

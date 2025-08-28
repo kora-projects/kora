@@ -200,14 +200,10 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val mapperName = method.resultMapperName()
         val mappings = method.parseMappingData()
         val resultSetMapper = mappings.getMapping(CassandraTypes.resultSetMapper)
-        val reactiveResultSetMapper = mappings.getMapping(CassandraTypes.reactiveResultSetMapper)
         val rowMapper = mappings.getMapping(CassandraTypes.rowMapper)
         if (method.modifiers.contains(Modifier.SUSPEND)) {
             val returnTypeName = returnType.toTypeName().copy(false)
             val mapperType = CassandraTypes.asyncResultSetMapper.parameterizedBy(returnTypeName)
-            if (reactiveResultSetMapper != null) {
-                return Mapper(reactiveResultSetMapper, mapperType, mapperName)
-            }
             if (rowMapper != null) {
                 if (returnType.isList()) {
                     return Mapper(rowMapper, mapperType, mapperName) {
