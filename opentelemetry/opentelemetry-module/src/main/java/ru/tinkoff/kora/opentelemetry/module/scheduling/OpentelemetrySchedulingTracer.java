@@ -35,6 +35,8 @@ public class OpentelemetrySchedulingTracer implements SchedulingTracer {
             if (exception != null) {
                 span.recordException(exception);
                 span.setStatus(StatusCode.ERROR);
+            } else {
+                span.setStatus(StatusCode.OK);
             }
             span.end();
         };

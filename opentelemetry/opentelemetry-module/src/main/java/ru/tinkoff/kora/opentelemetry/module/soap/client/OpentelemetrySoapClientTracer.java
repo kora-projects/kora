@@ -55,6 +55,7 @@ public class OpentelemetrySoapClientTracer implements SoapClientTracer {
 
             @Override
             public void success(SoapResult.Success result) {
+                span.setStatus(StatusCode.OK);
                 span.end();
                 OpentelemetryContext.set(ctx, otctx);
             }

@@ -34,6 +34,8 @@ public final class OpentelemetryCamundaEngineBpmnTracer implements CamundaEngine
             if (exception != null) {
                 span.setStatus(StatusCode.ERROR);
                 span.recordException(exception);
+            } else {
+                span.setStatus(StatusCode.OK);
             }
             span.end();
         };

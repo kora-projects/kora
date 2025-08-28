@@ -6,8 +6,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
 public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V> {
@@ -66,9 +64,14 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
-        var value = caffeine.get(key, mappingFunction);
-        telemetryContext.recordSuccess();
-        return value;
+        try {
+            var value = caffeine.get(key, mappingFunction);
+            telemetryContext.recordSuccess();
+            return value;
+        } catch (Exception e) {
+            telemetryContext.recordFailure(e);
+            throw e;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -80,9 +83,14 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         }
 
         var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);
-        var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
-        telemetryContext.recordSuccess();
-        return value;
+        try {
+            var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
+            telemetryContext.recordSuccess();
+            return value;
+        } catch (Exception e) {
+            telemetryContext.recordFailure(e);
+            throw e;
+        }
     }
 
     @Nonnull

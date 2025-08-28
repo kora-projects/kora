@@ -44,6 +44,8 @@ public final class OpentelemetryZeebeWorkerTracer implements ZeebeWorkerTracer {
                 }
                 span.setStatus(StatusCode.ERROR);
                 span.recordException(exception);
+            } else {
+                span.setStatus(StatusCode.OK);
             }
             span.end();
         };

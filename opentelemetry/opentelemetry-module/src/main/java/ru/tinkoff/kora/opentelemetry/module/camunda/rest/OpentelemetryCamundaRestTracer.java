@@ -68,6 +68,8 @@ public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
             if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null && !(exception instanceof HttpServerResponse)) {
                 span.setAttribute("http.response.result_code", resultCode.string());
                 span.setStatus(StatusCode.ERROR);
+            } else {
+                span.setStatus(StatusCode.OK);
             }
             if (exception != null) {
                 span.recordException(exception);
