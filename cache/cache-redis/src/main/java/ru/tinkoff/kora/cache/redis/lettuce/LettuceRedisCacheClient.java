@@ -14,15 +14,12 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-final class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
+public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(LettuceRedisCacheClient.class);
 
@@ -36,9 +33,9 @@ final class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
     // always use async cause sync uses JDK Proxy wrapped async impl
     private RedisAsyncCommands<byte[], byte[]> commands;
 
-    LettuceRedisCacheClient(RedisClient redisClient, LettuceClientConfig config) {
+    public LettuceRedisCacheClient(RedisClient redisClient, LettuceClientFactory factory, LettuceClientConfig config) {
         this.redisClient = redisClient;
-        final List<RedisURI> redisURIs = LettuceClientFactory.buildRedisURI(config);
+        final List<RedisURI> redisURIs = factory.buildRedisURI(config);
         this.redisURI = redisURIs.size() == 1 ? redisURIs.get(0) : null;
     }
 
@@ -54,7 +51,10 @@ final class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
         return commands.mget(keys)
             .thenApply(r -> r.stream()
                 .filter(Value::hasValue)
-                .collect(Collectors.toMap(KeyValue::getKey, Value::getValue)));
+                .collect(Collectors.toMap(KeyValue::getKey,
+                    Value::getValue,
+                    (k1, k2) -> k2,
+                    LinkedHashMap::new)));
     }
 
     @Nonnull
@@ -90,7 +90,10 @@ final class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
                     .map(f -> f.getNow(null))
                     .filter(Objects::nonNull)
                     .map(v -> ((Map.Entry<byte[], byte[]>) v))
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (k1, k2) -> k2,
+                        LinkedHashMap::new)));
         });
     }
 
