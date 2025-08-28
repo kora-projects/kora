@@ -54,6 +54,8 @@ public final class OpentelemetryS3KoraClientTracer implements S3KoraClientTracer
                 span.setAttribute(ERROR_CODE.getKey(), exception.getErrorCode());
                 span.setStatus(StatusCode.ERROR);
                 span.recordException(exception);
+            } else {
+                span.setStatus(StatusCode.OK);
             }
             span.end();
         };

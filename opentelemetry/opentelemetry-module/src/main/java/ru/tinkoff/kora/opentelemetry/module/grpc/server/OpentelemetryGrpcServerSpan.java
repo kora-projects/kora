@@ -24,6 +24,8 @@ public final class OpentelemetryGrpcServerSpan implements GrpcServerTracer.GrpcS
         if (exception != null) {
             this.span.recordException(exception);
             this.span.setStatus(StatusCode.ERROR);
+        } else {
+            span.setStatus(StatusCode.OK);
         }
         this.span.end();
     }

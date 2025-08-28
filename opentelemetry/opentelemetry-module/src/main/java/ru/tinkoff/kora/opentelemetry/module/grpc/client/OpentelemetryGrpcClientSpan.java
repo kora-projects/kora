@@ -43,6 +43,7 @@ public final class OpentelemetryGrpcClientSpan implements GrpcClientTracer.GrpcC
 
     @Override
     public void close(Status status, Metadata trailers) {
+        this.span.setStatus(StatusCode.OK);
         this.span.end();
     }
 

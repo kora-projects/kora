@@ -27,6 +27,7 @@ public final class OpentelemetryGrpcClientResponseSpan implements GrpcClientTrac
 
     @Override
     public void close() {
+        this.span.setStatus(StatusCode.OK);
         this.span.end();
         OpentelemetryContext.set(ctx, parentCtx);
     }

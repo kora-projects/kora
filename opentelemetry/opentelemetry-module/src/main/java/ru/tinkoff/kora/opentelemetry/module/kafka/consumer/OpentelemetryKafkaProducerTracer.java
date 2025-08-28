@@ -66,6 +66,7 @@ public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {
             span.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, metadata.partition());
             span.setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(metadata.partition()));
             span.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_OFFSET, metadata.offset());
+            span.setStatus(StatusCode.OK);
             span.end();
         }
 
