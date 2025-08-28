@@ -36,7 +36,10 @@ public class PublicApiHandler {
     private final AtomicReference<RequestHandler> requestHandler = new AtomicReference<>();
     private final HttpServerTelemetry telemetry;
 
-    public PublicApiHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerTelemetryFactory httpServerTelemetry, HttpServerConfig config) {
+    public PublicApiHandler(List<HttpServerRequestHandler> handlers,
+                            List<HttpServerInterceptor> interceptors,
+                            HttpServerTelemetryFactory httpServerTelemetry,
+                            HttpServerConfig config) {
         this.telemetry = Objects.requireNonNullElse(httpServerTelemetry.get(config.telemetry()), HttpServerTelemetry.EMPTY);
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();

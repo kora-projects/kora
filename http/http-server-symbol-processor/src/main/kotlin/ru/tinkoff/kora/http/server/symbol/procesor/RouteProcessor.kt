@@ -32,6 +32,7 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseMappingData
+import ru.tinkoff.kora.ksp.common.parseTags
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
@@ -57,9 +58,19 @@ class RouteProcessor {
             .distinct()
             .toList()
 
+        val tags = declaration.parseTags()
+        val paramSpecBuilder = ParameterSpec.builder("_controller", parent.toClassName())
+        if (tags.isNotEmpty()) {
+            paramSpecBuilder.addAnnotation(tags.makeTagAnnotationSpec())
+        }
+
         val funBuilder = FunSpec.builder(funName)
             .returns(httpServerRequestHandler)
-            .addParameter("_controller", parent.toClassName())
+            .addParameter(paramSpecBuilder.build())
+        if (tags.isNotEmpty()) {
+            funBuilder.addAnnotation(tags.makeTagAnnotationSpec())
+        }
+
         val isSuspend = function.modifiers.contains(Modifier.SUSPEND)
         val isBlocking = !isSuspend
         val bodyParams = mutableListOf<KSValueParameter>()
@@ -261,19 +272,19 @@ class RouteProcessor {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeListHeaderParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
-                } else {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListHeaderParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
-            } else if (parameter.type.resolve().isSet()) {
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                if (parameterTypeName.isNullable) {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetHeaderParameter")
+            } else {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListHeaderParameter")
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                }
+            }
+        } else if (parameter.type.resolve().isSet()) {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            if (parameterTypeName.isNullable) {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetHeaderParameter")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
@@ -348,19 +359,19 @@ class RouteProcessor {
             val readerParameterName = "_${parameterName}StringParameterReader"
             if (parameterTypeName.isNullable) {
                 val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeListQueryParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
-                } else {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListQueryParameter")
-                    addCode("val %N = ", parameterName).check400 {
-                        addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
-                    }
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
-            } else if (parameter.type.resolve().isSet()) {
-                val readerParameterName = "_${parameterName}StringParameterReader"
-                if (parameterTypeName.isNullable) {
-                    val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetQueryParameter")
+            } else {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseSomeListQueryParameter")
+                addCode("val %N = ", parameterName).check400 {
+                    addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
+                }
+            }
+        } else if (parameter.type.resolve().isSet()) {
+            val readerParameterName = "_${parameterName}StringParameterReader"
+            if (parameterTypeName.isNullable) {
+                val extractor = MemberName("ru.tinkoff.kora.http.server.common.handler.RequestHandlerUtils", "parseOptionalSomeSetQueryParameter")
                 addCode("val %N = ", parameterName).check400 {
                     addStatement("%M(_request, %S, %N)", extractor, name, readerParameterName)
                 }
