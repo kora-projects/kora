@@ -18,15 +18,12 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.stream.Collectors;
 
-final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycle {
+public class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(LettuceClusterRedisCacheClient.class);
 
@@ -39,7 +36,7 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
     // always use async cause sync uses JDK Proxy wrapped async impl
     private RedisAdvancedClusterAsyncCommands<byte[], byte[]> commands;
 
-    LettuceClusterRedisCacheClient(RedisClusterClient redisClient) {
+    public LettuceClusterRedisCacheClient(RedisClusterClient redisClient) {
         this.redisClient = redisClient;
     }
 
@@ -55,7 +52,10 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
         return commands.mget(keys)
             .thenApply(r -> r.stream()
                 .filter(Value::hasValue)
-                .collect(Collectors.toMap(KeyValue::getKey, Value::getValue)));
+                .collect(Collectors.toMap(KeyValue::getKey,
+                    Value::getValue,
+                    (k1, k2) -> k2,
+                    LinkedHashMap::new)));
     }
 
     @Nonnull
@@ -91,7 +91,10 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
                     .map(f -> f.getNow(null))
                     .filter(Objects::nonNull)
                     .map(v -> ((Map.Entry<byte[], byte[]>) v))
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (k1, k2) -> k2,
+                        LinkedHashMap::new)));
         });
     }
 
@@ -158,7 +161,7 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
     @Override
     public void init() {
         try {
-            logger.debug("Redis Client (Lettuce) starting...");
+            logger.debug("Redis Cluster Client (Lettuce) starting...");
             final long started = TimeUtils.started();
 
             final BoundedPoolConfig poolConfig = BoundedPoolConfig.builder()
@@ -174,7 +177,7 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
             this.connection = redisClient.connect(ByteArrayCodec.INSTANCE);
             this.commands = this.connection.async();
 
-            logger.info("Redis Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
+            logger.info("Redis Cluster Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
             throw new RuntimeException("Redis Client (Lettuce) failed to start in cluster mode, due to: " + e.getMessage(), e);
         }
@@ -182,13 +185,13 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
 
     @Override
     public void release() {
-        logger.debug("Redis Client (Lettuce) stopping...");
+        logger.debug("Redis Cluster Client (Lettuce) stopping...");
         final long started = TimeUtils.started();
 
         this.pool.close();
         this.connection.close();
         this.redisClient.shutdown();
 
-        logger.info("Redis Client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
+        logger.info("Redis Cluster Client (Lettuce) stopped in {}", TimeUtils.tookForLogging(started));
     }
 }
