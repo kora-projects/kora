@@ -6,9 +6,7 @@ import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper
 import java.sql.PreparedStatement
 import java.sql.ResultSet
-import java.sql.SQLException
 import java.time.OffsetDateTime
-import java.util.concurrent.Executors
 
 class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
 
@@ -46,7 +44,7 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     @Test
     fun returnSelectsAndTable() {
         val repository = compile(
-            listOf(Executors.newSingleThreadExecutor(), newGenerated("TestRowMapper")), """
+            listOf(newGenerated("TestRowMapper")), """
             @Repository
             interface TestRepository : JdbcRepository {
                         
@@ -57,7 +55,7 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
                                   val value3: String?)
                         
                 @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
-                suspend fun findById(id: String): Entity?
+                fun findById(id: String): Entity?
             }
             
             """.trimIndent(), """

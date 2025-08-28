@@ -4,7 +4,10 @@ import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.ParameterizedTypeName;
 import com.squareup.javapoet.TypeName;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
+import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraTypes;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
@@ -50,9 +53,6 @@ public class CassandraTypesExtension implements KoraExtension {
         }
         if (ptn.rawType.equals(CassandraTypes.ASYNC_RESULT_SET_MAPPER)) {
             return this.generateAsyncResultSetMapper(roundEnvironment, dt);
-        }
-        if (ptn.rawType.equals(CassandraTypes.REACTIVE_RESULT_SET_MAPPER)) {
-            return this.generateReactiveResultSetMapper(roundEnvironment, ptn, dt);
         }
         if (ptn.rawType.equals(CassandraTypes.ROW_MAPPER)) {
             return this.generateResultRowMapper(roundEnvironment, dt);
@@ -155,41 +155,6 @@ public class CassandraTypesExtension implements KoraExtension {
             var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, listType), singleResultSetMapper.asType());
             return ExtensionResult.fromExecutable(singleResultSetMapper, executableType);
         };
-    }
-
-    @Nullable
-    private KoraExtensionDependencyGenerator generateReactiveResultSetMapper(RoundEnvironment roundEnvironment, ParameterizedTypeName ptn, DeclaredType typeMirror) {
-        if (ptn.typeArguments.size() < 2 || !(ptn.typeArguments.get(1) instanceof ParameterizedTypeName publisherTypeName)) {
-            return null;
-        }
-        if (publisherTypeName.rawType.equals(CommonClassNames.flux)) {
-            var fluxMapper = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "flux");
-            var rowType = typeMirror.getTypeArguments().get(0);
-            var tp = (TypeVariable) fluxMapper.getTypeParameters().get(0).asType();
-            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), fluxMapper.asType());
-            return () -> ExtensionResult.fromExecutable(fluxMapper, executableType);
-        }
-        if (publisherTypeName.rawType.equals(CommonClassNames.mono)) {
-            var monoParam = typeMirror.getTypeArguments().get(0);
-            var monoParamTypeName = TypeName.get(monoParam);
-            if (monoParam instanceof DeclaredType monoDt && monoParamTypeName instanceof ParameterizedTypeName monoPtn && monoPtn.rawType.equals(CommonClassNames.list)) {
-                var rowType = monoDt.getTypeArguments().get(0);
-                var monoList = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "monoList");
-                var tp = (TypeVariable) monoList.getTypeParameters().get(0).asType();
-                var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), monoList.asType());
-                return () -> ExtensionResult.fromExecutable(monoList, executableType);
-            }
-            if (monoParamTypeName.equals(TypeName.VOID.box())) {
-                var monoVoid = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "monoVoid");
-                return () -> ExtensionResult.fromExecutable(monoVoid, (ExecutableType) monoVoid.asType());
-            }
-            var rowType = monoParam;
-            var mono = findStaticMethod(CassandraTypes.REACTIVE_RESULT_SET_MAPPER, "mono");
-            var tp = (TypeVariable) mono.getTypeParameters().get(0).asType();
-            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, rowType), mono.asType());
-            return () -> ExtensionResult.fromExecutable(mono, executableType);
-        }
-        return null;
     }
 
     private KoraExtensionDependencyGenerator listResultSetMapper(DeclaredType typeMirror, ParameterizedTypeName listType, DeclaredType rowTypeMirror) {

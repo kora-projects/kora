@@ -7,7 +7,6 @@ import com.squareup.kotlinpoet.STAR
 object CassandraTypes {
     val connection = ClassName("com.datastax.oss.driver.api.core", "CqlSession")
     val row = ClassName("com.datastax.oss.driver.api.core.cql", "Row")
-    val reactiveResultSet = ClassName("com.datastax.dse.driver.api.core.cql.reactive", "ReactiveResultSet")
     val resultSet = ClassName("com.datastax.oss.driver.api.core.cql", "ResultSet")
     val batchStatement = ClassName("com.datastax.oss.driver.api.core.cql", "BatchStatement")
     val defaultBatchType = ClassName("com.datastax.oss.driver.api.core.cql", "DefaultBatchType")
@@ -19,7 +18,6 @@ object CassandraTypes {
     val parameterColumnMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.parameter", "CassandraParameterColumnMapper")
     val rowMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowMapper")
     val rowColumnMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraRowColumnMapper")
-    val reactiveResultSetMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraReactiveResultSetMapper")
     val asyncResultSetMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraAsyncResultSetMapper")
     val resultSetMapper = ClassName("ru.tinkoff.kora.database.cassandra.mapper.result", "CassandraResultSetMapper")
 

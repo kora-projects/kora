@@ -36,13 +36,8 @@ public class ExtensionTest {
         var constructors = clazz.getConstructors();
         var parameters = constructors[0].getParameters();
         var connectionFactory = parameters[0];
-        var executor = parameters[1];
         assertThat(connectionFactory.isAnnotationPresent(Tag.class)).isTrue();
         var classes = Arrays.asList(connectionFactory.getAnnotation(Tag.class).value());
-        assertThat(classes).hasSize(1);
-        assertThat(classes.get(0)).isAssignableFrom(TestKoraAppExecutorTagged.ExampleTag.class);
-        assertThat(executor.isAnnotationPresent(Tag.class)).isTrue();
-        classes = Arrays.asList(executor.getAnnotation(Tag.class).value());
         assertThat(classes).hasSize(1);
         assertThat(classes.get(0)).isAssignableFrom(TestKoraAppExecutorTagged.ExampleTag.class);
     }

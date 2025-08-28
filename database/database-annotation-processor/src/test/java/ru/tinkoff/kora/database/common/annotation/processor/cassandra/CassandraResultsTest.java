@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper;
-import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraReactiveResultSetMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper;
 
 import java.util.List;

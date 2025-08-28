@@ -24,8 +24,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 import java.util.stream.LongStream;
 
 public final class JdbcRepositoryGenerator implements RepositoryGenerator {
@@ -43,7 +41,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     public TypeSpec generate(TypeElement repositoryElement, TypeSpec.Builder type, MethodSpec.Builder constructor) {
         var repositoryType = (DeclaredType) repositoryElement.asType();
         var queryMethods = DbUtils.findQueryMethods(this.types, this.elements, repositoryElement);
-        this.enrichWithExecutor(repositoryElement, type, constructor, queryMethods);
+        this.enrichWithExecutor(repositoryElement, type, constructor);
         var resultMappers = new FieldFactory(this.types, elements, type, constructor, "_result_mapper_");
         var parameterMappers = new FieldFactory(this.types, elements, type, constructor, "_parameter_mapper_");
 
@@ -73,12 +71,6 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
 
     private Optional<Mapper> parseResultMapper(ExecutableElement method, ExecutableType methodType, List<QueryParameter> parameters) {
         var returnType = methodType.getReturnType();
-        if (CommonUtils.isMono(returnType)) {
-            returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
-        } else if (CommonUtils.isFuture(returnType)) {
-            returnType = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
-        }
-
         if (CommonUtils.isVoid(returnType)) {
             return Optional.empty();
         }
@@ -141,16 +133,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
 
         var b = DbUtils.queryMethodBuilder(method, methodType);
         var returnType = methodType.getReturnType();
-        final boolean isMono = CommonUtils.isMono(returnType);
-        final boolean isFuture = CommonUtils.isFuture(returnType);
         b.addStatement("var _ctxCurrent = ru.tinkoff.kora.common.Context.current()");
-        if (isMono) {
-            b.addCode("return $T.fromCompletionStage($T.supplyAsync(() -> {$>\n", CommonClassNames.mono, CompletableFuture.class);
-            returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
-        } else if (isFuture) {
-            b.addCode("return $T.supplyAsync(() -> {$>\n", CompletableFuture.class);
-            returnType = ((DeclaredType) returnType).getTypeArguments().get(0);
-        }
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
             .map(p -> CodeBlock.of("$L", p.variable()))
             .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
@@ -166,18 +149,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                         )""", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method))
                 .build());
         b.addStatement("var _query = $L", queryContextFieldName);
-
-        if (isFuture || isMono) {
-            b.addCode("""
-                var _ctxFork = _ctxCurrent.fork();
-                _ctxFork.inject();
-                var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query);
-                """);
-        } else {
-            b.addCode("""
-                var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query);
-                """);
-        }
+        b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query)");
 
         b.addCode("""
             var _conToUse = $L;
@@ -197,9 +169,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             b.addCode("try (_conToClose; var _stmt = _conToUse.prepareStatement(_query.sql())) {$>\n");
         }
         b.addCode(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
-        if (MethodUtils.isVoid(method)
-            || isMono && MethodUtils.isVoidGeneric(methodType.getReturnType())
-            || isFuture && MethodUtils.isVoidGeneric(methodType.getReturnType())) {
+        if (MethodUtils.isVoid(method)) {
 
             if (batchParam != null) {
                 b.addStatement("_stmt.executeBatch()");
@@ -207,11 +177,6 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 b.addStatement("_stmt.execute()");
             }
             b.addStatement("_telemetry.close(null)");
-            if (isMono) {
-                b.addStatement("return null");
-            } else if (isFuture) {
-                b.addStatement("return null");
-            }
         } else if (batchParam != null) {
             if (returnType.toString().equals(DbUtils.UPDATE_COUNT.canonicalName())) {
                 b.addStatement("var _batchResult = _stmt.executeLargeBatch()");
@@ -226,7 +191,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 b.addStatement("_telemetry.close(null)");
                 b.addStatement("return _batchResult");
             } else if (generatedKeys) {
-                var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
+                var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive()
                     ? CodeBlock.of("_result")
                     : CodeBlock.of("$T.requireNonNull(_result, $S)", Objects.class, "Result mapping is expected non-null, but was null");
 
@@ -246,7 +211,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 .addStatement("_telemetry.close(null)")
                 .addStatement("return new $T(_updateCount)", DbUtils.UPDATE_COUNT);
         } else if (generatedKeys) {
-            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
+            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive()
                 ? CodeBlock.of("_result")
                 : CodeBlock.of("$T.requireNonNull(_result, $S)", Objects.class, "Result mapping is expected non-null, but was null");
 
@@ -257,7 +222,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 .addCode("return $L;", result)
                 .addCode("$<\n}\n");
         } else {
-            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive() || isMono || isFuture
+            var result = CommonUtils.isNullable(method) || method.getReturnType().getKind().isPrimitive()
                 ? CodeBlock.of("_result")
                 : CodeBlock.of("$T.requireNonNull(_result, $S)", Objects.class, "Result mapping is expected non-null, but was null");
 
@@ -276,23 +241,11 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             .addCode("  _telemetry.close(e);\n")
             .addCode("  throw e;\n");
 
-        if (isMono || isFuture) {
-            b.addCode("} finally {\n")
-                .addCode("  _ctxCurrent.inject();\n")
-                .addCode("}\n");
-        } else {
-            b.addCode("}\n");
-        }
-
-        if (isMono) {
-            b.addCode("$<\n}, _executor));\n");
-        } else if (isFuture) {
-            b.addCode("$<\n}, _executor);\n");
-        }
+        b.addCode("}\n");
         return b.build();
     }
 
-    public void enrichWithExecutor(TypeElement repositoryElement, TypeSpec.Builder builder, MethodSpec.Builder constructorBuilder, List<ExecutableElement> queryMethods) {
+    public void enrichWithExecutor(TypeElement repositoryElement, TypeSpec.Builder builder, MethodSpec.Builder constructorBuilder) {
         builder.addField(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory", Modifier.PRIVATE, Modifier.FINAL);
         builder.addSuperinterface(JdbcTypes.JDBC_REPOSITORY);
         builder.addMethod(MethodSpec.methodBuilder("getJdbcConnectionFactory")
@@ -309,20 +262,5 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory");
         }
         constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
-
-        var needThreadPool = queryMethods.stream().anyMatch(e -> CommonUtils.isMono(e.getReturnType()) || CommonUtils.isFuture(e.getReturnType()));
-        if (needThreadPool && executorTag != null) {
-            builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
-            constructorBuilder.addStatement("this._executor = _executor");
-            constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor")
-                .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build())
-                .build());
-        } else if (needThreadPool) {
-            builder.addField(TypeName.get(Executor.class), "_executor", Modifier.PRIVATE, Modifier.FINAL);
-            constructorBuilder.addStatement("this._executor = _executor");
-            constructorBuilder.addParameter(ParameterSpec.builder(TypeName.get(Executor.class), "_executor")
-                .addAnnotation(TagUtils.makeAnnotationSpecForTypes(JdbcTypes.JDBC_DATABASE))
-                .build());
-        }
     }
 }
