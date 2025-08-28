@@ -30,7 +30,7 @@ public class LettuceClientFactory {
                                      @Nullable EventLoopGroup eventLoopGroup) {
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
 
-        return (mappedRedisUris.size() == 1)
+        return (mappedRedisUris.size() == 1 && !config.forceClusterClient())
             ? buildRedisClientInternal(config, mappedRedisUris.get(0), recorderFactory, lettuceConfigurator, eventLoopGroup)
             : buildRedisClusterClientInternal(config, mappedRedisUris, recorderFactory, lettuceConfigurator, eventLoopGroup);
     }

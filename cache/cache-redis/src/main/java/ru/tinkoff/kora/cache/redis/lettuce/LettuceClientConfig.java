@@ -14,6 +14,10 @@ public interface LettuceClientConfig {
 
     String uri();
 
+    default boolean forceClusterClient() {
+        return false;
+    }
+
     @Nullable
     Integer database();
 
@@ -39,9 +43,13 @@ public interface LettuceClientConfig {
 
     enum Protocol {
 
-        /** Redis 2 to Redis 5 */
+        /**
+         * Redis 2 to Redis 5
+         */
         RESP2,
-        /** Redis 6+ */
+        /**
+         * Redis 6+
+         */
         RESP3
     }
 
