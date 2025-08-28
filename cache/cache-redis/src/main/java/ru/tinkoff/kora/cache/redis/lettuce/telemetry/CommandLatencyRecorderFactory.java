@@ -6,6 +6,5 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public interface CommandLatencyRecorderFactory {
 
-    @Nullable
     CommandLatencyRecorder get(String type, TelemetryConfig.MetricsConfig config);
 }
