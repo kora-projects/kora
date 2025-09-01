@@ -1882,6 +1882,10 @@ public class KoraCodegen extends DefaultCodegen {
                                               Map<String, Set<String>> schemaToAllSimpleRefs,
                                               Set<String> visited,
                                               boolean checkVisited) {
+        if (targetSchema == null) {
+            return Collections.emptySet();
+        }
+
         if (checkVisited) {
             if (visited.contains(targetName)) {
                 return Collections.emptySet();
@@ -2013,7 +2017,9 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     private Set<String> getAllRefs(Schema req, Set<Schema<?>> visited) {
-        if (req instanceof ObjectSchema && visited.stream().anyMatch(s -> s == req)) {
+        if (req == null) {
+            return Collections.emptySet();
+        } else if (req instanceof ObjectSchema && visited.stream().anyMatch(s -> s == req)) {
             return Collections.emptySet();
         }
 
@@ -2167,6 +2173,10 @@ public class KoraCodegen extends DefaultCodegen {
             httpClientAnnotationParams.put("configPath", "\"" + params.clientConfigPrefix + "." + operations.get("classname") + "\"");
         }
         var operationList = (List<CodegenOperation>) operations.get("operation");
+        Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
+        Map<String, Schema> schemasByModelName = new HashMap<>(schemas.size() + 10);
+        Map<String, List<CodegenModel>> schemaNameToModelRefs = new HashMap<>(schemas.size() + 10);
+
         for (var op : operationList) {
             handleImplicitHeaders(op, params.implicitHeaders, params.implicitHeadersRegex);
             var operationImports = new TreeSet<String>();
@@ -2507,7 +2517,7 @@ public class KoraCodegen extends DefaultCodegen {
                 }
                 op.vendorExtensions.put("allowAspects", params.enableValidation() || !additionalAnnotations.isEmpty());
 
-                Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
+                schemas.forEach((name, schema) -> schemasByModelName.put(toModelName(name), schema));
                 for (var p : op.allParams) {
                     var validation = false;
                     if (p.isModel) {
@@ -2524,9 +2534,12 @@ public class KoraCodegen extends DefaultCodegen {
                             }
                         }
 
-                        Schema targetSchema = schemas.get(p.baseName);
+                        Schema targetSchema = schemasByModelName.get(p.baseName);
                         if (targetSchema != null) {
-                            List<CodegenModel> modelRefs = getCodegenModelsRecursive(targetSchema.getName(), targetSchema, schemas, new HashMap<>(), new HashSet<>(), true, allModels);
+                            List<CodegenModel> modelRefs = schemaNameToModelRefs.computeIfAbsent(p.baseName, k -> {
+                                return getCodegenModelsRecursive(targetSchema.getName(), targetSchema, schemasByModelName, new HashMap<>(), new HashSet<>(), true, allModels);
+                            });
+
                             for (CodegenModel modelRef : modelRefs) {
                                 if (modelRef.hasValidation) {
                                     validation = true;
