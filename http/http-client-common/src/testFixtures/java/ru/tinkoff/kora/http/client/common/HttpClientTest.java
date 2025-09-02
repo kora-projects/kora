@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.client.common;
 
 import ch.qos.logback.classic.Level;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
@@ -11,8 +12,6 @@ import org.mockito.Mockito;
 import org.mockserver.matchers.Times;
 import org.mockserver.model.Header;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
@@ -21,6 +20,8 @@ import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.concurrent.ThreadLocalRandom;
@@ -157,7 +158,6 @@ public abstract class HttpClientTest extends HttpClientTestBase {
     }
 
 
-
     @Test
     protected void testRequestTimeout() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
@@ -285,9 +285,28 @@ public abstract class HttpClientTest extends HttpClientTestBase {
     protected void testRequestBodyPublisherError() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var request = HttpClientRequest.post("/")
-            .body(HttpBodyOutput.octetStream(FlowUtils.fromCallable(Context.current(), () -> {
-                throw new RuntimeException();
-            })))
+            .body(new HttpBodyOutput() {
+                @Override
+                public long contentLength() {
+                    return -1;
+                }
+
+                @Override
+                @Nullable
+                public String contentType() {
+                    return null;
+                }
+
+                @Override
+                public void write(OutputStream os) throws IOException {
+                    throw new RuntimeException();
+                }
+
+                @Override
+                public void close() throws IOException {
+
+                }
+            })
             .build();
 
         assertThatThrownBy(() -> call(request)

@@ -1,38 +1,25 @@
 package ru.tinkoff.kora.http.common.body;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.util.FlowUtils;
 
-import java.nio.ByteBuffer;
-import java.util.concurrent.Flow;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.io.IOException;
+import java.io.InputStream;
 
-public class StreamingHttpBodyInput extends AtomicBoolean implements HttpBodyInput {
+public class StreamingHttpBodyInput implements HttpBodyInput {
     @Nullable
     private final String contentType;
     private final long contentLength;
-    private final Flow.Publisher<ByteBuffer> content;
+    private final InputStream content;
 
-    public StreamingHttpBodyInput(@Nullable String contentType, long contentLength, Flow.Publisher<ByteBuffer> content) {
+    public StreamingHttpBodyInput(@Nullable String contentType, long contentLength, InputStream content) {
         this.contentType = contentType;
         this.contentLength = contentLength;
         this.content = content;
     }
 
     @Override
-    public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-        if (this.compareAndSet(false, true)) {
-            content.subscribe(subscriber);
-        } else {
-            throw new IllegalStateException("Body was already subscribed");
-        }
-    }
-
-    @Override
-    public void close() {
-        if (this.compareAndSet(false, true)) {
-            content.subscribe(FlowUtils.drain());
-        }
+    public void close() throws IOException {
+        content.close();
     }
 
     @Override
@@ -44,5 +31,10 @@ public class StreamingHttpBodyInput extends AtomicBoolean implements HttpBodyInp
     @Override
     public String contentType() {
         return this.contentType;
+    }
+
+    @Override
+    public InputStream asInputStream() {
+        return content;
     }
 }

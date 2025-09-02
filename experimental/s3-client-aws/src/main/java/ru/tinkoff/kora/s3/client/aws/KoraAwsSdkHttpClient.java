@@ -1,6 +1,9 @@
 package ru.tinkoff.kora.s3.client.aws;
 
+import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 import reactor.adapter.JdkFlowAdapter;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
@@ -8,13 +11,14 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
 import software.amazon.awssdk.http.*;
 import software.amazon.awssdk.http.async.AsyncExecuteRequest;
 import software.amazon.awssdk.http.async.SdkAsyncHttpClient;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.ByteBuffer;
@@ -22,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
 
 @ApiStatus.Experimental
@@ -46,9 +51,14 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
 
             @Override
             public HttpExecuteResponse call() {
-                final HttpClientRequest request = asKoraRequest(httpExecuteRequest);
-                final HttpClientResponse response = httpClient.execute(request);
-                return asAwsResponse(response);
+                var contentProvider = httpExecuteRequest.contentStreamProvider().orElse(null);
+                try (var content = contentProvider == null ? null : contentProvider.newStream()) {
+                    final HttpClientRequest request = asKoraRequest(httpExecuteRequest, content);
+                    final HttpClientResponse response = httpClient.execute(request);
+                    return asAwsResponse(response);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             @Override
@@ -70,25 +80,27 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
         }
         final SdkHttpResponse sdkHttpResponse = asSdkResponse(response);
         asyncExecuteRequest.responseHandler().onHeaders(sdkHttpResponse);
-        asyncExecuteRequest.responseHandler().onStream(JdkFlowAdapter.flowPublisherToFlux(response.body()));
+        try (var body = response.body(); var is = body.asInputStream()) {
+            asyncExecuteRequest.responseHandler().onStream(AsyncRequestBody.fromBytes(is.readAllBytes()));
+        } catch (IOException e) {
+            asyncExecuteRequest.responseHandler().onError(e);
+        }
 
         return CompletableFuture.completedFuture(null);
     }
 
-    private HttpClientRequest asKoraRequest(HttpExecuteRequest httpExecuteRequest) {
+    private HttpClientRequest asKoraRequest(HttpExecuteRequest httpExecuteRequest, @Nullable InputStream content) {
         final SdkHttpRequest sdkHttpRequest = httpExecuteRequest.httpRequest();
         final HttpClientRequestBuilder builder = getBaseBuilder(sdkHttpRequest.getUri(), sdkHttpRequest.method().name(), sdkHttpRequest.rawQueryParameters(), sdkHttpRequest.headers());
-
-        httpExecuteRequest.contentStreamProvider().ifPresent(provider -> {
-            String contentType = sdkHttpRequest.firstMatchingHeader("Content-Type").orElse("application/octet-stream");
-            String contentLength = sdkHttpRequest.firstMatchingHeader("Content-Length").orElse(null);
+        if (content != null) {
+            var contentType = sdkHttpRequest.firstMatchingHeader("Content-Type").orElse("application/octet-stream");
+            var contentLength = sdkHttpRequest.firstMatchingHeader("Content-Length").orElse(null);
             if (contentLength == null) {
-                builder.body(HttpBodyOutput.of(contentType, provider.newStream()));
+                builder.body(HttpBodyOutput.of(contentType, content));
             } else {
-                builder.body(HttpBodyOutput.of(contentType, Long.parseLong(contentLength), provider.newStream()));
+                builder.body(HttpBodyOutput.of(contentType, Long.parseLong(contentLength), content));
             }
-        });
-
+        }
         return builder
             .requestTimeout(clientConfig.requestTimeout())
             .build();
@@ -99,14 +111,60 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
         final HttpClientRequestBuilder builder = getBaseBuilder(sdkHttpRequest.getUri(), sdkHttpRequest.method().name(), sdkHttpRequest.rawQueryParameters(), sdkHttpRequest.headers());
 
         Flow.Publisher<ByteBuffer> bodyFlow = JdkFlowAdapter.publisherToFlowPublisher(asyncExecuteRequest.requestContentPublisher());
-        String contentType = sdkHttpRequest.firstMatchingHeader("Content-Type").orElse("application/octet-stream");
-        String contentLength = sdkHttpRequest.firstMatchingHeader("Content-Length").orElse(null);
-        if (contentLength == null) {
-            builder.body(HttpBodyOutput.of(contentType, bodyFlow));
-        } else {
-            builder.body(HttpBodyOutput.of(contentType, Long.parseLong(contentLength), bodyFlow));
-        }
+        var contentType = sdkHttpRequest.firstMatchingHeader("Content-Type").orElse("application/octet-stream");
+        var contentLengthStr = sdkHttpRequest.firstMatchingHeader("Content-Length").orElse(null);
+        var contentLength = contentLengthStr == null ? -1 : Long.parseLong(contentLengthStr);
+        builder.body(new HttpBodyOutput() {
+            @Override
+            public long contentLength() {
+                return contentLength;
+            }
 
+            @Override
+            public String contentType() {
+                return contentType;
+            }
+
+            @Override
+            public void write(OutputStream os) throws IOException {
+                var future = new CompletableFuture<Void>();
+                asyncExecuteRequest.requestContentPublisher().subscribe(new Subscriber<ByteBuffer>() {
+                    @Override
+                    public void onSubscribe(Subscription s) {
+                        s.request(Long.MAX_VALUE);
+                    }
+
+                    @Override
+                    public void onNext(ByteBuffer byteBuffer) {
+                        try {
+                            os.write(byteBuffer.array(), byteBuffer.arrayOffset() + byteBuffer.position(), byteBuffer.remaining());
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable t) {
+                        future.completeExceptionally(t);
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        future.complete(null);
+                    }
+                });
+                try {
+                    future.get();
+                } catch (InterruptedException | ExecutionException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            @Override
+            public void close() throws IOException {
+
+            }
+        });
         return builder
             .requestTimeout(clientConfig.requestTimeout())
             .build();
@@ -176,13 +234,10 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
     private static AbortableInputStream asSdkResponseStream(HttpClientResponse koraHttpResponse) {
         final HttpBodyInput body = koraHttpResponse.body();
         final InputStream bodyIS = body.asInputStream();
-        final InputStream bodyAsInputStream = bodyIS != null
-            ? bodyIS
-            : new ByteArrayInputStream(body.asArrayStage().toCompletableFuture().join());
 
-        return AbortableInputStream.create(bodyAsInputStream, () -> {
+        return AbortableInputStream.create(bodyIS, () -> {
             try {
-                bodyAsInputStream.close();
+                bodyIS.close();
             } catch (IOException e) {
                 // ignore
             }

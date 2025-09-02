@@ -48,7 +48,7 @@ public interface {{classname}}ServerResponseMappers {
         }{{/required}}{{/headers}}{{#isBinary}}{{#vendorExtensions.isBinaryUnknownType}}
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
         return this.response{{code}}Delegate.apply(ctx, request, entity);{{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
-        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content()));{{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
+        return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of("{{{vendorExtensions.contentType}}}", rs.content()));{{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
         return HttpServerResponse.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers);{{/dataType}}{{#dataType}}
         var entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode(){{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content());
         return this.response{{code}}Delegate.apply(ctx, request, entity);{{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}

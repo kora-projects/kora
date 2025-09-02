@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.http.common.form;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
-import java.nio.ByteBuffer;
 import java.util.List;
-import java.util.concurrent.Flow;
 
 /**
  * <b>Русский</b>: Описывает тело HTTP запроса/ответа как форма с бинарными данными
@@ -24,8 +23,8 @@ public record FormMultipart(List<? extends FormPart> parts) {
         return new FormPart.MultipartFile(name, fileName, contentType, content);
     }
 
-    public static FormPart file(String name, @Nullable String fileName, @Nullable String contentType, Flow.Publisher<ByteBuffer> content) {
-        return new FormPart.MultipartFileStream(name, fileName, contentType, content);
+    public static FormPart file(String name, @Nullable String fileName, HttpBodyOutput content) {
+        return new FormPart.MultipartFileStream(name, fileName, content);
     }
 
     public sealed interface FormPart {
@@ -33,7 +32,7 @@ public record FormMultipart(List<? extends FormPart> parts) {
 
         record MultipartFile(String name, @Nullable String fileName, @Nullable String contentType, byte[] content) implements FormPart {}
 
-        record MultipartFileStream(String name, @Nullable String fileName, @Nullable String contentType, Flow.Publisher<ByteBuffer> content) implements FormPart {}
+        record MultipartFileStream(String name, @Nullable String fileName, HttpBodyOutput content) implements FormPart {}
 
         record MultipartData(String name, String content) implements FormPart {}
     }

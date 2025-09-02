@@ -4,9 +4,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
-import java.nio.ByteBuffer;
-import java.util.concurrent.CompletionStage;
-
 /**
  * <b>Русский</b>: Контракт обработчика HTTP запроса в определенный тип данных
  * <hr>
@@ -33,8 +30,4 @@ public interface HttpServerRequestMapper<T> extends Mapping.MappingFunction {
 
     @Nullable
     T apply(HttpServerRequest request) throws Exception;
-
-    static <T> HttpServerRequestMapper<T> fromAsync(HttpServerRequestMapper<CompletionStage<T>> delegate) {
-        return request -> delegate.apply(request).toCompletableFuture().get();
-    }
 }
