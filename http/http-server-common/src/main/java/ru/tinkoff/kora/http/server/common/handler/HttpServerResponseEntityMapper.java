@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResponseEntity;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
@@ -8,6 +9,8 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapper<HttpResponseEntity<T>> {
@@ -26,9 +29,7 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
         final HttpBodyOutput body;
         final String contentType = result.headers().getFirst("content-type");
         if (contentType != null && !contentType.isEmpty()) {
-            body = (response.body().contentLength() >= 0)
-                ? HttpBodyOutput.of(contentType, response.body().contentLength(), response.body())
-                : HttpBodyOutput.of(contentType, response.body());
+            body = new HttpBodyWithDelegate(contentType, response.body().contentLength(), response.body());
         } else {
             body = response.body();
         }
@@ -48,5 +49,44 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
         }
 
         return HttpServerResponse.of(result.code(), headers, body);
+    }
+
+    private static class HttpBodyWithDelegate implements HttpBodyOutput {
+        private final String contentType;
+        private final long len;
+        private final HttpBodyOutput delegate;
+
+        private HttpBodyWithDelegate(String contentType, long len, HttpBodyOutput delegate) {
+            this.contentType = contentType;
+            this.len = len;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public long contentLength() {
+            return len;
+        }
+
+        @Nullable
+        @Override
+        public String contentType() {
+            return contentType;
+        }
+
+        @Nullable
+        @Override
+        public ByteBuffer getFullContentIfAvailable() {
+            return HttpBodyOutput.super.getFullContentIfAvailable();
+        }
+
+        @Override
+        public void write(OutputStream os) throws IOException {
+            delegate.write(os);
+        }
+
+        @Override
+        public void close() throws IOException {
+            delegate.close();
+        }
     }
 }

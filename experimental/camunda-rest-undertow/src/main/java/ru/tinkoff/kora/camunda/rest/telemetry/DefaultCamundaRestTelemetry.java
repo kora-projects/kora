@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.camunda.rest.telemetry;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.Collection;
@@ -35,8 +34,7 @@ public final class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
                                            String path,
                                            @Nullable String routeTemplate,
                                            HttpHeaders headers,
-                                           Map<String, ? extends Collection<String>> queryParams,
-                                           HttpBodyInput body) {
+                                           Map<String, ? extends Collection<String>> queryParams) {
         var metrics = this.metrics;
         var logger = this.logger;
         var tracer = this.tracer;
@@ -56,7 +54,7 @@ public final class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
                 logger.logStart(method, path, routeTemplate, queryParams, headers);
             }
             if (tracer != null) {
-                span = tracer.createSpan(scheme, host, method, path, routeTemplate, headers, queryParams, body);
+                span = tracer.createSpan(scheme, host, method, path, routeTemplate, headers, queryParams);
             } else {
                 span = null;
             }

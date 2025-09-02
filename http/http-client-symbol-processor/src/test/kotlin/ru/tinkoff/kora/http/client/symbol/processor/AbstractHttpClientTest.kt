@@ -21,9 +21,6 @@ import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig
-import java.nio.ByteBuffer
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.Flow
 
 abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
     val httpResponse = mock<HttpClientResponse>().also {
@@ -39,20 +36,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
     protected fun onRequest(method: String, path: String, responseConsumer: (TestHttpClientResponse) -> TestHttpClientResponse) {
         whenever(httpClient.execute(Mockito.argThat { arg: HttpClientRequest -> arg.method().equals(method, ignoreCase = true) && arg.uri().toString() == path }))
             .thenAnswer { invocation ->
-                val f = CompletableFuture<Void?>()
-                invocation.getArgument(0, HttpClientRequest::class.java).body().subscribe(object : Flow.Subscriber<ByteBuffer?> {
-                    override fun onSubscribe(subscription: Flow.Subscription) = subscription.request(Long.MAX_VALUE)
-
-                    override fun onNext(item: ByteBuffer?) {}
-                    override fun onError(throwable: Throwable) {
-                        f.completeExceptionally(throwable)
-                    }
-
-                    override fun onComplete() {
-                        f.complete(null)
-                    }
-                })
-                f.get()
+                invocation.getArgument(0, HttpClientRequest::class.java).body().close()
                 responseConsumer(TestHttpClientResponse(code = 200))
             }
     }

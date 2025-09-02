@@ -8,9 +8,7 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.http.HttpResponse;
-import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.concurrent.Flow;
 
 public class JdkHttpClientResponse implements HttpClientResponse {
     private final HttpResponse<InputStream> response;
@@ -84,11 +82,6 @@ public class JdkHttpClientResponse implements HttpClientResponse {
                 this.contentType = contentType = headers.firstValue("content-type").orElse(null);
             }
             return contentType;
-        }
-
-        @Override
-        public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-            throw new IllegalStateException();
         }
 
         @Override

@@ -25,7 +25,6 @@ import java.lang.reflect.Proxy;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.CompletionStage;
 
 public abstract class AbstractHttpControllerTest extends AbstractAnnotationProcessorTest {
 
@@ -126,10 +125,6 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
 
     protected HttpServerResponseMapper<String> strResponseMapper() {
         return (ctx, request, result) -> HttpServerResponse.of(200, HttpBody.plaintext(result));
-    }
-
-    protected HttpServerRequestMapper<CompletionStage<String>> asyncStringRequestMapper() {
-        return request -> request.body().asArrayStage().thenApply(b -> new String(b, StandardCharsets.UTF_8));
     }
 
     protected HttpServerRequestMapper<String> stringRequestMapper() {

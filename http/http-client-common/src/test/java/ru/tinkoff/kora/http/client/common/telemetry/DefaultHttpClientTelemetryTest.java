@@ -4,16 +4,15 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.StreamingHttpBodyInput;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.net.URI;
-import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -63,7 +62,7 @@ class DefaultHttpClientTelemetryTest {
         Mockito.when(rq.method()).thenReturn("POST");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
-            Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));
+            Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8))));
             var ctx = telemetry.get(Context.clear(), rq);
 
             Assertions.assertThat(telemetry.isEnabled()).isTrue();
@@ -114,7 +113,7 @@ class DefaultHttpClientTelemetryTest {
         Mockito.when(rq.method()).thenReturn("POST");
 
         try (var rs = Mockito.mock(HttpClientResponse.class)) {
-            Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, FlowUtils.one(Context.clear(), ByteBuffer.wrap("test".getBytes(StandardCharsets.UTF_8)))));
+            Mockito.when(rs.body()).thenReturn(new StreamingHttpBodyInput("text/plain", 4, new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8))));
             Mockito.when(rs.code()).thenReturn(200);
             var ctx = telemetry.get(Context.clear(), rq);
 

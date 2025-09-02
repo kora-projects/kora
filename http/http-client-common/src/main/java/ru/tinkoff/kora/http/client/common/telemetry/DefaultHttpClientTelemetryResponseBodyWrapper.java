@@ -7,8 +7,6 @@ import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicBoolean implements HttpBodyInput {
@@ -33,17 +31,6 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
     }
 
     @Override
-    public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-        if (this.compareAndSet(false, true)) {
-            var s = new ByteBufferSubscriber(response, subscriber, this.telemetryContext);
-            response.body().subscribe(s);
-            subscriber.onSubscribe(s);
-        } else {
-            throw new IllegalStateException("Body was already subscribed");
-        }
-    }
-
-    @Override
     public InputStream asInputStream() {
         var is = this.is;
         if (is != null) {
@@ -59,96 +46,10 @@ public final class DefaultHttpClientTelemetryResponseBodyWrapper extends AtomicB
 
     @Override
     public void close() throws IOException {
-        if (this.is != null) {
-            try {
-                this.is.close();
-            } finally {
-                this.response.close();
-            }
-        } else {
-            if (compareAndSet(false, true)) {
-                this.response.body().subscribe(new DrainSubscriber(this.response, this.telemetryContext));
-            }
-        }
-    }
-
-    private static class ByteBufferSubscriber implements Flow.Subscriber<ByteBuffer>, Flow.Subscription {
-        private final Flow.Subscriber<? super ByteBuffer> subscriber;
-        private final HttpClientResponse response;
-        private final DefaultHttpClientTelemetryContextImpl telemetryContext;
-        private Flow.Subscription subscription;
-
-        public ByteBufferSubscriber(HttpClientResponse response, Flow.Subscriber<? super ByteBuffer> subscriber, DefaultHttpClientTelemetryContextImpl telemetryContext) {
-            this.response = response;
-            this.subscriber = subscriber;
-            this.telemetryContext = telemetryContext;
-        }
-
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
-            this.subscription = subscription;
-        }
-
-        @Override
-        public void onNext(ByteBuffer item) {
-            subscriber.onNext(item);
-        }
-
-        @Override
-        public void onError(Throwable throwable) {
-            try {
-                telemetryContext.onClose(throwable);
-            } finally {
-                subscriber.onError(throwable);
-            }
-        }
-
-        @Override
-        public void onComplete() {
-            try {
+        try (var _ = this.is; var _ = this.response) {} finally {
+            if (this.compareAndSet(false, true)) {
                 telemetryContext.onClose(response.code(), response.headers(), null, null);
-            } finally {
-                subscriber.onComplete();
             }
-        }
-
-        @Override
-        public void request(long n) {
-            subscription.request(n);
-        }
-
-        @Override
-        public void cancel() {
-            subscription.cancel();
-        }
-    }
-
-    private static final class DrainSubscriber implements Flow.Subscriber<ByteBuffer> {
-        private final HttpClientResponse response;
-        private final DefaultHttpClientTelemetryContextImpl telemetryContext;
-
-        public DrainSubscriber(HttpClientResponse response, DefaultHttpClientTelemetryContextImpl telemetryContext) {
-            this.response = response;
-            this.telemetryContext = telemetryContext;
-        }
-
-        @Override
-        public void onSubscribe(Flow.Subscription subscription) {
-            subscription.request(Long.MAX_VALUE);
-        }
-
-        @Override
-        public void onNext(ByteBuffer item) {
-        }
-
-        @Override
-        public void onError(Throwable throwable) {
-            telemetryContext.onClose(throwable);
-        }
-
-        @Override
-        public void onComplete() {
-            telemetryContext.onClose(response.code(), response.headers(), null, null);
         }
     }
 

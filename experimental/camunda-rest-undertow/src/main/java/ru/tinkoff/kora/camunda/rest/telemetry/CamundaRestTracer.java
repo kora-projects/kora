@@ -28,6 +28,5 @@ public interface CamundaRestTracer {
                                String path,
                                String pathTemplate,
                                HttpHeaders headers,
-                               Map<String, ? extends Collection<String>> queryParams,
-                               HttpBodyInput body);
+                               Map<String, ? extends Collection<String>> queryParams);
 }

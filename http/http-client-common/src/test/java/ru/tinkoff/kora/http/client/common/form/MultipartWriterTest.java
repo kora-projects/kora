@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.http.client.common.form;
 
 import org.junit.jupiter.api.Test;
-import reactor.adapter.JdkFlowAdapter;
-import reactor.core.publisher.Flux;
-import ru.tinkoff.kora.common.util.FlowUtils;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.form.FormMultipart;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
@@ -13,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class MultipartWriterTest {
     @Test
-    void testMultipart() {
+    void testMultipart() throws IOException {
         var e = """
             --boundary\r
             content-disposition: form-data; name="field1"\r
@@ -45,12 +46,32 @@ class MultipartWriterTest {
             FormMultipart.data("field1", "value1"),
             FormMultipart.file("field2", "example1.txt", "text/plain", "value2".getBytes(StandardCharsets.UTF_8)),
             FormMultipart.file("field3", "example2.txt", "text/plain", "value3".getBytes(StandardCharsets.UTF_8)),
-            FormMultipart.file("field4", "example3.txt", "text/plain", JdkFlowAdapter.publisherToFlowPublisher(Flux.just("some ", "streaming ", "data").map(StandardCharsets.UTF_8::encode))),
+            FormMultipart.file("field4", "example3.txt", new HttpBodyOutput() {
+                @Override
+                public void close() {}
+
+                @Override
+                public long contentLength() {
+                    return -1;
+                }
+
+                @Override
+                public String contentType() {
+                    return "text/plain";
+                }
+
+                @Override
+                public void write(OutputStream os) throws IOException {
+                    os.write("some ".getBytes(StandardCharsets.UTF_8));
+                    os.write("streaming ".getBytes(StandardCharsets.UTF_8));
+                    os.write("data".getBytes(StandardCharsets.UTF_8));
+                }
+            }),
             FormMultipart.data("field5", "value5")
         ));
-        var s = FlowUtils.toByteArrayFuture(b)
-            .thenApply(_b -> new String(_b, StandardCharsets.UTF_8))
-            .join();
+        var baos = new ByteArrayOutputStream();
+        b.write(baos);
+        var s = baos.toString(StandardCharsets.UTF_8);
         assertThat(s).isEqualTo(e);
         assertThat(b.contentType()).isEqualTo("multipart/form-data;boundary=\"boundary\"");
     }

@@ -47,8 +47,7 @@ public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
                                String path,
                                String pathTemplate,
                                HttpHeaders headers,
-                               Map<String, ? extends Collection<String>> queryParams,
-                               HttpBodyInput body) {
+                               Map<String, ? extends Collection<String>> queryParams) {
         var context = Context.current();
         var parentCtx = W3CTraceContextPropagator.getInstance().extract(root(), headers, HttpHeadersTextMapGetter.INSTANCE);
         var span = this.tracer

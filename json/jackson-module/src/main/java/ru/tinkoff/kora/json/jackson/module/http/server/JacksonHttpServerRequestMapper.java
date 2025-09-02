@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.json.jackson.module.http.server;
 
+import com.fasterxml.jackson.core.JacksonException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectReader;
 import ru.tinkoff.kora.common.util.ByteBufferInputStream;
@@ -30,18 +31,10 @@ public final class JacksonHttpServerRequestMapper<T> implements HttpServerReques
                 }
             }
             try (var is = body.asInputStream()) {
-                if (is != null) {
-                    return this.objectMapper.readValue(is);
-                }
+                return this.objectMapper.readValue(is);
             }
-            try {
-                var bytes = body.asArrayStage().toCompletableFuture().get();
-                return this.objectMapper.readValue(bytes);
-            } catch (InterruptedException e) {
-                throw HttpServerResponseException.of(500, e);
-            } catch (ExecutionException e) {
-                throw HttpServerResponseException.of(500, e.getCause());
-            }
+        } catch (JacksonException e) {
+            throw HttpServerResponseException.of(400, e);
         }
     }
 }
