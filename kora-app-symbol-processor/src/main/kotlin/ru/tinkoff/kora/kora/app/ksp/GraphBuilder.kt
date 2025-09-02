@@ -213,7 +213,7 @@ object GraphBuilder {
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
                 val msg = if (dependencyClaim.tags.isEmpty()) {
                     StringBuilder(
-                        "Required dependency type wasn't found in dependency container and can't be auto created: ${dependencyClaim.type.toTypeName()} with no tag.\n" +
+                        "Required dependency type wasn't found in dependency container and can't be auto created: ${dependencyClaim.type.toTypeName()} without tag.\n" +
                             "Keep in mind that nullable & non nullable types are different ones.\n" +
                             "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
                     )
