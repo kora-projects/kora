@@ -39,7 +39,6 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.undertow.UndertowHttpHeaders;
 import ru.tinkoff.kora.http.server.undertow.UndertowHttpServer;
-import ru.tinkoff.kora.http.server.undertow.request.UndertowPublicApiRequest;
 import ru.tinkoff.kora.openapi.management.OpenApiHttpServerHandler;
 import ru.tinkoff.kora.openapi.management.RapidocHttpServerHandler;
 import ru.tinkoff.kora.openapi.management.SwaggerUIHttpServerHandler;
@@ -123,14 +122,16 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         var restHandler = deploymentManager.start();
         root.addPrefixPath(camundaRestConfig.path(), exchange -> {
             var match = restMatcher.getMatch(exchange.getRequestMethod().toString(), exchange.getRequestPath());
-            final CamundaRestTelemetryContext telemetryContext;
-            var context = Context.clear();
-            var req = new UndertowPublicApiRequest(exchange, context);
-            if (match.isPresent()) {
-                telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), req.body());
-            } else {
-                telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), null, req.headers(), req.queryParams(), req.body());
-            }
+            var pathTemplate = match == null ? null : match.pathTemplate();
+            var telemetryContext = telemetry.get(
+                exchange.getRequestScheme(),
+                exchange.getHostName(),
+                exchange.getRequestMethod().toString(),
+                exchange.getRelativePath(),
+                pathTemplate,
+                new UndertowHttpHeaders(exchange.getRequestHeaders()),
+                Map.of()// todo do we need query here?
+            );
 
             restHandler.handleRequest(exchange.addExchangeCompleteListener((ex, nextListener) -> {
                 var httpResultCode = HttpResultCode.fromStatusCode(ex.getStatusCode());
@@ -611,7 +612,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         public void handleRequest(HttpServerExchange exchange) {
             var requestPath = exchange.getRequestPath();
             var match = pathMatcher.getMatch(exchange.getRequestMethod().toString(), requestPath);
-            if (match.isEmpty()) {
+            if (match == null) {
                 exchange.setStatusCode(404);
                 exchange.endExchange();
                 return;
@@ -620,10 +621,17 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
             exchange.dispatch(executor, exchange1 -> {
                 var context = Context.clear();
 
-                var req = new UndertowPublicApiRequest(exchange1, context);
-                var telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), req.body());
+                var telemetryContext = telemetry.get(
+                    exchange.getRequestScheme(),
+                    exchange.getHostName(),
+                    exchange.getRequestMethod().toString(),
+                    exchange.getRelativePath(),
+                    match.pathTemplate(),
+                    new UndertowHttpHeaders(exchange.getRequestHeaders()),
+                    Map.of()// todo do we need query here?
+                );
 
-                var fakeRequest = getFakeRequest(match.get());
+                var fakeRequest = getFakeRequest(match);
                 var openapi = restConfig.openapi();
                 if (openapi.enabled() && requestPath.startsWith(openapi.endpoint())) {
                     executeHandler(context, telemetryContext, exchange1, openApiHandler, fakeRequest);

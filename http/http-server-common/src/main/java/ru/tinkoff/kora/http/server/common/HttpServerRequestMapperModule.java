@@ -17,38 +17,41 @@ public interface HttpServerRequestMapperModule {
 
     default HttpServerRequestMapper<ByteBuffer> byteBufBodyRequestMapper() {
         return (r) -> {
-            final ByteBuffer content = r.body().getFullContentIfAvailable();
-            return content != null
-                ? content
-                : r.body().asBufferStage().toCompletableFuture().join();
+            try (var body = r.body()) {
+                var content = body.getFullContentIfAvailable();
+                if (content != null) {
+                    return content;
+                }
+                try (var is = body.asInputStream()) {
+                    return ByteBuffer.wrap(is.readAllBytes());
+                }
+            }
         };
     }
 
     default HttpServerRequestMapper<byte[]> byteArrayRequestMapper() {
         return (request) -> {
-            var full = request.body().getFullContentIfAvailable();
-            if (full != null) {
-                if (full.hasArray() && full.arrayOffset() == 0 && full.array().length == full.remaining()) {
-                    return full.array();
+            try (var body = request.body()) {
+                var full = body.getFullContentIfAvailable();
+                if (full != null) {
+                    if (full.hasArray() && full.arrayOffset() == 0 && full.array().length == full.remaining()) {
+                        return full.array();
+                    }
+                    var array = new byte[full.remaining()];
+                    full.get(array);
+                    return array;
                 }
-                var array = new byte[full.remaining()];
-                full.get(array);
-                return array;
-            }
 
-            try (var is = request.body().asInputStream()) {
-                if (is != null) {
+                try (var is = body.asInputStream()) {
                     return is.readAllBytes();
                 }
             }
-
-            return request.body().asArrayStage().toCompletableFuture().join();
         };
     }
 
     default HttpServerRequestMapper<String> stringRequestMapper(HttpServerRequestMapper<byte[]> mapper) {
         return request -> {
-            final byte[] bytes = mapper.apply(request);
+            var bytes = mapper.apply(request);
             if (bytes == null) {
                 return null;
             }

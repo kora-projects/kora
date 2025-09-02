@@ -2,10 +2,11 @@ package ru.tinkoff.kora.http.server.annotation.processor.server;
 
 import org.assertj.core.api.AbstractByteArrayAssert;
 import org.assertj.core.api.Assertions;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
@@ -19,10 +20,20 @@ public class HttpResponseAssert {
 
     public HttpResponseAssert(HttpServerResponse httpResponse) {
         this.code = httpResponse.code();
-        this.contentLength = httpResponse.body() == null ? -1 : httpResponse.body().contentLength();
-        this.contentType = httpResponse.body() == null ? null : httpResponse.body().contentType();
-        this.headers = httpResponse.headers();
-        this.body = httpResponse.body() == null ? new byte[0] : FlowUtils.toByteArrayFuture(httpResponse.body()).join();
+        try (var body = httpResponse.body()) {
+            this.contentLength = body == null ? -1 : body.contentLength();
+            this.contentType = body == null ? null : body.contentType();
+            this.headers = httpResponse.headers();
+            if (body == null) {
+                this.body = new byte[0];
+            } else {
+                var baos = new ByteArrayOutputStream();
+                body.write(baos);
+                this.body = baos.toByteArray();
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public HttpResponseAssert hasStatus(int expected) {

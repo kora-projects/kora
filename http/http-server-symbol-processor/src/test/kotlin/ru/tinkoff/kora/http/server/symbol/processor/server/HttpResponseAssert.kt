@@ -2,9 +2,9 @@ package ru.tinkoff.kora.http.server.symbol.processor.server
 
 import org.assertj.core.api.AbstractByteArrayAssert
 import org.assertj.core.api.Assertions
-import ru.tinkoff.kora.common.util.FlowUtils
 import ru.tinkoff.kora.http.common.header.HttpHeaders
 import ru.tinkoff.kora.http.server.common.HttpServerResponse
+import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.util.*
 
@@ -20,9 +20,11 @@ class HttpResponseAssert(httpResponse: HttpServerResponse) {
         contentLength = httpResponse.body()?.contentLength()
         contentType = httpResponse.body()?.contentType()
         headers = httpResponse.headers()
-        body = httpResponse.body()
-            ?.let { FlowUtils.toByteArrayFuture(it).get() }
-            ?: byteArrayOf()
+        body = httpResponse.body().use {
+            val baos = ByteArrayOutputStream()
+            it?.write(baos)
+            baos.toByteArray()
+        }
     }
 
     fun hasStatus(expected: Int): HttpResponseAssert {

@@ -43,12 +43,11 @@ public class UndertowExchangeProcessor implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
         var context = this.context;
-//        Thread.sleep(100000);
         UndertowContext.set(context, exchange);
         context.inject();
-        exchange.startBlocking();
         try {
-            var request = new UndertowPublicApiRequest(exchange, context);
+            exchange.startBlocking();
+            var request = new UndertowPublicApiRequest(exchange);
             var response = this.publicApiHandler.process(context, request);
             var error = response.error();
             try {
@@ -72,6 +71,7 @@ public class UndertowExchangeProcessor implements HttpHandler {
             exchange.getResponseSender().send(StandardCharsets.UTF_8.encode(Objects.requireNonNullElse(exception.getMessage(), "no message")));
         } finally {
             UndertowContext.clear(context);
+            exchange.endExchange();
         }
     }
 

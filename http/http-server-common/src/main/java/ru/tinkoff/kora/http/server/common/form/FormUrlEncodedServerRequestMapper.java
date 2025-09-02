@@ -14,7 +14,7 @@ import java.util.Map;
 
 public final class FormUrlEncodedServerRequestMapper implements HttpServerRequestMapper<FormUrlEncoded> {
     @Override
-    public FormUrlEncoded apply(HttpServerRequest request) {
+    public FormUrlEncoded apply(HttpServerRequest request) throws IOException {
         var contentType = request.headers().getFirst("content-type");
         if (contentType == null || !contentType.equalsIgnoreCase("application/x-www-form-urlencoded")) {
             var rs = HttpServerResponseException.of(415, "Expected content type: 'application/x-www-form-urlencoded'");
@@ -25,11 +25,20 @@ public final class FormUrlEncodedServerRequestMapper implements HttpServerReques
             }
             throw rs;
         }
-        var bytes = request.body().asArrayStage().toCompletableFuture().join();
-        var str = new String(bytes, StandardCharsets.UTF_8);
-        var parts = FormUrlEncodedServerRequestMapper.read(str);
-        return new FormUrlEncoded(parts);
-
+        try (var body = request.body()) {
+            var full = body.getFullContentIfAvailable();
+            if (full != null) {
+                var str = StandardCharsets.UTF_8.decode(full).toString();
+                var parts = FormUrlEncodedServerRequestMapper.read(str);
+                return new FormUrlEncoded(parts);
+            }
+            try (var is = body.asInputStream()) {
+                var bytes = is.readAllBytes();
+                var str = new String(bytes, StandardCharsets.UTF_8);
+                var parts = FormUrlEncodedServerRequestMapper.read(str);
+                return new FormUrlEncoded(parts);
+            }
+        }
     }
 
     public static Map<String, FormUrlEncoded.FormPart> read(String body) {

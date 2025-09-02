@@ -31,18 +31,19 @@ final class UndertowPathMatcher {
 
     record Match(String method, String pathTemplate, Map<String, String> pathParameters) {}
 
-    Optional<Match> getMatch(String method, String path) {
+    @Nullable
+    Match getMatch(String method, String path) {
         final Map<String, String> templateParameters;
         final @Nullable String routeTemplate;
 
         var methodMatchers = pathTemplateMatcher.get(method);
         var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(path);
         if (pathTemplateMatch == null) {
-            return Optional.empty();
+            return null;
         } else {
             templateParameters = pathTemplateMatch.parameters();
             routeTemplate = pathTemplateMatch.matchedTemplate();
-            return Optional.of(new Match(method, routeTemplate, templateParameters));
+            return new Match(method, routeTemplate, templateParameters);
         }
     }
 }

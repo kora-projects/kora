@@ -18,7 +18,7 @@ public final class JacksonHttpServerResponseMapper<T> implements HttpServerRespo
 
     @Override
     public HttpServerResponse apply(Context ctx, HttpServerRequest request, T result) {
-        var body = new JacksonHttpBodyOutput<>(objectMapper, ctx, result);
+        var body = new JacksonHttpBodyOutput<>(objectMapper, result);
         return HttpServerResponse.of(200, body);
     }
 }

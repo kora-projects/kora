@@ -40,7 +40,7 @@ interface {{classname}}ServerResponseMappers {
           rs.{{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}?.let { headers.set("{{baseName}}", it) }{{/required}}{{/headers}}{{#isBinary}}{{#vendorExtensions.isBinaryUnknownType}}
           val entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content)
           return response{{code}}Delegate.apply(ctx, rq, entity){{/vendorExtensions.isBinaryUnknownType}}{{^vendorExtensions.isBinaryUnknownType}}
-          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of(ctx, "{{{vendorExtensions.contentType}}}", rs.content)){{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
+          return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, HttpBody.of("{{{vendorExtensions.contentType}}}", rs.content)){{/vendorExtensions.isBinaryUnknownType}}{{/isBinary}}{{^isBinary}}{{^dataType}}
           return HttpServerResponse.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers){{/dataType}}{{#dataType}}
           val entity = HttpResponseEntity.of({{#isDefault}}rs.statusCode{{/isDefault}}{{^isDefault}}{{code}}{{/isDefault}}, headers, rs.content)
           return response{{code}}Delegate.apply(ctx, rq, entity){{/dataType}}{{/isBinary}}{{^vendorExtensions.singleResponse}}

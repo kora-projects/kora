@@ -9,12 +9,6 @@ import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.verification.VerificationMode;
-import org.reactivestreams.FlowAdapters;
-import org.reactivestreams.Publisher;
-import reactor.adapter.JdkFlowAdapter;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.util.function.Tuple2;
 import reactor.util.function.Tuples;
 import ru.tinkoff.kora.application.graph.All;
@@ -25,7 +19,6 @@ import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.liveness.LivenessProbeFailure;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
-import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
@@ -316,11 +309,6 @@ public abstract class HttpServerTestKit {
                     }
 
                     @Override
-                    public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-                        throw new IllegalStateException();
-                    }
-
-                    @Override
                     public void write(OutputStream os) throws IOException {
                         for (int i = 0; i < 10; i++) {
                             try {
@@ -362,11 +350,6 @@ public abstract class HttpServerTestKit {
                 @Override
                 public String contentType() {
                     return null;
-                }
-
-                @Override
-                public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-                    throw new IllegalStateException();
                 }
 
                 @Override
@@ -421,9 +404,7 @@ public abstract class HttpServerTestKit {
     void serverWithBigResponse() throws IOException {
         var data = new byte[10 * 1024 * 1024];
         ThreadLocalRandom.current().nextBytes(data);
-        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 10 * 1024 * 1024,
-            JdkFlowAdapter.publisherToFlowPublisher(Mono.just(ByteBuffer.wrap(data)).delayElement(Duration.ofMillis(100))))
-        );
+        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 10 * 1024 * 1024, os -> os.write(data)));
         var handler = handler(GET, "/", (_, _) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
@@ -500,7 +481,11 @@ public abstract class HttpServerTestKit {
             System.arraycopy(bytes, 0, data, i * 1024, 1024);
         }
 
-        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 102400, JdkFlowAdapter.publisherToFlowPublisher(Flux.fromIterable(dataList).map(ByteBuffer::wrap))));
+        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 102400, os -> {
+            for (var bytes : dataList) {
+                os.write(bytes);
+            }
+        }));
         var handler = handler(GET, "/", (_, _) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
@@ -577,9 +562,18 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testTimeoutAndBrokenPipe() {
-        var bytes = ByteBuffer.wrap("hello world".repeat(1024).getBytes(StandardCharsets.UTF_8));
-        var body = Mono.fromCallable(bytes::slice).repeat(1024).delayElements(Duration.ofMillis(1)).publishOn(Schedulers.parallel());
-        var httpResponse = httpResponse(200, -1, "text/plain", body);
+        var bytes = "hello world".repeat(1024).getBytes(StandardCharsets.UTF_8);
+        var httpResponse = httpResponse(200, -1, "text/plain", os -> {
+            for (int i = 0; i < 1024; i++) {
+                os.write(bytes);
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
+            }
+        });
         var handler = handler(GET, "/", (_, _) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 200)));
             return httpResponse;
@@ -638,11 +632,6 @@ public abstract class HttpServerTestKit {
             }
 
             @Override
-            public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-                throw new IllegalStateException();
-            }
-
-            @Override
             public void write(OutputStream os) throws IOException {
                 os.write("hello world".getBytes(StandardCharsets.UTF_8));
                 os.write("hello world".getBytes(StandardCharsets.UTF_8));
@@ -682,8 +671,9 @@ public abstract class HttpServerTestKit {
     @Test
     void testExceptionOnFirstResponseBodyPart() throws IOException {
         var bytes = ByteBuffer.wrap("hello world".getBytes(StandardCharsets.UTF_8));
-        var body = Flux.<ByteBuffer>error(() -> new RuntimeException("test")).publishOn(Schedulers.parallel());
-        var httpResponse = httpResponse(200, bytes.remaining() * 5, "text/plain", body);
+        var httpResponse = httpResponse(200, bytes.remaining() * 5, "text/plain", os -> {
+            throw new RuntimeException("test");
+        });
         var handler = handler(GET, "/", (_, _) -> httpResponse);
         this.startServer(handler);
 
@@ -862,7 +852,7 @@ public abstract class HttpServerTestKit {
             public HttpServerResponse intercept(Context ctx, HttpServerRequest request, InterceptChain chain) throws Exception {
                 var header = request.headers().getFirst("test-header2");
                 if (header != null) {
-                    request.body().subscribe(FlowUtils.drain());
+                    request.body().close();
                     return HttpServerResponse.of(400, HttpBody.plaintext("error"));
                 }
                 return chain.process(ctx, request);
@@ -931,11 +921,7 @@ public abstract class HttpServerTestKit {
     }
 
 
-    private static HttpServerResponse httpResponse(int code, int contentLength, String contentType, Publisher<? extends ByteBuffer> body) {
-        return httpResponse(code, contentLength, contentType, FlowAdapters.toFlowPublisher(body));
-    }
-
-    private static HttpServerResponse httpResponse(int code, int contentLength, String contentType, Flow.Publisher<? extends ByteBuffer> body) {
+    private static HttpServerResponse httpResponse(int code, int contentLength, String contentType, HttpBodyOutput.HttpBodyWriter body) {
         return new HttpServerResponse() {
             @Override
             public int code() {

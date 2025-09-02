@@ -3,15 +3,16 @@ package ru.tinkoff.kora.http.common.body;
 import jakarta.annotation.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 
-public class StreamingHttpBodyOutput implements HttpBodyOutput {
+public class InputStreamHttpBodyOutput implements HttpBodyOutput {
     @Nullable
     private final String contentType;
     private final long contentLength;
-    private final HttpBodyWriter content;
+    private final InputStream content;
 
-    public StreamingHttpBodyOutput(@Nullable String contentType, long contentLength, HttpBodyWriter content) {
+    public InputStreamHttpBodyOutput(@Nullable String contentType, long contentLength, InputStream content) {
         this.contentType = contentType;
         this.contentLength = contentLength;
         this.content = content;
@@ -30,9 +31,11 @@ public class StreamingHttpBodyOutput implements HttpBodyOutput {
 
     @Override
     public void write(OutputStream os) throws IOException {
-        content.write(os);
+        content.transferTo(os);
     }
 
     @Override
-    public void close() throws IOException {}
+    public void close() throws IOException {
+        this.content.close();
+    }
 }
