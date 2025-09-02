@@ -17,7 +17,7 @@ private suspend fun <T> JdbcConnectionFactory.withConnectionInternal(
     }
 
     val curCtx = Context.current()
-    val currentConnectionCtx = ConnectionContext.get(curCtx)
+    val currentConnectionCtx = this.currentConnectionContext()
     if (currentConnectionCtx != null) {
         try {
             return callback.invoke(currentConnectionCtx)
@@ -36,12 +36,12 @@ private suspend fun <T> JdbcConnectionFactory.withConnectionInternal(
             try {
                 val newConnection = newConnection()
                 val connectionCtx = ConnectionContext(newConnection)
-                ConnectionContext.set(forkCtx, connectionCtx)
+                setContext(forkCtx, connectionCtx)
                 newConnection.use { callback.invoke(connectionCtx) }
             } catch (e: SQLException) {
                 throw RuntimeSqlException(e)
             } finally {
-                ConnectionContext.remove(forkCtx)
+                clearContext(forkCtx)
             }
         }
     } finally {
