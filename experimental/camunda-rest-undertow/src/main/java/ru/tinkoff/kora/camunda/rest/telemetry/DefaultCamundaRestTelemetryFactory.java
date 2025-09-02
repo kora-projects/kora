@@ -5,8 +5,8 @@ import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 
 public final class DefaultCamundaRestTelemetryFactory implements CamundaRestTelemetryFactory {
 
-    private static final CamundaRestTelemetry.CamundaRestTelemetryContext EMPTY_CTX = (s, r, h, ex) -> {};
-    private static final CamundaRestTelemetry EMPTY = (s, host, m, p, pt, h, q, b) -> EMPTY_CTX;
+    private static final CamundaRestTelemetry.CamundaRestTelemetryContext EMPTY_CTX = (_, _, _, _) -> {};
+    private static final CamundaRestTelemetry EMPTY = (_, _, _, _, _, _, _) -> EMPTY_CTX;
 
     @Nullable
     private final CamundaRestLoggerFactory logger;

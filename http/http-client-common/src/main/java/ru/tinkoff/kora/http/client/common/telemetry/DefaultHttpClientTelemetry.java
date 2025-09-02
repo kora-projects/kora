@@ -13,10 +13,8 @@ import java.net.URI;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletionException;
-import java.util.concurrent.Flow;
 import java.util.function.Consumer;
 
 public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
@@ -141,34 +139,7 @@ public final class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             }
             return HttpBody.of(body.contentType(), full);
         }
-        var bodyChunks = new ArrayList<ByteBuffer>();
-        var publisher = (Flow.Publisher<ByteBuffer>) subscriber -> body.subscribe(new Flow.Subscriber<ByteBuffer>() {
-            @Override
-            public void onSubscribe(Flow.Subscription subscription) {
-                subscriber.onSubscribe(subscription);
-            }
-
-            @Override
-            public void onNext(ByteBuffer item) {
-                var copy = ByteBuffer.allocate(item.remaining());
-                copy.put(item.slice());
-                copy.rewind();
-                bodyChunks.add(copy);
-                subscriber.onNext(item);
-            }
-
-            @Override
-            public void onError(Throwable throwable) {
-                subscriber.onError(throwable);
-            }
-
-            @Override
-            public void onComplete() {
-                onComplete.accept(bodyChunks);
-                subscriber.onComplete();
-            }
-        });
-        return HttpBodyOutput.of(body.contentType(), body.contentLength(), publisher);
+        return new DefaultHttpClientTelemetryRequestBodyWrapper(body, onComplete);
     }
 
     @Nullable

@@ -22,6 +22,6 @@ public final class JacksonHttpClientRequestMapper<T> implements HttpClientReques
 
     @Override
     public HttpBodyOutput apply(Context ctx, T value) {
-        return new JacksonHttpBodyOutput<>(this.objectWriter, ctx, value);
+        return new JacksonHttpBodyOutput<>(this.objectWriter, value);
     }
 }

@@ -3,25 +3,23 @@ package ru.tinkoff.kora.http.server.common.form;
 import jakarta.annotation.Nullable;
 import org.assertj.core.data.Index;
 import org.assertj.core.presentation.Representation;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import reactor.adapter.JdkFlowAdapter;
-import reactor.core.publisher.Flux;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.cookie.Cookie;
 import ru.tinkoff.kora.http.common.cookie.Cookies;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.ByteBuffer;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.concurrent.Flow;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,18 +40,10 @@ class MultipartReaderTest {
             value2\r
             --boundary--\r
             \r""".getBytes(StandardCharsets.UTF_8);
-        var f = Flux.<ByteBuffer>create(sink -> {
-            var i = 0;
-            while (i < e.length) {
-                var len = Math.min(ThreadLocalRandom.current().nextInt(10), e.length - i);
-                var buf = ByteBuffer.wrap(e, i, len);
-                sink.next(buf);
-                i += len;
-            }
-            sink.complete();
-        });
+        var bais = new ByteArrayInputStream(e);
+        var is = new RandomizedReadInputStream(bais);
 
-        var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
+        var request = new SimpleHttpServerRequest("POST", "/", is, new Map.Entry[]{
             Map.entry("content-type", "multipart/form-data; boundary=\"boundary\"")
         }, Map.of());
         var result = MultipartReader.read(request);
@@ -90,32 +80,10 @@ class MultipartReaderTest {
             \r
             \r
             \r""".getBytes(StandardCharsets.UTF_8);
-        AtomicInteger integer = new AtomicInteger(0);
-        var firstFlux = Flux.<ByteBuffer>create(sink -> {
-            var i = 0;
-            while (i < e.length - 4) {
-                var len = Math.min(ThreadLocalRandom.current().nextInt(10), e.length - i - 4);
-                var buf = ByteBuffer.wrap(e, i, len);
-                sink.next(buf);
-                i += len;
-            }
-            sink.complete();
-            integer.addAndGet(i);
-        });
-        var secondFlux = Flux.<ByteBuffer>create(sink -> {
-            var i = integer.get();
-            while (i < e.length) {
-                var len = Math.min(ThreadLocalRandom.current().nextInt(10), e.length - i);
-                var buf = ByteBuffer.wrap(e, i, len);
-                sink.next(buf);
-                i += len;
-            }
-            sink.complete();
-        });
+        var bais = new ByteArrayInputStream(e);
+        var is = new RandomizedReadInputStream(bais);
 
-        var f = firstFlux.concatWith(secondFlux);
-
-        var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
+        var request = new SimpleHttpServerRequest("POST", "/", is, new Map.Entry[]{
             Map.entry("content-type", "multipart/form-data; boundary=\"boundary\"")
         }, Map.of());
         var result = MultipartReader.read(request);
@@ -150,18 +118,10 @@ class MultipartReaderTest {
             value2\r
             --X-INSOMNIA-BOUNDARY--\r
             \r""".getBytes(StandardCharsets.UTF_8);
-        var f = Flux.<ByteBuffer>create(sink -> {
-            var i = 0;
-            while (i < body.length) {
-                var len = Math.min(ThreadLocalRandom.current().nextInt(10), body.length - i);
-                var buf = ByteBuffer.wrap(body, i, len);
-                sink.next(buf);
-                i += len;
-            }
-            sink.complete();
-        });
+        var bais = new ByteArrayInputStream(body);
+        var is = new RandomizedReadInputStream(bais);
 
-        var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
+        var request = new SimpleHttpServerRequest("POST", "/", is, new Map.Entry[]{
             Map.entry("content-type", "multipart/form-data; boundary=X-INSOMNIA-BOUNDARY")
         }, Map.of());
         var result = MultipartReader.read(request);
@@ -194,17 +154,18 @@ class MultipartReaderTest {
             Content-Type: text/plain
             
             """;
-        var length = 12;
-        var f = Flux.fromStream(body.lines())
-            .map(l -> StandardCharsets.UTF_8.encode(l + "\r\n"))
-            .concatWith(Flux.fromStream(IntStream.range(0, length).mapToObj(i -> {
-                var b = new byte[1024 * 1024];
-                ThreadLocalRandom.current().nextBytes(b);
-                return ByteBuffer.wrap(b);
-            })))
-            .concatWithValues(StandardCharsets.UTF_8.encode("\r\n--A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z--\r\n\r\n"));
+        var baos = new ByteArrayOutputStream();
+        baos.write(body.replace("\n", "\r\n").getBytes(StandardCharsets.UTF_8));
+        for (int i = 0; i < 12; i++) {
+            var b = new byte[1024 * 1024];
+            ThreadLocalRandom.current().nextBytes(b);
+            baos.write(b);
+        }
+        baos.write("\r\n--A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z--\r\n\r\n".getBytes(StandardCharsets.UTF_8));
+        var bais = new ByteArrayInputStream(baos.toByteArray());
+        var is = new RandomizedReadInputStream(bais);
 
-        var request = new SimpleHttpServerRequest("POST", "/", f, new Map.Entry[]{
+        var request = new SimpleHttpServerRequest("POST", "/", is, new Map.Entry[]{
             Map.entry("content-type", " multipart/related; boundary=A-B--MIME-BOUNDARY--b96857b1a70d2dc4-17e9b561ad7--Y-Z; type=\"application/xop+xml\"; start-info=\"application/soap+xml\"")
         }, Map.of());
         var result = MultipartReader.read(request);
@@ -230,18 +191,18 @@ class MultipartReaderTest {
                     public String unambiguousToStringOf(Object object) {
                         return "<array>";
                     }
-                }).hasSize(length * 1024 * 1024);
+                }).hasSize(12 * 1024 * 1024);
             }, Index.atIndex(1));
     }
 
     static class SimpleHttpServerRequest implements HttpServerRequest {
         private final String method;
         private final String path;
-        private final Flux<ByteBuffer> body;
+        private final InputStream body;
         private final Map.Entry<String, String>[] headers;
         private final Map<String, String> routeParams;
 
-        public SimpleHttpServerRequest(String method, String path, Flux<ByteBuffer> body, Map.Entry<String, String>[] headers, Map<String, String> routeParams) {
+        public SimpleHttpServerRequest(String method, String path, InputStream body, Map.Entry<String, String>[] headers, Map<String, String> routeParams) {
             this.method = method;
             this.path = path;
             this.body = body;
@@ -315,8 +276,8 @@ class MultipartReaderTest {
         public HttpBodyInput body() {
             return new HttpBodyInput() {
                 @Override
-                public void subscribe(Flow.Subscriber<? super ByteBuffer> subscriber) {
-                    JdkFlowAdapter.publisherToFlowPublisher(body).subscribe(subscriber);
+                public InputStream asInputStream() {
+                    return body;
                 }
 
                 @Override
@@ -337,5 +298,25 @@ class MultipartReaderTest {
             };
         }
 
+    }
+
+    private static class RandomizedReadInputStream extends InputStream {
+
+        private final ByteArrayInputStream bais;
+
+        public RandomizedReadInputStream(ByteArrayInputStream bais) {
+            this.bais = bais;
+        }
+
+        @Override
+        public int read() throws IOException {
+            return bais.read();
+        }
+
+        @Override
+        public int read(@NotNull byte[] b, int off, int len) throws IOException {
+            var realLen = len - ThreadLocalRandom.current().nextInt(len - 1) + 1;
+            return super.read(b, off, realLen);
+        }
     }
 }

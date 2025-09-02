@@ -10,8 +10,8 @@ import java.util.Map;
 
 public interface CamundaRestTelemetry {
 
-    CamundaRestTelemetryContext EMPTY_CTX = (s, r, h, ex) -> {};
-    CamundaRestTelemetry EMPTY = (s, host, m, p, pt, h, q, b) -> EMPTY_CTX;
+    CamundaRestTelemetryContext EMPTY_CTX = (_, _, _, _) -> {};
+    CamundaRestTelemetry EMPTY = (_, _, _, _, _, _, _, _) -> EMPTY_CTX;
 
     interface CamundaRestTelemetryContext {
 
