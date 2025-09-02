@@ -20,7 +20,6 @@ import java.util.Objects;
 import java.util.concurrent.Executor;
 
 public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory, ReadinessProbe {
-
     private static final Logger logger = LoggerFactory.getLogger(JdbcDatabase.class);
 
     private final JdbcDatabaseConfig databaseConfig;
@@ -28,6 +27,12 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     private final DataBaseTelemetry telemetry;
     @Nullable
     final Executor executor;
+    private final Context.Key<ConnectionContext> KEY = new Context.Key<>() {
+        @Override
+        protected ConnectionContext copy(ConnectionContext object) {
+            return null;
+        }
+    };
 
     public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory) {
         this(config, telemetryFactory, null);
@@ -109,7 +114,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     @Nullable
     @Override
     public Connection currentConnection() {
-        var ctx = ConnectionContext.get(Context.current());
+        var ctx = Context.current().get(KEY);
         if (ctx == null) {
             return null;
         }
@@ -119,14 +124,14 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     @Nullable
     @Override
     public ConnectionContext currentConnectionContext() {
-        return ConnectionContext.get(Context.current());
+        return Context.current().get(KEY);
     }
 
     @Override
     public <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException {
         var ctx = Context.current();
 
-        var currentConnectionCtx = ConnectionContext.get(Context.current());
+        var currentConnectionCtx = ctx.get(KEY);
         if (currentConnectionCtx != null) {
             try {
                 return callback.apply(currentConnectionCtx.connection());
@@ -135,14 +140,23 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
             }
         }
 
-        try (var connection = ConnectionContext.set(ctx, new ConnectionContext(this.newConnection())).connection()) {
+        try (var connection = ctx.set(KEY, new ConnectionContext(this.newConnection())).connection()) {
             return callback.apply(connection);
         } catch (SQLException e) {
             throw new RuntimeSqlException(e);
         } finally {
-            ConnectionContext.remove(ctx);
+            ctx.remove(KEY);
         }
     }
+
+    ConnectionContext setContext(Context context, ConnectionContext connectionContext) {
+        return context.set(KEY, connectionContext);
+    }
+
+    void clearContext(Context context) {
+        context.remove(KEY);
+    }
+
 
     @Override
     public ReadinessProbeFailure probe() throws Exception {

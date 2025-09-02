@@ -7,17 +7,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
-
 public class ConnectionContext {
-
-    private static final Context.Key<ConnectionContext> KEY = new Context.Key<>() {
-        @Override
-        protected ConnectionContext copy(ConnectionContext object) {
-            return null;
-        }
-    };
 
     private final Connection connection;
 
@@ -59,19 +49,6 @@ public class ConnectionContext {
 
     public Collection<PostRollbackAction> postRollbackActions() {
         return Objects.requireNonNullElseGet(this.postRollbackActions, List::of);
-    }
-
-    @Nullable
-    public static ConnectionContext get(Context context) {
-        return context.get(KEY);
-    }
-
-    public static ConnectionContext set(Context context, ConnectionContext connectionContext) {
-        return context.set(KEY, connectionContext);
-    }
-
-    public static void remove(Context context) {
-        context.remove(KEY);
     }
 
     public interface PostCommitAction {
