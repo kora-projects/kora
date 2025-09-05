@@ -12,6 +12,7 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.handler.StringParameterReader;
 
 import java.lang.reflect.ParameterizedType;
+import java.util.Arrays;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ForkJoinPool;
 
@@ -27,7 +28,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             
                 @HttpRoute(method = GET, path = "/pathBoolean/{value}")
                 void pathBoolean(@Path Boolean value) { }
-
+            
                 @HttpRoute(method = GET, path = "/pathString/{someValue}")
                 void pathString(@Path(value = "someValue") String string) { }
             
@@ -57,7 +58,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 /*
                 Headers: String, Integer, List<String>, List<Integer>
                  */
-
+            
                 @HttpRoute(method = GET, path = "/headerString")
                 void headerString(@Header(value = "string-header") String string) { }
             
@@ -220,7 +221,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 public enum TestEnum {
                     VAL1, VAL2
                 }
-
+            
                 @HttpRoute(method = GET, path = "/queryString")
                 void queryString(@Query(value = "string-query") String string) { }
             
@@ -402,7 +403,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 public enum TestEnum {
                     VAL1, VAL2
                 }
-
+            
                 @HttpRoute(method = GET, path = "/queryEnum")
                 void queryEnum(@Query("valueSome") TestEnum value) { }
             
@@ -440,19 +441,19 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 public enum TestEnum {
                     VAL1, VAL2
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerEnum")
                 void queryString(@Header TestEnum value1) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableEnum")
                 void queryNullableString(@Header @Nullable TestEnum value) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerOptionalEnum")
                 void queryOptionalString(@Header Optional<TestEnum> value) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerListEnum")
                 void queryStringList(@Header List<TestEnum> value) { }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableListEnum")
                 void queryNullableStringList(@Header @Nullable List<TestEnum> value) { }
             }
@@ -477,35 +478,35 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 /*
                 Headers: String, Integer, List<String>, List<Integer>
                  */
-
+            
                 @HttpRoute(method = GET, path = "/headerString")
                 void headerString(@Header(value = "string-header") String string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableString")
                 void headerNullableString(@Header @Nullable String string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerOptionalString")
                 void headerNullableString(@Header Optional<String> string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerStringList")
                 void headerNullableString(@Header List<String> string) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerInteger")
                 void headerInteger(@Header(value = "integer-header") Integer integer) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerNullableInteger")
                 void headerNullableInteger(@Header(value = "integer-header") @Nullable Integer integer) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerOptionalInteger")
                 void headerOptionalInteger(@Header(value = "integer-header") Optional<Integer> integer) {
                 }
-
+            
                 @HttpRoute(method = GET, path = "/headerIntegerList")
                 void headerStringList(@Header(value = "integer-header") List<Integer> integers) {
                 }
@@ -523,19 +524,19 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             public class Controller {
                 @HttpRoute(method = GET, path = "/cookieString")
                 void cookieString(@Cookie(value = "someCookie") String string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieNullableString")
                 void cookieNullableString(@Cookie @Nullable String string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieOptionalString")
                 void cookieOptionalString(@Cookie Optional<String> string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieCookie")
                 void cookieCookie(@Cookie ru.tinkoff.kora.http.common.cookie.Cookie string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieNullableCookie")
                 void cookieNullableCookie(@Cookie @Nullable ru.tinkoff.kora.http.common.cookie.Cookie string) {}
-
+            
                 @HttpRoute(method = GET, path = "/cookieOptionalCookie")
                 void cookieNullableCookie(@Cookie Optional<ru.tinkoff.kora.http.common.cookie.Cookie> string) {}
             }
@@ -549,7 +550,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     void testContext() {
         var m = compile("""
             import ru.tinkoff.kora.common.Context;
-
+            
             @HttpController
             public class Controller {
                 @HttpRoute(method = GET, path = "/ctx")
@@ -629,7 +630,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 """,
             """
                 public class Mapper implements HttpServerRequestMapper<CompletionStage<String>> {
-
+                
                     @Override
                     public CompletionStage<String> apply(HttpServerRequest request) {
                         return CompletableFuture.completedFuture(request.toString());
@@ -654,7 +655,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 """,
             """
                 public class Mapper implements HttpServerRequestMapper<String> {
-
+                
                     @Override
                     public String apply(HttpServerRequest request) {
                       return request.toString();
@@ -853,8 +854,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         verifyNoDependencies(module);
         Class<?> controller = compileResult.loadClass("Controller");
         Assertions.assertThat(controller.getAnnotation(Tag.class)).isNotNull();
-        Assertions.assertThat(module.getDeclaredMethods()[2].getAnnotation(Tag.class)).isNotNull();
-        Assertions.assertThat(module.getDeclaredMethods()[2].getParameters()[0].getAnnotation(Tag.class)).isNotNull();
+        Assertions.assertThat(Arrays.stream(module.getDeclaredMethods()).anyMatch(m -> m.getDeclaredAnnotation(Tag.class) != null && m.getParameters()[0].getDeclaredAnnotation(Tag.class) != null)).isTrue();
     }
 
     private void verifyNoDependencies(Class<?> controllerModule) {
