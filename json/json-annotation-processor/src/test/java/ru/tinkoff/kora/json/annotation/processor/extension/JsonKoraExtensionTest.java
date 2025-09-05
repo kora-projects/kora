@@ -29,7 +29,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
 
         assertThat(compileResult.isFailed()).isTrue();
         assertThat(compileResult.diagnostic()).anyMatch(d -> d.getKind() == Diagnostic.Kind.ERROR
-            && d.getMessage(Locale.US).contains("Required dependency type wasn't found in dependency container and can't be auto created: " +
+            && d.getMessage(Locale.US).contains("Required dependency type wasn't found in graph and can't be auto created: " +
             "ru.tinkoff.kora.json.common.JsonReader<ru.tinkoff.kora.json.annotation.processor.extension.packageForJsonKoraExtensionTest.testReaderFromExtensionNotFoundForInterface.TestApp.TestInterface>"));
     }
 
@@ -80,7 +80,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
 
         assertThat(compileResult.isFailed()).isTrue();
         assertThat(compileResult.diagnostic()).anyMatch(d -> d.getKind() == Diagnostic.Kind.ERROR
-            && d.getMessage(Locale.US).contains("Required dependency type wasn't found in dependency container and can't be auto created: " +
+            && d.getMessage(Locale.US).contains("Required dependency type wasn't found in graph and can't be auto created: " +
             "ru.tinkoff.kora.json.common.JsonWriter<ru.tinkoff.kora.json.annotation.processor.extension.packageForJsonKoraExtensionTest.testWriterFromExtensionNotFoundForInterface.TestApp.TestInterface>"));
     }
 

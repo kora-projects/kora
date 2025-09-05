@@ -158,7 +158,7 @@ class KoraAppProcessorTest {
         assertThatThrownBy(() -> testClass(AppWithUnresolvedDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 s.assertThat(e.getMessage()).startsWith("""
-                    Required dependency type wasn't found in dependency container and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 without tag.
+                    Required dependency type wasn't found in graph and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 without tag.
                       Please check class for @Component annotation or that required module with component factory is plugged in.
                       Dependency chain:
                         ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.class2
@@ -204,13 +204,13 @@ class KoraAppProcessorTest {
         testClass(AppWithFactories9.class).init();
         assertThatThrownBy(() -> testClass(AppWithFactories10.class))
             .isInstanceOf(CompilationErrorException.class)
-            .hasMessageStartingWith("Required dependency type wasn't found in dependency container and can't be auto created: java.io.Closeable")
+            .hasMessageStartingWith("Required dependency type wasn't found in graph and can't be auto created: java.io.Closeable")
             .asInstanceOf(type(CompilationErrorException.class))
             .extracting(CompilationErrorException::getDiagnostics, list(Diagnostic.class))
             .anySatisfy(d -> {
                 assertThat(d.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
                 assertThat(d.getMessage(Locale.ENGLISH)).isEqualTo("""
-                    Required dependency type wasn't found in dependency container and can't be auto created: java.io.Closeable without tag.
+                    Required dependency type wasn't found in graph and can't be auto created: java.io.Closeable without tag.
                       Please check class for @Component annotation or that required module with component factory is plugged in.
                       Dependency chain:
                         ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories10.mock1

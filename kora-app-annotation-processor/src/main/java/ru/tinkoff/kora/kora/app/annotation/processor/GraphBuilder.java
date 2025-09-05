@@ -221,12 +221,12 @@ public class GraphBuilder {
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
                 var msg = new StringBuilder();
                 if (dependencyClaim.tags().isEmpty()) {
-                    msg.append(String.format("Required dependency type wasn't found in dependency container and can't be auto created: %s without tag.\n" +
+                    msg.append(String.format("Required dependency type wasn't found in graph and can't be auto created: %s without tag.\n" +
                             "Please check class for @%s annotation or that required module with component factory is plugged in.",
                         claimTypeName, CommonClassNames.component.simpleName()));
                 } else {
                     var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
-                    msg.append(String.format("Required dependency type wasn't found in dependency container and can't be auto created: %s with tag %s.\n" +
+                    msg.append(String.format("Required dependency type wasn't found in graph and can't be auto created: %s with tag %s.\n" +
                             "Please check class for @%s annotation or that required module with component factory is plugged in.",
                         claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
                 }
