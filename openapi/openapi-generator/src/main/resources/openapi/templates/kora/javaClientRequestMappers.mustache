@@ -19,21 +19,21 @@ public interface {{classname}}ClientRequestMappers {
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpClientRequestMapper<{{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam> { {{#vendorExtensions.requiresFormParamMappers}}
+
     {{#vendorExtensions.formParamMappers}}
-    private ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}> {{paramName}}Converter;
+    private ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{{paramType}}}> {{paramName}}Converter;
     {{/vendorExtensions.formParamMappers}}
 
     public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper({{#vendorExtensions.formParamMappers}}{{#requireTag}}
       @{{mapperTag}}{{/requireTag}}
-      ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{paramType}}> {{paramName}}Converter{{^last}},{{/last}}
-    {{/vendorExtensions.formParamMappers}}) {
+      ru.tinkoff.kora.http.client.common.writer.StringParameterConverter<{{{paramType}}}> {{paramName}}Converter{{^last}},{{/last}}{{/vendorExtensions.formParamMappers}}
+    ) {
     {{#vendorExtensions.formParamMappers}}
        this.{{paramName}}Converter = {{paramName}}Converter;
     {{/vendorExtensions.formParamMappers}}
     }
 
 {{/vendorExtensions.requiresFormParamMappers}}
-
     @Override
     public HttpBodyOutput apply(Context ctx, {{classname}}.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam value) throws Exception { {{#vendorExtensions.urlEncodedForm}}
       var b = new UrlEncodedWriter();{{#formParams}}
@@ -43,16 +43,15 @@ public interface {{classname}}ClientRequestMappers {
       }{{/formParams}}
       return b.write();{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       var l = new java.util.ArrayList<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>();{{#formParams}}
-              if (value.{{paramName}}() != null) {
-          {{#isFile}}
-                  var file = value.{{paramName}}();
-                  l.add(file);
-          {{/isFile}}{{^isFile}}
-                  var buf = java.nio.charset.StandardCharsets.UTF_8.encode(java.util.Objects.toString(value.{{paramName}}()));
-                  var part = ru.tinkoff.kora.http.common.form.FormMultipart.data(
-                  "{{baseName}}",
-                  java.util.Objects.toString(value.{{paramName}}())
-                  );{{/isFile}}
+      if (value.{{paramName}}() != null) {
+      {{#isFile}}
+          var file = value.{{paramName}}();
+          l.add(file);{{/isFile}}{{^isFile}}
+          var buf = java.nio.charset.StandardCharsets.UTF_8.encode(java.util.Objects.toString(value.{{paramName}}()));
+          var part = ru.tinkoff.kora.http.common.form.FormMultipart.data(
+          "{{baseName}}",
+            java.util.Objects.toString(value.{{paramName}}())
+          );{{/isFile}}
       }{{/formParams}}
       return MultipartWriter.write(l);{{/vendorExtensions.multipartForm}}
     }

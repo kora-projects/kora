@@ -62,6 +62,54 @@ paths:
         '200':
           description: Updated
 
+  /form-multipart-form-data-with-object:
+    patch:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - file
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Updated
+
+
+  /form-multipart-form-data-with-array:
+    patch:
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '200':
+          description: Updated
+
+  /form-image:
+    patch:
+      requestBody:
+        content:
+          image/png:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Updated
+
+
 components:
   schemas:
     Pet:

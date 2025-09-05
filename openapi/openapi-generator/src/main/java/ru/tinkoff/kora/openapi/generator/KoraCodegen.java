@@ -2292,7 +2292,7 @@ public class KoraCodegen extends DefaultCodegen {
                           || formParam.isInteger
                           || formParam.isLong) {
                     formParam.vendorExtensions.put("isPrimitive", true);
-                } else {
+                } else if(!formParam.isFile) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     formParamsWithMappers.add(new HashMap<>(Map.of(
                         "paramName", formParam.paramName,

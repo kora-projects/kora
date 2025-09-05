@@ -13,21 +13,19 @@ import java.util.concurrent.CompletionStage;
 {{/isBlocking}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-public interface {{classname}}ServerRequestMappers {
-{{#operations}}
-{{#operation}}
+public interface {{classname}}ServerRequestMappers { {{#operations}}{{#operation}}{{#hasFormParams}}
 
-{{#hasFormParams}}
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
   final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper implements HttpServerRequestMapper<{{#isBlocking}}{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam{{/isBlocking}}{{^isBlocking}}CompletionStage<{{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam>{{/isBlocking}}> {
 {{#vendorExtensions.requiresFormParamMappers}}
 
     {{#vendorExtensions.formParamMappers}}
-    private ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}> {{paramName}}Converter;{{/vendorExtensions.formParamMappers}}
+    private ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{{paramType}}}> {{paramName}}Converter;
+    {{/vendorExtensions.formParamMappers}}
 
     public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper({{#vendorExtensions.formParamMappers}}{{#requireTag}}
       @{{mapperTag}}{{/requireTag}}
-      ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{paramType}}> {{paramName}}Converter{{^last}},{{/last}}{{/vendorExtensions.formParamMappers}}
+      ru.tinkoff.kora.http.server.common.handler.StringParameterReader<{{{paramType}}}> {{paramName}}Converter{{^last}},{{/last}}{{/vendorExtensions.formParamMappers}}
     ) {
     {{#vendorExtensions.formParamMappers}}
        this.{{paramName}}Converter = {{paramName}}Converter;
@@ -58,23 +56,23 @@ public interface {{classname}}ServerRequestMappers {
         );
       }){{#isBlocking}}.get(){{/isBlocking}};{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
 
-      class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
-      {{#formParams}}  @jakarta.annotation.Nullable{{#isFile}}
-      ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;{{/isFile}}{{^isFile}}
-      {{{dataType}}} {{paramName}} = null;{{/isFile}}{{/formParams}}
+      class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState { {{#formParams}}
+        @jakarta.annotation.Nullable{{#isFile}}
+        ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;{{/isFile}}{{^isFile}}
+        {{{dataType}}} {{paramName}} = null;{{/isFile}}{{/formParams}}
       }
+
       return MultipartReader.read(request).thenApply(parts -> {
         var state = new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState();
         for (var part : parts) {
-          switch (part.name()) {
+          switch (part.name()) { {{#formParams}}
+            case "{{baseName}}": {{#isFile}}
+              state.{{paramName}} = part;
+              break;{{/isFile}}{{^isFile}}
+              state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);
+              break;{{/isFile}}{{/formParams}}
             default:
-              break;{{#formParams}}
-              case "{{baseName}}":
-          {{#isFile}}  state.{{paramName}} = part;
               break;
-          {{/isFile}}{{^isFile}}  state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);
-              break;
-          {{/isFile}}{{/formParams}}
           }
         }
         {{#formParams}}{{#required}}

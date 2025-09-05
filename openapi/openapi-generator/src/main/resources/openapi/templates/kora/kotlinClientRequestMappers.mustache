@@ -27,15 +27,15 @@ interface {{classname}}ClientRequestMappers {
       return b.write(){{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       val l = mutableListOf<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>(){{#formParams}}
       if (value.{{paramName}} != null) {
-          {{#isFile}}
+        {{#isFile}}
         val file = value.{{paramName}}
-        if (file != null) l += file
-          {{/isFile}}{{^isFile}}
+        if (file != null) {
+          l += file
+        } {{/isFile}}{{^isFile}}
         l += ru.tinkoff.kora.http.common.form.FormMultipart.data("{{baseName}}", "${value.{{paramName}}}"){{/isFile}}
       }
       {{/formParams}}
-      return MultipartWriter.write(l)
-{{/vendorExtensions.multipartForm}}
+      return MultipartWriter.write(l) {{/vendorExtensions.multipartForm}}
     }
   }
 {{/hasFormParams}}
