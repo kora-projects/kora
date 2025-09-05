@@ -176,7 +176,7 @@ final class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecycl
 
             logger.info("Redis Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
-            throw new IllegalStateException("Redis Client (Lettuce) failed to start in cluster mode, due to: " + e.getMessage(), e);
+            throw new RuntimeException("Redis Client (Lettuce) failed to start in cluster mode, due to: " + e.getMessage(), e);
         }
     }
 

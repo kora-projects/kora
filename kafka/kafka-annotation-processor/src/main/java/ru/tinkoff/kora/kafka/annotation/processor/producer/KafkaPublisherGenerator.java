@@ -183,7 +183,7 @@ final class KafkaPublisherGenerator {
                     .addStatement("this.delegate = new $T<>(driverProperties, new $T(), new $T())", kafkaProducer, byteArraySerializer, byteArraySerializer)
                     .addStatement("this.telemetry = this.telemetryFactory.get($S, this.telemetryConfig, this.delegate, driverProperties)", configPath)
                     .nextControlFlow("catch($T e)", Exception.class)
-                    .addStatement("throw new $T($S + e.getMessage(), e)", IllegalStateException.class, "Kafka Publisher '" + configPath + "' failed to start, due to: ")
+                    .addStatement("throw new $T($S + e.getMessage(), e)", RuntimeException.class, "Kafka Publisher '" + configPath + "' failed to start, due to: ")
                     .endControlFlow()
                     .build())
                 .build())

@@ -58,10 +58,10 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
             logger.info(data, "Private HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
         } catch (RuntimeException e) {
             if (e.getCause() instanceof BindException be) {
-                throw new IllegalStateException("Private HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
+                throw new RuntimeException("Private HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
                     .formatted(config.get().privateApiHttpPort()), be);
             } else {
-                throw new IllegalStateException("Private HTTP Server (Undertow) failed to start on port '%s', due to: %s"
+                throw new RuntimeException("Private HTTP Server (Undertow) failed to start on port '%s', due to: %s"
                     .formatted(config.get().publicApiHttpPort(), e.getMessage()), e);
             }
         }

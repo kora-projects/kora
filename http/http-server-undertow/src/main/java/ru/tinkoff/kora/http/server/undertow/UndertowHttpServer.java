@@ -79,10 +79,10 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             logger.info(data, "Public HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
             if (e.getCause() instanceof BindException be) {
-                throw new IllegalStateException("Public HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
+                throw new RuntimeException("Public HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
                     .formatted(config.get().publicApiHttpPort()), be);
             } else {
-                throw new IllegalStateException("Public HTTP Server (Undertow) failed to start on port '%s', due to: %s"
+                throw new RuntimeException("Public HTTP Server (Undertow) failed to start on port '%s', due to: %s"
                     .formatted(config.get().publicApiHttpPort(), e.getMessage()), e);
             }
         }

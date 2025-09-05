@@ -176,7 +176,7 @@ final class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
 
             logger.info("Redis Client (Lettuce) started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
-            throw new IllegalStateException("Redis Client (Lettuce) failed to start in single mode, due to: " + e.getMessage(), e);
+            throw new RuntimeException("Redis Client (Lettuce) failed to start in single mode, due to: " + e.getMessage(), e);
         }
     }
 

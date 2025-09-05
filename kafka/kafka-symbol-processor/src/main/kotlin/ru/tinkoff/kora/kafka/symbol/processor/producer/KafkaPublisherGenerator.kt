@@ -235,7 +235,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                             .addStatement("this.delegate = %T(driverProperties, %T(), %T())", KafkaClassNames.kafkaProducer, KafkaClassNames.byteArraySerializer, KafkaClassNames.byteArraySerializer)
                             .addStatement("this.telemetry = this.telemetryFactory.get(%S, this.telemetryConfig, this.delegate, driverProperties)", configPath)
                             .nextControlFlow("catch (e: %T)", Exception::class)
-                            .addStatement("throw %T(%S + e.message, e)", IllegalStateException::class, "Kafka Publisher '$configPath' failed to start, due to: ")
+                            .addStatement("throw %T(%S + e.message, e)", RuntimeException::class, "Kafka Publisher '$configPath' failed to start, due to: ")
                             .endControlFlow()
                             .build()
                     )

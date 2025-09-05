@@ -57,7 +57,7 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
         try {
             cqlSession = new CassandraSessionBuilder().build(config, configurer, telemetry);
         } catch (Exception e) {
-            throw new IllegalStateException("CassandraDatabase '%s' failed to start, due to: %s".formatted(
+            throw new RuntimeException("CassandraDatabase '%s' failed to start, due to: %s".formatted(
                 config.basic().contactPoints(), e.getMessage()), e);
         }
 

@@ -77,7 +77,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
             try (var connection = this.dataSource.getConnection()) {
                 connection.isValid((int) this.databaseConfig.initializationFailTimeout().toMillis());
             } catch (SQLException e) {
-                throw new IllegalStateException("JdbcDatabase pool '%s' failed to start, due to: %s".formatted(
+                throw new RuntimeException("JdbcDatabase pool '%s' failed to start, due to: %s".formatted(
                     databaseConfig.poolName(), e.getMessage()), e);
             }
 

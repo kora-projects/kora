@@ -56,10 +56,10 @@ final class UndertowCamundaHttpServer implements Lifecycle, ReadinessProbe {
                 logger.info("Camunda HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
             } catch (Exception e) {
                 if (e.getCause() instanceof BindException be) {
-                    throw new IllegalStateException("Camunda HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
+                    throw new RuntimeException("Camunda HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
                         .formatted(config.get().port()), be);
                 } else {
-                    throw new IllegalStateException("Camunda HTTP Server (Undertow) failed to start on port '%s', due to: %s"
+                    throw new RuntimeException("Camunda HTTP Server (Undertow) failed to start on port '%s', due to: %s"
                         .formatted(config.get().port(), e.getMessage()), e);
                 }
             }
