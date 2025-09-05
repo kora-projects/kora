@@ -6,6 +6,8 @@ import io.undertow.server.DefaultByteBufferPool;
 import jakarta.annotation.Nullable;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
+import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder.VirtualThreadStatus;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
@@ -40,6 +42,9 @@ public interface UndertowHttpServerModule extends UndertowModule {
     @DefaultComponent
     default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker, UndertowHttpServerConfig config) {
         if (config.virtualThreadsEnabled()) {
+            if (VirtualThreadExecutorHolder.status() == VirtualThreadStatus.UNAVAILABLE) {
+                throw new IllegalStateException("Public HTTP Server (Undertow) starting failed cause Virtual Threads are not available but enabled in configuration, please check that you are using Java 21+ or disable Virtual Threads for HTTP-server in configuration.");
+            }
             return new VirtualThreadBlockingRequestExecutor();
         } else {
             return new BlockingRequestExecutor.Default(xnioWorker);
