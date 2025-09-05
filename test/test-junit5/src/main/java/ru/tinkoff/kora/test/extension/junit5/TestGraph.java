@@ -5,10 +5,12 @@ import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
+import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.RefreshableGraph;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.test.extension.junit5.KoraJUnit5Extension.TestMethodMetadata;
 
+import java.util.List;
 import java.util.concurrent.Semaphore;
 
 final class TestGraph implements AutoCloseable {
@@ -27,14 +29,29 @@ final class TestGraph implements AutoCloseable {
 
     private final ApplicationGraphDraw graph;
     private final TestMethodMetadata metadata;
+    private final List<Node<?>> nodes;
+    private final List<Node<?>> mocks;
 
     private volatile TestGraphContext graphInitialized;
     private volatile Status status;
 
-    TestGraph(ApplicationGraphDraw graph, TestMethodMetadata metadata) {
+    TestGraph(ApplicationGraphDraw graph,
+              TestMethodMetadata metadata,
+              List<Node<?>> nodes,
+              List<Node<?>> mocks) {
         this.graph = graph;
         this.metadata = metadata;
+        this.nodes = nodes;
+        this.mocks = mocks;
         this.status = Status.CREATED;
+    }
+
+    List<Node<?>> getNodes() {
+        return nodes;
+    }
+
+    List<Node<?>> getMocks() {
+        return mocks;
     }
 
     void initialize() {
