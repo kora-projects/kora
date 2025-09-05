@@ -57,24 +57,22 @@ sealed interface {{classname}} {
 @ru.tinkoff.kora.validation.common.annotation.Valid{{/vendorExtensions.x-enable-validation}}
 {{#hasVars}}data {{/hasVars}}class {{classname}} @ru.tinkoff.kora.json.common.annotation.JsonReader constructor (
 {{#requiredVars}}
-  @ru.tinkoff.kora.json.common.annotation.JsonField("{{baseName}}")
-  {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}.toDouble(), to = {{maximum}}.toDouble(), boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
-  {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
-  {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}})
-  {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}")
-  {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@ru.tinkoff.kora.validation.common.annotation.Valid
-  {{/vendorExtensions.x-has-valid-model}}
-{{#isOverridden}}override {{/isOverridden}}val {{name}}: {{^vendorExtensions.x-json-nullable}}{{#isDiscriminator}}{{parent}}.{{/isDiscriminator}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{#isDiscriminator}}{{parent}}.{{/isDiscriminator}}{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}},
+  @ru.tinkoff.kora.json.common.annotation.JsonField("{{baseName}}"){{#vendorExtensions.x-has-min-max}}
+  @ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}.toDouble(), to = {{maximum}}.toDouble(), boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}}){{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}
+  @ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}}){{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}
+  @ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}}){{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}
+  @ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}"){{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}
+  @ru.tinkoff.kora.validation.common.annotation.Valid{{/vendorExtensions.x-has-valid-model}}
+  {{#isOverridden}}override {{/isOverridden}}val {{name}}: {{^vendorExtensions.x-json-nullable}}{{#isDiscriminator}}{{parent}}.{{/isDiscriminator}}{{{datatypeWithEnum}}}{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{#isDiscriminator}}{{parent}}.{{/isDiscriminator}}{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}},
 {{/requiredVars}}
 {{#optionalVars}}
-  @ru.tinkoff.kora.json.common.annotation.JsonField("{{baseName}}")
-  {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}.toDouble(), to = {{maximum}}.toDouble(), boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}})
-  {{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}})
-  {{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}@ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}})
-  {{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}@ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}")
-  {{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}@ru.tinkoff.kora.validation.common.annotation.Valid
-  {{/vendorExtensions.x-has-valid-model}}
-{{^isDiscriminator}}{{#isOverridden}}override {{/isOverridden}}{{/isDiscriminator}}val {{name}}: {{^vendorExtensions.x-json-nullable}}{{{datatypeWithEnum}}}? = null{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}},
+  @ru.tinkoff.kora.json.common.annotation.JsonField("{{baseName}}"){{#vendorExtensions.x-has-min-max}}
+  @ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}.toDouble(), to = {{maximum}}.toDouble(), boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}}){{/vendorExtensions.x-has-min-max}}{{#vendorExtensions.x-has-min-max-items}}
+  @ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}}){{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}
+  @ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}}){{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}
+  @ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}"){{/vendorExtensions.x-has-pattern}}{{#vendorExtensions.x-has-valid-model}}
+  @ru.tinkoff.kora.validation.common.annotation.Valid{{/vendorExtensions.x-has-valid-model}}
+  {{^isDiscriminator}}{{#isOverridden}}override {{/isOverridden}}{{/isDiscriminator}}val {{name}}: {{^vendorExtensions.x-json-nullable}}{{{datatypeWithEnum}}}? = null{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}},
 {{/optionalVars}}){{#vendorExtensions.x-discriminator-value}} : {{parent}} {{/vendorExtensions.x-discriminator-value}} {
 
 {{#vendorExtensions.x-discriminator-values-check}}
@@ -88,8 +86,8 @@ sealed interface {{classname}} {
     {{name}}: {{^vendorExtensions.x-json-nullable}}{{{datatypeWithEnum}}}? = null{{/vendorExtensions.x-json-nullable}}{{#vendorExtensions.x-json-nullable}}ru.tinkoff.kora.json.common.JsonNullable<{{{datatypeWithEnum}}}>{{/vendorExtensions.x-json-nullable}},
   {{/optionalVars}}): this({{#requiredVars}}{{#isDiscriminator}}{{vendorExtensions.x-discriminator-single}}{{/isDiscriminator}}{{^isDiscriminator}}{{name}}{{/isDiscriminator}}, {{/requiredVars}}{{#optionalVars}}{{name}}, {{/optionalVars}});
 {{/vendorExtensions.x-discriminator-single}}
-
 {{^hasVars}}
+
   override fun equals(other: Any?): Boolean {
     if (this === other) return true
     if (javaClass != other?.javaClass) return false
@@ -114,7 +112,6 @@ sealed interface {{classname}} {
       {{/isEnum}}
   {{/allVars}}
 }
-
 {{/discriminator}}
 {{/isEnum}}
 {{/model}}
