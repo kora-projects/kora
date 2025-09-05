@@ -1,6 +1,6 @@
 package ru.tinkoff.grpc.client.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class GrpcClassNames {
     public static final ClassName serviceDescriptor = ClassName.get("io.grpc", "ServiceDescriptor");

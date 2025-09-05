@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.extension;
 
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.CodeBlock;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;

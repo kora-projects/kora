@@ -1,20 +1,13 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
-import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
-import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;

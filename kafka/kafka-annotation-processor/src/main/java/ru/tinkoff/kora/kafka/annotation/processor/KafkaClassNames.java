@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public final class KafkaClassNames {
 

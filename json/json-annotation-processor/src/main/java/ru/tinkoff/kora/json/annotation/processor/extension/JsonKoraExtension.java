@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor.extension;
 
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
@@ -37,7 +37,7 @@ public class JsonKoraExtension implements KoraExtension {
         if (!(typeName instanceof ParameterizedTypeName ptn)) {
             return null;
         }
-        if (ptn.rawType.equals(JsonTypes.jsonWriter)) {
+        if (ptn.rawType().equals(JsonTypes.jsonWriter)) {
             var writerType = (DeclaredType) typeMirror;
             var possibleJsonClass = writerType.getTypeArguments().get(0);
             if (possibleJsonClass.getKind() != TypeKind.DECLARED) {
@@ -50,7 +50,7 @@ public class JsonKoraExtension implements KoraExtension {
             return null;
         }
 
-        if (ptn.rawType.equals(JsonTypes.jsonReader)) {
+        if (ptn.rawType().equals(JsonTypes.jsonReader)) {
             var readerType = (DeclaredType) typeMirror;
             var possibleJsonClass = readerType.getTypeArguments().get(0);
             if (possibleJsonClass.getKind() != TypeKind.DECLARED) {

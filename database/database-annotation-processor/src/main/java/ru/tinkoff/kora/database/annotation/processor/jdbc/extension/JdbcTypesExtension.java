@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc.extension;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
@@ -55,7 +55,7 @@ public class JdbcTypesExtension implements KoraExtension {
         if (!(typeName instanceof ParameterizedTypeName ptn)) {
             return null;
         }
-        if (Objects.equals(ptn.rawType, JdbcTypes.ROW_MAPPER)) {
+        if (Objects.equals(ptn.rawType(), JdbcTypes.ROW_MAPPER)) {
             var rowTypeMirror = declaredType.getTypeArguments().get(0);
             var rowTypeElement = (TypeElement) ((DeclaredType) rowTypeMirror).asElement();
             if (AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {
@@ -64,10 +64,10 @@ public class JdbcTypesExtension implements KoraExtension {
             return null;
         }
 
-        if (Objects.equals(ptn.rawType, JdbcTypes.RESULT_SET_MAPPER)) {
-            var resultTypeName = ptn.typeArguments.get(0);
+        if (Objects.equals(ptn.rawType(), JdbcTypes.RESULT_SET_MAPPER)) {
+            var resultTypeName = ptn.typeArguments().get(0);
             var resultTypeMirror = declaredType.getTypeArguments().get(0);
-            if (resultTypeName instanceof ParameterizedTypeName rptn && rptn.rawType.equals(LIST_CLASS_NAME) && resultTypeMirror instanceof DeclaredType resultDeclaredType) {
+            if (resultTypeName instanceof ParameterizedTypeName rptn && rptn.rawType().equals(LIST_CLASS_NAME) && resultTypeMirror instanceof DeclaredType resultDeclaredType) {
                 var rowTypeMirror = resultDeclaredType.getTypeArguments().get(0);
                 var rowTypeElement = (TypeElement) types.asElement(rowTypeMirror);
                 if (AnnotationUtils.isAnnotationPresent(rowTypeElement, JdbcTypes.JDBC_ENTITY)) {

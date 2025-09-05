@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.common.Module;

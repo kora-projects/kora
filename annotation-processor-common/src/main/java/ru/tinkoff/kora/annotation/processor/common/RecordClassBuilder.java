@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.ArrayTypeName;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.AnnotationSpec;
+import com.palantir.javapoet.ArrayTypeName;
+import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.TypeName;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
@@ -89,7 +89,7 @@ public class RecordClassBuilder {
             }
 
             if (component.defaultValue != null) {
-                var hasNullable = component.annotations.stream().anyMatch(a -> a.type.toString().endsWith(".Nullable"));
+                var hasNullable = component.annotations.stream().anyMatch(a -> a.type().toString().endsWith(".Nullable"));
                 if (!hasNullable) {
                     sb.append("  @jakarta.annotation.Nullable ");
                 }

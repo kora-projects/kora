@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.ImplType;
 import ru.tinkoff.kora.s3.client.annotation.processor.S3Operation.OperationType;
@@ -837,7 +837,7 @@ public class S3ClientAnnotationProcessor extends AbstractKoraProcessor {
                         .add("_requestBody = $T.fromBytes(_bb.bytes());\n", CLASS_AWS_IS_ASYNC_BODY)
                         .nextControlFlow("else if($L instanceof $T _bb)", bodyParamName, CLASS_S3_BODY_PUBLISHER)
                         .add("_requestBody = $T.fromPublisher($T.flowPublisherToFlux(_bb.asPublisher()));\n", CLASS_AWS_IS_ASYNC_BODY, CLASS_JDK_FLOW_ADAPTER)
-                        .nextControlFlow("else", bodyParamName, bodyParamName)
+                        .nextControlFlow("else")
                         .add("final Long _bodySize = $L.size() > 0 ? $L.size() : null;\n", bodyParamName, bodyParamName)
                         .add("_requestBody = $T.fromInputStream($L.asInputStream(), _bodySize, _awsAsyncExecutor);\n", CLASS_AWS_IS_ASYNC_BODY, bodyParamName)
                         .endControlFlow()

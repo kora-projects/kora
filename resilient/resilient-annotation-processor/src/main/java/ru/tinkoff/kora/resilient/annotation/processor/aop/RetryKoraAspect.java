@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
@@ -14,7 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
-import static com.squareup.javapoet.CodeBlock.joining;
+import static com.palantir.javapoet.CodeBlock.joining;
 
 public class RetryKoraAspect implements KoraAspect {
 

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.soap.client.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import org.w3c.dom.Node;
 import ru.tinkoff.kora.annotation.processor.common.*;
@@ -253,7 +253,7 @@ public class SoapClientImplGenerator {
                 }
                 var type = parameter.asType();
                 var typeName = TypeName.get(type);
-                if (typeName instanceof ParameterizedTypeName ptn && ptn.rawType.equals(soapClasses.holderTypeClassName())) {
+                if (typeName instanceof ParameterizedTypeName ptn && ptn.rawType().equals(soapClasses.holderTypeClassName())) {
                     type = ((DeclaredType) type).getTypeArguments().get(0);
                 }
 
@@ -275,7 +275,7 @@ public class SoapClientImplGenerator {
             for (var parameter : method.getParameters()) {
                 var webParam = findAnnotation(parameter, soapClasses.webParamType());
                 var webParamName = (String) findAnnotationValue(webParam, "name");
-                var isHolder = TypeName.get(parameter.asType()) instanceof ParameterizedTypeName ptn && ptn.rawType.equals(soapClasses.holderTypeClassName());
+                var isHolder = TypeName.get(parameter.asType()) instanceof ParameterizedTypeName ptn && ptn.rawType().equals(soapClasses.holderTypeClassName());
                 var wrapperMethod = objectFactory.findWrapperMethod(method, parameter);
                 if (wrapperMethod == null) {
                     if (isHolder) {
@@ -387,7 +387,7 @@ public class SoapClientImplGenerator {
             if (method.getReturnType().getKind() == TypeKind.VOID) {
                 if (this.isRpcBuilding(method, soapClasses)) {
                     m.addCode("var __document = ($T) __success.body();\n", Node.class);
-                    m.addCode("for (var __i = 0; __i < __document.getChildNodes().getLength(); __i++) {$>\n", Node.class);
+                    m.addCode("for (var __i = 0; __i < __document.getChildNodes().getLength(); __i++) {$>\n");
                     m.addCode("var __child = __document.getChildNodes().item(__i);\n");
                     m.addCode("var __childName = __child.getLocalName();\n");
                     m.addCode("try {$>\n");
@@ -399,7 +399,7 @@ public class SoapClientImplGenerator {
                         }
                         var parameterType = parameter.asType();
                         var parameterTypeName = TypeName.get(parameterType);
-                        if (!(parameterTypeName instanceof ParameterizedTypeName ptn && ptn.rawType.equals(soapClasses.holderTypeClassName()))) {
+                        if (!(parameterTypeName instanceof ParameterizedTypeName ptn && ptn.rawType().equals(soapClasses.holderTypeClassName()))) {
                             continue;
                         }
                         var partType = ((DeclaredType) parameterType).getTypeArguments().get(0);

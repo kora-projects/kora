@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.validation.annotation.processor.extension;
 
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
@@ -35,7 +35,7 @@ public final class ValidKoraExtension implements KoraExtension {
         if (!(TypeName.get(typeMirror) instanceof ParameterizedTypeName ptn)) {
             return null;
         }
-        if (!ptn.rawType.equals(VALIDATOR_TYPE)) {
+        if (!ptn.rawType().equals(VALIDATOR_TYPE)) {
             return null;
         }
         if (!(typeMirror instanceof DeclaredType dt)) {

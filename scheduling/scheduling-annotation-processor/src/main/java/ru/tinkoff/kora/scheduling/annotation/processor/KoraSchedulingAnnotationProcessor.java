@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.JavaFile;
-import com.squareup.javapoet.TypeSpec;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.JavaFile;
+import com.palantir.javapoet.TypeSpec;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
