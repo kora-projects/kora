@@ -14,7 +14,10 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
 import io.swagger.v3.oas.models.examples.Example;
-import io.swagger.v3.oas.models.media.*;
+import io.swagger.v3.oas.models.media.ComposedSchema;
+import io.swagger.v3.oas.models.media.ObjectSchema;
+import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.servers.Server;
@@ -665,7 +668,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if(params.forceIncludeOptional) {
+                    } else if (params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
                     } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
@@ -703,7 +706,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (variable.isNullable && !variable.required) {
                     if (params.enableJsonNullable) {
                         variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if(params.forceIncludeOptional) {
+                    } else if (params.forceIncludeOptional) {
                         variable.vendorExtensions.put("x-json-include-always", true);
                     } else {
                         //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
@@ -721,7 +724,35 @@ public class KoraCodegen extends DefaultCodegen {
                         l.addAll(l2);
                         return l;
                     }, LinkedHashMap::new));
+
+                // try to fill parent models with allOf properties
+                if (model.interfaceModels != null
+                    && model.getComposedSchemas() != null
+                    && model.getComposedSchemas().getAllOf() != null) {
+                    for (CodegenModel interfaceModel : model.interfaceModels) {
+                        if (model.getComposedSchemas().getAllOf().stream().anyMatch(sp -> sp.openApiType.equals(interfaceModel.name))) {
+                            for (CodegenProperty ip : interfaceModel.allVars) {
+                                if (model.allVars.stream().noneMatch(mp -> mp.name.equals(ip.name))) {
+                                    model.allVars.add(ip);
+                                }
+                            }
+                            for (CodegenProperty ip : interfaceModel.requiredVars) {
+                                if (model.requiredVars.stream().noneMatch(mp -> mp.name.equals(ip.name))) {
+                                    model.requiredVars.add(ip);
+                                }
+                            }
+                            for (CodegenProperty ip : interfaceModel.optionalVars) {
+                                if (model.optionalVars.stream().noneMatch(mp -> mp.name.equals(ip.name))) {
+                                    model.optionalVars.add(ip);
+                                }
+                            }
+                        }
+                    }
+                }
                 model.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                model.requiredVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+                model.optionalVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
+
                 var discriminatorProperty = new CodegenProperty();
                 discriminatorProperty.name = model.discriminator.getPropertyName();
                 discriminatorProperty.baseName = model.discriminator.getPropertyBaseName();
@@ -755,11 +786,23 @@ public class KoraCodegen extends DefaultCodegen {
                 discriminatorProperty.dataType = "String";
                 discriminatorProperty.isDiscriminator = true;
                 discriminatorProperty.required = true;
+
+                Set<String> parentModelRemoveFieldsTypeMissmatch = new HashSet<>();
                 for (var mappedModel : model.discriminator.getMappedModels()) {
                     var childModel = allModels.get(mappedModel.getModelName());
                     if (childModel == null) {
                         throw new IllegalArgumentException("Child model '%s' not found, it is probably a free form object and is ignored by OpenAPI generator"
                             .formatted(mappedModel.getModelName()));
+                    }
+
+                    for (CodegenProperty childVar : childModel.allVars) {
+                        childVar.isOverridden = false;
+                    }
+                    for (CodegenProperty childVar : childModel.requiredVars) {
+                        childVar.isOverridden = false;
+                    }
+                    for (CodegenProperty childVar : childModel.optionalVars) {
+                        childVar.isOverridden = false;
                     }
 
                     childModel.parentModel = model;
@@ -772,21 +815,33 @@ public class KoraCodegen extends DefaultCodegen {
                     childModel.allVars.add(0, property);
                     childModel.requiredVars.add(0, property);
 
-                    for (CodegenProperty prop : childModel.optionalVars) {
-                        if (prop.isOverridden != null && prop.isOverridden) {
-                            if (model.optionalVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
-                                prop.isOverridden = false;
-                            }
-                        }
-                    }
+                    for (CodegenProperty var : model.allVars) {
+                        for (CodegenProperty childVar : childModel.allVars) {
+                            childVar.isOverridden = false;
+                            if (var.name.equals(childVar.name)) {
+                                boolean sameRequire = var.required == childVar.required;
+                                boolean sameType = Objects.equals(var.datatypeWithEnum, childVar.datatypeWithEnum);
+                                boolean override = sameRequire && sameType;
+                                if (override) {
+                                    childVar.isOverridden = true;
+                                } else {
+                                    parentModelRemoveFieldsTypeMissmatch.add(var.name);
+                                    childVar.isOverridden = false;
+                                }
 
-                    for (CodegenProperty prop : childModel.requiredVars) {
-                        if (prop.isOverridden != null) {
-                            boolean haveReqVar = model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name));
-                            if (prop.isOverridden && !haveReqVar) {
-                                prop.isOverridden = false;
-                            } else {
-                                prop.isOverridden = haveReqVar;
+                                if (childVar.required) {
+                                    for (CodegenProperty requiredVar : childModel.requiredVars) {
+                                        if (requiredVar.name.equals(childVar.name)) {
+                                            requiredVar.isOverridden = override;
+                                        }
+                                    }
+                                } else {
+                                    for (CodegenProperty optionalVar : childModel.optionalVars) {
+                                        if (optionalVar.name.equals(childVar.name)) {
+                                            optionalVar.isOverridden = override;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -834,6 +889,12 @@ public class KoraCodegen extends DefaultCodegen {
                             .append("}\n");
                         childModel.vendorExtensions.put("x-discriminator-values-check", valuesCheck.toString().indent(4));
                     }
+                }
+
+                for (String field : parentModelRemoveFieldsTypeMissmatch) {
+                    model.allVars.removeIf(p -> p.name.equals(field));
+                    model.optionalVars.removeIf(p -> p.name.equals(field));
+                    model.requiredVars.removeIf(p -> p.name.equals(field));
                 }
 
                 model.vendorExtensions.put("x-discriminator-property", discriminatorProperty);
@@ -2247,7 +2308,7 @@ public class KoraCodegen extends DefaultCodegen {
                 if (formParam.isModel || isEnum) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     String type;
-                    if(isEnum) {
+                    if (isEnum) {
                         type = allModels.stream()
                             .filter(m -> m.getModel().name.equals(formParam.dataType))
                             .findFirst()
@@ -2257,7 +2318,7 @@ public class KoraCodegen extends DefaultCodegen {
                                 .findFirst()
                                 .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum))
                             .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
-                        if(formParam.datatypeWithEnum != null) {
+                        if (formParam.datatypeWithEnum != null) {
                             formParam.dataType = type;
                         }
                     } else {
@@ -2285,12 +2346,12 @@ public class KoraCodegen extends DefaultCodegen {
                             "last", false
                         )));
                     }
-                } else if(formParam.isString
-                          || formParam.isBoolean
-                          || formParam.isDouble
-                          || formParam.isFloat
-                          || formParam.isInteger
-                          || formParam.isLong) {
+                } else if (formParam.isString
+                           || formParam.isBoolean
+                           || formParam.isDouble
+                           || formParam.isFloat
+                           || formParam.isInteger
+                           || formParam.isLong) {
                     formParam.vendorExtensions.put("isPrimitive", true);
                 } else if(!formParam.isFile) {
                     formParam.vendorExtensions.put("requiresMapper", true);
