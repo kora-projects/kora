@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.config.annotation.processor.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;

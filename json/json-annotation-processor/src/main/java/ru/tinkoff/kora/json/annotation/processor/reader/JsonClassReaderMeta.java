@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
-import com.squareup.javapoet.TypeName;
-
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
+
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeMirror;

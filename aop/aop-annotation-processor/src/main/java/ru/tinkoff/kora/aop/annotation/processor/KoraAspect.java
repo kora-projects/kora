@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.aop.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.TypeMirror;

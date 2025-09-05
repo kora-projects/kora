@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.TypeName;
 
 import java.util.function.BiFunction;
 

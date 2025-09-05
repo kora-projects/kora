@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.annotation.processor.producer;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
@@ -305,7 +305,7 @@ final class KafkaPublisherGenerator {
         b.addStatement("var _tctx = this.telemetry.record(_telemetryRecord)");
 
         var returnType = TypeName.get(publishMethod.getReturnType());
-        if (returnType instanceof ParameterizedTypeName ptn && ptn.rawType.equals(ClassName.get(Future.class))) {
+        if (returnType instanceof ParameterizedTypeName ptn && ptn.rawType().equals(ClassName.get(Future.class))) {
             if (publishData.callback() != null) {
                 b.add("return this.delegate.send(_record, (_meta, _ex) -> {$>\n");
                 b.addStatement("_tctx.onCompletion(_meta, _ex)");
@@ -314,7 +314,7 @@ final class KafkaPublisherGenerator {
             } else {
                 b.add("return this.delegate.send(_record, _tctx);");
             }
-        } else if (returnType instanceof ParameterizedTypeName ptn && (ptn.rawType.equals(ClassName.get(CompletionStage.class)) || ptn.rawType.equals(ClassName.get(CompletableFuture.class)))) {
+        } else if (returnType instanceof ParameterizedTypeName ptn && (ptn.rawType().equals(ClassName.get(CompletionStage.class)) || ptn.rawType().equals(ClassName.get(CompletableFuture.class)))) {
             b.addStatement("var _future = new $T<$T>()", CompletableFuture.class, KafkaClassNames.recordMetadata);
             b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
             b.addStatement("_tctx.onCompletion(_meta, _ex)");
