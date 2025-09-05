@@ -93,7 +93,7 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
                 if (cause instanceof IllegalStateException ie) {
                     throw ie;
                 } else {
-                    throw new IllegalStateException("Zeebe JobWorkers with types %s failed to start, due to: %s".formatted(
+                    throw new RuntimeException("Zeebe JobWorkers with types %s failed to start, due to: %s".formatted(
                         workersByType.keySet(), e.getMessage()), cause);
                 }
             }

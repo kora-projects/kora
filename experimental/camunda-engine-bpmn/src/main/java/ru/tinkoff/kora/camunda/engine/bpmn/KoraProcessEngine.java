@@ -59,7 +59,7 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
                         try {
                             c.setup(processEngine);
                         } catch (Exception e) {
-                            throw new IllegalStateException(e);
+                            throw new RuntimeException(e);
                         }
                     }))
                     .toArray(CompletableFuture[]::new);
@@ -68,7 +68,7 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
                 logger.info("Camunda BPMN Engine configured in {}", TimeUtils.tookForLogging(startedConfiguring));
             }
         } catch (Exception e) {
-            throw new IllegalStateException("Camunda BPMN Engine failed to start, due to: " + e.getMessage(), e);
+            throw new RuntimeException("Camunda BPMN Engine failed to start, due to: " + e.getMessage(), e);
         }
     }
 
