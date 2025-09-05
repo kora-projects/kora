@@ -135,6 +135,7 @@ components:
         - fieldArrayItemsRequiredNonNullable
         - fieldArrayItemsObjectNullable
         - fieldArrayItemsObjectNonNullable
+        - fieldArrayRequiredNullableItemsObjectNullable
         - fieldArrayItemsMapNullable
         - fieldArrayItemsMapNullableKey
         - fieldArrayItemsMapNullableValue
@@ -180,14 +181,33 @@ components:
           type: array
           items:
             type: string
+        fieldArrayNullableItemsObjectNullable:
+          type: array
+          nullable: true
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredNullableItemsObjectNullable:
+          type: array
+          nullable: true
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayNonNullableItemsObjectNullable:
+          type: array
+          nullable: false
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
         fieldArrayItemsObjectNullable:
           type: array
-          x-items-nullable: true
           items:
+            nullable: true
             $ref: '#/components/schemas/Simple'
         fieldArrayItemsObjectNonNullable:
           type: array
           items:
+            nullable: false
             $ref: '#/components/schemas/Simple'
         fieldArrayItemsMapNullable:
           type: array
@@ -200,15 +220,12 @@ components:
           type: array
           items:
             type: object
-            x-key-type: Long
-            x-key-nullable: true
             additionalProperties:
               $ref: '#/components/schemas/Simple'
         fieldArrayItemsMapNullableValue:
           type: array
           items:
             type: object
-            x-items-nullable: true
             additionalProperties:
               $ref: '#/components/schemas/Simple'
         fieldArrayItemsMapNonNullable:

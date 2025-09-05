@@ -1298,7 +1298,7 @@ public class KoraCodegen extends DefaultCodegen {
             var itemsDataType = getTypeDeclarationForProperty(items, property);
 
             final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
-                                           || (target.getExtensions() != null && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-items-nullable"))));
+                                           || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
             if (params.codegenMode.isKotlin() && isItemNullable) {
                 return getSchemaType(target) + "<" + itemsDataType + "?>";
             } else {
@@ -1314,24 +1314,14 @@ public class KoraCodegen extends DefaultCodegen {
                 p.setAdditionalProperties(inner);
             }
 
-            final boolean isKeyNullable = target.getExtensions() != null
-                                          && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-key-nullable")));
-            final boolean isValueNullable = target.getExtensions() != null
-                                            && Boolean.parseBoolean(String.valueOf(target.getExtensions().get("x-items-nullable")));
-
             String mapType = getSchemaType(target);
-            String keyType = (target.getExtensions() == null)
-                ? "String"
-                : String.valueOf(target.getExtensions().getOrDefault("x-key-type", "String"));
+            String keyType = "String";
             String valueType = getTypeDeclaration(inner);
 
-            if (params.codegenMode.isKotlin()) {
-                if (isKeyNullable) {
-                    keyType = keyType + "?";
-                }
-                if (isValueNullable) {
-                    valueType = valueType + "?";
-                }
+            var items = getSchemaAdditionalProperties(target);
+            final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable());
+            if (params.codegenMode.isKotlin() && isItemNullable) {
+                valueType = valueType + "?";
             }
 
             return "%s<%s, %s>".formatted(mapType, keyType, valueType);
