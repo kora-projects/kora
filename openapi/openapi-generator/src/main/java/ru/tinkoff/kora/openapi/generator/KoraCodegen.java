@@ -840,9 +840,9 @@ public class KoraCodegen extends DefaultCodegen {
                                         }
                                     }
                                 }
+                            } else if (model.requiredVars.stream().anyMatch(p -> p.name.equals(property.name))) {
+                                property.isOverridden = true;
                             }
-                        } else if (model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name))) {
-                            prop.isOverridden = true;
                         }
                     }
 
