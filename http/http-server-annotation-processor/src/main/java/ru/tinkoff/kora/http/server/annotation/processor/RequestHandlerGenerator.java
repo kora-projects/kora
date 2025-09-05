@@ -5,6 +5,7 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
@@ -17,10 +18,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -63,15 +61,23 @@ public class RequestHandlerGenerator {
     @Nullable
     public MethodSpec generate(TypeElement controller, RequestMappingData requestMappingData) {
         var methodName = this.methodName(requestMappingData);
+        var parameters = parseParameters(requestMappingData);
+        if (parameters == null) {
+            return null;
+        }
+
+        final Set<String> tags = TagUtils.parseTagValue(controller);
+        var paramBuilder = ParameterSpec.builder(TypeName.get(controller.asType()), "_controller");
+        if (!tags.isEmpty()) {
+            paramBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tags));
+        }
 
         var methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(httpServerRequestHandler)
-            .addParameter(TypeName.get(controller.asType()), "_controller");
-
-        var parameters = parseParameters(requestMappingData);
-        if (parameters == null) {
-            return null;
+            .addParameter(paramBuilder.build());
+        if (!tags.isEmpty()) {
+           methodBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tags));
         }
 
         this.addParameterMappers(methodBuilder, requestMappingData, parameters);
