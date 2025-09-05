@@ -1,9 +1,12 @@
 dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
     api project(':opentelemetry:opentelemetry-tracing')
     api(libs.opentelemetry.exporter.otlp) {
+        exclude group: 'com.squareup.okhttp3', module: 'okhttp-jvm'
         exclude group: 'com.squareup.okio', module: 'okio'
     }
-    implementation libs.okio
 
-    annotationProcessor project(':config:config-annotation-processor')
+    implementation libs.okhttp.jvm
+    implementation libs.okio
 }
