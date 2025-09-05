@@ -115,12 +115,14 @@ object GraphBuilder {
                         try {
                             results.add(this.processProcessing(ctx, newProcessing, dependencyClaim))
                         } catch (e: NewRoundException) {
-                            results.add(ProcessingState.NewRoundRequired(
-                                e.source,
-                                e.type,
-                                e.tag,
-                                e.resolving
-                            ))
+                            results.add(
+                                ProcessingState.NewRoundRequired(
+                                    e.source,
+                                    e.type,
+                                    e.tag,
+                                    e.resolving
+                                )
+                            )
                         } catch (e: UnresolvedDependencyException) {
                             if (exception != null) {
                                 exception.addSuppressed(e)
@@ -211,14 +213,16 @@ object GraphBuilder {
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
                 val msg = if (dependencyClaim.tags.isEmpty()) {
                     StringBuilder(
-                        "Required dependency type wasn't found and can't be auto created: ${dependencyClaim.type.toTypeName()}.\n" +
-                            "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component is plugged in."
+                        "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} without tag.\n" +
+                            "Keep in mind that nullable & non nullable types are different ones.\n" +
+                            "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
                     )
                 } else {
                     val tagMsg = dependencyClaim.tags.joinToString(", ", "@Tag(", ")")
                     StringBuilder(
-                        "Required dependency type wasn't found and can't be auto created: ${dependencyClaim.type.toTypeName()} with tag ${tagMsg}.\n" +
-                            "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component is plugged in."
+                        "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} with tag ${tagMsg}.\n" +
+                            "Keep in mind that nullable & non nullable types are different ones).\n" +
+                            "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
                     )
                 }
                 for (hint in hints) {
@@ -332,19 +336,19 @@ object GraphBuilder {
             )
             .addFunction(
                 FunSpec.builder("getDelegate")
-                .addModifiers(KModifier.PRIVATE)
-                .returns(typeName)
+                    .addModifiers(KModifier.PRIVATE)
+                    .returns(typeName)
                     .addCode(
                         CodeBlock.builder()
-                    .addStatement("var delegate = this.delegate")
-                    .controlFlow("if (delegate == null)") {
-                        addStatement("delegate = this.promise.get().get()!!")
-                        addStatement("this.delegate = delegate")
-                    }
-                    .addStatement("return delegate")
+                            .addStatement("var delegate = this.delegate")
+                            .controlFlow("if (delegate == null)") {
+                                addStatement("delegate = this.promise.get().get()!!")
+                                addStatement("this.delegate = delegate")
+                            }
+                            .addStatement("return delegate")
+                            .build()
+                    )
                     .build()
-                )
-                .build()
             )
         for (typeParameter in claimTypeDeclaration.typeParameters) {
             type.addTypeVariable(typeParameter.toTypeVariableName(typeTpr))
