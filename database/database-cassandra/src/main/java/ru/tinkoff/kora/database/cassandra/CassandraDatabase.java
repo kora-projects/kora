@@ -54,7 +54,12 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
         logger.debug("CassandraDatabase {} starting...", config.basic().contactPoints());
         var started = System.nanoTime();
 
-        cqlSession = new CassandraSessionBuilder().build(config, configurer, telemetry);
+        try {
+            cqlSession = new CassandraSessionBuilder().build(config, configurer, telemetry);
+        } catch (Exception e) {
+            throw new RuntimeException("CassandraDatabase '%s' failed to start, due to: %s".formatted(
+                config.basic().contactPoints(), e.getMessage()), e);
+        }
 
         logger.info("CassandraDatabase {} started in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
     }

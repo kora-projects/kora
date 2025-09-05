@@ -25,18 +25,37 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
         this.scheduler = scheduler;
     }
 
+    private final class QuartzJobException extends Exception {
+
+        private final Class<?> job;
+
+        public QuartzJobException(Class<?> job, SchedulerException cause) {
+            super(cause);
+            this.job = job;
+        }
+
+        public Class<?> getJob() {
+            return job;
+        }
+    }
+
     @Override
-    public final void init() throws SchedulerException {
-        var quartzJobsNames = quartzJobList.stream()
-            .map(q -> q.get().getClass().getCanonicalName())
-            .toList();
+    public final void init() {
+        try {
+            var quartzJobsNames = quartzJobList.stream()
+                .map(q -> q.get().getClass().getCanonicalName())
+                .toList();
 
-        logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
-        var started = System.nanoTime();
+            logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
+            var started = System.nanoTime();
 
-        this.scheduleJobs();
+            this.scheduleJobs();
 
-        logger.info("Quartz Jobs {} started in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
+            logger.info("Quartz Jobs {} started in {}", quartzJobsNames, TimeUtils.tookForLogging(started));
+        } catch (QuartzJobException e) {
+            throw new RuntimeException("Quartz Job '%s' failed to start, due to: %s".formatted(
+                e.getJob().getCanonicalName(), e.getMessage()), e.getCause());
+        }
     }
 
     @Override
@@ -44,40 +63,44 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
         this.scheduleJobs();
     }
 
-    private void scheduleJobs() throws SchedulerException {
+    private void scheduleJobs() throws QuartzJobException {
         for (var valueOf : this.quartzJobList) {
             var koraQuartzJob = valueOf.get();
-            var job = JobBuilder.newJob(koraQuartzJob.getClass())
-                .withIdentity(koraQuartzJob.getClass().getCanonicalName())
-                .storeDurably()
-                .build();
+            try {
+                var job = JobBuilder.newJob(koraQuartzJob.getClass())
+                    .withIdentity(koraQuartzJob.getClass().getCanonicalName())
+                    .storeDurably()
+                    .build();
 
-            if (this.scheduler.checkExists(job.getKey())) {
-                var existingJob = this.scheduler.getJobDetail(job.getKey());
-                if (!existingJob.getJobClass().equals(koraQuartzJob.getClass()) || !existingJob.isDurable()) {
+                if (this.scheduler.checkExists(job.getKey())) {
+                    var existingJob = this.scheduler.getJobDetail(job.getKey());
+                    if (!existingJob.getJobClass().equals(koraQuartzJob.getClass()) || !existingJob.isDurable()) {
+                        this.scheduler.addJob(job, true);
+                    }
+                } else {
                     this.scheduler.addJob(job, true);
                 }
-            } else {
-                this.scheduler.addJob(job, true);
-            }
-            var existingTriggers = this.scheduler.getTriggersOfJob(job.getKey())
-                .stream()
-                .collect(Collectors.toMap(Trigger::getKey, Function.identity()));
-            for (var newTrigger : koraQuartzJob.getTriggers()) {
-                var existsTrigger = existingTriggers.remove(newTrigger.getKey());
-                if (existsTrigger != null) {
-                    if (triggersEqual(existsTrigger, newTrigger)) {
-                        continue;
+                var existingTriggers = this.scheduler.getTriggersOfJob(job.getKey())
+                    .stream()
+                    .collect(Collectors.toMap(Trigger::getKey, Function.identity()));
+                for (var newTrigger : koraQuartzJob.getTriggers()) {
+                    var existsTrigger = existingTriggers.remove(newTrigger.getKey());
+                    if (existsTrigger != null) {
+                        if (triggersEqual(existsTrigger, newTrigger)) {
+                            continue;
+                        }
+                        this.scheduler.unscheduleJob(existsTrigger.getKey());
                     }
-                    this.scheduler.unscheduleJob(existsTrigger.getKey());
+                    var triggerToSchedule = newTrigger.getTriggerBuilder()
+                        .forJob(job)
+                        .build();
+                    this.scheduler.scheduleJob(triggerToSchedule);
                 }
-                var triggerToSchedule = newTrigger.getTriggerBuilder()
-                    .forJob(job)
-                    .build();
-                this.scheduler.scheduleJob(triggerToSchedule);
-            }
-            for (var entry: existingTriggers.entrySet()) {
-                this.scheduler.unscheduleJob(entry.getKey());
+                for (var entry : existingTriggers.entrySet()) {
+                    this.scheduler.unscheduleJob(entry.getKey());
+                }
+            } catch (SchedulerException e) {
+                throw new QuartzJobException(koraQuartzJob.getClass(), e);
             }
         }
     }

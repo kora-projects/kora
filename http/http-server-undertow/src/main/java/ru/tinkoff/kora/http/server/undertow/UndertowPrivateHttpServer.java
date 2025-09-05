@@ -12,6 +12,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.PrivateHttpServer;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
+import java.net.BindException;
 import java.net.InetSocketAddress;
 
 public class UndertowPrivateHttpServer implements PrivateHttpServer {
@@ -48,12 +49,22 @@ public class UndertowPrivateHttpServer implements PrivateHttpServer {
 
     @Override
     public void init() {
-        logger.debug("Private HTTP Server (Undertow) starting...");
-        final long started = TimeUtils.started();
-        this.undertow = this.createServer();
-        this.undertow.start();
-        var data = StructuredArgument.marker("port", this.port());
-        logger.info(data, "Private HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
+        try {
+            logger.debug("Private HTTP Server (Undertow) starting...");
+            final long started = TimeUtils.started();
+            this.undertow = this.createServer();
+            this.undertow.start();
+            var data = StructuredArgument.marker("port", this.port());
+            logger.info(data, "Private HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
+        } catch (RuntimeException e) {
+            if (e.getCause() instanceof BindException be) {
+                throw new RuntimeException("Private HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
+                    .formatted(config.get().privateApiHttpPort()), be);
+            } else {
+                throw new RuntimeException("Private HTTP Server (Undertow) failed to start on port '%s', due to: %s"
+                    .formatted(config.get().publicApiHttpPort(), e.getMessage()), e);
+            }
+        }
     }
 
     private Undertow createServer() {

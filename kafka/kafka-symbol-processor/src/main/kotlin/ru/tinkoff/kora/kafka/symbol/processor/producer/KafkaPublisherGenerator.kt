@@ -18,8 +18,8 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaTopicAnnotation
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerTelemetryFactory
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.telemetryProducerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.serializer
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.telemetryProducerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.utils.KafkaPublisherUtils
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
@@ -229,8 +229,16 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .addFunction(
                 FunSpec.builder("init")
                     .addModifiers(KModifier.OVERRIDE)
-                    .addStatement("this.delegate = %T(driverProperties, %T(), %T())", KafkaClassNames.kafkaProducer, KafkaClassNames.byteArraySerializer, KafkaClassNames.byteArraySerializer)
-                    .addStatement("this.telemetry = this.telemetryFactory.get(%S, this.telemetryConfig, this.delegate, driverProperties)", configPath)
+                    .addCode(
+                        CodeBlock.builder()
+                            .beginControlFlow("try")
+                            .addStatement("this.delegate = %T(driverProperties, %T(), %T())", KafkaClassNames.kafkaProducer, KafkaClassNames.byteArraySerializer, KafkaClassNames.byteArraySerializer)
+                            .addStatement("this.telemetry = this.telemetryFactory.get(%S, this.telemetryConfig, this.delegate, driverProperties)", configPath)
+                            .nextControlFlow("catch (e: %T)", Exception::class)
+                            .addStatement("throw %T(%S + e.message, e)", RuntimeException::class, "Kafka Publisher '$configPath' failed to start, due to: ")
+                            .endControlFlow()
+                            .build()
+                    )
                     .build()
             )
             .addFunction(
@@ -350,7 +358,8 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             if (publishData.keyVar == null) {
                 b.addStatement("var _telemetryRecord = %T(_key, %N, _record)", telemetryProducerRecord, publishData.valueVar.name?.asString().toString())
             } else {
-                b.addStatement("var _telemetryRecord = %T(%N, %N, _record)",
+                b.addStatement(
+                    "var _telemetryRecord = %T(%N, %N, _record)",
                     telemetryProducerRecord,
                     publishData.keyVar.name?.asString().toString(),
                     publishData.valueVar.name?.asString().toString(),

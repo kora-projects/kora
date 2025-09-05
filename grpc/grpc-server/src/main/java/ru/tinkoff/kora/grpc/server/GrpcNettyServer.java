@@ -12,6 +12,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.grpc.server.config.GrpcServerConfig;
 
 import java.io.IOException;
+import java.net.BindException;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -33,15 +34,25 @@ public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
     }
 
     @Override
-    public void init() throws IOException {
-        logger.debug("Starting gRPC Server...");
-        final long started = TimeUtils.started();
+    public void init() {
+        try {
+            logger.debug("Starting gRPC Server...");
+            final long started = TimeUtils.started();
 
-        var builder = nettyServerBuilder.get();
-        this.server = builder.build();
-        this.server.start();
-        this.state.set(GrpcServerState.RUN);
-        logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
+            var builder = nettyServerBuilder.get();
+            this.server = builder.build();
+            this.server.start();
+            this.state.set(GrpcServerState.RUN);
+            logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
+        } catch (IOException e) {
+            if (e.getCause() instanceof BindException be) {
+                throw new RuntimeException("gRPC Server (Netty) failed to start, cause port '%s' is already in use"
+                    .formatted(config.get().port()), be);
+            } else {
+                throw new RuntimeException("gRPC Server (Netty) failed to start on port '%s', due to: {}"
+                    .formatted(config.get().port(), e.getMessage()), e);
+            }
+        }
     }
 
     @Override
