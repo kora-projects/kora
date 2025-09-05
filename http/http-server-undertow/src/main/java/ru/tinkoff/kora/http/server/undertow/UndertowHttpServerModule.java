@@ -43,7 +43,7 @@ public interface UndertowHttpServerModule extends UndertowModule {
     default BlockingRequestExecutor undertowBlockingRequestExecutor(@Tag(Undertow.class) XnioWorker xnioWorker, UndertowHttpServerConfig config) {
         if (config.virtualThreadsEnabled()) {
             if (VirtualThreadExecutorHolder.status() == VirtualThreadStatus.UNAVAILABLE) {
-                throw new IllegalStateException("Public HTTP Server (Undertow) starting failed for enabled Virtual Threads, cause Virtual Threads are not available, please check that you are using Java 21+ or disable Virtual Threads for HTTP-server in configuration.");
+                throw new IllegalStateException("Public HTTP Server (Undertow) starting failed cause Virtual Threads are not available but enabled in configuration, please check that you are using Java 21+ or disable Virtual Threads for HTTP-server in configuration.");
             }
             return new VirtualThreadBlockingRequestExecutor();
         } else {
