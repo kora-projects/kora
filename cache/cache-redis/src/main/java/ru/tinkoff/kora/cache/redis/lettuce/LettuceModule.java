@@ -16,6 +16,7 @@ public interface LettuceModule {
         return extractor.extract(value);
     }
 
+    @DefaultComponent
     default LettuceClientFactory lettuceClientFactory() {
         return new LettuceClientFactory();
     }
@@ -28,7 +29,7 @@ public interface LettuceModule {
                                                 @Nullable EventLoopGroup eventLoopGroup) {
         var redisClient = factory.build(config, recorderFactory, lettuceConfigurator, eventLoopGroup);
         if (redisClient instanceof io.lettuce.core.RedisClient rc) {
-            return new LettuceRedisCacheClient(rc, config);
+            return new LettuceRedisCacheClient(rc, factory, config);
         } else if (redisClient instanceof RedisClusterClient rcc) {
             return new LettuceClusterRedisCacheClient(rcc);
         } else {

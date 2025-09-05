@@ -14,6 +14,10 @@ public interface LettuceClientConfig {
 
     String uri();
 
+    default boolean forceClusterClient() {
+        return false;
+    }
+
     @Nullable
     Integer database();
 
