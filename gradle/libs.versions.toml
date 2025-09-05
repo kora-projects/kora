@@ -182,7 +182,7 @@ camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta"
 camunda7-openapi = { module = "org.camunda.bpm:camunda-engine-rest-openapi", version.ref = "camunda7" }
 resteasy-undertow-jakarta = { module = "org.jboss.resteasy:resteasy-undertow", version.ref = "undertow-jakarta" }
 fasterxml-uuidgenerator = { module = "com.fasterxml.uuid:java-uuid-generator", version = "5.1.0" }
-jakarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "3.1.0" }
+jakarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 
 zeebe-model = { module = "io.camunda:zeebe-bpmn-model", version.ref = "zeebe" }
 zeebe-client = { module = "io.camunda:zeebe-client-java", version.ref = "zeebe" }
