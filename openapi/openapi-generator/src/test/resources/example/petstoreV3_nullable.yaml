@@ -139,10 +139,10 @@ components:
         - fieldArrayItemsObjectNonNullable
         - fieldArrayRequiredNullableItemsObjectNullable
         - fieldArrayRequiredNonNullableItemsObjectNullable
-        - fieldArrayItemsMapNullable
-        - fieldArrayItemsMapNullableKey
-        - fieldArrayItemsMapNullableValue
-        - fieldArrayItemsMapNonNullable
+        - fieldArrayRequiredItemsMapNullable
+        - fieldArrayRequiredItemsMapNullableKey
+        - fieldArrayRequiredItemsMapNullableValue
+        - fieldArrayRequiredItemsMapNonNullable
       properties:
         id:
           type: integer
@@ -233,8 +233,37 @@ components:
           items:
             nullable: false
             $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNullable:
+          type: array
+          nullable: true
+          items:
+            type: object
+            nullable: true
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNullableKey:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNullableValue:
+          type: array
+          nullable: false
+          items:
+            type: object
+            nullable: true
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNonNullable:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
         fieldArrayItemsMapNullable:
           type: array
+          nullable: true
           items:
             type: object
             nullable: true
@@ -248,8 +277,10 @@ components:
               $ref: '#/components/schemas/Simple'
         fieldArrayItemsMapNullableValue:
           type: array
+          nullable: false
           items:
             type: object
+            nullable: true
             additionalProperties:
               $ref: '#/components/schemas/Simple'
         fieldArrayItemsMapNonNullable:

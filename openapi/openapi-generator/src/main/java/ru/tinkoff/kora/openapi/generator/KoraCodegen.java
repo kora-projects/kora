@@ -1290,16 +1290,18 @@ public class KoraCodegen extends DefaultCodegen {
     /**
      * Same as original, but have different mapping for Map of String to T
      */
-    public String getTypeDeclarationForProperty(Schema p, CodegenProperty property) {
+    public String getTypeDeclarationForProperty(Schema p, CodegenProperty property, boolean required) {
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
         if (ModelUtils.isArraySchema(target)) {
             var items = getSchemaItems(target);
-            var valueType = getTypeDeclarationForProperty(items, property);
+            var valueType = getTypeDeclarationForProperty(items, property, required);
             final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
                                            || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
 
-            if (params.codegenMode.isKotlin() && isItemNullable) {
+            if (params.codegenMode.isJava() && params.enableJsonNullable && isItemNullable) {
+                valueType = "ru.tinkoff.kora.json.common.JsonNullable<" + valueType + ">";
+            } else if (params.codegenMode.isKotlin() && isItemNullable) {
                 valueType = valueType + "?";
             }
 
@@ -1321,7 +1323,10 @@ public class KoraCodegen extends DefaultCodegen {
             var items = getSchemaAdditionalProperties(target);
             final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
                                            || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
-            if (params.codegenMode.isKotlin() && isItemNullable) {
+
+            if (params.codegenMode.isJava() && params.enableJsonNullable && isItemNullable) {
+                valueType = "ru.tinkoff.kora.json.common.JsonNullable<" + valueType + ">";
+            } else if (params.codegenMode.isKotlin() && isItemNullable) {
                 valueType = valueType + "?";
             }
 
@@ -1334,16 +1339,17 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     public CodegenProperty fromProperty(String name, Schema p, boolean required, boolean schemaIsFromAdditionalProperties) {
         var property = super.fromProperty(name, p, required, schemaIsFromAdditionalProperties);
+        property.required = required;
         var schema = ModelUtils.unaliasSchema(this.openAPI, p, importMapping);
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
         if (ModelUtils.isArraySchema(target)) {
-            var dataType = getTypeDeclarationForProperty(target, property);
+            var dataType = getTypeDeclarationForProperty(target, property, required);
             property.dataType = dataType;
             if (!property.isEnum) {
                 property.datatypeWithEnum = dataType;
             }
         } else if (ModelUtils.isMapSchema(target)) {
-            var dataType = getTypeDeclarationForProperty(p, property);
+            var dataType = getTypeDeclarationForProperty(p, property, required);
             property.dataType = dataType;
             if (!property.isEnum) {
                 property.datatypeWithEnum = dataType;
