@@ -159,7 +159,7 @@ kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }
 
 jakarta-jws-api = { module = "jakarta.jws:jakarta.jws-api", version = "3.0.0" }
-jakarta-xml-ws-api = { module = "jakarta.xml.ws:jakarta.xml.ws-api", version = "3.0.1" }
+jakarta-xml-ws-api = { module = "jakarta.xml.ws:jakarta.xml.ws-api", version = "4.0.2" }
 jakarta-xml-bind-api = { module = "jakarta.xml.bind:jakarta.xml.bind-api", version = "3.0.1" }
 
 glassfish-jaxb-jakarta = { module = "org.glassfish.jaxb:jaxb-runtime", version = "3.0.1" }
