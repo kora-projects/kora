@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.annotation.processor.common.TypeParameterUtils;
 

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 import jakarta.annotation.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;

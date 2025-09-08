@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.exception;
 
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;

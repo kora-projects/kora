@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
@@ -109,7 +109,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         if (isFuture) {
             b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
             b.addStatement("var _ctxFork = _ctxCurrent.fork()");
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)", CommonClassNames.context);
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)");
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addCode("return _session.prepareAsync(_query.sql())\n");
             b.addCode("  .thenCompose(_st -> {$>$>\n");
@@ -117,7 +117,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             b.addStatement("var _stmt = _st.boundStatementBuilder()");
         } else {
             b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query)", CommonClassNames.context);
+            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query)");
             b.addStatement("var _session = this._connectionFactory.currentSession()");
             b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
         }

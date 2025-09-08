@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.scheduling.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;

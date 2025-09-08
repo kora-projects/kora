@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.logging.aspect;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
@@ -173,7 +173,7 @@ public class LogAspect implements KoraAspect {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
             ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
                 var returnType = (ParameterizedTypeName) TypeName.get(executableElement.getReturnType());
-                if (logResultLevel == null || returnType.typeArguments.get(0).equals(TypeName.VOID.box())) {
+                if (logResultLevel == null || returnType.typeArguments().get(0).equals(TypeName.VOID.box())) {
                     b.add("$N = $N.doOnSuccess(_v -> $N.$L($S));", RESULT_VAR_NAME, RESULT_VAR_NAME, loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
                 } else {
                     var resultValue = RESULT_VAR_NAME + "_value";
@@ -246,7 +246,7 @@ public class LogAspect implements KoraAspect {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
             ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
                 var returnType = (ParameterizedTypeName) TypeName.get(executableElement.getReturnType());
-                if (logResultLevel == null || returnType.typeArguments.get(0).equals(TypeName.VOID.box())) {
+                if (logResultLevel == null || returnType.typeArguments().get(0).equals(TypeName.VOID.box())) {
                     b.add("$N = $N.doOnNext(_v -> $N.$L($S));", RESULT_VAR_NAME, RESULT_VAR_NAME, loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT_ELEMENT);
                 } else {
                     b.add("var $N = this.$N;\n", loggerFieldName, loggerFieldName);
@@ -360,7 +360,7 @@ public class LogAspect implements KoraAspect {
                     b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
                 });
             }
-            b.nextControlFlow("else", loggerFieldName);
+            b.nextControlFlow("else");
             var errorWriterBuilder = CodeBlock.builder()
                 .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
                 .beginControlFlow("gen ->")

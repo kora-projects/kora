@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.cache.annotation.processor.aop;
 
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.CodeBlock;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.lang.model.element.ExecutableElement;
 
-import static com.squareup.javapoet.CodeBlock.joining;
+import static com.palantir.javapoet.CodeBlock.joining;
 
 abstract class AbstractAopCacheAspect implements KoraAspect {
 

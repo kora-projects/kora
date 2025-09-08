@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.logging.aspect;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class LogAspectClassNames {
     public static final ClassName log = ClassName.get("ru.tinkoff.kora.logging.common.annotation", "Log");

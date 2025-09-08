@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.fasterxml.jackson.core.*;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.TypeName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

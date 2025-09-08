@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
@@ -15,7 +15,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 
-import static com.squareup.javapoet.CodeBlock.joining;
+import static com.palantir.javapoet.CodeBlock.joining;
 
 public class CircuitBreakerKoraAspect implements KoraAspect {
 
@@ -74,7 +74,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
         final CodeBlock returnCall = MethodUtils.isVoid(method)
             ? CodeBlock.of("return")
-            : CodeBlock.of("return _result", superMethod.toString());
+            : CodeBlock.of("return _result");
 
         return CodeBlock.builder().add("""
             try {

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
@@ -181,7 +181,7 @@ public class ClientClassGenerator {
                             } else {
                                 b.addCode("$T.toString($L.getValue())", Objects.class, targetLiteral);
                             }
-                            b.addStatement(")", StandardCharsets.class);
+                            b.addStatement(")");
                             b.endControlFlow().endControlFlow().endControlFlow();
                         } else {
                             b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(queryParameterName, StandardCharsets.UTF_8), URLEncoder.class);
@@ -322,7 +322,7 @@ public class ClientClassGenerator {
             b.addCode("\n");
             b.addStatement("final $T _body", httpBodyOutput);
             b.addCode("try {$>\n");
-            var ref = findMapperField(builder, requestMapperName).modifiers.contains(Modifier.STATIC)
+            var ref = findMapperField(builder, requestMapperName).modifiers().contains(Modifier.STATIC)
                 ? CodeBlock.of("$T", implClassName(methodData.element))
                 : CodeBlock.of("this");
             b.addCode("_body = $L.$N.apply($T.current(), $L);$<\n", ref, requestMapperName, CommonClassNames.context, bodyParameter.parameter());
@@ -354,8 +354,8 @@ public class ClientClassGenerator {
     }
 
     private static FieldSpec findMapperField(TypeSpec.Builder builder, String mapperName) {
-        for (var fieldSpec : builder.fieldSpecs) {
-            if (fieldSpec.name.equals(mapperName)) {
+        for (var fieldSpec : builder.build().fieldSpecs()) { // todo find a better way
+            if (fieldSpec.name().equals(mapperName)) {
                 return fieldSpec;
             }
         }
@@ -412,7 +412,7 @@ public class ClientClassGenerator {
             if (resultType.getKind() != TypeKind.VOID) {
                 b.add("return ");
             }
-            var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+            var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                 ? CodeBlock.of("$T", implClassName(methodData.element))
                 : CodeBlock.of("this");
             b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
@@ -425,7 +425,7 @@ public class ClientClassGenerator {
                 b.addStatement("return null");
             } else {
                 var responseMapperName = methodData.element().getSimpleName() + "ResponseMapper";
-                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                     ? CodeBlock.of("$T", implClassName(methodData.element))
                     : CodeBlock.of("this");
                 b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
@@ -445,7 +445,7 @@ public class ClientClassGenerator {
                     defaultMapper = codeMapper;
                 } else {
                     var responseMapperName = "" + methodData.element().getSimpleName() + codeMapper.code() + "ResponseMapper";
-                    var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                    var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                         ? CodeBlock.of("$T", implClassName(methodData.element))
                         : CodeBlock.of("this");
                     if (isMapperAssignable(methodData.element.getReturnType(), codeMapper.type, codeMapper.mapper)) {
@@ -461,7 +461,7 @@ public class ClientClassGenerator {
                 b.add("  }\n");
             } else {
                 var responseMapperName = methodData.element().getSimpleName() + "DefaultResponseMapper";
-                var ref = findMapperField(builder, responseMapperName).modifiers.contains(Modifier.STATIC)
+                var ref = findMapperField(builder, responseMapperName).modifiers().contains(Modifier.STATIC)
                     ? CodeBlock.of("$T", implClassName(methodData.element))
                     : CodeBlock.of("this");
                 if (isMapperAssignable(methodData.element.getReturnType(), defaultMapper.type, defaultMapper.mapper)) {
@@ -590,7 +590,7 @@ public class ClientClassGenerator {
                                 httpClientResponseMapper,
                                 ParameterizedTypeName.get(
                                     ClassName.get(CompletionStage.class),
-                                    ((ParameterizedTypeName) methodData.returnType()).typeArguments.get(0)
+                                    ((ParameterizedTypeName) methodData.returnType()).typeArguments().get(0)
                                 )
                             );
                         } else {

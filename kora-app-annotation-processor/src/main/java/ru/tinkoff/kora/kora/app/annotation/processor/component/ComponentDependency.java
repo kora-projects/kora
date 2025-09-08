@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.kora.app.annotation.processor.GraphResolutionHelper;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;

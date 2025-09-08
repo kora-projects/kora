@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.server.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class HttpServerClassNames {
     public static final ClassName httpController = ClassName.get("ru.tinkoff.kora.http.server.common.annotation", "HttpController");

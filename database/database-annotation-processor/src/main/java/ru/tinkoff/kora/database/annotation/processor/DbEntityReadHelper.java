@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.database.annotation.processor.entity.DbEntity;
@@ -35,7 +35,7 @@ public class DbEntityReadHelper {
                 type.addField(requiredField.field);
                 if (requiredField.constructorParam() != null) {
                     constructor.addParameter(requiredField.constructorParam);
-                    constructor.addCode("this.$L = $L;\n", requiredField.field.name, requiredField.constructorParam().name);
+                    constructor.addCode("this.$L = $L;\n", requiredField.field.name(), requiredField.constructorParam().name());
                 }
             }
         }
