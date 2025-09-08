@@ -20,7 +20,7 @@ swagger = "2.2.35"
 opentelemetry = "1.53.0"
 undertow = "2.3.18.Final"
 undertow-jakarta = "6.2.12.Final"
-camunda7 = "7.21.0"
+camunda7 = "7.23.0"
 zeebe = "8.7.10"
 
 ["libraries"]
