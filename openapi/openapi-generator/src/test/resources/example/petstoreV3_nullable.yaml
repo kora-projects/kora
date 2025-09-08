@@ -7,6 +7,22 @@ info:
 servers:
   - url: http://petstore.swagger.io/v1
 paths:
+  /animals:
+    get:
+      operationId: listAnimals
+      responses:
+        '200':
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Animals"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
   /pets:
     get:
       summary: List all pets
@@ -111,16 +127,26 @@ components:
       type: object
       required:
         - id
-        - fieldRequired
         - fieldRequiredNullable
         - fieldRequiredNonNullable
+        - fieldIntRequiredNullable
+        - fieldIntRequiredNonNullable
+        - fieldArrayRequiredNullable
+        - fieldArrayRequiredNonNullable
+        - fieldArrayItemsRequiredNullable
+        - fieldArrayItemsRequiredNonNullable
+        - fieldArrayItemsObjectNullable
+        - fieldArrayItemsObjectNonNullable
+        - fieldArrayRequiredNullableItemsObjectNullable
+        - fieldArrayRequiredNonNullableItemsObjectNullable
+        - fieldArrayRequiredItemsMapNullable
+        - fieldArrayRequiredItemsMapNullableKey
+        - fieldArrayRequiredItemsMapNullableValue
+        - fieldArrayRequiredItemsMapNonNullable
       properties:
         id:
           type: integer
           format: int64
-        fieldRequired:
-          type: string
-          example: 123
         fieldNullable:
           type: string
           nullable: true
@@ -129,13 +155,176 @@ components:
           type: string
           nullable: true
           example: 123
+        fieldIntNullable:
+          type: integer
+          format: int64
+          nullable: true
+        fieldIntRequiredNullable:
+          type: integer
+          format: int64
+          nullable: true
+        fieldIntRequiredNonNullable:
+          type: integer
+          format: int64
         fieldRequiredNonNullable:
           type: string
           example: 123
+        fieldArrayNullable:
+          nullable: true
+          items:
+            type: string
+        fieldArrayRequiredNullable:
+          nullable: true
+          items:
+            type: string
+        fieldArrayRequiredNonNullable:
+          items:
+            type: string
+        fieldArrayItemsNullable:
+          type: array
+          items:
+            type: string
+            nullable: true
+        fieldArrayNullableItemsNullable:
+          type: array
+          items:
+            type: string
+            nullable: true
+        fieldArrayItemsRequiredNullable:
+          type: array
+          items:
+            type: string
+            nullable: true
+        fieldArrayItemsRequiredNonNullable:
+          type: array
+          items:
+            type: string
+        fieldArrayNullableItemsObjectNullable:
+          type: array
+          nullable: true
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredNullableItemsObjectNullable:
+          type: array
+          nullable: true
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayNonNullableItemsObjectNullable:
+          type: array
+          nullable: false
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredNonNullableItemsObjectNullable:
+          type: array
+          nullable: false
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayItemsObjectNullable:
+          type: array
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayItemsObjectNonNullable:
+          type: array
+          items:
+            nullable: false
+            $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNullable:
+          type: array
+          nullable: true
+          items:
+            type: object
+            nullable: true
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNullableKey:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNullableValue:
+          type: array
+          nullable: false
+          items:
+            type: object
+            nullable: true
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredItemsMapNonNullable:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayItemsMapNullable:
+          type: array
+          nullable: true
+          items:
+            type: object
+            nullable: true
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayItemsMapNullableKey:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayItemsMapNullableValue:
+          type: array
+          nullable: false
+          items:
+            type: object
+            nullable: true
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+        fieldArrayItemsMapNonNullable:
+          type: array
+          items:
+            type: object
+            additionalProperties:
+              $ref: '#/components/schemas/Simple'
+    Simple:
+      type: object
+      properties:
+        type:
+          type: string
+    Dog:
+      type: object
+      properties:
+        name:
+          type: string
+      allOf:
+        - $ref: "#/components/schemas/Animal"
+    Animal:
+      discriminator:
+        propertyName: type
+        mapping:
+          pet: "#/components/schemas/Pet"
+          dog: "#/components/schemas/Dog"
+      type: object
+      required:
+        - id
+        - type
+      properties:
+        id:
+          type: integer
+          format: int64
+        type:
+          type: string
     Pets:
       type: array
       items:
         $ref: "#/components/schemas/Pet"
+    Animals:
+      type: array
+      items:
+        $ref: "#/components/schemas/Animal"
     Error:
       type: object
       required:

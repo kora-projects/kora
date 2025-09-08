@@ -33,11 +33,11 @@ sealed interface {{classname}} {
 {{#vendorExtensions.x-discriminator-property}}
 
         {{^isContainer}}
-    {{>kotlinEnumClass}}
+{{>kotlinEnumClass}}
         {{/isContainer}}
         {{#isContainer}}
         {{#mostInnerItems}}
-    {{>kotlinEnumClass}}
+{{>kotlinEnumClass}}
         {{/mostInnerItems}}
         {{/isContainer}}
 {{/vendorExtensions.x-discriminator-property}}
@@ -94,9 +94,7 @@ sealed interface {{classname}} {
     return true
   }
 
-  override fun hashCode(): Int {
-    return javaClass.hashCode()
-  }
+  override fun hashCode(): Int = javaClass.hashCode()
 {{/hasVars}}
 
   {{#allVars}}
