@@ -148,13 +148,9 @@ subprojects {
     def currentProject = it
 
     apply plugin: 'maven-publish'
-    apply plugin: 'jacoco'
     apply plugin: 'signing'
 
     test {
-        jacoco {
-            enabled = false
-        }
     }
 
     javadoc {
@@ -277,7 +273,6 @@ subprojects {
             events("passed", "skipped", "failed")
             exceptionFormat("full")
         }
-        finalizedBy jacocoTestReport // report is always generated after tests run
     }
 
     dependencies {

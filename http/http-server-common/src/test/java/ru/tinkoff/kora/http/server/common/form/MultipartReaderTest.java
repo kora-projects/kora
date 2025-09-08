@@ -315,7 +315,7 @@ class MultipartReaderTest {
 
         @Override
         public int read(@NotNull byte[] b, int off, int len) throws IOException {
-            var realLen = len - ThreadLocalRandom.current().nextInt(len - 1) + 1;
+            var realLen = len - ThreadLocalRandom.current().nextInt(len - 1);
             return super.read(b, off, realLen);
         }
     }

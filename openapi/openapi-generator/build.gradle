@@ -47,6 +47,9 @@ dependencies {
     testImplementation(libs.kotlin.coroutines.reactor)
 }
 
+test {
+    maxParallelForks = 5
+}
 
 sourceSets {
     testGenerated {
@@ -54,18 +57,12 @@ sourceSets {
             def addOpenapiDir = { String path ->
                 java.srcDirs += project.file("build/out/$path/java-client")
                 java.srcDirs += project.file("build/out/$path/java-server")
-                java.srcDirs += project.file("build/out/$path/java-reactive-client")
-                java.srcDirs += project.file("build/out/$path/java-reactive-server")
-                java.srcDirs += project.file("build/out/$path/java-async-client")
-                java.srcDirs += project.file("build/out/$path/java-async-server")
                 pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
                     kotlin {
                         sourceSets {
                             testGenerated {
                                 kotlin.srcDir("build/out/$path/kotlin-client")
                                 kotlin.srcDir("build/out/$path/kotlin-server")
-                                kotlin.srcDir("build/out/$path/kotlin-suspend-client")
-                                kotlin.srcDir("build/out/$path/kotlin-suspend-server")
                             }
                         }
                     }

@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.annotation.processor.common.JavaCompilation;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.ProcessorOptions;
@@ -362,32 +363,52 @@ class KoraAppProcessorTest {
 
     @Test
     void appPart() throws Exception {
-        var classLoader = TestUtils.annotationProcess(AppWithAppPart.class, new KoraAppProcessor(), new KoraSubmoduleProcessor());
+        var classLoader = new JavaCompilation()
+            .withSources("src/test/java/" + AppWithAppPart.class.getName().replace('.', '/') + ".java")
+            .withTargetClassesDir("in-test-generated/classes2/")
+            .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
+            .compile();
+
         var clazz = classLoader.loadClass(AppWithAppPart.class.getName() + "SubmoduleImpl");
         Assertions.assertThat(clazz).isNotNull()
             .isInterface()
             .hasDeclaredMethods("_component0", "_component1")
             .matches(Predicate.not(AppWithAppPart.Module.class::isAssignableFrom));
-        var targetFile1 = "src/test/java/" + AppWithAppPartApp.class.getName().replace('.', '/') + ".java";
-        var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";
 
-        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), false, new KoraAppProcessor());
+        classLoader = new JavaCompilation()
+            .withTargetClassesDir("in-test-generated/classes/")
+            .withSources("src/test/java/" + AppWithAppPartApp.class.getName().replace('.', '/') + ".java")
+            .withClassPathEntry("in-test-generated/classes2/")
+            .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
+            .compile();
+
         var appClazz = classLoader.loadClass(AppWithAppPartApp.class.getName() + "Graph");
         assertThat(appClazz).isNotNull();
     }
 
     @Test
     void appPartAndAppSubmodule() throws Exception {
-        var classLoader = TestUtils.annotationProcessWithOptions(AppWithAppPart.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor(), new KoraSubmoduleProcessor());
+        var classLoader = new JavaCompilation()
+            .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
+            .withSources("src/test/java/" + AppWithAppPart.class.getName().replace('.', '/') + ".java")
+            .withTargetClassesDir("in-test-generated/classes2/")
+            .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
+            .compile();
+
         var clazz = classLoader.loadClass(AppWithAppPart.class.getName() + "SubmoduleImpl");
         Assertions.assertThat(clazz).isNotNull()
             .isInterface()
             .hasDeclaredMethods("_component0", "_component1")
             .matches(Predicate.not(AppWithAppPart.Module.class::isAssignableFrom));
-        var targetFile1 = "src/test/java/" + AppWithAppPartAppWithSubmodule.class.getName().replace('.', '/') + ".java";
-        var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";
 
-        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), List.of(), false, p -> true, List.of(new KoraAppProcessor(), new KoraSubmoduleProcessor()), List.of(ProcessorOptions.SUBMODULE_GENERATION));
+        classLoader = new JavaCompilation()
+            .withTargetClassesDir("in-test-generated/classes/")
+            .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
+            .withSources("src/test/java/" + AppWithAppPartAppWithSubmodule.class.getName().replace('.', '/') + ".java")
+            .withClassPathEntry("in-test-generated/classes2/")
+            .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
+            .compile();
+
         var appClazz = classLoader.loadClass(AppWithAppPartAppWithSubmodule.class.getName() + "Graph");
         assertThat(appClazz).isNotNull();
         var appClazzSubmodule = classLoader.loadClass(AppWithAppPartAppWithSubmodule.class.getName() + "SubmoduleImpl");
@@ -396,15 +417,26 @@ class KoraAppProcessorTest {
 
     @Test
     void appAndKoraApp() throws Exception {
-        var classLoader = TestUtils.annotationProcessWithOptions(App.class, List.of(ProcessorOptions.SUBMODULE_GENERATION), new KoraAppProcessor(), new KoraSubmoduleProcessor());
+        var classLoader = new JavaCompilation()
+            .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
+            .withSources("src/test/java/" + App.class.getName().replace('.', '/') + ".java")
+            .withTargetClassesDir("in-test-generated/classes2/")
+            .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
+            .compile();
+
         var clazz = classLoader.loadClass(App.class.getName() + "SubmoduleImpl");
         Assertions.assertThat(clazz).isNotNull()
             .isInterface()
             .hasDeclaredMethods("_component0");
 
-        var targetFile1 = "src/test/java/" + AppWithApp.class.getName().replace('.', '/') + ".java";
-        var targetFile2 = "in-test-generated/classes/" + clazz.getCanonicalName().replace('.', '/') + ".class";
-        classLoader = TestUtils.annotationProcessFiles(List.of(targetFile1, targetFile2), List.of(), false, p -> true, List.of(new KoraAppProcessor()));
+        classLoader = new JavaCompilation()
+            .withTargetClassesDir("in-test-generated/classes/")
+            .withOption(ProcessorOptions.SUBMODULE_GENERATION.value)
+            .withSources("src/test/java/" + AppWithApp.class.getName().replace('.', '/') + ".java")
+            .withClassPathEntry("in-test-generated/classes2/")
+            .withProcessor(new KoraAppProcessor(), new KoraSubmoduleProcessor())
+            .compile();
+
         var appClazz = classLoader.loadClass(AppWithApp.class.getName() + "Graph");
         assertThat(appClazz).isNotNull();
 

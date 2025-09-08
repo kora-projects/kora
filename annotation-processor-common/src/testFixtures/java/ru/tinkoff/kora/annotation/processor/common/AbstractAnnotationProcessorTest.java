@@ -10,25 +10,21 @@ import org.reactivestreams.FlowAdapters;
 import org.reactivestreams.Publisher;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import ru.tinkoff.kora.annotation.processor.common.TestUtils.ProcessorOptions;
-import ru.tinkoff.kora.annotation.processor.common.compile.ByteArrayJavaFileObject;
-import ru.tinkoff.kora.annotation.processor.common.compile.KoraCompileTestJavaFileManager;
 import ru.tinkoff.kora.application.graph.*;
 
 import javax.annotation.processing.Processor;
-import javax.tools.Diagnostic;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileObject;
-import javax.tools.ToolProvider;
 import java.io.IOException;
-import java.io.StringWriter;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Flow;
@@ -39,9 +35,6 @@ import java.util.stream.IntStream;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class AbstractAnnotationProcessorTest {
-
-    private final JavaCompiler javaCompiler = ToolProvider.getSystemJavaCompiler();
-
     protected TestInfo testInfo;
     protected CompileResult compileResult;
 
@@ -83,71 +76,58 @@ public abstract class AbstractAnnotationProcessorTest {
     }
 
     protected CompileResult compile(List<Processor> processors, @Language("java") String... sources) {
-        return compile(processors, Collections.emptyList(), sources);
-    }
-
-    protected CompileResult compile(List<Processor> processors, List<ProcessorOptions> processorOptions, @Language("java") String... sources) {
-        var w = new StringWriter();
-        var diagnostic = new ArrayList<Diagnostic<? extends JavaFileObject>>();
         var testPackage = testPackage();
         var testClass = this.testInfo.getTestClass().get();
         var testMethod = this.testInfo.getTestMethod().get();
         var commonImports = this.commonImports();
-        var sourceList = Arrays.stream(sources).map(s -> "package %s;\n%s\n/**\n* @see %s#%s \n*/\n".formatted(testPackage, commonImports, testClass.getCanonicalName(), testMethod.getName()) + s)
-            .map(s -> {
-                var prefixes = List.of("class ", "interface ", "@interface ", "record ", "enum ");
-                var firstClass = prefixes.stream()
-                    .map(p -> Map.entry(s.indexOf(p), p.length()))
-                    .filter(e -> e.getKey() >= 0)
-                    .map(e -> e.getKey() + e.getValue())
-                    .min(Comparator.comparing(Function.identity()))
-                    .map(classStart -> {
-                        var firstSpace = s.indexOf(" ", classStart + 1);
-                        var firstBracket = s.indexOf("(", classStart + 1);
-                        var firstSquareBracket = s.indexOf("{", classStart + 1);
-                        var classEnd = IntStream.of(firstSpace, firstBracket, firstSquareBracket)
-                            .filter(i -> i >= 0)
-                            .min()
-                            .getAsInt();
-                        var className = s.substring(classStart, classEnd).trim();
-                        int generic = className.indexOf('<');
-                        if (generic == -1) {
-                            return className;
-                        } else {
-                            return className.substring(0, generic);
-                        }
-                    })
-                    .get();
-
-                return new ByteArrayJavaFileObject(JavaFileObject.Kind.SOURCE, testPackage + "." + firstClass, s.getBytes(StandardCharsets.UTF_8));
-            })
-            .toList();
-
-        try (var delegate = javaCompiler.getStandardFileManager(diagnostic::add, Locale.US, StandardCharsets.UTF_8);
-             var manager = new KoraCompileTestJavaFileManager(this.testInfo, delegate, sourceList.toArray(ByteArrayJavaFileObject[]::new))) {
-
-            var defaultOptions = new LinkedHashSet<>(List.of("--release", "17", "-XprintRounds"));
-            defaultOptions.addAll(processorOptions.stream().map(o -> o.value).toList());
-
-            var task = javaCompiler.getTask(
-                w,
-                manager,
-                diagnostic::add,
-                defaultOptions,
-                null,
-                sourceList
-            );
-            task.setProcessors(processors);
-            task.setLocale(Locale.US);
-            task.call();
-            w.close();
-            return this.compileResult = new CompileResult(testPackage, diagnostic, manager);
-        } catch (RuntimeException e) {
-            if (e.getCause() instanceof RuntimeException er) {
-                throw er;
+        var sourceList = new ArrayList<Path>();
+        for (var source : sources) {
+            var string = "package %s;\n%s\n/**\n* @see %s#%s \n*/\n".formatted(testPackage, commonImports, testClass.getCanonicalName(), testMethod.getName()) + source;
+            var prefixes = List.of("class ", "interface ", "@interface ", "record ", "enum ");
+            var firstClass = prefixes.stream()
+                .map(p -> Map.entry(string.indexOf(p), p.length()))
+                .filter(e -> e.getKey() >= 0)
+                .map(e -> e.getKey() + e.getValue())
+                .min(Comparator.comparing(Function.identity()))
+                .map(classStart -> {
+                    var firstSpace = string.indexOf(" ", classStart + 1);
+                    var firstBracket = string.indexOf("(", classStart + 1);
+                    var firstSquareBracket = string.indexOf("{", classStart + 1);
+                    var classEnd = IntStream.of(firstSpace, firstBracket, firstSquareBracket)
+                        .filter(i -> i >= 0)
+                        .min()
+                        .getAsInt();
+                    var className = string.substring(classStart, classEnd).trim();
+                    int generic = className.indexOf('<');
+                    if (generic == -1) {
+                        return className;
+                    } else {
+                        return className.substring(0, generic);
+                    }
+                })
+                .get();
+            var className = testPackage + "." + firstClass;
+            var path = Paths.get(".", "build", "in-test-generated", "sources").resolve(className.replace('.', '/') + ".java");
+            try {
+                Files.createDirectories(path.getParent());
+                Files.write(path, string.getBytes(StandardCharsets.UTF_8));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
+            sourceList.add(path);
+        }
+
+        try {
+            var jc = new JavaCompilation()
+                .withSources(sourceList)
+                .withProcessors(processors);
+            var cl = jc.compile();
+            return this.compileResult = new CompileResult(testPackage, jc.diagnostics(), cl);
+        } catch (TestUtils.CompilationErrorException e) {
+            return this.compileResult = new CompileResult(testPackage, e.diagnostics, null);
+        } catch (RuntimeException e) {
             throw e;
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
