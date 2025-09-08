@@ -16,6 +16,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.doesImplement
@@ -25,7 +26,6 @@ import ru.tinkoff.kora.soap.client.common.*
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory
 import java.util.*
-import java.util.concurrent.CompletionStage
 import java.util.function.Function
 
 class SoapClientImplGenerator(private val resolver: Resolver) {
@@ -113,7 +113,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         }
 
         fun findWrapperMethod(func: KSFunctionDeclaration, parameter: KSValueParameter): KSFunctionDeclaration? {
-            val paramFactoryName = "create" + func.simpleName.asString().replaceFirstChar { it.uppercase() } + parameter.name.toString().replaceFirstChar { it.uppercase() }
+            val paramFactoryName = "create" + func.simpleName.asString().replaceFirstChar { it.uppercase() } + parameter.name?.asString()?.replaceFirstChar { it.uppercase() }
             for (f in decl.getAllFunctions()) {
                 if (f.parameters.size == 1 && f.simpleName.asString() == paramFactoryName) {
                     return f
@@ -231,23 +231,6 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             m.addCode("val __response = this.%L.call(__requestEnvelope)\n", executorFieldName)
             addMapResponse(m, method, soapClasses, objectFactories)
             builder.addFunction(m.build())
-            val returnType = method.returnType!!.resolve()
-
-            val reactiveM = FunSpec.builder(method.simpleName.asString() + "Reactive")
-                .addModifiers(KModifier.SUSPEND)
-                .returns(returnType.toTypeName())
-            for (parameter in method.parameters) {
-                reactiveM.addParameter(parameter.name!!.asString(), parameter.type.toTypeName())
-            }
-            addMapRequest(reactiveM, method, soapClasses, objectFactories)
-            reactiveM.addStatement(
-                "val __responseFuture = this.%L.callAsync(__requestEnvelope) as %T",
-                executorFieldName,
-                CompletionStage::class.asClassName().parameterizedBy(SoapResult::class.asTypeName().copy(true))
-            )
-            reactiveM.addStatement("val __response = __responseFuture.%M()", CommonClassNames.await)
-            addMapResponse(reactiveM, method, soapClasses, objectFactories)
-            builder.addFunction(reactiveM.build())
         }
         builder.primaryConstructor(constructorBuilder.build())
         return builder.build()
@@ -391,10 +374,10 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             m.addCode("val __responseBodyWrapper =  __success.body() as (%L)\n", wrapperClass)
             if (webResult != null) {
                 val webResultName = webResult.findValue<String>("name")!!
-                m.addCode("return __responseBodyWrapper.get%L", webResultName.replaceFirstChar { it.uppercaseChar() })
+                m.addCode("return __responseBodyWrapper.get%L()", webResultName.replaceFirstChar { it.uppercaseChar() })
                 val objectFactory = objectFactories.findObjectFactoryByWrapper(wrapperClass)
-                val wrapperFieldType = objectFactory.findWrapperResponseType(wrapperClass)
-                if (wrapperFieldType.toString() == method.returnType.toString()) {
+                val wrapperFieldType = objectFactory.findWrapperResponseType(wrapperClass).fixPlatformType(resolver)
+                if (wrapperFieldType.toString() != method.returnType?.resolve()?.fixPlatformType(resolver).toString()) {
                     m.addCode(".value")
                 }
                 m.addCode("\n")

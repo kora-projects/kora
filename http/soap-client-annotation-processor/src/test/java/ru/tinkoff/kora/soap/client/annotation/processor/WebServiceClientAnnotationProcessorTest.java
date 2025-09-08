@@ -11,7 +11,7 @@ import org.assertj.core.api.InstanceOfAssertFactory;
 import org.eclipse.jetty.server.ServerConnector;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.annotation.processor.common.TestUtils;
+import ru.tinkoff.kora.annotation.processor.common.JavaCompilation;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
@@ -35,12 +35,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -52,12 +50,19 @@ class WebServiceClientAnnotationProcessorTest {
 
     @Test
     void testGenerate() throws Exception {
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-simple-service/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-simple-service/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-service-with-multipart-response/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-service-with-multipart-response/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-service-with-rpc/"), new WebServiceClientAnnotationProcessor());
-        TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-service-with-rpc/"), new WebServiceClientAnnotationProcessor());
+        compile("build/generated/wsdl-jakarta-simple-service/");
+        compile("build/generated/wsdl-javax-simple-service/");
+        compile("build/generated/wsdl-jakarta-service-with-multipart-response/");
+        compile("build/generated/wsdl-javax-service-with-multipart-response/");
+        compile("build/generated/wsdl-jakarta-service-with-rpc/");
+        compile("build/generated/wsdl-javax-service-with-rpc/");
+    }
+
+    private ClassLoader compile(String path) throws Exception {
+        return new JavaCompilation()
+            .withProcessor(new WebServiceClientAnnotationProcessor())
+            .withSources(files(path))
+            .compile();
     }
 
     static {
@@ -71,7 +76,7 @@ class WebServiceClientAnnotationProcessorTest {
 
     @Test
     void testCxfServer() throws Throwable {
-        var cl = TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-simple-service/"), new WebServiceClientAnnotationProcessor());
+        var cl = compile("build/generated/wsdl-javax-simple-service/");
         var serviceClass = cl.loadClass("ru.tinkoff.kora.simple.service.SimpleService");
         enum RsKind {SUCCESS, FAILURE1, FAILURE2}
         var rsKind = new AtomicReference<RsKind>(RsKind.SUCCESS);
@@ -127,7 +132,7 @@ class WebServiceClientAnnotationProcessorTest {
 
     @Test
     void testMultipartResponse() throws Throwable {
-        var cl = TestUtils.annotationProcessFiles(files("build/generated/wsdl-jakarta-service-with-multipart-response"), new WebServiceClientAnnotationProcessor());
+        var cl = compile("build/generated/wsdl-jakarta-service-with-multipart-response");
         var httpServer = HttpServer.create(new InetSocketAddress(0), 0);
 
         var b = new ByteArrayOutputStream();
@@ -183,7 +188,7 @@ class WebServiceClientAnnotationProcessorTest {
 
     @Test
     void testRcpResponse() throws Throwable {
-        var cl = TestUtils.annotationProcessFiles(files("build/generated/wsdl-javax-service-with-rpc/"), new WebServiceClientAnnotationProcessor());
+        var cl = compile("build/generated/wsdl-javax-service-with-rpc/");
         var serviceClass = cl.loadClass("ru.tinkoff.kora.service.with.rpc.ServiceWithRpc");
         var invocationHandler = (InvocationHandler) Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass, InvocationHandler.class}, (proxy, method, args) -> {
             args = (Object[]) args[2];
@@ -275,11 +280,10 @@ class WebServiceClientAnnotationProcessorTest {
         });
     }
 
-    private List<String> files(String path) {
+    private List<Path> files(String path) {
         try (var s = Files.walk(Paths.get(path))) {
             return s.filter(p -> p.getFileName().toString().endsWith(".java"))
                 .map(Path::toAbsolutePath)
-                .map(Path::toString)
                 .toList();
         } catch (IOException e) {
             throw new RuntimeException(e);
