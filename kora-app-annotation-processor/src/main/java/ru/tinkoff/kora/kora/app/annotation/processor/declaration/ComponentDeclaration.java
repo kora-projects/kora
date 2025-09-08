@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.declaration;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
@@ -186,8 +186,8 @@ public sealed interface ComponentDeclaration {
         }
     }
 
-    record PromisedProxyComponent(TypeElement typeElement, TypeMirror type, com.squareup.javapoet.ClassName className) implements ComponentDeclaration {
-        public PromisedProxyComponent(TypeElement typeElement, com.squareup.javapoet.ClassName className) {
+    record PromisedProxyComponent(TypeElement typeElement, TypeMirror type, com.palantir.javapoet.ClassName className) implements ComponentDeclaration {
+        public PromisedProxyComponent(TypeElement typeElement, com.palantir.javapoet.ClassName className) {
             this(typeElement, typeElement.asType(), className);
         }
 

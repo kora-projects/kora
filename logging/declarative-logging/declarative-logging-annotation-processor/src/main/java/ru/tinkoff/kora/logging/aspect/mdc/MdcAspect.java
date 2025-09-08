@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.logging.aspect.mdc;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -16,12 +16,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
 
-import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.findAnnotations;
-import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.isAnnotationPresent;
-import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.parseAnnotationValueWithoutDefault;
-import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdc;
-import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcAnnotation;
-import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcContainerAnnotation;
+import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.*;
+import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.*;
 
 public class MdcAspect implements KoraAspect {
 

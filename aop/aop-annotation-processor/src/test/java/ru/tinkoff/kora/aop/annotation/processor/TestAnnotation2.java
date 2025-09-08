@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.aop.annotation.processor;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 import ru.tinkoff.kora.common.AopAnnotation;
 
 import javax.annotation.processing.ProcessingEnvironment;

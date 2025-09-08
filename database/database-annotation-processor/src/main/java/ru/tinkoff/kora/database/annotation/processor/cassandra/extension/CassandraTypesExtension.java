@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra.extension;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
@@ -48,19 +48,19 @@ public class CassandraTypesExtension implements KoraExtension {
         if (!(typeName instanceof ParameterizedTypeName ptn) || !(typeMirror instanceof DeclaredType dt)) {
             return null;
         }
-        if (ptn.rawType.equals(CassandraTypes.RESULT_SET_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.RESULT_SET_MAPPER)) {
             return this.generateResultSetMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.ASYNC_RESULT_SET_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.ASYNC_RESULT_SET_MAPPER)) {
             return this.generateAsyncResultSetMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.ROW_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.ROW_MAPPER)) {
             return this.generateResultRowMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.PARAMETER_COLUMN_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.PARAMETER_COLUMN_MAPPER)) {
             return this.generateParameterColumnMapper(roundEnvironment, dt);
         }
-        if (ptn.rawType.equals(CassandraTypes.RESULT_COLUMN_MAPPER)) {
+        if (ptn.rawType().equals(CassandraTypes.RESULT_COLUMN_MAPPER)) {
             return this.generateRowColumnMapper(roundEnvironment, dt);
         }
         return null;

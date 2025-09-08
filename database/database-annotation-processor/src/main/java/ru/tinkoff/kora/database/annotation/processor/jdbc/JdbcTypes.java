@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor.jdbc;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class JdbcTypes {
     public static final ClassName CONNECTION = ClassName.get("java.sql", "Connection");

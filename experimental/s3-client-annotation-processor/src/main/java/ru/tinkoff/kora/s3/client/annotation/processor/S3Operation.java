@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.annotation.processor;
 
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.CodeBlock;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;

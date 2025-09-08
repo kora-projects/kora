@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.logging.aspect.mdc;
 
-import com.squareup.javapoet.ClassName;
+import com.palantir.javapoet.ClassName;
 
 public class MdcAspectClassNames {
     public static final ClassName mdcAnnotation = ClassName.get("ru.tinkoff.kora.logging.common.annotation", "Mdc");
