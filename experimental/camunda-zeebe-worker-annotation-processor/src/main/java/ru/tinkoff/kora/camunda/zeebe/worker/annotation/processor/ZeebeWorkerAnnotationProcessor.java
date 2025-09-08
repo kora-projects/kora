@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.camunda.zeebe.worker.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
@@ -171,7 +171,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "SERIALIZATION");
         }
 
-        codeBuilder.nextControlFlow("catch (Exception e)", CLASS_WORKER_EXCEPTION);
+        codeBuilder.nextControlFlow("catch (Exception e)");
         codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "UNEXPECTED");
         codeBuilder.endControlFlow();
 
@@ -215,7 +215,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 codeBuilder.add("return this.handler.$L($L)\n", methodName, varsArg);
             }
             codeBuilder.indent();
-            codeBuilder.addStatement(".thenApply(_r -> client.newCompleteCommand(job))", methodName, varsArg);
+            codeBuilder.addStatement(".thenApply(_r -> client.newCompleteCommand(job))");
             codeBuilder.unindent();
         } else {
             if (MethodUtils.isMono(method)) {
@@ -262,7 +262,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "DESERIALIZATION");
         }
 
-        codeBuilder.nextControlFlow("catch (Exception e)", CLASS_WORKER_EXCEPTION);
+        codeBuilder.nextControlFlow("catch (Exception e)");
         codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "INTERNAL");
         codeBuilder.endControlFlow();
 

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.squareup.javapoet.JavaFile;
+import com.palantir.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ComparableTypeMirror;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;

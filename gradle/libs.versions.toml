@@ -100,7 +100,7 @@ netty-codec-socks = { module = "io.netty:netty-codec-socks", version.ref = "nett
 byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version = "1.17.6" }
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.17.6" }
 
-javapoet = { module = "com.squareup:javapoet", version = "1.13.0" }
+javapoet = { module = "com.palantir.javapoet:javapoet", version = "0.7.0" }
 classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.181" }
 
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.0.RELEASE" }

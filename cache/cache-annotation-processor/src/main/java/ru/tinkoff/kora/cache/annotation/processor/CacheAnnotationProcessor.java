@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
@@ -89,7 +89,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                     .addMethod(getCacheMethodImpl(cacheContract, cacheContractType))
                     .addMethod(getCacheMethodConfig(cacheContract, cacheContractType));
 
-                if (cacheContractType.rawType.equals(REDIS_CACHE)) {
+                if (cacheContractType.rawType().equals(REDIS_CACHE)) {
                     var superTypes = processingEnv.getTypeUtils().directSupertypes(cacheContract.asType());
                     var superType = superTypes.get(superTypes.size() - 1);
                     var keyType = ((DeclaredType) superType).getTypeArguments().get(0);
@@ -132,10 +132,10 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     private TypeName getCacheImplBase(TypeElement cacheContract, ParameterizedTypeName cacheType) {
-        if (cacheType.rawType.equals(CAFFEINE_CACHE)) {
-            return ParameterizedTypeName.get(CAFFEINE_CACHE_IMPL, cacheType.typeArguments.get(0), cacheType.typeArguments.get(1));
-        } else if (cacheType.rawType.equals(REDIS_CACHE)) {
-            return ParameterizedTypeName.get(REDIS_CACHE_IMPL, cacheType.typeArguments.get(0), cacheType.typeArguments.get(1));
+        if (cacheType.rawType().equals(CAFFEINE_CACHE)) {
+            return ParameterizedTypeName.get(CAFFEINE_CACHE_IMPL, cacheType.typeArguments().get(0), cacheType.typeArguments().get(1));
+        } else if (cacheType.rawType().equals(REDIS_CACHE)) {
+            return ParameterizedTypeName.get(REDIS_CACHE_IMPL, cacheType.typeArguments().get(0), cacheType.typeArguments().get(1));
         } else {
             throw new UnsupportedOperationException("Unknown type: " + cacheContract.getQualifiedName());
         }
@@ -151,12 +151,12 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         final ClassName cacheContractName = ClassName.get(cacheContract);
         final String methodName = "%s_Config".formatted(cacheContractName.simpleName());
         final TypeName returnType;
-        if (cacheType.rawType.equals(CAFFEINE_CACHE)) {
+        if (cacheType.rawType().equals(CAFFEINE_CACHE)) {
             returnType = CAFFEINE_CACHE_CONFIG;
-        } else if (cacheType.rawType.equals(REDIS_CACHE)) {
+        } else if (cacheType.rawType().equals(REDIS_CACHE)) {
             returnType = REDIS_CACHE_CONFIG;
         } else {
-            throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType);
+            throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType());
         }
         var extractorType = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, returnType);
 
@@ -253,7 +253,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     private MethodSpec getCacheMethodImpl(TypeElement cacheContract, ParameterizedTypeName cacheType) {
         var cacheImplName = getCacheImpl(cacheContract);
         var methodName = "%s_Impl".formatted(cacheImplName.simpleName());
-        if (cacheType.rawType.equals(CAFFEINE_CACHE)) {
+        if (cacheType.rawType().equals(CAFFEINE_CACHE)) {
             return MethodSpec.methodBuilder(methodName)
                 .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(CAFFEINE_CACHE_CONFIG, "config")
@@ -267,9 +267,9 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .returns(TypeName.get(cacheContract.asType()))
                 .build();
         }
-        if (cacheType.rawType.equals(REDIS_CACHE)) {
-            var keyType = cacheType.typeArguments.get(0);
-            var valueType = cacheType.typeArguments.get(1);
+        if (cacheType.rawType().equals(REDIS_CACHE)) {
+            var keyType = cacheType.typeArguments().get(0);
+            var valueType = cacheType.typeArguments().get(1);
             var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
             var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
 
@@ -306,11 +306,11 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .returns(TypeName.get(cacheContract.asType()))
                 .build();
         }
-        throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType);
+        throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType());
     }
 
     private MethodSpec getCacheConstructor(String configPath, ParameterizedTypeName cacheContract) {
-        if (cacheContract.rawType.equals(CAFFEINE_CACHE)) {
+        if (cacheContract.rawType().equals(CAFFEINE_CACHE)) {
             return MethodSpec.constructorBuilder()
                 .addParameter(CAFFEINE_CACHE_CONFIG, "config")
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
@@ -319,9 +319,9 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .build();
         }
 
-        if (cacheContract.rawType.equals(REDIS_CACHE)) {
-            var keyType = cacheContract.typeArguments.get(0);
-            var valueType = cacheContract.typeArguments.get(1);
+        if (cacheContract.rawType().equals(REDIS_CACHE)) {
+            var keyType = cacheContract.typeArguments().get(0);
+            var valueType = cacheContract.typeArguments().get(1);
             var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
             var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
             return MethodSpec.constructorBuilder()
@@ -334,7 +334,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .build();
         }
 
-        throw new IllegalArgumentException("Unknown cache type: " + cacheContract.rawType);
+        throw new IllegalArgumentException("Unknown cache type: " + cacheContract.rawType());
     }
 
     private String getPackage(Element element) {

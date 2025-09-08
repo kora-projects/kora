@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -9,11 +8,8 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.VALIDATOR_TYPE;
 

@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.kafka.annotation.processor.producer;
 
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.ParameterizedTypeName;
-import com.squareup.javapoet.TypeName;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 
@@ -90,7 +90,7 @@ public class KafkaPublisherAnnotationProcessor extends AbstractKoraProcessor {
                     this.messager.printMessage(Diagnostic.Kind.ERROR, "@KafkaPublisher can be placed only on interfaces extending only TransactionalPublisher or none", producer);
                     continue;
                 }
-                if (supertypeName.rawType.equals(KafkaClassNames.transactionalPublisher)) {
+                if (supertypeName.rawType().equals(KafkaClassNames.transactionalPublisher)) {
                     var publisherTypeMirror = (DeclaredType) supertypeMirror.getTypeArguments().get(0);
                     var publisherTypeElement = (TypeElement) publisherTypeMirror.asElement();
                     var publisherAnnotation = AnnotationUtils.findAnnotation(publisherTypeElement, KafkaClassNames.kafkaPublisherAnnotation);

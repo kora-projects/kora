@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
-import com.squareup.javapoet.AnnotationSpec;
-import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
+import com.palantir.javapoet.AnnotationSpec;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import jakarta.annotation.Nullable;
 
 import javax.lang.model.element.AnnotationMirror;

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.config.annotation.processor;
 
-import com.squareup.javapoet.*;
+import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
@@ -67,8 +67,8 @@ public class ConfigParserGenerator {
 
         var javaFile = JavaFile.builder(packageName, typeBuilder.build()).build();
         var fileName = packageName.isEmpty()
-            ? parserType.name
-            : packageName + "." + parserType.name;
+            ? parserType.name()
+            : packageName + "." + parserType.name();
 
         try {
 
@@ -108,7 +108,7 @@ public class ConfigParserGenerator {
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class)
             .returns(typeName);
-        rootParse.addParameter(ParameterizedTypeName.get(ConfigClassNames.configValue, WildcardTypeName.subtypeOf(TypeName.OBJECT)), "_sourceValue");
+        rootParse.addParameter(ParameterizedTypeName.get(ConfigClassNames.configValue, WildcardTypeName.subtypeOf(ClassName.OBJECT)), "_sourceValue");
         rootParse.beginControlFlow("if (_sourceValue instanceof $T.NullValue _nullValue)", ConfigClassNames.configValue);
 
         var annotation = AnnotationUtils.findAnnotation(element, ConfigClassNames.configValueExtractorAnnotation);
@@ -244,8 +244,8 @@ public class ConfigParserGenerator {
         }
         parse.addParameter(ConfigClassNames.objectValue, "config");
         var supportedType = field.mapping() == null && ConfigUtils.isSupportedType(field.typeName());
-        var optionalType = field.typeName() instanceof ParameterizedTypeName ptn && ptn.rawType.equals(ConfigClassNames.optional)
-            ? Optional.of(ptn.typeArguments.get(0))
+        var optionalType = field.typeName() instanceof ParameterizedTypeName ptn && ptn.rawType().equals(ConfigClassNames.optional)
+            ? Optional.of(ptn.typeArguments().get(0))
             : Optional.<TypeName>empty();
         var supportedOptional = optionalType.map(ConfigUtils::isSupportedType).orElse(false);
         parse.addStatement("var value = config.get($N)", "_" + field.name() + "_path");
@@ -336,7 +336,7 @@ public class ConfigParserGenerator {
         for (var field : fields) {
             var isSupported = field.mapping() == null &&
                 (ConfigUtils.isSupportedType(field.typeName())
-                    || field.typeName() instanceof ParameterizedTypeName ptn && ptn.rawType.equals(ConfigClassNames.optional) && ConfigUtils.isSupportedType(ptn.typeArguments.get(0)));
+                    || field.typeName() instanceof ParameterizedTypeName ptn && ptn.rawType().equals(ConfigClassNames.optional) && ConfigUtils.isSupportedType(ptn.typeArguments().get(0)));
             if (isSupported) {
                 continue;
             }
