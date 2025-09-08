@@ -104,35 +104,11 @@ addDependenciesByPattern(tasksCodegenKotlin, "ksp")
 addDependencies(tasksCodegenKotlin, "scheduling:scheduling-ksp")
 addDependencies(tasksCodegenKotlin, "mapstruct:mapstruct-ksp-extension")
 
-def jacocoRootReport = tasks.register("jacocoRootReport", JacocoReport) {
-    group = "verification"
-    executionData project.fileTree(dir: ".", include: "**/build/jacoco/test.exec")
-
-    reports {
-        xml.required.set(true)
-        xml.destination(file("$buildDir/reports/jacoco/test/jacocoTestReport.xml"))
-        csv.required.set(false)
-        html.required.set(false)
-    }
-}
-
 rootProject.allprojects.forEach {
     if (it.name != rootProject.name && it.name != "maven-parent" && it.childProjects.isEmpty()) {
         def fullName = getProjectFullName(it)
         if (!nonOtherModules.contains(fullName)) {
             addDependencies(tasksOther, fullName)
-        }
-    }
-}
-
-subprojects {
-    tasks.configureEach { dependency ->
-        if (dependency.name == "jacocoTestReport") {
-            def report = (JacocoReport) dependency
-            jacocoRootReport.configure { root ->
-                root.additionalClassDirs report.allClassDirs
-                root.additionalSourceDirs report.allSourceDirs
-            }
         }
     }
 }

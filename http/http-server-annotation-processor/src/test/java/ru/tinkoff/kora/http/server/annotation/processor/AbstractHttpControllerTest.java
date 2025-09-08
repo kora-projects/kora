@@ -15,7 +15,6 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 
-import javax.tools.StandardLocation;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -99,7 +98,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
         try {
             var moduleClass = compileResult.loadClass("ControllerModule");
             var controllerClass = compileResult.loadClass("Controller");
-            var object = Proxy.newProxyInstance(compileResult.manager().getClassLoader(StandardLocation.CLASS_OUTPUT), new Class<?>[]{moduleClass}, (proxy, method, args) -> MethodHandles.privateLookupIn(moduleClass, MethodHandles.lookup())
+            var object = Proxy.newProxyInstance(compileResult.cl(), new Class<?>[]{moduleClass}, (proxy, method, args) -> MethodHandles.privateLookupIn(moduleClass, MethodHandles.lookup())
                 .in(moduleClass)
                 .unreflectSpecial(method, moduleClass)
                 .bindTo(proxy)

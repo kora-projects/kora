@@ -6,7 +6,6 @@ import com.google.devtools.ksp.KspExperimental
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.*
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.reader
@@ -15,7 +14,6 @@ import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writer
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writerClass
 import ru.tinkoff.kora.json.ksp.dto.*
 import ru.tinkoff.kora.ksp.common.symbolProcess
-import ru.tinkoff.kora.ksp.common.symbolProcessJava
 import java.io.IOException
 import java.io.StringWriter
 import java.math.BigInteger
@@ -373,38 +371,6 @@ internal class JsonAnnotationProcessorTest {
         }
             .isInstanceOf(JsonParseException::class.java)
             .hasMessageStartingWith("Expecting [VALUE_STRING] token for field 'field1', got VALUE_NULL")
-    }
-
-
-    @Test
-    @Disabled("KSP just can't see java's field annotations for some reason")
-    fun testJavaRecord() {
-        val cl = JsonClassLoader(symbolProcessJava(listOf(JsonSymbolProcessorProvider()), listOf(JavaRecordDto::class.java)))
-        val reader: JsonReader<JavaRecordDto?> = cl.reader(
-            JavaRecordDto::class.java,
-        )
-        val writer: JsonWriter<JavaRecordDto?> = cl.writer(
-            JavaRecordDto::class.java
-        )
-
-        val obj = JavaRecordDto("value1", 1, false)
-
-        val json = toJson(writer, obj)
-        val expectedJson = """
-            {
-              "field1" : "value1",
-              "integer" : 1
-            }""".trimIndent()
-        assertThat(json).isEqualTo(expectedJson)
-        val jsonForRead = """
-            {
-              "field1" : "value1",
-              "integer" : 1,
-              "bool" : false
-            }""".trimIndent()
-        val parsed = fromJson(reader, jsonForRead)
-        assertThat(parsed).isEqualTo(obj)
-
     }
 
     @Test

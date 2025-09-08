@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.soap.client.symbol.processor
 
 import org.junit.jupiter.api.Test
-import ru.tinkoff.kora.ksp.common.TestUtils
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.nio.file.Paths
 import kotlin.io.path.name
 import kotlin.io.path.walk
@@ -23,8 +23,10 @@ class WebServiceClientSymbolProcessorTest {
             .walk()
             .filter { it.name.endsWith(".java") }
             .toList()
-        TestUtils.symbolProcessFiles(listOf(WebServiceClientSymbolProcessorProvider()), mapOf(), listOf(), javaFiles)
-
+        KotlinCompilation()
+            .withProcessor(WebServiceClientSymbolProcessorProvider())
+            .withJavaSrcs(javaFiles)
+            .compile()
     }
 
 }

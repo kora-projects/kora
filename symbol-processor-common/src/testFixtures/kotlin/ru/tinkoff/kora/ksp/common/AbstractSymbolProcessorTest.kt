@@ -25,10 +25,6 @@ import kotlin.reflect.full.memberFunctions
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 abstract class AbstractSymbolProcessorTest {
 
-    enum class ProcessorOptions(val value: String) {
-        SUBMODULE_GENERATION("kora.app.submodule.enabled=true")
-    }
-
     protected lateinit var testInfo: TestInfo
     protected lateinit var compileResult: TestUtils.ProcessingResult
     protected val compileOptions: MutableMap<String, String> = mutableMapOf()
@@ -75,12 +71,14 @@ abstract class AbstractSymbolProcessorTest {
             """.trimIndent()
     }
 
-    // processors will be used in k2
     protected fun compile0(processors: List<SymbolProcessorProvider>, @Language("kotlin") vararg sources: String): TestUtils.ProcessingResult {
         val testPackage = testPackage()
         val testClass: Class<*> = testInfo.testClass.get()
         val testMethod: Method = testInfo.testMethod.get()
         val commonImports = commonImports()
+        val kc = KotlinCompilation()
+            .withProcessors(processors)
+            .apply { processorsOptions.putAll(compileOptions) }
         val sourceList = sequenceOf(*sources)
             .map { s: String -> "package $testPackage;\n$commonImports\n/**\n* @see ${testClass.canonicalName}.${testMethod.name} \n*/\n" + s }
             .map { s ->
@@ -96,6 +94,7 @@ abstract class AbstractSymbolProcessorTest {
                             s.indexOf("(", it + 1),
                             s.indexOf("{", it + 1),
                             s.indexOf(":", it + 1),
+                            s.indexOf("<", it + 1),
                         )
                             .map { it1 -> it to it1 }
                     }
@@ -105,14 +104,22 @@ abstract class AbstractSymbolProcessorTest {
                     .trim()
                     .replaceFirst(Regex("<.*>"), "")
                     .trim()
-                val fileName = "build/in-test-generated-ksp/sources/${testPackage.replace('.', '/')}/$className.kt"
-                Files.createDirectories(File(fileName).toPath().parent)
-                Files.deleteIfExists(Paths.get(fileName))
-                Files.writeString(Paths.get(fileName), s, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)
-                Paths.get(fileName).toAbsolutePath()
+                val file = kc.baseDir
+                    .resolve(testPackage.replace('.', File.separatorChar))
+                    .resolve("$className.kt")
+                Files.createDirectories(file.parent)
+                Files.deleteIfExists(file)
+                Files.writeString(file, s, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)
+                file
             }
             .toList()
-        compileResult = TestUtils.runProcessing(processors, sourceList, compileOptions)
+
+        try {
+            val cl = kc.withSrc(sourceList).compile()
+            compileResult = TestUtils.ProcessingResult.Success(cl)
+        } catch (e: CompilationErrorException) {
+            compileResult = TestUtils.ProcessingResult.Failure(e.messages)
+        }
         return compileResult
     }
 
