@@ -129,6 +129,8 @@ components:
         - id
         - fieldRequiredNullable
         - fieldRequiredNonNullable
+        - fieldIntRequiredNullable
+        - fieldIntRequiredNonNullable
         - fieldArrayRequiredNullable
         - fieldArrayRequiredNonNullable
         - fieldArrayItemsRequiredNullable
@@ -136,6 +138,7 @@ components:
         - fieldArrayItemsObjectNullable
         - fieldArrayItemsObjectNonNullable
         - fieldArrayRequiredNullableItemsObjectNullable
+        - fieldArrayRequiredNonNullableItemsObjectNullable
         - fieldArrayItemsMapNullable
         - fieldArrayItemsMapNullableKey
         - fieldArrayItemsMapNullableValue
@@ -152,6 +155,17 @@ components:
           type: string
           nullable: true
           example: 123
+        fieldIntNullable:
+          type: integer
+          format: int64
+          nullable: true
+        fieldIntRequiredNullable:
+          type: integer
+          format: int64
+          nullable: true
+        fieldIntRequiredNonNullable:
+          type: integer
+          format: int64
         fieldRequiredNonNullable:
           type: string
           example: 123
@@ -168,7 +182,11 @@ components:
             type: string
         fieldArrayItemsNullable:
           type: array
-          nullable: true
+          items:
+            type: string
+            nullable: true
+        fieldArrayNullableItemsNullable:
+          type: array
           items:
             type: string
             nullable: true
@@ -194,6 +212,12 @@ components:
             nullable: true
             $ref: '#/components/schemas/Simple'
         fieldArrayNonNullableItemsObjectNullable:
+          type: array
+          nullable: false
+          items:
+            nullable: true
+            $ref: '#/components/schemas/Simple'
+        fieldArrayRequiredNonNullableItemsObjectNullable:
           type: array
           nullable: false
           items:

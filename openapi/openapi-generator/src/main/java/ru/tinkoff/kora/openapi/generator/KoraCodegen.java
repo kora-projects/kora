@@ -1295,15 +1295,15 @@ public class KoraCodegen extends DefaultCodegen {
         var target = ModelUtils.isGenerateAliasAsModel() ? p : schema;
         if (ModelUtils.isArraySchema(target)) {
             var items = getSchemaItems(target);
-            var itemsDataType = getTypeDeclarationForProperty(items, property);
-
+            var valueType = getTypeDeclarationForProperty(items, property);
             final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
                                            || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
+
             if (params.codegenMode.isKotlin() && isItemNullable) {
-                return getSchemaType(target) + "<" + itemsDataType + "?>";
-            } else {
-                return getSchemaType(target) + "<" + itemsDataType + ">";
+                valueType = valueType + "?";
             }
+
+            return getSchemaType(target) + "<" + valueType + ">";
         } else if (ModelUtils.isMapSchema(target)) {
             // Note: ModelUtils.isMapSchema(p) returns true when p is a composed schema that also defines
             // additionalproperties: true
@@ -1319,7 +1319,8 @@ public class KoraCodegen extends DefaultCodegen {
             String valueType = getTypeDeclaration(inner);
 
             var items = getSchemaAdditionalProperties(target);
-            final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable());
+            final boolean isItemNullable = Boolean.TRUE.equals(items.getNullable())
+                                           || (items.get$ref() != null && Boolean.TRUE.equals(target.getNullable()));
             if (params.codegenMode.isKotlin() && isItemNullable) {
                 valueType = valueType + "?";
             }
@@ -2398,7 +2399,7 @@ public class KoraCodegen extends DefaultCodegen {
                            || formParam.isInteger
                            || formParam.isLong) {
                     formParam.vendorExtensions.put("isPrimitive", true);
-                } else if(!formParam.isFile) {
+                } else if (!formParam.isFile) {
                     formParam.vendorExtensions.put("requiresMapper", true);
                     formParamsWithMappers.add(new HashMap<>(Map.of(
                         "paramName", formParam.paramName,
