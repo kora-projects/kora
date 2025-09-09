@@ -10,38 +10,11 @@ public interface KafkaConsumerMetrics {
 
     void onRecordsReceived(ConsumerRecords<?, ?> records);
 
-    /**
-     * @see #onRecordsProcessed(String, ConsumerRecords, long, Throwable)
-     */
-    @Deprecated
-    default void onRecordsProcessed(ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
+    void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex);
 
-    }
+    void onRecordProcessed(String consumerName, ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex);
 
-    default void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
-        onRecordsProcessed(records, duration, ex);
-    }
-
-    /**
-     * @see #onRecordsProcessed(String, ConsumerRecords, long, Throwable)
-     */
-    @Deprecated
-    default void onRecordProcessed(ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex) {
-
-    }
-
-    default void onRecordProcessed(String consumerName, ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex) {
-        onRecordProcessed(record, duration, ex);
-    }
-
-    @Deprecated
-    default void reportLag(TopicPartition partition, long lag) {
-
-    }
-
-    default void reportLag(String consumerName, TopicPartition partition, long lag) {
-        reportLag(partition, lag);
-    }
+    void reportLag(String consumerName, TopicPartition partition, long lag);
 
     interface KafkaConsumerMetricsContext extends AutoCloseable {
         @Override
@@ -49,6 +22,6 @@ public interface KafkaConsumerMetrics {
     }
 
     default KafkaConsumerMetricsContext get(Consumer<?, ?> consumer) {
-        return () -> { };
+        return () -> {};
     }
 }
