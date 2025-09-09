@@ -65,6 +65,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
+    put:
+      operationId: putPets
+      tags:
+        - pets
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CT'
+      responses:
+        '201':
+          description: Null response
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Pet:
@@ -149,3 +168,159 @@ components:
           format: int32
         message:
           type: string
+
+    CT:
+      type: object
+      required:
+        - type
+        - sources
+      oneOf:
+        - $ref: '#/components/schemas/CUnconfirmedT'
+        - $ref: '#/components/schemas/CConfirmedT'
+      properties:
+        type:
+          $ref: '#/components/schemas/CType'
+        source:
+          type: string
+      discriminator:
+        propertyName: type
+        mapping:
+          UNCONFIRMED: '#/components/schemas/CUnconfirmedT'
+          CONFIRMED: '#/components/schemas/CConfirmedT'
+
+    CTCommon:
+      properties:
+        sources:
+          type: string
+        type:
+          $ref: '#/components/schemas/CType'
+
+    CConfirmedT:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/CTCommon'
+        - type: object
+          required:
+            - type
+            - sources
+            - actionKey
+          properties:
+            type:
+              example: CONFIRMED
+            actionKey:
+              type: string
+
+    CUnconfirmedT:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/CTCommon'
+        - type: object
+          required:
+            - type
+            - sources
+            - action
+          properties:
+            type:
+              example: UNCONFIRMED
+            action:
+              $ref: '#/components/schemas/Action'
+
+    CType:
+      type: string
+      enum:
+        - CONFIRMED
+        - UNCONFIRMED
+
+    Action:
+      type: object
+      required:
+        - steps
+      properties:
+        deactionion:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/Step'
+
+    Step:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        deactionion:
+          type: string
+        args:
+          items:
+            $ref: '#/components/schemas/ActionArgument'
+
+    ActionArgument:
+      type: object
+      required:
+        - type
+        - name
+      oneOf:
+        - $ref: '#/components/schemas/ActionArgumentString'
+        - $ref: '#/components/schemas/ActionArgumentList'
+        - $ref: '#/components/schemas/ActionArgumentMap'
+      properties:
+        name:
+          type: string
+        type:
+          $ref: '#/components/schemas/ActionArgumentType'
+      discriminator:
+        propertyName: type
+        mapping:
+          STRING: '#/components/schemas/ActionArgumentString'
+          LIST: '#/components/schemas/ActionArgumentList'
+          MAP: '#/components/schemas/ActionArgumentMap'
+
+    ActionArgumentString:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ActionArgument'
+        - type: object
+          required:
+            - value
+          properties:
+            type:
+              example: STRING
+            value:
+              type: string
+
+    ActionArgumentList:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ActionArgument'
+        - type: object
+          required:
+            - value
+          properties:
+            type:
+              example: LIST
+            value:
+              items:
+                type: string
+
+    ActionArgumentMap:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ActionArgument'
+        - type: object
+          required:
+            - value
+          properties:
+            type:
+              example: MAP
+            value:
+              type: object
+              additionalProperties:
+                type: string
+
+    ActionArgumentType:
+      enum:
+        - STRING
+        - LIST
+        - MAP
