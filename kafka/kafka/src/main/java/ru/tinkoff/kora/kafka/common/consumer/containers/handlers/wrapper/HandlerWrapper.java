@@ -16,18 +16,8 @@ public final class HandlerWrapper {
         return new RecordHandler<>(telemetry, shouldCommit, handler);
     }
 
-    @Deprecated
-    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandlerRecords(KafkaConsumerTelemetry<K, V> telemetry, boolean shouldCommit, ValueOf<KafkaRecordsHandler<K, V>> handler) {
-        return wrapHandlerRecords(telemetry, shouldCommit, handler, false);
-    }
-
     public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandlerRecords(KafkaConsumerTelemetry<K, V> telemetry, boolean shouldCommit, ValueOf<KafkaRecordsHandler<K, V>> handler, boolean allowEmptyRecords) {
         return new RecordsHandler<>(telemetry, shouldCommit, handler, allowEmptyRecords);
-    }
-
-    @Deprecated
-    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandler(KafkaConsumerTelemetry<K, V> telemetry, ValueOf<BaseKafkaRecordsHandler<K, V>> realHandler) {
-        return wrapHandler(telemetry, realHandler, false);
     }
 
     public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandler(KafkaConsumerTelemetry<K, V> telemetry, ValueOf<BaseKafkaRecordsHandler<K, V>> realHandler, boolean allowEmptyRecords) {

@@ -10,20 +10,10 @@ public interface HttpClientTracer {
 
     interface HttpClientSpan {
 
-        /**
-         * @see #close(Integer, HttpResultCode, HttpHeaders, Throwable)
-         */
-        @Deprecated
-        default void close(int code, @Nullable Throwable exception) {
-
-        }
-
-        default void close(@Nullable Integer statusCode,
-                           HttpResultCode resultCode,
-                           @Nullable HttpHeaders headers,
-                           @Nullable Throwable exception) {
-            close(statusCode == null ? -1 : statusCode, exception);
-        }
+        void close(@Nullable Integer statusCode,
+                   HttpResultCode resultCode,
+                   @Nullable HttpHeaders headers,
+                   @Nullable Throwable exception);
     }
 
     HttpClientSpan createSpan(Context ctx, HttpClientRequest request);

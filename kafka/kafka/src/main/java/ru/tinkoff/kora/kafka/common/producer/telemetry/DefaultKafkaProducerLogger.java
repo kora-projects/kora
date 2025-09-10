@@ -3,7 +3,6 @@ package ru.tinkoff.kora.kafka.common.producer.telemetry;
 import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -20,17 +19,17 @@ public class DefaultKafkaProducerLogger implements KafkaProducerLogger {
     private static final Logger logger = LoggerFactory.getLogger(DefaultKafkaProducerLogger.class);
 
     @Override
-    public void sendBegin(ProducerRecord<?, ?> record) {
-        logger.debug("Kafka Producer sending record to topic {} and partition {}", record.topic(), record.partition());
+    public void sendBegin(KafkaProducerTelemetry.TelemetryProducerRecord<?, ?> record) {
+        logger.debug("Kafka Producer sending record to topic {} and partition {}", record.producerRecord().topic(), record.producerRecord().partition());
     }
 
     @Override
-    public void sendEnd(ProducerRecord<?, ?> record, Throwable e) {
-        logger.warn("Kafka Producer error sending record to topic {} and partition {}", record.topic(), record.partition(), e);
+    public void sendEnd(KafkaProducerTelemetry.TelemetryProducerRecord<?, ?> record, Throwable e) {
+        logger.warn("Kafka Producer error sending record to topic {} and partition {}", record.producerRecord().topic(), record.producerRecord().partition(), e);
     }
 
     @Override
-    public void sendEnd(RecordMetadata metadata) {
+    public void sendEnd(KafkaProducerTelemetry.TelemetryProducerRecord<?, ?> record, RecordMetadata metadata) {
         logger.debug("Kafka Producer success sending record to topic {} and partition {} and offset {}", metadata.topic(), metadata.partition(), metadata.offset());
     }
 

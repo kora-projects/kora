@@ -25,21 +25,5 @@ public interface SoapClientTelemetry {
 
             record ProcessException(Throwable throwable) implements SoapClientFailure {}
         }
-
-        /**
-         * @see #success(SoapResult.Success, byte[])
-         */
-        @Deprecated
-        default void success(SoapResult.Success success) {
-            // do nothing
-        }
-
-        /**
-         * @see #failure(SoapClientFailure, byte[])
-         */
-        @Deprecated
-        default void failure(SoapClientFailure failure) {
-            // do nothing
-        }
     }
 }
