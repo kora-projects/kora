@@ -16,11 +16,7 @@ public interface KafkaProducerTelemetry extends AutoCloseable {
 
     KafkaProducerTransactionTelemetryContext tx();
 
-    KafkaProducerRecordTelemetryContext record(ProducerRecord<?, ?> record);
-
-    default KafkaProducerRecordTelemetryContext record(TelemetryProducerRecord<?, ?> record) {
-        return record(record.producerRecord());
-    }
+    KafkaProducerRecordTelemetryContext record(TelemetryProducerRecord<?, ?> record);
 
     interface KafkaProducerTransactionTelemetryContext {
         void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata);
