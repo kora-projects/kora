@@ -1916,10 +1916,11 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         if (checkVisited) {
-            if (visited.contains(targetName)) {
+            String visitTarget = targetSchema.get$ref() + "-" + targetName + "-" + targetSchema.hashCode();
+            if (visited.contains(visitTarget)) {
                 return Collections.emptySet();
             } else {
-                visited.add(targetName);
+                visited.add(visitTarget);
             }
         }
 
@@ -1991,7 +1992,7 @@ public class KoraCodegen extends DefaultCodegen {
 
         List<Schema<?>> innerSchemas = getAllInnerSchemas(targetSchema);
         for (Schema<?> innerSchema : innerSchemas) {
-            Set<String> innerSchemaRefs = getSimpleRefRecursive(targetName, innerSchema, schemas, schemaToAllSimpleRefs, visited, false);
+            Set<String> innerSchemaRefs = getSimpleRefRecursive(targetName, innerSchema, schemas, schemaToAllSimpleRefs, visited, true);
             simpleRefs.addAll(innerSchemaRefs);
 
             Set<String> itemAllSimpleRefs = getAllSimpleRefs(innerSchema);
@@ -2048,7 +2049,10 @@ public class KoraCodegen extends DefaultCodegen {
     private Set<String> getAllRefs(Schema req, Set<Schema<?>> visited) {
         if (req == null) {
             return Collections.emptySet();
-        } else if (req instanceof ObjectSchema && visited.stream().anyMatch(s -> s == req)) {
+        } else if (req instanceof ObjectSchema
+                   && visited.stream().anyMatch(s -> s == req)) {
+            return Collections.emptySet();
+        } else if (req.get$ref() != null && visited.stream().anyMatch(s -> s.get$ref() != null && s.get$ref().equals(req.get$ref()))) {
             return Collections.emptySet();
         }
 
