@@ -9,9 +9,6 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
-import ru.tinkoff.kora.config.common.Config;
-import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException;
-import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
@@ -30,20 +27,18 @@ import ru.tinkoff.kora.micrometer.module.grpc.server.tag.DefaultMicrometerGrpcSe
 import ru.tinkoff.kora.micrometer.module.grpc.server.tag.MicrometerGrpcServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.client.MicrometerHttpClientMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.http.client.tag.MicrometerHttpClientTagsProvider;
-import ru.tinkoff.kora.micrometer.module.http.client.tag.Opentelemetry120MicrometerHttpClientTagsProvider;
-import ru.tinkoff.kora.micrometer.module.http.client.tag.Opentelemetry123MicrometerHttpClientTagsProvider;
+import ru.tinkoff.kora.micrometer.module.http.client.tag.OpentelemetryMicrometerHttpClientTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerHttpServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerPrivateApiMetrics;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DefaultMicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTagsProvider;
-import ru.tinkoff.kora.micrometer.module.http.server.tag.Opentelemetry123MicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.jms.consumer.MicrometerJmsConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.MicrometerKafkaConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.MicrometerKafkaConsumerTagsProvider;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry120KafkaConsumerTagsProvider;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.Opentelemetry123KafkaConsumerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.OpentelemetryKafkaConsumerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.kafka.producer.MicrometerKafkaProducerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.MicrometerKafkaProducerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.producer.tag.OpentelemetryKafkaProviderTagsProvider;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
@@ -53,50 +48,36 @@ import ru.tinkoff.kora.micrometer.module.s3.client.MicrometerS3KoraClientMetrics
 import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
-import java.util.Optional;
-
 public interface MetricsModule {
-    default MetricsConfig globalMetricsConfig(Config config, ConfigValueExtractor<MetricsConfig> extractor) {
-        var configValue = config.get("metrics");
-        return Optional.ofNullable(extractor.extract(configValue)).orElseThrow(() -> ConfigValueExtractionException.missingValueAfterParse(configValue));
-    }
-
     @Root
     default PrometheusMeterRegistryWrapper prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
         return new PrometheusMeterRegistryWrapper(initializers);
     }
 
     @DefaultComponent
-    default MicrometerHttpServerTagsProvider micrometerHttpServerTagsProvider(HttpServerConfig config, MetricsConfig globalMetricsConfig) {
-        return switch (globalMetricsConfig.opentelemetrySpec()) {
-            case V120 -> new DefaultMicrometerHttpServerTagsProvider();
-            case V123 -> new Opentelemetry123MicrometerHttpServerTagsProvider();
-        };
+    default MicrometerHttpServerTagsProvider micrometerHttpServerTagsProvider(HttpServerConfig config) {
+        return new DefaultMicrometerHttpServerTagsProvider();
     }
 
     @DefaultComponent
-    default MicrometerHttpServerMetricsFactory micrometerHttpServerMetricsFactory(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, MetricsConfig metricsConfig) {
-        return new MicrometerHttpServerMetricsFactory(meterRegistry, httpServerTagsProvider, metricsConfig);
+    default MicrometerHttpServerMetricsFactory micrometerHttpServerMetricsFactory(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider) {
+        return new MicrometerHttpServerMetricsFactory(meterRegistry, httpServerTagsProvider);
     }
 
     @DefaultComponent
-    default MicrometerHttpClientTagsProvider micrometerHttpClientTagsProvider(HttpClientConfig httpClientConfig, MetricsConfig globalMetricsConfig) {
-        return switch (globalMetricsConfig.opentelemetrySpec()) {
-            case V120 -> new Opentelemetry120MicrometerHttpClientTagsProvider();
-            case V123 -> new Opentelemetry123MicrometerHttpClientTagsProvider();
-        };
+    default MicrometerHttpClientTagsProvider micrometerHttpClientTagsProvider(HttpClientConfig httpClientConfig) {
+        return new OpentelemetryMicrometerHttpClientTagsProvider();
     }
 
     @DefaultComponent
     default MicrometerHttpClientMetricsFactory micrometerHttpClientMetricsFactory(MeterRegistry meterRegistry,
-                                                                                  MetricsConfig metricsConfig,
                                                                                   MicrometerHttpClientTagsProvider tagsProvider) {
-        return new MicrometerHttpClientMetricsFactory(meterRegistry, metricsConfig, tagsProvider);
+        return new MicrometerHttpClientMetricsFactory(meterRegistry, tagsProvider);
     }
 
     @DefaultComponent
-    default MicrometerSoapClientMetricsFactory micrometerSoapClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerSoapClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerSoapClientMetricsFactory micrometerSoapClientMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerSoapClientMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
@@ -105,13 +86,13 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerGrpcServerTagsProvider micrometerGrpcServerTagsProvider(MetricsConfig globalMetricsConfig) {
+    default MicrometerGrpcServerTagsProvider micrometerGrpcServerTagsProvider() {
         return new DefaultMicrometerGrpcServerTagsProvider();
     }
 
     @DefaultComponent
-    default MicrometerGrpcServerMetricsFactory micrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig, MicrometerGrpcServerTagsProvider grpcServerTagsProvider) {
-        return new MicrometerGrpcServerMetricsFactory(meterRegistry, metricsConfig, grpcServerTagsProvider);
+    default MicrometerGrpcServerMetricsFactory micrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry, MicrometerGrpcServerTagsProvider grpcServerTagsProvider) {
+        return new MicrometerGrpcServerMetricsFactory(meterRegistry, grpcServerTagsProvider);
     }
 
     @DefaultComponent
@@ -121,36 +102,35 @@ public interface MetricsModule {
 
     @DefaultComponent
     default MicrometerGrpcClientMetricsFactory micrometerGrpcClientMetricsFactory(MeterRegistry registry,
-                                                                                  MetricsConfig metricsConfig,
                                                                                   MicrometerGrpcClientTagsProvider tagsProvider) {
-        return new MicrometerGrpcClientMetricsFactory(registry, metricsConfig, tagsProvider);
+        return new MicrometerGrpcClientMetricsFactory(registry, tagsProvider);
     }
 
     @DefaultComponent
-    default MicrometerDataBaseMetricWriterFactory micrometerDataBaseMetricWriterFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerDataBaseMetricWriterFactory(meterRegistry, metricsConfig);
+    default MicrometerDataBaseMetricWriterFactory micrometerDataBaseMetricWriterFactory(MeterRegistry meterRegistry) {
+        return new MicrometerDataBaseMetricWriterFactory(meterRegistry);
     }
 
     @DefaultComponent
-    default MicrometerKafkaConsumerTagsProvider micrometerKafkaConsumerTagsProvider(MetricsConfig globalMetricsConfig) {
-        return switch (globalMetricsConfig.opentelemetrySpec()) {
-            case V120 -> new Opentelemetry120KafkaConsumerTagsProvider();
-            case V123 -> new Opentelemetry123KafkaConsumerTagsProvider();
-        };
+    default MicrometerKafkaConsumerTagsProvider micrometerKafkaConsumerTagsProvider() {
+        return new OpentelemetryKafkaConsumerTagsProvider();
     }
 
     @DefaultComponent
     default MicrometerKafkaConsumerMetricsFactory micrometerKafkaConsumerMetricsFactory(MeterRegistry meterRegistry,
-                                                                                        MetricsConfig metricsConfig,
                                                                                         MicrometerKafkaConsumerTagsProvider tagsProvider) {
-        return new MicrometerKafkaConsumerMetricsFactory(meterRegistry, metricsConfig, tagsProvider);
+        return new MicrometerKafkaConsumerMetricsFactory(meterRegistry, tagsProvider);
+    }
+
+    @DefaultComponent
+    default MicrometerKafkaProducerTagsProvider opentelemetryKafkaProviderTagsProvider() {
+        return new OpentelemetryKafkaProviderTagsProvider();
     }
 
     @DefaultComponent
     default MicrometerKafkaProducerMetricsFactory micrometerKafkaProducerMetricsFactory(MeterRegistry meterRegistry,
-                                                                                        MetricsConfig metricsConfig,
                                                                                         MicrometerKafkaProducerTagsProvider tagsProvider) {
-        return new MicrometerKafkaProducerMetricsFactory(meterRegistry, metricsConfig, tagsProvider);
+        return new MicrometerKafkaProducerMetricsFactory(meterRegistry, tagsProvider);
     }
 
     @DefaultComponent
@@ -159,8 +139,8 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerSchedulingMetricsFactory micrometerSchedulingMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerSchedulingMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerSchedulingMetricsFactory micrometerSchedulingMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerSchedulingMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
@@ -194,28 +174,28 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default MicrometerS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerS3ClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerS3ClientMetricsFactory micrometerS3ClientMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerS3ClientMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
-    default MicrometerS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerS3KoraClientMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerS3KoraClientMetricsFactory micrometerS3KoraClientMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerS3KoraClientMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
-    default MicrometerCamundaEngineBpmnMetricsFactory micrometerCamundaEngineBpmnMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerCamundaEngineBpmnMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerCamundaEngineBpmnMetricsFactory micrometerCamundaEngineBpmnMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerCamundaEngineBpmnMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
-    default MicrometerCamundaRestMetricsFactory micrometerCamundaRestMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerCamundaRestMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerCamundaRestMetricsFactory micrometerCamundaRestMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerCamundaRestMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
-    default MicrometerZeebeWorkerMetricsFactory micrometerZeebeWorkerMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
-        return new MicrometerZeebeWorkerMetricsFactory(meterRegistry, metricsConfig);
+    default MicrometerZeebeWorkerMetricsFactory micrometerZeebeWorkerMetricsFactory(MeterRegistry meterRegistry) {
+        return new MicrometerZeebeWorkerMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
@@ -231,7 +211,7 @@ public interface MetricsModule {
     }
 
     @DefaultComponent
-    default CommandLatencyRecorderFactory micrometerLettuceCommandLatencyRecorderFactory(MeterRegistry registry, MetricsConfig metricsConfig) {
-        return new MicrometerLettuceCommandLatencyRecorderFactory(registry, metricsConfig);
+    default CommandLatencyRecorderFactory micrometerLettuceCommandLatencyRecorderFactory(MeterRegistry registry) {
+        return new MicrometerLettuceCommandLatencyRecorderFactory(registry);
     }
 }

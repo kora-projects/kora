@@ -15,7 +15,7 @@ grpc-kotlin = "1.4.3"
 ksp = "2.2.10-2.0.2"
 kotlinpoet = "1.18.1"
 swagger = "2.2.35"
-opentelemetry = "1.53.0"
+opentelemetry = "1.54.0"
 undertow = "2.3.18.Final"
 undertow-jakarta = "6.2.12.Final"
 camunda7 = "7.21.0"
@@ -38,8 +38,8 @@ opentelemetry-context = { module = "io.opentelemetry:opentelemetry-context", ver
 opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
 opentelemetry-exporter-sender-jdk = { module = "io.opentelemetry:opentelemetry-exporter-sender-jdk", version.ref = "opentelemetry" }
 opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
-opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.32.0" }
-opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.34.0-alpha" }
+opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
+opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.37.0-alpha" }
 opentelemetry-micrometer-meter-provider = { module = "io.opentelemetry.contrib:opentelemetry-micrometer-meter-provider", version = "1.48.0-alpha" }
 
 typesafe-config = { module = "com.typesafe:config", version = "1.4.3" }

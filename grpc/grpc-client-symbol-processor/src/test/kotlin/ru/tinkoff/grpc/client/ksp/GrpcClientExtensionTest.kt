@@ -34,8 +34,7 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               2. duration parser
               3. log config parser
               4. tracing config parser
-              5. double config parser
-              6. double array config parser
+              6. duration array config parser
               7. metrics config parser
               8. telemetry config parser
               9. config parser
@@ -52,7 +51,7 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               20. the stub
               21. test root
              */
-            Assertions.assertThat(g.draw.size()).isEqualTo(21)
+            Assertions.assertThat(g.draw.size()).isEqualTo(20)
         }
     }
 

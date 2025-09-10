@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn;
 
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
 import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.delegate.DelegateExecution;
@@ -12,9 +12,10 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class Micrometer120CamundaEngineBpmnMetrics implements CamundaEngineBpmnMetrics {
+public final class MicrometerCamundaEngineBpmnMetrics implements CamundaEngineBpmnMetrics {
 
     record RequestKey(String javaDelegateName, String businessKey) {}
 
@@ -22,10 +23,10 @@ public final class Micrometer120CamundaEngineBpmnMetrics implements CamundaEngin
 
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<RequestKey, AtomicInteger> requestCounters = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Key, DistributionSummary> duration = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Key, Timer> duration = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
 
-    public Micrometer120CamundaEngineBpmnMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config) {
+    public MicrometerCamundaEngineBpmnMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }
@@ -56,7 +57,7 @@ public final class Micrometer120CamundaEngineBpmnMetrics implements CamundaEngin
         var key = new Key(javaDelegateName, execution.getProcessBusinessKey(), errorType);
 
         this.duration.computeIfAbsent(key, this::requestDuration)
-            .record(((double) processingTimeNano) / 1_000_000);
+            .record(processingTimeNano, TimeUnit.NANOSECONDS);
     }
 
     private void registerActiveRequestsGauge(RequestKey key, AtomicInteger counter) {
@@ -69,7 +70,7 @@ public final class Micrometer120CamundaEngineBpmnMetrics implements CamundaEngin
             .register(this.meterRegistry);
     }
 
-    private DistributionSummary requestDuration(Key key) {
+    private Timer requestDuration(Key key) {
         var list = new ArrayList<Tag>(3);
         if (key.errorType() != null) {
             list.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), key.errorType().getCanonicalName()));
@@ -80,9 +81,8 @@ public final class Micrometer120CamundaEngineBpmnMetrics implements CamundaEngin
         list.add(Tag.of("delegate", key.javaDelegateName()));
         list.add(Tag.of("business.key", key.businessKey()));
 
-        var builder = DistributionSummary.builder("camunda.engine.delegate.duration")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("milliseconds")
+        var builder = Timer.builder("camunda.engine.delegate.duration")
+            .serviceLevelObjectives(this.config.slo())
             .tags(list);
 
         return builder.register(this.meterRegistry);

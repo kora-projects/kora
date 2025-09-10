@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.micrometer.module.s3.client;
 
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.api.common.AttributeKey;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.incubating.AwsIncubatingAttributes;
@@ -12,20 +12,21 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
-public class Opentelemetry123S3ClientMetrics implements S3ClientMetrics {
+public class OpentelemetryS3ClientMetrics implements S3ClientMetrics {
 
     private static final AttributeKey<String> ERROR_CODE = stringKey("aws.error.code");
     private static final AttributeKey<String> CLIENT_NAME = stringKey("aws.client.name");
 
-    private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<DurationKey, Timer> duration = new ConcurrentHashMap<>();
     private final MeterRegistry meterRegistry;
     private final TelemetryConfig.MetricsConfig config;
     private final Class<?> client;
 
-    public Opentelemetry123S3ClientMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, Class<?> client) {
+    public OpentelemetryS3ClientMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, Class<?> client) {
         this.meterRegistry = meterRegistry;
         this.config = config;
         this.client = client;
@@ -40,13 +41,12 @@ public class Opentelemetry123S3ClientMetrics implements S3ClientMetrics {
                        @Nullable S3Exception exception) {
         String errorCode = (exception != null) ? exception.getErrorCode() : null;
         this.duration.computeIfAbsent(new DurationKey(method, bucket, statusCode, errorCode), this::duration)
-            .record((double) processingTimeNanos / 1_000_000_000);
+            .record(processingTimeNanos, TimeUnit.NANOSECONDS);
     }
 
-    private DistributionSummary duration(DurationKey key) {
-        var builder = DistributionSummary.builder("s3.client.duration")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
-            .baseUnit("s")
+    private Timer duration(DurationKey key) {
+        var builder = Timer.builder("s3.client.duration")
+            .serviceLevelObjectives(this.config.slo())
             .tag(CLIENT_NAME.getKey(), client.getSimpleName())
             .tag(AwsIncubatingAttributes.AWS_S3_BUCKET.getKey(), key.bucket())
             .tag(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method())

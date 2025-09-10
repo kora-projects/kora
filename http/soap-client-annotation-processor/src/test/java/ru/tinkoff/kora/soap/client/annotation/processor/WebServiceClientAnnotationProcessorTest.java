@@ -35,6 +35,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -274,7 +275,7 @@ class WebServiceClientAnnotationProcessorTest {
                 return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                     new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
                     new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, new Duration[0])
                 );
             }
         });
