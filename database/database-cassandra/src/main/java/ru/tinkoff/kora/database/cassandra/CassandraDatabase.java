@@ -22,11 +22,6 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     private final CassandraConfigurer configurer;
     private volatile CqlSession cqlSession;
 
-    @Deprecated
-    public CassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory) {
-        this(config, null, telemetryFactory);
-    }
-
     public CassandraDatabase(CassandraConfig config, @Nullable CassandraConfigurer configurer, DataBaseTelemetryFactory telemetryFactory) {
         this.config = config;
         this.configurer = configurer;
