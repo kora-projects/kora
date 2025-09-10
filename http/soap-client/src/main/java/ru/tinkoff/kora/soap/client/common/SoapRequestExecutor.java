@@ -27,11 +27,6 @@ public class SoapRequestExecutor {
     private final SoapClientTelemetry telemetry;
     private final Duration timeout;
 
-    @Deprecated
-    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String service, SoapServiceConfig config, String method, @Nullable String soapAction) {
-        this(httpClient, telemetryFactory, xmlTools, "ru.tinkoff.kora.soap.client." + service, service, config, method, soapAction);
-    }
-
     public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String serviceClass, String service, SoapServiceConfig config, String method, @Nullable String soapAction) {
         this.httpClient = httpClient;
         this.xmlTools = xmlTools;

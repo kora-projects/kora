@@ -1,37 +1,20 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTelemetry.TelemetryProducerRecord;
 
-import jakarta.annotation.Nullable;
-
 import java.util.Map;
 
 public interface KafkaProducerLogger {
-    @Deprecated
-    void sendBegin(ProducerRecord<?, ?> record);
+    void sendBegin(TelemetryProducerRecord<?, ?> record);
 
-    default void sendBegin(TelemetryProducerRecord<?, ?> record) {
-        sendBegin(record.producerRecord());
-    }
+    void sendEnd(TelemetryProducerRecord<?, ?> record, Throwable e);
 
-    @Deprecated
-    void sendEnd(ProducerRecord<?, ?> record, Throwable e);
-
-    default void sendEnd(TelemetryProducerRecord<?, ?> record, Throwable e) {
-        sendEnd(record.producerRecord(), e);
-    }
-
-    @Deprecated
-    void sendEnd(RecordMetadata metadata);
-
-    default void sendEnd(TelemetryProducerRecord<?, ?> record, RecordMetadata metadata) {
-        sendEnd(metadata);
-    }
+    void sendEnd(TelemetryProducerRecord<?, ?> record, RecordMetadata metadata);
 
     void txBegin();
 

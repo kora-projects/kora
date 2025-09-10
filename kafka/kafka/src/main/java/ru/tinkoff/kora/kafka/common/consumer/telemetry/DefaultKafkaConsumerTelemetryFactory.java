@@ -56,19 +56,6 @@ public final class DefaultKafkaConsumerTelemetryFactory<K, V> implements KafkaCo
         };
     }
 
-    @Deprecated
-    @Override
-    public KafkaConsumerTelemetry<K, V> get(Properties driverProperties, TelemetryConfig config) {
-        var logger = this.logger == null ? null : this.logger.get(driverProperties, config.logging());
-        var metrics = this.metrics == null ? null : this.metrics.get(driverProperties, config.metrics());
-        var tracer = this.tracer == null ? null : this.tracer.get(driverProperties, config.tracing());
-        if (logger == null && metrics == null && tracer == null) {
-            return empty;
-        }
-
-        return new DefaultKafkaConsumerTelemetry<>("", logger, tracer, metrics);
-    }
-
     @Override
     public KafkaConsumerTelemetry<K, V> get(String consumerName, Properties driverProperties, TelemetryConfig config) {
         var logger = this.logger == null ? null : this.logger.get(driverProperties, config.logging());

@@ -8,15 +8,6 @@ import java.util.Properties;
 
 public interface KafkaProducerTelemetryFactory {
 
-    /**
-     * @see #get(String, TelemetryConfig, Producer<?, ?>, Properties)
-     */
-    @Deprecated
     @Nullable
-    KafkaProducerTelemetry get(TelemetryConfig config, Producer<?, ?> producer, Properties properties);
-
-    @Nullable
-    default KafkaProducerTelemetry get(String producerName, TelemetryConfig config, Producer<?, ?> producer, Properties properties) {
-        return get(config, producer, properties);
-    }
+    KafkaProducerTelemetry get(String producerName, TelemetryConfig config, Producer<?, ?> producer, Properties properties);
 }

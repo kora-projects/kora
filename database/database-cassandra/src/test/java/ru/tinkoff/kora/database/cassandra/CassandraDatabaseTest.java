@@ -62,7 +62,7 @@ class CassandraDatabaseTest {
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
             )
         );
-        return new CassandraDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
+        return new CassandraDatabase(config, (b, _) -> b, new DefaultDataBaseTelemetryFactory(null, null, null));
     }
 
     private static void withDb(CassandraParams params, Consumer<CassandraDatabase> consumer) {
