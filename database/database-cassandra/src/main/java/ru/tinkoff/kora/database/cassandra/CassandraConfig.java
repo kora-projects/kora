@@ -394,7 +394,7 @@ public interface CassandraConfig {
                 @Nullable
                 Duration refreshInterval();
 
-                default double[] slo() {
+                default Duration[] slo() {
                     return TelemetryConfig.MetricsConfig.DEFAULT_SLO;
                 }
             }

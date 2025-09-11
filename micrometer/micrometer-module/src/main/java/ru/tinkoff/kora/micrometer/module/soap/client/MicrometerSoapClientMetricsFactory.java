@@ -2,7 +2,6 @@ package ru.tinkoff.kora.micrometer.module.soap.client;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.micrometer.module.MetricsConfig;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetrics;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientMetricsFactory;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -13,11 +12,9 @@ import java.util.Objects;
 public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFactory {
 
     private final MeterRegistry meterRegistry;
-    private final MetricsConfig metricsConfig;
 
-    public MicrometerSoapClientMetricsFactory(MeterRegistry meterRegistry, MetricsConfig metricsConfig) {
+    public MicrometerSoapClientMetricsFactory(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
-        this.metricsConfig = metricsConfig;
     }
 
     @Nullable
@@ -33,10 +30,7 @@ public class MicrometerSoapClientMetricsFactory implements SoapClientMetricsFact
                 default -> -1;
             };
 
-            return switch (this.metricsConfig.opentelemetrySpec()) {
-                case V120 -> new Opentelemetry120SoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
-                case V123 -> new Opentelemetry123SoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
-            };
+            return new OpentelemetrySoapClientMetrics(this.meterRegistry, config, serviceName, soapMethod, host, port);
         } else {
             return null;
         }

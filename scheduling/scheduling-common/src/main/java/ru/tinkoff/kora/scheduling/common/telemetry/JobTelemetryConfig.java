@@ -3,6 +3,7 @@ package ru.tinkoff.kora.scheduling.common.telemetry;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.time.Duration;
 import java.util.Objects;
 
 public final class JobTelemetryConfig implements TelemetryConfig {
@@ -71,19 +72,11 @@ public final class JobTelemetryConfig implements TelemetryConfig {
         }
 
         @Override
-        public double[] slo() {
+        public Duration[] slo() {
             if (this.job != null && this.job.slo() != null) {
                 return this.job.slo();
             }
             return this.client.slo();
-        }
-
-        @Override
-        public double[] slo(OpentelemetrySpec spec) {
-            if (this.job != null && this.job.slo(spec) != null) {
-                return this.job.slo(spec);
-            }
-            return this.client.slo(spec);
         }
     }
 

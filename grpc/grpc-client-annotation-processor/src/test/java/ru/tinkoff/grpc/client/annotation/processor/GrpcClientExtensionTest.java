@@ -39,25 +39,24 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
               2. duration parser
               3. log config parser
               4. tracing config parser
-              5. double config parser
-              6. double array config parser
-              7. metrics config parser
-              8. telemetry config parser
-              9. config parser
-              10. parsed config
-              11. telemetry factory
-              12. NettyTransportConfig.EventLoop extractor
-              13. NettyTransportConfig extractor
-              14. NettyTransportConfig
-              15. netty event loop group
-              16. netty channel factory
-              17. channel factory
-              18. config parser
-              19. channel lifecycle
-              20. the stub
-              21. test root
+              5. duration array config parser
+              6. metrics config parser
+              7. telemetry config parser
+              8. config parser
+              9. parsed config
+              10. telemetry factory
+              11. NettyTransportConfig.EventLoop extractor
+              12. NettyTransportConfig extractor
+              13. NettyTransportConfig
+              14. netty event loop group
+              15. netty channel factory
+              16. channel factory
+              17. config parser
+              18. channel lifecycle
+              19. the stub
+              20. test root
              */
-            Assertions.assertThat(g.draw().size()).isEqualTo(21);
+            Assertions.assertThat(g.draw().size()).isEqualTo(20);
         }
     }
 
