@@ -6,6 +6,7 @@ import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLoggerConfig;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Set;
 
@@ -138,7 +139,7 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
         }
 
         @Override
-        public double[] slo() {
+        public Duration[] slo() {
             if (this.operation.slo() != null) {
                 return this.operation.slo();
             }

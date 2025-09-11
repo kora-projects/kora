@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.micrometer.module.kafka.consumer;
 
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -13,27 +13,28 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.TopicPartition;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetrics;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordsDurationKey;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordDurationKey;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.TopicLagKey;
 import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.MicrometerKafkaConsumerTagsProvider;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordDurationKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.RecordsDurationKey;
+import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.TopicLagKey;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
- * @see <a href="https://github.com/open-telemetry/semantic-conventions/blob/main/docs/messaging/messaging-metrics.md">messaging-metrics</a>
+ * @see <a href="https://opentelemetry.io/docs/specs/semconv/messaging/kafka/">kafka-metrics</a>
  */
-public final class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
+public final class OpentelemetryKafkaConsumerMetrics implements KafkaConsumerMetrics, Lifecycle {
 
-    private final ConcurrentHashMap<RecordDurationKey, DistributionSummary> metrics = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<RecordsDurationKey, DistributionSummary> metricsBatch = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<RecordDurationKey, Timer> metrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<RecordsDurationKey, Timer> metricsBatch = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<TopicLagKey, LagGauge> lagMetrics = new ConcurrentHashMap<>();
 
-    private final Properties driverProperties;
     private final MeterRegistry meterRegistry;
+    private final Properties driverProperties;
     private final TelemetryConfig.MetricsConfig config;
     private final MicrometerKafkaConsumerTagsProvider tagsProvider;
     @Nullable
@@ -41,10 +42,10 @@ public final class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumer
     @Nullable
     private final String groupId;
 
-    public Opentelemetry120KafkaConsumerMetrics(MeterRegistry meterRegistry,
-                                                Properties driverProperties,
-                                                TelemetryConfig.MetricsConfig config,
-                                                MicrometerKafkaConsumerTagsProvider tagsProvider) {
+    public OpentelemetryKafkaConsumerMetrics(MeterRegistry meterRegistry,
+                                             Properties driverProperties,
+                                             TelemetryConfig.MetricsConfig config,
+                                             MicrometerKafkaConsumerTagsProvider tagsProvider) {
         this.tagsProvider = tagsProvider;
         this.meterRegistry = meterRegistry;
         this.config = config;
@@ -56,19 +57,17 @@ public final class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumer
         this.groupId = (groupIdObj instanceof String s) ? s : null;
     }
 
-    private DistributionSummary metrics(RecordDurationKey key) {
-        var builder = DistributionSummary.builder("messaging.receive.duration")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("milliseconds")
+    private Timer metrics(RecordDurationKey key) {
+        var builder = Timer.builder("messaging.process.duration")
+            .serviceLevelObjectives(this.config.slo())
             .tags(tagsProvider.getRecordDurationTags(clientId, groupId, driverProperties, key));
 
         return builder.register(this.meterRegistry);
     }
 
-    private DistributionSummary metricBatch(RecordsDurationKey key) {
-        var builder = DistributionSummary.builder("messaging.process.batch.duration")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("milliseconds")
+    private Timer metricBatch(RecordsDurationKey key) {
+        var builder = Timer.builder("messaging.process.batch.duration")
+            .serviceLevelObjectives(this.config.slo())
             .tags(tagsProvider.getRecordsDurationTags(clientId, groupId, driverProperties, key));
 
         return builder.register(this.meterRegistry);
@@ -76,21 +75,31 @@ public final class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumer
 
     @Override
     public void onRecordsReceived(ConsumerRecords<?, ?> records) {
-
     }
 
     @Override
     public void onRecordProcessed(String consumerName, ConsumerRecord<?, ?> record, long duration, @Nullable Throwable ex) {
-        double durationDouble = ((double) duration) / 1_000_000;
         var key = new RecordDurationKey(consumerName, record.topic(), record.partition(), ex != null ? ex.getClass() : null);
 
-        this.metrics.computeIfAbsent(key, this::metrics).record(durationDouble);
+        this.metrics.computeIfAbsent(key, this::metrics).record(duration, TimeUnit.NANOSECONDS);
+    }
+
+    @Override
+    public void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
+        var key = new RecordsDurationKey(consumerName, ex != null ? ex.getClass() : null);
+
+        this.metricsBatch.computeIfAbsent(key, this::metricBatch).record(duration, TimeUnit.NANOSECONDS);
     }
 
     @Override
     public void reportLag(String consumerName, TopicPartition partition, long lag) {
         var key = new TopicLagKey(consumerName, partition.topic(), partition.partition());
         lagMetrics.computeIfAbsent(key, k -> new LagGauge(k, clientId, driverProperties, tagsProvider, meterRegistry)).offsetLag = lag;
+    }
+
+    @Override
+    public void init() {
+
     }
 
     @Override
@@ -103,28 +112,10 @@ public final class Opentelemetry120KafkaConsumerMetrics implements KafkaConsumer
     }
 
     @Override
-    public void onRecordsProcessed(String consumerName, ConsumerRecords<?, ?> records, long duration, @Nullable Throwable ex) {
-        double durationDouble = ((double) duration) / 1_000_000;
-        var key = new RecordsDurationKey(consumerName, ex != null ? ex.getClass() : null);
-
-        this.metricsBatch.computeIfAbsent(key, this::metricBatch).record(durationDouble);
-    }
-
-    @Override
-    public void init() {
-
-    }
-
-    @Override
     public void release() {
         var metrics = new ArrayList<>(this.metrics.values());
         this.metrics.clear();
         for (var metric : metrics) {
-            metric.close();
-        }
-        var metricsBatch = new ArrayList<>(this.metricsBatch.values());
-        this.metricsBatch.clear();
-        for (var metric : metricsBatch) {
             metric.close();
         }
         var lagMetrics = new ArrayList<>(this.lagMetrics.values());

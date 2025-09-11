@@ -99,6 +99,10 @@ public interface DefaultConfigExtractorsModule {
         return new DoubleArrayConfigValueExtractor(doubleExtractor);
     }
 
+    default ConfigValueExtractor<Duration[]> durationArrayConfigValueExtractor(ConfigValueExtractor<Duration> durationExtractor) {
+        return new DurationArrayConfigValueExtractor(durationExtractor);
+    }
+
     default ConfigValueExtractor<Size> sizeConfigValueExtractor() {
         return new SizeConfigValueExtractor();
     }

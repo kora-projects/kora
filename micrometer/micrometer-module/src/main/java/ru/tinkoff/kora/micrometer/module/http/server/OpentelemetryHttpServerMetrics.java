@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.micrometer.module.http.server;
 
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -13,16 +13,17 @@ import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTag
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class Opentelemetry123HttpServerMetrics implements HttpServerMetrics {
+public final class OpentelemetryHttpServerMetrics implements HttpServerMetrics {
     private final MeterRegistry meterRegistry;
     private final MicrometerHttpServerTagsProvider httpServerTagsProvider;
     private final ConcurrentHashMap<ActiveRequestsKey, AtomicInteger> requestCounters = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<DurationKey, Timer> duration = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
 
-    public Opentelemetry123HttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, @Nullable TelemetryConfig.MetricsConfig config) {
+    public OpentelemetryHttpServerMetrics(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider, @Nullable TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.httpServerTagsProvider = httpServerTagsProvider;
         this.config = config;
@@ -48,7 +49,7 @@ public final class Opentelemetry123HttpServerMetrics implements HttpServerMetric
         counter.decrementAndGet();
         var key = new DurationKey(statusCode, method, pathTemplate, host, scheme, exception == null ? null : exception.getClass());
         this.duration.computeIfAbsent(key, this::requestDuration)
-            .record(((double) processingTimeNanos) / 1_000_000_000);
+            .record(processingTimeNanos, TimeUnit.NANOSECONDS);
     }
 
     private void registerActiveRequestsGauge(ActiveRequestsKey key, AtomicInteger counter) {
@@ -57,10 +58,9 @@ public final class Opentelemetry123HttpServerMetrics implements HttpServerMetric
             .register(this.meterRegistry);
     }
 
-    private DistributionSummary requestDuration(DurationKey key) {
-        var builder = DistributionSummary.builder("http.server.request.duration")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
-            .baseUnit("s")
+    private Timer requestDuration(DurationKey key) {
+        var builder = Timer.builder("http.server.request.duration")
+            .serviceLevelObjectives(this.config.slo())
             .tags(this.httpServerTagsProvider.getDurationTags(key));
 
         return builder.register(this.meterRegistry);
