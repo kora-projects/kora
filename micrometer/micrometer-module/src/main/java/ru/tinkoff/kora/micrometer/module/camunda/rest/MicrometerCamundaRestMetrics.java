@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.micrometer.module.camunda.rest;
 
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
@@ -14,9 +14,10 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class Micrometer123CamundaRestMetrics implements CamundaRestMetrics {
+public final class MicrometerCamundaRestMetrics implements CamundaRestMetrics {
 
     private record ActiveRequestsKey(String method, String target, String host, String scheme) {}
 
@@ -24,10 +25,10 @@ public final class Micrometer123CamundaRestMetrics implements CamundaRestMetrics
 
     private final MeterRegistry meterRegistry;
     private final ConcurrentHashMap<ActiveRequestsKey, AtomicInteger> requestCounters = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<DurationKey, DistributionSummary> duration = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<DurationKey, Timer> duration = new ConcurrentHashMap<>();
     private final TelemetryConfig.MetricsConfig config;
 
-    public Micrometer123CamundaRestMetrics(MeterRegistry meterRegistry, @Nullable TelemetryConfig.MetricsConfig config) {
+    public MicrometerCamundaRestMetrics(MeterRegistry meterRegistry, @Nullable TelemetryConfig.MetricsConfig config) {
         this.meterRegistry = meterRegistry;
         this.config = config;
     }
@@ -53,7 +54,7 @@ public final class Micrometer123CamundaRestMetrics implements CamundaRestMetrics
 
         counter.decrementAndGet();
         var key = new DurationKey(statusCode, method, pathTemplate, host, scheme, exception == null ? null : exception.getClass());
-        this.duration.computeIfAbsent(key, this::requestDuration).record(((double) processingTimeNanos) / 1_000_000_000);
+        this.duration.computeIfAbsent(key, this::requestDuration).record(processingTimeNanos, TimeUnit.NANOSECONDS);
     }
 
     private void registerActiveRequestsGauge(ActiveRequestsKey key, AtomicInteger counter) {
@@ -65,14 +66,13 @@ public final class Micrometer123CamundaRestMetrics implements CamundaRestMetrics
             .register(this.meterRegistry);
     }
 
-    private DistributionSummary requestDuration(DurationKey key) {
+    private Timer requestDuration(DurationKey key) {
         final String errorType = key.errorType() == null
             ? ""
             : key.errorType().getCanonicalName();
 
-        return DistributionSummary.builder("camunda.rest.server.request.duration")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
-            .baseUnit("s")
+        return Timer.builder("camunda.rest.server.request.duration")
+            .serviceLevelObjectives(this.config.slo())
             .tags(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method())
             .tags(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(key.statusCode()))
             .tags(HttpAttributes.HTTP_ROUTE.getKey(), key.route())

@@ -11,7 +11,7 @@ import java.util.Properties;
 
 import static io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.*;
 
-public class Opentelemetry123KafkaProviderTagsProvider implements MicrometerKafkaProducerTagsProvider {
+public class OpentelemetryKafkaProviderTagsProvider implements MicrometerKafkaProducerTagsProvider {
 
     @Override
     public List<Tag> getTopicPartitionTags(@Nullable String clientId,
@@ -25,11 +25,9 @@ public class Opentelemetry123KafkaProviderTagsProvider implements MicrometerKafk
         }
 
         if (key.partition() == -1) {
-            tags.add(Tag.of(MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), ""));
             tags.add(Tag.of(MESSAGING_DESTINATION_PARTITION_ID.getKey(), ""));
         } else {
             var partitionString = Integer.toString(key.partition());
-            tags.add(Tag.of(MESSAGING_KAFKA_DESTINATION_PARTITION.getKey(), partitionString));
             tags.add(Tag.of(MESSAGING_DESTINATION_PARTITION_ID.getKey(), partitionString));
         }
 

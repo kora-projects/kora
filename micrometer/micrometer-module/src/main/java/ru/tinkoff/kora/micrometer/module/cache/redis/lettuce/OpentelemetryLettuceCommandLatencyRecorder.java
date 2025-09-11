@@ -3,8 +3,8 @@ package ru.tinkoff.kora.micrometer.module.cache.redis.lettuce;
 import io.lettuce.core.metrics.CommandLatencyRecorder;
 import io.lettuce.core.protocol.ProtocolKeyword;
 import io.lettuce.core.protocol.RedisCommand;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import io.netty.channel.local.LocalAddress;
 import io.opentelemetry.semconv.ErrorAttributes;
 import jakarta.annotation.Nullable;
@@ -13,8 +13,9 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
-public class Opentelemetry123LettuceCommandLatencyRecorder implements CommandLatencyRecorder {
+public class OpentelemetryLettuceCommandLatencyRecorder implements CommandLatencyRecorder {
 
     private static final String LABEL_TYPE = "type";
     private static final String LABEL_COMMAND = "command";
@@ -25,7 +26,7 @@ public class Opentelemetry123LettuceCommandLatencyRecorder implements CommandLat
 
     record Key(String local, String remote, String command, @Nullable String error) {}
 
-    record Value(DistributionSummary completion, DistributionSummary firstResponse) {}
+    record Value(Timer completion, Timer firstResponse) {}
 
     private final ConcurrentMap<Key, Value> summary = new ConcurrentHashMap<>();
 
@@ -33,9 +34,9 @@ public class Opentelemetry123LettuceCommandLatencyRecorder implements CommandLat
     private final MeterRegistry registry;
     private final TelemetryConfig.MetricsConfig config;
 
-    public Opentelemetry123LettuceCommandLatencyRecorder(String type,
-                                                         MeterRegistry registry,
-                                                         TelemetryConfig.MetricsConfig config) {
+    public OpentelemetryLettuceCommandLatencyRecorder(String type,
+                                                      MeterRegistry registry,
+                                                      TelemetryConfig.MetricsConfig config) {
         this.type = type;
         this.registry = registry;
         this.config = config;
@@ -57,19 +58,18 @@ public class Opentelemetry123LettuceCommandLatencyRecorder implements CommandLat
 
         var key = new Key(LocalAddress.ANY.toString(), remoteString, commandName, error);
         var summary = this.summary.computeIfAbsent(key, this::metrics);
-        summary.completion().record((double) completionLatency / 1_000_000_000);
-        summary.firstResponse().record((double) firstResponseLatency / 1_000_000_000);
+        summary.completion().record(completionLatency, TimeUnit.NANOSECONDS);
+        summary.firstResponse().record(firstResponseLatency, TimeUnit.NANOSECONDS);
     }
 
     private Value metrics(Key key) {
         return new Value(this.metricsCompletion(key), this.metricFirstResponse(key));
     }
 
-    private DistributionSummary metricsCompletion(Key key) {
-        var builder = DistributionSummary.builder(METRIC_COMPLETION)
+    private Timer metricsCompletion(Key key) {
+        var builder = Timer.builder(METRIC_COMPLETION)
             .description("Latency summary of Redis Lettuce commands completion")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("s")
+            .serviceLevelObjectives(this.config.slo())
             .tag(LABEL_TYPE, this.type)
             .tag(LABEL_REMOTE, key.remote())
             .tag(LABEL_LOCAL, key.local())
@@ -84,11 +84,10 @@ public class Opentelemetry123LettuceCommandLatencyRecorder implements CommandLat
         return builder.register(this.registry);
     }
 
-    private DistributionSummary metricFirstResponse(Key key) {
-        var builder = DistributionSummary.builder(METRIC_FIRST_RESPONSE)
+    private Timer metricFirstResponse(Key key) {
+        var builder = Timer.builder(METRIC_FIRST_RESPONSE)
             .description("Latency summary of Redis Lettuce commands first response interaction")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("s")
+            .serviceLevelObjectives(this.config.slo())
             .tag(LABEL_TYPE, this.type)
             .tag(LABEL_REMOTE, key.remote())
             .tag(LABEL_LOCAL, key.local())

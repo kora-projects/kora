@@ -70,7 +70,7 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
             public TelemetryConfig telemetry() {
                 return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(false),
                     new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new double[]{}));
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new Duration[0]));
             }
         };
 

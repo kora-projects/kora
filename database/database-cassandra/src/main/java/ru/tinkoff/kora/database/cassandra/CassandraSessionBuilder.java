@@ -7,7 +7,6 @@ import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFact
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
-import java.time.Duration;
 import java.util.Arrays;
 
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
@@ -146,7 +145,7 @@ public class CassandraSessionBuilder {
                 builder.without(METRICS_NODE_CQL_MESSAGES_DIGITS);
             }
             if (node.cqlMessages().slo() != null && node.cqlMessages().slo().length > 0) {
-                builder.withDurationList(METRICS_NODE_CQL_MESSAGES_SLO, Arrays.stream(node.cqlMessages().slo()).mapToObj(v -> Duration.ofMillis(((long) (v)))).toList());
+                builder.withDurationList(METRICS_NODE_CQL_MESSAGES_SLO, Arrays.asList(node.cqlMessages().slo()));
             }
         }
     }
@@ -163,7 +162,7 @@ public class CassandraSessionBuilder {
                 builder.without(METRICS_SESSION_CQL_REQUESTS_DIGITS);
             }
             if (session.cqlRequests().slo() != null && session.cqlRequests().slo().length > 0) {
-                builder.withDurationList(METRICS_SESSION_CQL_REQUESTS_SLO, Arrays.stream(session.cqlRequests().slo()).mapToObj(v -> Duration.ofMillis(((long) (v)))).toList());
+                builder.withDurationList(METRICS_SESSION_CQL_REQUESTS_SLO, Arrays.asList(session.cqlRequests().slo()));
             }
         }
         if (session.throttlingDelay() != null) {
@@ -176,7 +175,7 @@ public class CassandraSessionBuilder {
                 builder.without(METRICS_SESSION_THROTTLING_DIGITS);
             }
             if (session.throttlingDelay().slo() != null && session.throttlingDelay().slo().length > 0) {
-                builder.withDurationList(METRICS_SESSION_THROTTLING_SLO, Arrays.stream(session.throttlingDelay().slo()).mapToObj(v -> Duration.ofMillis(((long) (v)))).toList());
+                builder.withDurationList(METRICS_SESSION_THROTTLING_SLO, Arrays.asList(session.throttlingDelay().slo()));
             }
         }
     }

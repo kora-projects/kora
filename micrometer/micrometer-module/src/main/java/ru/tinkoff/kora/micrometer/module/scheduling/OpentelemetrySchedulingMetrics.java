@@ -1,25 +1,26 @@
 package ru.tinkoff.kora.micrometer.module.scheduling;
 
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.semconv.CodeAttributes;
 import io.opentelemetry.semconv.ErrorAttributes;
-import io.opentelemetry.semconv.incubating.CodeIncubatingAttributes;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingMetrics;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
-public class Opentelemetry123SchedulingMetrics implements SchedulingMetrics {
-    private final Map<Class<? extends Throwable>, DistributionSummary> errorDuration = new ConcurrentHashMap<>();
-    private final DistributionSummary successDuration;
+public class OpentelemetrySchedulingMetrics implements SchedulingMetrics {
+    private final Map<Class<? extends Throwable>, Timer> errorDuration = new ConcurrentHashMap<>();
+    private final Timer successDuration;
     private final MeterRegistry meterRegistry;
     private final TelemetryConfig.MetricsConfig config;
     private final String className;
     private final String methodName;
 
-    public Opentelemetry123SchedulingMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String className, String methodName) {
+    public OpentelemetrySchedulingMetrics(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String className, String methodName) {
         this.meterRegistry = meterRegistry;
         this.config = config;
         this.className = className;
@@ -27,11 +28,10 @@ public class Opentelemetry123SchedulingMetrics implements SchedulingMetrics {
         this.successDuration = duration(null);
     }
 
-    private DistributionSummary duration(@Nullable Class<? extends Throwable> error) {
-        var builder = DistributionSummary.builder("scheduling.job.duration")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
-            .baseUnit("s")
-            .tag(CodeIncubatingAttributes.CODE_FUNCTION.getKey(), this.methodName)
+    private Timer duration(@Nullable Class<? extends Throwable> error) {
+        var builder = Timer.builder("scheduling.job.duration")
+            .serviceLevelObjectives(this.config.slo())
+            .tag(CodeAttributes.CODE_FUNCTION_NAME.getKey(), this.methodName)
             .tag("code.class", this.className);
 
         if (error != null) {
@@ -45,11 +45,10 @@ public class Opentelemetry123SchedulingMetrics implements SchedulingMetrics {
 
     @Override
     public void record(long processingTimeNanos, @Nullable Throwable e) {
-        var procesingTime = processingTimeNanos / 1_000_000_000d;
         if (e == null) {
-            this.successDuration.record(procesingTime);
+            this.successDuration.record(processingTimeNanos, TimeUnit.NANOSECONDS);
         } else {
-            this.errorDuration.computeIfAbsent(e.getClass(), this::duration).record(procesingTime);
+            this.errorDuration.computeIfAbsent(e.getClass(), this::duration).record(processingTimeNanos, TimeUnit.NANOSECONDS);
         }
     }
 }

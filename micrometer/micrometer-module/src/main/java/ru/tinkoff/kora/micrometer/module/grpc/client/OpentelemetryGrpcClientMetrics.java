@@ -2,8 +2,8 @@ package ru.tinkoff.kora.micrometer.module.grpc.client;
 
 import io.grpc.*;
 import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientMetrics;
 import ru.tinkoff.kora.micrometer.module.grpc.client.tag.MessageReceivedKey;
@@ -14,10 +14,11 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.net.URI;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
-public final class Opentelemetry120GrpcClientMetrics implements GrpcClientMetrics {
+public final class OpentelemetryGrpcClientMetrics implements GrpcClientMetrics {
 
-    private final ConcurrentHashMap<MethodDurationKey, DistributionSummary> durationMetrics = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MethodDurationKey, Timer> durationMetrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MessageSendKey, Counter> requestsByRpcMetrics = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<MessageReceivedKey, Counter> responsesByRpcMetrics = new ConcurrentHashMap<>();
 
@@ -27,11 +28,11 @@ public final class Opentelemetry120GrpcClientMetrics implements GrpcClientMetric
     private final URI uri;
     private final MicrometerGrpcClientTagsProvider tagsProvider;
 
-    public Opentelemetry120GrpcClientMetrics(MeterRegistry registry,
-                                             ServiceDescriptor service,
-                                             TelemetryConfig.MetricsConfig config,
-                                             URI uri,
-                                             MicrometerGrpcClientTagsProvider tagsProvider) {
+    public OpentelemetryGrpcClientMetrics(MeterRegistry registry,
+                                          ServiceDescriptor service,
+                                          TelemetryConfig.MetricsConfig config,
+                                          URI uri,
+                                          MicrometerGrpcClientTagsProvider tagsProvider) {
         this.registry = registry;
         this.service = service;
         this.config = config;
@@ -57,8 +58,8 @@ public final class Opentelemetry120GrpcClientMetrics implements GrpcClientMetric
         var key = new MethodDurationKey(this.service.getName(), method.getBareMethodName(), code, e.getClass());
         var metrics = this.durationMetrics.computeIfAbsent(key, k -> buildDurationMetrics(k, metadata));
 
-        var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000);
-        metrics.record(processingTime);
+        var processingTime = System.nanoTime() - startTime;
+        metrics.record(processingTime, TimeUnit.NANOSECONDS);
     }
 
     @Override
@@ -68,8 +69,7 @@ public final class Opentelemetry120GrpcClientMetrics implements GrpcClientMetric
         var key = new MethodDurationKey(this.service.getName(), method.getBareMethodName(), code, null);
         var metrics = this.durationMetrics.computeIfAbsent(key, k -> buildDurationMetrics(k, trailers));
 
-        var processingTime = ((double) (System.nanoTime() - startTime) / 1_000_000);
-        metrics.record(processingTime);
+        metrics.record(System.nanoTime() - startTime, TimeUnit.NANOSECONDS);
     }
 
     @Override
@@ -89,10 +89,10 @@ public final class Opentelemetry120GrpcClientMetrics implements GrpcClientMetric
     /**
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/rpc/rpc-metrics/#rpc-client">rpc-client</a>
      */
-    private DistributionSummary buildDurationMetrics(MethodDurationKey method, @Nullable Metadata metadata) {
-        var duration = DistributionSummary.builder("rpc.client.duration")
+    private Timer buildDurationMetrics(MethodDurationKey method, @Nullable Metadata metadata) {
+        var duration = Timer.builder("rpc.client.duration")
             .tags(tagsProvider.getMethodDurationTags(this.uri, method, metadata))
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
+            .serviceLevelObjectives(this.config.slo())
             .register(this.registry);
 
         return duration;

@@ -68,7 +68,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
         val telemetryCVE = `$HttpClientTelemetryConfig_ConfigValueExtractor`(
             `$HttpClientLoggerConfig_ConfigValueExtractor`(SetConfigValueExtractor(StringConfigValueExtractor())),
             `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(),
-            `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(DoubleArrayConfigValueExtractor { it.asNumber()!!.toDouble() })
+            `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(DurationArrayConfigValueExtractor(DurationConfigValueExtractor()))
         ) as ConfigValueExtractor<TelemetryConfig>
         val configCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, telemetryCVE)
 
