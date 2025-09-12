@@ -23,6 +23,10 @@ final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
         this.valueDeserializer = valueDeserializer;
     }
 
+    private ConsumerRecord<K, V> wrapRecord(ConsumerRecord<byte[], byte[]> record) {
+        return records.computeIfAbsent(record, (r) -> new ConsumerRecordWrapper<>(r, keyDeserializer, valueDeserializer));
+    }
+
     @Override
     public List<ConsumerRecord<K, V>> records(TopicPartition partition) {
         return realRecords.records(partition).stream().map(this::wrapRecord).toList();
@@ -60,9 +64,13 @@ final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
         return realRecords.isEmpty();
     }
 
-    private ConsumerRecord<K, V> wrapRecord(ConsumerRecord<byte[], byte[]> record) {
-        return records.computeIfAbsent(record, (r) -> new ConsumerRecordWrapper<>(r, keyDeserializer, valueDeserializer));
+    @Nonnull
+    public ConsumerRecords<byte[], byte[]> unwrap() {
+        return realRecords;
     }
 
-
+    @Override
+    public String toString() {
+        return realRecords.toString();
+    }
 }
