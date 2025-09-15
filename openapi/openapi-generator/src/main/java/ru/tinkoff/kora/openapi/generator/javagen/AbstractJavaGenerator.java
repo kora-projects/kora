@@ -2,6 +2,7 @@ package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
@@ -13,6 +14,7 @@ import ru.tinkoff.kora.openapi.generator.KoraCodegen;
 import javax.lang.model.element.Modifier;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import static org.openapitools.codegen.utils.StringUtils.camelize;
 
@@ -252,4 +254,44 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         return b.build();
     }
 
+    protected List<AnnotationSpec> buildAdditionalAnnotations(String tag) {
+        var result = new ArrayList<AnnotationSpec>();
+        var additionalAnnotations = params.additionalContractAnnotations().get(tag);
+        if (additionalAnnotations == null) {
+            additionalAnnotations = params.additionalContractAnnotations().getOrDefault("*", List.of());
+        }
+        for (var additionalAnnotation : additionalAnnotations) {
+            if (additionalAnnotation.annotation() != null && !additionalAnnotation.annotation().isBlank()) {
+                // TODO parse text to to annotation spec
+                throw new NotImplementedException();
+            }
+        }
+        return result;
+    }
+
+    protected List<AnnotationSpec> buildImplicitHeaders(CodegenOperation operation) {
+        if (operation.implicitHeadersParams == null) {
+            return List.of();
+        }
+        var result = new ArrayList<AnnotationSpec>();
+        for (var implicitHeadersParam : operation.implicitHeadersParams) {
+            var implicitParameters = AnnotationSpec.builder(ClassName.get("io.swagger.v3.oas.annotations", "Parameter"));
+            implicitParameters
+                .addMember("name", "$S", implicitHeadersParam.baseName)
+                .addMember("description", "$S", Objects.requireNonNullElse(implicitHeadersParam.description, ""))
+                .addMember("required", "$L", implicitHeadersParam.required)
+                .addMember("in", "$T.HEADER", ClassName.get("io.swagger.v3.oas.annotations.enums", "ParameterIn"))
+            ;
+            result.add(implicitParameters.build());
+        }
+        return result;
+    }
+
+
+    protected AnnotationSpec buildHttpRoute(CodegenOperation operation) {
+        return AnnotationSpec.builder(Classes.httpRoute)
+            .addMember("method", "$S", operation.httpMethod)
+            .addMember("path", "$S", operation.path)
+            .build();
+    }
 }

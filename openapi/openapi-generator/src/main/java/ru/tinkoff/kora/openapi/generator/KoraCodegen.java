@@ -39,6 +39,7 @@ import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.openapi.generator.javagen.ClientApiGenerator;
+import ru.tinkoff.kora.openapi.generator.javagen.ServerApiGenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -3042,7 +3043,9 @@ public class KoraCodegen extends DefaultCodegen {
                 out.write(this.upperCase(toVarName(text)));
             })
             .put("javaClientApi", javaGen(new ClientApiGenerator()))
+            .put("javaServerApi", javaGen(new ServerApiGenerator()))
             .put("kotlinClientApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ClientApiGenerator()))
+            .put("kotlinServerApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerApiGenerator()))
             ;
     }
 

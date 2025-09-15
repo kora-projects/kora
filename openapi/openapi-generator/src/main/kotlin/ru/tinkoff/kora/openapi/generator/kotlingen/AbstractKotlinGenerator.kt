@@ -17,6 +17,36 @@ import ru.tinkoff.kora.openapi.generator.javagen.ClientApiGenerator
 
 
 abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
+    protected fun buildAdditionalAnnotations(tag: String): List<AnnotationSpec> {
+        var additionalAnnotations = params.additionalContractAnnotations[tag]
+        if (additionalAnnotations == null) {
+            additionalAnnotations = params.additionalContractAnnotations["*"]
+        }
+        val result = mutableListOf<AnnotationSpec>()
+        for (additionalAnnotation in additionalAnnotations.orEmpty()) {
+            if (additionalAnnotation.annotation != null && !additionalAnnotation.annotation.isBlank()) {
+                TODO("parse text to to annotation spec")
+            }
+        }
+        return result
+    }
+
+    protected fun buildImplicitHeaders(operation: CodegenOperation) = operation.implicitHeadersParams.orEmpty().asSequence()
+        .map {
+            AnnotationSpec.builder(ClassName("io.swagger.v3.oas.annotations", "Parameter"))
+                .addMember("name = %S", it.baseName)
+                .addMember("description = %S", it.description ?: "")
+                .addMember("required = %L", it.required)
+                .addMember("%N = %T.HEADER", "in", ClassName("io.swagger.v3.oas.annotations.enums", "ParameterIn"))
+                .build()
+        }
+        .toList()
+
+    protected fun buildRouteAnnotation(operation: CodegenOperation) = AnnotationSpec.builder(Classes.httpRoute.asKt())
+        .addMember("method = %S", operation.httpMethod)
+        .addMember("path = %S", operation.path)
+        .build()
+
     protected fun buildFormParamsRecord(ctx: OperationsMap, operation: CodegenOperation): TypeSpec {
         val t = TypeSpec.classBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
             .addModifiers(KModifier.DATA)
@@ -177,7 +207,7 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
                 .addMember("to = %L", maximum)
                 .addMember(
                     "boundary = %T.%L_%L",
-                    Classes.boundary,
+                    Classes.boundary.asKt(),
                     if (variable.exclusiveMinimum) "EXCLUSIVE" else "INCLUSIVE",
                     if (variable.exclusiveMaximum) "EXCLUSIVE" else "INCLUSIVE"
                 )

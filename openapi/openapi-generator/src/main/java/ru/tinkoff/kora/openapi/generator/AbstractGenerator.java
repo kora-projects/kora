@@ -26,11 +26,15 @@ public abstract class AbstractGenerator<C, R> {
     public static class Classes {
         public static final ClassName generated = ClassName.get("ru.tinkoff.kora.common.annotation", "Generated");
         public static final ClassName tag = ClassName.get("ru.tinkoff.kora.common", "Tag");
+        public static final ClassName component = ClassName.get("ru.tinkoff.kora.common", "Component");
         public static final ClassName mapping = ClassName.get("ru.tinkoff.kora.common", "Mapping");
         public static final ClassName httpRoute = ClassName.get("ru.tinkoff.kora.http.common.annotation", "HttpRoute");
         public static final ClassName httpClient = ClassName.get("ru.tinkoff.kora.http.client.common.annotation", "HttpClient");
+        public static final ClassName httpController = ClassName.get("ru.tinkoff.kora.http.server.common.annotation", "HttpController");
         public static final ClassName responseCodeMapper = ClassName.get("ru.tinkoff.kora.http.client.common.annotation", "ResponseCodeMapper");
         public static final ClassName httpClientInterceptor = ClassName.get("ru.tinkoff.kora.http.client.common.interceptor", "HttpClientInterceptor");
+        public static final ClassName httpServerInterceptor = ClassName.get("ru.tinkoff.kora.http.server.common", "HttpServerInterceptor");
+        public static final ClassName httpServerRequest = ClassName.get("ru.tinkoff.kora.http.server.common", "HttpServerRequest");
         public static final ClassName interceptWith = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith");
         public static final ClassName query = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Query");
         public static final ClassName path = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Path");
@@ -39,7 +43,9 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName nullable = ClassName.get("jakarta.annotation", "Nullable");
         public static final ClassName formPart = ClassName.get("ru.tinkoff.kora.http.common.form", "FormMultipart", "FormPart");
 
+        public static final ClassName validationHttpServerInterceptor = ClassName.get("ru.tinkoff.kora.validation.module.http.server", "ValidationHttpServerInterceptor");
         public static final ClassName valid = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Valid");
+        public static final ClassName validate = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Validate");
         public static final ClassName range = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Range");
         public static final ClassName size = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Size");
         public static final ClassName pattern = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Pattern");

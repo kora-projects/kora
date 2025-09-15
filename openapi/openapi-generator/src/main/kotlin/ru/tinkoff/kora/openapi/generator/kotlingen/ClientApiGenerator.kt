@@ -25,22 +25,9 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         val b = FunSpec.builder(operation.operationId)
             .addModifiers(KModifier.ABSTRACT)
             .addKdoc(buildFunctionKdoc(ctx, operation))
-        var additionalAnnotations = params.additionalContractAnnotations[tag]
-        if (additionalAnnotations == null) {
-            additionalAnnotations = params.additionalContractAnnotations["*"]
-        }
-        for (additionalAnnotation in additionalAnnotations.orEmpty()) {
-            if (additionalAnnotation.annotation != null && !additionalAnnotation.annotation.isBlank()) {
-                TODO("parse text to to annotation spec")
-            }
-        }
+        buildAdditionalAnnotations(tag).forEach { b.addAnnotation(it) }
         b.addAnnotations(this.buildImplicitHeaders(operation))
-        b.addAnnotation(
-            AnnotationSpec.builder(Classes.httpRoute.asKt())
-                .addMember("method = %S", operation.httpMethod)
-                .addMember("path = %S", operation.path)
-                .build()
-        )
+        b.addAnnotation(buildRouteAnnotation(operation))
         for (response in operation.responses) {
             b.addAnnotation(
                 AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
@@ -147,17 +134,6 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         }
         throw IllegalStateException("Auth argument can be in Query, Header or Cookie, but was unknown")
     }
-
-    private fun buildImplicitHeaders(operation: CodegenOperation) = operation.implicitHeadersParams.orEmpty().asSequence()
-        .map {
-            AnnotationSpec.builder(ClassName("io.swagger.v3.oas.annotations", "Parameter"))
-                .addMember("name = %S", it.baseName)
-                .addMember("description = %S", it.description ?: "")
-                .addMember("required = %L", it.required)
-                .addMember("%N = %T.HEADER", "in", ClassName("io.swagger.v3.oas.annotations.enums", "ParameterIn"))
-                .build()
-        }
-        .toList()
 
     private fun buildHttpClientAnnotation(ctx: OperationsMap): AnnotationSpec {
         val httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient.asKt())

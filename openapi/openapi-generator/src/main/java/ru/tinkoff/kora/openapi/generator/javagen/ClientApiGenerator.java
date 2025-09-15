@@ -1,16 +1,13 @@
 package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.model.OperationsMap;
 
 import javax.lang.model.element.Modifier;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
@@ -202,22 +199,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .addJavadoc(buildMethodJavadoc(ctx, operation));
-        var additionalAnnotations = params.additionalContractAnnotations().get(tag);
-        if (additionalAnnotations == null) {
-            additionalAnnotations = params.additionalContractAnnotations().getOrDefault("*", List.of());
-        }
-        for (var additionalAnnotation : additionalAnnotations) {
-            if (additionalAnnotation.annotation() != null && !additionalAnnotation.annotation().isBlank()) {
-                // TODO parse text to to annotation spec
-                throw new NotImplementedException();
-            }
-        }
+        this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
-        b.addAnnotation(AnnotationSpec.builder(Classes.httpRoute)
-            .addMember("method", "$S", operation.httpMethod)
-            .addMember("path", "$S", operation.path)
-            .build()
-        );
+        b.addAnnotation(this.buildHttpRoute(operation));
         for (var response : operation.responses) {
             b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
                 .addMember("code", "$L", response.isDefault ? "-1" : response.code)
@@ -317,24 +301,6 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         }
 
         return name;
-    }
-
-    private List<AnnotationSpec> buildImplicitHeaders(CodegenOperation operation) {
-        if (operation.implicitHeadersParams == null) {
-            return List.of();
-        }
-        var result = new ArrayList<AnnotationSpec>();
-        for (var implicitHeadersParam : operation.implicitHeadersParams) {
-            var implicitParameters = AnnotationSpec.builder(ClassName.get("io.swagger.v3.oas.annotations", "Parameter"));
-            implicitParameters
-                .addMember("name", "$S", implicitHeadersParam.baseName)
-                .addMember("description", "$S", Objects.requireNonNullElse(implicitHeadersParam.description, ""))
-                .addMember("required", "$L", implicitHeadersParam.required)
-                .addMember("in", "$T.HEADER", ClassName.get("io.swagger.v3.oas.annotations.enums", "ParameterIn"))
-            ;
-            result.add(implicitParameters.build());
-        }
-        return result;
     }
 
 
