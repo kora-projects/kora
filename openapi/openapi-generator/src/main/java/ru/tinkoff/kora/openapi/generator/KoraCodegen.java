@@ -2345,39 +2345,12 @@ public class KoraCodegen extends DefaultCodegen {
 
                     op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
                 } else {
-                    if (op.authMethods.size() == 1 || params.primaryAuth == null) {
-                        if (op.authMethods.size() > 1) {
-                            Set<String> secSchemes = op.authMethods.stream()
-                                .map(s -> s.name)
-                                .collect(Collectors.toSet());
-
-                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, or the first random will be used",
-                                secSchemes, op.httpMethod, op.path);
-                        }
-
-                        CodegenSecurity authMethod = op.authMethods.get(0);
-                        if (params.authAsMethodArgument) {
-//                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
-//                            op.allParams.add(fakeAuthParameter);
-                        } else {
-                            var authName = camelize(toVarName(authMethod.name));
-                            tags.add(upperCase(authName));
-                            op.vendorExtensions.put("authInterceptorTag", authName);
-                        }
-                    } else {
-                        CodegenSecurity authMethod = op.authMethods.stream()
-                            .filter(a -> a.name.equals(params.primaryAuth))
-                            .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
-
-                        if (params.authAsMethodArgument) {
-//                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
-//                            op.allParams.add(fakeAuthParameter);
-                        } else {
-                            var authName = camelize(toVarName(authMethod.name));
-                            tags.add(upperCase(authName));
-                            op.vendorExtensions.put("authInterceptorTag", authName);
-                        }
+                    if (op.authMethods.size() > 1 && params.primaryAuth == null) {
+                        var secSchemes = op.authMethods.stream()
+                            .map(s -> s.name)
+                            .collect(Collectors.toSet());
+                        LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, or the first random will be used",
+                            secSchemes, op.httpMethod, op.path);
                     }
                 }
             }
@@ -2470,113 +2443,8 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
-
-            if (params.codegenMode.isClient()) {
-//                var requiredParams = new ArrayList<CodegenParameter>();
-//                var optionalParams = new ArrayList<CodegenParameter>();
-//                for (var param : op.allParams) {
-//                    if (param.isHeaderParam && params.implicitHeaders) {
-//                        continue;
-//                    }
-//
-//                    if (param.notRequiredOrIsNullable() && !param.isPathParam) {
-//                        optionalParams.add(param);
-//                        param.vendorExtensions.put("x-optional-params", optionalParams);
-//                        op.vendorExtensions.put("x-have-optional", true);
-//                    } else {
-//                        requiredParams.add(param);
-//                        param.vendorExtensions.put("x-required-params", requiredParams);
-//                    }
-//                }
-//
-//                op.vendorExtensions.put("x-required-params", requiredParams);
-//                op.vendorExtensions.put("x-optional-params", optionalParams);
-            }
-        }
-        if (params.codegenMode.isClient()) {
-            var annotationParams = httpClientAnnotationParams.entrySet()
-                .stream()
-                .map(e -> e.getKey() + " = " + e.getValue())
-                .collect(Collectors.joining(", ", "(", ")"));
-            objs.put("annotationParams", annotationParams);
         }
         return objs;
-    }
-
-    private static String getAuthName(String name, List<CodegenParameter> parameters) {
-        for (CodegenParameter parameter : parameters) {
-            if (name.equals(parameter.paramName)) {
-                return getAuthName("_" + name, parameters);
-            }
-        }
-
-        return name;
-    }
-
-    private CodegenParameter getAuthArgumentParameter(CodegenSecurity authMethod, List<CodegenParameter> parameters) {
-        CodegenParameter fakeAuthParameter = new CodegenParameter();
-
-        String authName = getAuthName(authMethod.name, parameters);
-
-        fakeAuthParameter.paramName = authName;
-        fakeAuthParameter.baseName = authName;
-        fakeAuthParameter.nameInLowerCase = authName.toLowerCase(Locale.ROOT);
-        if (authMethod.isKeyInQuery) {
-            fakeAuthParameter.isQueryParam = true;
-        } else if (authMethod.isKeyInHeader) {
-            fakeAuthParameter.isHeaderParam = true;
-        } else if (authMethod.isKeyInCookie) {
-            fakeAuthParameter.isCookieParam = true;
-        } else if (authMethod.isOAuth
-            || authMethod.isOpenId
-            || authMethod.isBasicBearer
-            || authMethod.isBasic
-            || authMethod.isBasicBasic) {
-            fakeAuthParameter.isHeaderParam = true;
-
-            for (CodegenParameter parameter : parameters) {
-                if ("Authorization".equalsIgnoreCase(parameter.paramName)) {
-                    throw new IllegalArgumentException("Authorization argument as method parameter can't be set, cause parameter named 'Authorization' already is present");
-                }
-            }
-
-            fakeAuthParameter.paramName = "Authorization";
-            fakeAuthParameter.baseName = "Authorization";
-            fakeAuthParameter.nameInLowerCase = "Authorization".toLowerCase(Locale.ROOT);
-        } else {
-            throw new IllegalStateException("Auth argument can be in Query, Header or Cookie, but wasn't unknown");
-        }
-
-        fakeAuthParameter.dataType = "String";
-        fakeAuthParameter.baseType = "String";
-        fakeAuthParameter.description = authMethod.description;
-        fakeAuthParameter.unescapedDescription = authMethod.description;
-        fakeAuthParameter.required = true;
-        fakeAuthParameter.isString = true;
-        fakeAuthParameter.isNull = false;
-        fakeAuthParameter.isNullable = false;
-
-        Schema schema = SchemaTypeUtil.createSchema("String", null);
-        CodegenProperty codegenProperty = fromProperty(authName, schema);
-        fakeAuthParameter.setSchema(codegenProperty);
-        return fakeAuthParameter;
-    }
-
-    private CodegenProperty getFakeCodegenPropertyString(String name) {
-        CodegenProperty fakeProperty = new CodegenProperty();
-
-        fakeProperty.name = name;
-        fakeProperty.baseName = name;
-        fakeProperty.baseType = "String";
-        fakeProperty.dataType = "String";
-        fakeProperty.datatypeWithEnum = "String";
-        fakeProperty.nameInLowerCase = name.toLowerCase(Locale.ROOT);
-        fakeProperty.required = true;
-        fakeProperty.isString = true;
-        fakeProperty.isNull = false;
-        fakeProperty.isNullable = false;
-
-        return fakeProperty;
     }
 
     public static boolean isContentJson(CodegenParameter parameter) {
