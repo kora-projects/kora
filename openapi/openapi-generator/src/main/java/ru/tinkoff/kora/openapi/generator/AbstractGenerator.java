@@ -12,6 +12,8 @@ import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.IJsonSchemaValidationProperties;
 import org.openapitools.codegen.model.OperationsMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.net.URI;
@@ -22,6 +24,8 @@ import java.util.Objects;
 import java.util.UUID;
 
 public abstract class AbstractGenerator<C, R> {
+    private static final Logger log = LoggerFactory.getLogger(AbstractGenerator.class);
+
     public static class Classes {
         public static final ClassName generated = ClassName.get("ru.tinkoff.kora.common.annotation", "Generated");
         public static final ClassName tag = ClassName.get("ru.tinkoff.kora.common", "Tag");
@@ -134,7 +138,8 @@ public abstract class AbstractGenerator<C, R> {
         if (schema.getIsEnum()) {
             if (schema instanceof CodegenProperty p) {
                 if (p.isInnerEnum) {
-                    throw new RuntimeException("Inner enums are not supported right now");
+                    log.warn("Inner enums are not supported right now and will be replaced with strings");
+                    return ClassName.get(String.class);
                 }
             }
             // todo
