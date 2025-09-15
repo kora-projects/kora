@@ -6,13 +6,11 @@ import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.model.OperationsMap;
-import ru.tinkoff.kora.openapi.generator.KoraCodegen;
 
 import javax.lang.model.element.Modifier;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
-import static org.openapitools.codegen.utils.StringUtils.camelize;
 
 public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
@@ -26,71 +24,178 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             if (operation.getHasFormParams()) {
                 b.addType(buildFormParamsRecord(ctx, operation));
             }
-            // todo optional signatures
-//     {{#vendorExtensions.x-have-optional}}
-//     {{^hasFormParams}}
-//
-//     default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{#vendorExtensions.x-required-params}}
-//         {{{dataType}}} {{paramName}}{{^-last}}, {{/-last}}{{/vendorExtensions.x-required-params}}) {
-//         return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}{{#defaultValue}}{{#isEnum}}{{{enumDefaultValue}}}{{/isEnum}}{{^isEnum}}{{{defaultValue}}}{{/isEnum}}{{/defaultValue}}{{^defaultValue}}({{{dataType}}}) null{{/defaultValue}}{{/required}}{{^-last}}, {{/-last}}{{/allParams}});
-//     }
-//
-//     default {{classname}}Responses.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {{operationId}}({{#vendorExtensions.x-required-params}}
-//         {{{dataType}}} {{paramName}},{{/vendorExtensions.x-required-params}}
-//         {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}OptArgs optionalArguments) {
-//         return {{operationId}}({{#allParams}}{{#required}}{{paramName}}{{/required}}{{^required}}optionalArguments.{{paramName}}(){{/required}}{{^-last}}, {{/-last}}{{/allParams}});
-//     }
-//
-//          {{>javaClientApiOptionalParams}}
-//     {{/hasFormParams}}
-//     {{/vendorExtensions.x-have-optional}}
+            var optionalParams = operation.optionalParams.stream()
+                .filter(p -> !p.isPathParam)
+                .filter(p -> !p.isFormParam)
+                .filter(p -> !(p.isHeaderParam && operation.implicitHeadersParams.stream().anyMatch(h -> p.paramName.equals(h.paramName))))
+                .toList();
+            if (!optionalParams.isEmpty()) {
+                b.addType(buildJavaClientApiOptionalParams(ctx, operation, optionalParams));
+                b.addMethod(buildRequiredArgsCall(ctx, operation, optionalParams));
+                b.addMethod(buildRequiredArgsWithArgsCall(ctx, operation, optionalParams));
+            }
         }
 
         return JavaFile.builder(apiPackage, b.build()).build();
     }
 
-    private TypeSpec buildFormParamsRecord(OperationsMap ctx, CodegenOperation operation) {
-//   /**
-//    * {{#formParams}}{{#description}}
-//    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/description}}{{^description}}{{#defaultValue}}
-//    * @param {{paramName}} {{description}}{{#required}} (required){{/required}}{{^required}} (optional{{#defaultValue}}, default to {{.}}{{/defaultValue}}){{/required}}{{/defaultValue}}{{/description}}{{/formParams}}
-//    */
-//    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
-//    public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam({{#formParams}}
-//        {{^required}}@Nullable {{/required}}{{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{^isFile}}{{{dataType}}} {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{/formParams}}
-//    ) {}
-        var b = MethodSpec.constructorBuilder();
-        for (var formParam : operation.formParams) {
-            var type = formParam.isFile
-                ? Classes.formPart
-                : asType(ctx, operation, formParam);
-            if (!formParam.required) {
-                type = type.box();
-            }
-            var p = ParameterSpec.builder(type, formParam.paramName);
-            if (!formParam.required) {
-                p.addAnnotation(Classes.nullable);
-            }
-            if (formParam.description != null) {
-                p.addJavadoc(formParam.description).addJavadoc(" ");
-            }
-            if (formParam.required) {
-                p.addJavadoc("(required)");
-            } else if (formParam.defaultValue != null) {
-                p.addJavadoc("(optional, default to " + formParam.defaultValue + ")");
-            } else {
-                p.addJavadoc("(optional)");
-            }
-
-            b.addParameter(p.build());
+    private MethodSpec buildRequiredArgsCall(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
+        var returnType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+        var b = MethodSpec.methodBuilder(operation.operationId)
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .returns(returnType)
+            .addCode("return this.$N(", operation.operationId);
+        var paramsCounter = 0;
+        if (operation.hasAuthMethods && params.authAsMethodArgument()) {
+            var param = this.buildAuthParameter(operation);
+            b.addParameter(param);
+            paramsCounter++;
+            b.addCode("$N", param.name());
         }
 
-        return TypeSpec.recordBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
-            .addAnnotation(AnnotationSpec.builder(Classes.generated).addMember("value", "$S", ClientApiGenerator.class.getCanonicalName()).build())
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .recordConstructor(b.build())
-            .build();
+        for (int i = 0; i < operation.allParams.size(); i++) {
+            var p = operation.allParams.get(i);
+            if (p.isFormParam) {
+                continue;
+            }
+            if (p.isHeaderParam && operation.implicitHeadersParams.stream().anyMatch(h -> p.paramName.equals(h.paramName))) {
+                continue;
+            }
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            if (p.isPathParam) {
+                var type = asType(ctx, operation, p);
+                b.addParameter(type, p.paramName);
+                b.addCode(p.paramName);
+                paramsCounter++;
+                continue;
+            }
+            var type = asType(ctx, operation, p);
+            if (p.required) {
+                b.addParameter(type, p.paramName);
+                b.addCode(p.paramName);
+            } else {
+                b.addCode("($T) null", type.box());
+            }
+            paramsCounter++;
+        }
+        return b.addCode(");\n").build();
     }
+
+    private MethodSpec buildRequiredArgsWithArgsCall(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
+        var returnType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+        var b = MethodSpec.methodBuilder(operation.operationId)
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .returns(returnType)
+            .addCode("return this.$N(", operation.operationId);
+        var paramsCounter = 0;
+        if (operation.hasAuthMethods && params.authAsMethodArgument()) {
+            var param = this.buildAuthParameter(operation);
+            b.addParameter(param);
+            paramsCounter++;
+            b.addCode("$N", param.name());
+        }
+        for (int i = 0; i < operation.allParams.size(); i++) {
+            var p = operation.allParams.get(i);
+            if (p.isFormParam) {
+                continue;
+            }
+            if (p.isHeaderParam && operation.implicitHeadersParams.stream().anyMatch(h -> p.paramName.equals(h.paramName))) {
+                continue;
+            }
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            if (p.isPathParam) {
+                var type = asType(ctx, operation, p);
+                b.addParameter(type, p.paramName);
+                b.addCode(p.paramName);
+                paramsCounter++;
+                continue;
+            }
+            if (optionalParams.stream().anyMatch(o -> p.paramName.equals(o.paramName))) {
+                b.addCode("optionalArguments.$N()", p.paramName);
+            } else {
+                var type = asType(ctx, operation, p);
+                b.addParameter(type, p.paramName);
+                b.addCode(p.paramName);
+            }
+            paramsCounter++;
+        }
+        b.addParameter(ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "OptArgs"), "optionalArguments");
+        return b.addCode(");\n").build();
+    }
+
+    private TypeSpec buildJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
+        var b = MethodSpec.constructorBuilder();
+        for (var optionalParam : optionalParams) {
+            var type = asType(ctx, operation, optionalParam).box();
+            b.addParameter(ParameterSpec.builder(type, optionalParam.paramName)
+                .addAnnotation(Classes.nullable)
+                .build()
+            );
+        }
+        var recordClassName = ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "OptArgs");
+
+        var typeSpec = TypeSpec.recordBuilder(recordClassName)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .recordConstructor(b.build());
+        var empty = MethodSpec.methodBuilder("empty")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(recordClassName)
+            .addCode("return new $T(", recordClassName);
+        for (int i = 0; i < optionalParams.size(); i++) {
+            if (i > 0) {
+                empty.addCode(", ");
+            }
+            empty.addCode("null");
+        }
+        empty.addCode(");\n");
+        typeSpec.addMethod(empty.build());
+
+        var defaults = MethodSpec.methodBuilder("defaults")
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .returns(recordClassName)
+            .addCode("return new $T(", recordClassName);
+        for (int i = 0; i < optionalParams.size(); i++) {
+            if (i > 0) {
+                defaults.addCode(", ");
+            }
+            var p = optionalParams.get(i);
+            if (p.defaultValue != null) {
+                defaults.addCode(p.defaultValue);
+            } else if (p.enumDefaultValue != null) {
+                defaults.addCode(p.enumDefaultValue);
+            } else {
+                defaults.addCode("null");
+            }
+        }
+        defaults.addCode(");\n");
+        typeSpec.addMethod(defaults.build());
+
+
+        for (var optionalParam : optionalParams) {
+            var type = asType(ctx, operation, optionalParam).box();
+            var wither = MethodSpec.methodBuilder("with" + StringUtils.capitalize(optionalParam.paramName))
+                .returns(recordClassName)
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(type, optionalParam.paramName)
+                .addCode("return new $T(", recordClassName);
+            for (int i = 0; i < optionalParams.size(); i++) {
+                if (i > 0) {
+                    wither.addCode(", ");
+                }
+                var p = optionalParams.get(i);
+                wither.addCode(p.paramName);
+            }
+            wither.addCode(");\n");
+            typeSpec.addMethod(wither.build());
+        }
+
+        return typeSpec.build();
+    }
+
 
     private MethodSpec buildMethod(OperationsMap ctx, CodegenOperation operation) {
         var tag = ctx.get("baseName").toString();
@@ -107,12 +212,12 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 throw new NotImplementedException();
             }
         }
+        this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(AnnotationSpec.builder(Classes.httpRoute)
             .addMember("method", "$S", operation.httpMethod)
             .addMember("path", "$S", operation.path)
             .build()
         );
-        this.buildImplicitHeaders(operation, b);
         for (var response : operation.responses) {
             b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
                 .addMember("code", "$L", response.isDefault ? "-1" : response.code)
@@ -120,190 +225,120 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .build()
             );
         }
-        this.buildMethodAuth(operation, b);
-        this.buildInterceptors(tag, b);
+        var authMethod = this.buildMethodAuth(operation, Classes.httpClientInterceptor);
+        if (authMethod != null) {
+            b.addAnnotation(authMethod);
+        }
+        this.buildInterceptors(tag, Classes.httpClientInterceptor).forEach(b::addAnnotation);
         if (operation.isDeprecated) {
             b.addAnnotation(Deprecated.class);
         }
         b.returns(ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
-        for (var param : operation.allParams) {
-            if (param.isFormParam) continue; // form params are handled separately
-            b.addParameter(this.buildParameter(ctx, operation, param));
-/*
-{{#allParams}}
-    {{^isFormParam}}
-        {{#vendorExtensions.x-validate}}
-            {{^isEnum}}
-                {{#isModel}}@ru.tinkoff.kora.validation.common.annotation.Valid{{/isModel}}
-            {{/isEnum}}
-            {{#vendorExtensions.x-has-min-max}}@ru.tinkoff.kora.validation.common.annotation.Range(from = {{minimum}}, to = {{maximum}}, boundary = ru.tinkoff.kora.validation.common.annotation.Range.Boundary.{{#exclusiveMinimum}}EXCLUSIVE{{/exclusiveMinimum}}{{^exclusiveMinimum}}INCLUSIVE{{/exclusiveMinimum}}_{{#exclusiveMaximum}}EXCLUSIVE{{/exclusiveMaximum}}{{^exclusiveMaximum}}INCLUSIVE{{/exclusiveMaximum}}){{/vendorExtensions.x-has-min-max}}
-            {{#vendorExtensions.x-has-min-max-items}}
-            @ru.tinkoff.kora.validation.common.annotation.Size(min = {{minItems}}, max = {{maxItems}}){{/vendorExtensions.x-has-min-max-items}}{{#vendorExtensions.x-has-min-max-length}}
-        @ru.tinkoff.kora.validation.common.annotation.Size(min = {{minLength}}, max = {{maxLength}}){{/vendorExtensions.x-has-min-max-length}}{{#vendorExtensions.x-has-pattern}}
-        @ru.tinkoff.kora.validation.common.annotation.Pattern("{{{pattern}}}"){{/vendorExtensions.x-has-pattern}}
-        {{/vendorExtensions.x-validate}}
-        {{#isQueryParam}}
-        @ru.tinkoff.kora.http.common.annotation.Query("{{baseName}}"){{/isQueryParam}}{{#isPathParam}}
-        @ru.tinkoff.kora.http.common.annotation.Path("{{baseName}}"){{/isPathParam}}{{#isHeaderParam}}
-        @ru.tinkoff.kora.http.common.annotation.Header("{{baseName}}"){{/isHeaderParam}}{{#isCookieParam}}
-        @ru.tinkoff.kora.http.common.annotation.Cookie("{{baseName}}"){{/isCookieParam}}{{#isBodyParam}}
-        {{#vendorExtensions.hasMapperTag}}
-        @{{vendorExtensions.mapperTag}}
-        {{/vendorExtensions.hasMapperTag}}{{/isBodyParam}}
-        {{^required}}@Nullable {{/required}}{{{dataType}}} {{paramName}}{{#hasFormParams}},{{/hasFormParams}}{{^hasFormParams}}{{^-last}},{{/-last}}{{#-last}}
-    {{/-last}}{{/hasFormParams}}
-    {{/isFormParam}}
-{{/allParams}}
-
-
-    {{#hasFormParams}}{{#isClient}}
-        @ru.tinkoff.kora.common.Mapping({{classname}}ClientRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class){{/isClient}}{{^isClient}}
-        @ru.tinkoff.kora.common.Mapping({{classname}}ServerRequestMappers.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamRequestMapper.class){{/isClient}}
-        {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam form
-    {{/hasFormParams}}
-
- */
+        if (operation.hasAuthMethods && params.authAsMethodArgument()) {
+            b.addParameter(this.buildAuthParameter(operation));
         }
+        for (var param : operation.allParams) {
+            if (param.isFormParam) {
+                continue; // form params are handled separately
+            }
+            if (param.isHeaderParam && operation.implicitHeadersParams != null && operation.implicitHeadersParams.stream().anyMatch(h -> h.paramName.equals(param.paramName))) {
+                continue;
+            }
+            b.addParameter(this.buildParameter(ctx, operation, param));
+        }
+        if (operation.getHasFormParams()) {
+            var className = ClassName.get(
+                apiPackage, (String) ctx.get("classname"), StringUtils.capitalize(operation.operationId) + "FormParam"
+            );
+            var mapper = ClassName.get(
+                apiPackage, ctx.get("classname") + "ClientRequestMappers", StringUtils.capitalize(operation.operationId) + "FormParamRequestMapper"
+            );
+            var parameter = ParameterSpec.builder(className, "form")
+                .addAnnotation(AnnotationSpec.builder(Classes.mapping)
+                    .addMember("value", "$T.class", mapper)
+                    .build()
+                )
+                .build();
+            b.addParameter(parameter);
+        }
+
         // todo parameters
         return b.build();
     }
 
-    private ParameterSpec buildParameter(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
-        var type = asType(ctx, operation, param);
-        if (!param.required) {
-            type = type.box();
-        }
-        if (param.isFormParam) {
-            var formParamClassName = ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "FormParam");
-            return ParameterSpec.builder(formParamClassName, "form")
-                .addAnnotation(AnnotationSpec.builder(Classes.mapping)
-                    .addMember("value", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientRequestMappers", StringUtils.capitalize(operation.operationId) + "FormParamRequestMapper"))
+    protected ParameterSpec buildAuthParameter(CodegenOperation op) {
+        var authMethod = op.authMethods.stream()
+            .filter(a -> params.primaryAuth() == null || a.name.equals(params.primaryAuth()))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth()));
+        var authName = getAuthName(authMethod.name, op.pathParams);
+        var p = ParameterSpec.builder(String.class, authName)
+            .addAnnotation(Classes.nullable);
+        if (authMethod.isKeyInQuery) {
+            return p.addAnnotation(AnnotationSpec.builder(Classes.query)
+                    .addMember("value", "$S", authMethod.keyParamName)
                     .build()
                 )
                 .build();
         }
-        var b = ParameterSpec.builder(type, param.paramName);
-        var annotation = switch (param) {
-            case CodegenParameter it when it.isQueryParam -> AnnotationSpec.builder(Classes.query)
-                .addMember("value", "$S", param.baseName)
+        if (authMethod.isKeyInHeader) {
+            return p.addAnnotation(AnnotationSpec.builder(Classes.header)
+                    .addMember("value", "$S", authMethod.keyParamName)
+                    .build()
+                )
                 .build();
-            case CodegenParameter it when it.isPathParam -> AnnotationSpec.builder(Classes.path)
-                .addMember("value", "$S", param.baseName)
-                .build();
-            case CodegenParameter it when it.isHeaderParam -> AnnotationSpec.builder(Classes.header)
-                .addMember("value", "$S", param.baseName)
-                .build();
-            case CodegenParameter it when it.isCookieParam -> AnnotationSpec.builder(Classes.cookie)
-                .addMember("value", "$S", param.baseName)
-                .build();
-            case CodegenParameter it when it.isBodyParam && KoraCodegen.isContentJson(param) -> AnnotationSpec.builder(ClassName.bestGuess(params.jsonAnnotation()))
-                .build();
-            case CodegenParameter it when it.isBodyParam -> null;
-            default -> throw new IllegalStateException("Unexpected value: " + param);
-        };
-        if (annotation != null) {
-            b.addAnnotation(annotation);
         }
-        if (!param.required) {
-            b.addAnnotation(Classes.nullable);
+        if (authMethod.isKeyInCookie) {
+            return p.addAnnotation(AnnotationSpec.builder(Classes.cookie)
+                    .addMember("value", "$S", authMethod.keyParamName)
+                    .build()
+                )
+                .build();
         }
-
-        return b.build();
-    }
-
-    private void buildImplicitHeaders(CodegenOperation operation, MethodSpec.Builder b) {
-        if (operation.implicitHeadersParams != null) {
-            for (var implicitHeadersParam : operation.implicitHeadersParams) {
-                var implicitParameters = AnnotationSpec.builder(ClassName.get("io.swagger.v3.oas.annotations", "Parameter"));
-                implicitParameters
-                    .addMember("name", "$S", implicitHeadersParam.baseName)
-                    .addMember("description", "$S", Objects.requireNonNullElse(implicitHeadersParam.description, ""))
-                    .addMember("required", "$L", implicitHeadersParam.required)
-                    .addMember("in", "$T.HEADER", ClassName.get("io.swagger.v3.oas.annotations.enums", "ParameterIn"))
-                ;
-                b.addAnnotation(implicitParameters.build());
-            }
-        }
-    }
-
-    private void buildInterceptors(String tag, MethodSpec.Builder b) {
-        var interceptors = params.interceptors().getOrDefault(tag, params.interceptors().get("*"));
-        if (interceptors != null) {
-            for (var interceptor : interceptors) {
-                var type = interceptor.type() == null
-                    ? Classes.httpClientInterceptor
-                    : ClassName.bestGuess(interceptor.type());
-                var interceptorTag = (String) interceptor.tag();
-                var ann = AnnotationSpec
-                    .builder(Classes.interceptWith)
-                    .addMember("value", "$T.class", type);
-                if (interceptorTag != null) {
-                    ann.addMember("tag", "@$T($T.class)", Classes.tag, ClassName.bestGuess(interceptorTag));
+        if (authMethod.isOAuth || authMethod.isOpenId || authMethod.isBasicBearer || authMethod.isBasic || authMethod.isBasicBasic) {
+            for (var parameter : op.headerParams) {
+                if ("Authorization".equalsIgnoreCase(parameter.paramName)) {
+                    throw new IllegalArgumentException("Authorization argument as method parameter can't be set, cause parameter named 'Authorization' already is present");
                 }
-                b.addAnnotation(ann.build());
             }
+            return p.addAnnotation(AnnotationSpec.builder(Classes.header)
+                    .addMember("value", "$S", "Authorization")
+                    .build()
+                )
+                .build();
         }
+
+        throw new IllegalStateException("Auth argument can be in Query, Header or Cookie, but was unknown");
     }
 
-    private void buildMethodAuth(CodegenOperation operation, MethodSpec.Builder b) {
-        if (operation.hasAuthMethods) {
-            if (params.authAsMethodArgument()) {
-                // todo should be handled on parameters level
-                throw new RuntimeException("TODO");
+    private static String getAuthName(String name, List<CodegenParameter> parameters) {
+        for (CodegenParameter parameter : parameters) {
+            if (name.equals(parameter.paramName)) {
+                return getAuthName("_" + name, parameters);
             }
-            var authMethod = operation.authMethods.stream()
-                .filter(a -> params.primaryAuth() == null || a.name.equals(params.primaryAuth()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth()));
-            //                 var authName = camelize(toVarName(authMethod.name)); todo
-            var authName = camelize(authMethod.name);
-            b.addAnnotation(AnnotationSpec
-                .builder(Classes.interceptWith)
-                .addMember("value", "$T.class", Classes.httpClientInterceptor)
-                .addMember("tag", "@$T($T.class)", Classes.tag, ClassName.get(apiPackage, "ApiSecurity", authName))
-                .build()
-            );
         }
+
+        return name;
     }
 
-    private CodeBlock buildMethodJavadoc(OperationsMap ctx, CodegenOperation operation) {
-        var b = CodeBlock.builder();
-        b.add(operation.httpMethod + " " + operation.path);
-        if (operation.summary != null) {
-            b.add(": " + operation.summary);
+    private List<AnnotationSpec> buildImplicitHeaders(CodegenOperation operation) {
+        if (operation.implicitHeadersParams == null) {
+            return List.of();
         }
-        b.add("\n");
-        if (operation.notes != null) {
-            b.add(operation.notes).add("\n");
+        var result = new ArrayList<AnnotationSpec>();
+        for (var implicitHeadersParam : operation.implicitHeadersParams) {
+            var implicitParameters = AnnotationSpec.builder(ClassName.get("io.swagger.v3.oas.annotations", "Parameter"));
+            implicitParameters
+                .addMember("name", "$S", implicitHeadersParam.baseName)
+                .addMember("description", "$S", Objects.requireNonNullElse(implicitHeadersParam.description, ""))
+                .addMember("required", "$L", implicitHeadersParam.required)
+                .addMember("in", "$T.HEADER", ClassName.get("io.swagger.v3.oas.annotations.enums", "ParameterIn"))
+            ;
+            result.add(implicitParameters.build());
         }
-        for (var param : operation.allParams) {
-            if (!param.isFormParam) {
-                b.add("@param ").add(param.paramName).add(" ");
-                if (param.description != null) {
-                    b.add(param.description.trim());
-                } else {
-                    b.add(param.baseName);
-                }
-                if (param.required) {
-                    b.add(" (required)");
-                } else {
-                    b.add(" (optional");
-                    if (param.defaultValue != null) {
-                        b.add(", default to ").add(param.defaultValue.trim());
-                    }
-                    b.add(")");
-                }
-                b.add("\n");
-            }
-        }
-        if (operation.isDeprecated) {
-            b.add("@deprecated\n");
-        }
-        if (operation.externalDocs != null) {
-            b.add("@see <a href=\"" + operation.externalDocs.getUrl() + "\">" + operation.summary + " Documentation</a>");
-        }
-        return b.build();
+        return result;
     }
+
 
     private AnnotationSpec buildHttpClientAnnotation(OperationsMap ctx) {
         var httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient);

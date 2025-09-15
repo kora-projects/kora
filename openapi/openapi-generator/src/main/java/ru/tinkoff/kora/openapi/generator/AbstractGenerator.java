@@ -1,12 +1,9 @@
 package ru.tinkoff.kora.openapi.generator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.palantir.javapoet.ArrayTypeName;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
-import io.swagger.util.Json;
-import io.swagger.v3.oas.models.media.JsonSchema;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.CodegenProperty;
@@ -41,6 +38,12 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName cookie = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Cookie");
         public static final ClassName nullable = ClassName.get("jakarta.annotation", "Nullable");
         public static final ClassName formPart = ClassName.get("ru.tinkoff.kora.http.common.form", "FormMultipart", "FormPart");
+
+        public static final ClassName valid = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Valid");
+        public static final ClassName range = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Range");
+        public static final ClassName size = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Size");
+        public static final ClassName pattern = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Pattern");
+        public static final ClassName boundary = ClassName.get("ru.tinkoff.kora.validation.common.annotation", "Range", "Boundary");
     }
 
     public KoraCodegen.CodegenParams params;
@@ -81,47 +84,11 @@ public abstract class AbstractGenerator<C, R> {
             return ClassName.get(modelPackage, Objects.requireNonNullElse(param.datatypeWithEnum, param.dataType));
         }
         if (param.isEnum) {
-            return ClassName.bestGuess(param.dataType);
-        }
-        if (!param.isPrimitiveType) {
-            throw new IllegalArgumentException(param.dataType + " is not a primitive type");
-        }
-        var schema = param.getSchema();
-        var openapiType = schema != null ? schema.getOpenApiType() : null;
-        if (openapiType == null) {
-            // must be form param
-            if (!param.isFormParam) {
-                throw new IllegalArgumentException();
-            }
-            try {
-                var jsonSchema = Json.mapper().readValue(param.jsonSchema, JsonSchema.class);
-                openapiType = jsonSchema.getType();
-            } catch (JsonProcessingException e) {
-                throw new RuntimeException(e);
+            if (param.dataType.contains(".")) {
+                return ClassName.bestGuess(param.dataType);
             }
         }
-//        var type = switch (openapiType) {
-//            case "string" -> ClassName.get(String.class);
-//            case "boolean" -> TypeName.BOOLEAN;
-//            case "integer" -> Objects.equals(param.dataFormat, "int32")
-//                ? TypeName.INT
-//                : TypeName.LONG;
-//            case "number" -> {
-//                if (Objects.equals(param.dataFormat, "double")) {
-//                    yield TypeName.DOUBLE;
-//                }
-//                if (Objects.equals(param.dataFormat, "float")) {
-//                    yield TypeName.FLOAT;
-//                }
-//                yield ClassName.get(BigDecimal.class);
-//            }
-//            default -> throw new IllegalArgumentException(openapiType + "/" + param.dataType + "/" + param.dataFormat + " unexpected");
-//        };
-        if (param.required) {
-            return type;
-        } else {
-            return type.box();
-        }
+        throw new RuntimeException("Can't detect type of " + param.dataType);
     }
 
     public TypeName asType(IJsonSchemaValidationProperties schema) {
@@ -129,7 +96,6 @@ public abstract class AbstractGenerator<C, R> {
             return ParameterizedTypeName.get(ClassName.get(List.class), asType(schema.getItems()).box());
         }
         if (schema.getIsModel()) {
-            // todo
             if (schema.getDataType().contains(".")) {
                 return ClassName.bestGuess(schema.getDataType());
             }
@@ -142,7 +108,6 @@ public abstract class AbstractGenerator<C, R> {
                     return ClassName.get(String.class);
                 }
             }
-            // todo
             if (schema.getDataType().contains(".")) {
                 return ClassName.bestGuess(schema.getDataType());
             }
