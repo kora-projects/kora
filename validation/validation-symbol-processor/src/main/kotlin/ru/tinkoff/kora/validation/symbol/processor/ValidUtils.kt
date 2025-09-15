@@ -41,7 +41,7 @@ object ValidUtils {
     }
 
     private fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {
-        val isJsonNullable = type.toClassName() == ValidTypes.jsonNullable
+        val isJsonNullable = type.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
         val realType = if (isJsonNullable) type.arguments[0].type!!.resolve() else type
 
         return annotation

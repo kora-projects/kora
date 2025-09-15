@@ -19,9 +19,8 @@ import java.nio.charset.StandardCharsets
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.StandardCopyOption
-import kotlin.concurrent.atomics.AtomicInt
+import java.util.*
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.concurrent.atomics.incrementAndFetch
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.absolute
 import kotlin.io.path.createDirectories
@@ -37,7 +36,7 @@ class KotlinCompilation {
     lateinit var classOutputDir: Path
 
     @OptIn(ExperimentalAtomicApi::class)
-    val baseDir = KotlinCompilation.baseDir.resolve("test" + compilations.incrementAndFetch()).toAbsolutePath()
+    val baseDir = KotlinCompilation.baseDir.resolve("test" + UUID.randomUUID()).toAbsolutePath()
 
     @OptIn(ExperimentalPathApi::class, ExperimentalAtomicApi::class)
     constructor() {
@@ -157,7 +156,6 @@ class KotlinCompilation {
 
     @OptIn(ExperimentalAtomicApi::class)
     companion object {
-        val compilations = AtomicInt(0)
         val baseDir = Path.of("build/ksp-tests")
     }
 }

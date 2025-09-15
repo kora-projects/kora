@@ -24,7 +24,7 @@ interface {{classname}}ServerResponseMappers {
 {{#operation}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
-  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ResponseMapper({{#responses}}{{#dataType}}{{#vendorExtensions.hasMapperTag}}
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper({{#responses}}{{#dataType}}{{#vendorExtensions.hasMapperTag}}
     @param:{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
     response{{code}}Delegate: HttpServerResponseMapper<{{{dataType}}}>{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}{{^vendorExtensions.hasMore}}
   {{/vendorExtensions.hasMore}}{{/dataType}}{{/responses}}): HttpServerResponseMapper<{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse> {

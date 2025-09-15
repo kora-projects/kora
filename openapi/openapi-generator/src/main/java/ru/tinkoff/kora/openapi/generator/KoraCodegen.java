@@ -9,7 +9,9 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.ibm.icu.text.Transliterator;
+import com.palantir.javapoet.JavaFile;
 import com.samskivert.mustache.Mustache;
+import com.squareup.kotlinpoet.FileSpec;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
@@ -36,6 +38,8 @@ import org.openapitools.codegen.utils.CamelizeOption;
 import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.openapi.generator.javagen.ClientApiGenerator;
+import ru.tinkoff.kora.openapi.generator.javagen.ServerApiGenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +51,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.openapitools.codegen.utils.ModelUtils.getSchemaItems;
-import static org.openapitools.codegen.utils.StringUtils.*;
+import static org.openapitools.codegen.utils.StringUtils.camelize;
+import static org.openapitools.codegen.utils.StringUtils.escape;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class KoraCodegen extends DefaultCodegen {
@@ -132,18 +137,18 @@ public class KoraCodegen extends DefaultCodegen {
         }
     }
 
-    record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
+    public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
-    record Interceptor(@Nullable String type, @Nullable Object tag) {}
+    public record Interceptor(@Nullable String type, @Nullable Object tag) {}
 
-    record AdditionalAnnotation(@Nullable String annotation) {}
+    public record AdditionalAnnotation(@Nullable String annotation) {}
 
     @Override
     public String getName() {
         return "kora";
     }
 
-    record CodegenParams(
+    public record CodegenParams(
         Mode codegenMode,
         String jsonAnnotation,
         boolean enableValidation,
@@ -1251,11 +1256,11 @@ public class KoraCodegen extends DefaultCodegen {
             final String pattern;
             if (ModelUtils.isSet(schema)) {
                 pattern = params.codegenMode.isKotlin()
-                    ? "kotlin.collections.setOf<%s>("
+                    ? "setOf<%s>("
                     : "java.util.Set.<%s>of(";
             } else {
                 pattern = params.codegenMode.isKotlin()
-                    ? "kotlin.collections.listOf<%s>("
+                    ? "listOf<%s>("
                     : "java.util.List.<%s>of(";
             }
 
@@ -2201,6 +2206,7 @@ public class KoraCodegen extends DefaultCodegen {
             for (var formParam : op.formParams) {
                 boolean isEnum = formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty());
                 if (formParam.isModel || isEnum) {
+                    formParam.isEnum = true;
                     formParam.vendorExtensions.put("requiresMapper", true);
                     String type;
                     if (isEnum) {
@@ -2340,39 +2346,12 @@ public class KoraCodegen extends DefaultCodegen {
 
                     op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
                 } else {
-                    if (op.authMethods.size() == 1 || params.primaryAuth == null) {
-                        if (op.authMethods.size() > 1) {
-                            Set<String> secSchemes = op.authMethods.stream()
-                                .map(s -> s.name)
-                                .collect(Collectors.toSet());
-
-                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, or the first random will be used",
-                                secSchemes, op.httpMethod, op.path);
-                        }
-
-                        CodegenSecurity authMethod = op.authMethods.get(0);
-                        if (params.authAsMethodArgument) {
-                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
-                            op.allParams.add(fakeAuthParameter);
-                        } else {
-                            var authName = camelize(toVarName(authMethod.name));
-                            tags.add(upperCase(authName));
-                            op.vendorExtensions.put("authInterceptorTag", authName);
-                        }
-                    } else {
-                        CodegenSecurity authMethod = op.authMethods.stream()
-                            .filter(a -> a.name.equals(params.primaryAuth))
-                            .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
-
-                        if (params.authAsMethodArgument) {
-                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
-                            op.allParams.add(fakeAuthParameter);
-                        } else {
-                            var authName = camelize(toVarName(authMethod.name));
-                            tags.add(upperCase(authName));
-                            op.vendorExtensions.put("authInterceptorTag", authName);
-                        }
+                    if (op.authMethods.size() > 1 && params.primaryAuth == null) {
+                        var secSchemes = op.authMethods.stream()
+                            .map(s -> s.name)
+                            .collect(Collectors.toSet());
+                        LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, or the first random will be used",
+                            secSchemes, op.httpMethod, op.path);
                     }
                 }
             }
@@ -2465,113 +2444,8 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
-
-            if (params.codegenMode.isClient()) {
-                var requiredParams = new ArrayList<CodegenParameter>();
-                var optionalParams = new ArrayList<CodegenParameter>();
-                for (var param : op.allParams) {
-                    if (param.isHeaderParam && params.implicitHeaders) {
-                        continue;
-                    }
-
-                    if (param.notRequiredOrIsNullable() && !param.isPathParam) {
-                        optionalParams.add(param);
-                        param.vendorExtensions.put("x-optional-params", optionalParams);
-                        op.vendorExtensions.put("x-have-optional", true);
-                    } else {
-                        requiredParams.add(param);
-                        param.vendorExtensions.put("x-required-params", requiredParams);
-                    }
-                }
-
-                op.vendorExtensions.put("x-required-params", requiredParams);
-                op.vendorExtensions.put("x-optional-params", optionalParams);
-            }
-        }
-        if (params.codegenMode.isClient()) {
-            var annotationParams = httpClientAnnotationParams.entrySet()
-                .stream()
-                .map(e -> e.getKey() + " = " + e.getValue())
-                .collect(Collectors.joining(", ", "(", ")"));
-            objs.put("annotationParams", annotationParams);
         }
         return objs;
-    }
-
-    private static String getAuthName(String name, List<CodegenParameter> parameters) {
-        for (CodegenParameter parameter : parameters) {
-            if (name.equals(parameter.paramName)) {
-                return getAuthName("_" + name, parameters);
-            }
-        }
-
-        return name;
-    }
-
-    private CodegenParameter getAuthArgumentParameter(CodegenSecurity authMethod, List<CodegenParameter> parameters) {
-        CodegenParameter fakeAuthParameter = new CodegenParameter();
-
-        String authName = getAuthName(authMethod.name, parameters);
-
-        fakeAuthParameter.paramName = authName;
-        fakeAuthParameter.baseName = authName;
-        fakeAuthParameter.nameInLowerCase = authName.toLowerCase(Locale.ROOT);
-        if (authMethod.isKeyInQuery) {
-            fakeAuthParameter.isQueryParam = true;
-        } else if (authMethod.isKeyInHeader) {
-            fakeAuthParameter.isHeaderParam = true;
-        } else if (authMethod.isKeyInCookie) {
-            fakeAuthParameter.isCookieParam = true;
-        } else if (authMethod.isOAuth
-            || authMethod.isOpenId
-            || authMethod.isBasicBearer
-            || authMethod.isBasic
-            || authMethod.isBasicBasic) {
-            fakeAuthParameter.isHeaderParam = true;
-
-            for (CodegenParameter parameter : parameters) {
-                if ("Authorization".equalsIgnoreCase(parameter.paramName)) {
-                    throw new IllegalArgumentException("Authorization argument as method parameter can't be set, cause parameter named 'Authorization' already is present");
-                }
-            }
-
-            fakeAuthParameter.paramName = "Authorization";
-            fakeAuthParameter.baseName = "Authorization";
-            fakeAuthParameter.nameInLowerCase = "Authorization".toLowerCase(Locale.ROOT);
-        } else {
-            throw new IllegalStateException("Auth argument can be in Query, Header or Cookie, but wasn't unknown");
-        }
-
-        fakeAuthParameter.dataType = "String";
-        fakeAuthParameter.baseType = "String";
-        fakeAuthParameter.description = authMethod.description;
-        fakeAuthParameter.unescapedDescription = authMethod.description;
-        fakeAuthParameter.required = true;
-        fakeAuthParameter.isString = true;
-        fakeAuthParameter.isNull = false;
-        fakeAuthParameter.isNullable = false;
-
-        Schema schema = SchemaTypeUtil.createSchema("String", null);
-        CodegenProperty codegenProperty = fromProperty(authName, schema);
-        fakeAuthParameter.setSchema(codegenProperty);
-        return fakeAuthParameter;
-    }
-
-    private CodegenProperty getFakeCodegenPropertyString(String name) {
-        CodegenProperty fakeProperty = new CodegenProperty();
-
-        fakeProperty.name = name;
-        fakeProperty.baseName = name;
-        fakeProperty.baseType = "String";
-        fakeProperty.dataType = "String";
-        fakeProperty.datatypeWithEnum = "String";
-        fakeProperty.nameInLowerCase = name.toLowerCase(Locale.ROOT);
-        fakeProperty.required = true;
-        fakeProperty.isString = true;
-        fakeProperty.isNull = false;
-        fakeProperty.isNullable = false;
-
-        return fakeProperty;
     }
 
     public static boolean isContentJson(CodegenParameter parameter) {
@@ -3059,12 +2933,12 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String sanitizeTag(String tag) {
-        tag = camelize(underscore(sanitizeName(tag)));
-
-        // tag starts with numbers
-        if (tag.matches("^\\d.*")) {
-            tag = "Class" + tag;
-        }
+//        tag = camelize(underscore(sanitizeName(tag)));
+//
+//         tag starts with numbers
+//        if (tag.matches("^\\d.*")) {
+//            tag = "Class" + tag;
+//        }
         return tag;
     }
 
@@ -3168,7 +3042,31 @@ public class KoraCodegen extends DefaultCodegen {
                 var text = fragment.execute();
                 out.write(this.upperCase(toVarName(text)));
             })
+            .put("javaClientApi", javaGen(new ClientApiGenerator()))
+            .put("javaServerApi", javaGen(new ServerApiGenerator()))
+            .put("kotlinClientApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ClientApiGenerator()))
+            .put("kotlinServerApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerApiGenerator()))
             ;
+    }
+
+    <C, T extends AbstractGenerator<C, JavaFile>> Mustache.Lambda javaGen(T gen) {
+        return (frag, out) -> {
+            gen.apiPackage = apiPackage;
+            gen.modelPackage = modelPackage;
+            gen.params = params;
+            var ctx = frag.context();
+            gen.generate((C) ctx).writeTo(out);
+        };
+    }
+
+    <C, T extends AbstractGenerator<C, FileSpec>> Mustache.Lambda kotlinGen(T gen) {
+        return (frag, out) -> {
+            gen.apiPackage = apiPackage;
+            gen.modelPackage = modelPackage;
+            gen.params = params;
+            var ctx = frag.context();
+            gen.generate((C) ctx).writeTo(out);
+        };
     }
 
     @Override
