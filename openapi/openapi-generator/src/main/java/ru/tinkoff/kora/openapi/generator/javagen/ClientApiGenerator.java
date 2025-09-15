@@ -261,8 +261,6 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .build();
             b.addParameter(parameter);
         }
-
-        // todo parameters
         return b.build();
     }
 
@@ -271,7 +269,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .filter(a -> params.primaryAuth() == null || a.name.equals(params.primaryAuth()))
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth()));
-        var authName = getAuthName(authMethod.name, op.pathParams);
+        var authName = getAuthName(authMethod.name, op.allParams);
         var p = ParameterSpec.builder(String.class, authName)
             .addAnnotation(Classes.nullable);
         if (authMethod.isKeyInQuery) {
@@ -312,7 +310,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private static String getAuthName(String name, List<CodegenParameter> parameters) {
-        for (CodegenParameter parameter : parameters) {
+        for (var parameter : parameters) {
             if (name.equals(parameter.paramName)) {
                 return getAuthName("_" + name, parameters);
             }

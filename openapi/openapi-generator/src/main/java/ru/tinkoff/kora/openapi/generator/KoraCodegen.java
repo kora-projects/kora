@@ -11,6 +11,7 @@ import com.google.common.collect.ImmutableMap;
 import com.ibm.icu.text.Transliterator;
 import com.palantir.javapoet.JavaFile;
 import com.samskivert.mustache.Mustache;
+import com.squareup.kotlinpoet.FileSpec;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.PathItem;
@@ -1254,11 +1255,11 @@ public class KoraCodegen extends DefaultCodegen {
             final String pattern;
             if (ModelUtils.isSet(schema)) {
                 pattern = params.codegenMode.isKotlin()
-                    ? "kotlin.collections.setOf<%s>("
+                    ? "setOf<%s>("
                     : "java.util.Set.<%s>of(";
             } else {
                 pattern = params.codegenMode.isKotlin()
-                    ? "kotlin.collections.listOf<%s>("
+                    ? "listOf<%s>("
                     : "java.util.List.<%s>of(";
             }
 
@@ -3173,10 +3174,21 @@ public class KoraCodegen extends DefaultCodegen {
                 out.write(this.upperCase(toVarName(text)));
             })
             .put("javaClientApi", javaGen(new ClientApiGenerator()))
+            .put("kotlinClientApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ClientApiGenerator()))
             ;
     }
 
     <C, T extends AbstractGenerator<C, JavaFile>> Mustache.Lambda javaGen(T gen) {
+        return (frag, out) -> {
+            gen.apiPackage = apiPackage;
+            gen.modelPackage = modelPackage;
+            gen.params = params;
+            var ctx = frag.context();
+            gen.generate((C) ctx).writeTo(out);
+        };
+    }
+
+    <C, T extends AbstractGenerator<C, FileSpec>> Mustache.Lambda kotlinGen(T gen) {
         return (frag, out) -> {
             gen.apiPackage = apiPackage;
             gen.modelPackage = modelPackage;

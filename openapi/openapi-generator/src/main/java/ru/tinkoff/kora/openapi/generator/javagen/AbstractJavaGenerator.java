@@ -55,7 +55,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
     @Nullable
     protected AnnotationSpec buildMethodAuth(CodegenOperation operation, ClassName interceptorType) {
         if (params.authAsMethodArgument()) {
-            // todo should be handled on parameters level
+            // should be handled on parameters level
             return null;
         }
         if (!operation.hasAuthMethods) {
