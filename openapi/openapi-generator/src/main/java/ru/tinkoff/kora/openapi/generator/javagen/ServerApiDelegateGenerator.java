@@ -4,39 +4,24 @@ import com.palantir.javapoet.*;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.model.OperationsMap;
+import ru.tinkoff.kora.openapi.generator.DelegateMethodBodyMode;
 
 import javax.lang.model.element.Modifier;
 
-public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
+public class ServerApiDelegateGenerator extends AbstractJavaGenerator<OperationsMap> {
     @Override
     public JavaFile generate(OperationsMap ctx) {
-        var b = TypeSpec.classBuilder(ctx.get("classname") + "Controller")
+        var b = TypeSpec.interfaceBuilder(ctx.get("classname") + "Delegate")
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(generated())
-            .addAnnotation(Classes.component);
-        if (params.prefixPath != null) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.httpController).addMember("value", params.prefixPath).build());
-        } else {
-            b.addAnnotation(AnnotationSpec.builder(Classes.httpController).build());
-        }
-        var allowAspects = params.enableValidation || !params.additionalContractAnnotations.isEmpty();
-        if (!allowAspects) {
-            b.addModifiers(Modifier.FINAL);
-        }
-        var delegate = ClassName.get(apiPackage, ctx.get("classname") + "Delegate");
-        b.addField(delegate, "delegate", Modifier.PRIVATE, Modifier.FINAL);
-        b.addMethod(MethodSpec.constructorBuilder()
-            .addModifiers(Modifier.PUBLIC)
-            .addParameter(delegate, "delegate")
-            .addStatement("this.delegate = delegate")
-            .build()
-        );
+            .addAnnotation(generated());
+
         for (var operation : ctx.getOperations().getOperation()) {
             b.addMethod(buildMethod(ctx, operation));
             if (operation.getHasFormParams()) {
                 b.addType(buildFormParamsRecord(ctx, operation));
             }
         }
+
 
         return JavaFile.builder(apiPackage, b.build()).build();
     }
@@ -50,26 +35,18 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         if (operation.isDeprecated) {
             b.addAnnotation(Deprecated.class);
         }
+        if (params.delegateMethodBodyMode != DelegateMethodBodyMode.NONE) {
+            b.addModifiers(Modifier.DEFAULT);
+        } else {
+            b.addModifiers(Modifier.ABSTRACT);
+        }
         this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(this.buildHttpRoute(operation));
-        var auth = buildServerMethodAuth(operation);
-        if (auth != null) {
-            b.addAnnotation(auth);
+        if (params.delegateMethodBodyMode == DelegateMethodBodyMode.THROW_EXCEPTION) {
+            b.addStatement("throw new UnsupportedOperationException($S)", "Not yet implemented");
         }
-        if (params.enableValidation) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith).addMember("value", "$T.class", Classes.validationHttpServerInterceptor).build());
-            b.addAnnotation(AnnotationSpec.builder(Classes.validate).build());
-        }
-        this.buildInterceptors(tag, Classes.httpServerInterceptor).forEach(b::addAnnotation);
-        b.addAnnotation(AnnotationSpec.builder(Classes.mapping)
-            .addMember("value", "$T.class", ClassName.get(apiPackage, ctx.get("classname").toString() + "ServerResponseMappers", StringUtils.capitalize(operation.operationId) + "ApiResponseMapper"))
-            .build());
-        b.addCode("return this.delegate.$N(", operation.operationId);
-        var hasParams = false;
         if (params.requestInDelegateParams) {
-            hasParams = true;
-            b.addCode("_serverRequest");
             b.addParameter(Classes.httpServerRequest, "_serverRequest");
         }
         for (var param : operation.allParams) {
@@ -80,11 +57,6 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 continue;
             }
             b.addParameter(this.buildParameter(ctx, operation, param));
-            if (hasParams) {
-                b.addCode(", ");
-            }
-            b.addCode("$N", param.paramName);
-            hasParams = true;
         }
         if (operation.getHasFormParams()) {
             var className = ClassName.get(
@@ -100,12 +72,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 )
                 .build();
             b.addParameter(parameter);
-            if (hasParams) {
-                b.addCode(", ");
-            }
-            b.addCode("$N", parameter.name());
         }
-        b.addCode(");\n");
         b.returns(ClassName.get(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
         return b.build();
     }

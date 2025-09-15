@@ -47,7 +47,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addAnnotation(AnnotationSpec.builder(Deprecated::class.asClassName()).addMember("%S", "deprecated").build())
         }
         b.returns(ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"))
-        if (operation.hasAuthMethods && params.authAsMethodArgument()) {
+        if (operation.hasAuthMethods && params.authAsMethodArgument) {
             b.addParameter(this.buildAuthParameter(operation));
         }
         for (param in operation.allParams) {
@@ -137,12 +137,12 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun buildHttpClientAnnotation(ctx: OperationsMap): AnnotationSpec {
         val httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient.asKt())
-        params.clientConfigPrefix()?.let {
+        params.clientConfigPrefix?.let {
             httpClientAnnotation.addMember("configPath = %S", it + "." + ctx.get("classname"))
         }
         val tag = ctx.get("baseName").toString()
-        val clientTag = params.clientTags()[tag]
-        val defaultTag = params.clientTags()["*"]
+        val clientTag = params.clientTags[tag]
+        val defaultTag = params.clientTags["*"]
         if (clientTag != null && clientTag.httpClientTag() != null) {
             httpClientAnnotation.addMember("httpClientTag = [%L::class]", clientTag.httpClientTag())
         } else if (defaultTag != null && defaultTag.httpClientTag() != null) {

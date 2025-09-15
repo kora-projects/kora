@@ -10,12 +10,12 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         val b = TypeSpec.classBuilder(ctx["classname"] as String + "Controller")
             .addAnnotation(AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", ServerApiGenerator::class.qualifiedName.toString()).build())
             .addAnnotation(Classes.component.asKt())
-        if (params.prefixPath() != null) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).addMember("%S", params.prefixPath()).build())
+        if (params.prefixPath != null) {
+            b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).addMember("%S", params.prefixPath).build())
         } else {
             b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).build())
         }
-        val allowAspects = params.enableValidation() || !params.additionalContractAnnotations().isEmpty()
+        val allowAspects = params.enableValidation || !params.additionalContractAnnotations.isEmpty()
         if (allowAspects) {
             b.addModifiers(KModifier.OPEN)
         }
@@ -39,7 +39,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         val tag = ctx["baseName"] as String
         val b = FunSpec.builder(operation.operationId)
             .addKdoc(buildFunctionKdoc(ctx, operation))
-        val allowAspects = params.enableValidation() || !params.additionalContractAnnotations().isEmpty()
+        val allowAspects = params.enableValidation || !params.additionalContractAnnotations.isEmpty()
         if (allowAspects) {
             b.addModifiers(KModifier.OPEN)
         }
@@ -49,7 +49,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         buildMethodAuth(operation, Classes.httpServerInterceptor.asKt())?.let { auth ->
             b.addAnnotation(auth)
         }
-        if (params.enableValidation()) {
+        if (params.enableValidation) {
             b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith.asKt()).addMember("value = %T::class", Classes.validationHttpServerInterceptor.asKt()).build())
             b.addAnnotation(AnnotationSpec.builder(Classes.validate.asKt()).build())
         }
@@ -59,7 +59,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             .build())
         b.addCode("return this.delegate.%N(", operation.operationId)
         var hasParams = false
-        if (params.requestInDelegateParams()) {
+        if (params.requestInDelegateParams) {
             hasParams = true
             b.addCode("_serverRequest")
             b.addParameter("_serverRequest", Classes.httpServerRequest.asKt())

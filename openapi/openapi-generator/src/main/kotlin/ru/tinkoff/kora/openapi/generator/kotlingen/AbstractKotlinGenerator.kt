@@ -10,14 +10,14 @@ import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.CodegenParameter
 import org.openapitools.codegen.IJsonSchemaValidationProperties
 import org.openapitools.codegen.model.OperationsMap
-import org.openapitools.codegen.utils.StringUtils.camelize
 import ru.tinkoff.kora.openapi.generator.AbstractGenerator
 import ru.tinkoff.kora.openapi.generator.KoraCodegen
-import ru.tinkoff.kora.openapi.generator.javagen.ClientApiGenerator
 
 
 abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
     protected fun buildAdditionalAnnotations(tag: String): List<AnnotationSpec> {
+
+
         var additionalAnnotations = params.additionalContractAnnotations[tag]
         if (additionalAnnotations == null) {
             additionalAnnotations = params.additionalContractAnnotations["*"]
@@ -50,7 +50,7 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
     protected fun buildFormParamsRecord(ctx: OperationsMap, operation: CodegenOperation): TypeSpec {
         val t = TypeSpec.classBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
             .addModifiers(KModifier.DATA)
-            .addAnnotation(AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", ClientApiGenerator::class.java.getCanonicalName()).build())
+            .addAnnotation(AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", this::class.java.getCanonicalName()).build())
         val b = FunSpec.constructorBuilder()
         for (formParam in operation.formParams) {
             var type = if (formParam.isFile)
@@ -159,7 +159,7 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
             )
 
             param.isBodyParam && KoraCodegen.isContentJson(param) -> b.addAnnotation(
-                AnnotationSpec.builder(com.palantir.javapoet.ClassName.bestGuess(params.jsonAnnotation).asKt())
+                AnnotationSpec.builder(Classes.json.asKt())
                     .build()
             )
         }
@@ -169,7 +169,7 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
                 b.addAnnotation(validation)
             }
         }
-        if (params.codegenMode().isClient) {
+        if (params.codegenMode.isClient) {
             if (!param.required) {
                 if (param.defaultValue == null) {
                     b.defaultValue("null")

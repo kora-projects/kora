@@ -1,11 +1,7 @@
 package ru.tinkoff.kora.openapi.generator;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.ibm.icu.text.Transliterator;
@@ -23,11 +19,9 @@ import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
 import io.swagger.v3.oas.models.servers.Server;
-import io.swagger.v3.oas.models.tags.Tag;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
 import jakarta.annotation.Nullable;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.BooleanUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.meta.features.*;
@@ -38,8 +32,7 @@ import org.openapitools.codegen.utils.CamelizeOption;
 import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.openapi.generator.javagen.ClientApiGenerator;
-import ru.tinkoff.kora.openapi.generator.javagen.ServerApiGenerator;
+import ru.tinkoff.kora.openapi.generator.javagen.*;
 
 import java.io.File;
 import java.io.IOException;
@@ -59,84 +52,6 @@ public class KoraCodegen extends DefaultCodegen {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
 
-    public enum Mode {
-        JAVA_CLIENT("java-client"),
-        JAVA_SERVER("java-server"),
-        KOTLIN_CLIENT("kotlin-client"),
-        KOTLIN_SERVER("kotlin-server");
-
-        private final String mode;
-
-        Mode(String mode) {
-            this.mode = mode;
-        }
-
-        public String getMode() {
-            return mode;
-        }
-
-        public static Mode ofMode(String option) {
-            for (Mode value : Mode.values()) {
-                if (value.getMode().equals(option)) {
-                    return value;
-                }
-            }
-
-            final List<String> modes = Arrays.stream(Mode.values())
-                .map(Mode::getMode)
-                .toList();
-            throw new UnsupportedOperationException("Unknown Mode is provided: " + option + ", available modes: " + modes);
-        }
-
-        public boolean isServer() {
-            return this == JAVA_SERVER || this == KOTLIN_SERVER;
-        }
-
-        public boolean isClient() {
-            return this == JAVA_CLIENT || this == KOTLIN_CLIENT;
-        }
-
-        public boolean isJava() {
-            return this == JAVA_CLIENT || this == JAVA_SERVER;
-        }
-
-        public boolean isKotlin() {
-            return this == KOTLIN_CLIENT || this == KOTLIN_SERVER;
-        }
-    }
-
-    public enum DelegateMethodBodyMode {
-        NONE("none"),
-        THROW_EXCEPTION("throwException");
-
-        private final String mode;
-
-        DelegateMethodBodyMode(String mode) {
-            this.mode = mode;
-        }
-
-        public String getMode() {
-            return mode;
-        }
-
-        public boolean isDelegateMethodBodyModeNeedsDefaultComponent() {
-            return this == THROW_EXCEPTION;
-        }
-
-        public static DelegateMethodBodyMode of(String option) {
-            for (DelegateMethodBodyMode value : DelegateMethodBodyMode.values()) {
-                if (value.getMode().equals(option)) {
-                    return value;
-                }
-            }
-
-            final List<String> modes = Arrays.stream(Mode.values())
-                .map(Mode::getMode)
-                .toList();
-            throw new UnsupportedOperationException("Unknown DelegateMethodBodyMode is provided: " + option + ", available modes: " + modes);
-        }
-    }
-
     public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
     public record Interceptor(@Nullable String type, @Nullable Object tag) {}
@@ -148,207 +63,15 @@ public class KoraCodegen extends DefaultCodegen {
         return "kora";
     }
 
-    public record CodegenParams(
-        Mode codegenMode,
-        String jsonAnnotation,
-        boolean enableValidation,
-        boolean authAsMethodArgument,
-        @Nullable String primaryAuth,
-        @Nullable String clientConfigPrefix,
-        String securityConfigPrefix,
-        Map<String, TagClient> clientTags,
-        Map<String, List<Interceptor>> interceptors,
-        Map<String, List<AdditionalAnnotation>> additionalContractAnnotations,
-        boolean requestInDelegateParams,
-        boolean enableJsonNullable,
-        boolean filterWithModels,
-        @Nullable String prefixPath,
-        DelegateMethodBodyMode delegateMethodBodyMode,
-        boolean implicitHeaders,
-        @Nullable Pattern implicitHeadersRegex,
-        boolean forceIncludeOptional
-    ) {
-        static List<CliOption> cliOptions() {
-            var cliOptions = new ArrayList<CliOption>();
-            cliOptions.add(CliOption.newString(CODEGEN_MODE, "Generation mode (one of java, reactive or kotlin)"));
-            cliOptions.add(CliOption.newString(SECURITY_CONFIG_PREFIX, "Config prefix for security config parsers"));
-            cliOptions.add(CliOption.newString(PRIMARY_AUTH, "Specify primary HTTP client securityScheme if multiple are available for method"));
-            cliOptions.add(CliOption.newString(CLIENT_CONFIG_PREFIX, "Generated client config prefix"));
-            cliOptions.add(CliOption.newString(JSON_ANNOTATION, "Json annotation tag to place on body and other json related params"));
-            cliOptions.add(CliOption.newString(CLIENT_TAGS, "Json containing http client tags configuration for apis"));
-            cliOptions.add(CliOption.newString(INTERCEPTORS, "Json containing interceptors for HTTP server/client"));
-            cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
-            cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
-            cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
-            cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
-            cliOptions.add(CliOption.newBoolean(ENABLE_JSON_NULLABLE, "If enabled then wraps Nullable and NonRequired fields with JsonNullable type"));
-            cliOptions.add(CliOption.newBoolean(FILTER_WITH_MODELS, "If enabled then when openapiNormalizer FILTER option is specified, will try to filter not only operations, but all unused models as well"));
-            cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
-            cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
-            cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
-            return cliOptions;
-        }
-
-        static CodegenParams parse(Map<String, Object> additionalProperties) {
-            var codegenMode = Mode.JAVA_CLIENT;
-            var jsonAnnotation = "ru.tinkoff.kora.json.common.annotation.Json";
-            var enableServerValidation = false;
-            var authAsMethodArgument = false;
-            var primaryAuth = (String) null;
-            var clientConfigPrefix = (String) null;
-            var securityConfigPrefix = (String) null;
-            var clientTags = new HashMap<String, TagClient>();
-            var interceptors = new HashMap<String, List<Interceptor>>();
-            var additionalContractAnnotations = new HashMap<String, List<AdditionalAnnotation>>();
-            var requestInDelegateParams = false;
-            var enableJsonNullable = false;
-            var filterWithModels = false;
-            String prefixPath = null;
-            var delegateMethodBodyMode = DelegateMethodBodyMode.NONE;
-            boolean implicitHeaders = false;
-            Pattern implicitHeadersRegex = null;
-            var forceIncludeOptional = false;
-
-            if (additionalProperties.containsKey(CODEGEN_MODE)) {
-                codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
-            }
-            if (additionalProperties.containsKey(JSON_ANNOTATION)) {
-                jsonAnnotation = additionalProperties.get(JSON_ANNOTATION).toString();
-            }
-            if (additionalProperties.containsKey(CLIENT_TAGS)) {
-                var clientTagsJson = additionalProperties.get(CLIENT_TAGS).toString();
-                try {
-                    clientTags = new ObjectMapper().readerFor(TypeFactory.defaultInstance().constructMapType(Map.class, String.class, TagClient.class)).readValue(clientTagsJson);
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            if (additionalProperties.containsKey(INTERCEPTORS)) {
-                var interceptorJson = additionalProperties.get(INTERCEPTORS).toString();
-                try {
-                    interceptors = new ObjectMapper().readerFor(TypeFactory.defaultInstance()
-                            .constructType(new TypeReference<Map<String, List<Interceptor>>>() {}))
-                        .readValue(interceptorJson);
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            if (additionalProperties.containsKey(ADDITIONAL_CONTRACT_ANNOTATIONS)) {
-                var json = additionalProperties.get(ADDITIONAL_CONTRACT_ANNOTATIONS).toString();
-                try {
-                    additionalContractAnnotations = new ObjectMapper().readerFor(TypeFactory.defaultInstance()
-                            .constructType(new TypeReference<Map<String, List<AdditionalAnnotation>>>() {}))
-                        .readValue(json);
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-            if (additionalProperties.containsKey(PRIMARY_AUTH)) {
-                primaryAuth = additionalProperties.get(PRIMARY_AUTH).toString();
-            }
-            if (additionalProperties.containsKey(AUTH_AS_METHOD_ARGUMENT)) {
-                authAsMethodArgument = Boolean.parseBoolean(additionalProperties.get(AUTH_AS_METHOD_ARGUMENT).toString());
-            }
-            if (additionalProperties.containsKey(CLIENT_CONFIG_PREFIX)) {
-                clientConfigPrefix = additionalProperties.get(CLIENT_CONFIG_PREFIX).toString();
-            }
-            if (additionalProperties.containsKey(SECURITY_CONFIG_PREFIX)) {
-                securityConfigPrefix = additionalProperties.get(SECURITY_CONFIG_PREFIX).toString();
-            }
-            if (additionalProperties.containsKey(ENABLE_VALIDATION) && codegenMode.isServer()) {
-                enableServerValidation = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION).toString());
-            }
-            if (additionalProperties.containsKey(REQUEST_DELEGATE_PARAMS) && codegenMode.isServer()) {
-                requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get(REQUEST_DELEGATE_PARAMS).toString());
-            }
-            if (additionalProperties.containsKey(ENABLE_JSON_NULLABLE)) {
-                enableJsonNullable = Boolean.parseBoolean(additionalProperties.get(ENABLE_JSON_NULLABLE).toString());
-            }
-            if (additionalProperties.containsKey(FILTER_WITH_MODELS)) {
-                filterWithModels = Boolean.parseBoolean(additionalProperties.get(FILTER_WITH_MODELS).toString());
-            }
-            if (additionalProperties.containsKey(PREFIX_PATH)) {
-                prefixPath = additionalProperties.get(PREFIX_PATH).toString();
-            }
-            if (additionalProperties.containsKey(DELEGATE_METHOD_BODY_MODE)) {
-                delegateMethodBodyMode = DelegateMethodBodyMode.of(additionalProperties.get(DELEGATE_METHOD_BODY_MODE).toString());
-            }
-            if (additionalProperties.containsKey(IMPLICIT_HEADERS)) {
-                implicitHeaders = Boolean.parseBoolean(additionalProperties.get(IMPLICIT_HEADERS).toString());
-            }
-            if (additionalProperties.containsKey(IMPLICIT_HEADERS_REGEX)) {
-                implicitHeadersRegex = Optional.ofNullable(additionalProperties.get(IMPLICIT_HEADERS_REGEX).toString())
-                    .filter(s -> !s.isBlank())
-                    .map(s -> Pattern.compile(((String) s)))
-                    .orElse(null);
-            }
-            if (additionalProperties.containsKey(FORCE_INCLUDE_OPTIONAL)) {
-                forceIncludeOptional = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_OPTIONAL).toString());
-            }
-
-            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
-                securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable,
-                filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex, forceIncludeOptional);
-        }
-
-        void processAdditionalProperties(Map<String, Object> additionalProperties) {
-            additionalProperties.put("hasSecurityConfigPrefix", securityConfigPrefix != null);
-            additionalProperties.put("requestInDelegateParams", requestInDelegateParams);
-            additionalProperties.put("prefixPath", prefixPath);
-            additionalProperties.put("hasDelegateMethodBodyMode", delegateMethodBodyMode != DelegateMethodBodyMode.NONE);
-            additionalProperties.put("isThrowExceptionDelegateMethodBodyMode", delegateMethodBodyMode == DelegateMethodBodyMode.THROW_EXCEPTION);
-            additionalProperties.put("isDelegateMethodBodyModeNeedsDefaultComponent", delegateMethodBodyMode.isDelegateMethodBodyModeNeedsDefaultComponent());
-
-            switch (codegenMode) {
-                case JAVA_CLIENT, KOTLIN_CLIENT -> additionalProperties.put("isClient", true);
-                case JAVA_SERVER, KOTLIN_SERVER -> additionalProperties.put("isClient", false);
-            }
-        }
-    }
-
-
-    public static final String CODEGEN_MODE = "mode";
-    public static final String JSON_ANNOTATION = "jsonAnnotation";
-    public static final String ENABLE_VALIDATION = "enableServerValidation";
-    public static final String OBJECT_TYPE = "objectType";
-    public static final String DISABLE_HTML_ESCAPING = "disableHtmlEscaping";
-    public static final String IGNORE_ANYOF_IN_ENUM = "ignoreAnyOfInEnum";
-    public static final String ADDITIONAL_MODEL_TYPE_ANNOTATIONS = "additionalModelTypeAnnotations";
-    public static final String ADDITIONAL_ENUM_TYPE_ANNOTATIONS = "additionalEnumTypeAnnotations";
-    public static final String DISCRIMINATOR_CASE_SENSITIVE = "discriminatorCaseSensitive";
-    public static final String PRIMARY_AUTH = "primaryAuth";
-    public static final String CLIENT_CONFIG_PREFIX = "clientConfigPrefix";
-    public static final String SECURITY_CONFIG_PREFIX = "securityConfigPrefix";
-    public static final String CLIENT_TAGS = "tags";
-    public static final String REQUEST_DELEGATE_PARAMS = "requestInDelegateParams";
-    public static final String INTERCEPTORS = "interceptors";
-    public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
-    public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
-    public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
-    public static final String FILTER_WITH_MODELS = "filterWithModels";
-    public static final String PREFIX_PATH = "prefixPath";
-    public static final String DELEGATE_METHOD_BODY_MODE = "delegateMethodBodyMode";
-    public static final String IMPLICIT_HEADERS = "implicitHeaders";
-    public static final String IMPLICIT_HEADERS_REGEX = "implicitHeadersRegex";
-    public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
-
-    protected String invokerPackage = "org.openapitools";
-    protected boolean fullJavaUtil;
-    protected boolean discriminatorCaseSensitive = true; // True if the discriminator value lookup should be case-sensitive.
-    protected boolean disableHtmlEscaping = false;
-    protected String booleanGetterPrefix = "get";
-    protected boolean ignoreAnyOfInEnum = false;
-    private String objectType = "java.lang.Object";
-    protected List<String> additionalModelTypeAnnotations = new LinkedList<>();
-    protected List<String> additionalEnumTypeAnnotations = new LinkedList<>();
 
     private CodegenParams params;
+    private final Map<String, ModelsMap> models = new HashMap<>();
+    private final Map<String, OperationsMap> operationsByClassName = new HashMap<>();
 
     public KoraCodegen() {
         super();
         apiPackage = "org.openapitools.api";
         modelPackage = "org.openapitools.model";
-        invokerPackage = "org.openapitools.api";
 
         modifyFeatureSet(features -> features
             .wireFormatFeatures(EnumSet.of(WireFormatFeature.JSON))
@@ -388,58 +111,17 @@ public class KoraCodegen extends DefaultCodegen {
                 "native", "super", "while", "null")
         );
 
-
-        instantiationTypes.put("array", "ArrayList");
-        instantiationTypes.put("set", "LinkedHashSet");
-        instantiationTypes.put("map", "HashMap");
-
-        // Dates - RFC3339
-        typeMapping.put("date", "java.time.LocalDate");
-        typeMapping.put("time", "java.time.OffsetTime");
-        typeMapping.put("duration", "java.time.Duration");
-        typeMapping.put("DateTime", "java.time.OffsetDateTime");
-
-        typeMapping.put("UUID", "java.util.UUID");
-        typeMapping.put("URI", "java.net.URI");
-        typeMapping.put("BigDecimal", "java.math.BigDecimal");
-
-        importMapping.put("BigDecimal", "java.math.BigDecimal");
-        importMapping.put("UUID", "java.util.UUID");
-        importMapping.put("URI", "java.net.URI");
-        importMapping.put("OffsetDateTime", "java.time.OffsetDateTime");
-        importMapping.put("Map", "java.util.Map");
-        importMapping.put("Array", "java.util.List");
-        importMapping.put("HashMap", "java.util.HashMap");
-        importMapping.put("ArrayList", "java.util.ArrayList");
-        importMapping.put("List", "java.util.*");
-        importMapping.put("Set", "java.util.*");
-        importMapping.put("LinkedHashSet", "java.util.LinkedHashSet");
-
         cliOptions.add(new CliOption(CodegenConstants.INVOKER_PACKAGE, CodegenConstants.INVOKER_PACKAGE_DESC));
         cliOptions.add(new CliOption(CodegenConstants.MODEL_PACKAGE, CodegenConstants.MODEL_PACKAGE_DESC));
         cliOptions.add(new CliOption(CodegenConstants.API_PACKAGE, CodegenConstants.API_PACKAGE_DESC));
         cliOptions.add(new CliOption(CodegenConstants.API_PACKAGE, CodegenConstants.API_PACKAGE_DESC));
-
-        cliOptions.add(CliOption.newBoolean(DISABLE_HTML_ESCAPING, "Disable HTML escaping of JSON strings when using gson (needed to avoid problems with byte[] fields)", disableHtmlEscaping));
-        cliOptions.add(CliOption.newBoolean(IGNORE_ANYOF_IN_ENUM, "Ignore anyOf keyword in enum", ignoreAnyOfInEnum));
-        cliOptions.add(CliOption.newString(ADDITIONAL_MODEL_TYPE_ANNOTATIONS, "Additional annotations for model type(class level annotations)"));
-        cliOptions.add(CliOption.newString(ADDITIONAL_ENUM_TYPE_ANNOTATIONS, "Additional annotations for enum type(class level annotations)"));
         cliOptions.addAll(CodegenParams.cliOptions());
     }
 
     @Override
     public void processOpts() {
         super.processOpts();
-        if (StringUtils.isEmpty(System.getenv("JAVA_POST_PROCESS_FILE"))) {
-            LOGGER.info("Environment variable JAVA_POST_PROCESS_FILE not defined so the Java code may not be properly formatted. To define it, try 'export JAVA_POST_PROCESS_FILE=\"/usr/local/bin/clang-format -i\"' (Linux/Mac)");
-            LOGGER.info("NOTE: To enable file post-processing, 'enablePostProcessFile' must be set to `true` (--enable-post-process-file for CLI).");
-        }
-
-        if (additionalProperties.containsKey(OBJECT_TYPE)) {
-            this.objectType = additionalProperties.get(OBJECT_TYPE).toString();
-        }
         params = CodegenParams.parse(additionalProperties);
-        params.processAdditionalProperties(additionalProperties);
         switch (params.codegenMode) {
             case JAVA_CLIENT -> {
                 modelTemplateFiles.put("javaModel.mustache", ".java");
@@ -456,7 +138,7 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("javaServerResponseMappers.mustache", "ServerResponseMappers.java");
                 modelTemplateFiles.put("javaModel.mustache", ".java");
 
-                if (isNeedGenerateModule()) {
+                if (params.delegateMethodBodyMode != DelegateMethodBodyMode.NONE) {
                     apiTemplateFiles.put("javaServerApiModule.mustache", "Module.java");
                 }
             }
@@ -475,13 +157,11 @@ public class KoraCodegen extends DefaultCodegen {
                 apiTemplateFiles.put("kotlinServerRequestMappers.mustache", "ServerRequestMappers.kt");
                 apiTemplateFiles.put("kotlinServerResponseMappers.mustache", "ServerResponseMappers.kt");
 
-                if (isNeedGenerateModule()) {
+                if (params.delegateMethodBodyMode != DelegateMethodBodyMode.NONE) {
                     apiTemplateFiles.put("kotlinServerApiModule.mustache", "Module.kt");
                 }
             }
         }
-        this.vendorExtensions.put("allowAspects", params.enableValidation() || !params.additionalContractAnnotations.isEmpty());
-
         embeddedTemplateDir = templateDir = "openapi/templates/kora";
         if (!params.codegenMode.isJava()) {
             languageSpecificPrimitives = new HashSet<>(
@@ -497,20 +177,6 @@ public class KoraCodegen extends DefaultCodegen {
                     "Object"
                 )
             );
-            typeMapping.put("file", "ByteArray");
-            if (additionalProperties.containsKey(OBJECT_TYPE)) {
-                typeMapping.put("AnyType", objectType);
-                typeMapping.put("object", objectType);
-            } else {
-                typeMapping.put("AnyType", "kotlin.Any");
-                typeMapping.put("object", "kotlin.Any");
-            }
-            typeMapping.put("array", "List");
-            typeMapping.put("set", "Set");
-            typeMapping.put("map", "Map");
-            typeMapping.put("int", "Int");
-            typeMapping.put("integer", "Int");
-            typeMapping.put("ByteArray", "ByteArray");
         } else {
             languageSpecificPrimitives = new HashSet<>(
                 Arrays.asList(
@@ -528,52 +194,6 @@ public class KoraCodegen extends DefaultCodegen {
                     "Object",
                     "byte[]")
             );
-            typeMapping.put("AnyType", objectType);
-            typeMapping.put("object", objectType);
-            typeMapping.put("array", "java.util.List");
-            typeMapping.put("set", "java.util.Set");
-            typeMapping.put("map", "java.util.Map");
-            typeMapping.put("file", "byte[]");
-        }
-
-        if (additionalProperties.containsKey(DISABLE_HTML_ESCAPING)) {
-            this.setDisableHtmlEscaping(Boolean.parseBoolean(additionalProperties.get(DISABLE_HTML_ESCAPING).toString()));
-        }
-        additionalProperties.put(DISABLE_HTML_ESCAPING, disableHtmlEscaping);
-
-        if (additionalProperties.containsKey(IGNORE_ANYOF_IN_ENUM)) {
-            this.setIgnoreAnyOfInEnum(Boolean.parseBoolean(additionalProperties.get(IGNORE_ANYOF_IN_ENUM).toString()));
-        }
-        additionalProperties.put(IGNORE_ANYOF_IN_ENUM, ignoreAnyOfInEnum);
-
-        if (additionalProperties.containsKey(ADDITIONAL_MODEL_TYPE_ANNOTATIONS)) {
-            var additionalAnnotationsList = additionalProperties.get(ADDITIONAL_MODEL_TYPE_ANNOTATIONS).toString();
-
-            this.setAdditionalModelTypeAnnotations(Arrays.asList(additionalAnnotationsList.split(";")));
-        }
-
-        if (additionalProperties.containsKey(ADDITIONAL_ENUM_TYPE_ANNOTATIONS)) {
-            var additionalAnnotationsList = additionalProperties.get(ADDITIONAL_ENUM_TYPE_ANNOTATIONS).toString();
-
-            this.setAdditionalEnumTypeAnnotations(Arrays.asList(additionalAnnotationsList.split(";")));
-        }
-
-        if (additionalProperties.containsKey(CodegenConstants.API_PACKAGE)) {
-            // guess from api package
-            var derivedInvokerPackage = deriveInvokerPackageName((String) additionalProperties.get(CodegenConstants.API_PACKAGE));
-            this.additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, derivedInvokerPackage);
-            this.setInvokerPackage((String) additionalProperties.get(CodegenConstants.INVOKER_PACKAGE));
-            LOGGER.info("Invoker Package Name, originally not set, is now derived from api package name: {}", derivedInvokerPackage);
-        } else if (additionalProperties.containsKey(CodegenConstants.MODEL_PACKAGE)) {
-            // guess from model package
-            String derivedInvokerPackage = deriveInvokerPackageName((String) additionalProperties.get(CodegenConstants.MODEL_PACKAGE));
-            this.additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, derivedInvokerPackage);
-            this.setInvokerPackage((String) additionalProperties.get(CodegenConstants.INVOKER_PACKAGE));
-            LOGGER.info("Invoker Package Name, originally not set, is now derived from model package name: {}",
-                derivedInvokerPackage);
-        } else {
-            //not set, use default to be passed to template
-            additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, invokerPackage);
         }
 
         if (!additionalProperties.containsKey(CodegenConstants.MODEL_PACKAGE)) {
@@ -584,266 +204,7 @@ public class KoraCodegen extends DefaultCodegen {
             additionalProperties.put(CodegenConstants.API_PACKAGE, apiPackage);
         }
 
-
-        if (additionalProperties.containsKey(DISCRIMINATOR_CASE_SENSITIVE)) {
-            this.setDiscriminatorCaseSensitive(Boolean.parseBoolean(additionalProperties.get(DISCRIMINATOR_CASE_SENSITIVE).toString()));
-        } else {
-            // By default, the discriminator lookup should be case sensitive. There is nothing in the OpenAPI specification
-            // that indicates the lookup should be case insensitive. However, some implementations perform
-            // a case-insensitive lookup.
-            this.setDiscriminatorCaseSensitive(Boolean.TRUE);
-        }
-        additionalProperties.put(DISCRIMINATOR_CASE_SENSITIVE, this.discriminatorCaseSensitive);
-
-        importMapping.put("List", "java.util.List");
-        importMapping.put("Set", "java.util.Set");
-
         this.sanitizeConfig();
-
-        importMapping.put("Arrays", "java.util.Arrays");
-        importMapping.put("Objects", "java.util.Objects");
-    }
-
-    @Override
-    public Map<String, ModelsMap> updateAllModels(Map<String, ModelsMap> objs) {
-        objs = super.updateAllModels(objs);
-        var allModels = getAllModels(objs);
-        for (var model : allModels.values()) {
-            model.vendorExtensions.put("x-enable-validation", params.enableValidation);
-
-            // All-vars visit
-            for (var variable : model.allVars) {
-                if (params.enableValidation) {
-                    if (variable.getRef() != null) {
-                        var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null && !variableModelField.isEnum) {
-                            variable.vendorExtensions.put("x-has-valid-model", true);
-                        }
-                    }
-                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
-                }
-
-                if (variable.isNullable && !variable.required) {
-                    if (params.enableJsonNullable) {
-                        variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if (params.forceIncludeOptional) {
-                        variable.vendorExtensions.put("x-json-include-always", true);
-                    } else {
-                        //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
-                        LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
-                            model.name, variable.name, ENABLE_JSON_NULLABLE);
-                    }
-                }
-            }
-
-            // Required-vars visit
-            for (var variable : model.requiredVars) {
-                if (params.enableValidation) {
-                    if (variable.getRef() != null) {
-                        var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null && !variableModelField.isEnum) {
-                            variable.vendorExtensions.put("x-has-valid-model", true);
-                        }
-                    }
-                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
-                }
-            }
-
-            // Optional-vars visit
-            for (var variable : model.optionalVars) {
-                if (params.enableValidation) {
-                    if (variable.getRef() != null) {
-                        var variableModelField = allModels.get(variable.openApiType);
-                        if (variableModelField != null && !variableModelField.isEnum) {
-                            variable.vendorExtensions.put("x-has-valid-model", true);
-                        }
-                    }
-                    this.visitVariableValidation(variable, variable.openApiType, variable.dataFormat, variable.vendorExtensions);
-                }
-
-                if (variable.isNullable && !variable.required) {
-                    if (params.enableJsonNullable) {
-                        variable.vendorExtensions.put("x-json-nullable", true);
-                    } else if (params.forceIncludeOptional) {
-                        variable.vendorExtensions.put("x-json-include-always", true);
-                    } else {
-                        //TODO remove in 2.0 and make default behavior that ENABLE_JSON_NULLABLE is enabled
-                        LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
-                            model.name, variable.name, ENABLE_JSON_NULLABLE);
-                    }
-                }
-            }
-
-            if (model.discriminator != null) {
-                var map = model.discriminator.getMappedModels().stream()
-                    .collect(Collectors.toMap(CodegenDiscriminator.MappedModel::getModelName, m -> List.of(m.getMappingName()), (l1, l2) -> {
-                        var l = new ArrayList<String>(l1.size() + l2.size());
-                        l.addAll(l1);
-                        l.addAll(l2);
-                        return l;
-                    }, LinkedHashMap::new));
-                model.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
-                var discriminatorProperty = new CodegenProperty();
-                discriminatorProperty.name = model.discriminator.getPropertyName();
-                discriminatorProperty.baseName = model.discriminator.getPropertyBaseName();
-                discriminatorProperty.openApiType = model.discriminator.getPropertyType();
-                if (model.discriminator.getMapping() != null) {
-                    discriminatorProperty._enum = new ArrayList<>(model.discriminator.getMapping().keySet());
-                } else {
-                    discriminatorProperty._enum = new ArrayList<>();
-                    for (var mappedModel : model.discriminator.getMappedModels()) {
-                        discriminatorProperty._enum.add(mappedModel.getMappingName());
-                    }
-                }
-                discriminatorProperty.allowableValues = new LinkedHashMap<>();
-                ArrayList<Map<String, ?>> enumVars = new ArrayList<>();
-                ArrayList<Map<String, ?>> enumVarsDeprecated = new ArrayList<>();
-                discriminatorProperty.allowableValues.put("enumVars", enumVars);
-                discriminatorProperty.allowableValues.put("enumVarsDeprecated", enumVarsDeprecated);
-                for (var enumValue : discriminatorProperty._enum) {
-                    var enumVar = toEnumVarName(enumValue, "String");
-                    var enumStr = toEnumValue(enumValue, "String");
-                    enumVars.add(Map.of("name", enumVar, "value", enumStr));
-
-                    var enumVarDeprecated = toEnumVarNameDeprecated(enumValue, "String");
-                    if (!enumVarDeprecated.equals(enumVar)) {
-                        enumVarsDeprecated.add(Map.of("name", enumVarDeprecated,
-                            "nameNew", enumVar,
-                            "value", enumStr));
-                    }
-                }
-                discriminatorProperty.datatypeWithEnum = toEnumName(discriminatorProperty);
-                discriminatorProperty.dataType = "String";
-                discriminatorProperty.isDiscriminator = true;
-                discriminatorProperty.required = true;
-                for (var mappedModel : model.discriminator.getMappedModels()) {
-                    var childModel = allModels.get(mappedModel.getModelName());
-                    if (childModel == null) {
-                        throw new IllegalArgumentException("Child model '%s' not found, it is probably a free form object and is ignored by OpenAPI generator"
-                            .formatted(mappedModel.getModelName()));
-                    }
-
-                    childModel.parentModel = model;
-                    childModel.parent = model.classname;
-                    var mappings = map.get(mappedModel.getModelName());
-                    childModel.allVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
-                    childModel.optionalVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
-                    childModel.requiredVars.removeIf(p -> p.name.equals(model.discriminator.getPropertyName()));
-                    var property = discriminatorProperty.clone();
-                    childModel.allVars.add(0, property);
-                    childModel.requiredVars.add(0, property);
-
-                    for (CodegenProperty prop : childModel.optionalVars) {
-                        if (prop.isOverridden != null && prop.isOverridden) {
-                            if (model.optionalVars.stream().noneMatch(p -> p.name.equals(prop.name))) {
-                                prop.isOverridden = false;
-                            }
-                        }
-                    }
-
-                    for (CodegenProperty prop : childModel.requiredVars) {
-                        if (prop.isOverridden != null) {
-                            boolean haveReqVar = model.requiredVars.stream().anyMatch(p -> p.name.equals(prop.name));
-                            if (prop.isOverridden && !haveReqVar) {
-                                prop.isOverridden = false;
-                            } else {
-                                prop.isOverridden = haveReqVar;
-                            }
-                        }
-                    }
-
-                    if (mappings.size() == 1) {
-                        var enumValue = "%s.%s.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(mappings.get(0), "String"));
-                        property.vendorExtensions.put("x-discriminator-single", enumValue);
-                        childModel.vendorExtensions.put("x-discriminator-single", enumValue);
-                        var enumStringValue = "%s.%s.Constants.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(mappings.get(0), "String"));
-                        childModel.vendorExtensions.put("x-discriminator-value", params.codegenMode.isJava()
-                            ? enumStringValue
-                            : "[" + enumStringValue + "]");
-                        var valuesCheck = new StringBuilder();
-                        valuesCheck.append("if (").append(discriminatorProperty.name).append(" != ").append(enumValue).append(") {\n");
-                        if (params.codegenMode.isKotlin()) {
-                            valuesCheck.append("  throw IllegalArgumentException");
-                        } else {
-                            valuesCheck.append("  throw new IllegalArgumentException");
-                        }
-                        valuesCheck.append("(\"Unexpected value '\" + ").append(discriminatorProperty.name).append(" + \"' for variable ").append(discriminatorProperty.name).append("\");\n")
-                            .append("}\n");
-                        childModel.vendorExtensions.put("x-discriminator-values-check", valuesCheck.toString().indent(4));
-                    } else {
-                        assert mappings.size() > 1;
-                        var discriminatorValue = mappings.stream()
-                            .<String>map(it -> "%s.%s.Constants.%s".formatted(model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(it, "String")))
-                            .collect(Collectors.joining(
-                                ",\n  ",
-                                params.codegenMode.isJava() ? "{\n  " : "[\n  ",
-                                params.codegenMode.isJava() ? "\n}" : "\n]"
-                            ));
-                        childModel.vendorExtensions.put("x-discriminator-value", discriminatorValue);
-                        childModel.vendorExtensions.put("x-discriminator-keys", discriminatorValue);
-                        var valuesCheck = new StringBuilder();
-                        var discriminatorValueCheck = mappings.stream()
-                            .map(it -> "%s != %s.%s.%s".formatted(discriminatorProperty.name, model.classname, discriminatorProperty.datatypeWithEnum, toEnumVarName(it, "String")))
-                            .collect(Collectors.joining("\n  && "));
-                        valuesCheck.append("if (").append(discriminatorValueCheck).append(") {\n");
-                        if (params.codegenMode.isKotlin()) {
-                            valuesCheck.append("  throw IllegalArgumentException");
-                        } else {
-                            valuesCheck.append("  throw new IllegalArgumentException");
-                        }
-                        valuesCheck.append("(\"Unexpected value '\" + ").append(discriminatorProperty.name).append(" + \"' for variable ").append(discriminatorProperty.name).append("\");\n")
-                            .append("}\n");
-                        childModel.vendorExtensions.put("x-discriminator-values-check", valuesCheck.toString().indent(4));
-                    }
-                }
-
-                model.vendorExtensions.put("x-discriminator-property", discriminatorProperty);
-                model.discriminator.getVendorExtensions().put("x-discriminator-property", discriminatorProperty);
-
-                var uniqueMappedModels = model.discriminator.getMappedModels().stream().map(CodegenDiscriminator.MappedModel::getModelName).collect(Collectors.toSet());
-                model.vendorExtensions.put("x-unique-mapped-models", uniqueMappedModels);
-                model.discriminator.getVendorExtensions().put("x-unique-mapped-models", uniqueMappedModels);
-            }
-
-            if (params.codegenMode.isJava()) {
-                for (var requiredVar : model.allVars) {
-                    if (!requiredVar.required) {
-                        continue;
-                    }
-                    if (requiredVar.isInteger) {
-                        if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
-                            requiredVar.dataType = "int";
-                            requiredVar.datatypeWithEnum = "int";
-                        }
-                    }
-                    if (requiredVar.isLong) {
-                        if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
-                            requiredVar.dataType = "long";
-                            requiredVar.datatypeWithEnum = "long";
-                        }
-                    }
-                    if (requiredVar.isFloat) {
-                        if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
-                            requiredVar.dataType = "float";
-                            requiredVar.datatypeWithEnum = "float";
-                        }
-                    }
-                    if (requiredVar.isDouble) {
-                        if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
-                            requiredVar.dataType = "double";
-                            requiredVar.datatypeWithEnum = "double";
-                        }
-                    }
-                    if (requiredVar.isBoolean) {
-                        if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
-                            requiredVar.dataType = "boolean";
-                            requiredVar.datatypeWithEnum = "boolean";
-                        }
-                    }
-                }
-            }
-        }
-        return objs;
     }
 
     private String getUpperSnakeCase(String value, Locale locale) {
@@ -855,92 +216,10 @@ public class KoraCodegen extends DefaultCodegen {
             .collect(Collectors.joining("_"));
     }
 
-    private <T extends IJsonSchemaValidationProperties> void visitVariableValidation(T variable, @Nullable String type, @Nullable String dataFormat, Map<String, Object> vendorExtensions) {
-        dataFormat = Objects.requireNonNullElse(dataFormat, "");
-        if (variable.getMinimum() != null || variable.getMaximum() != null) {
-            vendorExtensions.put("x-has-min-max", true);
-            if (variable.getMinimum() != null) {
-                if (!variable.getMinimum().contains(".")) {
-                    variable.setMinimum(variable.getMinimum() + ".0");
-                }
-            } else {
-                switch (type) {
-                    case "integer" -> {
-                        switch (dataFormat) {
-                            case "int64", "" -> variable.setMinimum(Long.MIN_VALUE + ".0");
-                            case "int32" -> variable.setMinimum(Integer.MIN_VALUE + ".0");
-                        }
-                    }
-                    case "number" -> {
-                        switch (dataFormat) {
-                            case "double", "" -> variable.setMinimum("Double.MIN_VALUE");
-                            case "float" -> variable.setMinimum("Float.MIN_VALUE");
-                        }
-                    }
-                }
-            }
-            if (variable.getMaximum() != null) {
-                if (!variable.getMaximum().contains(".")) {
-                    variable.setMaximum(variable.getMaximum() + ".0");
-                }
-            } else {
-                switch (type) {
-                    case "integer" -> {
-                        switch (dataFormat) {
-                            case "int64", "" -> variable.setMaximum(Long.MAX_VALUE + ".0");
-                            case "int32" -> variable.setMaximum(Integer.MAX_VALUE + ".0");
-                        }
-                    }
-                    case "number" -> {
-                        switch (dataFormat) {
-                            case "double", "" -> variable.setMaximum("Double.MAX_VALUE");
-                            case "float" -> variable.setMaximum("Float.MAX_VALUE");
-                        }
-                    }
-                }
-            }
-        }
-        if (variable.getMinLength() != null || variable.getMaxLength() != null) {
-            vendorExtensions.put("x-has-min-max-length", true);
-            if (variable.getMinLength() == null) {
-                variable.setMinLength(0);
-            }
-            if (variable.getMaxLength() == null) {
-                variable.setMaxLength(Integer.MAX_VALUE);
-            }
-        }
-        if (variable.getMaxItems() != null || variable.getMinItems() != null) {
-            vendorExtensions.put("x-has-min-max-items", true);
-            if (variable.getMinItems() == null) {
-                variable.setMinItems(0);
-            }
-            if (variable.getMaxItems() == null) {
-                variable.setMaxItems(Integer.MAX_VALUE);
-            }
-        }
-        if (variable.getPattern() != null) {
-            vendorExtensions.put("x-has-pattern", true);
-        }
-    }
-
     @Override
     public Map<String, ModelsMap> postProcessAllModels(Map<String, ModelsMap> objs) {
         objs = super.postProcessAllModels(objs);
         objs = updateAllModels(objs);
-
-        if (!additionalModelTypeAnnotations.isEmpty()) {
-            for (var modelName : objs.keySet()) {
-                var models = (Map<String, Object>) objs.get(modelName);
-                models.put(ADDITIONAL_MODEL_TYPE_ANNOTATIONS, additionalModelTypeAnnotations);
-            }
-        }
-
-        if (!additionalEnumTypeAnnotations.isEmpty()) {
-            for (var modelName : objs.keySet()) {
-                var models = (Map<String, Object>) objs.get(modelName);
-                models.put(ADDITIONAL_ENUM_TYPE_ANNOTATIONS, additionalEnumTypeAnnotations);
-            }
-        }
         for (var obj : objs.values()) {
             var model = (Map<String, Object>) obj;
             var models = (List<Map<String, Object>>) model.get("models");
@@ -960,6 +239,8 @@ public class KoraCodegen extends DefaultCodegen {
             }
             model.put("additionalConstructor", additionalConstructor);
         }
+
+        this.models.putAll(objs);
         return objs;
     }
 
@@ -975,11 +256,6 @@ public class KoraCodegen extends DefaultCodegen {
         this.setModelPackage(sanitizePackageName(modelPackage));
         if (additionalProperties.containsKey(CodegenConstants.MODEL_PACKAGE)) {
             this.additionalProperties.put(CodegenConstants.MODEL_PACKAGE, modelPackage);
-        }
-
-        this.setInvokerPackage(sanitizePackageName(invokerPackage));
-        if (additionalProperties.containsKey(CodegenConstants.INVOKER_PACKAGE)) {
-            this.additionalProperties.put(CodegenConstants.INVOKER_PACKAGE, invokerPackage);
         }
     }
 
@@ -1197,16 +473,12 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             if (params.codegenMode.isKotlin() && property.isNullable) {
-                if (params.enableJsonNullable) {
-                    if (property.required) {
-                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
-                    } else {
-                        return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>?";
-                    }
+                if (property.required) {
+                    return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
                 } else {
-                    return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + "?>";
+                    return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>?";
                 }
-            } else if (property.isNullable && !property.required && params.enableJsonNullable) {
+            } else if (property.isNullable && !property.required) {
                 return getSchemaType(target) + "<String, ru.tinkoff.kora.json.common.JsonNullable<" + getTypeDeclaration(inner) + ">>";
             } else {
                 return getSchemaType(target) + "<String, " + getTypeDeclaration(inner) + ">";
@@ -1256,26 +528,17 @@ public class KoraCodegen extends DefaultCodegen {
             final String pattern;
             if (ModelUtils.isSet(schema)) {
                 pattern = params.codegenMode.isKotlin()
-                    ? "setOf<%s>("
-                    : "java.util.Set.<%s>of(";
+                    ? "setOf("
+                    : "java.util.Set.of(";
             } else {
                 pattern = params.codegenMode.isKotlin()
-                    ? "listOf<%s>("
-                    : "java.util.List.<%s>of(";
+                    ? "listOf("
+                    : "java.util.List.of(";
             }
 
             Schema<?> itemOriginal = getSchemaItems(schema);
             Schema itemSchema = ModelUtils.getReferencedSchema(this.openAPI, itemOriginal);
-            String typeDeclaration = getTypeDeclaration(ModelUtils.unaliasSchema(this.openAPI, itemOriginal));
-            Object java8obj = additionalProperties.get("java8");
-            if (java8obj != null) {
-                Boolean java8 = Boolean.valueOf(java8obj.toString());
-                if (java8 != null && java8) {
-                    typeDeclaration = "";
-                }
-            }
-
-            var builder = new StringBuilder(String.format(Locale.ROOT, pattern, typeDeclaration));
+            var builder = new StringBuilder(String.format(Locale.ROOT, pattern));
 
             int items = 0;
             int i = 1;
@@ -1683,25 +946,6 @@ public class KoraCodegen extends DefaultCodegen {
         return codegenModel;
     }
 
-    @Override
-    public void postProcessModelProperty(CodegenModel model, CodegenProperty property) {
-        if (!fullJavaUtil) {
-            if ("array".equals(property.containerType)) {
-                model.imports.add("ArrayList");
-            } else if ("set".equals(property.containerType)) {
-                model.imports.add("LinkedHashSet");
-            } else if ("map".equals(property.containerType)) {
-                model.imports.add("HashMap");
-            }
-        }
-
-        if (!BooleanUtils.toBoolean(model.isEnum)) {
-            // needed by all pojos, but not enums
-            model.imports.add("ApiModelProperty");
-            model.imports.add("ApiModel");
-        }
-    }
-
     private void setFilteredSchemaComponentsIfEnabled(OpenAPI openAPI) {
         if (!this.params.filterWithModels) {
             return;
@@ -2003,16 +1247,15 @@ public class KoraCodegen extends DefaultCodegen {
         return postProcessModelsEnum(objs);
     }
 
-    protected void handleImplicitHeaders(CodegenOperation operation, boolean implicitHeaders, @Nullable Pattern implicitHeadersRegex) {
+    protected void handleImplicitHeaders(CodegenOperation operation) {
         if (operation.allParams.isEmpty()) {
             return;
         }
-
-        final ArrayList<CodegenParameter> copy = new ArrayList<>(operation.allParams);
+        var copy = new ArrayList<>(operation.allParams);
         operation.allParams.clear();
 
-        for (CodegenParameter p : copy) {
-            if (p.isHeaderParam && (implicitHeaders || shouldBeImplicitHeader(p, implicitHeadersRegex))) {
+        for (var p : copy) {
+            if (p.isHeaderParam && (params.implicitHeaders || shouldBeImplicitHeader(p))) {
                 operation.implicitHeadersParams.add(p);
                 operation.headerParams.removeIf(header -> header.baseName.equals(p.baseName));
                 LOGGER.info("Update operation [{}]. Remove header [{}] because it's marked to be implicit", operation.operationId, p.baseName);
@@ -2020,288 +1263,25 @@ public class KoraCodegen extends DefaultCodegen {
                 operation.allParams.add(p);
             }
         }
-
-        if (!operation.implicitHeadersParams.isEmpty()) {
-            operation.vendorExtensions.put("x-has-implicit-headers", true);
-        }
     }
 
-    protected boolean shouldBeImplicitHeader(CodegenParameter parameter, @Nullable Pattern implicitHeadersRegex) {
-        return implicitHeadersRegex != null && implicitHeadersRegex.matcher(parameter.baseName).matches();
+    protected boolean shouldBeImplicitHeader(CodegenParameter parameter) {
+        return params.implicitHeadersRegex != null && params.implicitHeadersRegex.matcher(parameter.baseName).matches();
     }
 
     @Override
     public OperationsMap postProcessOperationsWithModels(OperationsMap objs, List<ModelMap> allModels) {
-        // Remove imports of List, ArrayList, Map and HashMap as they are
-        // imported in the template already.
-        var imports = (List<Map<String, String>>) objs.get("imports");
-        var pattern = Pattern.compile("java\\.util\\.(List|ArrayList|Map|HashMap)");
-        for (var itr = imports.iterator(); itr.hasNext(); ) {
-            var itrImport = itr.next().get("import");
-            if (pattern.matcher(itrImport).matches()) {
-                itr.remove();
-            }
+        var operations = objs.getOperations();
+        var operationList = operations.getOperation();
+        for (var op : operationList) {
+            handleImplicitHeaders(op);
         }
-
-        var httpClientAnnotationParams = new HashMap<String, String>();
 
         record AuthMethodGroup(String name, List<CodegenSecurity> methods) {}
 
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
         var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
-        var operations = (Map<String, Object>) objs.get("operations");
-        if (params.clientConfigPrefix != null) {
-            httpClientAnnotationParams.put("configPath", "\"" + params.clientConfigPrefix + "." + operations.get("classname") + "\"");
-        }
-        var operationList = (List<CodegenOperation>) operations.get("operation");
         for (var op : operationList) {
-            handleImplicitHeaders(op, params.implicitHeaders, params.implicitHeadersRegex);
-            var operationImports = new TreeSet<String>();
-            for (var p : op.allParams) {
-                if (importMapping.containsKey(p.dataType)) {
-                    operationImports.add(importMapping.get(p.dataType));
-                }
-            }
-
-            TagClient tagClient = null;
-            for (var entry : params.clientTags.entrySet()) {
-                if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
-                    tagClient = entry.getValue();
-                    break;
-                }
-            }
-            if (tagClient == null) {
-                tagClient = params.clientTags.get("*");
-            }
-            if (tagClient != null) {
-                String suffix = params.codegenMode.isKotlin() ? "::class" : ".class";
-                if (tagClient.httpClientTag != null) {
-                    String httpTag = tagClient.httpClientTag.endsWith(suffix) ? tagClient.httpClientTag : tagClient.httpClientTag + suffix;
-                    httpTag = (params.codegenMode.isKotlin()) ? "[" + httpTag + "]" : httpTag;
-                    httpClientAnnotationParams.put("httpClientTag", httpTag);
-                }
-                if (tagClient.telemetryTag != null) {
-                    String telemetryTag = tagClient.telemetryTag.endsWith(suffix) ? tagClient.telemetryTag : tagClient.telemetryTag + suffix;
-                    telemetryTag = (params.codegenMode.isKotlin()) ? "[" + telemetryTag + "]" : telemetryTag;
-                    httpClientAnnotationParams.put("telemetryTag", telemetryTag);
-                }
-            }
-
-            List<Interceptor> interceptors = null;
-            for (var entry : params.interceptors.entrySet()) {
-                if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
-                    interceptors = entry.getValue();
-                    break;
-                }
-            }
-            if (interceptors == null) {
-                interceptors = params.interceptors.get("*");
-            }
-            if (interceptors != null && !interceptors.isEmpty()) {
-                final String serverDefault = "ru.tinkoff.kora.http.server.common.HttpServerInterceptor";
-                final String clientDefault = "ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor";
-
-                var interceptorTemplates = interceptors.stream()
-                    .filter(i -> i.type != null || i.tag != null)
-                    .map(i -> {
-                        String implValue;
-                        if (i.type() == null) {
-                            implValue = (params.codegenMode.isClient())
-                                ? clientDefault
-                                : serverDefault;
-                        } else {
-                            implValue = i.type();
-                        }
-
-                        String suffix = params.codegenMode.isKotlin() ? "::class" : ".class";
-                        String impl = implValue.endsWith(suffix) ? implValue : implValue + suffix;
-                        List<String> tag;
-                        if (i.tag() == null) {
-                            tag = null;
-                        } else if (i.tag() instanceof String ts) {
-                            tag = List.of(ts);
-                        } else if (i.tag() instanceof List tls) {
-                            tag = tls.stream()
-                                .<String>map(Object::toString)
-                                .toList();
-                        } else {
-                            throw new IllegalArgumentException("Unknown interceptors tag value: " + i.tag());
-                        }
-
-                        if (tag == null || tag.isEmpty()) {
-                            return Map.of("interceptorImpl", impl);
-                        } else {
-                            String interTags = tag.stream()
-                                .map(t -> t.endsWith(suffix) ? t : t + suffix)
-                                .collect(Collectors.joining(", "));
-
-                            return Map.of(
-                                "interceptorImpl", impl,
-                                "interceptorTags", interTags
-                            );
-                        }
-                    }).toList();
-
-                if (!interceptorTemplates.isEmpty()) {
-                    objs.put("koraInterceptors", interceptorTemplates);
-                }
-            }
-
-            List<AdditionalAnnotation> additionalContractAnnotations = null;
-            for (var entry : params.additionalContractAnnotations.entrySet()) {
-                if (op.tags.stream().anyMatch(t -> t.getName().equals(entry.getKey()))) {
-                    additionalContractAnnotations = entry.getValue();
-                    break;
-                }
-            }
-            if (additionalContractAnnotations == null) {
-                additionalContractAnnotations = params.additionalContractAnnotations.get("*");
-            }
-            if (additionalContractAnnotations != null && !additionalContractAnnotations.isEmpty()) {
-                List<String> annotations = additionalContractAnnotations.stream()
-                    .map(AdditionalAnnotation::annotation)
-                    .filter(a -> a != null && !a.isBlank())
-                    .toList();
-
-                if (!annotations.isEmpty()) {
-                    objs.put("koraAdditionalContractAnnotations", annotations);
-                }
-            }
-
-            op.vendorExtensions.put("requestInDelegateParams", params.requestInDelegateParams);
-            op.vendorExtensions.put("x-java-import", operationImports);
-            var multipartForm = op.consumes != null && op.consumes.stream()
-                .map(m -> m.get("mediaType"))
-                .anyMatch("multipart/form-data"::equalsIgnoreCase);
-            var urlEncodedForm = op.consumes != null && op.consumes.stream()
-                .map(m -> m.get("mediaType"))
-                .anyMatch("application/x-www-form-urlencoded"::equalsIgnoreCase);
-            op.vendorExtensions.put("multipartForm", multipartForm);
-            op.vendorExtensions.put("urlEncodedForm", urlEncodedForm);
-            for (var response : op.responses) {
-                var hasData = response.hasHeaders || response.isDefault || response.dataType != null;
-                response.vendorExtensions.put("jsonTag", params.jsonAnnotation);
-                response.vendorExtensions.put("hasData", hasData);
-                if (response.isBinary && !"byte[]".equals(response.dataType) && !"ByteBuffer".equals(response.dataType) && !"String".equals(response.dataType)) {
-                    response.vendorExtensions.put("isBinaryUnknownType", true);
-                }
-            }
-            if (op.bodyParam != null) {
-                if (op.bodyParam.isBinary) {
-                    op.bodyParam.vendorExtensions.put("hasMapperTag", false);
-                } else if (isContentJson(op.bodyParam)) {
-                    op.bodyParam.vendorExtensions.put("hasMapperTag", true);
-                    op.bodyParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
-                }
-                for (var param : op.allParams) {
-                    if (param.isBodyParam && param.isBinary) {
-                        op.bodyParam.vendorExtensions.put("hasMapperTag", false);
-                    } else if (param.isBodyParam && (isContentJson(param))) {
-                        param.vendorExtensions.put("hasMapperTag", true);
-                        param.vendorExtensions.put("mapperTag", params.jsonAnnotation);
-                    }
-                }
-            }
-            var formParamsWithMappers = new ArrayList<Map<String, Object>>();
-            for (var formParam : op.formParams) {
-                boolean isEnum = formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty());
-                if (formParam.isModel || isEnum) {
-                    formParam.isEnum = true;
-                    formParam.vendorExtensions.put("requiresMapper", true);
-                    String type;
-                    if (isEnum) {
-                        type = allModels.stream()
-                            .filter(m -> m.getModel().name.equals(formParam.dataType))
-                            .findFirst()
-                            .map(m -> m.get("importPath").toString())
-                            .or(() -> allModels.stream()
-                                .filter(m -> m.getModel().getAllVars().stream().anyMatch(v -> formParam.datatypeWithEnum.equals(v.datatypeWithEnum)))
-                                .findFirst()
-                                .map(m -> m.get("importPath") + "." + formParam.datatypeWithEnum))
-                            .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
-                        if (formParam.datatypeWithEnum != null) {
-                            formParam.dataType = type;
-                        }
-                    } else {
-                        type = allModels.stream()
-                            .filter(m -> m.getModel().name.equals(formParam.dataType))
-                            .findFirst()
-                            .map(m -> m.get("importPath").toString())
-                            .orElseThrow(() -> new IllegalArgumentException("Unknown form param model: " + formParam));
-                    }
-
-                    if (isContentJson(formParam)) {
-                        formParam.vendorExtensions.put("mapperTag", params.jsonAnnotation);
-                        formParamsWithMappers.add(new HashMap<>(Map.of(
-                            "paramName", formParam.paramName,
-                            "requireTag", true,
-                            "mapperTag", params.jsonAnnotation,
-                            "paramType", type,
-                            "last", false
-                        )));
-                    } else {
-                        formParamsWithMappers.add(new HashMap<>(Map.of(
-                            "paramName", formParam.paramName,
-                            "requireTag", false,
-                            "paramType", type,
-                            "last", false
-                        )));
-                    }
-                } else if (formParam.isString
-                    || formParam.isBoolean
-                    || formParam.isDouble
-                    || formParam.isFloat
-                    || formParam.isInteger
-                    || formParam.isLong) {
-                    formParam.vendorExtensions.put("isPrimitive", true);
-                } else {
-                    formParam.vendorExtensions.put("requiresMapper", true);
-                    formParamsWithMappers.add(new HashMap<>(Map.of(
-                        "paramName", formParam.paramName,
-                        "requireTag", false,
-                        "paramType", formParam.dataType,
-                        "last", false
-                    )));
-                }
-            }
-            if (!formParamsWithMappers.isEmpty()) {
-                formParamsWithMappers.get(formParamsWithMappers.size() - 1).put("last", true);
-                op.vendorExtensions.put("requiresFormParamMappers", true);
-                op.vendorExtensions.put("formParamMappers", formParamsWithMappers);
-            }
-            for (var response : op.responses) {
-                if (isContentJson(response.getContent())) {
-                    response.vendorExtensions.put("hasMapperTag", true);
-                    response.vendorExtensions.put("mapperTag", params.jsonAnnotation);
-                }
-            }
-            int lastIdx = 0;
-            for (int i = op.responses.size() - 1; i >= 0; i--) {
-                var response = op.responses.get(i);
-                if (response.dataType != null) {
-                    lastIdx = i;
-                    response.vendorExtensions.put("hasMore", false);
-                    break;
-                }
-            }
-            for (int i = 0; i < lastIdx; i++) {
-                var response = op.responses.get(i);
-                response.vendorExtensions.put("hasMore", true);
-            }
-            for (var response : op.responses) {
-                if (response.isBinary) {
-                    var i = response.getContent().keySet().iterator();
-                    if (i.hasNext()) {
-                        response.vendorExtensions.put("contentType", i.next());
-                    } else {
-                        response.vendorExtensions.put("contentType", "application/octet-stream");
-                    }
-                }
-            }
-            op.vendorExtensions.put("singleResponse", op.responses.size() == 1);
-            for (var response : op.responses) {
-                response.vendorExtensions.put("singleResponse", op.responses.size() == 1);
-            }
             if (op.hasAuthMethods) {
                 if (params.codegenMode.isServer()) {
                     var operationAuthMethods = new TreeSet<String>();
@@ -2333,9 +1313,6 @@ public class KoraCodegen extends DefaultCodegen {
                         var scopes = Objects.requireNonNullElse(source.scopes, List.<Map<String, Object>>of()).stream().map(m -> m.get("scope").toString()).toList();
                         var copy = source.filterByScopeNames(scopes);
                         security.add(copy);
-                        copy.vendorExtensions.put("isLast", i == op.authMethods.size() - 1);
-                        copy.vendorExtensions.put("isFirst", i == 0);
-                        copy.vendorExtensions.put("hasScopes", copy.scopes != null && !copy.scopes.isEmpty());
                     }
 
                     tags.add(authInterceptorTag);
@@ -2355,96 +1332,8 @@ public class KoraCodegen extends DefaultCodegen {
                     }
                 }
             }
-            if (params.enableValidation) {
-                List<AdditionalAnnotation> additionalAnnotations = List.of();
-                for (Tag tag : op.tags) {
-                    additionalAnnotations = params.additionalContractAnnotations.get(tag.getName());
-                    if (additionalAnnotations != null) {
-                        break;
-                    }
-                }
-                if (additionalAnnotations == null) {
-                    additionalAnnotations = params.additionalContractAnnotations.get("*");
-                }
-                op.vendorExtensions.put("allowAspects", params.enableValidation() || !additionalAnnotations.isEmpty());
-
-                for (var p : op.allParams) {
-                    var validation = false;
-                    if (p.isModel) {
-                        for (var variable : p.vars) {
-                            if (variable.hasValidation) {
-                                validation = true;
-                                break;
-                            }
-                        }
-                        if (!validation) {
-                            var model = allModels.stream()
-                                .map(mm -> mm.get("model"))
-                                .map(CodegenModel.class::cast)
-                                .filter(m -> m.name.equals(p.dataType))
-                                .findFirst();
-
-                            if (model.isPresent()) {
-                                for (var child : Objects.requireNonNullElse(model.get().children, List.<CodegenModel>of())) {
-                                    for (var variable : child.vars) {
-                                        if (variable.hasValidation) {
-                                            validation = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else if (p.isArray) {
-                        if (p.hasValidation) {
-                            validation = true;
-                        }
-                    } else {
-                        if (p.hasValidation) {
-                            validation = true;
-                        }
-                    }
-                    if (validation) {
-                        p.vendorExtensions.put("x-validate", true);
-                        op.vendorExtensions.put("x-validate", true);
-                        var type = p.getSchema() != null ? p.getSchema().openApiType : null;
-                        visitVariableValidation(p, type, p.dataFormat, p.vendorExtensions);
-                    }
-                }
-            }
-            if (params.codegenMode.isJava()) {
-                for (var allParam : op.allParams) {
-                    if (!allParam.required) {
-                        continue;
-                    }
-                    if (allParam.isInteger) {
-                        if (!typeMapping.containsKey("Integer") && !typeMapping.containsKey(Integer.class.getCanonicalName())) {
-                            allParam.dataType = "int";
-                        }
-                    }
-                    if (allParam.isLong) {
-                        if (!typeMapping.containsKey("Long") && !typeMapping.containsKey(Long.class.getCanonicalName())) {
-                            allParam.dataType = "long";
-                        }
-                    }
-                    if (allParam.isFloat) {
-                        if (!typeMapping.containsKey("Float") && !typeMapping.containsKey(Float.class.getCanonicalName())) {
-                            allParam.dataType = "float";
-                        }
-                    }
-                    if (allParam.isDouble) {
-                        if (!typeMapping.containsKey("Double") && !typeMapping.containsKey(Double.class.getCanonicalName())) {
-                            allParam.dataType = "double";
-                        }
-                    }
-                    if (allParam.isBoolean) {
-                        if (!typeMapping.containsKey("Boolean") && !typeMapping.containsKey(Boolean.class.getCanonicalName())) {
-                            allParam.dataType = "boolean";
-                        }
-                    }
-                }
-            }
         }
+        this.operationsByClassName.put(objs.getOperations().getClassname(), objs);
         return objs;
     }
 
@@ -2497,29 +1386,6 @@ public class KoraCodegen extends DefaultCodegen {
 
                 }
             }
-        }
-
-        if (ignoreAnyOfInEnum) {
-            // Alter OpenAPI schemas ignore anyOf keyword if it consist of an enum. Example:
-            //     anyOf:
-            //     - type: string
-            //       enum:
-            //       - ENUM_A
-            //       - ENUM_B
-            Stream.concat(
-                    Stream.of(openAPI.getComponents().getSchemas()),
-                    openAPI.getComponents().getSchemas().values().stream()
-                        .filter(schema -> schema.getProperties() != null)
-                        .map(Schema::getProperties))
-                .forEach(schemas -> schemas.replaceAll(
-                    (name, s) -> Stream.of(s)
-                        .filter(schema -> schema instanceof ComposedSchema)
-                        .map(schema -> (ComposedSchema) schema)
-                        .filter(schema -> Objects.nonNull(schema.getAnyOf()))
-                        .flatMap(schema -> schema.getAnyOf().stream())
-                        .filter(schema -> Objects.nonNull(schema.getEnum()))
-                        .findFirst()
-                        .orElse((Schema) s)));
         }
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (!Objects.requireNonNullElse(securitySchemas, Map.of()).isEmpty()) {
@@ -2854,35 +1720,9 @@ public class KoraCodegen extends DefaultCodegen {
         return packageName;
     }
 
-    public String getInvokerPackage() {
-        return invokerPackage;
-    }
-
-    public void setInvokerPackage(String invokerPackage) {
-        this.invokerPackage = invokerPackage;
-    }
-
-
     private String sanitizePath(String p) {
         //prefer replace a ", instead of a fuLL URL encode for readability
         return p.replaceAll("\"", "%22");
-    }
-
-    /**
-     * Set whether discriminator value lookup is case-sensitive or not.
-     *
-     * @param discriminatorCaseSensitive true if the discriminator value lookup should be case sensitive.
-     */
-    public void setDiscriminatorCaseSensitive(boolean discriminatorCaseSensitive) {
-        this.discriminatorCaseSensitive = discriminatorCaseSensitive;
-    }
-
-    public void setDisableHtmlEscaping(boolean disabled) {
-        this.disableHtmlEscaping = disabled;
-    }
-
-    public void setIgnoreAnyOfInEnum(boolean ignoreAnyOfInEnum) {
-        this.ignoreAnyOfInEnum = ignoreAnyOfInEnum;
     }
 
     @Override
@@ -2928,7 +1768,7 @@ public class KoraCodegen extends DefaultCodegen {
      */
     @Override
     public String toBooleanGetter(String name) {
-        return booleanGetterPrefix + getterAndSetterCapitalize(name);
+        return getterAndSetterCapitalize(name);
     }
 
     @Override
@@ -2998,15 +1838,6 @@ public class KoraCodegen extends DefaultCodegen {
         }
     }
 
-
-    public void setAdditionalModelTypeAnnotations(final List<String> additionalModelTypeAnnotations) {
-        this.additionalModelTypeAnnotations = additionalModelTypeAnnotations;
-    }
-
-    public void setAdditionalEnumTypeAnnotations(final List<String> additionalEnumTypeAnnotations) {
-        this.additionalEnumTypeAnnotations = additionalEnumTypeAnnotations;
-    }
-
     @Override
     protected void addAdditionPropertiesToCodeGenModel(CodegenModel codegenModel, Schema schema) {
         if (!supportsAdditionalPropertiesWithComposedSchema) {
@@ -3042,8 +1873,18 @@ public class KoraCodegen extends DefaultCodegen {
                 var text = fragment.execute();
                 out.write(this.upperCase(toVarName(text)));
             })
+            .put("javaApiResponses", javaGen(new ApiResponseGenerator()))
+            .put("javaModel", javaGen(new ModelGenerator()))
+            .put("javaClientSecuritySchema", javaGen(new ClientSecuritySchemaGenerator()))
+            .put("javaClientRequestMappers", javaGen(new ClientRequestMapperGenerator()))
             .put("javaClientApi", javaGen(new ClientApiGenerator()))
+            .put("javaClientApiResponseMapper", javaGen(new ClientResponseMapperGenerator()))
             .put("javaServerApi", javaGen(new ServerApiGenerator()))
+            .put("javaServerApiDelegate", javaGen(new ServerApiDelegateGenerator()))
+            .put("javaServerApiModule", javaGen(new ServerApiModuleGenerator()))
+            .put("javaServerRequestMappers", javaGen(new ServerRequestMapperGenerator()))
+            .put("javaServerResponseMappers", javaGen(new ServerResponseMapperGenerator()))
+            .put("javaServerSecuritySchema", javaGen(new ServerSecuritySchemaGenerator()))
             .put("kotlinClientApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ClientApiGenerator()))
             .put("kotlinServerApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerApiGenerator()))
             ;
@@ -3054,6 +1895,9 @@ public class KoraCodegen extends DefaultCodegen {
             gen.apiPackage = apiPackage;
             gen.modelPackage = modelPackage;
             gen.params = params;
+            gen.models = models;
+            gen.operationsByClassName = operationsByClassName;
+            gen.typeMapping = typeMapping;
             var ctx = frag.context();
             gen.generate((C) ctx).writeTo(out);
         };
@@ -3064,6 +1908,9 @@ public class KoraCodegen extends DefaultCodegen {
             gen.apiPackage = apiPackage;
             gen.modelPackage = modelPackage;
             gen.params = params;
+            gen.models = models;
+            gen.operationsByClassName = operationsByClassName;
+            gen.typeMapping = typeMapping;
             var ctx = frag.context();
             gen.generate((C) ctx).writeTo(out);
         };
@@ -3071,9 +1918,5 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public void postProcess() {
-    }
-
-    private boolean isNeedGenerateModule() {
-        return params.delegateMethodBodyMode.isDelegateMethodBodyModeNeedsDefaultComponent();
     }
 }

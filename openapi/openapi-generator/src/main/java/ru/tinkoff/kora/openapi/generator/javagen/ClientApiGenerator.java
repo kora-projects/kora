@@ -14,7 +14,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     @Override
     public JavaFile generate(OperationsMap ctx) {
         var b = TypeSpec.interfaceBuilder((String) ctx.get("classname"))
-            .addAnnotation(AnnotationSpec.builder(Classes.generated).addMember("value", "$S", ClientApiGenerator.class.getCanonicalName()).build())
+            .addAnnotation(generated())
             .addAnnotation(buildHttpClientAnnotation(ctx));
         for (var operation : ctx.getOperations().getOperation()) {
             b.addMethod(buildMethod(ctx, operation));
@@ -42,8 +42,11 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(returnType)
             .addCode("return this.$N(", operation.operationId);
+        if (operation.isDeprecated) {
+            b.addAnnotation(Deprecated.class);
+        }
         var paramsCounter = 0;
-        if (operation.hasAuthMethods && params.authAsMethodArgument()) {
+        if (operation.hasAuthMethods && params.authAsMethodArgument) {
             var param = this.buildAuthParameter(operation);
             b.addParameter(param);
             paramsCounter++;
@@ -86,8 +89,11 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(returnType)
             .addCode("return this.$N(", operation.operationId);
+        if (operation.isDeprecated) {
+            b.addAnnotation(Deprecated.class);
+        }
         var paramsCounter = 0;
-        if (operation.hasAuthMethods && params.authAsMethodArgument()) {
+        if (operation.hasAuthMethods && params.authAsMethodArgument) {
             var param = this.buildAuthParameter(operation);
             b.addParameter(param);
             paramsCounter++;
@@ -126,6 +132,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
     private TypeSpec buildJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
         var b = MethodSpec.constructorBuilder();
+        if (operation.isDeprecated) {
+            b.addAnnotation(Deprecated.class);
+        }
         for (var optionalParam : optionalParams) {
             var type = asType(ctx, operation, optionalParam).box();
             b.addParameter(ParameterSpec.builder(type, optionalParam.paramName)
@@ -199,6 +208,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .addJavadoc(buildMethodJavadoc(ctx, operation));
+        if (operation.isDeprecated) {
+            b.addAnnotation(Deprecated.class);
+        }
         this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(this.buildHttpRoute(operation));
@@ -209,7 +221,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .build()
             );
         }
-        var authMethod = this.buildMethodAuth(operation, Classes.httpClientInterceptor);
+        var authMethod = this.buildClientMethodAuth(operation);
         if (authMethod != null) {
             b.addAnnotation(authMethod);
         }
@@ -218,7 +230,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addAnnotation(Deprecated.class);
         }
         b.returns(ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
-        if (operation.hasAuthMethods && params.authAsMethodArgument()) {
+        if (operation.hasAuthMethods && params.authAsMethodArgument) {
             b.addParameter(this.buildAuthParameter(operation));
         }
         for (var param : operation.allParams) {
@@ -250,9 +262,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
     protected ParameterSpec buildAuthParameter(CodegenOperation op) {
         var authMethod = op.authMethods.stream()
-            .filter(a -> params.primaryAuth() == null || a.name.equals(params.primaryAuth()))
+            .filter(a -> params.primaryAuth == null || a.name.equals(params.primaryAuth))
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth()));
+            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
         var authName = getAuthName(authMethod.name, op.allParams);
         var p = ParameterSpec.builder(String.class, authName)
             .addAnnotation(Classes.nullable);
@@ -306,12 +318,12 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
     private AnnotationSpec buildHttpClientAnnotation(OperationsMap ctx) {
         var httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient);
-        if (params.clientConfigPrefix() != null) {
-            httpClientAnnotation.addMember("configPath", "$S", params.clientConfigPrefix() + "." + ctx.get("classname"));
+        if (params.clientConfigPrefix != null) {
+            httpClientAnnotation.addMember("configPath", "$S", params.clientConfigPrefix + "." + ctx.get("classname"));
         }
         var tag = ctx.get("baseName").toString();
-        var clientTag = params.clientTags().get(tag);
-        var defaultTag = params.clientTags().get("*");
+        var clientTag = params.clientTags.get(tag);
+        var defaultTag = params.clientTags.get("*");
         if (clientTag != null && clientTag.httpClientTag() != null) {
             httpClientAnnotation.addMember("httpClientTag", clientTag.httpClientTag() + ".class");
         } else if (defaultTag != null && defaultTag.httpClientTag() != null) {

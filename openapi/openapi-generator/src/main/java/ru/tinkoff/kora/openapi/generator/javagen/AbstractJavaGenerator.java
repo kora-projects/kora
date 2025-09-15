@@ -16,9 +16,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.openapitools.codegen.utils.StringUtils.camelize;
-
 public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, JavaFile> {
+    protected AnnotationSpec generated() {
+        return AnnotationSpec.builder(Classes.generated).addMember("value", "$S", this.getClass().getCanonicalName()).build();
+    }
 
     protected TypeSpec buildFormParamsRecord(OperationsMap ctx, CodegenOperation operation) {
         var b = MethodSpec.constructorBuilder();
@@ -48,15 +49,15 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         }
 
         return TypeSpec.recordBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
-            .addAnnotation(AnnotationSpec.builder(Classes.generated).addMember("value", "$S", ClientApiGenerator.class.getCanonicalName()).build())
+            .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .recordConstructor(b.build())
             .build();
     }
 
     @Nullable
-    protected AnnotationSpec buildMethodAuth(CodegenOperation operation, ClassName interceptorType) {
-        if (params.authAsMethodArgument()) {
+    protected AnnotationSpec buildClientMethodAuth(CodegenOperation operation) {
+        if (params.authAsMethodArgument) {
             // should be handled on parameters level
             return null;
         }
@@ -64,21 +65,34 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
             return null;
         }
         var authMethod = operation.authMethods.stream()
-            .filter(a -> params.primaryAuth() == null || a.name.equals(params.primaryAuth()))
+            .filter(a -> params.primaryAuth == null || a.name.equals(params.primaryAuth))
             .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth()));
-        var authName = camelize(authMethod.name); // camelize(toVarName(authMethod.name)); todo toVarName
+            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
+        var authName = camelize(toVarName(authMethod.name));
 
         return AnnotationSpec
             .builder(Classes.interceptWith)
-            .addMember("value", "$T.class", interceptorType)
+            .addMember("value", "$T.class", Classes.httpClientInterceptor)
+            .addMember("tag", "@$T($T.class)", Classes.tag, ClassName.get(apiPackage, "ApiSecurity", authName))
+            .build();
+    }
+
+    @Nullable
+    protected AnnotationSpec buildServerMethodAuth(CodegenOperation operation) {
+        if (!operation.hasAuthMethods) {
+            return null;
+        }
+        var authName = serverOperationAuthName(operation);
+        return AnnotationSpec
+            .builder(Classes.interceptWith)
+            .addMember("value", "$T.class", Classes.httpServerInterceptor)
             .addMember("tag", "@$T($T.class)", Classes.tag, ClassName.get(apiPackage, "ApiSecurity", authName))
             .build();
     }
 
 
     protected List<AnnotationSpec> buildInterceptors(String tag, ClassName defaultInterceptorType) {
-        var interceptors = params.interceptors().getOrDefault(tag, params.interceptors().get("*"));
+        var interceptors = params.interceptors.getOrDefault(tag, params.interceptors.get("*"));
         if (interceptors == null) {
             return List.of();
         }
@@ -129,17 +143,20 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .build());
         }
         if (param.isBodyParam && KoraCodegen.isContentJson(param)) {
-            b.addAnnotation(AnnotationSpec.builder(ClassName.bestGuess(params.jsonAnnotation()))
-                .build());
+            b.addAnnotation(jsonAnnotation());
         }
         if (!param.required) {
             b.addAnnotation(Classes.nullable);
         }
-        if (params.codegenMode().isServer() && params.enableValidation()) {
+        if (params.codegenMode.isServer() && params.enableValidation) {
             var validation = getValidation(param);
             b.addAnnotation(validation);
         }
         return b.build();
+    }
+
+    protected AnnotationSpec jsonAnnotation() {
+        return AnnotationSpec.builder(Classes.json).build();
     }
 
     @Nullable
@@ -256,9 +273,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
 
     protected List<AnnotationSpec> buildAdditionalAnnotations(String tag) {
         var result = new ArrayList<AnnotationSpec>();
-        var additionalAnnotations = params.additionalContractAnnotations().get(tag);
+        var additionalAnnotations = params.additionalContractAnnotations.get(tag);
         if (additionalAnnotations == null) {
-            additionalAnnotations = params.additionalContractAnnotations().getOrDefault("*", List.of());
+            additionalAnnotations = params.additionalContractAnnotations.getOrDefault("*", List.of());
         }
         for (var additionalAnnotation : additionalAnnotations) {
             if (additionalAnnotation.annotation() != null && !additionalAnnotation.annotation().isBlank()) {
