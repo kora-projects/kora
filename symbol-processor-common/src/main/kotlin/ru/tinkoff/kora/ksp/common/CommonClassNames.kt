@@ -174,12 +174,12 @@ object CommonClassNames {
     }
 
     fun KSTypeReference.isVoid(): Boolean {
-        val typeAsStr = resolve().toClassName().canonicalName
+        val typeAsStr = resolve().declaration.let{ if (it is KSClassDeclaration) it.toClassName() else null}?.canonicalName
         return Void::class.qualifiedName == typeAsStr || "void" == typeAsStr || Unit::class.qualifiedName == typeAsStr
     }
 
     fun KSTypeReference.isDeferred(): Boolean {
-        val typeAsStr = resolve().toClassName().canonicalName
+        val typeAsStr = resolve().declaration.let{ if (it is KSClassDeclaration) it.toClassName() else null}?.canonicalName
         return typeAsStr == deferred.canonicalName
     }
 }
