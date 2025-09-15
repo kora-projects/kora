@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.ibm.icu.text.Transliterator;
+import com.palantir.javapoet.JavaFile;
 import com.samskivert.mustache.Mustache;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.Operation;
@@ -36,6 +37,7 @@ import org.openapitools.codegen.utils.CamelizeOption;
 import org.openapitools.codegen.utils.ModelUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.openapi.generator.javagen.ClientApiGenerator;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,7 +49,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.openapitools.codegen.utils.ModelUtils.getSchemaItems;
-import static org.openapitools.codegen.utils.StringUtils.*;
+import static org.openapitools.codegen.utils.StringUtils.camelize;
+import static org.openapitools.codegen.utils.StringUtils.escape;
 
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class KoraCodegen extends DefaultCodegen {
@@ -132,18 +135,18 @@ public class KoraCodegen extends DefaultCodegen {
         }
     }
 
-    record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
+    public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
-    record Interceptor(@Nullable String type, @Nullable Object tag) {}
+    public record Interceptor(@Nullable String type, @Nullable Object tag) {}
 
-    record AdditionalAnnotation(@Nullable String annotation) {}
+    public record AdditionalAnnotation(@Nullable String annotation) {}
 
     @Override
     public String getName() {
         return "kora";
     }
 
-    record CodegenParams(
+    public record CodegenParams(
         Mode codegenMode,
         String jsonAnnotation,
         boolean enableValidation,
@@ -2201,6 +2204,7 @@ public class KoraCodegen extends DefaultCodegen {
             for (var formParam : op.formParams) {
                 boolean isEnum = formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty());
                 if (formParam.isModel || isEnum) {
+                    formParam.isEnum = true;
                     formParam.vendorExtensions.put("requiresMapper", true);
                     String type;
                     if (isEnum) {
@@ -2467,25 +2471,25 @@ public class KoraCodegen extends DefaultCodegen {
             }
 
             if (params.codegenMode.isClient()) {
-                var requiredParams = new ArrayList<CodegenParameter>();
-                var optionalParams = new ArrayList<CodegenParameter>();
-                for (var param : op.allParams) {
-                    if (param.isHeaderParam && params.implicitHeaders) {
-                        continue;
-                    }
-
-                    if (param.notRequiredOrIsNullable() && !param.isPathParam) {
-                        optionalParams.add(param);
-                        param.vendorExtensions.put("x-optional-params", optionalParams);
-                        op.vendorExtensions.put("x-have-optional", true);
-                    } else {
-                        requiredParams.add(param);
-                        param.vendorExtensions.put("x-required-params", requiredParams);
-                    }
-                }
-
-                op.vendorExtensions.put("x-required-params", requiredParams);
-                op.vendorExtensions.put("x-optional-params", optionalParams);
+//                var requiredParams = new ArrayList<CodegenParameter>();
+//                var optionalParams = new ArrayList<CodegenParameter>();
+//                for (var param : op.allParams) {
+//                    if (param.isHeaderParam && params.implicitHeaders) {
+//                        continue;
+//                    }
+//
+//                    if (param.notRequiredOrIsNullable() && !param.isPathParam) {
+//                        optionalParams.add(param);
+//                        param.vendorExtensions.put("x-optional-params", optionalParams);
+//                        op.vendorExtensions.put("x-have-optional", true);
+//                    } else {
+//                        requiredParams.add(param);
+//                        param.vendorExtensions.put("x-required-params", requiredParams);
+//                    }
+//                }
+//
+//                op.vendorExtensions.put("x-required-params", requiredParams);
+//                op.vendorExtensions.put("x-optional-params", optionalParams);
             }
         }
         if (params.codegenMode.isClient()) {
@@ -3059,12 +3063,12 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String sanitizeTag(String tag) {
-        tag = camelize(underscore(sanitizeName(tag)));
-
-        // tag starts with numbers
-        if (tag.matches("^\\d.*")) {
-            tag = "Class" + tag;
-        }
+//        tag = camelize(underscore(sanitizeName(tag)));
+//
+//         tag starts with numbers
+//        if (tag.matches("^\\d.*")) {
+//            tag = "Class" + tag;
+//        }
         return tag;
     }
 
@@ -3168,7 +3172,18 @@ public class KoraCodegen extends DefaultCodegen {
                 var text = fragment.execute();
                 out.write(this.upperCase(toVarName(text)));
             })
+            .put("javaClientApi", javaGen(new ClientApiGenerator()))
             ;
+    }
+
+    <C, T extends AbstractGenerator<C, JavaFile>> Mustache.Lambda javaGen(T gen) {
+        return (frag, out) -> {
+            gen.apiPackage = apiPackage;
+            gen.modelPackage = modelPackage;
+            gen.params = params;
+            var ctx = frag.context();
+            gen.generate((C) ctx).writeTo(out);
+        };
     }
 
     @Override
