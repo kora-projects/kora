@@ -77,6 +77,12 @@ components:
           default: "MQ=="
         someBoolean:
           type: boolean
+        uuid:
+          type: string
+          format: uuid
+        hostname:
+          type: string
+          format: hostname
         uri:
           type: string
           format: uri

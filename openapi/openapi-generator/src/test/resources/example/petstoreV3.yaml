@@ -201,6 +201,7 @@ components:
                 format: int64
               name:
                 type: string
+                format: my-custom
               tag:
                 type: string
         PetInfo:
