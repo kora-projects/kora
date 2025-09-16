@@ -1736,8 +1736,13 @@ public class KoraCodegen extends DefaultCodegen {
     }
 
     @Override
-    public String getSchemaType(Schema p) {
-        String openAPIType = super.getSchemaType(p);
+    public String getSchemaType(Schema schema) {
+        String typeFormat = ModelUtils.getType(schema) + "+" + schema.getFormat();
+        if (typeMapping.containsKey(typeFormat)) {
+            return typeMapping.get(typeFormat);
+        }
+
+        String openAPIType = super.getSchemaType(schema);
 
         // don't apply renaming on types from the typeMapping
         if (typeMapping.containsKey(openAPIType)) {
@@ -1745,7 +1750,7 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         if (null == openAPIType) {
-            LOGGER.error("No Type defined for Schema {}", p);
+            LOGGER.error("No Type defined for Schema {}", schema);
         }
         return toModelName(openAPIType);
     }
