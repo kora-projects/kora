@@ -28,12 +28,21 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         return switch (type) {
             case "as400", "db2" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.IBM_DB2;
             case "derby" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.DERBY;
-            case "h2" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.H2DATABASE;
-            case "hsqldb" -> "hsqldb";
+            case "h2", "h2database" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.H2DATABASE;
+            case "hsqldb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.HSQLDB;
             case "mariadb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MARIADB;
             case "mysql" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MYSQL;
+            case "sqlite" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.SQLITE;
             case "oracle" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.ORACLE_DB;
             case "postgresql", "postgres" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.POSTGRESQL;
+            case "cassandra" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.CASSANDRA;
+            case "clickhouse" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.CLICKHOUSE;
+            case "cockroachdb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.COCKROACHDB;
+            case "couchbase" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.COUCHBASE;
+            case "couchdb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.COUCHDB;
+            case "hive" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.HIVE;
+            case "influxdb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.INFLUXDB;
+            case "trino" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.TRINO;
             case "jtds", "microsoft", "sqlserver" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MICROSOFT_SQL_SERVER;
             default -> DbIncubatingAttributes.DbSystemNameIncubatingValues.OTHER_SQL;
         };
