@@ -29,7 +29,7 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
             case "as400", "db2" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.IBM_DB2;
             case "derby" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.DERBY;
             case "h2", "h2database" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.H2DATABASE;
-            case "hsqldb" -> "hsqldb";
+            case "hsqldb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.HSQLDB;
             case "mariadb" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MARIADB;
             case "mysql" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.MYSQL;
             case "sqlite" -> DbIncubatingAttributes.DbSystemNameIncubatingValues.SQLITE;
