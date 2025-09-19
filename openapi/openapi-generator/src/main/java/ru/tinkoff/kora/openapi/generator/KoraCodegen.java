@@ -1909,7 +1909,6 @@ public class KoraCodegen extends DefaultCodegen {
 
         Set<String> filteredToSaveSchemas = new HashSet<>(rootSchemas);
         Map<String, Schema> schemas = ModelUtils.getSchemas(openAPI);
-        Map<String, ApiResponse> responses = openAPI.getComponents().getResponses();
 
         schemas.forEach((name, schema) -> {
             if (rootSchemas.contains(name)) {
