@@ -58,11 +58,12 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
 
     private static DataBaseTelemetry getTelemetry(JdbcDatabaseConfig config, DataBaseTelemetryFactory factory) {
         var jdbcUrl = config.jdbcUrl();
+        var jdbcDatabase = jdbcUrl.substring(5, jdbcUrl.indexOf(":", 5));
         var telemetry = factory.get(
             config.telemetry(),
             config.poolName(),
             "jdbc",
-            jdbcUrl.substring(4, jdbcUrl.indexOf(":", 5)),
+            jdbcDatabase,
             config.username()
         );
         return Objects.requireNonNullElse(telemetry, DataBaseTelemetryFactory.EMPTY);
