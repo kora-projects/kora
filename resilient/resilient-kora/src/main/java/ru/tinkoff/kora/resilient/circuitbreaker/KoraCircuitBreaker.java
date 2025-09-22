@@ -147,8 +147,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                                String action,
                                @Nullable Throwable throwable) {
         if (throwable != null) {
-            if (logger.isDebugEnabled()) {
-                logger.debug("CircuitBreaker '{}' switched from {} to {} on {} due to exception",
+            if (logger.isTraceEnabled()) {
+                logger.trace("CircuitBreaker '{}' switched from {} to {} on {} due to exception",
                     name, prevState, newState, action, throwable);
             } else if (logger.isInfoEnabled()) {
                 logger.info("CircuitBreaker '{}' switched from {} to {} on {} due to exception: {}",
