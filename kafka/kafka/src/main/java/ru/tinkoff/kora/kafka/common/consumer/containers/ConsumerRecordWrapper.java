@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
+import jakarta.annotation.Nonnull;
+import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.record.TimestampType;
@@ -96,6 +98,11 @@ public final class ConsumerRecordWrapper<K, V> extends ConsumerRecord<K, V> {
     @Override
     public Optional<Integer> leaderEpoch() {
         return realRecord.leaderEpoch();
+    }
+
+    @Nonnull
+    public ConsumerRecord<byte[], byte[]> unwrap() {
+        return realRecord;
     }
 
     @Override

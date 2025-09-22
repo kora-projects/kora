@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
+import jakarta.annotation.Nonnull;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.*;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -268,7 +269,13 @@ public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
         realConsumer.wakeup();
     }
 
+    @Nonnull
     public Consumer<byte[], byte[]> unwrap() {
         return realConsumer;
+    }
+
+    @Override
+    public String toString() {
+        return realConsumer.toString();
     }
 }
