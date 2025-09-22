@@ -28,10 +28,19 @@ final class KoraFallback implements Fallback {
             logger.debug("Fallback '{}' is disabled", name);
             return false;
         } else if (failurePredicate.test(throwable)) {
-            logger.debug("Initiating Fallback '{}' due to: {}", name, throwable.toString());
+            if (logger.isTraceEnabled()) {
+                logger.trace("Fallback '{}' initiating due to exception", name, throwable);
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Fallback '{}' initiating due to exception: {}", name, throwable.toString());
+            }
             metrics.recordExecute(name, throwable);
             return true;
         } else {
+            if (logger.isTraceEnabled()) {
+                logger.trace("Fallback '{}' rejected exception due to predicate", name, throwable);
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Fallback '{}' rejected exception due to predicate: {}", name, throwable.toString());
+            }
             return false;
         }
     }
