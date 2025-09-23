@@ -20,6 +20,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
+import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
@@ -1852,8 +1853,20 @@ public class KoraCodegen extends DefaultCodegen {
         }
 
         List<String> requestSchemas = ops.stream()
-            .filter(op -> op.getRequestBody() != null && op.getRequestBody().getContent() != null)
-            .flatMap(op -> op.getRequestBody().getContent().values().stream())
+            .flatMap(op -> {
+                if (op.getRequestBody() != null && op.getRequestBody().getContent() != null) {
+                    return op.getRequestBody().getContent().values().stream();
+                } else if (op.getRequestBody() != null && op.getRequestBody().get$ref() != null) {
+                    String simpleRef = ModelUtils.getSimpleRef(op.getRequestBody().get$ref());
+                    RequestBody requestBodyFromRef = openAPI.getComponents().getRequestBodies().get(simpleRef);
+                    if (requestBodyFromRef == null || requestBodyFromRef.getContent() == null) {
+                        return Stream.empty();
+                    }
+                    return requestBodyFromRef.getContent().values().stream();
+                } else {
+                    return Stream.of();
+                }
+            })
             .filter(req -> req.getSchema() != null)
             .flatMap(req -> getAllRefs(req.getSchema()).stream())
             .filter(Objects::nonNull)
@@ -1862,9 +1875,28 @@ public class KoraCodegen extends DefaultCodegen {
             .toList();
 
         List<String> responseSchemas = ops.stream()
-            .flatMap(op -> op.getResponses().values().stream())
+            .flatMap(op -> {
+                if (op.getResponses() != null) {
+                    return op.getResponses().values().stream();
+                } else {
+                    return Stream.of();
+                }
+            })
             .filter(res -> res.getContent() != null)
-            .flatMap(res -> res.getContent().values().stream())
+            .flatMap(res -> {
+                if (res.getContent() != null) {
+                    return res.getContent().values().stream();
+                } else if (res.get$ref() != null) {
+                    String simpleRef = ModelUtils.getSimpleRef(res.get$ref());
+                    var responseFromRef = openAPI.getComponents().getResponses().get(simpleRef);
+                    if (responseFromRef == null || responseFromRef.getContent() == null) {
+                        return Stream.empty();
+                    }
+                    return responseFromRef.getContent().values().stream();
+                } else {
+                    return Stream.of();
+                }
+            })
             .filter(res -> res.getSchema() != null)
             .flatMap(req -> getAllRefs(req.getSchema()).stream())
             .filter(Objects::nonNull)
