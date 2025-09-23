@@ -24,10 +24,14 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
             throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
         }
         try {
-            var nanos = parseDuration(str);
-            return Duration.ofNanos(nanos);
+            return Duration.parse(str);
         } catch (Exception e) {
-            throw ConfigValueExtractionException.parsingError(value, e);
+            try {
+                var nanos = parseDuration(str);
+                return Duration.ofNanos(nanos);
+            } catch (Exception e) {
+                throw ConfigValueExtractionException.parsingError(value, e);
+            }
         }
     }
 
