@@ -1892,6 +1892,11 @@ public class KoraCodegen extends DefaultCodegen {
             .put("kotlinClientSecuritySchema", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ClientSecuritySchemaGenerator()))
             .put("kotlinModel", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ModelGenerator()))
             .put("kotlinServerApi", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerApiGenerator()))
+            .put("kotlinServerApiDelegate", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerApiDelegateGenerator()))
+            .put("kotlinServerApiModule", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerApiModuleGenerator()))
+            .put("kotlinServerRequestMappers", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerRequestMappersGenerator()))
+            .put("kotlinServerResponseMappers", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerResponseMappersGenerator()))
+            .put("kotlinServerSecuritySchema", kotlinGen(new ru.tinkoff.kora.openapi.generator.kotlingen.ServerSecuritySchemaGenerator()))
             ;
     }
 

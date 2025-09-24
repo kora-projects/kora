@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.model.OperationsMap;
 import ru.tinkoff.kora.openapi.generator.DelegateMethodBodyMode;
@@ -60,10 +59,10 @@ public class ServerApiDelegateGenerator extends AbstractJavaGenerator<Operations
         }
         if (operation.getHasFormParams()) {
             var className = ClassName.get(
-                apiPackage, ctx.get("classname") + "Controller", StringUtils.capitalize(operation.operationId) + "FormParam"
+                apiPackage, ctx.get("classname") + "Controller", capitalize(operation.operationId) + "FormParam"
             );
             var mapper = ClassName.get(
-                apiPackage, ctx.get("classname") + "ServerRequestMappers", StringUtils.capitalize(operation.operationId) + "FormParamRequestMapper"
+                apiPackage, ctx.get("classname") + "ServerRequestMappers", capitalize(operation.operationId) + "FormParamRequestMapper"
             );
             var parameter = ParameterSpec.builder(className, "form")
                 .addAnnotation(AnnotationSpec.builder(Classes.mapping)
@@ -73,7 +72,7 @@ public class ServerApiDelegateGenerator extends AbstractJavaGenerator<Operations
                 .build();
             b.addParameter(parameter);
         }
-        b.returns(ClassName.get(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
+        b.returns(ClassName.get(apiPackage, ctx.get("classname").toString() + "Responses", capitalize(operation.operationId) + "ApiResponse"));
         return b.build();
     }
 }

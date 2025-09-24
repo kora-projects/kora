@@ -123,33 +123,6 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
 
         }
         b.add(");\n");
-//      class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState {
-//      {{#formParams}}  @jakarta.annotation.Nullable{{#isFile}}
-//      ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}} = null;{{/isFile}}{{^isFile}}
-//      {{{dataType}}} {{paramName}} = null;{{/isFile}}{{/formParams}}
-//      }
-//      var parts = MultipartReader.read(request);
-//        var state = new {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParamState();
-//        for (var part : parts) {
-//          switch (part.name()) {
-//            default:
-//              break;{{#formParams}}
-//              case "{{baseName}}":
-//          {{#isFile}}  state.{{paramName}} = part;
-//              break;
-//          {{/isFile}}{{^isFile}}  state.{{paramName}} = new String(part.content(), java.nio.charset.StandardCharsets.UTF_8);
-//              break;
-//          {{/isFile}}{{/formParams}}
-//          }
-//        }
-//        {{#formParams}}{{#required}}
-//        if (state.{{paramName}} == null) {
-//          throw ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(400, "Form key '{{baseName}}' is required");
-//        }
-//        {{/required}}{{/formParams}}
-//        return new {{classname}}Controller.{{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam(
-//          {{#formParams}}state.{{paramName}}{{^-last}}, {{/-last}}{{/formParams}}
-//        );
         return b.build();
     }
 
