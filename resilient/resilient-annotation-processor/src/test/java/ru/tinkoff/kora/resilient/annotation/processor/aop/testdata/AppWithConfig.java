@@ -34,6 +34,13 @@ public interface AppWithConfig extends ResilientModule, DefaultConfigExtractorsM
                       delay = 100ms
                       attempts = 2
                     }
+                    customZeroAttempts {
+                      delay = 100ms
+                      attempts = 0
+                    }
+                    customDisabled {
+                      enabled = false
+                    }
                   }
                 }
                 """

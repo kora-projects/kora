@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
@@ -21,15 +20,10 @@ class RetryFluxTests extends AppRunner {
         return getServiceFromGraph(graph, RetryTarget.class);
     }
 
-    private static final int RETRY_SUCCESS = 1;
-    private static final int RETRY_FAIL = 5;
+    private static final int RETRY_SUCCESS = 0;
+    private static final int RETRY_FAIL = 3;
 
     private final RetryTarget retryableTarget = getService();
-
-    @BeforeEach
-    void setup() {
-        retryableTarget.reset();
-    }
 
     @Test
     void fluxRetrySuccess() {
@@ -37,10 +31,11 @@ class RetryFluxTests extends AppRunner {
         var service = retryableTarget;
 
         // then
-        service.setRetryAttempts(RETRY_SUCCESS);
+        service.setFailAttempts(RETRY_SUCCESS);
 
         // then
         assertEquals("1", service.retryFlux("1").blockFirst(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
     }
 
     @Test
@@ -49,7 +44,7 @@ class RetryFluxTests extends AppRunner {
         var service = retryableTarget;
 
         // then
-        service.setRetryAttempts(RETRY_FAIL);
+        service.setFailAttempts(RETRY_FAIL);
 
         // then
         try {
@@ -57,6 +52,59 @@ class RetryFluxTests extends AppRunner {
             fail("Should not happen");
         } catch (RetryExhaustedException e) {
             assertNotNull(e.getMessage());
+            assertEquals(2, service.getRetryAttempts());
         }
+    }
+
+    @Test
+    void fluxRetryZeroSuccess() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_SUCCESS);
+
+        // then
+        assertEquals("1", service.retryFluxZeroAttempts("1").blockFirst(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
+    }
+
+    @Test
+    void fluxRetryZeroFail() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_FAIL);
+
+        // then
+        assertThrows(IllegalStateException.class, () -> service.retryFluxZeroAttempts("1").blockFirst(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
+    }
+
+    @Test
+    void fluxRetryDisabledSuccess() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_SUCCESS);
+
+        // then
+        assertEquals("1", service.retryFluxDisabled("1").blockFirst(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
+    }
+
+    @Test
+    void fluxRetryDisabledFail() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_FAIL);
+
+        // then
+        assertThrows(IllegalStateException.class, () -> service.retryFluxDisabled("1").blockFirst(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
     }
 }
