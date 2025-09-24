@@ -194,16 +194,20 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         uriWithPlaceholdersStringB.append("placeholder");
                         if (requiresConverter(routePart.parameter!!.parameter.type.resolve())) {
                             val converterName = getConverterName(methodData, routePart.parameter.parameter);
+                            // Replace "+" with "%20" because URLEncoder.encode, following
+                            // application/x-www-form-urlencoded rules, encodes spaces as "+".
                             b.add(
-                                "  .plus(%T.encode(%L.convert(%N), %T.UTF_8))\n",
+                                "  .plus(%T.encode(%L.convert(%N), %T.UTF_8)).replace(\"+\", \"%%20\")\n",
                                 URLEncoder::class.asClassName(),
                                 converterName,
                                 routePart.parameter.parameter.name?.asString(),
                                 StandardCharsets::class.asClassName()
                             );
                         } else {
+                            // Replace "+" with "%20" because URLEncoder.encode, following
+                            // application/x-www-form-urlencoded rules, encodes spaces as "+".
                             b.add(
-                                "  .plus(%T.encode(%N.toString(), %T.UTF_8))\n",
+                                "  .plus(%T.encode(%N.toString(), %T.UTF_8)).replace(\"+\", \"%%20\")\n",
                                 URLEncoder::class.asClassName(),
                                 routePart.parameter.parameter.name?.asString(),
                                 StandardCharsets::class.asClassName()
