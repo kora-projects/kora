@@ -2,7 +2,7 @@
 slf4j = "2.0.17"
 micrometer = "1.12.13"
 reactor = "3.6.18"
-kotlin_ = "1.9.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
+kotlin-stdlib = "1.9.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
 kotlin-coroutines = "1.7.3"
 jackson = "2.19.2"
 mockserver = "5.15.0"
@@ -16,16 +16,21 @@ grpc-kotlin = "1.4.3"
 kotlin-testing = "1.5.0"
 ksp = "1.9.10-1.0.13"
 kotlinpoet = "1.18.1"
+jetbrains-annotations = "24.1.0"
 swagger = "2.2.35"
 opentelemetry = "1.53.0"
 undertow = "2.3.18.Final"
 undertow-jakarta = "6.2.12.Final"
 camunda7 = "7.21.0"
 zeebe = "8.7.10"
+jakarta = "2.1.1"
+junit-jupiter = "5.12.2"
+junit-platform = "1.12.2"
+guava = "33.3.1-jre"
 
 ["libraries"]
 jsr305 = { module = "com.google.code.findbugs:jsr305", version = "3.0.2" }
-jakarta-annotations = { module = "jakarta.annotation:jakarta.annotation-api", version = "2.1.1" }
+jakarta-annotations = { module = "jakarta.annotation:jakarta.annotation-api", version.ref = "jakarta" }
 
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-jul = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
@@ -55,11 +60,11 @@ reactor-core = { module = "io.projectreactor:reactor-core", version.ref = "react
 reactor-test = { module = "io.projectreactor:reactor-test", version.ref = "reactor" }
 reactor-pool = { module = "io.projectreactor.addons:reactor-pool", version = "1.1.3" }
 
-kotlin-stdlib-common = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin_" }
-kotlin-stdlib-lib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin_" }
-kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin_" }
-kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin_" }
-jetbrains-annotations = { module = "org.jetbrains:annotations", version = "24.1.0" }
+kotlin-stdlib-common = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin-stdlib" }
+kotlin-stdlib-lib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin-stdlib" }
+kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin-stdlib" }
+kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin-stdlib" }
+jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 
 kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
 kotlin-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlin-coroutines" }
@@ -111,9 +116,6 @@ r2dbc-spi = { module = "io.r2dbc:r2dbc-spi", version = "1.0.0.RELEASE" }
 r2dbc-pool = { module = "io.r2dbc:r2dbc-pool", version = "1.0.2.RELEASE" }
 r2dbc-postgres = { module = "org.postgresql:r2dbc-postgresql", version = "1.0.7.RELEASE" }
 
-byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version = "1.17.6" }
-byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version = "1.17.6" }
-
 javapoet = { module = "com.squareup:javapoet", version = "1.13.0" }
 classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.181" }
 
@@ -124,8 +126,8 @@ quartz = { module = "org.quartz-scheduler:quartz", version = "2.4.0" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
 
 awaitility = { module = "org.awaitility:awaitility", version = "4.2.2" }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version = "5.12.2" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version = "1.12.2" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "5.4.0" }
 mockk = { module = "io.mockk:mockk", version = "1.13.11" }
@@ -146,7 +148,6 @@ grpc-java-gen = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-j
 
 testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
-testcontainers-r2dbc = { module = "org.testcontainers:r2dbc", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainers-cassandra = { module = "org.testcontainers:cassandra", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
