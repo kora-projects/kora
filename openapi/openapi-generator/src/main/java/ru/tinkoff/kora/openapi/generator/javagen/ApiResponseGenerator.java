@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenResponse;
 import org.openapitools.codegen.model.OperationsMap;
 
@@ -14,7 +13,7 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
         var b = TypeSpec.interfaceBuilder(className)
             .addAnnotation(generated());
         for (var operation : ctx.getOperations().getOperation()) {
-            var responseClassName = className.nestedClass(StringUtils.capitalize(operation.operationId) + "ApiResponse");
+            var responseClassName = className.nestedClass(capitalize(operation.operationId) + "ApiResponse");
             if (operation.responses.size() == 1) {
                 b.addType(response(ctx, responseClassName, operation.responses.getFirst()));
             } else {
@@ -22,7 +21,7 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
                     .addAnnotation(generated())
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.SEALED);
                 for (var response : operation.responses) {
-                    var codeResponseName = responseClassName.nestedClass(StringUtils.capitalize(operation.operationId) + (response.isDefault ? "Default" : response.code) + "ApiResponse");
+                    var codeResponseName = responseClassName.nestedClass(capitalize(operation.operationId) + (response.isDefault ? "Default" : response.code) + "ApiResponse");
                     t.addType(response(ctx, codeResponseName, response));
                 }
                 b.addType(t.build());
@@ -49,7 +48,7 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
             c.addParameter(asType(response), "content");
         }
         for (var header : response.headers) {
-            var type = asType(header); // todo Some header decoding maybe? We can sure as hell do it
+            var type = asType(header); // todo Some header decoding maybe? We can do it
             c.addParameter(ClassName.get(String.class), header.nameInCamelCase);
         }
 

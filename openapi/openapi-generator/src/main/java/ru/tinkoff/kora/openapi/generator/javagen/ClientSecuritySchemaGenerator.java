@@ -16,12 +16,12 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Classes.module);
+        if (params.authAsMethodArgument) {
+            return JavaFile.builder(apiPackage, b.build()).build();
+        }
         @SuppressWarnings("unchecked")
         var authMethods = (List<CodegenSecurity>) ctx.get("authMethods");
         for (var authMethod : authMethods) {
-            if (params.authAsMethodArgument) {
-                continue;
-            }
             b.addType(buildTag(authMethod));
             switch (authMethod.type) {
                 case "http" -> {

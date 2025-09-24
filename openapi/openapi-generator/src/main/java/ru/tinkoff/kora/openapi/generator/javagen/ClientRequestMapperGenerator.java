@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.model.OperationsMap;
@@ -29,8 +28,8 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
     }
 
     private TypeSpec buildFormMapper(OperationsMap ctx, ClassName rootName, CodegenOperation operation) {
-        var className = rootName.nestedClass(StringUtils.capitalize(operation.operationId) + "FormParamRequestMapper");
-        var formParamClassName = ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "FormParam");
+        var className = rootName.nestedClass(capitalize(operation.operationId) + "FormParamRequestMapper");
+        var formParamClassName = ClassName.get(apiPackage, ctx.get("classname").toString(), capitalize(operation.operationId) + "FormParam");
         var b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
@@ -58,6 +57,9 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var multipartForm = operation.consumes != null && operation.consumes.stream()
             .map(m -> m.get("mediaType"))
             .anyMatch("multipart/form-data"::equalsIgnoreCase);
+        if (urlEncodedForm && multipartForm) {
+            throw new IllegalArgumentException("Unsupported form type: " + operation);
+        }
         if (urlEncodedForm) {
             apply.addStatement("var b = new $T()", ClassName.get("ru.tinkoff.kora.http.client.common.form", "UrlEncodedWriter"));
             for (var formParam : operation.formParams) {
@@ -70,9 +72,6 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
                 apply.endControlFlow();
             }
             apply.addStatement("return b.write()");
-            if (multipartForm) {
-                throw new IllegalStateException();
-            }
         } else if (multipartForm) {
             apply.addStatement("var l = new $T<$T>()", ClassName.get(ArrayList.class), Classes.formPart);
             for (var formParam : operation.formParams) {

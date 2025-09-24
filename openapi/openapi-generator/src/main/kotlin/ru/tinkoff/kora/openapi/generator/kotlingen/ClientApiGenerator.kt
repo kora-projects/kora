@@ -8,7 +8,7 @@ import org.openapitools.codegen.model.OperationsMap
 class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     override fun generate(ctx: OperationsMap): FileSpec {
         val b = TypeSpec.interfaceBuilder(ctx["classname"] as String)
-            .addAnnotation(AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", ClientApiGenerator::class.qualifiedName!!).build())
+            .addAnnotation(generated())
             .addAnnotation(buildHttpClientAnnotation(ctx))
         for (operation in ctx.operations.operation) {
             b.addFunction(buildFunction(ctx, operation))

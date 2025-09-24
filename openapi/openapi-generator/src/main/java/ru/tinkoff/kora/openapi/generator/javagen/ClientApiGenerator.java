@@ -226,9 +226,6 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addAnnotation(authMethod);
         }
         this.buildInterceptors(tag, Classes.httpClientInterceptor).forEach(b::addAnnotation);
-        if (operation.isDeprecated) {
-            b.addAnnotation(Deprecated.class);
-        }
         b.returns(ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             b.addParameter(this.buildAuthParameter(operation));

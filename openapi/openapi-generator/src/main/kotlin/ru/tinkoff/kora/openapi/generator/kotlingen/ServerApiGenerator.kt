@@ -8,7 +8,7 @@ import org.openapitools.codegen.model.OperationsMap
 class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     override fun generate(ctx: OperationsMap): FileSpec {
         val b = TypeSpec.classBuilder(ctx["classname"] as String + "Controller")
-            .addAnnotation(AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", ServerApiGenerator::class.qualifiedName.toString()).build())
+            .addAnnotation(generated())
             .addAnnotation(Classes.component.asKt())
         if (params.prefixPath != null) {
             b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).addMember("%S", params.prefixPath).build())
@@ -82,7 +82,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             val className = ClassName(
                 apiPackage, ctx.get("classname") as String + "Controller", StringUtils.capitalize(operation.operationId) + "FormParam"
             )
-            var mapper = ClassName(
+            val mapper = ClassName(
                 apiPackage, ctx.get("classname") as String + "ServerRequestMappers", StringUtils.capitalize(operation.operationId) + "FormParamRequestMapper"
             )
             val parameter = ParameterSpec.builder("form", className)

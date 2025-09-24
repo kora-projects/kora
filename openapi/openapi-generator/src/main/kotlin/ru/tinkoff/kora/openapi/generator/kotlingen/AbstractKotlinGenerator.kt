@@ -14,7 +14,7 @@ import ru.tinkoff.kora.openapi.generator.AbstractGenerator
 import ru.tinkoff.kora.openapi.generator.KoraCodegen
 
 
-abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
+abstract class AbstractKotlinGenerator<C: Any> : AbstractGenerator<C, FileSpec>() {
     protected fun buildAdditionalAnnotations(tag: String): List<AnnotationSpec> {
 
 
@@ -50,7 +50,7 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
     protected fun buildFormParamsRecord(ctx: OperationsMap, operation: CodegenOperation): TypeSpec {
         val t = TypeSpec.classBuilder(StringUtils.capitalize(operation.operationId) + "FormParam")
             .addModifiers(KModifier.DATA)
-            .addAnnotation(AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", this::class.java.getCanonicalName()).build())
+            .addAnnotation(generated())
         val b = FunSpec.constructorBuilder()
         for (formParam in operation.formParams) {
             var type = if (formParam.isFile)
@@ -80,6 +80,8 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
             .primaryConstructor(b.build())
             .build()
     }
+
+    protected fun generated() = AnnotationSpec.builder(Classes.generated.asKt()).addMember("%S", this::class.java.getCanonicalName()).build()
 
     protected fun buildMethodAuth(operation: CodegenOperation, interceptorType: ClassName): AnnotationSpec? {
         if (params.authAsMethodArgument) {
@@ -292,6 +294,7 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
 
     protected fun com.palantir.javapoet.TypeName.asKt(): TypeName = when (this) {
         is com.palantir.javapoet.ClassName -> asKt()
+        com.palantir.javapoet.ArrayTypeName.of(com.palantir.javapoet.TypeName.BYTE) -> BYTE_ARRAY
         is com.palantir.javapoet.ArrayTypeName -> ARRAY.parameterizedBy(componentType().asKt())
         is ParameterizedTypeName -> rawType().asKt().parameterizedBy(typeArguments().map { it.asKt() })
         is TypeVariableName -> com.squareup.kotlinpoet.TypeVariableName(this.name(), bounds().map { it.asKt() })
@@ -306,10 +309,14 @@ abstract class AbstractKotlinGenerator<C> : AbstractGenerator<C, FileSpec>() {
         com.palantir.javapoet.TypeName.DOUBLE -> DOUBLE
         com.palantir.javapoet.TypeName.FLOAT -> FLOAT
         com.palantir.javapoet.TypeName.BOOLEAN -> BOOLEAN
+        com.palantir.javapoet.TypeName.BYTE -> BYTE
         else -> {
             throw IllegalArgumentException("Unsupported type: $this")
         }
     }
+
+    protected fun jsonAnnotation() = AnnotationSpec.builder(Classes.json.asKt()).build()
+
 }
 
 

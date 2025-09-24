@@ -5,6 +5,7 @@ import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.NullMarked;
 import org.openapitools.codegen.*;
 import org.openapitools.codegen.model.ModelsMap;
 import org.openapitools.codegen.model.OperationsMap;
@@ -18,6 +19,7 @@ import java.time.OffsetDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@NullMarked
 public abstract class AbstractGenerator<C, R> {
     private static final Logger log = LoggerFactory.getLogger(AbstractGenerator.class);
 

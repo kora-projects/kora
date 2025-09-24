@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenResponse;
 import org.openapitools.codegen.model.OperationsMap;
@@ -28,8 +27,8 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
     }
 
     private TypeSpec responseMapper(OperationsMap ctx, ClassName mappers, CodegenOperation operation, CodegenResponse response) {
-        var responseType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
-        var className = mappers.nestedClass(StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper");
+        var responseType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", capitalize(operation.operationId) + "ApiResponse");
+        var className = mappers.nestedClass(capitalize(operation.operationId) + response.code + "ApiResponseMapper");
         var b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
@@ -55,9 +54,9 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             .addException(IOException.class);
 
         for (var header : response.headers) {
-            apply.addStatement("var $N = response.headers().getFirst($S)", header.nameInCamelCase, header.baseName);
+            apply.addStatement("var $N = response.headers().getFirst($S)", header.name, header.baseName);
             if (header.required) {
-                apply.beginControlFlow("if ($N == null)", header.nameInCamelCase)
+                apply.beginControlFlow("if ($N == null)", header.name)
                     .addStatement("throw new $T($S)", NullPointerException.class, "%s header is required, but was null".formatted(header.baseName))
                     .endControlFlow();
             }
@@ -69,7 +68,7 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
 
         var responseWithCodeType = operation.responses.size() == 1
             ? responseType
-            : responseType.nestedClass(StringUtils.capitalize(operation.operationId) + (response.isDefault ? "Default" : response.code) + "ApiResponse");
+            : responseType.nestedClass(capitalize(operation.operationId) + (response.isDefault ? "Default" : response.code) + "ApiResponse");
         var newArgs = CodeBlock.builder();
         if (response.isDefault) {
             newArgs.add("response.code()");
@@ -84,7 +83,7 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             if (!newArgs.isEmpty()) {
                 newArgs.add(", ");
             }
-            newArgs.add(header.nameInCamelCase);
+            newArgs.add(header.name);
         }
 
         return b
