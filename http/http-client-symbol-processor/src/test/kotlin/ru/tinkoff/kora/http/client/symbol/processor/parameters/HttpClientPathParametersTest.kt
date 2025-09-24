@@ -23,4 +23,16 @@ class HttpClientPathParametersTest : AbstractHttpClientTest() {
         client.invoke<Unit>("request", "test2")
     }
 
+    @Test
+    fun testSpacePathParam() {
+        val client = compile(listOf<Any>(), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test/{pathParam}")
+              fun request(@Path pathParam: String)
+            }
+            """.trimIndent())
+        onRequest("GET", "http://test-url:8080/test/test%20test") { rs -> rs.withCode(200) }
+        client.invoke<Unit>("request", "test test")
+    }
 }

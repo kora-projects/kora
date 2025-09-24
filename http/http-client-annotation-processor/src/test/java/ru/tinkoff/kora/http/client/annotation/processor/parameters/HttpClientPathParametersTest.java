@@ -26,4 +26,17 @@ public class HttpClientPathParametersTest extends AbstractHttpClientTest {
         client.invoke("request", "test2");
     }
 
+    @Test
+    public void testSpacePathParam() {
+        var client = compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/test/{pathParam}")
+              void request(@Path String pathParam);
+            }
+            """);
+
+        onRequest("GET", "http://test-url:8080/test/test%20test", rs -> rs.withCode(200));
+        client.invoke("request", "test test");
+    }
 }
