@@ -7,6 +7,7 @@ import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -30,7 +31,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     public static HttpServerResponseException of(int code, Throwable throwable) {
-        return of(throwable, code, throwable.getMessage());
+        return of(throwable, code, Objects.requireNonNull(throwable.getMessage(), "Internal server error"));
     }
 
     public static HttpServerResponseException of(int code, String text, MutableHttpHeaders headers) {
@@ -38,7 +39,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     public static HttpServerResponseException of(int code, Throwable throwable, MutableHttpHeaders headers) {
-        return of(throwable, code, throwable.getMessage(), headers);
+        return of(throwable, code, Objects.requireNonNull(throwable.getMessage(), "Internal server error"), headers);
     }
 
     public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text) {
