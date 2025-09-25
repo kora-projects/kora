@@ -52,6 +52,7 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);
         final CodeBlock body;
+
         if (MethodUtils.isMono(method)) {
             if (MethodUtils.isMonoVoid(method)) {
                 throw new ProcessingErrorException("@Cacheable can't be applied for type Void", method);
