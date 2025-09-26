@@ -147,7 +147,13 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                                String action,
                                @Nullable Throwable throwable) {
         if (throwable != null) {
-            logger.info("CircuitBreaker '{}' switched from {} to {} on {} due to: {}", name, prevState, newState, action, throwable.toString());
+            if (logger.isTraceEnabled()) {
+                logger.trace("CircuitBreaker '{}' switched from {} to {} on {} due to exception",
+                    name, prevState, newState, action, throwable);
+            } else if (logger.isInfoEnabled()) {
+                logger.info("CircuitBreaker '{}' switched from {} to {} on {} due to exception: {}",
+                    name, prevState, newState, action, throwable.toString());
+            }
         } else {
             logger.info("CircuitBreaker '{}' switched from {} to {} on {}", name, prevState, newState, action);
         }
@@ -189,7 +195,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 final boolean isAcquired = this.state.compareAndSet(stateLong, stateLong + 1);
                 if (isAcquired) {
                     if (logger.isTraceEnabled()) {
-                        logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left", name, acquired - 1);
+                        logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
+                            name, acquired - 1);
                     }
                     metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
                     return true;
@@ -197,7 +204,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                     return tryAcquire();
                 }
             } else {
-                logger.trace("CircuitBreaker '{}' rejected in HALF_OPEN state due to all {} calls acquired", name, acquired);
+                logger.debug("CircuitBreaker '{}' rejected in HALF_OPEN state due to all {} calls acquired", name, acquired);
                 metrics.recordCallAcquire(name, CallAcquireStatus.REJECTED);
                 return false;
             }
@@ -208,8 +215,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         // go to half open
         if (beenInOpenState >= waitDurationInOpenStateInMillis) {
             if (this.state.compareAndSet(stateLong, HALF_OPEN_STATE + 1)) {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
+                if (logger.isDebugEnabled()) {
+                    logger.debug("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
                         name, config.permittedCallsInHalfOpenState() - 1);
                 }
                 onStateChange(State.OPEN, State.HALF_OPEN, "acquire", null);
@@ -220,8 +227,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 return tryAcquire();
             }
         } else {
-            if (logger.isTraceEnabled()) {
-                logger.trace("CircuitBreaker '{}' rejected in OPEN state for waiting '{}' when require minimum wait time '{}'",
+            if (logger.isDebugEnabled()) {
+                logger.debug("CircuitBreaker '{}' rejected in OPEN state for waiting '{}' when require minimum wait time '{}'",
                     name, TimeUtils.durationForLogging(beenInOpenState), TimeUtils.durationForLogging(waitDurationInOpenStateInMillis));
             }
             metrics.recordCallAcquire(name, CallAcquireStatus.REJECTED);
@@ -291,10 +298,16 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         }
 
         if (!failurePredicate.test(throwable)) {
-            if (logger.isTraceEnabled()) {
+            if (logger.isDebugEnabled()) {
                 final long currentStateLong = state.get();
                 var currentState = getState(currentStateLong);
-                logger.trace("CircuitBreaker '{}' skipped error in {} state due to predicate test failed: {}", name, currentState, throwable.toString());
+                if (logger.isTraceEnabled()) {
+                    logger.debug("CircuitBreaker '{}' in {} state predicate rejected exception",
+                        name, currentState, throwable);
+                } else if (logger.isDebugEnabled()) {
+                    logger.debug("CircuitBreaker '{}' in {} state predicate rejected exception: {}",
+                        name, currentState, throwable.toString());
+                }
             }
             return;
         }
@@ -315,10 +328,24 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             onStateChange(prevState, newState, "error", throwable);
         }
 
-        if (prevState == newState) {
-            logger.trace("CircuitBreaker '{}' released in {} state on error: {}", name, newState, throwable.toString());
-        } else {
-            logger.trace("CircuitBreaker '{}' released from {} to {} state on error: {}", name, prevState, newState, throwable.toString());
+        if (logger.isDebugEnabled()) {
+            if (prevState == newState) {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("CircuitBreaker '{}' released in {} state due to exception",
+                        name, newState, throwable);
+                } else {
+                    logger.debug("CircuitBreaker '{}' released in {} state due to exception: {}",
+                        name, newState, throwable.toString());
+                }
+            } else {
+                if (logger.isTraceEnabled()) {
+                    logger.trace("CircuitBreaker '{}' released from {} to {} state due to exception",
+                        name, prevState, newState, throwable);
+                } else {
+                    logger.debug("CircuitBreaker '{}' released from {} to {} state due to exception: {}",
+                        name, prevState, newState, throwable.toString());
+                }
+            }
         }
     }
 
