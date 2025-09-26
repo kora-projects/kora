@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
@@ -21,15 +20,10 @@ class RetryMonoTests extends AppRunner {
         return getServiceFromGraph(graph, RetryTarget.class);
     }
 
-    private static final int RETRY_SUCCESS = 1;
-    private static final int RETRY_FAIL = 5;
+    private static final int RETRY_SUCCESS = 0;
+    private static final int RETRY_FAIL = 3;
 
     private final RetryTarget retryableTarget = getService();
-
-    @BeforeEach
-    void setup() {
-        retryableTarget.reset();
-    }
 
     @Test
     void monoRetrySuccess() {
@@ -37,10 +31,11 @@ class RetryMonoTests extends AppRunner {
         var service = retryableTarget;
 
         // then
-        service.setRetryAttempts(RETRY_SUCCESS);
+        service.setFailAttempts(RETRY_SUCCESS);
 
         // then
         assertEquals("1", service.retryMono("1").block(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
     }
 
     @Test
@@ -49,7 +44,7 @@ class RetryMonoTests extends AppRunner {
         var service = retryableTarget;
 
         // then
-        service.setRetryAttempts(RETRY_FAIL);
+        service.setFailAttempts(RETRY_FAIL);
 
         // then
         try {
@@ -57,6 +52,59 @@ class RetryMonoTests extends AppRunner {
             fail("Should not happen");
         } catch (RetryExhaustedException e) {
             assertNotNull(e.getMessage());
+            assertEquals(2, service.getRetryAttempts());
         }
+    }
+
+    @Test
+    void monoRetryZeroSuccess() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_SUCCESS);
+
+        // then
+        assertEquals("1", service.retryMonoZeroAttempts("1").block(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
+    }
+
+    @Test
+    void monoRetryZeroFail() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_FAIL);
+
+        // then
+        assertThrows(IllegalStateException.class, () -> service.retryMonoZeroAttempts("1").block(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
+    }
+
+    @Test
+    void monoRetryDisabledSuccess() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_SUCCESS);
+
+        // then
+        assertEquals("1", service.retryMonoDisabled("1").block(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
+    }
+
+    @Test
+    void monoRetryDisabledFail() {
+        // given
+        var service = retryableTarget;
+
+        // then
+        service.setFailAttempts(RETRY_FAIL);
+
+        // then
+        assertThrows(IllegalStateException.class, () -> service.retryMonoDisabled("1").block(Duration.ofMinutes(1)));
+        assertEquals(0, service.getRetryAttempts());
     }
 }
