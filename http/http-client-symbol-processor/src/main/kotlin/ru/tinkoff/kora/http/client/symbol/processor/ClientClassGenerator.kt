@@ -891,6 +891,10 @@ private fun KSType.findSupertype(httpClientResponseMapper: ClassName): KSType? {
         if (supertypeDecl is KSClassDeclaration && supertypeDecl.qualifiedName?.asString() == httpClientResponseMapper.canonicalName) {
             return supertypeResolved
         }
+        val recursiveAttempt = supertypeResolved.findSupertype(httpClientResponseMapper)
+        if (recursiveAttempt != null) {
+            return recursiveAttempt
+        }
     }
     return null
 }
