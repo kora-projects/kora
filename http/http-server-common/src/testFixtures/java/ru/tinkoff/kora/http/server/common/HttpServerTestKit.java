@@ -46,15 +46,7 @@ import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerLoggerConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.DefaultHttpServerTelemetryFactory;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLogger;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLoggerConfig;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLoggerFactory;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetrics;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetricsFactory;
-import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
+import ru.tinkoff.kora.http.server.common.telemetry.*;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -64,10 +56,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -119,20 +108,9 @@ public abstract class HttpServerTestKit {
         .build();
 
     protected HttpServerMetrics metrics = Mockito.mock(HttpServerMetrics.class);
-    protected HttpServerMetricsFactory metricsFactory = new HttpServerMetricsFactory() {
-        @Nullable
-        public HttpServerMetrics get(TelemetryConfig.MetricsConfig config) {
-            return metrics;
-        }
-    };
-    protected HttpServerLogger logger = Mockito.mock(HttpServerLogger.class);
-    protected HttpServerLoggerFactory loggerFactory = new HttpServerLoggerFactory() {
-        @Nullable
-        @Override
-        public HttpServerLogger get(HttpServerLoggerConfig logging) {
-            return logger;
-        }
-    };
+    protected HttpServerMetricsFactory metricsFactory = config -> metrics;
+    protected HttpServerLogger logger = Mockito.spy(new Slf4jHttpServerLogger(true, Set.of(), Set.of(), "***", true));
+    protected HttpServerLoggerFactory loggerFactory = logging -> logger;
 
     protected abstract HttpServer httpServer(ValueOf<HttpServerConfig> config, PublicApiHandler publicApiHandler);
 

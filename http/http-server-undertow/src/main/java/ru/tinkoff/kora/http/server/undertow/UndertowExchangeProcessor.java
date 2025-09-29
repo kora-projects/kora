@@ -494,11 +494,6 @@ public class UndertowExchangeProcessor implements Runnable {
             }
 
             if (!this.exchange.isComplete()) {
-                if (!this.exchange.isResponseChannelAvailable()) {
-                    HttpResponseBodySubscriber.this.response.closeBodyError(exchange.getStatusCode(), null);
-                    return;
-                }
-
                 var newState = this.state.updateAndGet(oldState -> oldState | (0x1 << 24));
                 if (newState == (0x1 << 24)) {
                     // no chunks if flight
