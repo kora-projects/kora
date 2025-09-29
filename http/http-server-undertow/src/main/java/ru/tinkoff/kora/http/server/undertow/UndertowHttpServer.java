@@ -27,6 +27,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
     private final ValueOf<HttpServerConfig> config;
+    private final ValueOf<UndertowPublicApiHandler> publicApiHandler;
     private final GracefulShutdownHandler gracefulShutdown;
     private final XnioWorker xnioWorker;
     private final ByteBufferPool byteBufferPool;
@@ -40,6 +41,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         this.config = config;
         this.xnioWorker = xnioWorker;
         this.byteBufferPool = byteBufferPool;
+        this.publicApiHandler = publicApiHandler;
         this.gracefulShutdown = new GracefulShutdownHandler(exchange -> publicApiHandler.get().handleRequest(exchange));
     }
 
@@ -47,6 +49,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     public void release() {
         logger.debug("Public HTTP Server (Undertow) stopping...");
         this.state.set(HttpServerState.SHUTDOWN);
+        this.publicApiHandler.get().shutdown();
         final long started = TimeUtils.started();
         this.gracefulShutdown.shutdown();
         final Duration shutdownAwait = this.config.get().shutdownWait();

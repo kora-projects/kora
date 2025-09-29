@@ -7,8 +7,11 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
 
+import java.util.concurrent.atomic.AtomicBoolean;
+
 public final class UndertowPublicApiHandler {
 
+    private final AtomicBoolean shutdown = new AtomicBoolean(false);
     private final PublicApiHandler publicApiHandler;
     @Nullable
     private final HttpServerTracer tracer;
@@ -20,7 +23,11 @@ public final class UndertowPublicApiHandler {
 
     public void handleRequest(HttpServerExchange exchange) {
         var context = Context.clear();
-        var exchangeProcessor = new UndertowExchangeProcessor(exchange, this.publicApiHandler, context, this.tracer);
+        var exchangeProcessor = new UndertowExchangeProcessor(exchange, this.publicApiHandler, shutdown::get, context, this.tracer);
         exchange.dispatch(SameThreadExecutor.INSTANCE, exchangeProcessor);
+    }
+
+    public void shutdown() {
+        this.shutdown.set(true);
     }
 }

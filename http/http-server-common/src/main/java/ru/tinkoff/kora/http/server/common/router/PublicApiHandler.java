@@ -118,7 +118,6 @@ public class PublicApiHandler {
         }
     }
 
-
     private interface RequestHandler {
         CompletionStage<HttpServerResponse> apply(Context context, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception;
     }
