@@ -15,6 +15,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.flow.LazySingleSubscription;
 import ru.tinkoff.kora.common.util.flow.SingleSubscription;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
+import ru.tinkoff.kora.http.common.body.StreamingHttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -33,6 +34,11 @@ import java.util.concurrent.Flow.Subscription;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class UndertowExchangeProcessor implements Runnable {
+
+    public interface ShutdownHandler {
+
+        boolean isShutdown();
+    }
 
     private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
     private static final Class<?> REACTOR_NON_BLOCKING;
@@ -56,13 +62,27 @@ public class UndertowExchangeProcessor implements Runnable {
 
     private final HttpServerExchange exchange;
     private final PublicApiHandler publicApiHandler;
+    private final ShutdownHandler shutdownHandler;
     private final Context context;
     @Nullable
     private final HttpServerTracer tracer;
 
-    public UndertowExchangeProcessor(HttpServerExchange exchange, PublicApiHandler publicApiHandler, Context context, @Nullable HttpServerTracer tracer) {
+    @Deprecated
+    public UndertowExchangeProcessor(HttpServerExchange exchange,
+                                     PublicApiHandler publicApiHandler,
+                                     Context context,
+                                     @Nullable HttpServerTracer tracer) {
+        this(exchange, publicApiHandler, () -> true, context, tracer);
+    }
+
+    public UndertowExchangeProcessor(HttpServerExchange exchange,
+                                     PublicApiHandler publicApiHandler,
+                                     ShutdownHandler shutdownHandler,
+                                     Context context,
+                                     @Nullable HttpServerTracer tracer) {
         this.exchange = exchange;
         this.publicApiHandler = publicApiHandler;
+        this.shutdownHandler = shutdownHandler;
         this.context = context;
         this.tracer = tracer;
     }
@@ -149,7 +169,13 @@ public class UndertowExchangeProcessor implements Runnable {
         if (contentLength >= 0) {
             exchange.setResponseContentLength(contentLength);
         }
-        if (this.isInBlockingThread()) {
+
+        if (httpResponse.body() instanceof StreamingHttpBodyOutput) {
+            sendStreamingBody(response, headers, body, error);
+        } else if (!this.isInBlockingThread()) {
+            sendStreamingBody(response, headers, body, error);
+        } else {
+            // start exchange in blocking thread
             if (!exchange.isBlocking()) {
                 exchange.startBlocking();
             }
@@ -173,8 +199,6 @@ public class UndertowExchangeProcessor implements Runnable {
             if (exchange.isComplete()) {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), httpResponse.headers(), error);
             }
-        } else {
-            sendStreamingBody(response, headers, body, error);
         }
     }
 
@@ -341,7 +365,7 @@ public class UndertowExchangeProcessor implements Runnable {
     }
 
     private void sendStreamingBody(PublicApiResponse response, HttpHeaders headers, HttpBodyOutput body, @Nullable Throwable error) {
-        body.subscribe(new HttpResponseBodySubscriber(exchange, response, headers, error));
+        body.subscribe(new HttpResponseBodySubscriber(exchange, shutdownHandler, response, headers, error));
     }
 
     private static class HttpResponseBodySubscriber implements Flow.Subscriber<ByteBuffer> {
@@ -350,10 +374,16 @@ public class UndertowExchangeProcessor implements Runnable {
         private final HttpHeaders headers;
         private final Throwable error;
         private volatile Subscription subscription;
+        private final ShutdownHandler shutdownHandler;
         private final AtomicInteger state = new AtomicInteger(0);
 
-        private HttpResponseBodySubscriber(HttpServerExchange exchange, PublicApiResponse response, HttpHeaders headers, @Nullable Throwable error) {
+        private HttpResponseBodySubscriber(HttpServerExchange exchange,
+                                           ShutdownHandler shutdownHandler,
+                                           PublicApiResponse response,
+                                           HttpHeaders headers,
+                                           @Nullable Throwable error) {
             this.exchange = exchange;
+            this.shutdownHandler = shutdownHandler;
             this.response = response;
             this.headers = headers;
             this.error = error;
@@ -371,6 +401,16 @@ public class UndertowExchangeProcessor implements Runnable {
             if ((newState & (0x1 << 24)) != 0) {
                 // stream is already completed, should not happen
                 DirectByteBufferDeallocator.free(byteBuffer);
+                return;
+            }
+
+            if (this.shutdownHandler.isShutdown()) {
+                HttpResponseBodySubscriber.this.subscription.cancel();
+                this.exchange.endExchange();
+                return;
+            }
+
+            if (!this.exchange.getConnection().isOpen()) {
                 return;
             }
 
@@ -409,7 +449,7 @@ public class UndertowExchangeProcessor implements Runnable {
                             nextListener.proceed();
                         });
                         exchange.endExchange();
-                    } else {
+                    } else if (exchange.getConnection().isOpen() && !HttpResponseBodySubscriber.this.shutdownHandler.isShutdown()) {
                         HttpResponseBodySubscriber.this.subscription.request(1);
                     }
                 }
@@ -418,8 +458,14 @@ public class UndertowExchangeProcessor implements Runnable {
                 public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
                     DirectByteBufferDeallocator.free(byteBuffer);
                     HttpResponseBodySubscriber.this.subscription.cancel();
+
+                    // channel connection was closed during writing to it, prob was streaming
+                    if (!exchange.getConnection().isOpen() && exception.getMessage().equals("Broken pipe")) {
+                        HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), new IOException("Channel connection was closed on client side during writing data", exception));
+                    } else {
+                        HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
+                    }
                     exchange.getResponseSender().close();
-                    HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
                 }
             });
         }
@@ -436,8 +482,8 @@ public class UndertowExchangeProcessor implements Runnable {
                 exchange.getResponseHeaders().remove(Headers.CONTENT_LENGTH);
                 exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
                 exchange.getResponseSender().send(t.getMessage());
-                exchange.endExchange();
                 HttpResponseBodySubscriber.this.response.closeBodyError(exchange.getStatusCode(), error == null ? t : error);
+                exchange.endExchange();
             }
         }
 
@@ -447,16 +493,22 @@ public class UndertowExchangeProcessor implements Runnable {
                 return;
             }
 
-            var newState = this.state.updateAndGet(oldState -> oldState | (0x1 << 24));
-            if (newState == (0x1 << 24)) {
-                // no chunks if flight
-                this.exchange.addExchangeCompleteListener((exchange, nextListener) -> {
-                    HttpResponseBodySubscriber.this.response.closeSendResponseSuccess(exchange.getStatusCode(), null, error);
-                    nextListener.proceed();
-                });
-                this.exchange.endExchange();
+            if (!this.exchange.isComplete()) {
+                if (!this.exchange.isResponseChannelAvailable()) {
+                    HttpResponseBodySubscriber.this.response.closeBodyError(exchange.getStatusCode(), null);
+                    return;
+                }
+
+                var newState = this.state.updateAndGet(oldState -> oldState | (0x1 << 24));
+                if (newState == (0x1 << 24)) {
+                    // no chunks if flight
+                    this.exchange.addExchangeCompleteListener((exchange, nextListener) -> {
+                        HttpResponseBodySubscriber.this.response.closeSendResponseSuccess(exchange.getStatusCode(), null, error);
+                        nextListener.proceed();
+                    });
+                    this.exchange.endExchange();
+                }
             }
         }
     }
-
 }

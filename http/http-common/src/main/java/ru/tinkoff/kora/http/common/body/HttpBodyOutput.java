@@ -36,11 +36,11 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
     }
 
     static HttpBodyOutput of(String contentType, InputStream inputStream) {
-        return new StreamingHttpBodyOutput(contentType, -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
+        return new BlockingHttpBodyOutput(contentType, -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
     }
 
     static HttpBodyOutput of(String contentType, long length, InputStream inputStream) {
-        return new StreamingHttpBodyOutput(contentType, length, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
+        return new BlockingHttpBodyOutput(contentType, length, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
     }
 
     static HttpBodyOutput octetStream(Flow.Publisher<? extends ByteBuffer> content) {
@@ -48,7 +48,7 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
     }
 
     static HttpBodyOutput octetStream(InputStream inputStream) {
-        return new StreamingHttpBodyOutput("application/octet-stream", -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
+        return new BlockingHttpBodyOutput("application/octet-stream", -1, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
     }
 
     static HttpBodyOutput octetStream(long length, Flow.Publisher<? extends ByteBuffer> content) {
