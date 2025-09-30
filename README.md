@@ -35,7 +35,7 @@ only the most efficient modules implementations, all leading to high application
 All this leads to high performance, low response time and handling a large number of requests per second.
 All this is already implemented in framework and does not require any manipulations or configurations on the part of developer.
 
-[![Kora TechEmpower](https://imgproxy.cdn-tinkoff.ru/compressed95/aHR0cHM6Ly9jZG4udGJhbmsucnUvc3RhdGljL3BhZ2VzL2ZpbGVzLzcxZGEwNzM5LTI3MjAtNDJhMy1hYjc0LTUzYmNiNDhmY2UzNS5wbmc= "Kora TechEmpower")](https://www.techempower.com/benchmarks/#section=test&resultsurl=https%3A%2F%2Fstatic.squiry.xyz%2Fresults%2F20240124114707.json&hw=ph&test=fortune)
+[![Kora TechEmpower](https://raw.githubusercontent.com/kora-projects/.github/refs/heads/master/storage/images/techempower_squiry_2024_01_24.jpeg "Kora TechEmpower external measurement")](https://www.techempower.com/benchmarks/#section=test&resultsurl=https%3A%2F%2Fstatic.squiry.xyz%2Fresults%2F20240124114707.json&hw=ph&test=fortune)
 
 `Efficiency` - All facts above and the fact that the dependency container is created
 at compile time and initialized as parallel as possible, leads to low startup time.
@@ -46,7 +46,7 @@ that guide the developer to write clear and efficient code.
 This utilization not only reduces infrastructure costs, but also significantly increases the stability of services
 in the event of sudden peak loads and improves user requests latency.
 
-![Kora Startup](https://i.ibb.co/214st9Zd/2025-09-25-01-52-33.png "Kora Startup")
+![Kora Startup](https://raw.githubusercontent.com/kora-projects/.github/refs/heads/master/storage/images/run_in_container_joker_2024.jpeg "Kora startup bench of simple PetClinic application")
 
 `Transparency` - Kora generates human-readable source code at compile time
 with fine-grained abstractions and free aspects, which leads to high readability of code
@@ -74,7 +74,7 @@ uses and encourages approaches that guide developers to write clear and effectiv
 This simplifies development and increases the efficiency of the entire development team,
 allowing developers to transfer context from their heads into clear code that is easy to write, read and maintain.
 
-![Kora Simplicity](https://i.ibb.co/YT7tkbhn/2025-09-25-14-55-03.png "Kora Simplicity")
+![Kora Simplicity](https://raw.githubusercontent.com/kora-projects/.github/refs/heads/master/storage/images/kora_test_example_joker_2024.jpeg "Kora Simplicity")
 
 Kora provides all the tools needed for modern Java or Kotlin server-side development:
 
