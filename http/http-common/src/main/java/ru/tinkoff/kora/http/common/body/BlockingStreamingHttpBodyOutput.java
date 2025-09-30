@@ -10,6 +10,12 @@ import java.util.concurrent.Flow;
 
 public class BlockingStreamingHttpBodyOutput implements HttpBodyOutput {
 
+    @FunctionalInterface
+    public interface IOConsumer<T> {
+
+        void accept(T value) throws IOException;
+    }
+
     @Nullable
     private final String contentType;
     private final long contentLength;
