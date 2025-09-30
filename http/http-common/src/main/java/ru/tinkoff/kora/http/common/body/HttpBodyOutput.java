@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.common.body;
 
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.common.body.BlockingStreamingHttpBodyOutput.IOConsumer;
 
 import java.io.Closeable;
 import java.io.IOException;
