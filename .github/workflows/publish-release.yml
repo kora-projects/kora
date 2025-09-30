@@ -60,7 +60,7 @@ jobs:
 
       - name: Extract description
         run: |
-          echo "KORA_CHANGELOG_DESCRIPTION=$(curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ | grep -o '<meta property="og:description" content=".*' | grep -o '"[^"]*"' | tail -n +2 | tr -d '"')" >> $GITHUB_ENV
+          echo "KORA_CHANGELOG_DESCRIPTION=$(curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ | grep -o '<meta property="og:description" content=".*' | grep -o '"[^"]*"' | tail -n +2 | tr -d '"' | sed 's/[:,]/\n-/g') " >> $GITHUB_ENV
 
       - name: Notify new release to Telegram
         uses: appleboy/telegram-action@master
@@ -72,8 +72,8 @@ jobs:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           format: markdown
           message: |
-            Вышла новая версия Kora: ${{ env.KORA_VERSION }}
+            Вышла новая версия Kora - ${{ env.KORA_VERSION }}
             
             ${{ env.KORA_CHANGELOG_DESCRIPTION }}
             
-            Больше подробностей [тут](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
+            Все подробности в [журнале изменений](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
