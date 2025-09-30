@@ -20,7 +20,7 @@ jobs:
       - name: Extract description
         run: |
           echo "KORA_CHANGELOG_DESCRIPTION<<EOF" >> $GITHUB_ENV
-          echo "Список изменений в $(curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ | grep -o '<meta property="og:description" content=".*' | grep -o '"[^"]*"' | tail -n +2 | tr -d '"' | sed 's/[:,]/\n-/g') " >> $GITHUB_ENV
+          echo "Часть изменений в $(curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ | grep -o '<meta property="og:description" content=".*' | grep -o '"[^"]*"' | tail -n +2 | tr -d '"' | sed 's/[:,]/\n-/g') " >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Notify new release to Telegram
@@ -37,4 +37,4 @@ jobs:
             
             ${{ env.KORA_CHANGELOG_DESCRIPTION }}
             
-            Все подробности в [журнале изменений](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
+            Полный список в [журнале изменений](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
