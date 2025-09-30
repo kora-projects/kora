@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.common.body;
 
 import jakarta.annotation.Nullable;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -43,6 +44,26 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
         return new BlockingHttpBodyOutput(contentType, length, HttpRequest.BodyPublishers.ofInputStream(() -> inputStream));
     }
 
+    static HttpBodyOutput ofBlockingStream(IOConsumer<OutputStream> ioConsumer) {
+        return new BlockingStreamingHttpBodyOutput(null, -1, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingStream(String contentType, IOConsumer<OutputStream> ioConsumer) {
+        return new BlockingStreamingHttpBodyOutput(contentType, -1, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingStream(String contentType, IOConsumer<OutputStream> ioConsumer, Closeable closeable) {
+        return new BlockingStreamingHttpBodyOutput(contentType, -1, ioConsumer, closeable);
+    }
+
+    static HttpBodyOutput ofBlockingStream(String contentType, long length, IOConsumer<OutputStream> ioConsumer) {
+        return new BlockingStreamingHttpBodyOutput(contentType, length, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingStream(String contentType, long length, IOConsumer<OutputStream> ioConsumer, Closeable closeable) {
+        return new BlockingStreamingHttpBodyOutput(contentType, length, ioConsumer, closeable);
+    }
+
     static HttpBodyOutput octetStream(Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput("application/octet-stream", -1, content);
     }
@@ -53,6 +74,22 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
 
     static HttpBodyOutput octetStream(long length, Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput("application/octet-stream", length, content);
+    }
+
+    static HttpBodyOutput ofBlockingOctetStream(IOConsumer<OutputStream> ioConsumer) {
+        return new BlockingStreamingHttpBodyOutput("application/octet-stream", -1, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingOctetStream(IOConsumer<OutputStream> ioConsumer, Closeable closeable) {
+        return new BlockingStreamingHttpBodyOutput("application/octet-stream", -1, ioConsumer, closeable);
+    }
+
+    static HttpBodyOutput ofBlockingOctetStream(long length, IOConsumer<OutputStream> ioConsumer) {
+        return new BlockingStreamingHttpBodyOutput("application/octet-stream", length, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingOctetStream(long length, IOConsumer<OutputStream> ioConsumer, Closeable closeable) {
+        return new BlockingStreamingHttpBodyOutput("application/octet-stream", length, ioConsumer, closeable);
     }
 
     long contentLength();
