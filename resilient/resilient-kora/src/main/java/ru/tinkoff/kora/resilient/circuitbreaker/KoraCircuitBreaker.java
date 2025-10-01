@@ -314,11 +314,11 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             final State currentState = getState(currentStateLong);
             if (currentState == State.HALF_OPEN) {
                 while (true) {
-                    final boolean isReleased = this.state.compareAndSet(currentStateLong, currentStateLong - 1);
-                    if (isReleased) {
+                    final boolean isAcquiredReleased = this.state.compareAndSet(currentStateLong, currentStateLong - 1);
+                    if (isAcquiredReleased) {
                         if (logger.isTraceEnabled()) {
-                            final short acquired = countHalfOpenAcquired(currentStateLong);
-                            logger.trace("CircuitBreaker '{}' released lock on rejected exception in HALF_OPEN state with {} calls left",
+                            final short acquired = (short) (countHalfOpenAcquired(currentStateLong) - 1);
+                            logger.trace("CircuitBreaker '{}' released acquired in HALF_OPEN state for rejected exception with {} calls left",
                                 name, config.permittedCallsInHalfOpenState() - acquired);
                         }
                         return;
