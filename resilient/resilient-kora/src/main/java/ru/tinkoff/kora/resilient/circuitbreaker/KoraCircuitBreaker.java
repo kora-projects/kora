@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 /**
+ * CircuitBreaker - Fixed Window implementation
  * --------------------------------------------------------------------------------------------------
  * Closed {@link #state}
  * 10 | 0000000000000000000000000000000 | 0000000000000000000000000000000
