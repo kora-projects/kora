@@ -310,7 +310,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 }
             }
 
-            final long currentStateLong = state.get();
+            long currentStateLong = state.get();
             final State currentState = getState(currentStateLong);
             if (currentState == State.HALF_OPEN) {
                 while (true) {
@@ -322,6 +322,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                                 name, config.permittedCallsInHalfOpenState() - acquired);
                         }
                         return;
+                    } else {
+                        currentStateLong = state.get();
                     }
                 }
             }
