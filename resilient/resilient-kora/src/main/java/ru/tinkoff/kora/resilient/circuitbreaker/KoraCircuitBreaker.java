@@ -196,7 +196,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 if (isAcquired) {
                     if (logger.isTraceEnabled()) {
                         logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
-                            name, acquired - 1);
+                            name, config.permittedCallsInHalfOpenState() - acquired);
                     }
                     metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
                     return true;
@@ -309,6 +309,23 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                         name, currentState, throwable.toString());
                 }
             }
+
+            final long currentStateLong = state.get();
+            final State currentState = getState(currentStateLong);
+            if (currentState == State.HALF_OPEN) {
+                while (true) {
+                    final boolean isReleased = this.state.compareAndSet(currentStateLong, currentStateLong - 1);
+                    if (isReleased) {
+                        if (logger.isTraceEnabled()) {
+                            final short acquired = countHalfOpenAcquired(currentStateLong);
+                            logger.trace("CircuitBreaker '{}' released lock on rejected exception in HALF_OPEN state with {} calls left",
+                                name, config.permittedCallsInHalfOpenState() - acquired);
+                        }
+                        return;
+                    }
+                }
+            }
+
             return;
         }
 
