@@ -3,10 +3,13 @@ package ru.tinkoff.kora.resilient.circuitbreaker;
 import jakarta.annotation.Nonnull;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker.State;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.function.Supplier;
@@ -223,6 +226,49 @@ class KoraCircuitBreakerTests extends Assertions {
     }
 
     @Test
+    void switchFromClosedToOpenToHalfOpenCorrectlyRestoreIgnoredExceptionToOpen() {
+        // given
+        final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+            true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+        final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new CircuitBreakerPredicate() {
+            @Override
+            public @NotNull String name() {
+                return "kora";
+            }
+
+            @Override
+            public boolean test(@NotNull Throwable throwable) {
+                return !(throwable instanceof UncheckedIOException);
+            }
+        }, new NoopCircuitBreakerMetrics());
+
+        // when
+        assertEquals(State.CLOSED, circuitBreaker.getState());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+        assertTrue(circuitBreaker.tryAcquire()); // closed
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertFalse(circuitBreaker.tryAcquire()); // closed switched to open
+        assertEquals(State.OPEN, circuitBreaker.getState());
+
+        awaitily().dontCatchUncaughtExceptions().untilAsserted(() -> Assertions.assertDoesNotThrow(circuitBreaker::acquire)); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("OPS")));
+        awaitily().dontCatchUncaughtExceptions().untilAsserted(() -> Assertions.assertDoesNotThrow(circuitBreaker::acquire)); // half open
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        circuitBreaker.releaseOnError(new UncheckedIOException(new IOException("OPS")));
+
+        // then
+        assertEquals(State.HALF_OPEN, circuitBreaker.getState());
+        awaitily().dontCatchUncaughtExceptions().untilAsserted(() -> Assertions.assertDoesNotThrow(circuitBreaker::acquire)); // half open
+        circuitBreaker.releaseOnError(new IllegalStateException());
+
+        assertEquals(State.OPEN, circuitBreaker.getState()); // half open switched to open
+        assertFalse(circuitBreaker.tryAcquire());
+    }
+
+    @Test
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosedForAccept() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
@@ -237,7 +283,7 @@ class KoraCircuitBreakerTests extends Assertions {
             }
         };
         Supplier<Object> failSupplier = () -> {
-            if(true) {
+            if (true) {
                 throw new IllegalStateException();
             }
             return null;

@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 
 /**
+ * CircuitBreaker - Fixed Window implementation
  * --------------------------------------------------------------------------------------------------
  * Closed {@link #state}
  * 10 | 0000000000000000000000000000000 | 0000000000000000000000000000000
@@ -196,7 +197,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                 if (isAcquired) {
                     if (logger.isTraceEnabled()) {
                         logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
-                            name, acquired - 1);
+                            name, config.permittedCallsInHalfOpenState() - acquired);
                     }
                     metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
                     return true;
@@ -309,6 +310,19 @@ final class KoraCircuitBreaker implements CircuitBreaker {
                         name, currentState, throwable.toString());
                 }
             }
+
+            final long currentStateLong = state.get();
+            final State currentState = getState(currentStateLong);
+            if (currentState == State.HALF_OPEN) {
+                long updatedStateLong = this.state.decrementAndGet();
+                if (logger.isTraceEnabled()) {
+                    final short acquired = countHalfOpenAcquired(updatedStateLong);
+                    logger.trace("CircuitBreaker '{}' released acquired in HALF_OPEN state for rejected exception with {} calls left",
+                        name, config.permittedCallsInHalfOpenState() - acquired);
+                }
+                return;
+            }
+
             return;
         }
 
