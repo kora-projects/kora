@@ -15,7 +15,6 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.flow.LazySingleSubscription;
 import ru.tinkoff.kora.common.util.flow.SingleSubscription;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
-import ru.tinkoff.kora.http.common.body.StreamingHttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -72,7 +71,7 @@ public class UndertowExchangeProcessor implements Runnable {
                                      PublicApiHandler publicApiHandler,
                                      Context context,
                                      @Nullable HttpServerTracer tracer) {
-        this(exchange, publicApiHandler, () -> true, context, tracer);
+        this(exchange, publicApiHandler, () -> false, context, tracer);
     }
 
     public UndertowExchangeProcessor(HttpServerExchange exchange,
