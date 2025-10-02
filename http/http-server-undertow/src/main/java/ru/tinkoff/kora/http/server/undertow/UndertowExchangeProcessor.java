@@ -170,11 +170,7 @@ public class UndertowExchangeProcessor implements Runnable {
             exchange.setResponseContentLength(contentLength);
         }
 
-        if (httpResponse.body() instanceof StreamingHttpBodyOutput) {
-            sendStreamingBody(response, headers, body, error);
-        } else if (!this.isInBlockingThread()) {
-            sendStreamingBody(response, headers, body, error);
-        } else {
+        if (this.isInBlockingThread()) {
             // start exchange in blocking thread
             if (!exchange.isBlocking()) {
                 exchange.startBlocking();
@@ -199,6 +195,8 @@ public class UndertowExchangeProcessor implements Runnable {
             if (exchange.isComplete()) {
                 response.closeSendResponseSuccess(exchange.getStatusCode(), httpResponse.headers(), error);
             }
+        } else {
+            sendStreamingBody(response, headers, body, error);
         }
     }
 
