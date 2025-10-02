@@ -405,13 +405,8 @@ public class UndertowExchangeProcessor implements Runnable {
                 return;
             }
 
-            if (this.shutdownHandler.isShutdown()) {
-                HttpResponseBodySubscriber.this.subscription.cancel();
-                this.exchange.endExchange();
-                return;
-            }
-
             if (!this.exchange.getConnection().isOpen()) {
+                HttpResponseBodySubscriber.this.subscription.cancel();
                 return;
             }
 
