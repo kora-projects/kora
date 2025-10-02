@@ -49,7 +49,6 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     public void release() {
         logger.debug("Public HTTP Server (Undertow) stopping...");
         this.state.set(HttpServerState.SHUTDOWN);
-        this.publicApiHandler.get().shutdown();
         final long started = TimeUtils.started();
         this.gracefulShutdown.shutdown();
         final Duration shutdownAwait = this.config.get().shutdownWait();
