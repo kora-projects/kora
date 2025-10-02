@@ -3,6 +3,8 @@ package ru.tinkoff.kora.http.server.undertow;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.SameThreadExecutor;
 import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
@@ -12,6 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class UndertowPublicApiHandler implements Lifecycle {
 
+    private static final Logger logger = LoggerFactory.getLogger(UndertowPublicApiHandler.class);
     private final AtomicBoolean shutdown = new AtomicBoolean(false);
     private final PublicApiHandler publicApiHandler;
     @Nullable
@@ -30,7 +33,7 @@ public final class UndertowPublicApiHandler implements Lifecycle {
 
     @Override
     public void init() {
-
+        // do nothing
     }
 
     @Override
