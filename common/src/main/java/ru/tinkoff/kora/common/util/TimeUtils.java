@@ -5,7 +5,7 @@ import java.time.temporal.ChronoUnit;
 
 public final class TimeUtils {
 
-    private TimeUtils() { }
+    private TimeUtils() {}
 
     public static long started() {
         return System.nanoTime();
@@ -17,6 +17,10 @@ public final class TimeUtils {
 
     public static String tookForLogging(long started) {
         return durationForLogging(System.nanoTime() - started);
+    }
+
+    public static String durationForLogging(Duration duration) {
+        return duration.toString().substring(2).toLowerCase();
     }
 
     public static String durationForLogging(long duration) {
