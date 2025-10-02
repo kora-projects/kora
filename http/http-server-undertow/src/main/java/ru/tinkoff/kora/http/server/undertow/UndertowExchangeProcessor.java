@@ -177,7 +177,11 @@ public class UndertowExchangeProcessor implements Runnable {
             try (var os = exchange.getOutputStream()) {
                 body.write(os);
             } catch (IOException e) {
-                response.closeConnectionError(exchange.getStatusCode(), e);
+                if (!exchange.getConnection().isOpen() && e.getMessage().equals("Broken pipe")) {
+                    response.closeConnectionError(exchange.getStatusCode(), new IOException("Channel connection was probably closed on client side during writing data", e));
+                } else {
+                    response.closeConnectionError(exchange.getStatusCode(), e);
+                }
                 if (!exchange.isResponseStarted()) {
                     exchange.setStatusCode(500);
                     exchange.endExchange();
@@ -458,7 +462,7 @@ public class UndertowExchangeProcessor implements Runnable {
 
                     // channel connection was closed during writing to it, prob was streaming
                     if (!exchange.getConnection().isOpen() && exception.getMessage().equals("Broken pipe")) {
-                        HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), new IOException("Channel connection was closed on client side during writing data", exception));
+                        HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), new IOException("Channel connection was probably closed on client side during writing data", exception));
                     } else {
                         HttpResponseBodySubscriber.this.response.closeConnectionError(exchange.getStatusCode(), error == null ? exception : error);
                     }
