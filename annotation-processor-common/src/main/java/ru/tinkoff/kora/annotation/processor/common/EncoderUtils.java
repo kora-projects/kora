@@ -11,13 +11,13 @@ public class EncoderUtils {
     /**
      * @param s {@code String} to be translated.
      * @param charset the given charset
-     * @param encodeSpaceToPlus encode space as + char
+     * @param disableEncodeSpaceToPlus disable encoding space as + char
      * @return  the translated {@code String}.
      * @throws NullPointerException if {@code s} or {@code charset} is {@code null}.
      */
-    public static String encode(String s, Charset charset, boolean encodeSpaceToPlus) {
+    public static String encode(String s, Charset charset, boolean disableEncodeSpaceToPlus) {
         var encoded = URLEncoder.encode(s, charset);
-        if (!encodeSpaceToPlus) {
+        if (disableEncodeSpaceToPlus) {
             encoded = encoded.replace("+", "%20");
         }
         return encoded;
