@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.squareup.javapoet.*;
-import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
@@ -12,6 +11,7 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ModuleDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException;
+import ru.tinkoff.kora.kora.app.annotation.processor.exception.UnresolvedDependencyException;
 import ru.tinkoff.kora.kora.app.annotation.processor.interceptor.ComponentInterceptors;
 
 import javax.annotation.processing.FilerException;
@@ -133,11 +133,20 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     );
                 }
                 if (processingResult instanceof ProcessingState.Failed failed) {
+                    if (failed.detailedException() instanceof UnresolvedDependencyException ude) {
+                        log.error("Graph processing exception: {}", failed.detailedException().getMessage());
+                    } else {
+                        log.error("Graph processing exception: ", failed.detailedException());
+                    }
                     failed.detailedException().printError(this.processingEnv);
-                    if (!failed.stack().isEmpty()) {
-                        log.error("Processing exception", failed.detailedException());
 
-                        var i = processingResult.stack().descendingIterator();
+                    var stack = failed.stack();
+                    if (stack.isEmpty() && failed.detailedException() instanceof UnresolvedDependencyException ude) {
+                        stack = ude.getStack();
+                    }
+
+                    if (!stack.isEmpty()) {
+                        var i = stack.descendingIterator();
                         var frames = new ArrayList<ProcessingState.ResolutionFrame.Component>();
                         while (i.hasNext()) {
                             var frame = i.next();
@@ -147,12 +156,24 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                                 break;
                             }
                         }
+
+                        String separatorVertical = "\n            ^            \n            |            \n";
+                        String separatorHorizontal = "  <---  ";
                         var chain = frames.stream()
-                            .map(c -> c.declaration().declarationString() + "   " + c.dependenciesToFind().get(c.currentDependency()))
-                            .collect(Collectors.joining("\n            ^            \n            |            \n"));
-                        this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "Dependency resolve process: \n" + chain);
+                            .map(c -> c.dependenciesToFind().get(c.currentDependency()) + separatorVertical + c.declaration().declarationString())
+                            .collect(Collectors.joining(separatorHorizontal));
+                        if (failed.detailedException() instanceof UnresolvedDependencyException ude) {
+                            chain += separatorVertical;
+                            chain += ude.getComponent().declarationString() + separatorHorizontal + ude.getDependencyClaim();
+                            chain += separatorVertical;
+                            chain += ClassName.get(ude.getDependencyClaim().type());
+                            chain += "\n\nRequired DependencyClaim wasn't found in graph:  " + ude.getDependencyClaim() + "\n";
+                        }
+
+                        log.info("Dependency detailed resolution tree:\n{}", chain);
                     }
                 }
+
                 if (processingResult instanceof ProcessingState.Ok ok) {
                     try {
                         this.write(element.getKey(), ok);
@@ -167,6 +188,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     }
                 }
             }
+
+            BuildEnvironment.close();
         }
     }
 
@@ -296,7 +319,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             var sourceDescriptors = components.nonTemplates;
             var rootSet = sourceDescriptors.stream()
                 .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
-                    || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
+                              || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
                 .toList();
             return new ProcessingState.None(type, allModules, sourceDescriptors, components.templates, rootSet);
         } catch (ProcessingErrorException e) {

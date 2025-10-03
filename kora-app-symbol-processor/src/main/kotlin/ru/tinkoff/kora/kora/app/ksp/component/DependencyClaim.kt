@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.kora.app.ksp.component
 
 import com.google.devtools.ksp.symbol.KSType
+import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.tagsMatch
 
 data class DependencyClaim(val type: KSType, val tags: Set<String>, val claimType: DependencyClaimType) {
-    fun tagsMatches(other: Collection<String>): Boolean {
-        return tags.tagsMatch(other)
-    }
 
     enum class DependencyClaimType {
         ONE_REQUIRED,
@@ -21,4 +19,11 @@ data class DependencyClaim(val type: KSType, val tags: Set<String>, val claimTyp
         ALL_OF_PROMISE
     }
 
+    fun tagsMatches(other: Collection<String>): Boolean {
+        return tags.tagsMatch(other)
+    }
+
+    override fun toString(): String {
+        return "DependencyClaim(type=${type.toTypeName()}, tags=$tags, claimType=$claimType)"
+    }
 }

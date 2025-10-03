@@ -2,12 +2,7 @@ package ru.tinkoff.kora.kora.app.ksp.declaration
 
 import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.isConstructor
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.KSTypeArgument
-import com.google.devtools.ksp.symbol.KSTypeParameter
+import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
@@ -50,11 +45,17 @@ sealed interface ComponentDeclaration {
         val typeVariables: List<KSTypeArgument>
     ) : ComponentDeclaration {
         override val source get() = this.method
-        override fun declarationString() = module.element.qualifiedName?.asString() + "." + method.simpleName.asString()
 
-        override fun isDefault(): Boolean {
-            return method.findAnnotation(CommonClassNames.defaultComponent) != null
+        override fun declarationString(): String {
+            val args = if (method.parameters.isEmpty()) "()" else "(...)"
+            return if (method.findOverridee()?.parentDeclaration != null) {
+                "factory  " + method.findOverridee()!!.parentDeclaration!!.qualifiedName?.asString() + "#" + method.simpleName.asString() + args
+            } else {
+                "factory  " + module.element.qualifiedName?.asString() + "#" + method.simpleName.asString() + args
+            }
         }
+
+        override fun isDefault(): Boolean = method.findAnnotation(CommonClassNames.defaultComponent) != null
     }
 
     data class AnnotatedComponent(
@@ -66,7 +67,7 @@ sealed interface ComponentDeclaration {
         val typeVariables: List<KSTypeArgument>
     ) : ComponentDeclaration {
         override val source get() = this.constructor
-        override fun declarationString() = classDeclaration.qualifiedName?.asString().toString()
+        override fun declarationString() = "component  " + classDeclaration.qualifiedName?.asString().toString()
     }
 
     data class DiscoveredAsDependencyComponent(
@@ -88,16 +89,14 @@ sealed interface ComponentDeclaration {
         val generator: (CodeBlock) -> CodeBlock
     ) : ComponentDeclaration {
         override fun declarationString(): String {
-            return source.parentDeclaration?.qualifiedName?.asString().toString() + source.simpleName.asString()
+            return "extension  " + source.parentDeclaration?.qualifiedName?.asString().toString() + "." + source.simpleName.asString()
         }
-
     }
 
     data class PromisedProxyComponent(
         override val type: KSType,
         val classDeclaration: KSClassDeclaration,
         val className: TypeName
-
     ) : ComponentDeclaration {
         override val source get() = this.classDeclaration
         override val tags get() = setOf(CommonClassNames.promisedProxy.canonicalName)
@@ -119,7 +118,10 @@ sealed interface ComponentDeclaration {
             // modules can be written in java so we better fix platform nullability
             val type = method.returnType!!.resolve().fixPlatformType(ctx.resolver)
             if (type.isError) {
-                throw ProcessingErrorException("Component type is not resolvable in the current round of processing: func $method()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", method)
+                throw ProcessingErrorException(
+                    "Component type is not resolvable in the current round of processing: func $method()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    method
+                )
             }
             val tags = TagUtils.parseTagValue(method)
             val parameterTypes = method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
@@ -160,7 +162,10 @@ sealed interface ComponentDeclaration {
                 throw ProcessingErrorException("No primary constructor to parse component for: $classDeclaration", classDeclaration)
             }
             if (type.isError) {
-                throw ProcessingErrorException("Component type is not resolvable in the current round of processing: class $classDeclaration\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", classDeclaration)
+                throw ProcessingErrorException(
+                    "Component type is not resolvable in the current round of processing: class $classDeclaration\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    classDeclaration
+                )
             }
             val tags = TagUtils.parseTagValue(classDeclaration)
 
@@ -174,7 +179,10 @@ sealed interface ComponentDeclaration {
             val parameterTags = sourceMethod.parameters.map { it.parseTags() }
             val type = sourceType.returnType!!
             if (type.isError) {
-                throw ProcessingErrorException("Component type is not resolvable in the current round of processing: func $sourceType()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", sourceMethod)
+                throw ProcessingErrorException(
+                    "Component type is not resolvable in the current round of processing: func $sourceType()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    sourceMethod
+                )
             }
             val tag = if (sourceMethod.isConstructor()) {
                 sourceMethod.closestClassDeclaration()!!.parseTags()

@@ -20,6 +20,7 @@ import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.kora.app.ksp.declaration.ModuleDeclaration
 import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
+import ru.tinkoff.kora.kora.app.ksp.exception.UnresolvedDependencyException
 import ru.tinkoff.kora.kora.app.ksp.interceptor.ComponentInterceptors
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
@@ -73,10 +74,19 @@ class KoraAppProcessor(
                                 break
                             }
                         }
-                        val chain = frames.joinToString("\n            ^            \n            |            \n") {
-                            it.declaration.declarationString() + "   " + it.dependenciesToFind[it.currentDependency]
+                        val separatorVertical = "\n            ^            \n            |            \n"
+                        val separatorHorizontal = "  <-  "
+                        var chain = frames.joinToString(separatorVertical) {
+                            it.declaration.declarationString() + separatorHorizontal + it.dependenciesToFind[it.currentDependency]
                         }
-                        kspLogger.warn("Dependency resolve process: $chain")
+                        if (processingResult.exception is UnresolvedDependencyException) {
+                            chain += separatorVertical
+                            chain += processingResult.exception.component.declarationString() + separatorHorizontal + processingResult.exception.dependencyClaim
+                            chain += separatorVertical
+                            chain += processingResult.exception.dependencyClaim.type.toClassName()
+                            chain += "\n\nRequired DependencyClaim wasn't found in graph:  ${processingResult.exception.dependencyClaim}\n"
+                        }
+                        kspLogger.info("Dependency detailed resolution tree:\n\n$chain")
                     }
                 }
 
