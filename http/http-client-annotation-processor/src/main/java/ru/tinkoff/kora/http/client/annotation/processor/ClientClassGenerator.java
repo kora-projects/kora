@@ -101,11 +101,11 @@ public class ClientClassGenerator {
                             var converterName = getConverterName(methodData, routePart.parameter.parameter());
                             // Replace "+" with "%20" because URLEncoder.encode, following
                             // application/x-www-form-urlencoded rules, encodes spaces as "+".
-                            b.addCode("  + $T.encode($L.convert($N), $T.UTF_8).replace(\"+\", \"%20\")\n", URLEncoder.class, converterName, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
+                            b.addCode("  + $T.encode($L.convert($N), $T.UTF_8, true)\n", EncoderUtils.class, converterName, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
                         } else {
                             // Replace "+" with "%20" because URLEncoder.encode, following
                             // application/x-www-form-urlencoded rules, encodes spaces as "+".
-                            b.addCode("  + $T.encode($T.toString($N), $T.UTF_8).replace(\"+\", \"%20\")\n", URLEncoder.class, Objects.class, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
+                            b.addCode("  + $T.encode($T.toString($N), $T.UTF_8, true)\n", EncoderUtils.class, Objects.class, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
                         }
                     }
                 }
