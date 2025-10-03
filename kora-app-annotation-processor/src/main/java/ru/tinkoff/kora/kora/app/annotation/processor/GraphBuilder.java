@@ -16,10 +16,7 @@ import ru.tinkoff.kora.kora.app.annotation.processor.exception.UnresolvedDepende
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import java.io.IOException;
@@ -221,36 +218,37 @@ public class GraphBuilder {
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
                 var msg = new StringBuilder();
                 if (dependencyClaim.tags().isEmpty()) {
-                    msg.append(String.format("Required dependency type wasn't found in graph and can't be auto created: %s without tag.\n" +
-                            "Please check class for @%s annotation or that required module with component factory is plugged in.",
+                    msg.append(String.format("Required dependency type wasn't found in graph and can't be auto created: %s (no tags)\n" +
+                                             "Please check class for @%s annotation or that required module with component factory is plugged in.",
                         claimTypeName, CommonClassNames.component.simpleName()));
                 } else {
                     var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
                     msg.append(String.format("Required dependency type wasn't found in graph and can't be auto created: %s with tag %s.\n" +
-                            "Please check class for @%s annotation or that required module with component factory is plugged in.",
+                                             "Please check class for @%s annotation or that required module with component factory is plugged in.",
                         claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
                 }
-                for (var hint : hints) {
-                    msg.append("\n  Hint: ").append(hint.message());
-                }
-                msg.append("\nDependency chain:");
-                msg.append("\n  ").append(declaration.declarationString());
-                var i = stack.descendingIterator();
-                while (i.hasNext()) {
-                    var iFrame = i.next();
-                    if (iFrame instanceof ProcessingState.ResolutionFrame.Root root) {
-                        msg.append("\n  ").append(processing.rootSet().get(root.rootIndex()).declarationString());
-                        break;
+
+                if (!hints.isEmpty()) {
+                    msg.append("\n\nHints:");
+                    for (var hint : hints) {
+                        msg.append("\n  - Hint: ").append(hint.message());
                     }
-                    var c = (ProcessingState.ResolutionFrame.Component) iFrame;
-                    msg.append("\n  ").append(c.declaration().declarationString());
                 }
+
+                String claimMsg = "Required dependency claim: " + dependencyClaim;
+                msg.append("\n\n").append(claimMsg);
+
+                String requestedMsg = getRequestedMessage(declaration);
+                msg.append("\n").append(requestedMsg);
+
+                String treeMsg = getDependencyTreeSimpleMessage(processing.root(), stack, declaration, dependencyClaim, processing);
+                msg.append("\n").append(treeMsg);
 
                 throw new UnresolvedDependencyException(
                     msg.toString(),
-                    declaration.source(),
-                    dependencyClaim.type(),
-                    dependencyClaim.tags()
+                    declaration,
+                    dependencyClaim,
+                    stack
                 );
             }
             processing.resolvedComponents().add(new ResolvedComponent(
@@ -265,6 +263,90 @@ public class GraphBuilder {
             }
         }
         return new ProcessingState.Ok(processing.root(), processing.allModules(), processing.resolvedComponents());
+    }
+
+    private static String getRequestedMessage(ComponentDeclaration declaration) {
+        Element element = declaration.source();
+        ExecutableElement factoryMethod = null;
+        TypeElement module = null;
+        do {
+            if (element instanceof ExecutableElement) {
+                factoryMethod = (ExecutableElement) element;
+            } else if (element instanceof TypeElement) {
+                module = (TypeElement) element;
+                break;
+            } else if (element == null) {
+                continue;
+            }
+            element = element.getEnclosingElement();
+        } while (element != null);
+
+        if (module != null && factoryMethod != null && factoryMethod.getKind() == ElementKind.CONSTRUCTOR) {
+            return "Dependency requested at: %s.%s".formatted(module.getEnclosingElement(), factoryMethod);
+        } else {
+            return "Dependency requested at: %s#%s".formatted(module, factoryMethod);
+        }
+    }
+
+    private static String getDependencyTreeSimpleMessage(TypeElement koraApp,
+                                                         Deque<ProcessingState.ResolutionFrame> stack,
+                                                         ComponentDeclaration declaration,
+                                                         DependencyClaim dependencyClaim,
+                                                         ProcessingState.Processing processing) {
+        var msg = new StringBuilder();
+        msg.append("Dependency resolution tree:");
+
+        List<ProcessingState.ResolutionFrame> stackFrames = new ArrayList<>();
+        var i = stack.descendingIterator();
+        while (i.hasNext()) {
+            var iFrame = i.next();
+            if (iFrame instanceof ProcessingState.ResolutionFrame.Root root) {
+                stackFrames.add(root);
+                break;
+            }
+            stackFrames.add(iFrame);
+        }
+
+        // reversed order
+        String delimiterRoot = "\n  @--- ";
+        String delimiter = "\n  ^--- ";
+        for (int i1 = stackFrames.size() - 1; i1 >= 0; i1--) {
+            var iFrame = stackFrames.get(i1);
+            if (iFrame instanceof ProcessingState.ResolutionFrame.Root root) {
+                ComponentDeclaration rootDeclaration = processing.rootSet().get(root.rootIndex());
+                String rootDeclarationAsStr = rootDeclaration.declarationString();
+                String koraAppName = koraApp.getQualifiedName().toString();
+                if (rootDeclaration instanceof ComponentDeclaration.FromModuleComponent mc
+                    && !rootDeclarationAsStr.contains(koraAppName)) {
+                    String moduleTypeName = mc.module().element().getQualifiedName().toString();
+                    msg.append(delimiterRoot).append(rootDeclarationAsStr.replace(moduleTypeName, koraAppName));
+                    msg.append(delimiter).append(rootDeclarationAsStr);
+                } else {
+                    msg.append(delimiterRoot).append(rootDeclarationAsStr);
+                }
+            } else {
+                var c = (ProcessingState.ResolutionFrame.Component) iFrame;
+                msg.append(delimiter).append(c.declaration().declarationString());
+            }
+        }
+
+        msg.append(delimiter).append(declaration.declarationString());
+
+        String errorMissing = " [ ERROR: MISSING COMPONENT ]";
+        if (dependencyClaim.tags().isEmpty()) {
+            msg.append(delimiter)
+                .append(dependencyClaim.type()).append("   ")
+                .append(errorMissing)
+                .append("\n");
+        } else {
+            msg.append(delimiter)
+                .append(dependencyClaim.type())
+                .append("  @Tag").append(dependencyClaim.tags().stream().collect(Collectors.joining(", ", "(", ")"))).append("   ")
+                .append(errorMissing)
+                .append("\n");
+        }
+
+        return msg.toString();
     }
 
     @Nullable
@@ -394,7 +476,7 @@ public class GraphBuilder {
         var dependencyClaim = prevComponent.dependenciesToFind().get(prevComponent.currentDependency());
         var dependencyClaimType = dependencyClaim.type();
         var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
-        if(!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
+        if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
             throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), declaration);
         }
         for (var inStackFrame : processing.resolutionStack()) {

@@ -38,16 +38,4 @@ public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaim
             return this == ONE_NULLABLE || this == NULLABLE_VALUE_OF || this == NULLABLE_PROMISE_OF;
         }
     }
-
-    @Override
-    public String toString() {
-        final StringBuilder sb = new StringBuilder("DependencyClaim[");
-        sb.append("type=").append(type);
-        sb.append(", claimType=").append(claimType);
-        if (tags != null && !tags.isEmpty()) {
-            sb.append(", tags=").append(tags);
-        }
-        sb.append(']');
-        return sb.toString();
-    }
 }
