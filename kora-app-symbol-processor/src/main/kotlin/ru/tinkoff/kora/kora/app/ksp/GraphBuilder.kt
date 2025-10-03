@@ -319,6 +319,7 @@ object GraphBuilder {
 
         // reversed order
         val delimiterRoot = "\n  @--- "
+        val delimiterOverriden = "\n  ^~~~ "
         val delimiter = "\n  ^--- "
         for (i1 in stackFrames.indices.reversed()) {
             val iFrame = stackFrames[i1]
@@ -344,7 +345,11 @@ object GraphBuilder {
                 }
             } else {
                 val c = iFrame as ProcessingState.ResolutionFrame.Component
-                msg.append(delimiter).append(c.declaration.declarationString())
+                if (c.declaration is ComponentDeclaration.FromModuleComponent && c.declaration.isOverriden()) {
+                    msg.append(delimiterOverriden).append(c.declaration.declarationString())
+                } else {
+                    msg.append(delimiter).append(c.declaration.declarationString())
+                }
             }
         }
 
