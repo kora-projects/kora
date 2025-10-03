@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.annotation.processor.common;
+package ru.tinkoff.kora.http.client.common.request;
 
 import java.net.URLEncoder;
 import java.nio.charset.Charset;

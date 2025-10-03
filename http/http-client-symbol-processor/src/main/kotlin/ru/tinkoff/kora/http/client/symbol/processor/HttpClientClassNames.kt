@@ -23,6 +23,7 @@ object HttpClientClassNames {
     val telemetryHttpClientConfig = ClassName("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryConfig")
     val interceptWithClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith")
     val interceptWithContainerClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer")
+    val httpClientEncoderUtils = ClassName("ru.tinkoff.kora.http.client.common.request", "EncoderUtils")
 
     val httpBody = ClassName("ru.tinkoff.kora.http.common.body", "HttpBody")
     val httpHeaders = ClassName("ru.tinkoff.kora.http.common.header", "HttpHeaders")
