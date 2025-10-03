@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.kora.app.ksp
 
 import com.google.devtools.ksp.getClassDeclarationByName
+import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isOpen
-import com.google.devtools.ksp.symbol.ClassKind
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.Modifier
+import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
@@ -213,26 +212,39 @@ object GraphBuilder {
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
                 val msg = if (dependencyClaim.tags.isEmpty()) {
                     StringBuilder(
-                        "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} without tag.\n" +
-                            "Keep in mind that nullable & non nullable types are different ones.\n" +
+                        "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} (no tags)\n" +
+                            "Keep in mind that nullable & non nullable types are different in Kotlin.\n" +
                             "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
                     )
                 } else {
                     val tagMsg = dependencyClaim.tags.joinToString(", ", "@Tag(", ")")
                     StringBuilder(
                         "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} with tag ${tagMsg}.\n" +
-                            "Keep in mind that nullable & non nullable types are different ones).\n" +
+                            "Keep in mind that nullable & non nullable types are different in Kotlin).\n" +
                             "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
                     )
                 }
-                for (hint in hints) {
-                    msg.append("\n  Hint: ").append(hint.message())
+
+                if (hints.isNotEmpty()) {
+                    msg.append("\n\nHints:")
+                    for (hint in hints) {
+                        msg.append("\n  - Hint: ").append(hint.message())
+                    }
                 }
+
+                val claimMsg = "Required dependency claim: $dependencyClaim"
+                msg.append("\n\n").append(claimMsg)
+
+                val requestedMsg = getRequestedMessage(declaration)
+                msg.append("\n").append(requestedMsg)
+
+                val treeMsg = getDependencyTreeSimpleMessage(stack, declaration, dependencyClaim, processing)
+                msg.append("\n").append(treeMsg)
+
                 throw UnresolvedDependencyException(
                     msg.toString(),
-                    declaration.source,
-                    dependencyClaim.type,
-                    dependencyClaim.tags
+                    declaration,
+                    dependencyClaim
                 )
             }
             processing.resolvedComponents.add(
@@ -252,6 +264,110 @@ object GraphBuilder {
             }
         }
         return ProcessingState.Ok(processing.root, processing.allModules, ArrayList(processing.resolvedComponents))
+    }
+
+    private fun getRequestedMessage(declaration: ComponentDeclaration): String {
+        var element: KSDeclaration? = declaration.source
+        var factoryMethod: KSFunctionDeclaration? = null
+        var module: KSDeclaration? = null
+        do {
+            if (element is KSFunctionDeclaration) {
+                factoryMethod = element
+            } else if (element is KSClassDeclaration) {
+                module = element
+                break
+            } else if (element == null) {
+                continue
+            }
+            element = element.parentDeclaration
+        } while (element != null)
+
+        return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
+            "Dependency requested at: ${module.qualifiedName!!.asString()}#${factoryMethod}(${
+                factoryMethod.parameters.joinToString(", ") {
+                    it.type.toTypeName().toString()
+                }
+            })"
+        } else {
+            "Dependency requested at: ${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
+                factoryMethod.parameters.joinToString(", ") {
+                    it.type.toTypeName().toString()
+                }
+            })"
+        }
+    }
+
+    private fun getDependencyTreeSimpleMessage(
+        stack: Deque<ProcessingState.ResolutionFrame>,
+        declaration: ComponentDeclaration,
+        dependencyClaim: DependencyClaim,
+        processing: ProcessingState.Processing
+    ): String {
+        val msg = StringBuilder()
+        msg.append("Dependency resolution tree:")
+
+        val stackFrames = mutableListOf<ProcessingState.ResolutionFrame>()
+        val i = stack.descendingIterator()
+        while (i.hasNext()) {
+            val iFrame: ProcessingState.ResolutionFrame = i.next()
+            if (iFrame is ProcessingState.ResolutionFrame.Root) {
+                stackFrames.add(iFrame)
+                break
+            }
+            stackFrames.add(iFrame)
+        }
+
+        // reversed order
+        val delimiterRoot = "\n  @--- "
+        val delimiterOverriden = "\n  ^~~~ "
+        val delimiter = "\n  ^--- "
+        for (i1 in stackFrames.indices.reversed()) {
+            val iFrame = stackFrames[i1]
+            if (iFrame is ProcessingState.ResolutionFrame.Root) {
+                val rootDeclaration = processing.rootSet[iFrame.rootIndex]
+                val rootDeclarationAsStr = rootDeclaration.declarationString()
+                if (rootDeclaration is ComponentDeclaration.FromModuleComponent) {
+                    val currentModuleTypeName = rootDeclaration.module.element.qualifiedName!!.asString()
+                    val originalModuleTypeName = if (rootDeclaration.method.findOverridee()?.parentDeclaration != null) {
+                        rootDeclaration.method.findOverridee()!!.parentDeclaration!!.qualifiedName!!.asString()
+                    } else {
+                        rootDeclaration.module.element.qualifiedName!!.asString()
+                    }
+
+                    if (currentModuleTypeName != originalModuleTypeName) {
+                        msg.append(delimiterRoot).append(rootDeclarationAsStr.replace(originalModuleTypeName, currentModuleTypeName))
+                        msg.append(delimiter).append(rootDeclarationAsStr)
+                    } else {
+                        msg.append(delimiterRoot).append(rootDeclarationAsStr)
+                    }
+                } else {
+                    msg.append(delimiterRoot).append(rootDeclarationAsStr)
+                }
+            } else {
+                val c = iFrame as ProcessingState.ResolutionFrame.Component
+                if (c.declaration is ComponentDeclaration.FromModuleComponent && c.declaration.isOverriden()) {
+                    msg.append(delimiterOverriden).append(c.declaration.declarationString())
+                } else {
+                    msg.append(delimiter).append(c.declaration.declarationString())
+                }
+            }
+        }
+
+        msg.append(delimiter).append(declaration.declarationString())
+
+        val errorMissing = " [ ERROR: MISSING COMPONENT ]"
+        if (dependencyClaim.tags.isEmpty()) {
+            msg.append(delimiter)
+                .append(dependencyClaim.type.toTypeName()).append("   ")
+                .append(errorMissing)
+        } else {
+            msg.append(delimiter)
+                .append(dependencyClaim.type.toTypeName())
+                .append("  @Tag").append(dependencyClaim.tags.stream().collect(Collectors.joining(", ", "(", ")"))).append("   ")
+                .append(errorMissing)
+        }
+
+        return msg.toString()
     }
 
 
