@@ -67,9 +67,23 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         )
 
         val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, superCall, fieldRetrier, retryableName)
+            val retryConfigType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.retry.RetryConfig")!!.asType(listOf())
+            val fieldRetryConfig = aspectContext.fieldFactory.constructorParam(retryConfigType, listOf())
+            val retryConfigNamedType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.retry.RetryConfig.NamedConfig")!!.asType(listOf())
+            val fieldRetryNamedConfig = aspectContext.fieldFactory.constructorInitialized(
+                retryConfigNamedType,
+                CodeBlock.of("%L.getNamedConfig(%S)", fieldRetryConfig, retryableName)
+            )
+            buildBodyFlow(ksFunction, superCall, fieldRetrier, fieldRetryNamedConfig, retryableName)
         } else if (ksFunction.isSuspend()) {
-            buildBodySuspend(ksFunction, superCall, fieldRetrier, retryableName)
+            val retryConfigType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.retry.RetryConfig")!!.asType(listOf())
+            val fieldRetryConfig = aspectContext.fieldFactory.constructorParam(retryConfigType, listOf())
+            val retryConfigNamedType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.retry.RetryConfig.NamedConfig")!!.asType(listOf())
+            val fieldRetryNamedConfig = aspectContext.fieldFactory.constructorInitialized(
+                retryConfigNamedType,
+                CodeBlock.of("%L.getNamedConfig(%S)", fieldRetryConfig, retryableName)
+            )
+            buildBodySuspend(ksFunction, superCall, fieldRetrier, fieldRetryNamedConfig, retryableName)
         } else {
             buildBodySync(ksFunction, superCall, fieldRetrier)
         }
@@ -89,13 +103,22 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         return builder.build()
     }
 
-    private fun buildBodySuspend(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String, retryableName: String): CodeBlock {
+    private fun buildBodySuspend(
+        method: KSFunctionDeclaration,
+        superCall: String,
+        fieldRetrier: String,
+        fieldRetryNamedConfig: String,
+        retryableName: String
+    ): CodeBlock {
         return CodeBlock.builder()
+            .controlFlow("if (java.lang.Boolean.FALSE.equals(%L.enabled()))", fieldRetryNamedConfig) {
+                addStatement("return " + buildMethodCall(method, superCall).toString())
+            }
             .add("%L.asState()", fieldRetrier).indent().add("\n")
             .controlFlow(".use { _state ->", fieldRetrier) {
-                controlFlow("if (_state.attemptsMax == 0)") {
-                    addStatement(buildMethodCall(method, superCall).toString())
-                }
+                beginControlFlow("if (_state.attemptsMax == 0)")
+                addStatement("return " + buildMethodCall(method, superCall).toString())
+                nextControlFlow("else")
                 addStatement("val _suppressed = %T<Exception>()", ArrayList::class)
                 controlFlow("while (true)") {
                     controlFlow("try") {
@@ -128,34 +151,46 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
                         }
                     }
                 }
+                endControlFlow()
             }
             .unindent()
             .build()
     }
 
-    private fun buildBodyFlow(method: KSFunctionDeclaration, superCall: String, fieldRetrier: String, retryableName: String): CodeBlock {
-        return CodeBlock.builder().controlFlow("return %M", MEMBER_FLOW) {
-            controlFlow("return@flow %L.asState().use { _state ->", fieldRetrier) {
-                controlFlow("if (_state.attemptsMax == 0)") {
-                    addStatement(buildMethodCall(method, superCall).toString())
-                }
-                add("%M (", MEMBER_FLOW_EMIT).indent()
-                add(buildMethodCall(method, superCall)).add(".").controlFlow("%M { _cause, _ ->", MEMBER_FLOW_RETRY) {
-                    addStatement("val _status = _state.onException(_cause)")
-                    controlFlow("when (_status)") {
-                        addStatement("%T.REJECTED -> false", MEMBER_RETRY_STATUS)
-                        controlFlow("%T.ACCEPTED ->", MEMBER_RETRY_STATUS) {
-                            addStatement("%M(_state.delayNanos.%M)", MEMBER_DELAY, MEMBER_TIME)
-                            addStatement("true")
-                        }
-                        controlFlow("%T.EXHAUSTED ->", MEMBER_RETRY_STATUS) {
-                            addStatement("throw %M(%S, _state.getAttempts(), _cause)", MEMBER_RETRY_EXCEPTION, retryableName)
+    private fun buildBodyFlow(
+        method: KSFunctionDeclaration,
+        superCall: String,
+        fieldRetrier: String,
+        fieldRetryNamedConfig: String,
+        retryableName: String
+    ): CodeBlock {
+        return CodeBlock.builder()
+            .controlFlow("if (java.lang.Boolean.FALSE.equals(%L.enabled()))", fieldRetryNamedConfig) {
+                addStatement("return " + buildMethodCall(method, superCall).toString())
+            }
+            .controlFlow("return %M", MEMBER_FLOW) {
+                controlFlow("return@flow %L.asState().use { _state ->", fieldRetrier) {
+                    beginControlFlow("if (_state.attemptsMax == 0)")
+                    addStatement("%M (%L)", MEMBER_FLOW_EMIT, buildMethodCall(method, superCall).toString())
+                    nextControlFlow("else")
+                    add("%M (", MEMBER_FLOW_EMIT).indent()
+                    add(buildMethodCall(method, superCall)).add(".").controlFlow("%M { _cause, _ ->", MEMBER_FLOW_RETRY) {
+                        addStatement("val _status = _state.onException(_cause)")
+                        controlFlow("when (_status)") {
+                            addStatement("%T.REJECTED -> false", MEMBER_RETRY_STATUS)
+                            controlFlow("%T.ACCEPTED ->", MEMBER_RETRY_STATUS) {
+                                addStatement("%M(_state.delayNanos.%M)", MEMBER_DELAY, MEMBER_TIME)
+                                addStatement("true")
+                            }
+                            controlFlow("%T.EXHAUSTED ->", MEMBER_RETRY_STATUS) {
+                                addStatement("throw %M(%S, _state.getAttempts(), _cause)", MEMBER_RETRY_EXCEPTION, retryableName)
+                            }
                         }
                     }
+                    unindent().add(")\n")
+                    endControlFlow()
                 }
-                unindent().add(")\n")
-            }
-        }.build()
+            }.build()
     }
 
     private fun buildMethodCall(method: KSFunctionDeclaration, call: String): CodeBlock {

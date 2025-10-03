@@ -34,6 +34,13 @@ interface AppWithConfig : ResilientModule, DefaultConfigExtractorsModule {
                   delay = 100ms
                   attempts = 2
                 }
+                customZeroAttempts {
+                  delay = 100ms
+                  attempts = 0
+                }
+                customDisabled {
+                  enabled = false
+                }
               }
             }
             """.trimIndent()

@@ -90,6 +90,7 @@ sourceSets {
             addOpenapiDir("petstoreV3_nullable")
             addOpenapiDir("petstoreV3_nullable_enable_json_nullable")
             addOpenapiDir("petstoreV3_request_parameters")
+            addOpenapiDir("petstoreV3_responses")
             addOpenapiDir("petstoreV3_security_all")
             addOpenapiDir("petstoreV3_security_api_key")
             addOpenapiDir("petstoreV3_security_basic")

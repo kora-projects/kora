@@ -41,20 +41,33 @@ record KoraRetryState(
     @Override
     public RetryStatus onException(@Nonnull Throwable throwable) {
         if (!failurePredicate.test(throwable)) {
-            logger.trace("RetryState '{}' rejected exception due to predicate: {}", name, throwable.toString());
+            if (logger.isTraceEnabled()) {
+                logger.trace("RetryState '{}' predicate rejected exception", name, throwable);
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("RetryState '{}' predicate rejected exception: {}", name, throwable.toString());
+            }
             return RetryStatus.REJECTED;
         }
 
         var attemptsUsed = attempts.incrementAndGet();
         if (attemptsUsed <= attemptsMax) {
-            if (logger.isDebugEnabled()) {
+            if (logger.isTraceEnabled()) {
+                logger.trace("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception",
+                    name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable);
+            } else if (logger.isDebugEnabled()) {
                 logger.debug("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception: {}",
                     name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable.toString());
             }
 
             return RetryStatus.ACCEPTED;
         } else {
-            logger.trace("Retry '{}' exhausted after {} attempts due to: {}", name, getAttemptsMax(), throwable.toString());
+            if (logger.isTraceEnabled()) {
+                logger.trace("Retry '{}' exhausted after {} attempts due to exception",
+                    name, getAttemptsMax(), throwable);
+            } else if (logger.isDebugEnabled()) {
+                logger.debug("Retry '{}' exhausted after {} attempts due to: {}",
+                    name, getAttemptsMax(), throwable.toString());
+            }
             return RetryStatus.EXHAUSTED;
         }
     }

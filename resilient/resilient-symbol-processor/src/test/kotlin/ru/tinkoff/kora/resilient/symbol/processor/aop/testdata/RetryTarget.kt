@@ -13,25 +13,26 @@ import java.util.concurrent.atomic.AtomicInteger
 open class RetryTarget {
 
     private val logger = LoggerFactory.getLogger(RetryTarget::class.java)
+    private val stopFailAfterAttempts = AtomicInteger()
     private val retryAttempts = AtomicInteger()
 
     @Retry("custom1")
     open fun retrySyncVoid(arg: String) {
         logger.info("Retry Void executed for: {}", arg)
-        check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
     }
 
     @Retry("custom2")
     open fun retrySync(arg: String): String {
         logger.info("Retry Sync executed for: {}", arg)
-        check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
         return arg
     }
 
     @Retry("custom3")
     open suspend fun retrySuspend(arg: String): String {
         logger.info("Retry Suspend executed for: {}", arg)
-        check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
         return arg
     }
 
@@ -39,7 +40,7 @@ open class RetryTarget {
     open fun retryFlow(arg: String): Flow<String> {
         return flow {
             logger.info("Retry Flow executed for: {}", arg)
-            check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
+            check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
             emit(arg)
         }
     }
@@ -50,14 +51,61 @@ open class RetryTarget {
     @Retry("throws")
     open fun throws(arg: String) {
         logger.info("Retry Void executed for: {}", arg)
-        check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
     }
 
-    open fun setRetryAttempts(attempts: Int) {
-        retryAttempts.set(attempts)
+    @Retry("customZeroAttempts")
+    open fun retrySyncZeroAttempt(arg: String): String {
+        logger.info("Retry Sync executed for: {}", arg)
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
+        return arg
     }
 
-    open fun reset() {
-        retryAttempts.set(2)
+    @Retry("customZeroAttempts")
+    open suspend fun retrySuspendZeroAttempt(arg: String): String {
+        logger.info("Retry Suspend executed for: {}", arg)
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
+        return arg
+    }
+
+    @Retry("customZeroAttempts")
+    open fun retryFlowZeroAttempt(arg: String): Flow<String> {
+        return flow {
+            logger.info("Retry Flow executed for: {}", arg)
+            check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
+            emit(arg)
+        }
+    }
+
+    @Retry("customDisabled")
+    open fun retrySyncDisabled(arg: String): String {
+        logger.info("Retry Sync executed for: {}", arg)
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
+        return arg
+    }
+
+    @Retry("customDisabled")
+    open suspend fun retrySuspendDisabled(arg: String): String {
+        logger.info("Retry Suspend executed for: {}", arg)
+        check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
+        return arg
+    }
+
+    @Retry("customDisabled")
+    open fun retryFlowDisabled(arg: String): Flow<String> {
+        return flow {
+            logger.info("Retry Flow executed for: {}", arg)
+            check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
+            emit(arg)
+        }
+    }
+
+    open fun setFailAttempts(attempts: Int) {
+        retryAttempts.set(-1)
+        stopFailAfterAttempts.set(attempts)
+    }
+
+    fun getRetryAttempts(): Int {
+        return retryAttempts.get()
     }
 }

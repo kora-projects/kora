@@ -30,7 +30,7 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
             }
             """.trimIndent())
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
-        client.invoke<String?>("test")
+        assertThat(client.invoke<String?>("test")).isEqualTo("test-string-from-mapper")
 
         Mockito.reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
@@ -206,5 +206,27 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
         assertThatThrownBy { client.invoke<String?>("test") }
             .isExactlyInstanceOf(RuntimeException::class.java)
             .hasMessage("test")
+    }
+
+    @Test
+    fun testInheritedResponseMapper() {
+        val client = compile(listOf<Any>(), """
+            @HttpClient
+            interface TestClient {
+              @ResponseCodeMapper(code = 200, mapper = TestMapper::class)
+              @HttpRoute(method = "POST", path = "/test")
+              fun test(): String?
+            }
+            """.trimIndent(), """
+            class TestMapper : SuperMapper()
+            """.trimIndent(), """
+            abstract class SuperMapper : HttpClientResponseMapper<String> {
+              override fun apply(rs: HttpClientResponse): String {
+                  return "test-string-from-mapper"
+              }
+            }
+            """.trimIndent())
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        assertThat(client.invoke<String?>("test")).isEqualTo("test-string-from-mapper")
     }
 }

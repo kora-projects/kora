@@ -30,9 +30,9 @@ public interface {{classname}}ServerResponseMappers {
     {{#responses}}{{#dataType}}
     private final HttpServerResponseMapper<HttpResponseEntity<{{{dataType}}}>> response{{code}}Delegate;{{/dataType}}{{/responses}}
 
-    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper({{#responses}}{{#dataType}}{{^isBinary}}
-      @{{vendorExtensions.jsonTag}}
-      {{/isBinary}}HttpServerResponseMapper<{{{dataType}}}> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}{{/dataType}}{{/responses}} ) { {{#responses}}{{#dataType}}
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponseMapper({{#responses}}{{#dataType}}{{#vendorExtensions.hasMapperTag}}
+      @{{vendorExtensions.mapperTag}}{{/vendorExtensions.hasMapperTag}}
+      HttpServerResponseMapper<{{{dataType}}}> response{{code}}Delegate{{#vendorExtensions.hasMore}},{{/vendorExtensions.hasMore}}{{/dataType}}{{/responses}}) { {{#responses}}{{#dataType}}
       this.response{{code}}Delegate = new HttpServerResponseEntityMapper<>(response{{code}}Delegate);{{/dataType}}{{/responses}}
     }
 

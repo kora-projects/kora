@@ -33,6 +33,8 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
         var started = System.nanoTime();
 
         var builder = new OkHttpClient.Builder()
+            .fastFallback(false)
+            .retryOnConnectionFailure(false)
             .connectTimeout(this.baseConfig.connectTimeout())
             .readTimeout(this.baseConfig.readTimeout())
             .followRedirects(this.config.followRedirects());

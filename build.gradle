@@ -87,34 +87,48 @@ def isPublishedLibrary = { Project p ->
     }
     return true
 }
+
 subprojects {
     def versions = libs.versions
     configurations {
         configureEach {
-            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson.get()}"
-            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-core:${versions.jackson.get()}"
-            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson.get()}"
-            resolutionStrategy.force "io.netty:netty-buffer:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-codec:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-codec-dns:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-codec-http2:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-codec-http:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-codec-socks:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-codec-common:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-handler:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-handler-proxy:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-resolver:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-resolver-dns:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-resolver-dns-classes-macos:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-transport:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-transport-clasess-epoll:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-transport-clasess-kqueue:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-transport-native-epoll:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-transport-native-kqueue:${versions.netty.get()}"
-            resolutionStrategy.force "io.netty:netty-transport-unix-common:${versions.netty.get()}"
-            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin.get().get()}"
-            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${versions.kotlin.get().get()}"
-            resolutionStrategy.force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${versions.kotlin.get().get()}"
+            resolutionStrategy {
+                force "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson.get()}"
+                force "com.fasterxml.jackson.core:jackson-core:${versions.jackson.get()}"
+                force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson.get()}"
+                force "io.netty:netty-common:${versions.netty.get()}"
+                force "io.netty:netty-buffer:${versions.netty.get()}"
+                force "io.netty:netty-codec:${versions.netty.get()}"
+                force "io.netty:netty-codec-dns:${versions.netty.get()}"
+                force "io.netty:netty-codec-http:${versions.netty.get()}"
+                force "io.netty:netty-codec-http2:${versions.netty.get()}"
+                force "io.netty:netty-codec-socks:${versions.netty.get()}"
+                force "io.netty:netty-codec-common:${versions.netty.get()}"
+                force "io.netty:netty-handler:${versions.netty.get()}"
+                force "io.netty:netty-handler-proxy:${versions.netty.get()}"
+                force "io.netty:netty-resolver:${versions.netty.get()}"
+                force "io.netty:netty-resolver-dns:${versions.netty.get()}"
+                force "io.netty:netty-resolver-dns-classes-macos:${versions.netty.get()}"
+                force "io.netty:netty-resolver-dns-native-macos:${versions.netty.get()}"
+                force "io.netty:netty-transport:${versions.netty.get()}"
+                force "io.netty:netty-transport-clasess-epoll:${versions.netty.get()}"
+                force "io.netty:netty-transport-clasess-kqueue:${versions.netty.get()}"
+                force "io.netty:netty-transport-unix-common:${versions.netty.get()}"
+                force "io.netty:netty-transport-native-epoll:${versions.netty.get()}"
+                force "io.netty:netty-transport-native-kqueue:${versions.netty.get()}"
+                force "io.netty:netty-transport-native-unix-common:${versions.netty.get()}"
+                force "org.jetbrains:annotations:${versions.jetbrains.annotations.get()}"
+                force "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin.stdlib.get()}"
+                force "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${versions.kotlin.stdlib.get()}"
+                force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${versions.kotlin.stdlib.get()}"
+                force "com.squareup:kotlinpoet:${versions.kotlinpoet.get()}"
+                force "com.squareup:kotlinpoet-ksp:${versions.kotlinpoet.get()}"
+                force "jakarta.annotation:jakarta.annotation-api:${versions.jakarta.get()}"
+                force "org.junit.jupiter:junit-jupiter:${versions.junit.jupiter.get()}"
+                force "org.junit.jupiter:junit-platform-launcher:${versions.junit.platform.get()}"
+                force "org.slf4j:slf4j-api:${versions.slf4j.get()}"
+                force "com.google.guava:guava:${versions.guava.get()}"
+            }
         }
     }
 }

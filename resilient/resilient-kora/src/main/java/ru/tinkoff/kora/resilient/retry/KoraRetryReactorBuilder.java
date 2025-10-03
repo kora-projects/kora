@@ -76,6 +76,7 @@ public final class KoraRetryReactorBuilder {
             return retrySignals
                 .concatMap(retryWhenState -> {
                     if (!config.enabled()) {
+                        logger.debug("RetryReactor '{}' is disabled", name);
                         return Mono.empty();
                     }
 
@@ -91,12 +92,24 @@ public final class KoraRetryReactorBuilder {
                     }
 
                     if (!failurePredicate.test(currentFailure)) {
-                        logger.trace("RetryReactor '{}' rejected throwable: {}", name, currentFailure.getClass().getCanonicalName());
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("RetryReactor '{}' predicate rejected exception",
+                                name, currentFailure);
+                        } else if (logger.isDebugEnabled()) {
+                            logger.debug("RetryReactor '{}' predicate rejected exception: {}",
+                                name, currentFailure.toString());
+                        }
                         return Mono.error(currentFailure);
                     }
 
                     if (signal.totalRetries() >= attempts) {
-                        logger.debug("RetryReactor '{}' exhausted all '{}' attempts", name, signal.totalRetries());
+                        if (logger.isTraceEnabled()) {
+                            logger.trace("RetryReactor '{}' exhausted after {} attempts due to exception",
+                                name, signal.totalRetries(), currentFailure);
+                        } else if (logger.isDebugEnabled()) {
+                            logger.debug("RetryReactor '{}' exhausted after {} attempts due to: {}",
+                                name, signal.totalRetries(), currentFailure.toString());
+                        }
                         metrics.recordExhaustedAttempts(name, attempts);
                         final RetryExhaustedException exception = new RetryExhaustedException(name, attempts, currentFailure);
                         exception.addSuppressed(currentFailure);
@@ -105,8 +118,13 @@ public final class KoraRetryReactorBuilder {
 
                     final long nextDelayNanos = delayNanos + (delayStepNanos * (signal.totalRetries() - 1));
                     final Duration delayDuration = Duration.ofNanos(nextDelayNanos);
-                    logger.debug("RetryState '{}' initiating '{}' retry for '{}' due to exception: {}",
-                        name, signal.totalRetries(), delayDuration, currentFailure.getClass().getCanonicalName());
+                    if (logger.isTraceEnabled()) {
+                        logger.trace("RetryReactor '{}' initiating '{}' retry attempt in '{}' due to exception",
+                            name, signal.totalRetries(), delayDuration, currentFailure);
+                    } else if (logger.isDebugEnabled()) {
+                        logger.debug("RetryReactor '{}' initiating '{}' retry attempt in '{}' due to exception: {}",
+                            name, signal.totalRetries(), delayDuration, currentFailure.toString());
+                    }
 
                     metrics.recordAttempt(name, nextDelayNanos);
                     return Mono.delay(delayDuration);

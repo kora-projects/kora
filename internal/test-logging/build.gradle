@@ -1,6 +1,4 @@
 dependencies {
     api libs.slf4j.api
-    api(libs.logback.classic) {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-    }
+    api libs.logback.classic
 }
