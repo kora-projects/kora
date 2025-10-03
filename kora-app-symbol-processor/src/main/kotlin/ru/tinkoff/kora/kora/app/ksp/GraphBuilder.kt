@@ -271,7 +271,7 @@ object GraphBuilder {
         var factoryMethod: KSFunctionDeclaration? = null
         var module: KSDeclaration? = null
         do {
-            if (element is KSFunctionDeclaration && element.isConstructor()) {
+            if (element is KSFunctionDeclaration) {
                 factoryMethod = element
             } else if (element is KSClassDeclaration) {
                 module = element
