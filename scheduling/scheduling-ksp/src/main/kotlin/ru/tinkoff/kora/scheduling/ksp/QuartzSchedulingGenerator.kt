@@ -102,9 +102,8 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                 val trigger = %T.newTrigger()
                   .withIdentity(%S)
                   .withSchedule(%T.cronSchedule(%L))
-                  .startAt(%T(0))
                   .build();
-                """.trimIndent() + "\n", triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString(), Date::class.asClassName()
+                """.trimIndent() + "\n", triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString()
                 );
                 if (!configPath.isNullOrBlank()) {
                     component.addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
