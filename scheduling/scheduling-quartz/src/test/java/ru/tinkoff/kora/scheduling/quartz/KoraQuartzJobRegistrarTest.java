@@ -29,17 +29,14 @@ class KoraQuartzJobRegistrarTest {
         var trigger1 = TriggerBuilder.newTrigger()
             .withIdentity(UUID.randomUUID().toString())
             .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever())
-            .startAt(new Date(0))
             .build();
         var trigger2 = TriggerBuilder.newTrigger()
             .withIdentity(UUID.randomUUID().toString())
             .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever())
-            .startAt(new Date(0))
             .build();
         var trigger3 = TriggerBuilder.newTrigger()
             .withIdentity(UUID.randomUUID().toString())
             .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever())
-            .startAt(new Date(0))
             .build();
 
         @SuppressWarnings("unchecked")
@@ -70,7 +67,6 @@ class KoraQuartzJobRegistrarTest {
                 var newTrigger = TriggerBuilder.newTrigger()
                     .withIdentity(UUID.randomUUID().toString())
                     .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever())
-                    .startAt(new Date(0))
                     .build();
                 var changedTrigger = trigger2.getTriggerBuilder()
                     .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever(2))

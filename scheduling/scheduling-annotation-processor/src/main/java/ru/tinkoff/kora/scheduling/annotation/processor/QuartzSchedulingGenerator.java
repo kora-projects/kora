@@ -98,9 +98,8 @@ public class QuartzSchedulingGenerator {
                 var trigger = $T.newTrigger()
                   .withIdentity($S)
                   .withSchedule($T.cronSchedule($L))
-                  .startAt(new $T(0))
                   .build();
-                """.stripIndent(), triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString(), Date.class);
+                """.stripIndent(), triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString());
             if (configPath != null && !configPath.isBlank()) {
                 component.addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
             } else {
