@@ -36,6 +36,10 @@ public class RepositoryBuilder {
         var builder = CommonUtils.extendsKeepAop(repositoryElement, name)
             .addAnnotation(AnnotationUtils.generated(RepositoryAnnotationProcessor.class));
 
+        if (AnnotationUtils.findAnnotation(repositoryElement, CommonClassNames.root) != null) {
+            builder.addAnnotation(CommonClassNames.root);
+        }
+
         var tags = parseTagValue(repositoryElement);
         if (!tags.isEmpty()) {
             builder.addAnnotation(makeAnnotationSpec(tags));
