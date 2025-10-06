@@ -30,6 +30,7 @@ import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.respons
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.responseCodeMappers
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.stringParameterConverter
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.uriQueryBuilder
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderUtils
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
@@ -194,17 +195,21 @@ class ClientClassGenerator(private val resolver: Resolver) {
                         uriWithPlaceholdersStringB.append("placeholder");
                         if (requiresConverter(routePart.parameter!!.parameter.type.resolve())) {
                             val converterName = getConverterName(methodData, routePart.parameter.parameter);
+                            // Replace "+" with "%20" because URLEncoder.encode, following
+                            // application/x-www-form-urlencoded rules, encodes spaces as "+".
                             b.add(
-                                "  .plus(%T.encode(%L.convert(%N), %T.UTF_8))\n",
-                                URLEncoder::class.asClassName(),
+                                "  .plus(%T.encode(%L.convert(%N), %T.UTF_8, true))\n",
+                                httpClientEncoderUtils,
                                 converterName,
                                 routePart.parameter.parameter.name?.asString(),
                                 StandardCharsets::class.asClassName()
                             );
                         } else {
+                            // Replace "+" with "%20" because URLEncoder.encode, following
+                            // application/x-www-form-urlencoded rules, encodes spaces as "+".
                             b.add(
-                                "  .plus(%T.encode(%N.toString(), %T.UTF_8))\n",
-                                URLEncoder::class.asClassName(),
+                                "  .plus(%T.encode(%N.toString(), %T.UTF_8, true))\n",
+                                httpClientEncoderUtils,
                                 routePart.parameter.parameter.name?.asString(),
                                 StandardCharsets::class.asClassName()
                             );

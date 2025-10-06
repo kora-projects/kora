@@ -28,6 +28,7 @@ public class HttpClientClassNames {
     public static final ClassName telemetryHttpClientConfig = ClassName.get("ru.tinkoff.kora.http.client.common.telemetry", "HttpClientTelemetryConfig");
     public static final ClassName interceptWithClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith");
     public static final ClassName interceptWithContainerClassName = ClassName.get("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer");
+    public static final ClassName httpClientEncoderUtils = ClassName.get("ru.tinkoff.kora.http.client.common.request", "EncoderUtils");
 
     public static final ClassName header = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Header");
     public static final ClassName query = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Query");

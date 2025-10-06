@@ -99,9 +99,13 @@ public class ClientClassGenerator {
                         uriWithPlaceholdersStringB.append("placeholder");
                         if (requiresConverter(routePart.parameter.parameter().asType())) {
                             var converterName = getConverterName(methodData, routePart.parameter.parameter());
-                            b.addCode("  + $T.encode($L.convert($N), $T.UTF_8)\n", URLEncoder.class, converterName, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
+                            // Replace "+" with "%20" because URLEncoder.encode, following
+                            // application/x-www-form-urlencoded rules, encodes spaces as "+".
+                            b.addCode("  + $T.encode($L.convert($N), $T.UTF_8, true)\n", httpClientEncoderUtils, converterName, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
                         } else {
-                            b.addCode("  + $T.encode($T.toString($N), $T.UTF_8)\n", URLEncoder.class, Objects.class, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
+                            // Replace "+" with "%20" because URLEncoder.encode, following
+                            // application/x-www-form-urlencoded rules, encodes spaces as "+".
+                            b.addCode("  + $T.encode($T.toString($N), $T.UTF_8, true)\n", httpClientEncoderUtils, Objects.class, routePart.parameter.parameter().getSimpleName(), StandardCharsets.class);
                         }
                     }
                 }
