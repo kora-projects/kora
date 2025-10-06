@@ -215,7 +215,6 @@ public class GraphBuilder {
                 }
 
                 var claimTypeName = TypeName.get(dependencyClaim.type()).annotated(List.of());
-                var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
                 var msg = new StringBuilder();
                 if (dependencyClaim.tags().isEmpty()) {
                     msg.append(String.format("Required dependency type wasn't found in graph and can't be auto created: %s (no tags)\n" +
@@ -228,13 +227,6 @@ public class GraphBuilder {
                         claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
                 }
 
-                if (!hints.isEmpty()) {
-                    msg.append("\n\nHints:");
-                    for (var hint : hints) {
-                        msg.append("\n  - Hint: ").append(hint.message());
-                    }
-                }
-
                 String claimMsg = "Required dependency claim: " + dependencyClaim;
                 msg.append("\n\n").append(claimMsg);
 
@@ -243,6 +235,22 @@ public class GraphBuilder {
 
                 String treeMsg = getDependencyTreeSimpleMessage(processing.root(), stack, declaration, dependencyClaim, processing);
                 msg.append("\n").append(treeMsg);
+
+                var tips = ctx.dependencyModuleHintProvider.findTips(dependencyClaim.type(), dependencyClaim.tags());
+                if (!tips.isEmpty()) {
+                    msg.append("\nTips:");
+                    for (var tip : tips) {
+                        msg.append("\n  - Tip: ").append(tip.message());
+                    }
+                }
+
+                var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
+                if (!hints.isEmpty()) {
+                    msg.append("\n\nHints:");
+                    for (var hint : hints) {
+                        msg.append("\n  - Hint: ").append(hint.message());
+                    }
+                }
 
                 throw new UnresolvedDependencyException(
                     msg.toString(),

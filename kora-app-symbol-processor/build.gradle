@@ -24,6 +24,7 @@ sourceSets {
     main {
         resources {
             srcDirs "build/kora-modules"
+            srcDirs "build/kora-tips"
         }
     }
 }
@@ -56,8 +57,50 @@ project.tasks.register("buildModules") {
             def result = new groovy.json.JsonSlurper().parseText(it.file.text)
             list.addAll(result)
         }
-        def json = groovy.json.JsonOutput.toJson(list)
+        def json = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(list))
         def resultFile = project.file("build/kora-modules/kora-modules.json")
+        if (resultFile.exists()) {
+            if (resultFile.text == json) {
+                return
+            }
+            resultFile.delete()
+        }
+
+        Files.createDirectories(resultFile.parentFile.toPath())
+        resultFile.createNewFile()
+        resultFile.text = json
+    }
+}
+
+project.tasks.register("copyModulesTips", Copy) {
+    def counter = 0
+    from("..") {
+        includeEmptyDirs = false
+        include "/**/src/main/resources/kora-module-tips.json"
+        exclude "**/build/**/*"
+        rename {
+            counter++
+            return "kora-tip-" + counter + ".json";
+        }
+        eachFile {
+            path = name
+        }
+    }
+    into "build/kora-tips/tips"
+}
+
+project.tasks.register("buildModulesTips") {
+    it.dependsOn("copyModulesTips")
+    it.outputs.file("build/kora-tips/kora-tips.json")
+    it.inputs.dir("build/kora-tips/tips")
+    doLast {
+        def list = new ArrayList<>()
+        fileTree(dir: "build/kora-tips/tips", include: "*.json").visit {
+            def result = new groovy.json.JsonSlurper().parseText(it.file.text)
+            list.addAll(result)
+        }
+        def json = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(list))
+        def resultFile = project.file("build/kora-tips/kora-tips.json")
         if (resultFile.exists()) {
             if (resultFile.text == json) {
                 return
@@ -74,3 +117,7 @@ project.tasks.register("buildModules") {
 processResources.dependsOn("buildModules")
 compileJava.dependsOn("buildModules")
 sourcesJar.dependsOn("buildModules")
+
+processResources.dependsOn("buildModulesTips")
+compileJava.dependsOn("buildModulesTips")
+sourcesJar.dependsOn("buildModulesTips")
