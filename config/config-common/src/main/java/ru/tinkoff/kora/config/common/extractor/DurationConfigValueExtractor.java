@@ -24,11 +24,28 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
             throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
         }
         try {
-            var nanos = parseDuration(str);
-            return Duration.ofNanos(nanos);
+            return parseString(str);
         } catch (Exception e) {
             throw ConfigValueExtractionException.parsingError(value, e);
         }
+    }
+
+    public static Duration parseString(ConfigValue<String> configValue) {
+        try {
+            return Duration.parse(configValue.value());
+        } catch (Exception e) {
+            try {
+                return parseHoconStyle(configValue);
+            } catch (Exception e1) {
+                e1.addSuppressed(e);
+                throw e1;
+            }
+        }
+    }
+
+    public static Duration parseHoconStyle(ConfigValue<String> configValue) {
+        var nanos = parseDuration(configValue);
+        return Duration.ofNanos(nanos);
     }
 
     public static long parseDuration(ConfigValue<String> configValue) {
