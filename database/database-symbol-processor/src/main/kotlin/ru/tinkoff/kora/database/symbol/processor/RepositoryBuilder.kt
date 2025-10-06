@@ -43,9 +43,8 @@ class RepositoryBuilder(
             .generated(RepositoryBuilder::class)
             .addOriginatingKSFile(repositoryDeclaration)
 
-        if (repositoryDeclaration.findAnnotation(CommonClassNames.root) != null) {
-            builder.addAnnotation(AnnotationSpec.builder(CommonClassNames.root).build())
-        }
+        repositoryDeclaration.findAnnotation(CommonClassNames.root)
+            ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
 
         repositoryDeclaration.findAnnotation(CommonClassNames.tag)
             ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
