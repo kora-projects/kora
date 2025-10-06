@@ -33,8 +33,13 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
     public static Duration parseString(ConfigValue<String> configValue) {
         try {
             return Duration.parse(configValue.value());
-        catch (Exception e) {
-            return parseHoconStyle(configValue);
+        } catch (Exception e) {
+            try {
+                return parseHoconStyle(configValue);
+            } catch (Exception e1) {
+                e1.addSuppressed(e);
+                throw e1;
+            }
         }
     }
 
