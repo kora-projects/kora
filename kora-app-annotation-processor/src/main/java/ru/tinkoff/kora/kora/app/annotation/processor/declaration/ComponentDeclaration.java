@@ -48,7 +48,10 @@ public sealed interface ComponentDeclaration {
 
         @Override
         public String declarationString() {
-            return module.element().getQualifiedName() + "." + method.getSimpleName();
+            String args = method.getParameters().isEmpty()
+                ? "()"
+                : "(...)";
+            return "factory  " + module.element().getQualifiedName() + "#" + method.getSimpleName() + args;
         }
 
         @Override
@@ -83,7 +86,7 @@ public sealed interface ComponentDeclaration {
 
         @Override
         public String declarationString() {
-            return typeElement.getQualifiedName().toString();
+            return "component  " + typeElement.getQualifiedName().toString();
         }
 
         @Override
@@ -160,7 +163,7 @@ public sealed interface ComponentDeclaration {
 
         @Override
         public String declarationString() {
-            return source.getEnclosingElement().toString() + "." + source.getSimpleName();
+            return "extension  " + source.getEnclosingElement().toString() + "." + source.getSimpleName();
         }
 
         @Override
