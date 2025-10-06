@@ -44,7 +44,7 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
     }
 
     public static Duration parseHoconStyle(ConfigValue<String> configValue) {
-        var nanos = parseDuration(str);
+        var nanos = parseDuration(configValue);
         return Duration.ofNanos(nanos);
     }
 
