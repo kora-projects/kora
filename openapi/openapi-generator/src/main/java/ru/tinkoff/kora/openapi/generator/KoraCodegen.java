@@ -20,7 +20,6 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.media.StringSchema;
 import io.swagger.v3.oas.models.parameters.Parameter;
 import io.swagger.v3.oas.models.parameters.RequestBody;
-import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.servers.Server;
 import io.swagger.v3.oas.models.tags.Tag;
 import io.swagger.v3.parser.util.SchemaTypeUtil;
@@ -174,7 +173,8 @@ public class KoraCodegen extends DefaultCodegen {
         DelegateMethodBodyMode delegateMethodBodyMode,
         boolean implicitHeaders,
         @Nullable Pattern implicitHeadersRegex,
-        boolean forceIncludeOptional
+        boolean forceIncludeOptional,
+        boolean forceIncludeNonRequired
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -194,6 +194,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
             cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
             cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
+            cliOptions.add(CliOption.newString(FORCE_INCLUDE_NON_REQUIRED, "If enabled forces only NonRequired fields to be included ALWAYS even if null"));
             return cliOptions;
         }
 
@@ -216,6 +217,7 @@ public class KoraCodegen extends DefaultCodegen {
             boolean implicitHeaders = false;
             Pattern implicitHeadersRegex = null;
             var forceIncludeOptional = false;
+            var forceIncludeNonRequired = false;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -293,10 +295,13 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(FORCE_INCLUDE_OPTIONAL)) {
                 forceIncludeOptional = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_OPTIONAL).toString());
             }
+            if (additionalProperties.containsKey(FORCE_INCLUDE_NON_REQUIRED)) {
+                forceIncludeNonRequired = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_NON_REQUIRED).toString());
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
                 securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable,
-                filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex, forceIncludeOptional);
+                filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex, forceIncludeOptional, forceIncludeNonRequired);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -363,6 +368,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String IMPLICIT_HEADERS = "implicitHeaders";
     public static final String IMPLICIT_HEADERS_REGEX = "implicitHeadersRegex";
     public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
+    public static final String FORCE_INCLUDE_NON_REQUIRED = "forceIncludeNonRequired";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
@@ -686,6 +692,8 @@ public class KoraCodegen extends DefaultCodegen {
                         LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
+                } else if (params.forceIncludeNonRequired && !variable.required) {
+                    variable.vendorExtensions.put("x-json-include-always", true);
                 }
             }
 
@@ -712,6 +720,8 @@ public class KoraCodegen extends DefaultCodegen {
                         LOGGER.warn("Detected isNullable and NonRequired field: {}#{}\nYou may want add option '{}' in configOptions to treat it as JsonNullable<T>, this will be default behavior in 2.0",
                             model.name, variable.name, ENABLE_JSON_NULLABLE);
                     }
+                } else if (params.forceIncludeNonRequired && !variable.required) {
+                    variable.vendorExtensions.put("x-json-include-always", true);
                 }
             }
 
