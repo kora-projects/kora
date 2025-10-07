@@ -35,7 +35,8 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
             Objects.requireNonNullElse(config.basic().sessionName(), "cassandra"),
             "cassandra",
             "cassandra",
-            Optional.ofNullable(config.auth()).map(CassandraConfig.CassandraCredentials::login).orElse("anonymous")
+            Optional.ofNullable(config.auth()).map(CassandraConfig.CassandraCredentials::login).orElse("anonymous"),
+            config.basic().contactPoints().stream().findFirst().orElse(null)
         ), DataBaseTelemetryFactory.EMPTY);
     }
 

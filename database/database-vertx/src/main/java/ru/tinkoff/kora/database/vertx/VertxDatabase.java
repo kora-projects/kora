@@ -56,7 +56,12 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
             VertxDatabaseConfig.toPgPoolOptions(vertxDatabaseConfig)
         );
         this.telemetry = Objects.requireNonNullElse(
-            telemetryFactory.get(vertxDatabaseConfig.telemetry(), vertxDatabaseConfig.poolName(), "vertx", "postgres", vertxDatabaseConfig.username()),
+            telemetryFactory.get(vertxDatabaseConfig.telemetry(),
+                vertxDatabaseConfig.poolName(),
+                "vertx",
+                "postgres",
+                vertxDatabaseConfig.username(),
+                vertxDatabaseConfig.connectionUri()),
             DataBaseTelemetryFactory.EMPTY
         );
     }

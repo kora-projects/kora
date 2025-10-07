@@ -6,6 +6,7 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public interface DataBaseTelemetryFactory {
+
     DataBaseTelemetry.DataBaseTelemetryContext EMPTY_CTX = exception -> {};
     DataBaseTelemetry EMPTY = new DataBaseTelemetry() {
         @Nullable
@@ -20,5 +21,12 @@ public interface DataBaseTelemetryFactory {
         }
     };
 
-    DataBaseTelemetry get(TelemetryConfig config, String name, String driverType, String dbType, String username);
+    @Deprecated
+    default DataBaseTelemetry get(TelemetryConfig config, String name, String driverType, String dbType, String username) {
+        return EMPTY;
+    }
+
+    default DataBaseTelemetry get(TelemetryConfig config, String name, String driverType, String dbType, String username, @Nullable String connectionString) {
+        return get(config, name, driverType, dbType, username);
+    }
 }

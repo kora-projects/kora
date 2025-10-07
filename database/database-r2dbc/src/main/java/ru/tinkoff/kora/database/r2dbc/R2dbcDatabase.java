@@ -52,7 +52,8 @@ public class R2dbcDatabase implements R2dbcConnectionFactory, Lifecycle, Readine
             config.poolName(),
             "r2dbc",
             config.r2dbcUrl().substring(6, config.r2dbcUrl().indexOf(":", 6)),
-            config.username()
+            config.username(),
+            config.r2dbcUrl()
         ), DataBaseTelemetryFactory.EMPTY);
     }
 
