@@ -35,6 +35,9 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         String host = null;
         int port = -1;
         String resultConnectionString = null;
+        if (addConnectionURI) {
+            resultConnectionString = connectionString;
+        }
         if (addConnectionURI && connectionString != null) {
             try {
                 URI originalUri = URI.create(connectionString);
