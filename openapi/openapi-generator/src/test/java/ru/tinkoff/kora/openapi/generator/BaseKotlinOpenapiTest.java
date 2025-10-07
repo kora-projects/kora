@@ -19,34 +19,36 @@ public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
 
     protected void process(String name, String mode, String spec, BaseOpenapiTest.SwaggerParams.Options options) throws Exception {
         var files = super.generate(name, mode, spec, options);
-        var kc = new KotlinCompilation();
-        var sources = kc.getBaseDir().resolve("sources");
-        for (var src : Files.walk(kotlinSourcesDir).filter(Files::isRegularFile).toList()) {
-            var relativized = kotlinSourcesDir.relativize(src);
-            var target = sources.resolve(relativized);
-            Files.createDirectories(target.getParent());
-            Files.copy(src.toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
-            kc.withSrc(target);
-        }
-
-        kc.withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new HttpClientSymbolProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider()))
-            .withGeneratedSourcesDir(kotlinSourcesDir)
-            .compile();
-
         var targetDir = Path.of("build/out").resolve(name).resolve(mode);
-
-        for (var src : Files.walk(kotlinSourcesDir).filter(Files::isRegularFile).toList()) {
-            var relativized = kotlinSourcesDir.relativize(src);
-            var target = targetDir.resolve(relativized);
-            Files.createDirectories(target.getParent());
-            Files.copy(src.toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
-        }
         for (var file : files) {
             var src = file.toPath();
             var relativized = openapiSourcesDir.relativize(src);
             var target = targetDir.resolve(relativized);
             Files.createDirectories(target.getParent());
             Files.copy(src, target, StandardCopyOption.REPLACE_EXISTING);
+        }
+        var kc = new KotlinCompilation();
+        var sources = kc.getBaseDir().resolve("sources");
+        for (var src : files) {
+            var relativized = openapiSourcesDir.relativize(src.toPath());
+            var target = sources.resolve(relativized);
+            Files.createDirectories(target.getParent());
+            Files.copy(src.toPath().toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
+            if (target.toString().endsWith(".kt")) {
+                kc.withSrc(target);
+            }
+        }
+
+        kc.withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new HttpClientSymbolProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider()))
+            .withGeneratedSourcesDir(kotlinSourcesDir)
+            .compile();
+
+
+        for (var src : Files.walk(kotlinSourcesDir).filter(Files::isRegularFile).toList()) {
+            var relativized = kotlinSourcesDir.relativize(src);
+            var target = targetDir.resolve(relativized);
+            Files.createDirectories(target.getParent());
+            Files.copy(src.toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }
 }

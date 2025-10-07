@@ -1,3 +1,5 @@
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+
 dependencies {
     api libs.slf4j.api
     api(libs.openapi.generator) {
@@ -16,6 +18,8 @@ dependencies {
     api("com.fasterxml.jackson.datatype:jackson-datatype-guava:${libs.versions.jackson.get()}")
     api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
     api("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${libs.versions.jackson.get()}")
+    implementation libs.javapoet
+    implementation libs.kotlinpoet
 
     implementation libs.caffeine
     implementation libs.commons.codec

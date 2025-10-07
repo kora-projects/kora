@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.common.annotation;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
+import kotlin.annotation.AnnotationTarget;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
 
@@ -30,6 +31,7 @@ import java.lang.annotation.Target;
  * }</pre>
  */
 @Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
+@kotlin.annotation.Target(allowedTargets = {AnnotationTarget.FIELD, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface JsonField {
 

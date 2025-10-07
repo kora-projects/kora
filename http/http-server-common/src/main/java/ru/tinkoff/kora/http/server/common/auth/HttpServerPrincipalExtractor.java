@@ -1,12 +1,8 @@
 package ru.tinkoff.kora.http.server.common.auth;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Principal;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-
-import jakarta.annotation.Nullable;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 /**
  * <b>Русский</b>: Контракт по извлечению контекста авторизации из HTTP запроса
@@ -19,7 +15,7 @@ import java.util.concurrent.CompletionStage;
  * {@code
  * public record UserContext(String userId, String traceId) implements Principal { }
  *
- * public final class UserContextExtractor implements HttpServerPrincipalExtractor<UserContext> {
+ * public final class UserContextExtractor implements HttpServerPrincipalExtractor<String, UserContext> {
  *
  *     @Override
  *     public UserContext extract(HttpServerRequest request, @Nullable String value) {
@@ -27,15 +23,16 @@ import java.util.concurrent.CompletionStage;
  *             throw new IllegalAccessException("No token");
  *         }
  *
- *         final String traceId = request.headers().getFirst("x-trace-id");
- *         final String userId = someAuthService.getUserId(value);
+ *         var traceId = request.headers().getFirst("x-trace-id");
+ *         var userId = someAuthService.getUserId(value);
  *         return new UserContext(userId, traceId);
  *     }
  * }
  * }
  * </pre>
+ *
  * @see Principal
  */
-public interface HttpServerPrincipalExtractor<T extends Principal> {
-    T extract(HttpServerRequest request, @Nullable String value);
+public interface HttpServerPrincipalExtractor<T, P extends Principal> {
+    P extract(HttpServerRequest request, @Nullable T token);
 }

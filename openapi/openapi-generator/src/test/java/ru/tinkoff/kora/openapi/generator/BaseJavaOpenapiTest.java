@@ -21,7 +21,15 @@ public class BaseJavaOpenapiTest extends BaseOpenapiTest {
 
 
     protected void process(String name, String mode, String spec, BaseOpenapiTest.SwaggerParams.Options options) throws Exception {
+        var targetDir = Path.of("build/out").resolve(name).resolve(mode);
         var files = super.generate(name, mode, spec, options);
+        for (var file : files) {
+            var src = file.toPath();
+            var relativized = openapiSourcesDir.relativize(src);
+            var target = targetDir.resolve(relativized);
+            Files.createDirectories(target.getParent());
+            Files.copy(src, target, StandardCopyOption.REPLACE_EXISTING);
+        }
         var targetFiles = files.stream()
             .map(File::toPath)
             .map(Path::toAbsolutePath)
@@ -34,20 +42,12 @@ public class BaseJavaOpenapiTest extends BaseOpenapiTest {
             .withGeneratedSourcesDir(javaSourcesDir)
             .compile();
 
-        var targetDir = Path.of("build/out").resolve(name).resolve(mode);
 
         for (var src : Files.walk(javaSourcesDir).filter(Files::isRegularFile).toList()) {
             var relativized = javaSourcesDir.relativize(src);
             var target = targetDir.resolve(relativized);
             Files.createDirectories(target.getParent());
             Files.copy(src.toAbsolutePath(), target.toAbsolutePath(), StandardCopyOption.REPLACE_EXISTING);
-        }
-        for (var file : files) {
-            var src = file.toPath();
-            var relativized = openapiSourcesDir.relativize(src);
-            var target = targetDir.resolve(relativized);
-            Files.createDirectories(target.getParent());
-            Files.copy(src, target, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 }

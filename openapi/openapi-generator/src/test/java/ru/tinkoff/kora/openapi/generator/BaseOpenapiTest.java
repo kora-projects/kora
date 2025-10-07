@@ -18,7 +18,6 @@ public abstract class BaseOpenapiTest {
     public record SwaggerParams(String spec, String name, Options options) {
         public static final class Options {
             public boolean authAsArg;
-            public boolean jsonNullable;
             public boolean includeServerRequest;
             public boolean implicitHeaders;
             @Nullable
@@ -27,11 +26,6 @@ public abstract class BaseOpenapiTest {
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
-                return this;
-            }
-
-            public Options setJsonNullable(boolean jsonNullable) {
-                this.jsonNullable = jsonNullable;
                 return this;
             }
 
@@ -62,26 +56,26 @@ public abstract class BaseOpenapiTest {
         var result = new ArrayList<SwaggerParams>();
 
         var files = new String[]{
+            "/example/petstoreV2.yaml",
+            "/example/petstoreV3.yaml",
             "/example/petstoreV3_additional_props.yaml",
+            "/example/petstoreV3_discriminator.yaml",
             "/example/petstoreV3_enum.yaml",
+            "/example/petstoreV3_filter.yaml",
             "/example/petstoreV3_form.yaml",
+            "/example/petstoreV3_nullable.yaml",
             "/example/petstoreV3_request_parameters.yaml",
-            "/example/petstoreV3_types.yaml",
-            "/example/petstoreV3_validation.yaml",
-            "/example/petstoreV3_single_response.yaml",
-            "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_security_all.yaml",
             "/example/petstoreV3_security_api_key.yaml",
             "/example/petstoreV3_security_basic.yaml",
             "/example/petstoreV3_security_bearer.yaml",
+            "/example/petstoreV3_security_cookie.yaml",
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_security_multi.yaml",
-            "/example/petstoreV3_security_cookie.yaml",
-            "/example/petstoreV3_discriminator.yaml",
-            "/example/petstoreV3_nullable.yaml",
-            "/example/petstoreV3_filter.yaml",
-            "/example/petstoreV3.yaml",
-            "/example/petstoreV2.yaml",
+            "/example/petstoreV3_single_response.yaml",
+            "/example/petstoreV3_responses.yaml",
+            "/example/petstoreV3_types.yaml",
+            "/example/petstoreV3_validation.yaml",
         };
 
         for (var fileName : files) {
@@ -92,7 +86,7 @@ public abstract class BaseOpenapiTest {
             result.add(new SwaggerParams(fileName, name, new SwaggerParams.Options()));
 
             if (fileName.contains("security")) {
-                result.add(new SwaggerParams(fileName, name + "_auth_arg", new SwaggerParams.Options().setIncludeServerRequest(true)));
+                result.add(new SwaggerParams(fileName, name + "_auth_arg", new SwaggerParams.Options().setAuthAsArg(true)));
             }
 
             if (name.equals("petstoreV2") || name.equals("petstoreV3")) {
@@ -103,13 +97,6 @@ public abstract class BaseOpenapiTest {
 
             if (name.equals("petstoreV3")) {
                 result.add(new SwaggerParams(fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
-            }
-
-            if (fileName.contains("discriminator")
-                || fileName.contains("validation")
-                || fileName.contains("nullable")
-                || fileName.contains("additional_props")) {
-                result.add(new SwaggerParams(fileName, name + "_enable_json_nullable", new SwaggerParams.Options().setJsonNullable(true)));
             }
         }
 
@@ -151,7 +138,6 @@ public abstract class BaseOpenapiTest {
                 """)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg)
-            .addAdditionalProperty("enableJsonNullable", options.jsonNullable)
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders)
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
