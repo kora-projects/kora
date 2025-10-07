@@ -209,7 +209,6 @@ object GraphBuilder {
                         continue@frame
                     }
                 }
-                val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
                 val msg = if (dependencyClaim.tags.isEmpty()) {
                     StringBuilder(
                         "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} (no tags)\n" +
@@ -225,13 +224,6 @@ object GraphBuilder {
                     )
                 }
 
-                if (hints.isNotEmpty()) {
-                    msg.append("\n\nHints:")
-                    for (hint in hints) {
-                        msg.append("\n  - Hint: ").append(hint.message())
-                    }
-                }
-
                 val claimMsg = "Required dependency claim: $dependencyClaim"
                 msg.append("\n\n").append(claimMsg)
 
@@ -240,6 +232,14 @@ object GraphBuilder {
 
                 val treeMsg = getDependencyTreeSimpleMessage(stack, declaration, dependencyClaim, processing)
                 msg.append("\n").append(treeMsg)
+
+                val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
+                if (hints.isNotEmpty()) {
+                    msg.append("\n\nHints:")
+                    for (hint in hints) {
+                        msg.append("\n  - Hint: ").append(hint.message())
+                    }
+                }
 
                 throw UnresolvedDependencyException(
                     msg.toString(),
@@ -285,13 +285,13 @@ object GraphBuilder {
         return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
             "Dependency requested at: ${module.qualifiedName!!.asString()}#${factoryMethod}(${
                 factoryMethod.parameters.joinToString(", ") {
-                    it.type.toTypeName().toString()
+                    it.type.resolve().toClassName().toString()
                 }
             })"
         } else {
             "Dependency requested at: ${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
                 factoryMethod.parameters.joinToString(", ") {
-                    it.type.toTypeName().toString()
+                    it.type.resolve().toClassName().toString()
                 }
             })"
         }

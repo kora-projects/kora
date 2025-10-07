@@ -9,31 +9,66 @@ import java.io.IOException
 import java.util.regex.Pattern
 
 class DependencyModuleHintProvider(private val resolver: Resolver) {
-    private var hints: List<ModuleHint> = mutableListOf()
+
     private val log = LoggerFactory.getLogger(this::class.java)
+
+    private var hints: List<KoraHint> = mutableListOf()
 
     init {
         try {
-            DependencyModuleHintProvider::class.java.getResourceAsStream("/kora-modules.json").use { r ->
+            DependencyModuleHintProvider::class.java.getResourceAsStream("/kora-hints.json").use { r ->
                 JsonFactory(
                     JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES)
-                ).createParser(r).use { parser -> hints = ModuleHint.parseList(parser) }
+                ).createParser(r).use { parser -> hints = KoraHint.parseList(parser) }
             }
         } catch (e: IOException) {
             throw RuntimeException(e)
         }
     }
 
-    inner class Hint(
-        val type: KSType, val artifact: String, val module: String, val tags: Set<String>
-    ) {
-        fun message(): String {
-            if (tags.isEmpty()) {
-                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module \nArtifact dependency: $artifact\n"
-            } else {
-                val tagsAsStr = tags.joinToString(", ", "{", "}") { "$it.class" }
-                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module (required tags: `@Tag($tagsAsStr)`)\nArtifact dependency: $artifact\n"
+    interface Hint {
+
+        fun message(): String
+
+        data class ModuleHint(
+            val type: KSType,
+            val tags: Set<String>,
+            val module: String,
+            val artifact: String
+        ) : Hint {
+            override fun message(): String {
+                if (tags.isEmpty()) {
+                    return """
+                        Missing component: ${type.toTypeName()}
+                            Component can be provided by standard Kora module you may forgot to plug it:
+                                Gradle dependency:  implementation("$artifact")
+                                Module interface:  $module
+                                """.trimIndent()
+                } else {
+                    val tagForMsg = if (this.tags == setOf("ru.tinkoff.kora.json.common.annotation.Json")) {
+                        "@ru.tinkoff.kora.json.common.annotation.Json"
+                    } else if (this.tags.size == 1) {
+                        "@Tag(${this.tags.iterator().next() + ".class"})"
+                    } else {
+                        tags.joinToString(", ", "@Tag({", "})") { "$it.class" }
+                    }
+
+                    return """
+                        Missing component: ${type.toTypeName()} with $tagForMsg
+                            Component can be provided by standard Kora module you may forgot to plug it:
+                                Gradle dependency:  implementation("$artifact")
+                                Module interface:  $module
+                                """.trimIndent()
+                }
             }
+        }
+
+        data class TipHint(
+            val type: KSType,
+            val tags: Set<String>,
+            val tip: String
+        ) : Hint {
+            override fun message(): String = tip
         }
     }
 
@@ -43,12 +78,12 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
         for (hint in hints) {
             val matcher = hint.typeRegex.matcher(missingType.toTypeName().toString())
             if (matcher.matches()) {
-                if (this.tagMatches(missingTag, hint.tags)) {
+                if (tagMatches(missingTag, hint.tags)) {
                     log.trace("Hint {} matched!", hint)
-                    if (hint.tags.isEmpty()) {
-                        result.add(Hint(missingType, hint.artifact, hint.moduleName, setOf()))
-                    } else {
-                        result.add(Hint(missingType, hint.artifact, hint.moduleName, hint.tags))
+                    when (hint) {
+                        is KoraHint.KoraModuleHint -> result.add(Hint.ModuleHint(missingType, hint.tags, hint.artifact, hint.moduleName))
+                        is KoraHint.KoraTipHint -> result.add(Hint.TipHint(missingType, hint.tags, hint.tip))
+                        else -> throw UnsupportedOperationException("Unknown hint type: $hint")
                     }
                 } else {
                     log.trace("Hint {} doesn't match because of tag", hint)
@@ -77,25 +112,38 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
         return true
     }
 
-    internal data class ModuleHint(
-        val tags: Set<String>,
-        val typeRegex: Pattern,
-        val moduleName: String,
-        val artifact: String
-    ) {
+    interface KoraHint {
+
+        val typeRegex: Pattern
+
+        val tags: Set<String>
+
+        data class KoraModuleHint(
+            override val typeRegex: Pattern,
+            override val tags: Set<String>,
+            val moduleName: String,
+            val artifact: String
+        ) : KoraHint
+
+        data class KoraTipHint(
+            override val typeRegex: Pattern,
+            override val tags: Set<String>,
+            val tip: String
+        ) : KoraHint
 
         companion object {
+
             @Throws(IOException::class)
-            internal fun parseList(p: JsonParser): List<ModuleHint> {
+            internal fun parseList(p: JsonParser): List<KoraHint> {
                 var token = p.nextToken()
                 if (token != JsonToken.START_ARRAY) {
                     throw JsonParseException(p, "Expecting START_ARRAY token, got $token")
                 }
                 token = p.nextToken()
                 if (token == JsonToken.END_ARRAY) {
-                    return java.util.List.of()
+                    return listOf()
                 }
-                val result = ArrayList<ModuleHint>(16)
+                val result = ArrayList<KoraHint>(16)
                 while (token != JsonToken.END_ARRAY) {
                     val element = parse(p)
                     result.add(element)
@@ -105,13 +153,14 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
             }
 
             @Throws(IOException::class)
-            internal fun parse(p: JsonParser): ModuleHint {
+            internal fun parse(p: JsonParser): KoraHint {
                 assert(p.currentToken() == JsonToken.START_OBJECT)
                 var next = p.nextToken()
                 var typeRegex: String? = null
                 val tags: MutableSet<String> = HashSet()
                 var moduleName: String? = null
                 var artifact: String? = null
+                var tip: String? = null
                 while (next != JsonToken.END_OBJECT) {
                     if (next != JsonToken.FIELD_NAME) {
                         throw JsonParseException(p, "expected FIELD_NAME, got $next")
@@ -153,6 +202,13 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                             artifact = p.valueAsString
                         }
 
+                        "tip" -> {
+                            if (p.nextToken() != JsonToken.VALUE_STRING) {
+                                throw JsonParseException(p, "expected VALUE_STRING, got $next")
+                            }
+                            tip = p.valueAsString
+                        }
+
                         else -> {
                             p.nextToken()
                             p.skipChildren()
@@ -160,13 +216,19 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                     }
                     next = p.nextToken()
                 }
-                if (typeRegex == null || moduleName == null || artifact == null) {
-                    throw JsonParseException(p, "Some required fields missing")
-                }
-                return ModuleHint(tags, Pattern.compile(typeRegex.trim()), moduleName, artifact)
-            }
 
-            private val log = LoggerFactory.getLogger(DependencyModuleHintProvider::class.java)
+                if (typeRegex == null) {
+                    throw JsonParseException(p, "Some required fields missing: typeRegex=$typeRegex")
+                } else if (!(moduleName != null && artifact != null || tip != null)) {
+                    throw JsonParseException(p, "Some required fields missing: moduleName=$moduleName, artifact=$artifact, tip=$tip")
+                }
+
+                return if (tip != null) {
+                    KoraTipHint(Pattern.compile(typeRegex.trim()), tags, tip)
+                } else {
+                    KoraModuleHint(Pattern.compile(typeRegex.trim()), tags, moduleName!!, artifact!!)
+                }
+            }
         }
     }
 }

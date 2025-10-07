@@ -13,41 +13,41 @@ apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 sourceSets {
     main {
         resources {
-            srcDirs "build/kora-modules"
+            srcDirs "build/kora-hints"
         }
     }
 }
 
-project.tasks.register("copyModules", Copy) {
+project.tasks.register("copyHints", Copy) {
     def counter = 0
     from("..") {
         includeEmptyDirs = false
-        include "/**/src/main/resources/modules.json"
+        include "/**/src/main/resources/kora-module-hints.json"
         exclude "**/build/**/*"
         rename {
             counter++
-            return "module-" + counter + ".json";
+            return "module-hint-" + counter + ".json"
         }
         eachFile {
             path = name
         }
     }
-    into "build/kora-modules/parts"
+    into "build/kora-hints/parts"
 }
 
 
-project.tasks.register("buildModules") {
-    it.dependsOn("copyModules")
-    it.outputs.file("build/kora-modules/kora-modules.json")
-    it.inputs.dir("build/kora-modules/parts")
+project.tasks.register("buildHints") {
+    it.dependsOn("copyHints")
+    it.outputs.file("build/kora-hints/kora-hints.json")
+    it.inputs.dir("build/kora-hints/parts")
     doLast {
         def list = new ArrayList<>()
-        fileTree(dir: "build/kora-modules/parts", include: "*.json").visit {
+        fileTree(dir: "build/kora-hints/parts", include: "*.json").visit {
             def result = new groovy.json.JsonSlurper().parseText(it.file.text)
             list.addAll(result)
         }
-        def json = groovy.json.JsonOutput.toJson(list)
-        def resultFile = project.file("build/kora-modules/kora-modules.json")
+        def json = groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(list))
+        def resultFile = project.file("build/kora-hints/kora-hints.json")
         if (resultFile.exists()) {
             if (resultFile.text == json) {
                 return
@@ -61,6 +61,6 @@ project.tasks.register("buildModules") {
     }
 }
 
-processResources.dependsOn("buildModules")
-compileJava.dependsOn("buildModules")
-sourcesJar.dependsOn("buildModules")
+processResources.dependsOn("buildHints")
+compileJava.dependsOn("buildHints")
+sourcesJar.dependsOn("buildHints")

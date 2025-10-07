@@ -1,0 +1,22 @@
+[
+    {
+        "tags": [ ],
+        "typeRegex": "ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper<java.util.concurrent.CompletionStage<.*",
+        "tip": "You might have in mind to use @Json for mapping HTTP Client's method return value, but forgot to annotate method return value in your HTTP client interface with @Json annotation\n    If you don't want to use @Json, you must manually provide a custom `ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper<T>` for claimed type implementation (`java.util.concurrent.CompletionStage<T>` not required) and register it in graph (e.g. via @Component or module binding or @Mapping)."
+    },
+    {
+        "tags": [ ],
+        "typeRegex": "ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper<java.util.concurrent.CompletionStage<.*",
+        "tip": "If this client was generated from an OpenAPI specification, ensure that\n    relevant response in the spec explicitly declares Content-Type: 'application/json'. For example:\n          responses:\n            '200':\n              description: OK\n              content:\n                application/json:        # ← this is required\n    If the 'content' section is missing or incorrect, the code generator won't apply the @Json annotation for response mapper."
+    },
+    {
+        "tags": [ ],
+        "typeRegex": "ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper.*",
+        "tip": "You might have in mind to use @Json for mapping HTTP Client's method request body, but forgot to annotate body argument in your HTTP client interface with @Json annotation\n    If you don't want to use @Json, you must manually provide a custom `ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper<T>` for claimed type implementation and register it in graph (e.g. via @Component or module binding or @Mapping)."
+    },
+    {
+        "tags": [ ],
+        "typeRegex": "ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper.*",
+        "tip": "If this client was generated from an OpenAPI specification, ensure that\n    relevant request body in the spec explicitly defines Content-Type: 'application/json'. For example:\n           requestBody:\n             content:\n              application/json:          # ← this is required\n    If the 'content' section is missing or incorrect, the code generator won't apply the @Json annotation for argument request mapper."
+    }
+]

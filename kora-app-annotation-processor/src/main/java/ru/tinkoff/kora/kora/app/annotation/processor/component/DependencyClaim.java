@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
+import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.annotation.processor.common.TypeParameterUtils;
 
@@ -9,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaimType claimType) {
+
     public DependencyClaim {
         Objects.requireNonNull(type);
         Objects.requireNonNull(tags);
@@ -37,5 +39,12 @@ public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaim
         public boolean isNullable() {
             return this == ONE_NULLABLE || this == NULLABLE_VALUE_OF || this == NULLABLE_PROMISE_OF;
         }
+    }
+
+    @Override
+    public String toString() {
+        return "DependencyClaim{type=" + TypeName.get(type)
+               + ", tags=" + tags
+               + ", claimType=" + claimType + '}';
     }
 }

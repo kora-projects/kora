@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.fasterxml.jackson.core.*;
+import com.squareup.javapoet.TypeName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,54 +16,80 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class DependencyModuleHintProvider {
+
     private static final Logger log = LoggerFactory.getLogger(DependencyModuleHintProvider.class);
+
     private final ProcessingEnvironment processingEnvironment;
-    private final List<ModuleHint> hints;
+    private final List<KoraHint> hints;
 
     public DependencyModuleHintProvider(ProcessingEnvironment processingEnvironment) {
         this.processingEnvironment = processingEnvironment;
-        try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-modules.json");
+        try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-hints.json");
              var parser = new JsonFactory(new JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES)).createParser(r)) {
-            this.hints = ModuleHint.parseList(parser);
+            this.hints = KoraHint.parseList(parser);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-
     sealed interface Hint {
 
         String message();
 
-        record SimpleHint(TypeMirror type, String artifact, String module) implements DependencyModuleHintProvider.Hint {
+        record ModuleHint(TypeName type, Set<String> tags, String artifact, String module) implements DependencyModuleHintProvider.Hint {
             public String message() {
-                return "Missing component of type %s which can be provided by kora module, you may forgot to plug it\nModule class: %s \nArtifact dependency: %s\n".formatted(
-                    type, module, artifact
-                );
+                if (tags.isEmpty()) {
+                    return """
+                        Missing component: %s
+                            Component can be provided by standard Kora module you may forgot to plug it:
+                                Gradle dependency:  implementation("%s")
+                                Module interface:  %s
+                        """.formatted(type, artifact, module);
+                } else {
+                    String tagForMsg;
+                    if (this.tags.equals(Set.of("ru.tinkoff.kora.json.common.annotation.Json"))) {
+                        tagForMsg = "@ru.tinkoff.kora.json.common.annotation.Json";
+                    } else if (this.tags.size() == 1) {
+                        tagForMsg = "@Tag(" + this.tags.iterator().next() + ".class)";
+                    } else {
+                        tagForMsg = this.tags.stream().map(s -> s + ".class")
+                            .collect(Collectors.joining(", ", "@Tag({", "})"));
+                    }
+
+                    return """
+                        Missing component: %s with %s
+                            Component is provided by standard Kora module you may forgot to plug it:
+                                Gradle dependency:  implementation("%s")
+                                Module interface:  %s
+                        """.formatted(type, tagForMsg, artifact, module);
+                }
             }
         }
 
-        record HintWithTag(TypeMirror type, String artifact, String module, Set<String> tags) implements DependencyModuleHintProvider.Hint {
+        record TipHint(TypeName type, Set<String> tags, String tip) implements Hint {
             public String message() {
-                return "Missing component of type %s which can be provided by kora module, you may forgot to plug it\nModule class: %s (required tags: `@Tag(%s)`)\nArtifact dependency: %s\n".formatted(
-                    type, module, tags.stream().map(s -> s + ".class").collect(Collectors.joining(", ", "{", "}")), artifact
-                );
+                return """
+                    %s
+                    """.formatted(tip);
             }
         }
     }
 
     List<Hint> findHints(TypeMirror missingType, Set<String> missingTag) {
-        log.trace("Checking hints for {}/{}", missingTag, missingType);
+        TypeName typeName = TypeName.get(missingType);
+        log.trace("Checking hints for {}/{}", missingTag, typeName);
         var result = new ArrayList<Hint>();
         for (var hint : this.hints) {
-            var matcher = hint.typeRegex.matcher(missingType.toString());
+            var matcher = hint.typeRegex().matcher(typeName.toString());
             if (matcher.matches()) {
                 log.trace("Hint {} matched!", hint);
                 if (this.tagMatches(missingTag, hint.tags())) {
-                    if (hint.tags.isEmpty()) {
-                        result.add(new Hint.SimpleHint(missingType, hint.artifact, hint.moduleName));
+                    if (hint instanceof KoraHint.KoraModuleHint h) {
+                        result.add(new Hint.ModuleHint(typeName, h.tags(), h.artifact(), h.module()));
+                    } else if (hint instanceof KoraHint.KoraTipHint t) {
+                        result.add(new Hint.TipHint(typeName, t.tags(), t.tip()));
                     } else {
-                        result.add(new Hint.HintWithTag(missingType, hint.artifact, hint.moduleName, hint.tags));
+                        throw new UnsupportedOperationException("Unknown hint type: " + hint);
                     }
                 }
             } else {
@@ -89,8 +116,17 @@ public class DependencyModuleHintProvider {
         return true;
     }
 
-    record ModuleHint(Set<String> tags, Pattern typeRegex, String moduleName, String artifact) {
-        static List<ModuleHint> parseList(JsonParser p) throws IOException {
+    sealed interface KoraHint {
+
+        Pattern typeRegex();
+
+        Set<String> tags();
+
+        record KoraModuleHint(Pattern typeRegex, Set<String> tags, String artifact, String module) implements KoraHint {}
+
+        record KoraTipHint(Pattern typeRegex, Set<String> tags, String tip) implements KoraHint {}
+
+        static List<KoraHint> parseList(JsonParser p) throws IOException {
             var token = p.nextToken();
             if (token != JsonToken.START_ARRAY) {
                 throw new JsonParseException(p, "Expecting START_ARRAY token, got " + token);
@@ -99,7 +135,7 @@ public class DependencyModuleHintProvider {
             if (token == JsonToken.END_ARRAY) {
                 return List.of();
             }
-            var result = new ArrayList<ModuleHint>(16);
+            var result = new ArrayList<KoraHint>(16);
             while (token != JsonToken.END_ARRAY) {
                 var element = parse(p);
                 result.add(element);
@@ -108,13 +144,14 @@ public class DependencyModuleHintProvider {
             return result;
         }
 
-        static ModuleHint parse(JsonParser p) throws IOException {
+        static KoraHint parse(JsonParser p) throws IOException {
             assert p.currentToken() == JsonToken.START_OBJECT;
             var next = p.nextToken();
             String typeRegex = null;
             Set<String> tags = new HashSet<>();
             String moduleName = null;
             String artifact = null;
+            String tip = null;
             while (next != JsonToken.END_OBJECT) {
                 if (next != JsonToken.FIELD_NAME) {
                     throw new JsonParseException(p, "expected FIELD_NAME, got " + next);
@@ -152,6 +189,12 @@ public class DependencyModuleHintProvider {
                         }
                         artifact = p.getValueAsString();
                     }
+                    case "tip" -> {
+                        if (p.nextToken() != JsonToken.VALUE_STRING) {
+                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                        }
+                        tip = p.getValueAsString();
+                    }
                     default -> {
                         p.nextToken();
                         p.skipChildren();
@@ -159,10 +202,19 @@ public class DependencyModuleHintProvider {
                 }
                 next = p.nextToken();
             }
-            if (typeRegex == null || moduleName == null || artifact == null) {
-                throw new JsonParseException(p, "Some required fields missing");
+
+            if (typeRegex == null) {
+                throw new JsonParseException(p, "Some required fields missing: typeRegex=%s".formatted(typeRegex));
+            } else if (!(moduleName != null && artifact != null || tip != null)) {
+                throw new JsonParseException(p, "Some required fields missing: module=%s, artifact=%s, tip=%s".formatted(
+                    moduleName, artifact, tip));
             }
-            return new ModuleHint(tags, Pattern.compile(typeRegex), moduleName, artifact);
+
+            if (tip != null) {
+                return new KoraHint.KoraTipHint(Pattern.compile(typeRegex), tags, tip);
+            } else {
+                return new KoraHint.KoraModuleHint(Pattern.compile(typeRegex), tags, moduleName, artifact);
+            }
         }
     }
 }

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.kora.app.annotation.processor.declaration;
 
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
+import com.squareup.javapoet.TypeName;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
@@ -86,7 +87,7 @@ public sealed interface ComponentDeclaration {
 
         @Override
         public String declarationString() {
-            return "component  " + typeElement.getQualifiedName().toString();
+            return "component  " + TypeName.get(type);
         }
 
         @Override
