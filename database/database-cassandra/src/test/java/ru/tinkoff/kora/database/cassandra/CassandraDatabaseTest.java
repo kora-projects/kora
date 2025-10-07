@@ -1,9 +1,13 @@
 package ru.tinkoff.kora.database.cassandra;
 
 import org.assertj.core.api.Assertions;
+import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.QueryContext;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.database.common.telemetry.DatabaseTracingConfig;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
@@ -56,9 +60,9 @@ class CassandraDatabaseTest {
                 params.username(),
                 params.password()
             ),
-            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(false,  false),
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
             )
         );
