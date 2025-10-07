@@ -7,7 +7,6 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.asClassName
 import com.squareup.kotlinpoet.ksp.toClassName
-import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
 import java.util.*
 import java.util.concurrent.*
 
@@ -67,7 +66,12 @@ object CommonClassNames {
     val telemetryConfig = ClassName("ru.tinkoff.kora.telemetry.common", "TelemetryConfig")
 
     fun KSType.isList(): Boolean {
-        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        val className = this.declaration.let {
+            if (it is KSClassDeclaration)
+                it.toClassName().canonicalName
+            else
+                this.toString()
+        }
         return className == List::class.qualifiedName
             || className == MutableList::class.qualifiedName
             || className == ArrayList::class.qualifiedName
@@ -75,7 +79,12 @@ object CommonClassNames {
     }
 
     fun KSType.isSet(): Boolean {
-        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        val className = this.declaration.let {
+            if (it is KSClassDeclaration)
+                it.toClassName().canonicalName
+            else
+                this.toString()
+        }
         return className == Set::class.qualifiedName
             || className == MutableSet::class.qualifiedName
             || className == HashSet::class.qualifiedName
@@ -87,13 +96,23 @@ object CommonClassNames {
     }
 
     fun KSType.isQueue(): Boolean {
-        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        val className = this.declaration.let {
+            if (it is KSClassDeclaration)
+                it.toClassName().canonicalName
+            else
+                this.toString()
+        }
         return className == Queue::class.qualifiedName
             || className == Deque::class.qualifiedName
     }
 
     fun KSType.isCollection(): Boolean {
-        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        val className = this.declaration.let {
+            if (it is KSClassDeclaration)
+                it.toClassName().canonicalName
+            else
+                this.toString()
+        }
         return className == Collection::class.qualifiedName
             || className == MutableCollection::class.qualifiedName
             || isList()
@@ -102,7 +121,12 @@ object CommonClassNames {
     }
 
     fun KSType.isMap(): Boolean {
-        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        val className = this.declaration.let {
+            if (it is KSClassDeclaration)
+                it.toClassName().canonicalName
+            else
+                this.toString()
+        }
         return className == Map::class.qualifiedName
             || className == MutableMap::class.qualifiedName
             || className == HashMap::class.qualifiedName
@@ -119,7 +143,12 @@ object CommonClassNames {
     }
 
     fun KSType.isIterable(): Boolean {
-        val className = if (this.declaration is KSClassDeclaration) this.toClassName().canonicalName else this.toString()
+        val className = this.declaration.let {
+            if (it is KSClassDeclaration)
+                it.toClassName().canonicalName
+            else
+                this.toString()
+        }
         return className == Iterable::class.qualifiedName
             || className == MutableIterable::class.qualifiedName
             || isCollection()
@@ -134,21 +163,23 @@ object CommonClassNames {
     fun KSType.isDeferred() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == deferred.canonicalName
 
     fun KSType.isCompletionStage(): Boolean {
-        if (declaration !is KSClassDeclaration) {
-            return false
+        declaration.let {
+            if (it !is KSClassDeclaration) {
+                return false
+            }
+            val className = it.toClassName()
+            return className.canonicalName == CompletionStage::class.qualifiedName
+                || className.canonicalName == CompletableFuture::class.qualifiedName
         }
-        val className = this.toClassName()
-        return className.canonicalName == CompletionStage::class.qualifiedName
-            || className.canonicalName == CompletableFuture::class.qualifiedName
     }
 
     fun KSTypeReference.isVoid(): Boolean {
-        val typeAsStr = resolve().toClassName().canonicalName
+        val typeAsStr = resolve().declaration.let{ if (it is KSClassDeclaration) it.toClassName() else null}?.canonicalName
         return Void::class.qualifiedName == typeAsStr || "void" == typeAsStr || Unit::class.qualifiedName == typeAsStr
     }
 
     fun KSTypeReference.isDeferred(): Boolean {
-        val typeAsStr = resolve().toClassName().canonicalName
+        val typeAsStr = resolve().declaration.let{ if (it is KSClassDeclaration) it.toClassName() else null}?.canonicalName
         return typeAsStr == deferred.canonicalName
     }
 }

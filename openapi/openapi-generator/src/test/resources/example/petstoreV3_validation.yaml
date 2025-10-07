@@ -180,7 +180,7 @@ components:
       properties:
         type:
           $ref: '#/components/schemas/CType'
-        source:
+        sources:
           type: string
       discriminator:
         propertyName: type

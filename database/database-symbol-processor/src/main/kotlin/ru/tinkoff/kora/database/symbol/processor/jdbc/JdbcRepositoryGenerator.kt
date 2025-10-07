@@ -199,9 +199,9 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         for (parameter in parameters) {
             if (parameter is QueryParameter.BatchParameter) {
-                if (IntArray::class.asTypeName() == returnType.toClassName()) {
+                if (IntArray::class.asTypeName() == (returnType.declaration as KSClassDeclaration).toClassName()) {
                     return null
-                } else if (LongArray::class.asTypeName() == returnType.toClassName()) {
+                } else if (LongArray::class.asTypeName() == (returnType.declaration as KSClassDeclaration).toClassName()) {
                     return null
                 } else if (!isGeneratedKeys) {
                     throw ProcessingErrorException("@Batch method can't return arbitrary values, it can only return: void/UpdateCount or database-generated @Id", method)

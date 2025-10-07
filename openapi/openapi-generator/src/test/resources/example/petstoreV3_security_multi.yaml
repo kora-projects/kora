@@ -4,144 +4,53 @@ info:
   title: Petstore with discriminator
   version: 1.0.0
 
+security:
+  - headerAuth1: [ ]
+
 paths:
-  /petsOneSecurity:
+  /pets0:
     get:
-      security:
-        - headerAuth: [ ]
-      summary: List all pets
-      operationId: listOneSecurity
+      operationId: pets0
       tags:
         - pets
-      parameters:
-        - name: limit
-          in: query
-          description: How many items to return at one time (max 100)
-          required: false
-          schema:
-            type: integer
-            format: int32
       responses:
         '200':
           description: A paged array of pets
-          headers:
-            x-next:
-              description: A link to the next page of responses
-              schema:
-                type: string
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Pets"
-        default:
-          description: unexpected error
+  /pets1:
+    get:
+      security: [ ]
+      operationId: pets1
+      tags:
+        - pets
+      responses:
+        '200':
+          description: A paged array of pets
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Error"
-  /petsTwoSecurity:
+                $ref: "#/components/schemas/Pets"
+  /pets2:
     get:
       security:
-        - headerAuth: [ ]
+        - headerAuth1: [ ]
           queryAuth: [ ]
-      summary: List all pets
-      operationId: listTwoSecurity
+        - headerAuth2: [ ]
+        - oAuth: [ 'read' ]
+        - oAuth: [ 'write' ]
+      operationId: pets2
       tags:
         - pets
-      parameters:
-        - name: limit
-          in: query
-          description: How many items to return at one time (max 100)
-          required: false
-          schema:
-            type: integer
-            format: int32
       responses:
         '200':
           description: A paged array of pets
-          headers:
-            x-next:
-              description: A link to the next page of responses
-              schema:
-                type: string
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Pets"
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  /petsThreeSecurity:
-    get:
-      security:
-        - headerAuth: [ ]
-          cookieAuth: [ ]
-          queryAuth: [ ]
-      summary: List all pets
-      operationId: listThreeSecurity
-      tags:
-        - pets
-      parameters:
-        - name: limit
-          in: query
-          description: How many items to return at one time (max 100)
-          required: false
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: A paged array of pets
-          headers:
-            x-next:
-              description: A link to the next page of responses
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Pets"
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-  /petsNoSecurity:
-    get:
-      summary: List all pets
-      operationId: listNoSecurity
-      tags:
-        - pets
-      parameters:
-        - name: limit
-          in: query
-          description: How many items to return at one time (max 100)
-          required: false
-          schema:
-            type: integer
-            format: int32
-      responses:
-        '200':
-          description: A paged array of pets
-          headers:
-            x-next:
-              description: A link to the next page of responses
-              schema:
-                type: string
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Pets"
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
 components:
   schemas:
     Pet:
@@ -173,10 +82,14 @@ components:
         message:
           type: string
   securitySchemes:
-    headerAuth:
+    headerAuth1:
       type: apiKey
       in: header
-      name: X-API-KEY
+      name: X-API-KEY-1
+    headerAuth2:
+      type: apiKey
+      in: header
+      name: X-API-KEY-2
     queryAuth:
       type: apiKey
       in: query
