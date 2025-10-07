@@ -7,12 +7,12 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.visitClass
 
 class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
     private lateinit var clientGenerator: ClientClassGenerator
@@ -25,18 +25,23 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
         configModuleGenerator = ConfigModuleGenerator(resolver)
 
         val symbols = resolver.getSymbolsWithAnnotation(httpClientAnnotation.canonicalName).toList()
-        symbols.forEach {
-            it.visitClass { declaration ->
-                if (declaration.classKind == ClassKind.INTERFACE) {
+        val deferred = mutableListOf<KSAnnotated>()
+        for (annotated in symbols) {
+            if (annotated.validate()) {
+                if (annotated is KSClassDeclaration && annotated.classKind == ClassKind.INTERFACE) {
                     try {
-                        generateClient(declaration, resolver)
+                        generateClient(annotated, resolver)
                     } catch (e: ProcessingErrorException) {
                         e.printError(kspLogger)
                     }
+                } else {
+                    kspLogger.error("@HttpClientAnnotation can only be applied to interfaces")
                 }
+            } else {
+                deferred.add(annotated)
             }
         }
-        return emptyList()
+        return deferred
     }
 
     private fun generateClient(declaration: KSClassDeclaration, resolver: Resolver) {

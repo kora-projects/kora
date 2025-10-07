@@ -90,7 +90,7 @@ public abstract class BaseOpenapiTest {
             result.add(new SwaggerParams(fileName, name, new SwaggerParams.Options()));
 
             if (fileName.contains("security")) {
-                result.add(new SwaggerParams(fileName, name + "_auth_arg", new SwaggerParams.Options().setIncludeServerRequest(true)));
+                result.add(new SwaggerParams(fileName, name + "_auth_arg", new SwaggerParams.Options().setAuthAsArg(true)));
             }
 
             if (name.equals("petstoreV2") || name.equals("petstoreV3")) {

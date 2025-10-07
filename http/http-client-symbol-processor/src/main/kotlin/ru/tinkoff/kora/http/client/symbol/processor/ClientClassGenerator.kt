@@ -346,7 +346,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if (httpHeaders == parameterType.toClassName()) {
+            if (httpHeaders == parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
                 b.beginControlFlow("%L.forEach { _e -> ", literalName)
                 b.addStatement("_headers.add(_e.key, _e.value)", getConverterName(methodData, it.parameter))
                 b.endControlFlow()
@@ -416,7 +416,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if (httpCookie == parameterType.toClassName()) {
+            if (httpCookie == (parameterType.declaration as KSClassDeclaration).toClassName()) {
                 b.addStatement("_headers.add(\"Cookie\", %L.toValue())", literalName)
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
@@ -809,7 +809,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             } else if (mapper != null) {
                 if (mapper.declaration is KSClassDeclaration && mapper.declaration.typeParameters.isNotEmpty()) {
                     val typeArg = returnType.toTypeName().copy(false)
-                    return mapper.toClassName().parameterizedBy(mapper.declaration.typeParameters.map { typeArg })
+                    return mapper.declaration.let { it as KSClassDeclaration }.toClassName().parameterizedBy(mapper.declaration.typeParameters.map { typeArg })
                 }
                 return mapper.toTypeName()
             } else {
