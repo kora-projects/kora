@@ -13,6 +13,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.QueryContext;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.netty.common.NettyChannelFactory;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
@@ -71,9 +73,9 @@ class VertxConnectionFactoryTest {
             true,
             false,
             Duration.ofMillis(1000),
-            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(false,  false),
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
             )
         );
