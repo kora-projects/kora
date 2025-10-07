@@ -236,14 +236,6 @@ public class GraphBuilder {
                 String treeMsg = getDependencyTreeSimpleMessage(processing.root(), stack, declaration, dependencyClaim, processing);
                 msg.append("\n").append(treeMsg);
 
-                var tips = ctx.dependencyModuleHintProvider.findTips(dependencyClaim.type(), dependencyClaim.tags());
-                if (!tips.isEmpty()) {
-                    msg.append("\nTips:");
-                    for (var tip : tips) {
-                        msg.append("\n  - Tip: ").append(tip.message());
-                    }
-                }
-
                 var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
                 if (!hints.isEmpty()) {
                     msg.append("\n\nHints:");

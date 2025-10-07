@@ -233,14 +233,6 @@ object GraphBuilder {
                 val treeMsg = getDependencyTreeSimpleMessage(stack, declaration, dependencyClaim, processing)
                 msg.append("\n").append(treeMsg)
 
-                val tips = ctx.dependencyHintProvider.findTips(dependencyClaim.type, dependencyClaim.tags)
-                if (tips.isNotEmpty()) {
-                    msg.append("\n\nTips:")
-                    for (tip in tips) {
-                        msg.append("\n  - Tip: ").append(tip.message())
-                    }
-                }
-
                 val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
                 if (hints.isNotEmpty()) {
                     msg.append("\n\nHints:")
