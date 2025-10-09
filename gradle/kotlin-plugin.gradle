@@ -7,5 +7,6 @@ tasks.findAll {
             javaParameters = true
             freeCompilerArgs += '-Xjvm-default=all'
         }
+        it.jvmTargetValidationMode = 'IGNORE'
     }
 }

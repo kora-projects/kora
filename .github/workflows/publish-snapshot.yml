@@ -10,10 +10,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: JDK 24 setup
+      - name: JDK 25 setup
         uses: actions/setup-java@v4
         with:
-          java-version: '24'
+          java-version: '25'
           distribution: 'adopt'
 
       - name: Retrieve the secret and decode it to a file
