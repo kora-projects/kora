@@ -10,6 +10,7 @@ import io.undertow.util.HttpString;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.xnio.IoUtils;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -30,11 +31,11 @@ public class UndertowExchangeProcessor implements HttpHandler {
     private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
 
     private final PublicApiHandler publicApiHandler;
-    private final Context context;
+    private final UndertowContext context;
     @Nullable
     private final HttpServerTracer tracer;
 
-    public UndertowExchangeProcessor(PublicApiHandler publicApiHandler, Context context, @Nullable HttpServerTracer tracer) {
+    public UndertowExchangeProcessor(PublicApiHandler publicApiHandler, UndertowContext context, @Nullable HttpServerTracer tracer) {
         this.publicApiHandler = publicApiHandler;
         this.context = context;
         this.tracer = tracer;
@@ -42,45 +43,47 @@ public class UndertowExchangeProcessor implements HttpHandler {
 
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        var context = this.context;
-        UndertowContext.set(context, exchange);
-        context.inject();
-        try {
-            exchange.startBlocking();
-            var request = new UndertowPublicApiRequest(exchange);
-            var response = this.publicApiHandler.process(context, request);
-            var error = response.error();
-            try {
-                var httpResponse = response.response();
-                if (httpResponse != null) {
-                    this.sendResponse(exchange, response, httpResponse, null);
-                    return;
+        ScopedValue.where(UndertowContext.VALUE, this.context)
+            .run(() -> {
+                MDC.clear();
+                var ctx = Context.clear();
+                try {
+                    exchange.startBlocking();
+                    var request = new UndertowPublicApiRequest(exchange);
+                    var response = this.publicApiHandler.process(ctx, request);
+                    var error = response.error();
+                    try {
+                        var httpResponse = response.response();
+                        if (httpResponse != null) {
+                            this.sendResponse(ctx, exchange, response, httpResponse, null);
+                            return;
+                        }
+                        if (error == null) {
+                            this.sendResponse(ctx, exchange, response, HttpServerResponse.of(500), new IllegalStateException("Public api handler should return either response or error"));
+                            return;
+                        }
+                    } catch (Throwable e) {
+                        this.sendException(exchange, response, e);
+                        return;
+                    }
+                    this.sendException(exchange, response, response.error());
+                } catch (Throwable exception) {
+                    log.warn("Error dropped", exception);
+                    exchange.setStatusCode(500);
+                    exchange.getResponseSender().send(StandardCharsets.UTF_8.encode(Objects.requireNonNullElse(exception.getMessage(), "no message")));
+                } finally {
+                    exchange.endExchange();
                 }
-                if (error == null) {
-                    this.sendResponse(exchange, response, HttpServerResponse.of(500), new IllegalStateException("Public api handler should return either response or error"));
-                    return;
-                }
-            } catch (Throwable e) {
-                this.sendException(exchange, response, e);
-                return;
-            }
-            this.sendException(exchange, response, response.error());
-        } catch (Throwable exception) {
-            log.warn("Error dropped", exception);
-            exchange.setStatusCode(500);
-            exchange.getResponseSender().send(StandardCharsets.UTF_8.encode(Objects.requireNonNullElse(exception.getMessage(), "no message")));
-        } finally {
-            UndertowContext.clear(context);
-            exchange.endExchange();
-        }
+            });
+
     }
 
-    private void sendResponse(HttpServerExchange exchange, PublicApiResponse response, HttpServerResponse httpResponse, @Nullable Throwable error) {
+    private void sendResponse(Context ctx, HttpServerExchange exchange, PublicApiResponse response, HttpServerResponse httpResponse, @Nullable Throwable error) {
         var headers = httpResponse.headers();
         exchange.setStatusCode(httpResponse.code());
         var tracer = this.tracer;
         if (tracer != null) tracer.inject(
-            this.context,
+            ctx,
             exchange.getResponseHeaders(),
             (carrier, key, value) -> carrier.add(HttpString.tryFromString(key), value)
         );
