@@ -75,7 +75,7 @@ public class S3ErrorSaxHandler extends DefaultHandler {
     }
 
     public S3Error toResult() throws SAXException {
-        if (code == null || message == null) {
+        if (code == null) {
             throw new SAXException("Invalid response");
         }
         return new S3Error(code, message, key, bucketName, resource, requestId, hostId);

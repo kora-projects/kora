@@ -13,7 +13,7 @@ public class S3ClientErrorException extends S3ClientResponseException {
     }
 
     public S3ClientErrorException(Throwable cause, int httpCode, String errorCode, String errorMessage, String requestId) {
-        super("S3ClientError: httpCode=%d, requestId=%s, errorCode=%s, errorMessage=%s".formatted(httpCode, requestId, errorMessage, errorMessage), cause, httpCode);
+        super("S3ClientError: httpCode=%d, requestId=%s, errorCode=%s, errorMessage=%s".formatted(httpCode, requestId, errorCode, errorMessage), cause, httpCode);
         this.errorCode = errorCode;
         this.errorMessage = errorMessage;
         this.requestId = requestId;

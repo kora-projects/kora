@@ -383,7 +383,7 @@ public class S3ClientImpl implements S3Client {
             var bytes = is.readAllBytes();
             try {
                 var s3Error = S3Error.fromXml(new ByteArrayInputStream(bytes));
-                throw new S3ClientErrorException(rs.code(), s3Error.code(), s3Error.message(), s3Error.requestId());
+                throw new S3ClientErrorException(rs.code(), s3Error.code(), Objects.requireNonNullElse(s3Error.message(), ""), s3Error.requestId());
             } catch (S3ClientException e) {
                 throw e;
             } catch (Exception e) {

@@ -10,7 +10,7 @@ import java.io.InputStream;
 
 public record S3Error(
     String code,
-    String message,
+    @Nullable String message,
     @Nullable String key,
     @Nullable String bucketName,
     @Nullable String resource,

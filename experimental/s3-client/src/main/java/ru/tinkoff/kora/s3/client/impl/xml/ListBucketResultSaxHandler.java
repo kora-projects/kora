@@ -17,7 +17,7 @@ public class ListBucketResultSaxHandler extends DefaultHandler {
     private int maxKeys;
     private String delimiter;
     private boolean isTruncated;
-    private List<ListBucketResult.Content> contents;
+    private List<ListBucketResult.Content> contents = new ArrayList<>();
     private String nextContinuationToken;
 
     private DefaultHandler delegate = null;
@@ -72,9 +72,6 @@ public class ListBucketResultSaxHandler extends DefaultHandler {
                     break;
                 case "Contents":
                     assert delegate instanceof ListBucketResultContentSaxHandler;
-                    if (contents == null) {
-                        contents = new ArrayList<>();
-                    }
                     contents.add(((ListBucketResultContentSaxHandler) delegate).toResult());
                     delegate = null;
                     break;
