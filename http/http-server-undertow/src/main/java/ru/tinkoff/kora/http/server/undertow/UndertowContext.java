@@ -2,31 +2,32 @@ package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.server.HttpServerExchange;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
 
 public final class UndertowContext {
 
-    private UndertowContext() { }
+    public final HttpServerExchange exchange;
 
-    private static final Context.Key<HttpServerExchange> KEY = new Context.Key<>() {
-        @Override
-        protected HttpServerExchange copy(HttpServerExchange object) {
-            return null;
-        }
-    };
-
-    public static void set(Context ctx, HttpServerExchange exchange) {
-        ctx.set(KEY, exchange);
+    public UndertowContext(HttpServerExchange exchange) {
+        this.exchange = exchange;
     }
 
-    public static void clear(Context ctx) {
-        ctx.remove(KEY);
+    public static final ScopedValue<UndertowContext> VALUE = ScopedValue.newInstance();
+
+    @Nullable
+    public static UndertowContext get() {
+        if (VALUE.isBound()) {
+            return VALUE.get();
+        } else {
+            return null;
+        }
     }
 
     @Nullable
-    public static HttpServerExchange get(Context ctx) {
-        return ctx.get(KEY);
+    public static HttpServerExchange getExchange() {
+        if (VALUE.isBound()) {
+            return VALUE.get().exchange;
+        } else {
+            return null;
+        }
     }
-
-
 }

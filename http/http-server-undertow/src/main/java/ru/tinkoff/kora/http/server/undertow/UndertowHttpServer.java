@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.xnio.Options;
 import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;
@@ -115,7 +114,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
 
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
-        var context = Context.clear();
+        var context = new UndertowContext(exchange);
         var exchangeProcessor = new UndertowExchangeProcessor(this.publicApiHandler.get(), context, this.tracer);
         var executor = getOrCreateExecutor(exchange, executorServiceAttachmentKey, this.name);
         exchange.dispatch(executor, exchangeProcessor);
