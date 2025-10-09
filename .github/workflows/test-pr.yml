@@ -22,10 +22,10 @@ jobs:
         task: [ 'postgres', 'cassandra', 'redis', 'kafka', 'openapi', 'codegen-kotlin', 'codegen-java', 'other' ]
     steps:
       - uses: actions/checkout@v4
-      - name: JDK 24 setup
+      - name: JDK 25 setup
         uses: actions/setup-java@v4
         with:
-          java-version: '24'
+          java-version: '25'
           distribution: 'adopt'
 
       - name: Gradle setup

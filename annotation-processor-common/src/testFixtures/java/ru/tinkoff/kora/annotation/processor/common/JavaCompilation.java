@@ -142,7 +142,7 @@ public class JavaCompilation {
             standardFileManager.setLocation(StandardLocation.CLASS_PATH, classPath);
         }
 
-        var defaultOptions = new LinkedHashSet<>(List.of("-parameters", "-g", "--enable-preview", "--source", "24", "-XprintRounds"));
+        var defaultOptions = new LinkedHashSet<>(List.of("-parameters", "-g", "--enable-preview", "--source", "25", "-XprintRounds"));
         defaultOptions.addAll(processorOptions);
         var task = compiler.getTask(out, standardFileManager, diagnostics::add, defaultOptions, null, inputSourceFiles);
         task.setProcessors(processors);

@@ -17,7 +17,3 @@ dependencies {
     testImplementation libs.byte.buddy.agent
     testImplementation libs.reactor.core
 }
-
-test {
-    jvmArgs(['--enable-preview'])
-}
