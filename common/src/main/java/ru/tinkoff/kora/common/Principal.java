@@ -1,46 +1,33 @@
 package ru.tinkoff.kora.common;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.naming.NameConverter;
 
 /**
- * <b>Русский</b>: Является интерфейсом контекста авторизации в рамках запроса от HTTP сервера {@link Context}.
+ * <b>Русский</b>: Является интерфейсом контекста авторизации.
  * Реализация авторизации должна наследовать этот интерфейс.
  * <hr>
- * <b>English</b>: Represents interface of the authorisation context within the request from the HTTP server {@link Context}.
- * An authorisation implementation must inherit this interface.
+ * <b>English</b>: Represents interface of the authorization context.
+ * An authorization implementation must inherit this interface.
  */
 public interface Principal {
 
-    Context.Key<Principal> KEY = new Context.KeyImmutable<>() {};
+    ScopedValue<Principal> VALUE = ScopedValue.newInstance();
 
     /**
-     * @return <b>Русский</b>: Текущий контекст авторизации в рамках контекста {@link Context} текущего HTTP запроса.
+     * @return <b>Русский</b>: Текущий контекст авторизации.
      * <hr>
-     * <b>English</b>: The current authorisation context within the context {@link Context} of the current HTTP request.
+     * <b>English</b>: The current authorization context.
      */
     @Nullable
     static Principal current() {
-        return current(Context.current());
+        if (VALUE.isBound()) {
+            return VALUE.get();
+        } else {
+            return null;
+        }
     }
 
-    /**
-     * @return <b>Русский</b>: Контекст авторизации в рамках переданного контекста {@link Context}.
-     * <hr>
-     * <b>English</b>: Authorisation context within the passed context {@link Context}.
-     */
-    @Nullable
-    static Principal current(Context context) {
-        return context.get(KEY);
-    }
-
-    /**
-     * @return <b>Русский</b>: Проставляет контекст авторизации в рамках переданного контекста {@link Context} HTTP запроса.
-     * <hr>
-     * <b>English</b>: Sets the authorisation context within the passed context {@link Context} of the HTTP request.
-     */
-    @Nullable
-    static Principal set(Context context, Principal principal) {
-        return context.set(KEY, principal);
+    static <T, X extends Throwable> T with(Principal principal, ScopedValue.CallableOp<T, X> op) throws X {
+        return ScopedValue.where(VALUE, principal).call(op);
     }
 }
