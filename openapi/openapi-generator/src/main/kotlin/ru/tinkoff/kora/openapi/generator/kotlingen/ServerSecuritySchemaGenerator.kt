@@ -159,8 +159,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     }
                 }
             }
-            intercept.addStatement("%T.set(ctx, %N)", Classes.principal.asKt(), extractorTag)
-            intercept.addStatement("return chain.process(ctx, request)")
+            intercept.addStatement("return %T.with<%T, %T>(%N) { chain.process(ctx, request) }", Classes.principal.asKt(), Classes.httpServerResponse.asKt(), RuntimeException::class.asClassName(), extractorTag)
             for (i in 0 until scopesCount) {
                 intercept.endControlFlow()
             }

@@ -199,8 +199,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     }
                 }
             }
-            intercept.addStatement("$T.set(ctx, $N)", Classes.principal, extractorTag);
-            intercept.addStatement("return chain.process(ctx, request)");
+            intercept.addStatement("return $T.with($N, () -> chain.process(ctx, request))", Classes.principal, extractorTag);
             for (var i = 0; i < scopesCount; i++) {
                 intercept.endControlFlow();
             }
