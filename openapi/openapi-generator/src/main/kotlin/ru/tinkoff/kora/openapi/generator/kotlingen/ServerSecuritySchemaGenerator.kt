@@ -6,6 +6,7 @@ import org.openapitools.codegen.CodegenSecurity
 import java.lang.Boolean
 import kotlin.Any
 import kotlin.IllegalArgumentException
+import kotlin.RuntimeException
 import kotlin.String
 
 
@@ -94,8 +95,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     intercept.endControlFlow()
                 }
             }
-            intercept.addStatement("%T.set(ctx, %N)", Classes.principal.asKt(), method.name)
-            intercept.addStatement("return chain.process(ctx, request)")
+            intercept.addStatement("return %T.with<%T, %T>(%N) { chain.process(ctx, request) }", Classes.principal.asKt(), Classes.httpServerResponse.asKt(), RuntimeException::class.asClassName(), method.name)
             intercept.endControlFlow()
         }
         intercept.addStatement("throw %T.of(403, %S)", Classes.httpServerResponseException.asKt(), "Forbidden")
