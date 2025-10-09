@@ -26,8 +26,4 @@ dependencies {
     testImplementation(libs.kotlin.coroutines.jdk8)
 }
 
-test {
-    jvmArgs(['--enable-preview'])
-}
-
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
