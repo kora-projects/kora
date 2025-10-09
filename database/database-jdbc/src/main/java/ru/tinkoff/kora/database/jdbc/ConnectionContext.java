@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.database.jdbc;
 
+import jakarta.annotation.Nullable;
+
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.ArrayList;
@@ -7,17 +9,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
-
 public class ConnectionContext {
 
-    private static final Context.Key<ConnectionContext> KEY = new Context.Key<>() {
-        @Override
-        protected ConnectionContext copy(ConnectionContext object) {
-            return null;
-        }
-    };
+    private static final ScopedValue<ConnectionContext> VALUE = ScopedValue.newInstance();
 
     private final Connection connection;
 
@@ -62,16 +56,16 @@ public class ConnectionContext {
     }
 
     @Nullable
-    public static ConnectionContext get(Context context) {
-        return context.get(KEY);
+    public static ConnectionContext get() {
+        if (VALUE.isBound()) {
+            return VALUE.get();
+        } else {
+            return null;
+        }
     }
 
-    public static ConnectionContext set(Context context, ConnectionContext connectionContext) {
-        return context.set(KEY, connectionContext);
-    }
-
-    public static void remove(Context context) {
-        context.remove(KEY);
+    static <T, X extends Throwable> T with(ConnectionContext ctx, ScopedValue.CallableOp<T, X> op) throws X {
+        return ScopedValue.where(VALUE, ctx).call(op);
     }
 
     public interface PostCommitAction {
