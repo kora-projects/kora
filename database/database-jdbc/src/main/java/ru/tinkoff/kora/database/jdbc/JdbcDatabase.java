@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;
@@ -27,12 +26,8 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     private final DataBaseTelemetry telemetry;
     @Nullable
     final Executor executor;
-    private final Context.Key<ConnectionContext> KEY = new Context.Key<>() {
-        @Override
-        protected ConnectionContext copy(ConnectionContext object) {
-            return null;
-        }
-    };
+
+    private final ScopedValue<ConnectionContext> connectionContext = ScopedValue.newInstance();
 
     public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory) {
         this(config, telemetryFactory, null);
@@ -122,49 +117,38 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     @Nullable
     @Override
     public Connection currentConnection() {
-        var ctx = Context.current().get(KEY);
-        if (ctx == null) {
-            return null;
+        if (this.connectionContext.isBound()) {
+            return this.connectionContext.get().connection();
         }
-        return ctx.connection();
+        return null;
     }
 
     @Nullable
     @Override
     public ConnectionContext currentConnectionContext() {
-        return Context.current().get(KEY);
+        if (this.connectionContext.isBound()) {
+            return this.connectionContext.get();
+        }
+        return null;
     }
 
     @Override
     public <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException {
-        var ctx = Context.current();
-
-        var currentConnectionCtx = ctx.get(KEY);
-        if (currentConnectionCtx != null) {
+        if (this.connectionContext.isBound()) {
             try {
-                return callback.apply(currentConnectionCtx.connection());
+                return callback.apply(this.connectionContext.get().connection());
             } catch (SQLException e) {
                 throw new RuntimeSqlException(e);
             }
         }
 
-        try (var connection = ctx.set(KEY, new ConnectionContext(this.newConnection())).connection()) {
-            return callback.apply(connection);
+        try (var connection = this.newConnection()) {
+            return ScopedValue.where(this.connectionContext, new ConnectionContext(connection))
+                .call(() -> callback.apply(connection));
         } catch (SQLException e) {
             throw new RuntimeSqlException(e);
-        } finally {
-            ctx.remove(KEY);
         }
     }
-
-    ConnectionContext setContext(Context context, ConnectionContext connectionContext) {
-        return context.set(KEY, connectionContext);
-    }
-
-    void clearContext(Context context) {
-        context.remove(KEY);
-    }
-
 
     @Override
     public ReadinessProbeFailure probe() throws Exception {
