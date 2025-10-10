@@ -4,6 +4,7 @@ dependencies {
     api project(":common")
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")
+    api project(":logging:logging-common")
     api libs.kafka.client
 
     annotationProcessor project(":config:config-annotation-processor")
