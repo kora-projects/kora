@@ -10,12 +10,7 @@ import java.util.function.Supplier;
 
 public class JdbcCamundaTransactionManager implements CamundaTransactionManager {
 
-    private final Context.Key<Connection> camundaConnectionKey = new Context.Key<>() {
-        @Override
-        protected Connection copy(Connection object) {
-            return object;
-        }
-    };
+    private final ScopedValue<Connection> camundaConnectionKey = ScopedValue.newInstance();
 
     private final DataSource dataSource;
 
@@ -29,10 +24,8 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
             @Override
             public void commit() throws RuntimeSqlException {
                 try {
-                    var ctx = Context.current();
-                    Connection connection = ctx.get(camundaConnectionKey);
-                    if (connection != null) {
-                        connection.commit();
+                    if (camundaConnectionKey.isBound()) {
+                        camundaConnectionKey.get().commit();
                     }
                 } catch (SQLException e) {
                     throw new RuntimeSqlException(e);
@@ -42,10 +35,8 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
             @Override
             public void rollback() throws RuntimeSqlException {
                 try {
-                    var ctx = Context.current();
-                    Connection connection = ctx.get(camundaConnectionKey);
-                    if (connection != null) {
-                        connection.rollback();
+                    if (camundaConnectionKey.isBound()) {
+                        camundaConnectionKey.get().rollback();
                     }
                 } catch (SQLException e) {
                     throw new RuntimeSqlException(e);
@@ -58,8 +49,8 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
     public <T> T inContinueTx(Supplier<T> supplier) {
         var ctx = Context.current();
 
-        var currentConnection = ctx.get(this.camundaConnectionKey);
-        if (currentConnection != null) {
+        if (this.camundaConnectionKey.isBound()) {
+            var currentConnection = this.camundaConnectionKey.get();
             boolean isClosed;
             try {
                 isClosed = currentConnection.isClosed();
@@ -89,13 +80,10 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
 
     @Override
     public <T> T inNewTx(Supplier<T> supplier) {
-        var ctx = Context.current();
-        try (var connection = ctx.set(this.camundaConnectionKey, this.dataSource.getConnection())) {
-            return processSupplier(connection, supplier);
+        try (var connection = this.dataSource.getConnection()) {
+            return ScopedValue.where(this.camundaConnectionKey, connection).call(() -> processSupplier(connection, supplier));
         } catch (SQLException e) {
             throw new RuntimeSqlException(e);
-        } finally {
-            ctx.remove(this.camundaConnectionKey);
         }
     }
 
