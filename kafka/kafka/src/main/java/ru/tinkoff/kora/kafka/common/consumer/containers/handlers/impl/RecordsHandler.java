@@ -7,6 +7,7 @@ import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+import ru.tinkoff.kora.logging.common.MDC;
 
 public class RecordsHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
     private final KafkaConsumerTelemetry<K, V> telemetry;
@@ -34,7 +35,8 @@ public class RecordsHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
         var ctx = this.telemetry.get(records);
         try {
             var handler = this.handler.get();
-            handler.handle(consumer, ctx, records);
+            ScopedValue.where(MDC.VALUE, new MDC())
+                .run(() -> handler.handle(consumer, ctx, records));
             if (this.shouldCommit && commitAllowed) {
                 try {
                     consumer.commitSync();

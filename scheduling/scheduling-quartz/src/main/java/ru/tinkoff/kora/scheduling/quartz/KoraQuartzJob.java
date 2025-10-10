@@ -27,18 +27,19 @@ public abstract class KoraQuartzJob implements Job {
 
     @Override
     public final void execute(JobExecutionContext jobExecutionContext) {
-        MDC.clear();
-        Context.clear();
-
-        var ctx = Context.current();
-        var telemetryCtx = this.telemetry.get(ctx);
-        try {
-            this.job.accept(jobExecutionContext);
-            telemetryCtx.close(null);
-        } catch (Throwable e) {
-            telemetryCtx.close(e);
-            throw e;
-        }
+        ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+            .run(() -> {
+                MDC.clear();
+                var ctx = Context.clear();
+                var telemetryCtx = this.telemetry.get(ctx);
+                try {
+                    this.job.accept(jobExecutionContext);
+                    telemetryCtx.close(null);
+                } catch (Throwable e) {
+                    telemetryCtx.close(e);
+                    throw e;
+                }
+            });
     }
 
     public Trigger getTrigger() {

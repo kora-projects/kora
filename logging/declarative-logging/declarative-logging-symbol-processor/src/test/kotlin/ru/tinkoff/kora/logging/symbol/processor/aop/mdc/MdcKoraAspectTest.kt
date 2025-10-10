@@ -16,18 +16,24 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
 
     private val contextHolder = MDCContextHolder()
 
+    private inline fun <T> withMdc(crossinline callback: () -> T): T {
+        return ScopedValue.where(MDC.VALUE, MDC()).call<T, RuntimeException> { callback() }
+    }
+
     @ParameterizedTest
     @MethodSource("provideTestCases")
     fun testMdc(source: String) {
         val aopProxy = compile0(listOf(AopSymbolProcessorProvider()), source.trimIndent())
 
-        invokeMethod(aopProxy)
+        withMdc {
+            invokeMethod(aopProxy)
 
-        val context = contextHolder.get()
-            ?.mapValues { it.value.writeToString() }
+            val context = contextHolder.get()
+                ?.mapValues { it.value.writeToString() }
 
-        assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
-        assertEquals(emptyMap<String, String>(), currentContext())
+            assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
+            assertEquals(emptyMap<String, String>(), currentContext())
+        }
     }
 
     @Test
@@ -47,15 +53,17 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
         """.trimIndent()
         )
 
-        invokeMethod(aopProxy)
+        withMdc {
+            invokeMethod(aopProxy)
 
-        val context = contextHolder.get()
-            ?.mapValues { it.value.writeToString() }
+            val context = contextHolder.get()
+                ?.mapValues { it.value.writeToString() }
 
-        val value = context?.get("key")
-        assertNotNull(value)
-        assertDoesNotThrow { UUID.fromString(value.substring(1, value.length - 1)) }
-        assertEquals(emptyMap<String, String>(), currentContext())
+            val value = context?.get("key")
+            assertNotNull(value)
+            assertDoesNotThrow { UUID.fromString(value.substring(1, value.length - 1)) }
+            assertEquals(emptyMap<String, String>(), currentContext())
+        }
     }
 
     @Test
@@ -76,14 +84,15 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
         """.trimIndent()
         )
 
-        invokeMethod(aopProxy)
+        withMdc {
+            invokeMethod(aopProxy)
 
-        val context = contextHolder.get()
-            ?.mapValues { it.value.writeToString() }
+            val context = contextHolder.get()
+                ?.mapValues { it.value.writeToString() }
 
-        assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
-        assertEquals(mapOf("key" to "\"value\"", "123" to "\"test\""), currentContext())
-        clearCurrentContext()
+            assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
+            assertEquals(mapOf("key" to "\"value\"", "123" to "\"test\""), currentContext())
+        }
     }
 
     @ParameterizedTest
@@ -91,13 +100,15 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
     fun testMdcWithCoroutines(source: String) {
         val aopProxy = compile0(listOf(AopSymbolProcessorProvider()), source.trimIndent())
 
-        invokeMethod(aopProxy)
+        withMdc {
+            invokeMethod(aopProxy)
 
-        val context = contextHolder.get()
-            ?.mapValues { it.value.writeToString() }
+            val context = contextHolder.get()
+                ?.mapValues { it.value.writeToString() }
 
-        assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
-        assertEquals(emptyMap<String, String>(), currentContext())
+            assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
+            assertEquals(emptyMap<String, String>(), currentContext())
+        }
     }
 
     @ParameterizedTest
@@ -125,16 +136,17 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
         """.trimIndent()
         )
 
-        MDC.put("key", "special-value")
-        MDC.put("123", "special-123")
-        invokeMethod(aopProxy)
+        withMdc {
+            MDC.put("key", "special-value")
+            MDC.put("123", "special-123")
+            invokeMethod(aopProxy)
 
-        val context = contextHolder.get()
-            ?.mapValues { it.value.writeToString() }
+            val context = contextHolder.get()
+                ?.mapValues { it.value.writeToString() }
 
-        assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
-        assertEquals(mapOf("key" to "\"special-value\"", "123" to "\"special-123\""), currentContext())
-        clearCurrentContext()
+            assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
+            assertEquals(mapOf("key" to "\"special-value\"", "123" to "\"special-123\""), currentContext())
+        }
     }
 
     private fun invokeMethod(aopProxy: TestUtils.ProcessingResult) {
@@ -149,8 +161,6 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
     }
 
     private fun currentContext() = MDC.get().values().mapValues { it.value.writeToString() }
-
-    private fun clearCurrentContext() = MDC.get().values().keys.forEach { MDC.remove(it) }
 
     companion object {
 
