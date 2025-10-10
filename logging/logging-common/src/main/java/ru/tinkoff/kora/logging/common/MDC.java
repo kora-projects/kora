@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.logging.common;
 
 import com.fasterxml.jackson.core.JsonGenerator;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
 
 import java.util.Collections;
@@ -12,21 +11,18 @@ public class MDC {
 
     private final ConcurrentHashMap<String, StructuredArgumentWriter> values;
 
-    private static final Context.Key<MDC> MDC = new Context.Key<>() {
-        @Override
-        protected MDC copy(MDC object) {
-            return object == null
-                ? new MDC()
-                : new MDC(object.values);
-        }
-    };
+    public static final ScopedValue<MDC> VALUE = ScopedValue.newInstance();
 
-    private MDC() {
+    public MDC() {
         this.values = new ConcurrentHashMap<>();
     }
 
-    private MDC(ConcurrentHashMap<String, StructuredArgumentWriter> values) {
+    public MDC(Map<String, StructuredArgumentWriter> values) {
         this.values = new ConcurrentHashMap<>(values);
+    }
+
+    public MDC fork() {
+        return new MDC(values);
     }
 
     public Map<String, StructuredArgumentWriter> values() {
@@ -74,17 +70,8 @@ public class MDC {
     }
 
 
-    public static MDC get(Context ctx) {
-        var mdc = ctx.get(MDC);
-        if (mdc == null) {
-            mdc = new MDC();
-            ctx.set(MDC, mdc);
-        }
-        return mdc;
-    }
-
     public static MDC get() {
-        return get(Context.current());
+        return VALUE.get();
     }
 
     public static void put(String key, String value) {
@@ -105,10 +92,6 @@ public class MDC {
 
     public static void put(String key, StructuredArgumentWriter value) {
         get().put0(key, value);
-    }
-
-    public static void put(Context ctx, String key, StructuredArgumentWriter value) {
-        get(ctx).put0(key, value);
     }
 
     public static void remove(String key) {

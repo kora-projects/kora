@@ -44,6 +44,7 @@ public class UndertowExchangeProcessor implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
         ScopedValue.where(UndertowContext.VALUE, this.context)
+            .where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
             .run(() -> {
                 MDC.clear();
                 var ctx = Context.clear();

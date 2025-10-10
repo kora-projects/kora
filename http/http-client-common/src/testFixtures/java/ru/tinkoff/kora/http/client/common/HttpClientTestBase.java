@@ -11,6 +11,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
+import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.mockito.Mockito;
 import org.mockserver.integration.ClientAndServer;
 import org.slf4j.LoggerFactory;
@@ -22,16 +26,48 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLogger;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientMetrics;
+import ru.tinkoff.kora.logging.common.MDC;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.net.URI;
 
 import static java.time.Duration.ofMillis;
 
 @TestMethodOrder(MethodOrderer.Random.class)
+@ExtendWith(HttpClientTestBase.MdcInterceptor.class)
 public abstract class HttpClientTestBase {
+    public static class MdcInterceptor implements InvocationInterceptor {
+        private final MDC mdc = new MDC();
+
+        @Override
+        public void interceptTestMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
+            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+        }
+
+        @Override
+        public void interceptBeforeEachMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
+            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+        }
+
+        @Override
+        public void interceptBeforeAllMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
+            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+        }
+
+        @Override
+        public void interceptAfterAllMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
+            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+        }
+
+        @Override
+        public void interceptAfterEachMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable {
+            ScopedValue.where(MDC.VALUE, mdc).call(invocation::proceed);
+        }
+    }
+
     protected static final LoggerContext ctx = (LoggerContext) LoggerFactory.getILoggerFactory();
     protected final ClientAndServer server = ClientAndServer.startClientAndServer(0);
     protected final HttpClientLogger logger = Mockito.mock(HttpClientLogger.class);

@@ -57,16 +57,18 @@ public abstract class AbstractJob implements Lifecycle {
             if (!this.started) {
                 return;
             }
-            MDC.clear();
-            Context.clear();
-            var ctx = Context.current();
-            var telemetryCtx = this.telemetry.get(ctx);
-            try {
-                this.command.run();
-                telemetryCtx.close(null);
-            } catch (Throwable e) {
-                telemetryCtx.close(e);
-            }
+            ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+                .run(() -> {
+                    MDC.clear();
+                    var ctx = Context.clear();
+                    var telemetryCtx = this.telemetry.get(ctx);
+                    try {
+                        this.command.run();
+                        telemetryCtx.close(null);
+                    } catch (Throwable e) {
+                        telemetryCtx.close(e);
+                    }
+                });
         } finally {
             this.lock.unlock();
         }

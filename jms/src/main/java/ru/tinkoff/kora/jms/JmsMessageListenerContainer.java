@@ -118,7 +118,6 @@ public class JmsMessageListenerContainer implements Lifecycle {
             while (this.isStarted.get()) {
                 try {
                     var message = consumer.receiveNoWait();
-                    long lastSuccessfullReceive = System.nanoTime();
                     if (message == null) {
                         log.trace("No message was received");
                         Thread.sleep(1000);
@@ -137,7 +136,11 @@ public class JmsMessageListenerContainer implements Lifecycle {
                                 gen.writeEndObject();
                             }), "JmsListener.message");
                         }
-                        this.messageListener.onMessage(session, message);
+                        ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+                            .call(() -> {
+                                this.messageListener.onMessage(session, message);
+                                return null;
+                            });
                         session.commit();
                         telemetryCtx.close(null);
                     } catch (Exception e) {
