@@ -16,7 +16,9 @@ import java.util.concurrent.atomic.AtomicReference
 
 class ContextTest {
 
-    private object TestKey : Context.KeyImmutable<String>()
+    private object TestKey : Context.Key<String>() {
+        override fun copy(v: String?) = v
+    }
 
     private object TestKeyWithCopyNull : Context.Key<String>() {
         override fun copy(obj: String?) = null

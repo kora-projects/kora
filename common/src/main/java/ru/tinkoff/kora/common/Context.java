@@ -113,12 +113,6 @@ public class Context {
         protected abstract T copy(T object);
     }
 
-    public static abstract class KeyImmutable<T> extends Key<T> {
-        protected T copy(T object) {
-            return object;
-        }
-    }
-
     @SuppressWarnings("unchecked")
     private static <T> T copy(Key<T> key, Object value) {
         return key.copy((T) value);
@@ -134,7 +128,7 @@ public class Context {
         } catch (NoClassDefFoundError ignore) {
             // ignore
         } catch (Throwable e) {
-            if(e instanceof NoSuchMethodError) {
+            if (e instanceof NoSuchMethodError) {
                 // ignore for GraalVM
             } else {
                 throw e;
