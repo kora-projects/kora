@@ -6,7 +6,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.TimeUtils;
@@ -109,7 +108,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     @Nullable
     @Override
     public Connection currentConnection() {
-        var ctx = ConnectionContext.get(Context.current());
+        var ctx = ConnectionContext.get();
         if (ctx == null) {
             return null;
         }
@@ -119,14 +118,12 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     @Nullable
     @Override
     public ConnectionContext currentConnectionContext() {
-        return ConnectionContext.get(Context.current());
+        return ConnectionContext.get();
     }
 
     @Override
     public <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException {
-        var ctx = Context.current();
-
-        var currentConnectionCtx = ConnectionContext.get(Context.current());
+        var currentConnectionCtx = ConnectionContext.get();
         if (currentConnectionCtx != null) {
             try {
                 return callback.apply(currentConnectionCtx.connection());
@@ -135,12 +132,11 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
             }
         }
 
-        try (var connection = ConnectionContext.set(ctx, new ConnectionContext(this.newConnection())).connection()) {
-            return callback.apply(connection);
+        try (var connection = this.newConnection()) {
+            var ctx = new ConnectionContext(connection);
+            return ConnectionContext.with(ctx, () -> callback.apply(connection));
         } catch (SQLException e) {
             throw new RuntimeSqlException(e);
-        } finally {
-            ConnectionContext.remove(ctx);
         }
     }
 
