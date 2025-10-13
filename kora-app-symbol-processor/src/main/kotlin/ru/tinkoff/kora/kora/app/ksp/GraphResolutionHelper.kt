@@ -9,8 +9,8 @@ import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency.*
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.kora.app.ksp.exception.DuplicateDependencyException
 import ru.tinkoff.kora.ksp.common.TagUtils
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 object GraphResolutionHelper {
     fun findDependency(ctx: ProcessingContext, forDeclaration: ComponentDeclaration, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): SingleDependency? {
@@ -21,11 +21,8 @@ object GraphResolutionHelper {
         if (dependencies.isEmpty()) {
             return null
         }
-        val deps = dependencies.joinToString("\n") { it.toString() }.prependIndent("  ")
-        throw ProcessingErrorException(
-            "More than one component matches dependency claim ${dependencyClaim.type.declaration.qualifiedName?.asString()} tag=${dependencyClaim.tags}:\n$deps",
-            forDeclaration.source
-        )
+
+        throw DuplicateDependencyException(dependencies, dependencyClaim, forDeclaration)
     }
 
     fun findDependencies(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): List<SingleDependency> {
@@ -119,11 +116,8 @@ object GraphResolutionHelper {
         if (result.size == 1) {
             return result[0]
         }
-        val deps = result.asSequence().map { it.toString() }.joinToString("\n").prependIndent("  ")
-        throw ProcessingErrorException(
-            "More than one component matches dependency claim ${dependencyClaim.type.declaration.qualifiedName?.asString()} tag=${dependencyClaim.tags}:\n$deps",
-            forDeclaration.source
-        )
+
+        throw DuplicateDependencyException(dependencyClaim, forDeclaration, result)
     }
 
 
@@ -237,14 +231,16 @@ object GraphResolutionHelper {
                     for (methodParameterType in template.methodParameterTypes) {
                         realParams.add(ComponentTemplateHelper.replace(ctx.resolver, methodParameterType, map)!!)
                     }
-                    result.add(ComponentDeclaration.FromExtensionComponent(
-                        realReturnType,
-                        sourceMethod,
-                        realParams,
-                        template.methodParameterTags,
-                        template.tags,
-                        template.generator
-                    ))
+                    result.add(
+                        ComponentDeclaration.FromExtensionComponent(
+                            realReturnType,
+                            sourceMethod,
+                            realParams,
+                            template.methodParameterTags,
+                            template.tags,
+                            template.generator
+                        )
+                    )
                 }
 
                 is ComponentDeclaration.DiscoveredAsDependencyComponent -> throw IllegalStateException()
@@ -296,11 +292,7 @@ object GraphResolutionHelper {
             return exactMatch[0]
         }
 
-        val deps = declarations.asSequence().map { it.toString() }.joinToString("\n").prependIndent("  ")
-        throw ProcessingErrorException(
-            "More than one component matches dependency claim ${dependencyClaim.type.declaration.qualifiedName?.asString()} tag=${dependencyClaim.tags}:\n$deps",
-            forDeclaration.source
-        )
+        throw DuplicateDependencyException(dependencyClaim, forDeclaration, declarations)
     }
 
     fun findDependencyDeclarations(ctx: ProcessingContext, sourceDeclarations: List<ComponentDeclaration>, dependencyClaim: DependencyClaim): List<ComponentDeclaration> {
