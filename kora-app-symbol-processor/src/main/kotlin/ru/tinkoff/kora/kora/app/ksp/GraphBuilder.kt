@@ -18,6 +18,7 @@ import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.ksp.exception.UnresolvedDependencyException
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
@@ -486,6 +487,9 @@ object GraphBuilder {
             val method = FunSpec.builder(fn.simpleName.getShortName())
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(fn.returnType!!.resolve().toTypeName(funTpr))
+            if (fn.isSuspend()) {
+                method.addModifiers(KModifier.SUSPEND)
+            }
             method.addCode("return this.getDelegate().%L(", fn.simpleName.getShortName())
             for ((i, param) in fn.parameters.withIndex()) {
                 if (i > 0) {
