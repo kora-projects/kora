@@ -122,15 +122,22 @@ public final class CacheOperationUtils {
                 for (String parameter : parameters) {
                     if (method.getParameters().stream().noneMatch(p -> p.getSimpleName().contentEquals(parameter))) {
                         throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                            "Unknown method parameter is declared: " + parameter, method));
+                            "Unknown method cache parameter is declared: " + parameter, method));
                     }
                 }
+            }
+
+            if (parameters.isEmpty() && type != CacheOperation.Type.EVICT_ALL) {
+                throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
+                    "@%s method must declare any method parameters for cache key"
+                        .formatted(annotation.getAnnotationType().asElement().getSimpleName().toString()), method));
             }
 
             for (List<String> arguments : cacheKeyArguments) {
                 if (!arguments.equals(parameters)) {
                     throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                        annotation.getClass() + " parameters mismatch for different annotations for: " + origin, method));
+                        "@%s parameters mismatch for different annotations for: %s"
+                            .formatted(annotation.getAnnotationType().asElement().getSimpleName().toString(), origin), method));
                 }
             }
 
@@ -178,13 +185,13 @@ public final class CacheOperationUtils {
                 } else {
                     if (parameters.size() > 9) {
                         throw new ProcessingErrorException("@%s doesn't support more than 9 method arguments for Cache Key"
-                            .formatted(annotation.getAnnotationType().asElement().getSimpleName()), method);
+                            .formatted(annotation.getAnnotationType().asElement().getSimpleName().toString()), method);
                     }
 
-                    if(parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
+                    if (parameters.isEmpty()) {
                         throw new ProcessingErrorException(
-                            "@%s requires minimum 1 Cache Key method argument, but got 0".formatted(annotation.getAnnotationType().asElement().getSimpleName().toString()),
-                            method);
+                            "@%s requires minimum 1 Cache Key method argument, but got 0"
+                                .formatted(annotation.getAnnotationType().asElement().getSimpleName().toString()), method);
                     }
 
                     var mapperType = getKeyMapper(cacheKeyMirror, parameterResult, env);
