@@ -11,6 +11,7 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.CircularDependencyException;
+import ru.tinkoff.kora.kora.app.annotation.processor.exception.DuplicateDependencyException;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.NewRoundException;
 import ru.tinkoff.kora.kora.app.annotation.processor.exception.UnresolvedDependencyException;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
@@ -145,13 +146,7 @@ public class GraphBuilder {
                         }
                     }
                     if (results.size() > 1) {
-                        var deps = templates.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
-                        if (dependencyClaim.tags().isEmpty()) {
-                            throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, declaration.source());
-                        } else {
-                            var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
-                            throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + " with tag " + tagMsg + " :\n" + deps, declaration.source());
-                        }
+                        throw new DuplicateDependencyException(dependencyClaim, declaration, templates);
                     }
                     throw exception;
                 }
@@ -477,17 +472,17 @@ public class GraphBuilder {
         var dependencyClaimType = dependencyClaim.type();
         var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
         if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
-            throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), declaration);
+            throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), declaration);
         }
         for (var inStackFrame : processing.resolutionStack()) {
             if (!(inStackFrame instanceof ProcessingState.ResolutionFrame.Component componentFrame) || componentFrame.declaration() != declaration) {
                 continue;
             }
             if (dependencyClaim.type().getKind() != TypeKind.DECLARED) {
-                throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), componentFrame.declaration());
+                throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
             }
             if (dependencyClaimTypeElement.getKind() != ElementKind.INTERFACE && (dependencyClaimTypeElement.getKind() != ElementKind.CLASS || dependencyClaimTypeElement.getModifiers().contains(Modifier.FINAL))) {
-                throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), componentFrame.declaration());
+                throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
             }
             var proxyDependencyClaim = new DependencyClaim(
                 dependencyClaimType, Set.of(CommonClassNames.promisedProxy.canonicalName()), dependencyClaim.claimType()
