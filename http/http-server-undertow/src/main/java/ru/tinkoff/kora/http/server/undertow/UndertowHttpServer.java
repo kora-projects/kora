@@ -51,7 +51,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         this.gracefulShutdown.shutdown();
         final Duration shutdownAwait = this.config.get().shutdownWait();
         try {
-            logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown...");
+            logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown in {} maximum...", TimeUtils.durationForLogging(shutdownAwait));
             if (!this.gracefulShutdown.awaitShutdown(shutdownAwait.toMillis())) {
                 logger.warn("Public HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
             }

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.common.body;
 
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.common.body.StreamingHttpBodyOutput.IOConsumer;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -53,6 +54,26 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
 
     static HttpBodyOutput octetStream(long length, Flow.Publisher<? extends ByteBuffer> content) {
         return new StreamingHttpBodyOutput("application/octet-stream", length, content);
+    }
+
+    static HttpBodyOutput ofBlockingStream(IOConsumer<OutputStream> ioConsumer) {
+        return new StreamingHttpBodyOutput(null, -1, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingStream(String contentType, IOConsumer<OutputStream> ioConsumer) {
+        return new StreamingHttpBodyOutput(contentType, -1, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingStream(String contentType, long length, IOConsumer<OutputStream> ioConsumer) {
+        return new StreamingHttpBodyOutput(contentType, length, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingOctetStream(IOConsumer<OutputStream> ioConsumer) {
+        return new StreamingHttpBodyOutput("application/octet-stream", -1, ioConsumer);
+    }
+
+    static HttpBodyOutput ofBlockingOctetStream(long length, IOConsumer<OutputStream> ioConsumer) {
+        return new StreamingHttpBodyOutput("application/octet-stream", length, ioConsumer);
     }
 
     long contentLength();
