@@ -219,7 +219,7 @@ class KoraAppKspTest {
         Assertions.assertThatThrownBy { testClass(AppWithCircularDependency::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
-                    s.assertThat(e.messages).anyMatch { it.contains("There's a cycle in graph: ") }
+                    s.assertThat(e.messages).anyMatch { it.contains("Encountered circular dependency in graph for source type") }
                 }
             }
     }
@@ -247,7 +247,7 @@ class KoraAppKspTest {
         Assertions.assertThatThrownBy { testClass(AppWithFactories6::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
-                    s.assertThat(e.messages).anyMatch { it.contains("There's a cycle in graph: ") }
+                    s.assertThat(e.messages).anyMatch { it.contains("Encountered circular dependency in graph for source type") }
                 }
             }
 
@@ -308,7 +308,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages)
-                        .anyMatch { it.contains("More than one component matches dependency claim ru.tinkoff.kora.kora.app.ksp.app.AppWithComponentCollisionAndDirect.Class1 tag=[]:") }
+                        .anyMatch { it.contains("More than one component matches dependency type: ru.tinkoff.kora.kora.app.ksp.app.AppWithComponentCollisionAndDirect.Class1") }
                 }
             }
     }

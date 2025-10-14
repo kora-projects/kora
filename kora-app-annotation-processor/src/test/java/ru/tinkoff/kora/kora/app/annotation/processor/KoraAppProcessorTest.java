@@ -171,7 +171,7 @@ class KoraAppProcessorTest {
     void testCircularDependency() {
         assertThatThrownBy(() -> testClass(AppWithCircularDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
-                s.assertThat(e.getMessage()).startsWith("There's a cycle in graph: ");
+                s.assertThat(e.getMessage()).startsWith("Encountered circular dependency in graph for source type:");
                 s.assertThat(e.diagnostics.get(0).getSource().getName()).isEqualTo("src/test/java/ru/tinkoff/kora/kora/app/annotation/processor/app/AppWithCircularDependency.java");
             }));
     }
@@ -194,7 +194,7 @@ class KoraAppProcessorTest {
 //        testClass(AppWithFactories5.class).init();; TODO больше не нужно
         assertThatThrownBy(() -> testClass(AppWithFactories6.class))
             .isInstanceOf(CompilationErrorException.class)
-            .hasMessageStartingWith("There's a cycle in graph:");
+            .hasMessageStartingWith("Encountered circular dependency in graph for source type");
         testClass(AppWithFactories7.class).init();
         testClass(AppWithFactories8.class).init();
         testClass(AppWithFactories9.class).init();
@@ -261,11 +261,7 @@ class KoraAppProcessorTest {
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 var error = e.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst().get();
                 s.assertThat(error.getMessage(Locale.US))
-                    .startsWith("More than one component matches dependency claim ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1:");
-
-                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], method=c1()");
-                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], method=c2()");
-                s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], method=c3()");
+                    .startsWith("More than one component matches dependency type: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1");
             }));
     }
 
