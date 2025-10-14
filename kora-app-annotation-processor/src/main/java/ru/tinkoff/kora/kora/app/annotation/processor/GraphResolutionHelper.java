@@ -8,14 +8,13 @@ import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependen
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import ru.tinkoff.kora.kora.app.annotation.processor.exception.DuplicateDependencyException;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType.*;
 
@@ -37,12 +36,7 @@ public final class GraphResolutionHelper {
             return null;
         }
 
-        var deps = dependencies.stream()
-            .map(ComponentDependency.SingleDependency::component)
-            .map(Objects::toString)
-            .collect(Collectors.joining("\n")).indent(2);
-
-        throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, forDeclaration.source());
+        throw new DuplicateDependencyException(dependencies, dependencyClaim, forDeclaration);
     }
 
     public static List<ComponentDependency.SingleDependency> findDependencies(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
@@ -152,15 +146,14 @@ public final class GraphResolutionHelper {
         if (declarations.size() == 1) {
             return declarations.get(0);
         }
-        var exactMatch = declarations.stream().filter(d -> ctx.types.isSameType(
-            d.type(),
-            dependencyClaim.type()
-        )).toList();
+        var exactMatch = declarations.stream()
+            .filter(d -> ctx.types.isSameType(d.type(), dependencyClaim.type()))
+            .toList();
         if (exactMatch.size() == 1) {
             return exactMatch.get(0);
         }
-        var deps = declarations.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
-        throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, forDeclaration.source());
+
+        throw new DuplicateDependencyException(dependencyClaim, forDeclaration, declarations);
     }
 
     public static List<ComponentDeclaration> findDependencyDeclarationsFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
@@ -326,8 +319,7 @@ public final class GraphResolutionHelper {
             return nonDefaultComponents.get(0);
         }
 
-        var deps = declarations.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
-        throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, forDeclaration.source());
+        throw new DuplicateDependencyException(dependencyClaim, forDeclaration, declarations);
     }
 
     public static List<ComponentDeclaration> findDependencyDeclarations(ProcessingContext ctx, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
