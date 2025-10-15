@@ -9,6 +9,10 @@ public interface OkHttpClientConfig {
         return true;
     }
 
+    default boolean retryOnConnectionFailure() {
+        return true;
+    }
+
     default HttpVersion httpVersion() {
         return HttpVersion.HTTP_1_1;
     }
