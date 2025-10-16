@@ -61,6 +61,9 @@ public interface GrpcServerModule extends NettyCommonModule {
         GrpcServerConfig grpcServerConfig = config.get();
 
         var builder = NettyServerBuilder.forPort(grpcServerConfig.port())
+            .directExecutor()
+            .addTransportFilter(VirtualThreadExecutorTransportFilter.INSTANCE)
+            .callExecutor(VirtualThreadExecutorTransportFilter.INSTANCE)
             .maxInboundMessageSize(((int) grpcServerConfig.maxMessageSize().toBytes()))
             .bossEventLoopGroup(bossEventLoop)
             .workerEventLoopGroup(eventLoop)
