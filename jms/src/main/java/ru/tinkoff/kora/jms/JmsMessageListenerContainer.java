@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetry;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetryFactory;
@@ -137,6 +138,7 @@ public class JmsMessageListenerContainer implements Lifecycle {
                             }), "JmsListener.message");
                         }
                         ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+                            .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.current())
                             .call(() -> {
                                 this.messageListener.onMessage(session, message);
                                 return null;

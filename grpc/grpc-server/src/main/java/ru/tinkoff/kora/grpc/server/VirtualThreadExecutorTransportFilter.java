@@ -1,7 +1,9 @@
 package ru.tinkoff.kora.grpc.server;
 
 import io.grpc.*;
-import org.jetbrains.annotations.Nullable;
+import io.opentelemetry.context.Context;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
+import ru.tinkoff.kora.logging.common.MDC;
 
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -33,7 +35,14 @@ public class VirtualThreadExecutorTransportFilter extends ServerTransportFilter 
     }
 
     @Override
-    public @Nullable <ReqT, RespT> Executor getExecutor(ServerCall<ReqT, RespT> call, Metadata metadata) {
-        return call.getAttributes().get(VirtualThreadExecutorTransportFilter.EXECUTOR_KEY);
+    public <ReqT, RespT> Executor getExecutor(ServerCall<ReqT, RespT> call, Metadata metadata) {
+        var mdc = new MDC();
+        var context = Context.root();
+        return command -> {
+            var executor = call.getAttributes().get(VirtualThreadExecutorTransportFilter.EXECUTOR_KEY);
+            executor.execute(() -> ScopedValue.where(MDC.VALUE, mdc)
+                .where(OpentelemetryContext.VALUE, context)
+                .run(command));
+        };
     }
 }
