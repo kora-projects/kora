@@ -5,6 +5,7 @@ import org.quartz.JobExecutionContext;
 import org.quartz.Trigger;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
 import java.util.List;
@@ -28,6 +29,7 @@ public abstract class KoraQuartzJob implements Job {
     @Override
     public final void execute(JobExecutionContext jobExecutionContext) {
         ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+            .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
             .run(() -> {
                 MDC.clear();
                 var ctx = Context.clear();

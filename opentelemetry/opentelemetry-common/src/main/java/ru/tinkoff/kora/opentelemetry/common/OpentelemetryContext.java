@@ -6,6 +6,7 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.logging.common.MDC;
 
+@Deprecated
 public class OpentelemetryContext {
     private static final Context.Key<OpentelemetryContext> KEY = new Context.Key<>() {
         @Override

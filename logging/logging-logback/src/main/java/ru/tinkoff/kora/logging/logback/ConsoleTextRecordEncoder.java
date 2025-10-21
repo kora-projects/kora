@@ -8,6 +8,7 @@ import ch.qos.logback.core.Context;
 import ch.qos.logback.core.encoder.Encoder;
 import ch.qos.logback.core.status.Status;
 import com.fasterxml.jackson.core.JsonFactory;
+import io.opentelemetry.api.trace.SpanContext;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
 
@@ -48,6 +49,10 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
             .flush();
 
         if (event instanceof KoraLoggingEvent koraEvent) {
+            if (koraEvent.span() != SpanContext.getInvalid()) {
+                w.append("traceId=").append(koraEvent.span().getTraceId()).append(" ");
+                w.append("spanId=").append(koraEvent.span().getSpanId()).append(" ");
+            }
             var mdc = koraEvent.koraMdc();
             for (var e : mdc.entrySet()) {
                 var key = e.getKey();

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.logging.logback;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.AsyncAppenderBase;
+import io.opentelemetry.api.trace.Span;
 import ru.tinkoff.kora.logging.common.MDC;
 
 import java.util.Map;
@@ -26,7 +27,8 @@ public final class KoraAsyncAppender extends AsyncAppenderBase<ILoggingEvent> {
             eventObject.getNanoseconds(),
             eventObject.getSequenceNumber(),
             eventObject.getKeyValuePairs(),
-            Map.copyOf(MDC.get().values())
+            Map.copyOf(MDC.get().values()),
+            Span.current().getSpanContext()
         );
         super.append(koraLoggingEvent);
     }
