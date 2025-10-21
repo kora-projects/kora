@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.symbol.KSType
-import com.squareup.kotlinpoet.CodeBlock
-import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
 
 object KotlinPoetUtils {
@@ -38,5 +37,25 @@ object KotlinPoetUtils {
         }
         return c.add("]").build()
     }
+
+    inline fun FunSpec.Builder.observe(observationName: String, result: TypeName, callback: CodeBlock.Builder.() -> Unit): FunSpec.Builder {
+        val b = CodeBlock.builder()
+        b.observe(observationName, result, callback)
+        this.addCode(b.build())
+        return this
+    }
+
+
+    inline fun CodeBlock.Builder.observe(observationName: String, result: TypeName, callback: CodeBlock.Builder.() -> Unit) = controlFlow(
+        "%T.where(%T.VALUE, %N).where(%T.VALUE, %T.current().with(%N.span())).call<%T, %T>()",
+        ScopedValue::class.asClassName(),
+        ClassName("ru.tinkoff.kora.common.telemetry", "Observation"),
+        observationName,
+        ClassName("ru.tinkoff.kora.common.telemetry", "OpentelemetryContext"),
+        ClassName("io.opentelemetry.context", "Context"),
+        observationName,
+        result,
+        RuntimeException::class.asClassName(),
+    ) { callback(this) }
 
 }

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.camunda.engine.bpmn;
 
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.junit.jupiter.api.Test;
@@ -7,10 +8,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.camunda.engine.bpmn.transaction.CamundaTransactionManager;
 import ru.tinkoff.kora.camunda.engine.bpmn.transaction.JdbcCamundaTransactionManager;
-import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
+import ru.tinkoff.kora.database.common.telemetry.*;
 import ru.tinkoff.kora.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
-import ru.tinkoff.kora.telemetry.common.*;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
 
@@ -18,6 +21,7 @@ import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.function.Consumer;
 
@@ -34,9 +38,9 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 new $CamundaEngineBpmnConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineBpmnConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineBpmnConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO),
-                    true
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
+                    true,
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
                 )
             );
 
@@ -102,9 +106,9 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 new $CamundaEngineBpmnConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineBpmnConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineBpmnConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO),
-                    true
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
+                    true,
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
                 )
             );
 
@@ -171,14 +175,14 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
             Duration.ofMillis(5000L),
             false,
             new Properties(),
-            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
-                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
+            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTelemetryConfig_DatabaseLogConfig_ConfigValueExtractor.DatabaseLogConfig_Impl(true),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(true, Map.of()),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
             )
         );
 
-        var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
+        var db = new JdbcDatabase(config, DataBaseTelemetryFactory.NOOP, new CompositeMeterRegistry());
         try {
             db.init();
         } catch (SQLException e) {

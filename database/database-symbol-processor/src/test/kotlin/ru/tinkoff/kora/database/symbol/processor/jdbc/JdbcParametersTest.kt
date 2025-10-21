@@ -6,13 +6,13 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.verify
 import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseLogConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.database.jdbc.`$JdbcDatabaseConfig_ConfigValueExtractor`.JdbcDatabaseConfig_Impl
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
 import java.time.Duration
 import java.util.*
 import kotlin.reflect.full.findAnnotations
@@ -54,10 +54,10 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             Duration.ofMillis(1000L),
             false,
             Properties(),
-            `$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl(
-                `$TelemetryConfig_LogConfig_ConfigValueExtractor`.LogConfig_Impl(true),
-                `$TelemetryConfig_TracingConfig_ConfigValueExtractor`.TracingConfig_Impl(true),
-                `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.MetricsConfig_Impl(null, arrayOf())
+            `$DatabaseTelemetryConfig_ConfigValueExtractor`.DatabaseTelemetryConfig_Impl(
+                `$DatabaseTelemetryConfig_DatabaseLogConfig_ConfigValueExtractor`.DatabaseLogConfig_Impl(true),
+                `$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor`.DatabaseTracingConfig_Impl(true, mapOf()),
+                `$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor`.DatabaseMetricsConfig_Impl(true, true, arrayOf<Duration>(), mapOf<String, String>())
             )
         )
         val repository = compileForArgs(

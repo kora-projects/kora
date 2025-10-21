@@ -19,7 +19,7 @@ public final class OpentelemetryGrpcClientTracerFactory implements GrpcClientTra
     @Nullable
     @Override
     public GrpcClientTracer get(ServiceDescriptor service, TelemetryConfig.TracingConfig config, URI uri) {
-        if (config.enabled() != null && !config.enabled()) {
+        if (!config.enabled()) {
             return null;
         }
         return new OpentelemetryGrpcClientTracer(this.tracer, service, uri);

@@ -74,7 +74,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter, Integer>comparing(p -> p.sqlParameterName().length()).reversed()).toList()) {
             sql = sql.replace(":" + parameter.sqlParameterName(), "?");
         }
-        var b = DbUtils.queryMethodBuilder(method, methodType);
+        var mb = DbUtils.queryMethodBuilder(method, methodType);
 
         var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;
         type.addField(
@@ -86,72 +86,80 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
                           $S
                         )""", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method))
                 .build());
-        b.addStatement("var _query = $L", queryContextFieldName);
+        mb.addStatement("var _query = $L", queryContextFieldName);
 
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
-        String profile = null;
+        final String profile;
         var profileAnnotation = AnnotationUtils.findAnnotation(method, CassandraTypes.CASSANDRA_PROFILE);
         if (profileAnnotation != null) {
             profile = AnnotationUtils.parseAnnotationValueWithoutDefault(profileAnnotation, "value");
+        } else {
+            profile = null;
         }
         var returnType = methodType.getReturnType();
         var isFuture = CommonUtils.isFuture(returnType);
+        mb.addStatement("var _observation = this._connectionFactory.telemetry().observe(_query)");
+        mb.addStatement("var _session = this._connectionFactory.currentSession()");
         if (isFuture) {
-            b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
-            b.addStatement("var _ctxFork = _ctxCurrent.fork()");
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxFork, _query)");
-            b.addStatement("var _session = this._connectionFactory.currentSession()");
-            b.addCode("return _session.prepareAsync(_query.sql())\n");
-            b.addCode("  .thenCompose(_st -> {$>$>\n");
-            b.addStatement("_ctxFork.inject()");
-            b.addStatement("var _stmt = _st.boundStatementBuilder()");
-        } else {
-            b.addStatement("var _ctxCurrent = $T.current()", CommonClassNames.context);
-            b.addStatement("var _telemetry = this._connectionFactory.telemetry().createContext(_ctxCurrent, _query)");
-            b.addStatement("var _session = this._connectionFactory.currentSession()");
-            b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
-        }
-        if (profile != null) {
-            b.addStatement("_stmt.setExecutionProfileName($S)", profile);
-        }
+            mb.addCode("return ");
+            CommonUtils.observe(mb, "_observation", "call", b -> {
+                b.addStatement("_observation.observeConnection()");
+                b.add("return _session.prepareAsync(_query.sql()).thenCompose(_st -> ");
+                CommonUtils.observe(b, "_observation", "call", st -> {
+                    st.addStatement("var _stmt = _st.boundStatementBuilder()");
+                    if (profile != null) {
+                        st.addStatement("_stmt.setExecutionProfileName($S)", profile);
+                    }
+                    st.add(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
+                    st.addStatement("_observation.observeStatement()");
 
-        StatementSetterGenerator.generate(b, method, query, parameters, batchParam, parameterMappers);
-        if (isFuture) {
-            if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
-                b.addStatement("return _session.executeAsync(_s).thenApply(_rs -> (Void)null)");
-            } else {
-                Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
-                b.addStatement("return _session.executeAsync(_s).thenCompose($N::apply)", resultMapperName);
-            }
-            b.addCode("""
-                $<})$<
-                  .whenComplete((_result, _error) -> {
-                    _telemetry.close(_error);
-                    _ctxCurrent.inject();
-                  })""");
-
-            if (((DeclaredType) returnType).asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
-                b.addCode(".toCompletableFuture();");
-            } else {
-                b.addCode(";");
-            }
+                    if (CommonUtils.isVoid(((DeclaredType) returnType).getTypeArguments().get(0))) {
+                        st.add("return _session.executeAsync(_s).thenApply(_rs -> (Void)null)");
+                    } else {
+                        Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
+                        st.add("return _session.executeAsync(_s).thenCompose($N::apply)", resultMapperName);
+                    }
+                    var whenComplete = CommonUtils.observe("_observation", "run", o -> {
+                        o.addStatement("if (_error != null) _observation.observeError(_error)");
+                        o.addStatement("_observation.end()");
+                    });
+                    st.add(".whenComplete((_result, _error) -> $L)", whenComplete);
+                    if (((DeclaredType) returnType).asElement().toString().equals(CompletableFuture.class.getCanonicalName())) {
+                        st.add(".toCompletableFuture()");
+                    }
+                    st.add(";");
+                });
+                b.add(");\n");
+            });
         } else {
-            b.beginControlFlow("try");
-            b.addStatement("var _rs = _session.execute(_s)");
-            if (returnType.getKind() != TypeKind.VOID) {
-                Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
-                b.addStatement("var _result = $N.apply(_rs)", resultMapperName);
+            if (method.getReturnType().getKind() != TypeKind.VOID) {
+                mb.addCode("return ");
             }
-            b.addStatement("_telemetry.close(null)");
-            if (returnType.getKind() != TypeKind.VOID) {
-                b.addStatement("return _result");
-            }
-            b.nextControlFlow("catch (Exception _e)")
-                .addStatement("_telemetry.close(_e)")
-                .addStatement("throw _e")
-                .endControlFlow();
+            CommonUtils.observe(mb, "_observation", method.getReturnType().getKind() == TypeKind.VOID ? "run" : "call", b -> {
+                b.addStatement("_observation.observeConnection()");
+                b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()");
+                if (profile != null) {
+                    b.addStatement("_stmt.setExecutionProfileName($S)", profile);
+                }
+                b.add(StatementSetterGenerator.generate(method, query, parameters, batchParam, parameterMappers));
+                b.addStatement("_observation.observeStatement()");
+                b.beginControlFlow("try");
+                b.addStatement("var _rs = _session.execute(_s)");
+                if (returnType.getKind() != TypeKind.VOID) {
+                    Objects.requireNonNull(resultMapperName, () -> "Illegal State occurred when expected to get result mapper, but got null in " + method.getEnclosingElement().getSimpleName() + "#" + method.getSimpleName());
+                    b.addStatement("return $N.apply(_rs)", resultMapperName);
+                }
+                b.nextControlFlow("catch (Exception _e)")
+                    .addStatement("_observation.observeError(_e)")
+                    .addStatement("throw _e");
+                b.nextControlFlow("finally")
+                    .addStatement("_observation.end()")
+                    .endControlFlow();
+            });
         }
-        return b.build();
+        mb.addCode(";\n");
+
+        return mb.build();
     }
 
 

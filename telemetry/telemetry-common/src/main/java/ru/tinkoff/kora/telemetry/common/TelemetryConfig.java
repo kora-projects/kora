@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.telemetry.common;
 
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
+import java.util.Map;
 
 @ConfigValueExtractor
 public interface TelemetryConfig {
@@ -15,14 +15,20 @@ public interface TelemetryConfig {
 
     @ConfigValueExtractor
     interface LogConfig {
-        @Nullable
-        Boolean enabled();
+        default boolean enabled() {
+            return false;
+        }
     }
 
     @ConfigValueExtractor
     interface TracingConfig {
-        @Nullable
-        Boolean enabled();
+        default boolean enabled() {
+            return true;
+        }
+
+        default Map<String, String> attributes() {
+            return Map.of();
+        }
     }
 
     @ConfigValueExtractor
@@ -44,11 +50,16 @@ public interface TelemetryConfig {
             Duration.ofMillis(90000)
         };
 
-        @Nullable
-        Boolean enabled();
+        default boolean enabled() {
+            return false;
+        }
 
         default Duration[] slo() {
             return DEFAULT_SLO;
+        }
+
+        default Map<String, String> tags() {
+            return Map.of();
         }
     }
 }
