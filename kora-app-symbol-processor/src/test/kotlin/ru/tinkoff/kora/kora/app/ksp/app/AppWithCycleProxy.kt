@@ -17,6 +17,7 @@ interface AppWithCycleProxy {
     interface JsonWriter<T> {
         fun write(test: T)
         fun writeWithReturn(test: T): String
+        suspend fun writeWithSuspend(test: T): String
     }
 
     class Class1
@@ -27,20 +28,24 @@ interface AppWithCycleProxy {
     class Writer1 : JsonWriter<Class1> {
         override fun write(test: Class1) = TODO("Not yet implemented")
         override fun writeWithReturn(test: Class1) = TODO("Not yet implemented")
+        override suspend fun writeWithSuspend(test: Class1) = TODO("Not yet implemented")
     }
 
     class Writer2 : JsonWriter<Class2> {
         override fun write(test: Class2) = TODO("Not yet implemented")
         override fun writeWithReturn(test: Class2) = TODO("Not yet implemented")
+        override suspend fun writeWithSuspend(test: Class2) = TODO("Not yet implemented")
     }
 
     class Writer3 : JsonWriter<Class3> {
         override fun write(test: Class3) = TODO("Not yet implemented")
         override fun writeWithReturn(test: Class3) = TODO("Not yet implemented")
+        override suspend fun writeWithSuspend(test: Class3) = TODO("Not yet implemented")
     }
 
     class Writer4 : JsonWriter<Class4> {
         override fun write(test: Class4) = TODO("Not yet implemented")
         override fun writeWithReturn(test: Class4) = TODO("Not yet implemented")
+        override suspend fun writeWithSuspend(test: Class4) = TODO("Not yet implemented")
     }
 }
