@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
@@ -58,6 +59,7 @@ public abstract class AbstractJob implements Lifecycle {
                 return;
             }
             ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+                .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
                 .run(() -> {
                     MDC.clear();
                     var ctx = Context.clear();

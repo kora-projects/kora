@@ -4,6 +4,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.IThrowableProxy;
 import ch.qos.logback.classic.spi.LoggerContextVO;
+import io.opentelemetry.api.trace.SpanContext;
 import org.slf4j.Marker;
 import org.slf4j.event.KeyValuePair;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
@@ -26,7 +27,8 @@ public record KoraLoggingEvent(
     int nanoseconds,
     long sequenceNumber,
     List<KeyValuePair> keyValuePairs,
-    Map<String, StructuredArgumentWriter> koraMdc
+    Map<String, StructuredArgumentWriter> koraMdc,
+    SpanContext span
 ) implements ILoggingEvent {
     @Override
     public String getThreadName() {

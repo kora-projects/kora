@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers.handlers.impl;
 
+import io.opentelemetry.context.Context;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.errors.WakeupException;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
@@ -31,24 +33,26 @@ public class RecordsHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
         if (records.isEmpty() && !allowEmptyRecords) {
             return;
         }
-
-        var ctx = this.telemetry.get(records);
-        try {
-            var handler = this.handler.get();
-            ScopedValue.where(MDC.VALUE, new MDC())
-                .run(() -> handler.handle(consumer, ctx, records));
-            if (this.shouldCommit && commitAllowed) {
+        ScopedValue.where(MDC.VALUE, new MDC())
+            .where(OpentelemetryContext.VALUE, Context.root())
+            .run(() -> {
+                var ctx = this.telemetry.get(records);
                 try {
-                    consumer.commitSync();
-                } catch (WakeupException e) {
-                    // retry commit if thrown on consumer release
-                    consumer.commitSync();
+                    var handler = this.handler.get();
+                    handler.handle(consumer, ctx, records);
+                    if (this.shouldCommit && commitAllowed) {
+                        try {
+                            consumer.commitSync();
+                        } catch (WakeupException e) {
+                            // retry commit if thrown on consumer release
+                            consumer.commitSync();
+                        }
+                    }
+                    ctx.close(null);
+                } catch (Exception e) {
+                    ctx.close(e);
+                    throw e;
                 }
-            }
-            ctx.close(null);
-        } catch (Exception e) {
-            ctx.close(e);
-            throw e;
-        }
+            });
     }
 }

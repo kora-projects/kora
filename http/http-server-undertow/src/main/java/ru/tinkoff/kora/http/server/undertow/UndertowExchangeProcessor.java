@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.xnio.IoUtils;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -44,6 +45,7 @@ public class UndertowExchangeProcessor implements HttpHandler {
     @Override
     public void handleRequest(HttpServerExchange exchange) throws Exception {
         ScopedValue.where(UndertowContext.VALUE, this.context)
+            .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
             .where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
             .run(() -> {
                 MDC.clear();
