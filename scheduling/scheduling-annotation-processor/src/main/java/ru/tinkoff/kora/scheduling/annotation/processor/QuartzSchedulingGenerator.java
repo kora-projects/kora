@@ -127,7 +127,7 @@ public class QuartzSchedulingGenerator {
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
             .addMethod(MethodSpec.methodBuilder("telemetry")
-                .returns(CommonClassNames.telemetryConfig)
+                .returns(ClassName.get("ru.tinkoff.kora.scheduling.common.telemetry", "JobTelemetryConfig"))
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .build()
             );

@@ -3,7 +3,6 @@ package ru.tinkoff.kora.scheduling.ksp
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -176,7 +175,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val configType = TypeSpec.interfaceBuilder(configClassName)
             .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
             .generated(JdkSchedulingGenerator::class)
-            .addFunction(FunSpec.builder("telemetry").returns(ClassName("ru.tinkoff.kora.telemetry.common", "TelemetryConfig")).addModifiers(KModifier.ABSTRACT).build())
+            .addFunction(FunSpec.builder("telemetry").returns(ClassName("ru.tinkoff.kora.scheduling.common.telemetry", "JobTelemetryConfig")).addModifiers(KModifier.ABSTRACT).build())
         for (param in params) {
             configType.addFunction(
                 FunSpec.builder(param.name)
