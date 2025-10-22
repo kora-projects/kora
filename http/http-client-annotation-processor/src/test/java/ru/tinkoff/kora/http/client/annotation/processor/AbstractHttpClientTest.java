@@ -8,7 +8,7 @@ import ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotat
 import ru.tinkoff.kora.config.common.extractor.*;
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
 import ru.tinkoff.kora.http.client.common.HttpClient;
-import ru.tinkoff.kora.http.client.common.declarative.$HttpClientOperationConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.client.common.declarative.*;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.telemetry.$HttpClientLoggerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.client.common.telemetry.$HttpClientTelemetryConfig_ConfigValueExtractor;
@@ -72,16 +72,19 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
 
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
         var durationCVE = new DurationConfigValueExtractor();
-        @SuppressWarnings("enchecked")
-        var telemetryCVE = (ConfigValueExtractor) new $HttpClientTelemetryConfig_ConfigValueExtractor(
+        var telemetryCVE = new $HttpClientTelemetryConfig_ConfigValueExtractor(
             new $HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
             new $TelemetryConfig_TracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
             new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
         );
-        @SuppressWarnings("enchecked")
-        var configCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, telemetryCVE);
+        var operationTelemetryCVE = new $HttpClientOperationConfig_OperationTelemetryConfig_ConfigValueExtractor(
+            new $HttpClientOperationConfig_OperationTelemetryConfig_LoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $HttpClientOperationConfig_OperationTelemetryConfig_TracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $HttpClientOperationConfig_OperationTelemetryConfig_MetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
+        );
+        var operationConfigCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, operationTelemetryCVE);
 
-        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", telemetryCVE, durationCVE, configCVE);
+        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE);
         var config = configValueExtractor.extract(MapConfigFactory.fromMap(Map.of(
             "url", "http://test-url:8080"
         )).root());

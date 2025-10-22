@@ -4,6 +4,7 @@ import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLoggerConfig;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -102,6 +103,15 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
             }
             return this.client.slo();
         }
+
+        @Override
+        public Map<String, String> tags() {
+            var tags = this.operation.tags();
+            if (tags != null) {
+                return tags;
+            }
+            return this.client.tags();
+        }
     }
 
     private static class OperationTracingConfig implements TracingConfig {
@@ -120,6 +130,15 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
                 return operation;
             }
             return this.client.enabled();
+        }
+
+        @Override
+        public Map<String, String> attributes() {
+            var operation = this.operation.attributes();
+            if (operation != null) {
+                return operation;
+            }
+            return this.client.attributes();
         }
     }
 }

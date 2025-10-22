@@ -4,6 +4,7 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 
 @ConfigValueExtractor
@@ -43,6 +44,9 @@ public interface HttpClientOperationConfig {
         interface TracingConfig {
             @Nullable
             Boolean enabled();
+
+            @Nullable
+            Map<String, String> attributes();
         }
 
         @ConfigValueExtractor
@@ -52,6 +56,9 @@ public interface HttpClientOperationConfig {
 
             @Nullable
             Duration[] slo();
+
+            @Nullable
+            Map<String, String> tags();
         }
     }
 }
