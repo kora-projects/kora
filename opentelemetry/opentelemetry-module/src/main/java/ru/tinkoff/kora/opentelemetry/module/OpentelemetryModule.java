@@ -46,11 +46,6 @@ public interface OpentelemetryModule {
     }
 
     @DefaultComponent
-    default OpentelemetryDataBaseTracerFactory opentelemetryDataBaseTracingFactory(Tracer tracer) {
-        return new OpentelemetryDataBaseTracerFactory(tracer);
-    }
-
-    @DefaultComponent
     default OpentelemetryKafkaConsumerTracerFactory opentelemetryKafkaConsumerTracerFactory(Tracer tracer) {
         return new OpentelemetryKafkaConsumerTracerFactory(tracer);
     }
