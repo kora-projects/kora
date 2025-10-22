@@ -13,6 +13,7 @@ import ru.tinkoff.kora.database.common.annotation.processor.jdbc.repository.Allo
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
+import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultSetMapper;
 import ru.tinkoff.kora.json.common.annotation.Json;
 
 import java.math.BigDecimal;
@@ -162,7 +163,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testNativeParameter() throws SQLException {
+    public void testNativeParameter() {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
@@ -230,7 +231,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testEntityFieldMappingByTag() throws SQLException, ClassNotFoundException {
+    public void testEntityFieldMappingByTag() throws SQLException {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """
             public record SomeEntity(long id, @ru.tinkoff.kora.json.common.annotation.Json String value) {}
@@ -341,7 +342,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testMultipleParametersWithSameMapper() throws SQLException {
+    public void testMultipleParametersWithSameMapper() {
         var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
             public class TestMapper implements JdbcParameterColumnMapper<String> {
                 @Override
@@ -361,7 +362,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testMultipleParameterFieldsWithSameMapper() throws SQLException {
+    public void testMultipleParameterFieldsWithSameMapper() {
         var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
             public class TestMapper implements JdbcParameterColumnMapper<TestRecord> {
                 @Override
@@ -385,7 +386,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testParameterMappingByTag() throws ClassNotFoundException, SQLException {
+    public void testParameterMappingByTag() throws SQLException {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """
             @Repository
@@ -407,7 +408,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     }
 
     @Test
-    public void testRecordParameterMapping() throws ClassNotFoundException, SQLException {
+    public void testRecordParameterMapping() {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """            
             @Repository
@@ -426,4 +427,35 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 
+    @Test
+    public void testSamePrefixParameterNameMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = :status")
+                void test(String status);
+            }
+            """);
+
+        repository.invoke("test", "someStatus");
+
+        verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = ?");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testSamePrefixMultiParameterNameMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT * FROM test WHERE some_status = :status AND user_status = 'CREATED'::status_type AND diff_status = :statusDiff AND other_status = :status AND status = :status")
+                void test(String status, String statusDiff);
+            }
+            """);
+
+        repository.invoke("test", "someStatus", "otherStatus");
+
+        verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?");
+        verify(executor.preparedStatement).execute();
+    }
 }

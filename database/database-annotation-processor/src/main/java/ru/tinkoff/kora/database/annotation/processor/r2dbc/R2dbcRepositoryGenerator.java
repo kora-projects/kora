@@ -6,6 +6,7 @@ import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
+import ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcRepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
 
@@ -20,10 +21,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 
 public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
     private final Types types;
@@ -72,14 +70,32 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         return type.addMethod(constructor.build()).build();
     }
 
+    private record QueryReplace(int index, int sqlIndex, String name) {}
+
     private MethodSpec generate(TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         final boolean generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
+
         var sql = query.rawQuery();
-        for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter>comparingInt(s -> s.sqlParameterName().length()).reversed()).toList()) {
-            for (var sqlIndex : parameter.sqlIndexes()) {
-                sql = sql.replace(":" + parameter.sqlParameterName(), "$" + (sqlIndex + 1));
-            }
+        List<QueryReplace> replaceParams = query.parameters().stream()
+            .flatMap(p -> {
+                List<QueryReplace> replaces = new ArrayList<>();
+                for (int i = 0; i < p.queryIndexes().size(); i++) {
+                    var queryIndex = p.queryIndexes().get(i);
+                    var sqlIndex = p.sqlIndexes().get(i);
+                    replaces.add(new QueryReplace(queryIndex, sqlIndex, p.sqlParameterName()));
+                }
+                return replaces.stream();
+            })
+            .sorted(Comparator.comparingInt(QueryReplace::index))
+            .toList();
+        int sqlIndexDiff = 0;
+        for (var parameter : replaceParams) {
+            int queryIndexAdjusted = parameter.index() - sqlIndexDiff;
+            int index = parameter.sqlIndex() + 1;
+            sql = sql.substring(0, queryIndexAdjusted) + "$" + index + sql.substring(queryIndexAdjusted + parameter.name().length() + 1);
+            sqlIndexDiff += (parameter.name().length() - String.valueOf(index).length());
         }
+
         var connectionParameter = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst().orElse(null);
 
         var b = DbUtils.queryMethodBuilder(method, methodType);

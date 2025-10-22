@@ -8,6 +8,7 @@ import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
+import ru.tinkoff.kora.database.annotation.processor.vertx.VertxRepositoryGenerator;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -69,11 +70,21 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         return type.addMethod(constructor.build()).build();
     }
 
+    private record QueryReplace(int index, String name) {}
+
     private MethodSpec generate(TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var sql = query.rawQuery();
-        for (var parameter : query.parameters().stream().sorted(Comparator.<QueryWithParameters.QueryParameter, Integer>comparing(p -> p.sqlParameterName().length()).reversed()).toList()) {
-            sql = sql.replace(":" + parameter.sqlParameterName(), "?");
+        List<QueryReplace> replaceParams = query.parameters().stream()
+            .flatMap(p -> p.queryIndexes().stream().map(i -> new QueryReplace(i, p.sqlParameterName())))
+            .sorted(Comparator.comparingInt(QueryReplace::index))
+            .toList();
+        int sqlIndexDiff = 0;
+        for (var parameter : replaceParams) {
+            int queryIndexAdjusted = parameter.index() - sqlIndexDiff;
+            sql = sql.substring(0, queryIndexAdjusted) + "?" + sql.substring(queryIndexAdjusted + parameter.name().length() + 1);
+            sqlIndexDiff += parameter.name().length();
         }
+
         var b = DbUtils.queryMethodBuilder(method, methodType);
 
         var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;

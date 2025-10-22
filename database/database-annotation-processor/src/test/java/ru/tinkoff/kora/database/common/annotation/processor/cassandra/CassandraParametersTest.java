@@ -470,4 +470,34 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         assertThat(tag).isNotNull();
         assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
+
+    @Test
+    public void testSamePrefixParameterNameMapping() {
+        var repository = compileCassandra(List.of(), """            
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = :status")
+                void test(String status);
+            }
+            """);
+
+        repository.invoke("test", "someStatus");
+
+        verify(executor.mockSession).prepare("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = ?");
+    }
+
+    @Test
+    public void testSamePrefixMultiParameterNameMapping() {
+        var repository = compileCassandra(List.of(), """            
+            @Repository
+            public interface TestRepository extends CassandraRepository {
+                @Query("SELECT * FROM test WHERE some_status = :status AND user_status = 'CREATED'::status_type AND diff_status = :statusDiff AND other_status = :status AND status = :status")
+                void test(String status, String statusDiff);
+            }
+            """);
+
+        repository.invoke("test", "someStatus", "otherStatus");
+
+        verify(executor.mockSession).prepare("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?");
+    }
 }

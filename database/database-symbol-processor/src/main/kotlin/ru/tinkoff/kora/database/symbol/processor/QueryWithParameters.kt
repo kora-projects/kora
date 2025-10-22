@@ -6,7 +6,8 @@ import java.io.BufferedInputStream
 import java.nio.charset.Charset
 
 data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryParameter>) {
-    data class QueryParameter(val sqlParameterName: String, val methodIndex: Int, val sqlIndexes: List<Int>)
+
+    data class QueryParameter(val sqlParameterName: String, val methodIndex: Int, val sqlIndexes: List<Int>, val queryIndexes: List<Int>)
 
     fun find(name: String): QueryParameter? {
         for (parameter in parameters) {
@@ -91,7 +92,8 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                     QueryParameter(
                         p.sqlParameterName,
                         p.methodIndex,
-                        p.sqlIndexes.map { paramsNumbers.indexOf(it) })
+                        p.sqlIndexes.map { paramsNumbers.indexOf(it) },
+                        p.sqlIndexes)
                 }
 
             return QueryWithParameters(rawSql, processedParams)
@@ -101,6 +103,10 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
             var index = -1
             val result = ArrayList<Int>()
             while (rawSql.indexOf(":$sqlParameterName", index + 1).also { index = it } >= 0) {
+                if (index != 0 && rawSql[index - 1] == ':') {
+                    continue
+                }
+
                 val indexAfter = index + sqlParameterName.length + 1
                 if (rawSql.length >= indexAfter + 1) {
                     val charAfter = rawSql[indexAfter]
@@ -110,13 +116,17 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                 }
                 result.add(index)
             }
-            return QueryParameter(sqlParameterName, methodParameterNumber, result)
+            return QueryParameter(sqlParameterName, methodParameterNumber, result, result)
         }
 
         private fun parseEntityDirectParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
             var index = -1
             val result = ArrayList<Int>()
             while (rawSql.indexOf(":$sqlParameterName", index + 1).also { index = it } >= 0) {
+                if (index != 0 && rawSql[index - 1] == ':') {
+                    continue
+                }
+
                 val indexAfter = index + sqlParameterName.length + 1
                 if (rawSql.length >= indexAfter + 1) {
                     val charAfter = rawSql[indexAfter]
@@ -126,7 +136,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                 }
                 result.add(index)
             }
-            return QueryParameter(sqlParameterName, methodParameterNumber, result)
+            return QueryParameter(sqlParameterName, methodParameterNumber, result, result)
         }
     }
 }

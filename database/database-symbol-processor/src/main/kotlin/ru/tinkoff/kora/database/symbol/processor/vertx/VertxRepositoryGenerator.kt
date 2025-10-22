@@ -62,6 +62,8 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
+    private data class QueryReplace(val index: Int, val paramIndex: Int, val name: String)
+
     private fun generate(
         typeBuilder: TypeSpec.Builder,
         methodNumber: Int,
@@ -73,10 +75,21 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         parameterMappers: FieldFactory
     ): FunSpec {
         var sql = query.rawQuery
-        query.parameters.indices.asSequence()
-            .map { query.parameters[it].sqlParameterName to "$" + (it + 1) }
-            .sortedByDescending { it.first.length }
-            .forEach { sql = sql.replace(":" + it.first, it.second) }
+
+        val replaceParams = mutableListOf<QueryReplace>()
+        for (i in query.parameters.indices) {
+            val parameter = query.parameters[i]
+            for (queryIndex in parameter.queryIndexes) {
+                replaceParams.add(QueryReplace(queryIndex, i + 1, parameter.sqlParameterName))
+            }
+        }
+        replaceParams.sortBy { it.index }
+        var sqlIndexDiff = 0
+        for (parameter in replaceParams) {
+            val queryIndexAdjusted: Int = parameter.index - sqlIndexDiff
+            sql = sql.substring(0, queryIndexAdjusted) + "$" + parameter.paramIndex + sql.substring(queryIndexAdjusted + parameter.name.length + 1)
+            sqlIndexDiff += (parameter.name.length - parameter.paramIndex.toString().length)
+        }
 
         val b = funDeclaration.queryMethodBuilder(resolver)
 
