@@ -16,9 +16,7 @@ import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
@@ -92,6 +90,7 @@ final class KafkaPublisherGenerator {
         var builder = MethodSpec.methodBuilder(CommonUtils.decapitalize(publisher.getSimpleName().toString()) + "_PublisherFactory")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(producerTelemetryFactory, "telemetryFactory")
+            .addParameter(CommonClassNames.meterRegistry, "meterRegistry")
             .addParameter(config)
             .addParameter(topicConfigTypeName, "topicConfig")
             .returns(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), implementationName));
@@ -100,7 +99,7 @@ final class KafkaPublisherGenerator {
         builder.addStatement("var properties = new $T()", Properties.class);
         builder.addStatement("properties.putAll(config.driverProperties())");
         builder.addStatement("properties.putAll(additionalProperties)");
-        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig$>", aopProxy == null ? implementationName : ClassName.get(aopProxy));
+        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig, meterRegistry$>", aopProxy == null ? implementationName : ClassName.get(aopProxy));
 
         record TypeWithTag(TypeName typeName, Set<String> tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
@@ -167,53 +166,18 @@ final class KafkaPublisherGenerator {
         var configPath = Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(publisherAnnotation, "value"));
 
         var b = CommonUtils.extendsKeepAop(publisher, implementationName)
+            .superclass(abstractPublisher)
             .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class))
-            .addSuperinterface(generatedPublisher)
-            .addField(CommonClassNames.telemetryConfig, "telemetryConfig", Modifier.PRIVATE, Modifier.FINAL)
-            .addField(ClassName.get(Properties.class), "driverProperties", Modifier.PRIVATE, Modifier.FINAL)
-            .addField(topicConfigTypeName, "topicConfig", Modifier.PRIVATE, Modifier.FINAL)
-            .addField(producerTelemetryFactory, "telemetryFactory", Modifier.PRIVATE, Modifier.FINAL)
-            .addField(ParameterizedTypeName.get(producer, ArrayTypeName.of(TypeName.BYTE), ArrayTypeName.of(TypeName.BYTE)), "delegate", Modifier.PRIVATE, Modifier.VOLATILE)
-            .addField(producerTelemetry, "telemetry", Modifier.PRIVATE, Modifier.VOLATILE)
-            .addMethod(MethodSpec.methodBuilder("init")
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addAnnotation(Override.class)
-                .addCode("this.delegate = new $T<>(driverProperties, new $T(), new $T());\n", kafkaProducer, byteArraySerializer, byteArraySerializer)
-                .addCode("this.telemetry = this.telemetryFactory.get($S, this.telemetryConfig, this.delegate, driverProperties);\n", configPath)
-                .build())
-            .addMethod(MethodSpec.methodBuilder("release")
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addAnnotation(Override.class)
-                .beginControlFlow("if (this.delegate != null)")
-                .addStatement("this.delegate.close()")
-                .addStatement("this.delegate = null")
-                .beginControlFlow("if (this.telemetry != null)")
-                .addStatement("this.telemetry.close()")
-                .addStatement("this.telemetry = null")
-                .endControlFlow()
-                .endControlFlow()
-                .build())
-            .addMethod(MethodSpec.methodBuilder("telemetry")
-                .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-                .addAnnotation(Override.class)
-                .returns(producerTelemetry)
-                .addCode("return telemetry;")
-                .build())
-            .addMethod(MethodSpec.methodBuilder("producer")
-                .addModifiers(Modifier.PUBLIC)
-                .returns(ParameterizedTypeName.get(producer, ArrayTypeName.of(TypeName.BYTE), ArrayTypeName.of(TypeName.BYTE)))
-                .addStatement("return this.delegate")
-                .build()
-            );
+            .addField(topicConfigTypeName, "topicConfig", Modifier.PRIVATE, Modifier.FINAL);
         var constructorBuilder = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
             .addParameter(producerTelemetryFactory, "telemetryFactory")
-            .addParameter(CommonClassNames.telemetryConfig, "telemetryConfig")
-            .addStatement("this.telemetryConfig = telemetryConfig")
+            .addParameter(publisherTelemetryConfig, "telemetryConfig")
             .addParameter(ClassName.get(Properties.class), "driverProperties")
             .addParameter(topicConfigTypeName, "topicConfig")
-            .addStatement("this.driverProperties = driverProperties")
-            .addStatement("this.telemetryFactory = telemetryFactory")
+            .addParameter(CommonClassNames.meterRegistry, "meterRegistry")
+            .addStatement("var telemetry = telemetryFactory.get($S, telemetryConfig, driverProperties);", configPath)
+            .addStatement("super(driverProperties, telemetryConfig, telemetry, meterRegistry)")
             .addStatement("this.topicConfig = topicConfig");
         record TypeWithTag(TypeName typeName, Set<String> tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
@@ -269,90 +233,84 @@ final class KafkaPublisherGenerator {
 
     private MethodSpec generatePublisherExecutableMethod(ExecutableElement publishMethod, KafkaPublisherUtils.PublisherData publishData, String topicVariable, String keyParserName, String valueParserName) {
         var methodBuilder = CommonUtils.overridingKeepAop(publishMethod);
-        var b = CodeBlock.builder();
         if (publishData.recordVar() != null) {
             var record = publishData.recordVar().getSimpleName();
-            b.addStatement("var _headers = $N.headers()", record);
-            b.addStatement("var _key = $N.serialize($N.topic(), _headers, $N.key())", keyParserName, record, record);
-            b.addStatement("var _value = $N.serialize($N.topic(), _headers, $N.value())", valueParserName, record, record);
-            b.addStatement("var _record = new $T<>($N.topic(), $N.partition(), $N.timestamp(), _key, _value, _headers)", producerRecord, record, record, record);
-            b.addStatement("var _telemetryRecord = new $T<>($N.key(), $N.value(), _record)", telemetryProducerRecord, record, record);
+            methodBuilder.addStatement("var _topic = $N.topic()", record);
         } else {
-            b.addStatement("var _topic = this.topicConfig.$N().topic()", topicVariable);
-            b.addStatement("var _partition = this.topicConfig.$N().partition()", topicVariable);
-            if (publishData.headersVar() == null) {
-                b.addStatement("var _headers = new $T()", recordHeaders);
-            } else {
-                b.addStatement("var _headers = $N", publishData.headersVar().getSimpleName());
-            }
-            if (publishData.keyVar() == null) {
-                b.addStatement("byte[] _key = null");
-            } else {
-                b.addStatement("var _key = $N.serialize(_topic, _headers, $N)", keyParserName, publishData.keyVar().getSimpleName());
-            }
-            b.addStatement("var _value = $N.serialize(_topic, _headers, $N)", valueParserName, publishData.valueVar().getSimpleName());
-            b.addStatement("var _record = new $T<>(_topic, _partition, null, _key, _value, _headers)", producerRecord);
-            if (publishData.keyVar() == null) {
-                b.addStatement("var _telemetryRecord = new $T<>(_key, $N, _record)", telemetryProducerRecord, publishData.valueVar().getSimpleName());
-            } else {
-                b.addStatement("var _telemetryRecord = new $T<>($N, $N, _record)",
-                    telemetryProducerRecord,
-                    publishData.keyVar().getSimpleName(),
-                    publishData.valueVar().getSimpleName()
-                );
-            }
+            methodBuilder.addStatement("var _topic = this.topicConfig.$N().topic()", topicVariable);
         }
-        b.addStatement("var _tctx = this.telemetry.record(_telemetryRecord)");
-
-        var returnType = TypeName.get(publishMethod.getReturnType());
-        if (returnType instanceof ParameterizedTypeName ptn && ptn.rawType().equals(ClassName.get(Future.class))) {
-            if (publishData.callback() != null) {
-                b.add("return this.delegate.send(_record, (_meta, _ex) -> {$>\n");
-                b.addStatement("_tctx.onCompletion(_meta, _ex)");
-                b.addStatement("$N.onCompletion(_meta, _ex)", publishData.callback().getSimpleName());
-                b.add("$<\n});\n");
+        methodBuilder.addStatement("var _observation = this.telemetry.observeSend(_topic)");
+        var code = CommonUtils.observe("_observation", "call", b -> {
+            if (publishData.recordVar() != null) {
+                var record = publishData.recordVar().getSimpleName();
+                b.addStatement("_observation.observeData($N.key(), $N.value())", record, record);
+                b.addStatement("var _headers = $N.headers()", record);
+                b.addStatement("var _key = $N.serialize($N.topic(), _headers, $N.key())", keyParserName, record, record);
+                b.addStatement("var _value = $N.serialize($N.topic(), _headers, $N.value())", valueParserName, record, record);
+                b.addStatement("var _record = new $T<>($N.topic(), $N.partition(), $N.timestamp(), _key, _value, _headers)", producerRecord, record, record, record);
             } else {
-                b.add("return this.delegate.send(_record, _tctx);");
+                if (publishData.keyVar() != null) {
+                    b.addStatement("_observation.observeData($N, $N)", publishData.keyVar().getSimpleName(), publishData.valueVar().getSimpleName());
+                } else {
+                    b.addStatement("_observation.observeData(null, $N)", publishData.valueVar().getSimpleName());
+                }
+                b.addStatement("var _partition = this.topicConfig.$N().partition()", topicVariable);
+                if (publishData.headersVar() == null) {
+                    b.addStatement("var _headers = new $T()", recordHeaders);
+                } else {
+                    b.addStatement("var _headers = $N", publishData.headersVar().getSimpleName());
+                }
+                if (publishData.keyVar() == null) {
+                    b.addStatement("byte[] _key = null");
+                } else {
+                    b.addStatement("var _key = $N.serialize(_topic, _headers, $N)", keyParserName, publishData.keyVar().getSimpleName());
+                }
+                b.addStatement("var _value = $N.serialize(_topic, _headers, $N)", valueParserName, publishData.valueVar().getSimpleName());
+                b.addStatement("var _record = new $T<>(_topic, _partition, null, _key, _value, _headers)", producerRecord);
             }
-        } else if (returnType instanceof ParameterizedTypeName ptn && (ptn.rawType().equals(ClassName.get(CompletionStage.class)) || ptn.rawType().equals(ClassName.get(CompletableFuture.class)))) {
-            b.addStatement("var _future = new $T<$T>()", CompletableFuture.class, KafkaClassNames.recordMetadata);
-            b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
-            b.addStatement("_tctx.onCompletion(_meta, _ex)");
-            if (publishData.callback() != null) {
-                b.addStatement("$N.onCompletion(_meta, _ex)", publishData.callback().getSimpleName());
-            }
-            b.beginControlFlow("if (_ex != null)");
-            b.addStatement("_future.completeExceptionally(_ex)");
-            b.nextControlFlow("else");
-            b.addStatement("_future.complete(_meta)");
-            b.endControlFlow();
-            b.add("$<\n});\n");
-            b.addStatement("return _future");
-        } else {
-            b.add("try {$>\n");
-            if (!MethodUtils.isVoid(publishMethod)) {
-                b.add("return ");
-            }
-            if (publishData.callback() != null) {
+            b.addStatement("_observation.observeRecord(_record)");
+            if (CommonUtils.isFuture(publishMethod.getReturnType())) {
+                b.addStatement("var _future = new $T<$T>()", CompletableFuture.class, KafkaClassNames.recordMetadata);
                 b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
-                b.addStatement("_tctx.onCompletion(_meta, _ex)");
-                b.add("$N.onCompletion(_meta, _ex);", publishData.callback().getSimpleName());
-                b.add("$<\n}).get();");
+                b.addStatement("_observation.onCompletion(_meta, _ex)");
+                if (publishData.callback() != null) {
+                    b.addStatement("$N.onCompletion(_meta, _ex)", publishData.callback().getSimpleName());
+                }
+                b.beginControlFlow("if (_ex != null)");
+                b.addStatement("_future.completeExceptionally(_ex)");
+                b.nextControlFlow("else");
+                b.addStatement("_future.complete(_meta)");
+                b.endControlFlow();
+                b.add("$<\n});\n");
+                b.addStatement("return _future");
             } else {
-                b.add("this.delegate.send(_record, _tctx).get();");
+                b.add("try {$>\n");
+                b.add("return ");
+                if (publishData.callback() != null) {
+                    b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
+                    b.addStatement("_observation.onCompletion(_meta, _ex)");
+                    b.add("$N.onCompletion(_meta, _ex);", publishData.callback().getSimpleName());
+                    b.add("$<\n}).get();");
+                } else {
+                    b.add("this.delegate.send(_record, _observation).get();");
+                }
+                b.add("$<\n} catch (InterruptedException e) {$>\n");
+                b.add("throw new $T(e);", recordPublisherException);
+                b.add("$<\n} catch ($T e) {$>\n", ExecutionException.class);
+                b.add("if (e.getCause() instanceof RuntimeException re) throw re;\n");
+                b.add("if (e.getCause() != null) throw new $T(e.getCause());\n", recordPublisherException);
+                b.add("throw new $T(e);", recordPublisherException);
+                b.add("$<\n} catch (Exception e) {$>\n");
+                b.add("if (e.getCause() != null) throw new $T(e.getCause());\n", recordPublisherException);
+                b.add("throw new $T(e);", recordPublisherException);
+                b.add("$<\n}\n");
             }
-            b.add("$<\n} catch (InterruptedException e) {$>\n");
-            b.add("throw new $T(e);", recordPublisherException);
-            b.add("$<\n} catch ($T e) {$>\n", ExecutionException.class);
-            b.add("if (e.getCause() instanceof RuntimeException re) throw re;\n");
-            b.add("if (e.getCause() != null) throw new $T(e.getCause());\n", recordPublisherException);
-            b.add("throw new $T(e);", recordPublisherException);
-            b.add("$<\n} catch (Exception e) {$>\n");
-            b.add("if (e.getCause() != null) throw new $T(e.getCause());\n", recordPublisherException);
-            b.add("throw new $T(e);", recordPublisherException);
-            b.add("$<\n}\n");
+        });
+        if (TypeName.get(publishMethod.getReturnType()) != TypeName.VOID) {
+            methodBuilder.addCode("return ");
         }
-        methodBuilder.addCode(b.build());
+        methodBuilder.addCode(code)
+            .addCode(";\n");
         return methodBuilder.build();
     }
 

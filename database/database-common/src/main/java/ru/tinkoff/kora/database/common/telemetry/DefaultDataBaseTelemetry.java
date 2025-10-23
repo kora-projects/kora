@@ -11,6 +11,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.DbAttributes;
 import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
 import org.slf4j.Logger;
+import org.slf4j.helpers.NOPLogger;
 import ru.tinkoff.kora.database.common.QueryContext;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,6 +39,7 @@ public class DefaultDataBaseTelemetry implements DataBaseTelemetry {
     public DataBaseObservation observe(QueryContext query) {
         var span = this.createSpan(query);
         var timer = this.createTimer(query);
+        var log = this.config.logging().enabled() ? this.log : NOPLogger.NOP_LOGGER;
 
         return new DefaultDataBaseObservation(
             this.config,

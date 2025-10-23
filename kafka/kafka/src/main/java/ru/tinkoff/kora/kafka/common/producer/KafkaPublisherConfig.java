@@ -2,7 +2,7 @@ package ru.tinkoff.kora.kafka.common.producer;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Properties;
@@ -12,7 +12,7 @@ public interface KafkaPublisherConfig {
 
     Properties driverProperties();
 
-    TelemetryConfig telemetry();
+    KafkaPublisherTelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface TransactionConfig {

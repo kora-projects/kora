@@ -1,12 +1,16 @@
 package ru.tinkoff.kora.kafka.common;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.TracerProvider;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.DefaultKafkaConsumerTelemetryFactory;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerLoggerFactory;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerMetricsFactory;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTracerFactory;
-import ru.tinkoff.kora.kafka.common.producer.telemetry.*;
+import ru.tinkoff.kora.kafka.common.producer.telemetry.DefaultKafkaPublisherTelemetryFactory;
 
 public interface KafkaModule extends KafkaDeserializersModule, KafkaSerializersModule {
     @DefaultComponent
@@ -15,12 +19,13 @@ public interface KafkaModule extends KafkaDeserializersModule, KafkaSerializersM
     }
 
     @DefaultComponent
-    default DefaultKafkaProducerTelemetryFactory defaultKafkaProducerTelemetryFactory(@Nullable KafkaProducerTracerFactory tracer, @Nullable KafkaProducerLoggerFactory logger, @Nullable KafkaProducerMetricsFactory metrics) {
-        return new DefaultKafkaProducerTelemetryFactory(tracer, logger, metrics);
-    }
-
-    @DefaultComponent
-    default DefaultKafkaProducerLoggerFactory defaultKafkaProducerLoggerFactory() {
-        return new DefaultKafkaProducerLoggerFactory();
+    default DefaultKafkaPublisherTelemetryFactory defaultKafkaProducerTelemetryFactory(Tracer tracer, MeterRegistry meterRegistry) {
+        if (tracer == null) {
+            tracer = TracerProvider.noop().get("kafkaPublisherTelemetry");
+        }
+        if (meterRegistry == null) {
+            meterRegistry = new CompositeMeterRegistry();
+        }
+        return new DefaultKafkaPublisherTelemetryFactory(tracer, meterRegistry);
     }
 }
