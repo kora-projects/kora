@@ -70,7 +70,7 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         return type.addMethod(constructor.build()).build();
     }
 
-    private record QueryReplace(int index, int paramIndex, String name) {}
+    private record QueryReplace(int start, int end, int paramIndex, String name) {}
 
     private MethodSpec generate(TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var sql = query.rawQuery();
@@ -78,14 +78,14 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         List<QueryReplace> replaceParams = new ArrayList<>();
         for (int i = 0; i < query.parameters().size(); i++) {
              var parameter = query.parameters().get(i);
-            for (Integer queryIndex : parameter.queryIndexes()) {
-                replaceParams.add(new QueryReplace(queryIndex, i + 1, parameter.sqlParameterName()));
+            for (var queryIndex : parameter.queryIndexes()) {
+                replaceParams.add(new QueryReplace(queryIndex.start(), queryIndex.end(), i + 1, parameter.sqlParameterName()));
             }
         }
-        replaceParams.sort(Comparator.comparingInt(QueryReplace::index));
+        replaceParams.sort(Comparator.comparingInt(QueryReplace::start));
         int sqlIndexDiff = 0;
         for (var parameter : replaceParams) {
-            int queryIndexAdjusted = parameter.index() - sqlIndexDiff;
+            int queryIndexAdjusted = parameter.start() - sqlIndexDiff;
             sql = sql.substring(0, queryIndexAdjusted) + "$" + parameter.paramIndex() + sql.substring(queryIndexAdjusted + parameter.name().length() + 1);
             sqlIndexDiff += (parameter.name().length() - String.valueOf(parameter.paramIndex()).length());
         }

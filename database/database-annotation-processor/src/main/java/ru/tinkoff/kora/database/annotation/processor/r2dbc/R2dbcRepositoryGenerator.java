@@ -70,7 +70,7 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
         return type.addMethod(constructor.build()).build();
     }
 
-    private record QueryReplace(int index, int sqlIndex, String name) {}
+    private record QueryReplace(int start, int end, int sqlIndex, String name) {}
 
     private MethodSpec generate(TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         final boolean generatedKeys = AnnotationUtils.isAnnotationPresent(method, DbUtils.ID_ANNOTATION);
@@ -82,15 +82,15 @@ public final class R2dbcRepositoryGenerator implements RepositoryGenerator {
                 for (int i = 0; i < p.queryIndexes().size(); i++) {
                     var queryIndex = p.queryIndexes().get(i);
                     var sqlIndex = p.sqlIndexes().get(i);
-                    replaces.add(new QueryReplace(queryIndex, sqlIndex, p.sqlParameterName()));
+                    replaces.add(new QueryReplace(queryIndex.start(), queryIndex.end(), sqlIndex, p.sqlParameterName()));
                 }
                 return replaces.stream();
             })
-            .sorted(Comparator.comparingInt(QueryReplace::index))
+            .sorted(Comparator.comparingInt(QueryReplace::start))
             .toList();
         int sqlIndexDiff = 0;
         for (var parameter : replaceParams) {
-            int queryIndexAdjusted = parameter.index() - sqlIndexDiff;
+            int queryIndexAdjusted = parameter.start() - sqlIndexDiff;
             int index = parameter.sqlIndex() + 1;
             sql = sql.substring(0, queryIndexAdjusted) + "$" + index + sql.substring(queryIndexAdjusted + parameter.name().length() + 1);
             sqlIndexDiff += (parameter.name().length() - String.valueOf(index).length());

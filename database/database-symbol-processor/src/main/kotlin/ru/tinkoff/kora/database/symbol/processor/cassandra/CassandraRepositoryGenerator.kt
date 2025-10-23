@@ -77,7 +77,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         var sql = query.rawQuery
 
         val replaceParams = query.parameters
-            .flatMap { p -> p.queryIndexes.map { i -> QueryReplace(i, p.sqlParameterName) } }
+            .flatMap { p -> p.queryIndexes.map { i -> QueryReplace(i.start, p.sqlParameterName) } }
             .sortedBy { it.index }
             .toList()
         var sqlIndexDiff = 0

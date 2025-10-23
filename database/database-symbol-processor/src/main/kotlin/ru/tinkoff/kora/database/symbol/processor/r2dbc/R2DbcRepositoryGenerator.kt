@@ -81,9 +81,9 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
             .flatMap { p ->
                 val replaces = mutableListOf<QueryReplace>()
                 for (i in p.queryIndexes.indices) {
-                    val queryIndex: Int = p.queryIndexes.get(i)
-                    val sqlIndex: Int = p.sqlIndexes.get(i)
-                    replaces.add(QueryReplace(queryIndex, sqlIndex, p.sqlParameterName))
+                    val queryIndex = p.queryIndexes.get(i)
+                    val sqlIndex = p.sqlIndexes.get(i)
+                    replaces.add(QueryReplace(queryIndex.start, sqlIndex, p.sqlParameterName))
                 }
                 replaces.asSequence()
             }

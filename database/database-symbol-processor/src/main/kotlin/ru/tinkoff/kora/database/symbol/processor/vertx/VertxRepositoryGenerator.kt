@@ -80,7 +80,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
         for (i in query.parameters.indices) {
             val parameter = query.parameters[i]
             for (queryIndex in parameter.queryIndexes) {
-                replaceParams.add(QueryReplace(queryIndex, i + 1, parameter.sqlParameterName))
+                replaceParams.add(QueryReplace(queryIndex.start, i + 1, parameter.sqlParameterName))
             }
         }
         replaceParams.sortBy { it.index }

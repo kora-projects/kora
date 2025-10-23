@@ -123,18 +123,18 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         return JdbcTypes.JDBC_REPOSITORY;
     }
 
-    private record QueryReplace(int index, String name) {}
+    private record QueryReplace(int start, int end, String name) {}
 
     public MethodSpec generate(TypeElement repositoryElement, TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var batchParam = parameters.stream().filter(QueryParameter.BatchParameter.class::isInstance).findFirst().orElse(null);
         var sql = query.rawQuery();
         List<QueryReplace> replaceParams = query.parameters().stream()
-            .flatMap(p -> p.queryIndexes().stream().map(i -> new QueryReplace(i, p.sqlParameterName())))
-            .sorted(Comparator.comparingInt(QueryReplace::index))
+            .flatMap(p -> p.queryIndexes().stream().map(i -> new QueryReplace(i.start(), i.end(), p.sqlParameterName())))
+            .sorted(Comparator.comparingInt(QueryReplace::start))
             .toList();
         int sqlIndexDiff = 0;
         for (var parameter : replaceParams) {
-            int queryIndexAdjusted = parameter.index() - sqlIndexDiff;
+            int queryIndexAdjusted = parameter.start() - sqlIndexDiff;
             sql = sql.substring(0, queryIndexAdjusted) + "?" + sql.substring(queryIndexAdjusted + parameter.name().length() + 1);
             sqlIndexDiff += parameter.name().length();
         }
