@@ -123,7 +123,7 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
     }
 
     @Test
-    fun testReturnUpdateCount() {
+    fun  testReturnUpdateCount() {
         val repository = compile(listOf<Any>(), """
             @Repository
             interface TestRepository : JdbcRepository {

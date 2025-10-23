@@ -15,6 +15,7 @@ import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.cassandra.CassandraConnectionFactory
 import ru.tinkoff.kora.database.common.QueryContext
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
+import ru.tinkoff.kora.database.common.telemetry.NoopDataBaseObservation
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.function.Function
@@ -38,7 +39,6 @@ class MockCassandraExecutor : CassandraConnectionFactory {
     val row = Mockito.mock(Row::class.java)
     val batchStatementBuilder: BatchStatementBuilder = Mockito.mock(BatchStatementBuilder::class.java)
     val telemetry = Mockito.mock(DataBaseTelemetry::class.java)
-    val telemetryCtx = Mockito.mock(DataBaseTelemetry.DataBaseTelemetryContext::class.java)
 
     fun reset() {
         Mockito.reset(resultSet, asyncResultSet, boundStatementBuilder, preparedStatement, boundStatement, mockSession, iterator, row, batchStatementBuilder, telemetry)
@@ -53,7 +53,7 @@ class MockCassandraExecutor : CassandraConnectionFactory {
         Mockito.mockStatic(BatchStatement::class.java).use { ignored ->
             whenever(BatchStatement.builder(DefaultBatchType.UNLOGGED)).thenReturn(batchStatementBuilder)
         }
-        whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
+        whenever(telemetry.observe( any())).thenReturn(NoopDataBaseObservation())
         whenever(mockSession.executeReactive(any<Statement<*>>())).thenReturn(MockReactiveResultSet(listOf()))
         whenever(mockSession.executeAsync(any<Statement<*>>())).thenReturn(CompletableFuture.completedFuture(MockAsyncResultSet(listOf())))
         whenever(mockSession.execute(any<Statement<*>>())).thenReturn(resultSet)

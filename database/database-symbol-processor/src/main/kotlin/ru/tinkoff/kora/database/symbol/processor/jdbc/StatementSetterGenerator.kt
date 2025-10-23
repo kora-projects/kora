@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc
 
-import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
@@ -10,9 +10,9 @@ import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object StatementSetterGenerator {
 
-    fun generate(b: FunSpec.Builder, queryWithParameters: QueryWithParameters, parameters: List<QueryParameter>, batchParam: QueryParameter?, parameterMappers: FieldFactory) {
+    fun CodeBlock.Builder.setStatementParams(queryWithParameters: QueryWithParameters, parameters: List<QueryParameter>, batchParam: QueryParameter?, parameterMappers: FieldFactory) {
         if (batchParam != null) {
-            b.beginControlFlow("for (_batch_%L in %N)", batchParam.name, batchParam.name)
+            beginControlFlow("for (_batch_%L in %N)", batchParam.name, batchParam.name)
         }
         parameters.forEachIndexed { i, p ->
             var parameter = p
@@ -30,31 +30,31 @@ object StatementSetterGenerator {
                 val nativeType = JdbcNativeTypes.findNativeType(parameter.type.toTypeName())
                 if (nativeType != null && mapping == null) {
                     if (parameter.type.isMarkedNullable) {
-                        b.controlFlow("%L.let", parameterName) {
-                            b.controlFlow("if (it == null)") {
+                        controlFlow("%L.let", parameterName) {
+                            controlFlow("if (it == null)") {
                                 for (idx in sqlParameter.sqlIndexes) {
-                                    b.addCode(nativeType.bindNull("_stmt", idx + 1)).addCode("\n")
+                                    add(nativeType.bindNull("_stmt", idx + 1)).add("\n")
                                 }
-                                b.nextControlFlow("else")
+                                nextControlFlow("else")
                                 for (idx in sqlParameter.sqlIndexes) {
-                                    b.addCode(nativeType.bind("_stmt", "it", idx + 1)).addCode("\n")
+                                    add(nativeType.bind("_stmt", "it", idx + 1)).add("\n")
                                 }
                             }
                         }
                     } else {
                         for (idx in sqlParameter.sqlIndexes) {
-                            b.addCode(nativeType.bind("_stmt", parameterName, idx + 1)).addCode("\n")
+                            add(nativeType.bind("_stmt", parameterName, idx + 1)).add("\n")
                         }
                     }
                 } else if (mapping?.mapper != null) {
                     for (idx in sqlParameter.sqlIndexes) {
                         val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
-                        b.addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
+                        addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
                     }
                 } else {
                     for (idx in sqlParameter.sqlIndexes) {
                         val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, parameter.type, parameter.variable)
-                        b.addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
+                        addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
                     }
                 }
             }
@@ -70,31 +70,31 @@ object StatementSetterGenerator {
                     val mapping = field.mapping.getMapping(JdbcTypes.jdbcParameterColumnMapper)
                     if (nativeType != null && mapping == null) {
                         if (parameter.type.isMarkedNullable || field.type.isMarkedNullable) {
-                            b.controlFlow("%N?.%L.let", parameterName, field.accessor(true)) {
-                                b.controlFlow("if (it == null)") {
+                            controlFlow("%N?.%L.let", parameterName, field.accessor(true)) {
+                                controlFlow("if (it == null)") {
                                     for (idx in sqlParameter.sqlIndexes) {
-                                        b.addCode(nativeType.bindNull("_stmt", idx + 1)).addCode("\n")
+                                        add(nativeType.bindNull("_stmt", idx + 1)).add("\n")
                                     }
-                                    b.nextControlFlow("else")
+                                    nextControlFlow("else")
                                     for (idx in sqlParameter.sqlIndexes) {
-                                        b.addCode(nativeType.bind("_stmt", "it", idx + 1)).addCode("\n")
+                                        add(nativeType.bind("_stmt", "it", idx + 1)).add("\n")
                                     }
                                 }
                             }
                         } else {
                             for (idx in sqlParameter.sqlIndexes) {
-                                b.addCode(nativeType.bind("_stmt", "$parameterName.${field.accessor(field.isNullable)}", idx + 1)).addCode("\n")
+                                add(nativeType.bind("_stmt", "$parameterName.${field.accessor(field.isNullable)}", idx + 1)).add("\n")
                             }
                         }
                     } else if (mapping?.mapper != null) {
                         val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
                         for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, fieldName)
+                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, fieldName)
                         }
                     } else {
                         val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, field.type, field.property)
                         for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, "$parameterName.${field.accessor(field.isNullable)}")
+                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, "$parameterName.${field.accessor(field.isNullable)}")
                         }
                     }
                 }
@@ -106,12 +106,12 @@ object StatementSetterGenerator {
                     if (mapping?.mapper != null) {
                         val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
                         for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
+                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
                         }
                     } else {
                         val mapperName = parameterMappers.get(JdbcTypes.jdbcParameterColumnMapper, parameter.entity.type, parameter.entity.classDeclaration)
                         for (idx in sqlParameter.sqlIndexes) {
-                            b.addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
+                            addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
                         }
                     }
                 }
@@ -119,8 +119,8 @@ object StatementSetterGenerator {
         }
 
         if (batchParam != null) {
-            b.addStatement("_stmt.addBatch()")
-            b.endControlFlow()
+            addStatement("_stmt.addBatch()")
+            endControlFlow()
         }
     }
 }

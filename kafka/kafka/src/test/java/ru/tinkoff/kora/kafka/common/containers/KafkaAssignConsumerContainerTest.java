@@ -63,8 +63,8 @@ class KafkaAssignConsumerContainerTest {
             true,
             new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, new Duration[0])
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, new Duration[0], Map.of())
             )
         );
         var deque = new ConcurrentLinkedDeque<>();

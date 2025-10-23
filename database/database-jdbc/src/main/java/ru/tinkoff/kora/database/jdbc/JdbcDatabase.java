@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariDataSource;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +17,6 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.Objects;
-import java.util.concurrent.Executor;
 
 public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnectionFactory, ReadinessProbe {
 
@@ -25,41 +25,19 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
     private final DataBaseTelemetry telemetry;
-    @Nullable
-    final Executor executor;
 
-    public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory) {
-        this(config, telemetryFactory, null);
-    }
-
-    public JdbcDatabase(JdbcDatabaseConfig databaseConfig, DataBaseTelemetry telemetry) {
-        this(databaseConfig, telemetry, null);
-    }
-
-    public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable Executor executor) {
-        this(config, getTelemetry(config, telemetryFactory), executor);
-    }
-
-    public JdbcDatabase(JdbcDatabaseConfig databaseConfig, DataBaseTelemetry telemetry, @Nullable Executor executor) {
-        this.databaseConfig = Objects.requireNonNull(databaseConfig);
-        this.telemetry = Objects.requireNonNull(telemetry);
-        this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig));
-        if (telemetry.getMetricRegistry() != null) {
-            this.dataSource.setMetricRegistry(telemetry.getMetricRegistry());
-        }
-        this.executor = executor;
-    }
-
-    private static DataBaseTelemetry getTelemetry(JdbcDatabaseConfig config, DataBaseTelemetryFactory factory) {
+    public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory, MeterRegistry meterRegistry) {
+        this.databaseConfig = Objects.requireNonNull(config);
         var jdbcUrl = config.jdbcUrl();
-        var telemetry = factory.get(
+        this.telemetry = telemetryFactory.get(
             config.telemetry(),
             config.poolName(),
-            "jdbc",
-            jdbcUrl.substring(4, jdbcUrl.indexOf(":", 5)),
-            config.username()
+            jdbcUrl.substring(4, jdbcUrl.indexOf(":", 5))
         );
-        return Objects.requireNonNullElse(telemetry, DataBaseTelemetryFactory.EMPTY);
+        this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig));
+        if (this.databaseConfig.telemetry().metrics().driverMetrics()) {
+            this.dataSource.setMetricRegistry(meterRegistry);
+        }
     }
 
     @Override

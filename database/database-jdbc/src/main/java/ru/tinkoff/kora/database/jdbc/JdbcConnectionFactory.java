@@ -1,7 +1,9 @@
 package ru.tinkoff.kora.database.jdbc;
 
+import io.opentelemetry.context.Context;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.jdbc.ConnectionContext.PostCommitAction;
@@ -9,7 +11,6 @@ import ru.tinkoff.kora.database.jdbc.ConnectionContext.PostRollbackAction;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
-import java.sql.SQLException;
 
 /**
  * <b>Русский</b>: Фабрика соединений JDBC которая позволяет выполнять запросы в ручном режиме и в рамках транзакции.
@@ -25,7 +26,7 @@ public interface JdbcConnectionFactory {
 
     @Nullable
     Connection currentConnection();
-    
+
     @Nullable
     default ConnectionContext currentConnectionContext() {
         return null;
@@ -36,17 +37,19 @@ public interface JdbcConnectionFactory {
     DataBaseTelemetry telemetry();
 
     default <T> T query(QueryContext queryContext, JdbcHelper.SqlFunction1<PreparedStatement, T> callback) {
-        var telemetry = this.telemetry().createContext(Context.current(), queryContext);
-        return withConnection(connection -> {
-            try (var ps = connection.prepareStatement(queryContext.sql())) {
-                var result = callback.apply(ps);
-                telemetry.close(null);
-                return result;
-            } catch (Exception e) {
-                telemetry.close(e);
-                throw e;
-            }
-        });
+        var observation = this.telemetry().observe(queryContext);
+        return ScopedValue.where(Observation.VALUE, observation)
+            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
+            .call(() -> withConnection(connection -> {
+                try (var ps = connection.prepareStatement(queryContext.sql())) {
+                    return callback.apply(ps);
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    throw e;
+                } finally {
+                    observation.end();
+                }
+            }));
     }
 
     default <T> T withConnection(JdbcHelper.SqlFunction0<T> callback) throws RuntimeSqlException {

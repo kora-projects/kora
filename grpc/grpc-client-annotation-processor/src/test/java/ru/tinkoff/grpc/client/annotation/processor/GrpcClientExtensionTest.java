@@ -56,7 +56,7 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
               19. the stub
               20. test root
              */
-            Assertions.assertThat(g.draw().size()).isEqualTo(20);
+            Assertions.assertThat(g.draw().size()).isEqualTo(22);
         }
     }
 
