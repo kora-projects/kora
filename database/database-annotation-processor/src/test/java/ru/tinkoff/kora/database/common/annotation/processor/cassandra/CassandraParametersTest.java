@@ -54,12 +54,12 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
 
         repository.invoke("test", "test", 42);
 
-        verify(executor.telemetry).createContext(any(), eq(new QueryContext(
+        verify(executor.telemetry).observe(eq(new QueryContext(
             "INSERT INTO test(value1, value2) VALUES (:value1, :value2)",
             "INSERT INTO test(value1, value2) VALUES (?, ?)",
             "TestRepository.test"
         )));
-        verify(executor.telemetryCtx).close(null);
+        verify(executor.telemetryCtx).end();
         verify(executor.mockSession).prepare("INSERT INTO test(value1, value2) VALUES (?, ?)");
         verify(executor.boundStatementBuilder).setString(0, "test");
         verify(executor.boundStatementBuilder).setInt(1, 42);
@@ -90,7 +90,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     }
 
     @Test
-    void testDtoParameterMapping() {
+    public void testDtoParameterMapping() {
         @SuppressWarnings("unchecked")
         var mapper = (CassandraParameterColumnMapper<TestUnknownType>) mock(CassandraParameterColumnMapper.class);
         var repository = compileCassandra(List.of(mapper), """

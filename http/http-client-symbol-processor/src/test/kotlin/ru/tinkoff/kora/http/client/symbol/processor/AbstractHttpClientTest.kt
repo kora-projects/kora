@@ -10,7 +10,7 @@ import ru.tinkoff.kora.config.common.factory.MapConfigFactory
 import ru.tinkoff.kora.config.ksp.processor.ConfigParserSymbolProcessorProvider
 import ru.tinkoff.kora.config.ksp.processor.ConfigSourceSymbolProcessorProvider
 import ru.tinkoff.kora.http.client.common.HttpClient
-import ru.tinkoff.kora.http.client.common.declarative.`$HttpClientOperationConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.http.client.common.declarative.*
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse
 import ru.tinkoff.kora.http.client.common.telemetry.`$HttpClientLoggerConfig_ConfigValueExtractor`
@@ -20,7 +20,7 @@ import ru.tinkoff.kora.http.common.body.HttpBody
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig
+
 
 abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
     val httpResponse = mock<HttpClientResponse>().also {
@@ -67,13 +67,20 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
         val durationCVE = DurationConfigValueExtractor()
         val telemetryCVE = `$HttpClientTelemetryConfig_ConfigValueExtractor`(
             `$HttpClientLoggerConfig_ConfigValueExtractor`(SetConfigValueExtractor(StringConfigValueExtractor())),
-            `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(),
-            `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(DurationArrayConfigValueExtractor(DurationConfigValueExtractor()))
-        ) as ConfigValueExtractor<TelemetryConfig>
-        val configCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, telemetryCVE)
+            `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(MapConfigValueExtractor(StringConfigValueExtractor())),
+            `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(DurationArrayConfigValueExtractor(DurationConfigValueExtractor()), MapConfigValueExtractor(StringConfigValueExtractor()))
+        )
+        val operationTelemetryCVE = `$HttpClientOperationConfig_OperationTelemetryConfig_ConfigValueExtractor`(
+            `$HttpClientOperationConfig_OperationTelemetryConfig_LoggingConfig_ConfigValueExtractor`(SetConfigValueExtractor(StringConfigValueExtractor())),
+            `$HttpClientOperationConfig_OperationTelemetryConfig_TracingConfig_ConfigValueExtractor`(MapConfigValueExtractor(StringConfigValueExtractor())),
+            `$HttpClientOperationConfig_OperationTelemetryConfig_MetricsConfig_ConfigValueExtractor`(
+                DurationArrayConfigValueExtractor(DurationConfigValueExtractor()),
+                MapConfigValueExtractor<String?>(StringConfigValueExtractor())
+            )
+        )
+        val operationConfigCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, operationTelemetryCVE)
 
-
-        val configValueExtractor = new("\$\$TestClient_Config_ConfigValueExtractor", telemetryCVE, configCVE, durationCVE) as ConfigValueExtractor<*>
+        val configValueExtractor = new("\$\$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE) as ConfigValueExtractor<*>
         val config = configValueExtractor.extract(
             MapConfigFactory.fromMap(
                 mapOf(

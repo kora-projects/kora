@@ -2,9 +2,10 @@ package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
-import ru.tinkoff.kora.common.Context;
+import io.opentelemetry.context.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.database.common.QueryContext;
-import ru.tinkoff.kora.database.common.annotation.Repository;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
 import java.util.function.Function;
@@ -23,15 +24,22 @@ public interface CassandraConnectionFactory {
     DataBaseTelemetry telemetry();
 
     default <T> T query(QueryContext queryContext, Function<PreparedStatement, T> callback) {
-        var telemetry = this.telemetry().createContext(Context.current(), queryContext);
-        var stmt = this.currentSession().prepare(queryContext.sql());
-        try {
-            var result = callback.apply(stmt);
-            telemetry.close(null);
-            return result;
-        } catch (Exception e) {
-            telemetry.close(e);
-            throw e;
-        }
+        var observation = this.telemetry().observe(queryContext);
+        return ScopedValue.where(Observation.VALUE, observation)
+            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
+            .call(() -> {
+                observation.observeConnection();
+                var stmt = this.currentSession().prepare(queryContext.sql());
+                observation.observeStatement();
+                try {
+                    var result = callback.apply(stmt);
+                    return result;
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    throw e;
+                } finally {
+                    observation.end();
+                }
+            });
     }
 }

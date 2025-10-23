@@ -18,6 +18,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.resultMapperName
 import ru.tinkoff.kora.database.symbol.processor.Mapper
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.RepositoryGenerator
+import ru.tinkoff.kora.database.symbol.processor.cassandra.StatementSetterGenerator.setPreparedStatementParams
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
@@ -25,13 +26,13 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
 import ru.tinkoff.kora.ksp.common.CommonClassNames.context
-import ru.tinkoff.kora.ksp.common.CommonClassNames.flowBuilder
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.nextControlFlow
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.observe
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 
@@ -109,53 +110,20 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val profile = funDeclaration.findAnnotation(CassandraTypes.cassandraProfileAnnotation)?.findValue<String>("value")
         val returnType = function.returnType!!
         val isSuspend = funDeclaration.isSuspend()
-        val isFlow = funDeclaration.isFlow()
 
-        b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-        if (isSuspend) {
-            b.addStatement("val _ctxFork = _ctxCurrent.fork()")
-            b.addStatement("_ctxFork.inject()")
-            b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxFork, _query)", context)
-        } else {
-            b.addStatement("val _telemetry = this._cassandraConnectionFactory.telemetry().createContext(_ctxCurrent, _query)", context)
-        }
-
+        b.addStatement("val _observation = this._cassandraConnectionFactory.telemetry().observe(_query)", context)
         b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
-        if (isFlow) {
-            b.controlFlow("return %M", flowBuilder) {
-                controlFlow("try") {
-                    addStatement("val _st = _session.prepareAsync(_query.sql()).%M()", await)
-                    addStatement("var _stmt = _st.boundStatementBuilder()")
-                    if (profile != null) {
-                        addStatement("_stmt.setExecutionProfileName(%S)", profile)
-                    }
-                    StatementSetterGenerator.generate(this, query, parameters, batchParam, parameterMappers)
-                    addStatement("var _rrs = _session.executeAsync(_s).%M()", await)
-                    controlFlow("for (_item in _rrs.currentPage())") {
-                        addCode("emit(%N.apply(_item))", resultMapper!!)
-                    }
-                    controlFlow("while (_rrs.hasMorePages())") {
-                        addStatement("_rrs = _rrs.fetchNextPage().%M()", await)
-                        controlFlow("for (_item in _rrs.currentPage())") {
-                            addCode("emit(%N.apply(_item))", resultMapper!!)
-                        }
-                    }
-                    addStatement("_telemetry.close(null)")
-                    nextControlFlow("catch (_e: Exception)")
-                    addStatement("_telemetry.close(_e)")
-                    addStatement("throw _e")
-                    nextControlFlow("finally")
-                    addStatement("_ctxCurrent.inject()")
-                }
-            }
-        } else if (isSuspend) {
-            b.controlFlow("try") {
+        b.addStatement("_observation.observeConnection()")
+        if (isSuspend) {
+            val code = CodeBlock.builder()
+            code.controlFlow("try") {
                 addStatement("val _st = _session.prepareAsync(_query.sql()).%M()", await)
                 addStatement("var _stmt = _st.boundStatementBuilder()")
                 if (profile != null) {
                     addStatement("_stmt.setExecutionProfileName(%S)", profile)
                 }
-                StatementSetterGenerator.generate(this, query, parameters, batchParam, parameterMappers)
+                setPreparedStatementParams(query, parameters, batchParam, parameterMappers)
+                addStatement("_observation.observeStatement()")
                 addStatement("val _rrs = _session.executeAsync(_s).%M()", await)
                 if (returnType != resolver.builtIns.unitType) {
                     if (function.returnType!!.isMarkedNullable) {
@@ -166,36 +134,44 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
                 } else {
                     addStatement("val _result = %T", UNIT)
                 }
-                addStatement("_telemetry.close(null)")
                 addStatement("return _result")
-                nextControlFlow("catch (_e: Exception)")
-                addStatement("_telemetry.close(_e)")
-                addStatement("throw _e")
-                nextControlFlow("finally")
-                addStatement("_ctxCurrent.inject()")
-            }
-        } else {
-            b.addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
-            if (profile != null) {
-                b.addStatement("_stmt.setExecutionProfileName(%S)", profile)
-            }
-            StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
-            b.controlFlow("try") {
-                addStatement("val _rs = _session.execute(_s)")
-                if (returnType == resolver.builtIns.unitType) {
-                    addStatement("_telemetry.close(null)")
-                } else {
-                    addStatement("val _result = %N.apply(_rs)", resultMapper!!)
-                    addStatement("_telemetry.close(null)")
-                    addCode("return _result")
-                    if (!function.returnType!!.isMarkedNullable) {
-                        addCode("!!")
-                    }
-                    addCode("\n")
+                nextControlFlow("catch (_e: Exception)") {
+                    addStatement("_observation.observeError(_e)")
+                    addStatement("throw _e")
                 }
-                nextControlFlow("catch (_e: Exception)")
-                addStatement("_telemetry.close(_e)")
-                addStatement("throw _e")
+                nextControlFlow("finally") {
+                    addStatement("_observation.end()")
+                }
+            }
+            b.addCode(code.build())
+        } else {
+            b.addCode("return ")
+            b.observe("_observation", returnType.toTypeName()) {
+                addStatement("var _stmt = _session.prepare(_query.sql()).boundStatementBuilder()")
+                if (profile != null) {
+                    addStatement("_stmt.setExecutionProfileName(%S)", profile)
+                }
+                setPreparedStatementParams(query, parameters, batchParam, parameterMappers)
+                addStatement("_observation.observeStatement()")
+                controlFlow("try") {
+                    addStatement("val _rs = _session.execute(_s)")
+                    if (returnType == resolver.builtIns.unitType) {
+                    } else {
+                        addStatement("val _result = %N.apply(_rs)", resultMapper!!)
+                        add("_result")
+                        if (!function.returnType!!.isMarkedNullable) {
+                            add("!!")
+                        }
+                        add("\n")
+                    }
+                    nextControlFlow("catch (_e: Exception)") {
+                        addStatement("_observation.observeError(_e)")
+                        addStatement("throw _e")
+                    }
+                    nextControlFlow("finally") {
+                        addStatement("_observation.end()")
+                    }
+                }
             }
         }
         return b.build()

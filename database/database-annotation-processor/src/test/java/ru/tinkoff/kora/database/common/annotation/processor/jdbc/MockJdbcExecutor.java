@@ -1,10 +1,8 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
-import jakarta.annotation.Nullable;
 import org.mockito.Mockito;
-import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
+import ru.tinkoff.kora.database.common.telemetry.NoopDataBaseObservation;
 import ru.tinkoff.kora.database.jdbc.ConnectionContext;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcHelper;
@@ -64,18 +62,7 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
 
     @Override
     public DataBaseTelemetry telemetry() {
-        return new DataBaseTelemetry() {
-            @Nullable
-            @Override
-            public Object getMetricRegistry() {
-                return null;
-            }
-
-            @Override
-            public DataBaseTelemetryContext createContext(Context context, QueryContext query) {
-                return Mockito.mock(DataBaseTelemetryContext.class);
-            }
-        };
+        return _ -> new NoopDataBaseObservation();
     }
 
 }
