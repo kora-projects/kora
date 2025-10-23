@@ -84,10 +84,12 @@ class MdcKoraAspect : KoraAspect {
     ): Set<String> {
         val keys: MutableSet<String> = HashSet()
         for (annotation in annotations) {
-            val key: String = annotation.findValue("key")
-                ?: throw ProcessingErrorException("@Mdc annotation must have 'key' attribute", annotation.annotationType)
-            val value: String = annotation.findValue("value")
-                ?: throw ProcessingErrorException("@Mdc annotation must have 'value' attribute", annotation.annotationType)
+            val key: String = annotation.findValue<String>("key")
+                .orEmpty()
+                .ifBlank { throw ProcessingErrorException("@Mdc annotation must have 'key' attribute", annotation.annotationType) }
+            val value: String = annotation.findValue<String>("value")
+                .orEmpty()
+                .ifBlank { throw ProcessingErrorException("@Mdc annotation must have 'value' attribute", annotation.annotationType) }
             val global = annotation.findValue("global") ?: false
 
             if (!global) {
