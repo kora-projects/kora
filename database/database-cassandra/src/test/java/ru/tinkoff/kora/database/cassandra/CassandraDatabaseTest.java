@@ -1,20 +1,19 @@
 package ru.tinkoff.kora.database.cassandra;
 
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.QueryContext;
-import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.database.common.telemetry.*;
 import ru.tinkoff.kora.test.cassandra.CassandraParams;
 import ru.tinkoff.kora.test.cassandra.CassandraTestContainer;
 
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 @ExtendWith(CassandraTestContainer.class)
@@ -56,13 +55,13 @@ class CassandraDatabaseTest {
                 params.username(),
                 params.password()
             ),
-            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
-                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, new Duration[0])
+            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTelemetryConfig_DatabaseLogConfig_ConfigValueExtractor.DatabaseLogConfig_Impl(true),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(true, Map.of()),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
             )
         );
-        return new CassandraDatabase(config, (b, _) -> b, new DefaultDataBaseTelemetryFactory(null, null, null));
+        return new CassandraDatabase(config, (b, _) -> b, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), new CompositeMeterRegistry());
     }
 
     private static void withDb(CassandraParams params, Consumer<CassandraDatabase> consumer) {

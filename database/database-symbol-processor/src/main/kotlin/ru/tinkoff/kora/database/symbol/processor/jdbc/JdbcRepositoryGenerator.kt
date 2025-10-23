@@ -19,6 +19,7 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils.updateCount
 import ru.tinkoff.kora.database.symbol.processor.Mapper
 import ru.tinkoff.kora.database.symbol.processor.QueryWithParameters
 import ru.tinkoff.kora.database.symbol.processor.RepositoryGenerator
+import ru.tinkoff.kora.database.symbol.processor.jdbc.StatementSetterGenerator.setStatementParams
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
@@ -28,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.observe
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.sql.Statement
@@ -89,7 +91,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
             sqlIndexDiff += parameter.name.length
         }
 
-        val returnTypeName = methodType.returnType?.toTypeName()
+        val returnTypeName = methodType.returnType?.toTypeName()!!
         val queryContextFieldName = "_queryContext_$methodNumber"
         typeBuilder.addProperty(
             PropertySpec.builder(queryContextFieldName, DbUtils.queryContext, KModifier.PRIVATE)
@@ -110,79 +112,75 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
 
         val b = method.queryMethodBuilder(resolver)
         b.addStatement("val _query = %L", queryContextFieldName)
-
-        b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-        b.addStatement("val _telemetry = _jdbcConnectionFactory.telemetry().createContext(_ctxCurrent, _query)")
-        b.addStatement("var _conToUse = %L", connection)
-        b.addStatement("val _conToClose = ")
-        b.controlFlow("if (_conToUse == null)") {
-            addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
-            addStatement("_conToUse")
-            nextControlFlow("else")
-            addStatement("null")
-        }
-        b.controlFlow("try") {
-            controlFlow("_conToClose.use") {
-                if (isGeneratedKeys)
-                    beginControlFlow("_conToUse!!.prepareStatement(_query.sql(), %T.RETURN_GENERATED_KEYS).use { _stmt ->", Statement::class)
-                else
-                    beginControlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->")
-
-                StatementSetterGenerator.generate(b, query, parameters, batchParam, parameterMappers)
-                if (methodType.returnType!! == resolver.builtIns.unitType) {
-                    if (batchParam != null) {
-                        addStatement("_stmt.executeBatch()")
-                    } else {
-                        addStatement("_stmt.execute()")
-                    }
-                    addStatement("_telemetry.close(null)")
-                } else if (returnTypeName == updateCount) {
-                    if (batchParam != null) {
-                        addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
-                    } else {
-                        addStatement("val _updateCount = _stmt.executeLargeUpdate()")
-                    }
-                    addStatement("_telemetry.close(null)")
-                    addCode("return")
-                    addCode(" %T(_updateCount)\n", updateCount)
-                } else if (isGeneratedKeys) {
-                    if (batchParam != null) {
-                        addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
-                    } else {
-                        addStatement("val _updateCount = _stmt.executeLargeUpdate()")
-                    }
-                    controlFlow("_stmt.generatedKeys.use { _rs ->") {
-                        addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
-                        if (!methodType.returnType!!.isMarkedNullable) {
-                            addStatement("  ?: throw NullPointerException(%S)", "Result mapping is expected non-null, but was null")
-                        }
-                        addStatement("_telemetry.close(null)")
-                        addCode("return")
-                        addStatement(" _result")
-                    }
-                } else {
-                    controlFlow("_stmt.executeQuery().use { _rs ->") {
-                        addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
-                        if (!methodType.returnType!!.isMarkedNullable) {
-                            addStatement("  ?: throw NullPointerException(%S)", "Result mapping is expected non-null, but was null")
-                        }
-                        addStatement("_telemetry.close(null)")
-                        addCode("return")
-                        addStatement(" _result")
-                    }
-                }
-
-                endControlFlow()
+        b.addStatement("val _observation = _jdbcConnectionFactory.telemetry().observe(_query)")
+        b.addCode("return ")
+        b.observe("_observation", returnTypeName) {
+            addStatement("var _conToUse = %L", connection)
+            addStatement("val _conToClose = ")
+            controlFlow("if (_conToUse == null)") {
+                addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
+                addStatement("_conToUse")
+                nextControlFlow("else")
+                addStatement("null")
             }
-            nextControlFlow("catch (_e: java.sql.SQLException)")
-            addStatement("_telemetry.close(_e)")
-            addStatement("throw ru.tinkoff.kora.database.jdbc.RuntimeSqlException(_e)")
-            nextControlFlow("catch (_e: Exception)")
-            addStatement("_telemetry.close(_e)")
-            addStatement("throw _e")
-            nextControlFlow("finally")
-            addStatement("_ctxCurrent.inject()")
+            controlFlow("try") {
+                controlFlow("_conToClose.use") {
+                    if (isGeneratedKeys)
+                        beginControlFlow("_conToUse!!.prepareStatement(_query.sql(), %T.RETURN_GENERATED_KEYS).use { _stmt ->", Statement::class)
+                    else
+                        beginControlFlow("_conToUse!!.prepareStatement(_query.sql()).use { _stmt ->")
+
+                    setStatementParams(query, parameters, batchParam, parameterMappers)
+                    if (methodType.returnType!! == resolver.builtIns.unitType) {
+                        if (batchParam != null) {
+                            addStatement("_stmt.executeBatch()")
+                        } else {
+                            addStatement("_stmt.execute()")
+                        }
+                    } else if (returnTypeName == updateCount) {
+                        if (batchParam != null) {
+                            addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
+                        } else {
+                            addStatement("val _updateCount = _stmt.executeLargeUpdate()")
+                        }
+                        add("%T(_updateCount)\n", updateCount)
+                    } else if (isGeneratedKeys) {
+                        if (batchParam != null) {
+                            addStatement("val _updateCount = _stmt.executeLargeBatch().sum()")
+                        } else {
+                            addStatement("val _updateCount = _stmt.executeLargeUpdate()")
+                        }
+                        controlFlow("_stmt.generatedKeys.use { _rs ->") {
+                            addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
+                            if (!methodType.returnType!!.isMarkedNullable) {
+                                addStatement("  ?: throw NullPointerException(%S)", "Result mapping is expected non-null, but was null")
+                            }
+                            addStatement("_result")
+                        }
+                    } else {
+                        controlFlow("_stmt.executeQuery().use { _rs ->") {
+                            addStatement("val _result = %N.apply(_rs)", resultMapperName!!)
+                            if (!methodType.returnType!!.isMarkedNullable) {
+                                addStatement("  ?: throw NullPointerException(%S)", "Result mapping is expected non-null, but was null")
+                            }
+                            add("return@use _result")
+                        }
+                    }
+
+                    endControlFlow()
+                }
+                nextControlFlow("catch (_e: java.sql.SQLException)")
+                addStatement("_observation.observeError(_e)")
+                addStatement("throw ru.tinkoff.kora.database.jdbc.RuntimeSqlException(_e)")
+                nextControlFlow("catch (_e: Exception)")
+                addStatement("_observation.observeError(_e)")
+                addStatement("throw _e")
+                nextControlFlow("finally")
+                addStatement("_observation.end()")
+            }
+
         }
+
         return b.build()
     }
 

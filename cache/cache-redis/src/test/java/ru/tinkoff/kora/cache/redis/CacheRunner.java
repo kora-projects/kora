@@ -10,6 +10,7 @@ import ru.tinkoff.kora.telemetry.common.*;
 import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.time.Duration;
+import java.util.Map;
 
 public abstract class CacheRunner extends Assertions implements RedisCacheModule {
 
@@ -69,8 +70,8 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
             @Override
             public TelemetryConfig telemetry() {
                 return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(false),
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new Duration[0]));
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false, Map.of()),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new Duration[0], Map.of()));
             }
         };
 

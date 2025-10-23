@@ -4,15 +4,15 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
 import java.util.Arrays;
 
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
 
 public class CassandraSessionBuilder {
-    public CqlSession build(CassandraConfig config, @Nullable CassandraConfigurer configurer, DataBaseTelemetry telemetry) {
+    public CqlSession build(CassandraConfig config, @Nullable CassandraConfigurer configurer, @Nullable MeterRegistry meterRegistry) {
         var builder = CqlSession.builder();
         var loaderBuilder = new DefaultProgrammaticDriverConfigLoaderBuilder();
         loaderBuilder.withStringList(CONTACT_POINTS, config.basic().contactPoints());
@@ -32,9 +32,9 @@ public class CassandraSessionBuilder {
         }
 
         applyOverridable(loaderBuilder, config.basic(), config.advanced());
-        if (telemetry.getMetricRegistry() != null) {
+        if (config.telemetry().metrics().driverMetrics()) {
             loaderBuilder.withString(METRICS_FACTORY_CLASS, MicrometerMetricsFactory.class.getCanonicalName());
-            builder.withMetricRegistry(telemetry.getMetricRegistry());
+            builder.withMetricRegistry(meterRegistry);
         }
         builder.withConfigLoader(loaderBuilder.build());
         if (configurer != null) {

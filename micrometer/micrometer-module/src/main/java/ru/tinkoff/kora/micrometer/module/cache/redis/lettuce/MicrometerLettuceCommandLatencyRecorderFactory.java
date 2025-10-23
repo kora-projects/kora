@@ -15,7 +15,7 @@ public final class MicrometerLettuceCommandLatencyRecorderFactory implements Com
 
     @Override
     public CommandLatencyRecorder get(String type, TelemetryConfig.MetricsConfig config) {
-        if (config.enabled() != null && !config.enabled()) {
+        if (!config.enabled()) {
             return CommandLatencyRecorder.disabled();
         }
         return new OpentelemetryLettuceCommandLatencyRecorder(type, this.registry, config);

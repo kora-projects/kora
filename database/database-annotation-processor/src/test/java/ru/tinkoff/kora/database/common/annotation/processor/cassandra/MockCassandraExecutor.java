@@ -3,8 +3,10 @@ package ru.tinkoff.kora.database.common.annotation.processor.cassandra;
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.*;
+import io.opentelemetry.api.trace.Span;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.database.cassandra.CassandraConnectionFactory;
+import ru.tinkoff.kora.database.common.telemetry.DataBaseObservation;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 
 import java.util.Iterator;
@@ -26,7 +28,7 @@ public class MockCassandraExecutor implements CassandraConnectionFactory {
     public final Iterator<Row> iterator = Mockito.mock(Iterator.class);
     public final Row row = Mockito.mock(Row.class);
     public final DataBaseTelemetry telemetry = Mockito.mock(DataBaseTelemetry.class);
-    public final DataBaseTelemetry.DataBaseTelemetryContext telemetryCtx = Mockito.mock(DataBaseTelemetry.DataBaseTelemetryContext.class);
+    public final DataBaseObservation telemetryCtx = Mockito.mock(DataBaseObservation.class);
 
     public MockCassandraExecutor() {
         reset();
@@ -45,7 +47,8 @@ public class MockCassandraExecutor implements CassandraConnectionFactory {
         when(preparedStatement.boundStatementBuilder()).thenReturn(boundStatementBuilder);
         when(boundStatementBuilder.setExecutionProfileName(any())).thenReturn(boundStatementBuilder);
         when(boundStatementBuilder.build()).thenReturn(boundStatement);
-        when(telemetry.createContext(any(), any())).thenReturn(this.telemetryCtx);
+        when(telemetry.observe(any())).thenReturn(this.telemetryCtx);
+        when(this.telemetryCtx.span()).thenReturn(Span.getInvalid());
         when(mockSession.executeAsync(any(Statement.class))).thenReturn(CompletableFuture.completedFuture(asyncResultSet));
         when(mockSession.executeReactive(any(Statement.class))).thenReturn(reactiveResultSet);
     }

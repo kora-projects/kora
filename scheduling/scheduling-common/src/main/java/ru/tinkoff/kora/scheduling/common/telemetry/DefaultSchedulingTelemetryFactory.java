@@ -20,8 +20,8 @@ public final class DefaultSchedulingTelemetryFactory implements SchedulingTeleme
     }
 
     @Override
-    public SchedulingTelemetry get(@Nullable TelemetryConfig jobTelemetryConfig, Class<?> jobClass, String jobMethod) {
-        var config = new JobTelemetryConfig(this.config, jobTelemetryConfig);
+    public SchedulingTelemetry get(@Nullable JobTelemetryConfig jobTelemetryConfig, Class<?> jobClass, String jobMethod) {
+        var config = new SchedulingTelemetryConfig(this.config, jobTelemetryConfig);
         var metrics = this.metrics == null ? null : this.metrics.get(config.metrics(), jobClass, jobMethod);
         var tracer = this.tracer == null ? null : this.tracer.get(config.tracing(), jobClass, jobMethod);
         var logger = this.logger == null ? null : this.logger.get(config.logging(), jobClass, jobMethod);

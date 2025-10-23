@@ -7,6 +7,9 @@ import java.util.List;
 
 public class CommonClassNames {
     public static final ClassName nullable = ClassName.get("jakarta.annotation", "Nullable");
+    public static final ClassName observation = ClassName.get("ru.tinkoff.kora.common.telemetry", "Observation");
+    public static final ClassName opentelemetryContext = ClassName.get("ru.tinkoff.kora.common.telemetry", "OpentelemetryContext");
+    public static final ClassName contextOpentelemetry = ClassName.get("io.opentelemetry.context", "Context");
     public static final ClassName context = ClassName.get("ru.tinkoff.kora.common", "Context");
     public static final ClassName contextReactor = ClassName.get("ru.tinkoff.kora.common", "Context","Reactor");
     public static final ClassName flowUtils = ClassName.get("ru.tinkoff.kora.common.util", "FlowUtils");

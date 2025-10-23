@@ -1,20 +1,17 @@
 package ru.tinkoff.kora.database.symbol.processor.jdbc
 
+import io.opentelemetry.api.trace.Span
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.database.common.telemetry.DataBaseObservation
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
-import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry.DataBaseTelemetryContext
 import ru.tinkoff.kora.database.jdbc.ConnectionContext
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory
 import ru.tinkoff.kora.database.jdbc.JdbcHelper.SqlFunction1
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException
-import java.sql.CallableStatement
-import java.sql.Connection
-import java.sql.PreparedStatement
-import java.sql.ResultSet
-import java.sql.SQLException
+import java.sql.*
 
 class MockJdbcExecutor : JdbcConnectionFactory {
     val resultSet = Mockito.mock(ResultSet::class.java)
@@ -22,7 +19,7 @@ class MockJdbcExecutor : JdbcConnectionFactory {
     val preparedStatement = Mockito.mock(PreparedStatement::class.java)!!
     val callableStatement = Mockito.mock(CallableStatement::class.java)!!
     val telemetry = Mockito.mock(DataBaseTelemetry::class.java)!!
-    val telemetryCtx = Mockito.mock(DataBaseTelemetryContext::class.java)!!
+    val telemetryCtx = Mockito.mock(DataBaseObservation::class.java)!!
     val mockConnection = Mockito.mock(Connection::class.java)!!
     val mockConnectionContext = ConnectionContext(mockConnection)
 
@@ -31,7 +28,8 @@ class MockJdbcExecutor : JdbcConnectionFactory {
         whenever(mockConnection.prepareCall(ArgumentMatchers.anyString())).thenReturn(callableStatement)
         whenever(mockConnection.prepareStatement(ArgumentMatchers.anyString())).thenReturn(preparedStatement)
         whenever(mockConnection.prepareStatement(ArgumentMatchers.anyString(), any<Int>())).thenReturn(preparedStatement)
-        whenever(telemetry.createContext(any(), any())).thenReturn(telemetryCtx)
+        whenever(telemetry.observe(any())).thenReturn(telemetryCtx)
+        whenever(telemetryCtx.span()).thenReturn(Span.getInvalid())
         whenever(preparedStatement.executeQuery()).thenReturn(resultSet)
     }
 

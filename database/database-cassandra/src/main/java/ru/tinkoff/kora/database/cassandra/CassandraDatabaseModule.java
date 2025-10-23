@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.cassandra;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
@@ -11,7 +12,7 @@ public interface CassandraDatabaseModule extends CassandraModule {
         return extractor.extract(value);
     }
 
-    default CassandraDatabase cassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable CassandraConfigurer configurer) {
-        return new CassandraDatabase(config, configurer, telemetryFactory);
+    default CassandraDatabase cassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable CassandraConfigurer configurer, @Nullable MeterRegistry meterRegistry) {
+        return new CassandraDatabase(config, configurer, telemetryFactory, meterRegistry);
     }
 }

@@ -167,7 +167,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
         val configType = TypeSpec.interfaceBuilder(configClassName)
             .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
             .generated(QuartzSchedulingGenerator::class)
-            .addFunction(FunSpec.builder("telemetry").returns(ClassName("ru.tinkoff.kora.telemetry.common", "TelemetryConfig")).addModifiers(KModifier.ABSTRACT).build())
+            .addFunction(FunSpec.builder("telemetry").returns(ClassName("ru.tinkoff.kora.scheduling.common.telemetry", "JobTelemetryConfig")).addModifiers(KModifier.ABSTRACT).build())
 
         if (defaultCron.isBlank()) {
             configType.addFunction(FunSpec.builder("cron").addModifiers(KModifier.ABSTRACT).returns(STRING).build())
