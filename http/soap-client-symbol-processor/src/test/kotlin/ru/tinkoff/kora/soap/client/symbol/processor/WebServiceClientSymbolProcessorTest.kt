@@ -24,6 +24,7 @@ class WebServiceClientSymbolProcessorTest {
             .filter { it.name.endsWith(".java") }
             .toList()
         KotlinCompilation()
+            .withPartialClasspath()
             .withProcessor(WebServiceClientSymbolProcessorProvider())
             .withJavaSrcs(javaFiles)
             .compile()

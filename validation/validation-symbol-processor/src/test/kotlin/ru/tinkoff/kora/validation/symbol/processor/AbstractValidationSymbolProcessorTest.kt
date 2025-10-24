@@ -1,6 +1,10 @@
 package ru.tinkoff.kora.validation.symbol.processor
 
+import org.intellij.lang.annotations.Language
+import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 
 abstract class AbstractValidationSymbolProcessorTest : AbstractSymbolProcessorTest() {
 
@@ -21,4 +25,9 @@ abstract class AbstractValidationSymbolProcessorTest : AbstractSymbolProcessorTe
            import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
            """.trimIndent()
     }
+
+    fun compile(@Language("kotlin") vararg sources: String) = KotlinCompilation()
+        .withPartialClasspath()
+        .withClasspathJar("reactor-core")
+        .compile(listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()), *sources)
 }

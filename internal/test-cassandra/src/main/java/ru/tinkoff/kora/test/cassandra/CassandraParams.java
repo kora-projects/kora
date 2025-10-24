@@ -10,7 +10,6 @@ import java.time.Duration;
 import java.util.function.Function;
 
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
-import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.CONNECTION_WARN_INIT_ERROR;
 
 public record CassandraParams(String host, int port, String dc, String keyspace, String username, String password) {
     public CqlSession getSession() {
@@ -27,6 +26,7 @@ public record CassandraParams(String host, int port, String dc, String keyspace,
         if (username != null && password != null) {
             b.withAuthCredentials(username, password);
         }
+
         return b.build();
     }
 

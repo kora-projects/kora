@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.util.*
 
 class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
@@ -26,7 +27,13 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
               }
             }
             """.trimIndent()
-        super.compile0(listOf(GrpcClientStubForSymbolProcessorProvider(), KoraAppProcessorProvider()), *patchedSources)
+        KotlinCompilation()
+            .withPartialClasspath()
+            .withClasspathJar("grpc-api")
+            .withClasspathJar("grpc-stub")
+            .withClasspathJar("grpc-kotlin-stub")
+            .withClasspathJar("netty-transport")
+            .compile(listOf(GrpcClientStubForSymbolProcessorProvider(), KoraAppProcessorProvider()), *patchedSources)
         compileResult.assertSuccess()
         loadClass("TestAppGraph").toGraph().use { g ->
             /*

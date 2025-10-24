@@ -7,6 +7,7 @@ import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.ksp.common.GraphUtil
 import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.util.*
 
 class MapstructKoraExtensionTest : AbstractSymbolProcessorTest() {
@@ -35,7 +36,10 @@ class MapstructKoraExtensionTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
 
         patchedSources[sources.size] = main
-        super.compile0(listOf(KoraAppProcessorProvider()), *patchedSources)
+        KotlinCompilation()
+            .withPartialClasspath()
+            .withClasspathJar("mapstruct")
+            .compile(listOf(KoraAppProcessorProvider()), *patchedSources)
         compileResult.assertSuccess()
         return loadClass("TestAppGraph").toGraph()
     }

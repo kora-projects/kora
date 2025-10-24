@@ -2,6 +2,7 @@ package ru.tinkoff.kora.kafka.symbol.processor.consumer
 
 import org.intellij.lang.annotations.Language
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 
 abstract class AbstractKafkaListenerAnnotationProcessorTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {
@@ -17,13 +18,20 @@ abstract class AbstractKafkaListenerAnnotationProcessorTest : AbstractSymbolProc
             """.trimIndent()
     }
 
+//
+//    protected fun compile(@Language("kotlin") vararg sources: String) {
+//        super.compile0(listOf(KafkaListenerSymbolProcessorProvider()), *sources)
+//        compileResult.assertSuccess()
+////        val kafkaListenerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListener"))
+////        val kafkaListenerModule = Objects.requireNonNull(compileResult.loadClass("KafkaListenerModule"))
+//    }
 
-    protected fun compile(@Language("kotlin") vararg sources: String) {
-        super.compile0(listOf(KafkaListenerSymbolProcessorProvider()), *sources)
-        compileResult.assertSuccess()
-//        val kafkaListenerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListener"))
-//        val kafkaListenerModule = Objects.requireNonNull(compileResult.loadClass("KafkaListenerModule"))
-    }
+    fun compile(@Language("kotlin") vararg sources: String) = KotlinCompilation()
+        .withPartialClasspath()
+        .withClasspathJar("kafka-clients")
+        .compile(listOf(KafkaListenerSymbolProcessorProvider()), *sources).apply {
+            compileResult.assertSuccess()
+        }
 
 
 }

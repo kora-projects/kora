@@ -3,6 +3,7 @@ package ru.tinkoff.kora.s3.client.symbol.processor
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 
 class S3KoraSuspendClientTests : AbstractSymbolProcessorTest() {
 
@@ -18,7 +19,11 @@ class S3KoraSuspendClientTests : AbstractSymbolProcessorTest() {
             import software.amazon.awssdk.services.s3.model.*;
             """.trimIndent()
     }
-    fun compile0(vararg src: String) = compile0(listOf(S3ClientSymbolProcessorProvider()), *src)
+
+    fun compile0(vararg src: String) = KotlinCompilation()
+        .withPartialClasspath()
+        .withClasspathJar("s3")
+        .compile(listOf(S3ClientSymbolProcessorProvider()), *src)
 
     @Test
     fun clientConfig() {

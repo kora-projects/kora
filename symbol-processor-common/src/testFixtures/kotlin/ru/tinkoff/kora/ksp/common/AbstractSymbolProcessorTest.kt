@@ -71,12 +71,67 @@ abstract class AbstractSymbolProcessorTest {
             """.trimIndent()
     }
 
+    protected fun KotlinCompilation.compile(processors: List<SymbolProcessorProvider>, @Language("kotlin") vararg sources: String): TestUtils.ProcessingResult {
+        val testPackage = testPackage()
+        val testClass: Class<*> = testInfo.testClass.get()
+        val testMethod: Method = testInfo.testMethod.get()
+        val commonImports = commonImports()
+        withProcessors(processors)
+            .apply { processorsOptions.putAll(compileOptions) }
+        val sourceList = sequenceOf(*sources)
+            .map { s: String -> "package $testPackage;\n$commonImports\n/**\n* @see ${testClass.canonicalName}.${testMethod.name} \n*/\n" + s }
+            .map { s ->
+                val firstClass = s.indexOf("class ") to "class ".length
+                val firstInterface = s.indexOf("interface ") to "interface ".length
+                val classNameLocation = sequenceOf(firstClass, firstInterface)
+                    .filter { it.first >= 0 }
+                    .map { it.first + it.second }
+                    .flatMap {
+                        sequenceOf(
+                            s.indexOf("\n", it + 1),
+                            s.indexOf(" ", it + 1),
+                            s.indexOf("(", it + 1),
+                            s.indexOf("{", it + 1),
+                            s.indexOf(":", it + 1),
+                            s.indexOf("<", it + 1),
+                        )
+                            .map { it1 -> it to it1 }
+                    }
+                    .filter { it.second >= 0 }
+                    .minBy { it.second }
+                val className = s.substring(classNameLocation.first - 1, classNameLocation.second)
+                    .trim()
+                    .replaceFirst(Regex("<.*>"), "")
+                    .trim()
+                val file = baseDir
+                    .resolve("sources")
+                    .resolve(testPackage.replace('.', File.separatorChar))
+                    .resolve("$className.kt")
+                Files.createDirectories(file.parent)
+                Files.deleteIfExists(file)
+                Files.writeString(file, s, StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW)
+                file
+            }
+            .toList()
+
+        try {
+            val cl = withSrc(sourceList).compile()
+            compileResult = TestUtils.ProcessingResult.Success(cl)
+        } catch (e: CompilationErrorException) {
+            compileResult = TestUtils.ProcessingResult.Failure(e.messages)
+        }
+        return compileResult
+    }
+
     protected fun compile0(processors: List<SymbolProcessorProvider>, @Language("kotlin") vararg sources: String): TestUtils.ProcessingResult {
         val testPackage = testPackage()
         val testClass: Class<*> = testInfo.testClass.get()
         val testMethod: Method = testInfo.testMethod.get()
         val commonImports = commonImports()
         val kc = KotlinCompilation()
+            .withPartialClasspath()
+            .withClasspathJar("java-driver-core")
+            .withClasspathJar("jackson-core")
             .withProcessors(processors)
             .apply { processorsOptions.putAll(compileOptions) }
         val sourceList = sequenceOf(*sources)
@@ -105,6 +160,7 @@ abstract class AbstractSymbolProcessorTest {
                     .replaceFirst(Regex("<.*>"), "")
                     .trim()
                 val file = kc.baseDir
+                    .resolve("sources")
                     .resolve(testPackage.replace('.', File.separatorChar))
                     .resolve("$className.kt")
                 Files.createDirectories(file.parent)

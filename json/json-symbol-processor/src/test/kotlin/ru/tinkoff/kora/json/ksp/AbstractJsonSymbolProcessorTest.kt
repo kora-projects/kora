@@ -8,6 +8,7 @@ import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.nio.charset.StandardCharsets
 
 abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
@@ -22,7 +23,10 @@ abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     protected open fun compile(@Language("kotlin") vararg sources: String) {
-        compile0(listOf(JsonSymbolProcessorProvider(), KoraAppProcessorProvider()), *sources)
+        KotlinCompilation()
+            .withPartialClasspath()
+            .withClasspathJar("jackson-core")
+            .compile(listOf(JsonSymbolProcessorProvider(), KoraAppProcessorProvider()), *sources)
             .assertSuccess()
     }
 

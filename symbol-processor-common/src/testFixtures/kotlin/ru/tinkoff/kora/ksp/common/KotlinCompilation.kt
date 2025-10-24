@@ -9,7 +9,6 @@ import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 import org.jetbrains.kotlin.config.Services
 import ru.tinkoff.kora.ksp.common.TestUtils.asCompilationException
-import ru.tinkoff.kora.ksp.common.TestUtils.classpath
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.PrintStream
@@ -21,10 +20,7 @@ import java.nio.file.Path
 import java.nio.file.StandardCopyOption
 import java.util.*
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
-import kotlin.io.path.ExperimentalPathApi
-import kotlin.io.path.absolute
-import kotlin.io.path.createDirectories
-import kotlin.io.path.deleteRecursively
+import kotlin.io.path.*
 
 class KotlinCompilation {
     val processors = arrayListOf<SymbolProcessorProvider>()
@@ -33,10 +29,11 @@ class KotlinCompilation {
     val processorsOptions = mutableMapOf<String, String>()
     val classpathEntries = mutableListOf<Path>()
     var outputDir = Path.of("build/in-test-generated-ksp/sources")
+    val classpath = mutableListOf<File>()
     lateinit var classOutputDir: Path
 
     @OptIn(ExperimentalAtomicApi::class)
-    val baseDir = KotlinCompilation.baseDir.resolve("test" + UUID.randomUUID()).toAbsolutePath()
+    val baseDir = KotlinCompilation.baseDir.resolve("test-" + UUID.randomUUID()).toAbsolutePath()
 
     @OptIn(ExperimentalPathApi::class, ExperimentalAtomicApi::class)
     constructor() {
@@ -51,6 +48,42 @@ class KotlinCompilation {
     fun withSrc(p: String) = apply { srcFiles.add(Path.of(p)) }
     fun withGeneratedSourcesDir(kotlinSourcesDir: Path) = apply { outputDir = kotlinSourcesDir }
     fun withJavaSrcs(javaFiles: List<Path>) = apply { javaSrcFiles.addAll(javaFiles) }
+
+    fun withFullClasspath() = apply {
+        classpath.clear()
+        classpath.addAll(TestUtils.classpath.map { File(it) })
+    }
+
+    fun withPartialClasspath() = apply {
+        classpath.clear()
+        Path.of("").toAbsolutePath().resolve("build", "libs").toAbsolutePath().walk().map { it.toFile() }.forEach { classpath.add(it) }
+        classpath.add(Path.of("").toAbsolutePath().resolve("build", "classes", "kotlin", "test").toAbsolutePath().toFile())
+        classpath.add(Path.of("").toAbsolutePath().resolve("build", "classes", "java", "test").toAbsolutePath().toFile())
+        withClasspathJar("kotlin-stdlib")
+            .withClasspathJar("micrometer-core")
+            .withClasspathJar("opentelemetry-context")
+            .withClasspathJar("opentelemetry-api")
+            .withClasspathJar("jakarta.annotation-api")
+            .withClasspathJar("kotlinx-coroutines-core-jvm")
+            .withClasspathJar("kotlinx-coroutines-jdk8")
+            .withClasspathJar("slf4j-api")
+            .withClasspathJar("mockito-core")
+            .withClasspathRegex(".*/build/libs/.*jar")
+    }
+
+    fun withClasspathRegex(regex: String) = apply {
+        val p = regex.toRegex()
+        TestUtils.classpath
+            .filter { p.matches(it) }
+            .forEach { classpath.add(File(it)) }
+    }
+
+    fun withClasspathJar(jarName: String) = apply {
+        val p = (".*/$jarName.*jar$").toRegex()
+        TestUtils.classpath
+            .filter { p.matches(it) }
+            .forEach { classpath.add(File(it)) }
+    }
 
     fun compile(): ClassLoader {
         val start = System.currentTimeMillis()
@@ -77,9 +110,6 @@ class KotlinCompilation {
 
     @OptIn(ExperimentalPathApi::class)
     fun symbolProcessFiles(): List<Path> {
-        val pluginClassPath = classpath.asSequence()
-            .map { File(it) }
-            .toList() + classpathEntries.map { it.toFile() }
         val sw = ByteArrayOutputStream()
         val collector = PrintingMessageCollector(
             PrintStream(sw, true, StandardCharsets.UTF_8), MessageRenderer.PLAIN_FULL_PATHS, true
@@ -92,7 +122,7 @@ class KotlinCompilation {
             processorOptions = processorsOptions
             jdkHome = File(System.getProperty("java.home"))
             mapAnnotationArgumentsInJava = true
-            libraries = pluginClassPath
+            libraries = classpath + classpathEntries.map { it.toFile() }
             sourceRoots = srcFiles.map { it.toFile() }
             javaSourceRoots = javaSrcFiles.map { it.toFile() }
             kotlinOutputDir = baseDir.resolve("kotlinOutputDir").toFile()

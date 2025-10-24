@@ -4,6 +4,7 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.util.function.Supplier
 
 class KoraBigGraphTest : AbstractSymbolProcessorTest() {
@@ -17,7 +18,9 @@ class KoraBigGraphTest : AbstractSymbolProcessorTest() {
             sb.append("  fun component").append(i).append("() = \"\";\n")
         }
         sb.append("}\n")
-        compile0(listOf(KoraAppProcessorProvider()), sb.toString())
+        KotlinCompilation()
+            .withPartialClasspath()
+            .compile(listOf(KoraAppProcessorProvider()), sb.toString())
             .assertSuccess()
 
         val appClass = loadClass("ExampleApplicationGraph")

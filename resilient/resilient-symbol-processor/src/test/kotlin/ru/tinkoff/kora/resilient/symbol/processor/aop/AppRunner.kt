@@ -7,6 +7,7 @@ import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
 import ru.tinkoff.kora.application.graph.RefreshableGraph
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.AppWithConfig
 import java.util.function.Supplier
@@ -67,7 +68,10 @@ open class AppRunner : Assertions() {
     }
 
     private fun getClassLoader(classes: List<KClass<*>>): ClassLoader {
-        return symbolProcess(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), classes)
+        return KotlinCompilation()
+            .withPartialClasspath()
+            .withClasspathJar("config")
+            .symbolProcess(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), classes)
     }
 
     fun getGraphForClasses(targetClasses: List<KClass<*>>): InitializedGraph {

@@ -4,7 +4,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.JsonNullable
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.validation.common.ValidationContext
 import ru.tinkoff.kora.validation.common.Validator
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
@@ -13,8 +12,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(val field: JsonNullable<String>?)
@@ -32,8 +30,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(val field: JsonNullable<String>?)
@@ -52,8 +49,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(val field: JsonNullable<String>?)
@@ -72,8 +68,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableNonNullIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:Nonnull val field: JsonNullable<String>?)
@@ -92,8 +87,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableNonNullIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:Nonnull val field: JsonNullable<String>?)
@@ -112,8 +106,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableNonNullIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:Nonnull val field: JsonNullable<String>?)
@@ -132,8 +125,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableWithValidatorIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>?)
@@ -153,8 +145,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableWithValidatorIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord<T>(@field:NotBlank @field:NotEmpty val field: JsonNullable<T>?)
@@ -174,8 +165,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableWithValidatorIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>?)
@@ -195,8 +185,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableWithValidatorFailFastIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>?)
@@ -216,8 +205,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableWithValidatorFailFastIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>?)
@@ -237,8 +225,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
 
     @Test
     fun fieldJsonNullableWithValidatorFailFastIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile(
             """
                     @Valid
                     data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>?)

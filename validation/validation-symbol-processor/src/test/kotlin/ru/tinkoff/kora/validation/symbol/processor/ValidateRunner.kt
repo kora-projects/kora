@@ -4,6 +4,7 @@ import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Assertions
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.application.graph.TypeRef
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.validation.common.Validator
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
@@ -33,7 +34,7 @@ open class ValidateRunner : Assertions(),
         ) as ValidateSync
     }
 
-    protected open fun getValidateSuspend(): ValidateSuspend{
+    protected open fun getValidateSuspend(): ValidateSuspend {
         val classLoader = getClassLoader()
         val clazz = classLoader!!.loadClass("ru.tinkoff.kora.validation.symbol.processor.testdata.\$ValidateSuspend__AopProxy")
         return clazz.constructors[0].newInstance(
@@ -46,7 +47,7 @@ open class ValidateRunner : Assertions(),
         ) as ValidateSuspend
     }
 
-    protected open fun getValidateFlow(): ValidateFlow{
+    protected open fun getValidateFlow(): ValidateFlow {
         val classLoader = getClassLoader()
         val clazz = classLoader!!.loadClass("ru.tinkoff.kora.validation.symbol.processor.testdata.\$ValidateFlow__AopProxy")
         return clazz.constructors[0].newInstance(
@@ -74,7 +75,10 @@ open class ValidateRunner : Assertions(),
                     ValidateSuspend::class,
                     ValidateFlow::class,
                 )
-                classLoader = symbolProcess(listOf(ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()), classes)
+                classLoader = KotlinCompilation()
+                    .withPartialClasspath()
+                    .withClasspathJar("reactor-core")
+                    .symbolProcess(listOf(ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()), classes)
             }
             classLoader!!
         } catch (e: Exception) {

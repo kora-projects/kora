@@ -4,6 +4,7 @@ import org.intellij.lang.annotations.Language
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.util.function.Supplier
 
 abstract class AbstractKoraAppProcessorTest : AbstractSymbolProcessorTest() {
@@ -15,7 +16,9 @@ abstract class AbstractKoraAppProcessorTest : AbstractSymbolProcessorTest() {
 
 
     protected fun compile(@Language("kotlin") vararg sources: String): ApplicationGraphDraw {
-        compile0(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), *sources)
+        KotlinCompilation()
+            .withPartialClasspath()
+            .compile(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), *sources)
             .assertSuccess()
 
         val appClass = loadClass("ExampleApplicationGraph")

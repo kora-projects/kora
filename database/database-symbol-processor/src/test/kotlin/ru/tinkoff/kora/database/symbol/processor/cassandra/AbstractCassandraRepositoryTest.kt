@@ -14,7 +14,6 @@ abstract class AbstractCassandraRepositoryTest : AbstractRepositoryTest() {
             import ru.tinkoff.kora.database.cassandra.mapper.parameter.*;
 
             import java.util.concurrent.CompletionStage;
-            import reactor.core.publisher.*;
 
             import com.datastax.oss.driver.api.core.cql.*;
             import com.datastax.oss.driver.api.core.data.*;

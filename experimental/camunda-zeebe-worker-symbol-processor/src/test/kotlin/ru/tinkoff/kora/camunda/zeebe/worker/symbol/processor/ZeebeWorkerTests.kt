@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.camunda.zeebe.worker.symbol.processor
 
 import org.assertj.core.api.Assertions.assertThat
+import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.camunda.zeebe.worker.KoraJobWorker
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.lang.reflect.Method
 import java.util.*
 
@@ -16,9 +18,14 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
         """.trimIndent()
     }
 
+    fun compile(@Language("kotlin") vararg sources: String) = KotlinCompilation()
+        .withPartialClasspath()
+        .withClasspathJar("zeebe-client-java")
+        .compile(listOf(ZeebeWorkerSymbolProcessorProvider()), *sources)
+
     @Test
     fun workerNoVars() {
-        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+        compile(
             """
             @Component
             class Handler {
@@ -42,7 +49,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerVars() {
-        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+        compile(
             """
             @Component
             class Handler {
@@ -69,7 +76,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerVar() {
-        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+        compile(
             """
             @Component
             class Handler {
@@ -94,7 +101,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerReturnVars() {
-        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+        compile(
             """
             @Component
             class Handler {
@@ -121,7 +128,7 @@ class ZeebeWorkerTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun workerContext() {
-        compile0(listOf(ZeebeWorkerSymbolProcessorProvider()),
+        compile(
             """
             @Component
             class Handler {

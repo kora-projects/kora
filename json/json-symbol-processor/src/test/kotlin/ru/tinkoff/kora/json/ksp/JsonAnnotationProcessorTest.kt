@@ -13,6 +13,7 @@ import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.reader
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writer
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writerClass
 import ru.tinkoff.kora.json.ksp.dto.*
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.io.IOException
 import java.io.StringWriter
@@ -59,7 +60,11 @@ internal class JsonAnnotationProcessorTest {
     }
 
     private fun <T : Any> jsonClassLoader(kClass: KClass<T>): JsonClassLoader {
-        val kspCl = symbolProcess(listOf(JsonSymbolProcessorProvider()), listOf(kClass))
+        val kspCl =
+            KotlinCompilation()
+                .withPartialClasspath()
+                .withClasspathJar("jackson-core")
+                .symbolProcess(listOf(JsonSymbolProcessorProvider()), listOf(kClass))
         return JsonClassLoader(kspCl)
     }
 
@@ -375,13 +380,23 @@ internal class JsonAnnotationProcessorTest {
 
     @Test
     fun test31Field() {
-        val cl = JsonClassLoader(symbolProcess(listOf(JsonSymbolProcessorProvider()), listOf(DtoWith31Fields::class)))
+        val cl = JsonClassLoader(
+            KotlinCompilation()
+                .withPartialClasspath()
+                .withClasspathJar("jackson-core")
+                .symbolProcess(listOf(JsonSymbolProcessorProvider()), listOf(DtoWith31Fields::class))
+        )
         cl.reader(DtoWith31Fields::class.java)
     }
 
     @Test
     fun test32Field() {
-        val cl = JsonClassLoader(symbolProcess(listOf(JsonSymbolProcessorProvider()), listOf(DtoWith32Fields::class)))
+        val cl = JsonClassLoader(
+            KotlinCompilation()
+                .withPartialClasspath()
+                .withClasspathJar("jackson-core")
+                .symbolProcess(listOf(JsonSymbolProcessorProvider()), listOf(DtoWith32Fields::class))
+        )
         cl.reader(DtoWith32Fields::class.java)
     }
 

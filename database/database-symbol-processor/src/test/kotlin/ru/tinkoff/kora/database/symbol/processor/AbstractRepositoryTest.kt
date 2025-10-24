@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.symbol.processor
 
 import org.intellij.lang.annotations.Language
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 
 abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
 
@@ -14,7 +15,10 @@ abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun compile(connectionFactory: Any, arguments: List<*>, @Language("kotlin") vararg sources: String): TestObject {
-        compile0(listOf(RepositorySymbolProcessorProvider()), *sources)
+        KotlinCompilation()
+            .withPartialClasspath()
+            .withClasspathJar("java-driver-core")
+            .compile(listOf(RepositorySymbolProcessorProvider()), *sources)
             .assertSuccess()
 
         val realArgs = arrayOfNulls<Any>(arguments.size + 1)
