@@ -39,7 +39,6 @@ class JdbcSuspendResultsTest {
         ctx.addMock(TypeRef.of(JdbcResultSetMapper::class.java, TypeRef.of(Optional::class.java, Int::class.javaObjectType)))
 
         val repositoryClass = KotlinCompilation()
-            .withPartialClasspath()
             .withSrc("src/test/kotlin/ru/tinkoff/kora/database/symbol/processor/jdbc/repository/AllowedSuspendResultsRepository.kt")
             .withProcessor(RepositorySymbolProcessorProvider())
             .compile()

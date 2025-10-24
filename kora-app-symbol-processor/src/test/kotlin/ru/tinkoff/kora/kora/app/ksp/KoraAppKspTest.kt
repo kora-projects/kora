@@ -399,7 +399,6 @@ class KoraAppKspTest {
     @Test
     fun appPart() {
         val kc1 = KotlinCompilation()
-            .withPartialClasspath()
             .withProcessors(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()))
             .withSrc("src/test/kotlin/${AppWithAppPart::class.qualifiedName!!.replace(".", "/")}.kt")
 
@@ -413,7 +412,6 @@ class KoraAppKspTest {
         val targetFile2 = "src/test/kotlin/${AppWithAppPartApp::class.java.name.replace('.', '/')}.kt"
 
         val kc2 = KotlinCompilation()
-            .withPartialClasspath()
             .withProcessors(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()))
             .withSrc("src/test/kotlin/${AppWithAppPartApp::class.java.name.replace('.', '/')}.kt")
             .apply { classpathEntries.add(kc1.classOutputDir) }
@@ -426,7 +424,6 @@ class KoraAppKspTest {
     @Test
     fun appPartAndAppSubmodule() {
         val kc1 = KotlinCompilation()
-            .withPartialClasspath()
             .withProcessors(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()))
             .withSrc("src/test/kotlin/${AppWithAppPart::class.qualifiedName!!.replace(".", "/")}.kt")
             .apply { processorsOptions["kora.app.submodule.enabled"] = "true" }
@@ -442,7 +439,6 @@ class KoraAppKspTest {
 
 
         val kc2 = KotlinCompilation()
-            .withPartialClasspath()
             .withProcessors(listOf(KoraAppProcessorProvider(), KoraSubmoduleProcessorProvider()))
             .withSrc("src/test/kotlin/${AppWithAppPartApp::class.java.name.replace('.', '/')}.kt")
             .apply { classpathEntries.add(kc1.classOutputDir) }
@@ -483,7 +479,6 @@ class KoraAppKspTest {
             val graphClass = targetClass.qualifiedName + "Graph"
             val processorsArray = (processorProviders + KoraAppProcessorProvider())
             val classLoader = KotlinCompilation()
-                .withPartialClasspath()
                 .symbolProcess(processorsArray, listOf(targetClass))
             val clazz = try {
                 classLoader.loadClass(graphClass)

@@ -21,4 +21,6 @@ abstract class AbstractCassandraRepositoryTest : AbstractRepositoryTest() {
     }
 
     protected fun compile(arguments: List<*>, @Language("kotlin") vararg sources: String) = compile(executor, arguments, *sources)
+
+
 }

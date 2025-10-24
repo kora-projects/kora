@@ -18,16 +18,7 @@ abstract class AbstractKafkaListenerAnnotationProcessorTest : AbstractSymbolProc
             """.trimIndent()
     }
 
-//
-//    protected fun compile(@Language("kotlin") vararg sources: String) {
-//        super.compile0(listOf(KafkaListenerSymbolProcessorProvider()), *sources)
-//        compileResult.assertSuccess()
-////        val kafkaListenerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListener"))
-////        val kafkaListenerModule = Objects.requireNonNull(compileResult.loadClass("KafkaListenerModule"))
-//    }
-
     fun compile(@Language("kotlin") vararg sources: String) = KotlinCompilation()
-        .withPartialClasspath()
         .withClasspathJar("kafka-clients")
         .compile(listOf(KafkaListenerSymbolProcessorProvider()), *sources).apply {
             compileResult.assertSuccess()

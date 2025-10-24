@@ -16,7 +16,6 @@ abstract class AbstractRepositoryTest : AbstractSymbolProcessorTest() {
 
     protected fun compile(connectionFactory: Any, arguments: List<*>, @Language("kotlin") vararg sources: String): TestObject {
         KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("java-driver-core")
             .compile(listOf(RepositorySymbolProcessorProvider()), *sources)
             .assertSuccess()

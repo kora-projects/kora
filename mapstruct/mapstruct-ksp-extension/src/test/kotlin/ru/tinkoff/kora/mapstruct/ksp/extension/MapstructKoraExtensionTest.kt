@@ -37,7 +37,6 @@ class MapstructKoraExtensionTest : AbstractSymbolProcessorTest() {
 
         patchedSources[sources.size] = main
         KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("mapstruct")
             .compile(listOf(KoraAppProcessorProvider()), *patchedSources)
         compileResult.assertSuccess()

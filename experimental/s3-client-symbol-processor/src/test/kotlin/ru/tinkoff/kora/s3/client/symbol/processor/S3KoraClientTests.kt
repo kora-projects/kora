@@ -21,7 +21,6 @@ class S3KoraClientTests : AbstractSymbolProcessorTest() {
     }
 
     fun compile0(vararg src: String) = KotlinCompilation()
-        .withPartialClasspath()
         .withClasspathJar("s3")
         .compile(listOf(S3ClientSymbolProcessorProvider()), *src)
 

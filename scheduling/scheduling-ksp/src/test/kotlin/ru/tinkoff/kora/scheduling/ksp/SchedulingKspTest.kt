@@ -39,7 +39,6 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
 
     private fun <T : Any> process(type: KClass<T>) {
         val cl = KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("quartz")
             .symbolProcess(listOf(SchedulingKspProvider()), listOf(type))
 
@@ -50,7 +49,6 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
     @Test
     fun testDisallowConcurrentExecutionOnClass() {
         val cr = KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("quartz")
             .compile(
                 listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
@@ -70,7 +68,6 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
     @Test
     fun testDisallowConcurrentExecutionOnMethod() {
         val cr = KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("quartz")
             .compile(
                 listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """

@@ -17,7 +17,6 @@ abstract class AbstractKoraAppProcessorTest : AbstractSymbolProcessorTest() {
 
     protected fun compile(@Language("kotlin") vararg sources: String): ApplicationGraphDraw {
         KotlinCompilation()
-            .withPartialClasspath()
             .compile(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), *sources)
             .assertSuccess()
 

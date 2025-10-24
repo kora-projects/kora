@@ -19,7 +19,6 @@ class KoraBigGraphTest : AbstractSymbolProcessorTest() {
         }
         sb.append("}\n")
         KotlinCompilation()
-            .withPartialClasspath()
             .compile(listOf(KoraAppProcessorProvider()), sb.toString())
             .assertSuccess()
 

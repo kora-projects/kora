@@ -69,7 +69,6 @@ open class AppRunner : Assertions() {
 
     private fun getClassLoader(classes: List<KClass<*>>): ClassLoader {
         return KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("config")
             .symbolProcess(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), classes)
     }

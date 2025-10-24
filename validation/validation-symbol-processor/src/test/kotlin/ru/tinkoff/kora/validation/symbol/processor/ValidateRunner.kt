@@ -76,7 +76,6 @@ open class ValidateRunner : Assertions(),
                     ValidateFlow::class,
                 )
                 classLoader = KotlinCompilation()
-                    .withPartialClasspath()
                     .withClasspathJar("reactor-core")
                     .symbolProcess(listOf(ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()), classes)
             }

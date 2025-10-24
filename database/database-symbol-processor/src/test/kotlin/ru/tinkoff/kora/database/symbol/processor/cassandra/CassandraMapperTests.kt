@@ -8,12 +8,13 @@ import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 
 class CassandraMapperTests : AbstractCassandraRepositoryTest() {
 
     @Test
     fun testRowMapperGenerated() {
-        compile0(
+        KotlinCompilation().withClasspathJar("java-driver-core").compile(
             listOf(CassandraEntitySymbolProcessorProvider()),
             """
             @EntityCassandra
@@ -42,7 +43,7 @@ class CassandraMapperTests : AbstractCassandraRepositoryTest() {
 
     @Test
     fun testResultSetMapperGenerated() {
-        compile0(
+        KotlinCompilation().withClasspathJar("java-driver-core").compile(
             listOf(CassandraEntitySymbolProcessorProvider()),
             """
             @EntityCassandra
@@ -76,7 +77,7 @@ class CassandraMapperTests : AbstractCassandraRepositoryTest() {
 
     @Test
     fun testListResultSetMapperGenerated() {
-        compile0(
+        KotlinCompilation().withClasspathJar("java-driver-core").compile(
             listOf(CassandraEntitySymbolProcessorProvider()),
             """
             @EntityCassandra

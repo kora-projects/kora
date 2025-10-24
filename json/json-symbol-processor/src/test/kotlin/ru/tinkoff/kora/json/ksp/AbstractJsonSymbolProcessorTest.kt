@@ -24,7 +24,6 @@ abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {
 
     protected open fun compile(@Language("kotlin") vararg sources: String) {
         KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("jackson-core")
             .compile(listOf(JsonSymbolProcessorProvider(), KoraAppProcessorProvider()), *sources)
             .assertSuccess()

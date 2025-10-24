@@ -39,23 +39,6 @@ class KotlinCompilation {
     constructor() {
         baseDir.absolute().deleteRecursively()
         baseDir.absolute().createDirectories()
-    }
-
-    fun withProcessor(p: SymbolProcessorProvider) = apply { processors.add(p) }
-    fun withProcessors(p: List<SymbolProcessorProvider>) = apply { processors.addAll(p) }
-    fun withSrc(p: Path) = apply { srcFiles.add(p) }
-    fun withSrc(p: List<Path>) = apply { srcFiles.addAll(p) }
-    fun withSrc(p: String) = apply { srcFiles.add(Path.of(p)) }
-    fun withGeneratedSourcesDir(kotlinSourcesDir: Path) = apply { outputDir = kotlinSourcesDir }
-    fun withJavaSrcs(javaFiles: List<Path>) = apply { javaSrcFiles.addAll(javaFiles) }
-
-    fun withFullClasspath() = apply {
-        classpath.clear()
-        classpath.addAll(TestUtils.classpath.map { File(it) })
-    }
-
-    fun withPartialClasspath() = apply {
-        classpath.clear()
         Path.of("").toAbsolutePath().resolve("build", "libs").toAbsolutePath().walk().map { it.toFile() }.forEach { classpath.add(it) }
         classpath.add(Path.of("").toAbsolutePath().resolve("build", "classes", "kotlin", "test").toAbsolutePath().toFile())
         classpath.add(Path.of("").toAbsolutePath().resolve("build", "classes", "java", "test").toAbsolutePath().toFile())
@@ -68,8 +51,17 @@ class KotlinCompilation {
             .withClasspathJar("kotlinx-coroutines-jdk8")
             .withClasspathJar("slf4j-api")
             .withClasspathJar("mockito-core")
+            .withClasspathJar("jackson-core")
             .withClasspathRegex(".*/build/libs/.*jar")
     }
+
+    fun withProcessor(p: SymbolProcessorProvider) = apply { processors.add(p) }
+    fun withProcessors(p: List<SymbolProcessorProvider>) = apply { processors.addAll(p) }
+    fun withSrc(p: Path) = apply { srcFiles.add(p) }
+    fun withSrc(p: List<Path>) = apply { srcFiles.addAll(p) }
+    fun withSrc(p: String) = apply { srcFiles.add(Path.of(p)) }
+    fun withGeneratedSourcesDir(kotlinSourcesDir: Path) = apply { outputDir = kotlinSourcesDir }
+    fun withJavaSrcs(javaFiles: List<Path>) = apply { javaSrcFiles.addAll(javaFiles) }
 
     fun withClasspathRegex(regex: String) = apply {
         val p = regex.toRegex()

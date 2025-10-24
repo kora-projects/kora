@@ -20,7 +20,6 @@ class S3AwsSuspendClientTests : AbstractSymbolProcessorTest() {
             """.trimIndent()
     }
     fun compile0(vararg src: String) = KotlinCompilation()
-        .withPartialClasspath()
         .withClasspathJar("s3")
         .withClasspathJar("aws-core")
         .withClasspathJar("sdk-core")

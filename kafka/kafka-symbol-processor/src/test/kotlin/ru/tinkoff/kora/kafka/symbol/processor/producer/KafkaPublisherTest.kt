@@ -28,9 +28,7 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         """.trimIndent()
     }
 
-//    fun compile0(@Language("kotlin") vararg sources: String) = compile0(listOf(KafkaPublisherSymbolProcessorProvider()), *sources)
     fun compile0(@Language("kotlin") vararg sources: String) = KotlinCompilation()
-        .withPartialClasspath()
         .withClasspathJar("kafka-clients")
         .compile(listOf(KafkaPublisherSymbolProcessorProvider()), *sources)
 

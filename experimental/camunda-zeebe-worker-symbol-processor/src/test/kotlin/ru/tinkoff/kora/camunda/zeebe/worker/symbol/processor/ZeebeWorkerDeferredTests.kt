@@ -21,7 +21,6 @@ class ZeebeWorkerDeferredTests : AbstractSymbolProcessorTest() {
     }
 
     fun compile(@Language("kotlin") vararg sources: String) = KotlinCompilation()
-        .withPartialClasspath()
         .withClasspathJar("zeebe-client-java")
         .compile(listOf(ZeebeWorkerSymbolProcessorProvider()), *sources)
 

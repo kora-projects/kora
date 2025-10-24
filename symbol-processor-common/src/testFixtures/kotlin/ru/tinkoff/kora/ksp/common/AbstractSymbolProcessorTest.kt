@@ -129,9 +129,6 @@ abstract class AbstractSymbolProcessorTest {
         val testMethod: Method = testInfo.testMethod.get()
         val commonImports = commonImports()
         val kc = KotlinCompilation()
-            .withPartialClasspath()
-            .withClasspathJar("java-driver-core")
-            .withClasspathJar("jackson-core")
             .withProcessors(processors)
             .apply { processorsOptions.putAll(compileOptions) }
         val sourceList = sequenceOf(*sources)

@@ -86,7 +86,6 @@ fun symbolProcess(processors: List<SymbolProcessorProvider>, targetClasses: List
         }
         .map { Path.of(it) }
     return KotlinCompilation()
-        .withPartialClasspath()
         .withProcessors(processors)
         .withSrc(srcFilesPath)
         .apply { processorsOptions.putAll(params) }

@@ -27,7 +27,6 @@ abstract class AbstractValidationSymbolProcessorTest : AbstractSymbolProcessorTe
     }
 
     fun compile(@Language("kotlin") vararg sources: String) = KotlinCompilation()
-        .withPartialClasspath()
         .withClasspathJar("reactor-core")
         .compile(listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()), *sources)
 }

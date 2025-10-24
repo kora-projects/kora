@@ -28,7 +28,6 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
             }
             """.trimIndent()
         KotlinCompilation()
-            .withPartialClasspath()
             .withClasspathJar("grpc-api")
             .withClasspathJar("grpc-stub")
             .withClasspathJar("grpc-kotlin-stub")
