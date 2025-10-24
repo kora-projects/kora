@@ -19,6 +19,7 @@ object CommonClassNames {
     val flow = ClassName("kotlinx.coroutines.flow", "Flow")
     val list = List::class.asClassName()
     val future = Future::class.asClassName()
+    val completableFuture = CompletableFuture::class.asClassName()
     val synchronousSink = ClassName("reactor.core.publisher", "SynchronousSink")
     val await = MemberName("kotlinx.coroutines.future", "await")
     val flowBuilder = MemberName("kotlinx.coroutines.flow", "flow")
@@ -64,6 +65,7 @@ object CommonClassNames {
     val isNotEmpty = MemberName("kotlin.collections", "isNotEmpty")
 
     val telemetryConfig = ClassName("ru.tinkoff.kora.telemetry.common", "TelemetryConfig")
+    val meterRegistry = ClassName("io.micrometer.core.instrument", "MeterRegistry")
 
     fun KSType.isList(): Boolean {
         val className = this.declaration.let {
@@ -159,7 +161,7 @@ object CommonClassNames {
     fun KSType.isFlux() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == flux.canonicalName
     fun KSType.isFlow() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == flow.canonicalName
     fun KSType.isPublisher() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == publisher.canonicalName
-    fun KSType.isFuture() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == future.canonicalName
+    fun KSType.isFuture() = declaration is KSClassDeclaration && (declaration.qualifiedName!!.asString() == future.canonicalName)
     fun KSType.isDeferred() = declaration is KSClassDeclaration && declaration.qualifiedName!!.asString() == deferred.canonicalName
 
     fun KSType.isCompletionStage(): Boolean {

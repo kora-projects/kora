@@ -52,7 +52,8 @@ public final class KafkaClassNames {
     public static final ClassName publisherConfig = ClassName.get("ru.tinkoff.kora.kafka.common.producer", "KafkaPublisherConfig");
     public static final ClassName publisherTransactionalConfig = ClassName.get("ru.tinkoff.kora.kafka.common.producer", "KafkaPublisherConfig", "TransactionConfig");
     public static final ClassName publisherTopicConfig = ClassName.get("ru.tinkoff.kora.kafka.common.producer", "KafkaPublisherConfig", "TopicConfig");
-    public static final ClassName producerTelemetryFactory = ClassName.get("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaProducerTelemetryFactory");
-    public static final ClassName producerTelemetry = ClassName.get("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaProducerTelemetry");
+    public static final ClassName publisherTelemetryConfig = ClassName.get("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaPublisherTelemetryConfig");
+    public static final ClassName abstractPublisher = ClassName.get("ru.tinkoff.kora.kafka.common.producer", "AbstractPublisher");
+    public static final ClassName producerTelemetryFactory = ClassName.get("ru.tinkoff.kora.kafka.common.producer.telemetry", "KafkaPublisherTelemetryFactory");
     public static final ClassName generatedPublisher = ClassName.get("ru.tinkoff.kora.kafka.common.producer", "GeneratedPublisher");
 }

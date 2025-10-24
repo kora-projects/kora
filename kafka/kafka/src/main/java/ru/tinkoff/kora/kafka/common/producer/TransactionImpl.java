@@ -1,19 +1,20 @@
 package ru.tinkoff.kora.kafka.common.producer;
 
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.producer.Producer;import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.clients.producer.Producer;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
-import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTelemetry;
+import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
 
-import jakarta.annotation.Nullable;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicReference<TransactionImpl.TxState> implements TransactionalPublisher.Transaction<P> {
     private final P publisher;
     private final TransactionalPublisherImpl<P> pool;
-    private final KafkaProducerTelemetry.KafkaProducerTransactionTelemetryContext txTelemetry;
+    private final KafkaPublisherTelemetry.KafkaPublisherTransactionObservation observation;
 
     public enum TxState {
         INIT, COMMIT, ABORT
@@ -21,7 +22,7 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
 
     public TransactionImpl(P publisher, TransactionalPublisherImpl<P> pool) {
         this.publisher = publisher;
-        this.txTelemetry = publisher.telemetry().tx();
+        this.observation = publisher.telemetry().observeTx();
         this.pool = pool;
         this.set(TxState.INIT);
     }
@@ -41,7 +42,7 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
     public void sendOffsetsToTransaction(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) {
         if (this.get() == TxState.INIT) {
             this.publisher.producer().sendOffsetsToTransaction(offsets, groupMetadata);
-            this.txTelemetry.sendOffsetsToTransaction(offsets, groupMetadata);
+            this.observation.observeOffsets(offsets, groupMetadata);
         } else {
             throw new IllegalStateException("Offsets cannot be sent to transaction from state " + this.get());
         }
@@ -50,8 +51,28 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
     @Override
     public void abort(@Nullable Throwable t) {
         if (this.compareAndSet(TxState.INIT, TxState.ABORT)) {
-            this.publisher.producer().abortTransaction();
-            this.txTelemetry.rollback(t);
+            try {
+                this.publisher.producer().abortTransaction();
+                if (t != null) {
+                    observation.observeError(t);
+                }
+                observation.observeRollback(t);
+            } catch (KafkaException e) {
+                if (t != null) {
+                    e.addSuppressed(t);
+                }
+                this.observation.observeError(e);
+                this.pool.deleteFromPool(this.publisher);
+                try {
+                    this.publisher.producer().close();
+                } catch (Exception ex) {
+                    e.addSuppressed(ex);
+                }
+                throw e;
+            } finally {
+                this.observation.end();
+            }
+            this.pool.returnToPool(this.publisher);
         } else {
             throw new IllegalStateException("Transaction cannot be aborted from state " + this.get());
         }
@@ -67,8 +88,9 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
         if (this.compareAndSet(TxState.INIT, TxState.COMMIT)) {
             try {
                 this.publisher.producer().commitTransaction();
-                txTelemetry.commit();
+                observation.observeCommit();
             } catch (KafkaException e) {
+                this.observation.observeError(e);
                 this.pool.deleteFromPool(this.publisher);
                 try {
                     this.publisher.producer().close();
@@ -76,8 +98,10 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
                     e.addSuppressed(ex);
                 }
                 throw e;
+            } finally {
+                this.observation.end();
             }
+            this.pool.returnToPool(this.publisher);
         }
-        this.pool.returnToPool(this.publisher);
     }
 }

@@ -56,4 +56,5 @@ public class CommonClassNames {
     public static final ClassName configValueExtractionException = ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException");
 
     public static final ClassName telemetryConfig = ClassName.get("ru.tinkoff.kora.telemetry.common", "TelemetryConfig");
+    public static final ClassName meterRegistry = ClassName.get("io.micrometer.core.instrument", "MeterRegistry");
 }

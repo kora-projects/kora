@@ -43,6 +43,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
+@SuppressWarnings({"unchecked", "rawtypes"})
 public abstract class AbstractKafkaListenerAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     protected Consumer consumer = Mockito.mock(Consumer.class);
     protected KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext recordTelemetry = Mockito.mock(KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext.class);
