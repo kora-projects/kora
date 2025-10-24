@@ -52,8 +52,10 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
     public RuntimeException compilationException() {
         var diagnosticMap = new HashMap<Path, Map<Long, List<Diagnostic<? extends JavaFileObject>>>>();
         for (var d : this.diagnostic) {
-            var map = diagnosticMap.computeIfAbsent(Path.of(d.getSource().toUri()).toAbsolutePath(), o -> new HashMap<>());
-            map.computeIfAbsent(d.getLineNumber(), l -> new ArrayList<>()).add(d);
+            if (d.getSource() != null) {
+                var map = diagnosticMap.computeIfAbsent(Path.of(d.getSource().toUri()).toAbsolutePath(), o -> new HashMap<>());
+                map.computeIfAbsent(d.getLineNumber(), l -> new ArrayList<>()).add(d);
+            }
         }
 
         try {
@@ -61,12 +63,16 @@ public record CompileResult(String testPackage, List<Diagnostic<? extends JavaFi
             var generatedSources = Files.walk(Path.of("build/in-test-generated/sources")).filter(Files::isRegularFile).toList();
             for (var src : generatedSources) {
                 var diagnostic = diagnosticMap.getOrDefault(src.toAbsolutePath(), Map.of());
-                j.add(src.toString()).add(javaFileToString(src, diagnostic));
+                if (!diagnostic.isEmpty()) {
+                    j.add(src.toString()).add(javaFileToString(src, diagnostic));
+                }
             }
             var sources = Files.walk(Paths.get(".", "build", "in-test-generated", "sources")).filter(Files::isRegularFile).toList();
             for (var javaFileObject : sources) {
                 var diagnostic = diagnosticMap.getOrDefault(javaFileObject, Map.of());
-                j.add(javaFileObject.toString()).add(javaFileToString(javaFileObject, diagnostic));
+                if (!diagnostic.isEmpty()) {
+                    j.add(javaFileObject.toString()).add(javaFileToString(javaFileObject, diagnostic));
+                }
             }
 
             var errors = this.diagnostic.stream()

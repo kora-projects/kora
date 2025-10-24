@@ -9,7 +9,6 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
-import com.squareup.kotlinpoet.jvm.volatile
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -19,7 +18,6 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaTopicAnnotati
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.producerTelemetryFactory
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.serializer
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.telemetryProducerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.utils.KafkaPublisherUtils
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
@@ -27,9 +25,12 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.nextControlFlow
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.observe
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
@@ -132,6 +133,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
         val funBuilder = FunSpec.builder(publisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_PublisherFactory")
             .addParameter("telemetryFactory", producerTelemetryFactory)
+            .addParameter("meterRegistry", CommonClassNames.meterRegistry)
             .addParameter(config)
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
             .returns(returnType)
@@ -146,6 +148,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             addStatement("properties.putAll(additionalProperties)")
             add("%T(telemetryFactory, config.telemetry(), properties", aopProxy?.toClassName() ?: implementationTypeName).indent()
             topicConfig?.let { add(", topicConfig") }
+            add(", meterRegistry")
             val parameters = HashMap<TypeWithTag, String>()
             val counter = AtomicInteger(0)
             for (method in publishMethods) {
@@ -206,73 +209,19 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
         val b = classDeclaration.extendsKeepAop(implementationName, resolver)
             .generated(KafkaPublisherSymbolProcessor::class)
-            .addOriginatingKSFile(classDeclaration)
-            .addSuperinterface(KafkaClassNames.generatedPublisher)
-            .addProperty(PropertySpec.builder("telemetryFactory", producerTelemetryFactory, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryFactory").build())
-            .addProperty(PropertySpec.builder("telemetryConfig", CommonClassNames.telemetryConfig, KModifier.PRIVATE, KModifier.FINAL).initializer("telemetryConfig").build())
-            .addProperty(PropertySpec.builder("driverProperties", Properties::class, KModifier.PRIVATE, KModifier.FINAL).initializer("driverProperties").build())
+            .superclass(KafkaClassNames.abstractPublisher)
+            .addSuperclassConstructorParameter("driverProperties")
+            .addSuperclassConstructorParameter("telemetryConfig")
+            .addSuperclassConstructorParameter("telemetryFactory.get(%S, telemetryConfig, driverProperties)", configPath)
+            .addSuperclassConstructorParameter("meterRegistry")
             .apply { topicConfig?.let { addProperty(PropertySpec.builder("topicConfig", it, KModifier.PRIVATE, KModifier.FINAL).initializer("topicConfig").build()) } }
-            .addProperty(
-                PropertySpec.builder("delegate", KafkaClassNames.producer.parameterizedBy(BYTE_ARRAY, BYTE_ARRAY).copy(true), KModifier.PRIVATE)
-                    .mutable()
-                    .volatile()
-                    .initializer("null")
-                    .build()
-            )
-            .addProperty(
-                PropertySpec.builder("telemetry", KafkaClassNames.producerTelemetry.copy(true), KModifier.PRIVATE)
-                    .mutable()
-                    .volatile()
-                    .initializer("null")
-                    .build()
-            )
-            .addFunction(
-                FunSpec.builder("init")
-                    .addModifiers(KModifier.OVERRIDE)
-                    .addCode(
-                        CodeBlock.builder()
-                            .beginControlFlow("try")
-                            .addStatement("this.delegate = %T(driverProperties, %T(), %T())", KafkaClassNames.kafkaProducer, KafkaClassNames.byteArraySerializer, KafkaClassNames.byteArraySerializer)
-                            .addStatement("this.telemetry = this.telemetryFactory.get(%S, this.telemetryConfig, this.delegate, driverProperties)", configPath)
-                            .nextControlFlow("catch (e: %T)", Exception::class)
-                            .addStatement("throw %T(%S + e.message, e)", RuntimeException::class, "Kafka Publisher '$configPath' failed to start, due to: ")
-                            .endControlFlow()
-                            .build()
-                    )
-                    .build()
-            )
-            .addFunction(
-                FunSpec.builder("release")
-                    .addModifiers(KModifier.OVERRIDE)
-                    .controlFlow("delegate?.let") {
-                        addStatement("it.close()")
-                        addStatement("delegate = null")
-                        controlFlow("telemetry?.let") {
-                            addStatement("it.close()")
-                            addStatement("telemetry = null")
-                        }
-                    }.build()
-            )
-            .addFunction(
-                FunSpec.builder("telemetry")
-                    .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
-                    .returns(KafkaClassNames.producerTelemetry)
-                    .addStatement("return telemetry!!")
-                    .build()
-            )
-            .addFunction(
-                FunSpec.builder("producer")
-                    .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
-                    .returns(KafkaClassNames.producer.parameterizedBy(BYTE_ARRAY, BYTE_ARRAY))
-                    .addStatement("return this.delegate!!")
-                    .build()
-            )
 
         val constructorBuilder = FunSpec.constructorBuilder()
             .addParameter("telemetryFactory", producerTelemetryFactory)
-            .addParameter("telemetryConfig", CommonClassNames.telemetryConfig)
+            .addParameter("telemetryConfig", KafkaClassNames.publisherTelemetryConfig)
             .addParameter("driverProperties", Properties::class)
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
+            .addParameter("meterRegistry", CommonClassNames.meterRegistry)
 
         data class TypeWithTag(val type: TypeName, val tag: Set<String>)
 
@@ -320,9 +269,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         FileSpec.builder(packageName, implementationName).addType(b.build()).build().writeTo(env.codeGenerator, false)
     }
 
-    private val suspendCancellableCoroutine = MemberName("kotlinx.coroutines", "suspendCancellableCoroutine")
-    private val resume = MemberName("kotlin.coroutines", "resume")
-    private val resumeWithException = MemberName("kotlin.coroutines", "resumeWithException")
+    private val await = MemberName("kotlinx.coroutines.future", "await")
 
     private fun generatePublisherExecutableMethod(
         publishMethod: KSFunctionDeclaration,
@@ -334,73 +281,70 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val b = publishMethod.overridingKeepAop(resolver)
         if (publishData.recordVar != null) {
             val record = publishData.recordVar.name?.asString().toString()
-            b.addStatement("val _headers = %N.headers()", record)
-            b.addStatement("val _key = %N.serialize(%N.topic(), _headers, %N.key())", keyParserName!!, record, record)
-            b.addStatement("val _value = %N.serialize(%N.topic(), _headers, %N.value())", valueParserName, record, record)
-            b.addStatement("val _record = %T(%N.topic(), %N.partition(), %N.timestamp(), _key, _value, _headers)", producerRecord, record, record, record)
-            b.addStatement("var _telemetryRecord = %T(%N.key(), %N.value(), _record)", telemetryProducerRecord, record, record)
+            b.addStatement("val _topic = %N.topic()", record)
         } else {
-            require(publishData.valueVar != null)
             b.addStatement("val _topic = this.topicConfig.%N.topic()", topicVariable)
-            b.addStatement("val _partition = this.topicConfig.%N.partition()", topicVariable)
-            if (publishData.headersVar == null) {
-                b.addStatement("val _headers = %T()", KafkaClassNames.recordHeaders)
-            } else {
-                b.addStatement("val _headers = %N", publishData.headersVar.name?.asString().toString())
-            }
-            if (publishData.keyVar == null) {
-                b.addStatement("val _key: ByteArray? = null")
-            } else {
-                b.addStatement("val _key = %N.serialize(_topic, _headers, %N)", keyParserName!!, publishData.keyVar.name?.asString().toString())
-            }
-            b.addStatement("val _value = %N.serialize(_topic, _headers, %N)", valueParserName, publishData.valueVar.name?.asString().toString())
-            b.addStatement("val _record = %T(_topic, _partition, null, _key, _value, _headers)", producerRecord)
-            if (publishData.keyVar == null) {
-                b.addStatement("var _telemetryRecord = %T(_key, %N, _record)", telemetryProducerRecord, publishData.valueVar.name?.asString().toString())
-            } else {
-                b.addStatement(
-                    "var _telemetryRecord = %T(%N, %N, _record)",
-                    telemetryProducerRecord,
-                    publishData.keyVar.name?.asString().toString(),
-                    publishData.valueVar.name?.asString().toString(),
-                )
-            }
         }
-        b.addStatement("val _tctx = this.telemetry!!.record(_telemetryRecord)")
-
-        if (publishMethod.isSuspend()) {
-            b.controlFlow("return %M { _cont ->", suspendCancellableCoroutine) {
-                controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
-                    addStatement("_tctx.onCompletion(_meta, _ex)")
-                    if (publishData.callback != null) {
-                        addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
-                    }
+        val returnType = publishMethod.returnType!!.toTypeName()
+        b.addStatement("val _observation = this.telemetry.observeSend(_topic)")
+        b.addCode("return ")
+        val observeType = if (publishMethod.isSuspend()) CommonClassNames.completableFuture.parameterizedBy(returnType) else returnType
+        b.observe("_observation", observeType) {
+            if (publishData.recordVar != null) {
+                val record = publishData.recordVar.name?.asString().toString()
+                addStatement("_observation.observeData(%N.key(), %N.value())", record, record);
+                addStatement("val _headers = %N.headers()", record)
+                addStatement("val _key = %N.serialize(%N.topic(), _headers, %N.key())", keyParserName!!, record, record)
+                addStatement("val _value = %N.serialize(%N.topic(), _headers, %N.value())", valueParserName, record, record)
+                addStatement("val _record = %T(%N.topic(), %N.partition(), %N.timestamp(), _key, _value, _headers)", producerRecord, record, record, record)
+            } else {
+                require(publishData.valueVar != null)
+                if (publishData.keyVar != null) {
+                    addStatement("_observation.observeData(%N, %N)", publishData.keyVar.name!!.asString(), publishData.valueVar.name!!.asString())
+                } else {
+                    addStatement("_observation.observeData(null, %N)", publishData.valueVar.name!!.asString())
+                }
+                addStatement("val _partition = this.topicConfig.%N.partition()", topicVariable)
+                if (publishData.headersVar == null) {
+                    addStatement("val _headers = %T()", KafkaClassNames.recordHeaders)
+                } else {
+                    addStatement("val _headers = %N", publishData.headersVar.name?.asString().toString())
+                }
+                if (publishData.keyVar == null) {
+                    addStatement("val _key: ByteArray? = null")
+                } else {
+                    addStatement("val _key = %N.serialize(_topic, _headers, %N)", keyParserName!!, publishData.keyVar.name!!.asString())
+                }
+                addStatement("val _value = %N.serialize(_topic, _headers, %N)", valueParserName, publishData.valueVar.name!!.asString())
+                addStatement("val _record = %T(_topic, _partition, null, _key, _value, _headers)", producerRecord)
+            }
+            addStatement("_observation.observeRecord(_record)")
+            if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend()) {
+                addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
+            }
+            controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
+                addStatement("_observation.onCompletion(_meta, _ex)")
+                if (publishData.callback != null) {
+                    addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
+                }
+                if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend()) {
                     controlFlow("if (_ex != null)") {
-                        addStatement("_cont.%M(_ex)", resumeWithException)
-                        nextControlFlow("else")
-                        if (publishMethod.returnType!!.toTypeName() == UNIT) {
-                            addStatement("_cont.%M(%T)", resume, UNIT)
-                        } else {
-                            addStatement("_cont.%M(_meta)", resume)
+                        addStatement("_future.completeExceptionally(_ex)")
+                        nextControlFlow("else") {
+                            addStatement("_future.complete(_meta)")
                         }
                     }
                 }
             }
-        } else {
-            if (publishMethod.returnType!!.toTypeName() != UNIT) {
-                b.addCode("return ")
-            }
-            b.controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
-                addStatement("_tctx.onCompletion(_meta, _ex)")
-                if (publishData.callback != null) {
-                    addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
-                }
-            }
-            if (!publishMethod.isFuture()) {
-                b.addCode(".get()\n")
+            if (publishMethod.isCompletionStage() || publishMethod.isFuture() || publishMethod.isSuspend()) {
+                add("_future\n")
+            } else {
+                add(".get()\n")
             }
         }
-
+        if (publishMethod.isSuspend()) {
+            b.addCode(".%M()", await)
+        }
         return b.build()
     }
 

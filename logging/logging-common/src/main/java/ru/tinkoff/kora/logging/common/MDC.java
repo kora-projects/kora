@@ -3,22 +3,21 @@ package ru.tinkoff.kora.logging.common;
 import com.fasterxml.jackson.core.JsonGenerator;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
 
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class MDC {
 
-    private final ConcurrentHashMap<String, StructuredArgumentWriter> values;
+    private volatile Map<String, StructuredArgumentWriter> values;
 
     public static final ScopedValue<MDC> VALUE = ScopedValue.newInstance();
 
     public MDC() {
-        this.values = new ConcurrentHashMap<>();
+        this.values = Map.of();
     }
 
     public MDC(Map<String, StructuredArgumentWriter> values) {
-        this.values = new ConcurrentHashMap<>(values);
+        this.values = Map.copyOf(values);
     }
 
     public MDC fork() {
@@ -26,46 +25,53 @@ public class MDC {
     }
 
     public Map<String, StructuredArgumentWriter> values() {
-        return Collections.unmodifiableMap(this.values);
+        return this.values;
     }
 
     public void remove0(String key) {
-        this.values.remove(key);
+        if (this.values.containsKey(key)) {
+            var copy = new HashMap<>(this.values);
+            copy.remove(key);
+            this.values = Map.copyOf(copy);
+        }
     }
 
     public void put0(String key, StructuredArgumentWriter value) {
-        this.values.put(key, value);
+        var copy = new HashMap<>(this.values);
+        copy.put(key, value);
+        ;
+        this.values = Map.copyOf(copy);
     }
 
     public void put0(String key, Integer value) {
         if (value == null) {
-            this.values.put(key, JsonGenerator::writeNull);
+            this.put0(key, JsonGenerator::writeNull);
         } else {
-            this.values.put(key, gen -> gen.writeNumber(value));
+            this.put0(key, gen -> gen.writeNumber(value));
         }
     }
 
     public void put0(String key, Long value) {
         if (value == null) {
-            this.values.put(key, JsonGenerator::writeNull);
+            this.put0(key, JsonGenerator::writeNull);
         } else {
-            this.values.put(key, gen -> gen.writeNumber(value));
+            this.put0(key, gen -> gen.writeNumber(value));
         }
     }
 
     public void put0(String key, String value) {
         if (value == null) {
-            this.values.put(key, JsonGenerator::writeNull);
+            this.put0(key, JsonGenerator::writeNull);
         } else {
-            this.values.put(key, gen -> gen.writeString(value));
+            this.put0(key, gen -> gen.writeString(value));
         }
     }
 
     public void put0(String key, Boolean value) {
         if (value == null) {
-            this.values.put(key, JsonGenerator::writeNull);
+            this.put0(key, JsonGenerator::writeNull);
         } else {
-            this.values.put(key, gen -> gen.writeBoolean(value));
+            this.put0(key, gen -> gen.writeBoolean(value));
         }
     }
 

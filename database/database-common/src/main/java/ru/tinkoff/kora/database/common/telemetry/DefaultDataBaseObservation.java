@@ -40,7 +40,7 @@ public class DefaultDataBaseObservation implements DataBaseObservation {
     public void observeStatement() {
         this.statement = System.nanoTime();
         this.span.addEvent("statement");
-        if (this.config.logging().enabled() && log.isDebugEnabled()) {
+        if (log.isDebugEnabled()) {
             log.atDebug()
                 .addKeyValue("sqlQuery", StructuredArgument.value(gen -> {
                     gen.writeStartObject();
@@ -72,11 +72,9 @@ public class DefaultDataBaseObservation implements DataBaseObservation {
     public void end() {
         var took = System.nanoTime() - this.statement;
         this.span.addEvent("result");
-        if (this.config.metrics().enabled()) {
-            this.timer.withTag(ErrorAttributes.ERROR_TYPE.getKey(), error == null ? "" : error.getClass().getCanonicalName())
-                .record(took, TimeUnit.NANOSECONDS);
-        }
-        if (this.config.logging().enabled() && log.isDebugEnabled()) {
+        this.timer.withTag(ErrorAttributes.ERROR_TYPE.getKey(), error == null ? "" : error.getClass().getCanonicalName())
+            .record(took, TimeUnit.NANOSECONDS);
+        if (log.isDebugEnabled()) {
             log.atDebug()
                 .addKeyValue("sqlQuery", StructuredArgument.value(gen -> {
                     gen.writeStartObject();
@@ -91,11 +89,9 @@ public class DefaultDataBaseObservation implements DataBaseObservation {
                 }))
                 .log("Query executed");
         }
-        if (config.tracing().enabled()) {
-            if (error == null) {
-                this.span.setStatus(StatusCode.OK);
-            }
-            this.span.end();
+        if (error == null) {
+            this.span.setStatus(StatusCode.OK);
         }
+        this.span.end();
     }
 }

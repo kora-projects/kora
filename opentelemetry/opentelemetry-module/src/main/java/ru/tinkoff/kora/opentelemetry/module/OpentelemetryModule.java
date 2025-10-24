@@ -12,7 +12,6 @@ import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientT
 import ru.tinkoff.kora.opentelemetry.module.http.server.OpentelemetryHttpServerTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.jms.consumer.OpentelemetryJmsConsumerTracer;
 import ru.tinkoff.kora.opentelemetry.module.kafka.consumer.OpentelemetryKafkaConsumerTracerFactory;
-import ru.tinkoff.kora.opentelemetry.module.kafka.consumer.OpentelemetryKafkaProducerTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.s3.client.OpentelemetryS3ClientTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.s3.client.OpentelemetryS3KoraClientTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.scheduling.OpentelemetrySchedulingTracerFactory;
@@ -48,11 +47,6 @@ public interface OpentelemetryModule {
     @DefaultComponent
     default OpentelemetryKafkaConsumerTracerFactory opentelemetryKafkaConsumerTracerFactory(Tracer tracer) {
         return new OpentelemetryKafkaConsumerTracerFactory(tracer);
-    }
-
-    @DefaultComponent
-    default OpentelemetryKafkaProducerTracerFactory opentelemetryKafkaProducerTracerFactory(Tracer tracer) {
-        return new OpentelemetryKafkaProducerTracerFactory(tracer);
     }
 
     @DefaultComponent
