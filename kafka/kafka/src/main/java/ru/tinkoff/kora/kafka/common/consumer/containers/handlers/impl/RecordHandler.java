@@ -43,7 +43,7 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
                     var handler = this.handler.get();
                     for (var record : records) {
                         var recordCtx = ctx.get(record);
-                        ScopedValue.where(MDC.VALUE, new MDC(mdc.values()))
+                        ScopedValue.where(MDC.VALUE, mdc.fork())
                             .run(() -> {
                                 try {
                                     Throwable skippedException;

@@ -544,7 +544,8 @@ public class CommonUtils {
 
         final String name = dt.asElement().toString();
         return name.equals(CompletableFuture.class.getCanonicalName())
-            || name.equals(CompletionStage.class.getCanonicalName());
+            || name.equals(CompletionStage.class.getCanonicalName())
+            || name.equals(Future.class.getCanonicalName());
     }
 
     public static CodeBlock observe(String observationName, String observationMethod, Consumer<CodeBlock.Builder> body) {
