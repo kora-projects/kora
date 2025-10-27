@@ -2,7 +2,6 @@ package ru.tinkoff.kora.resilient.retry;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
@@ -26,7 +25,7 @@ final class KoraRetry implements Retry {
     private static class KoraEmptyRetryState implements RetryState {
 
         @Override
-        public @NotNull RetryStatus onException(@NotNull Throwable throwable) {
+        public @Nonnull RetryStatus onException(@Nonnull Throwable throwable) {
             return RetryStatus.REJECTED;
         }
 
@@ -114,7 +113,7 @@ final class KoraRetry implements Retry {
     }
 
     @Override
-    public <T> CompletionStage<T> retry(@NotNull Supplier<CompletionStage<T>> supplier) {
+    public <T> CompletionStage<T> retry(@Nonnull Supplier<CompletionStage<T>> supplier) {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Retry '{}' is disabled", name);
             return supplier.get();
