@@ -1,159 +1,94 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
-import jakarta.annotation.Nullable;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
+import io.micrometer.core.instrument.*;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
 
-public class DefaultKafkaConsumerTelemetry<K, V> implements KafkaConsumerTelemetry<K, V> {
+import java.util.ArrayList;
+import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
-    @Nullable
-    private final KafkaConsumerLogger<K, V> logger;
-    @Nullable
-    private final KafkaConsumerTracer tracing;
-    @Nullable
-    private final KafkaConsumerMetrics metrics;
-    private final String consumerName;
+public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
+    private final KafkaConsumerTelemetryConfig config;
+    private final Tracer tracer;
+    private final MeterRegistry meterRegistry;
+    private final ConcurrentHashMap<Tags, Timer> batchDurationCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Tags, Timer> recordDurationCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Tags, AtomicLong> lagCache = new ConcurrentHashMap<>();
+    private final ConsumerMetadata consumerMetadata;
 
-    public DefaultKafkaConsumerTelemetry(String consumerName,
-                                         @Nullable KafkaConsumerLogger<K, V> logger,
-                                         @Nullable KafkaConsumerTracer tracing,
-                                         @Nullable KafkaConsumerMetrics metrics) {
-        this.consumerName = consumerName;
-        this.logger = logger;
-        this.tracing = tracing;
-        this.metrics = metrics;
+    public DefaultKafkaConsumerTelemetry(KafkaConsumerTelemetryConfig config, Tracer tracer, MeterRegistry meterRegistry, String consumerName, Properties driverProperties) {
+        this.config = config;
+        this.tracer = tracer;
+        this.meterRegistry = meterRegistry;
+        this.consumerMetadata = new ConsumerMetadata(
+            consumerName,
+            driverProperties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG, ""),
+            driverProperties.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "")
+        );
+    }
+
+    public record ConsumerMetadata(String consumerName, String clientId, String groupId) {}
+
+    @Override
+    public MeterRegistry meterRegistry() {
+        return this.meterRegistry;
     }
 
     @Override
-    public KafkaConsumerRecordsTelemetryContext<K, V> get(ConsumerRecords<K, V> records) {
-        var start = System.nanoTime();
-        if (this.metrics != null) {
-            this.metrics.onRecordsReceived(records);
-        }
-        if (this.logger != null) {
-            this.logger.logRecords(records);
-        }
-        var span = this.tracing == null ? null : this.tracing.get(records);
+    public KafkaConsumerPollObservation observePoll() {
+        var span = this.createSpan();
+        var duration = this.createDuration();
 
-        return new DefaultKafkaConsumerRecordsTelemetryContext<>(
-            consumerName,
-            records,
-            this.logger,
-            this.metrics,
-            span,
-            start
-        );
+        return new DefaultKafkaConsumerPollObservation(this.config, this.recordDurationCache, this.tracer, this.meterRegistry, span, duration, this.consumerMetadata);
+    }
+
+    protected Meter.MeterProvider<Timer> createDuration() {
+        var builder = Timer.builder("messaging.process.batch.duration")
+            .serviceLevelObjectives(this.config.metrics().slo())
+            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
+            .tag(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), this.consumerMetadata.clientId())
+            .tag(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), this.consumerMetadata.groupId())
+            .tag("messaging.kafka.consumer.name", consumerMetadata.consumerName());
+        for (var e : this.config.metrics().tags().entrySet()) {
+            builder.tag(e.getKey(), e.getValue());
+        }
+        var provider = builder.withRegistry(this.meterRegistry);
+        return tags -> batchDurationCache.computeIfAbsent(Tags.of(tags), provider::withTags);
     }
 
     @Override
     public void reportLag(TopicPartition partition, long lag) {
-        if (this.metrics != null) {
-            this.metrics.reportLag(consumerName, partition, lag);
-        }
+        var tags = new ArrayList<Tag>(7);
+        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
+        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic()));
+        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(partition.partition())));
+        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), this.consumerMetadata.clientId()));
+        tags.add(Tag.of("messaging.kafka.consumer.name", this.consumerMetadata.consumerName()));
+
+        this.lagCache.computeIfAbsent(Tags.of(tags), t -> {
+            var l = new AtomicLong(0);
+            Gauge.builder("messaging.kafka.consumer.lag", l, AtomicLong::get)
+                .tags(t)
+                .register(meterRegistry);
+            return l;
+        }).set(lag);
     }
 
-    @Override
-    public KafkaConsumerTelemetryContext<K, V> get(Consumer<K, V> consumer) {
-        var metrics = this.metrics == null ? null : this.metrics.get(consumer);
-
-        return new DefaultKafkaConsumerTelemetryContext<>(metrics);
+    protected Span createSpan() {
+        var span = this.tracer.spanBuilder("kafka.poll")
+            .setSpanKind(SpanKind.CONSUMER)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
+            .setNoParent();
+        for (var e : this.config.tracing().attributes().entrySet()) {
+            span.setAttribute(e.getKey(), e.getValue());
+        }
+        return span.startSpan();
     }
 
-    private static final class DefaultKafkaConsumerTelemetryContext<K, V> implements KafkaConsumerTelemetryContext<K, V> {
-
-        private final KafkaConsumerMetrics.KafkaConsumerMetricsContext metrics;
-
-        public DefaultKafkaConsumerTelemetryContext(@Nullable KafkaConsumerMetrics.KafkaConsumerMetricsContext metrics) {
-            this.metrics = metrics;
-        }
-
-        @Override
-        public void close() {
-            if (this.metrics != null) {
-                this.metrics.close();
-            }
-        }
-    }
-
-    private static final class DefaultKafkaConsumerRecordsTelemetryContext<K, V> implements KafkaConsumerRecordsTelemetryContext<K, V> {
-        private final ConsumerRecords<K, V> records;
-        @Nullable
-        private final KafkaConsumerLogger<K, V> logger;
-        @Nullable
-        private final KafkaConsumerMetrics metrics;
-        @Nullable
-        private final KafkaConsumerTracer.KafkaConsumerRecordsSpan span;
-        private final String consumerName;
-        private final long start;
-
-        public DefaultKafkaConsumerRecordsTelemetryContext(String consumerName, ConsumerRecords<K, V> records, @Nullable KafkaConsumerLogger<K, V> logger, @Nullable KafkaConsumerMetrics metrics, @Nullable KafkaConsumerTracer.KafkaConsumerRecordsSpan span, long start) {
-            this.consumerName = consumerName;
-            this.records = records;
-            this.logger = logger;
-            this.metrics = metrics;
-            this.span = span;
-            this.start = start;
-        }
-
-        @Override
-        public KafkaConsumerRecordTelemetryContext<K, V> get(ConsumerRecord<K, V> record) {
-            var recordStart = System.nanoTime();
-            var recordSpan = this.span == null ? null : this.span.get(record);
-            if (this.logger != null) {
-                this.logger.logRecord(record);
-            }
-            return new DefaultKafkaConsumerRecordTelemetryContext<>(consumerName, record, recordStart, this.logger, this.metrics, recordSpan);
-        }
-
-        @Override
-        public void close(@Nullable Throwable ex) {
-            var duration = System.nanoTime() - this.start;
-            if (this.span != null) {
-                this.span.close(ex);
-            }
-            if (this.metrics != null) {
-                this.metrics.onRecordsProcessed(consumerName, this.records, duration, ex);
-            }
-            if (this.logger != null) {
-                this.logger.logRecordsProcessed(this.records, ex);
-            }
-        }
-    }
-
-    private static final class DefaultKafkaConsumerRecordTelemetryContext<K, V> implements KafkaConsumerRecordTelemetryContext<K, V> {
-        private final ConsumerRecord<K, V> record;
-        private final long recordStart;
-        private final String consumerName;
-        @Nullable
-        private final KafkaConsumerLogger<K, V> logger;
-        @Nullable
-        private final KafkaConsumerMetrics metrics;
-        @Nullable
-        private final KafkaConsumerTracer.KafkaConsumerRecordSpan recordSpan;
-
-        public DefaultKafkaConsumerRecordTelemetryContext(String consumerName, ConsumerRecord<K, V> record, long recordStart, @Nullable KafkaConsumerLogger<K, V> logger, @Nullable KafkaConsumerMetrics metrics, @Nullable KafkaConsumerTracer.KafkaConsumerRecordSpan recordSpan) {
-            this.consumerName = consumerName;
-            this.record = record;
-            this.recordStart = recordStart;
-            this.logger = logger;
-            this.metrics = metrics;
-            this.recordSpan = recordSpan;
-        }
-
-        @Override
-        public void close(@Nullable Throwable ex) {
-            var duration = System.nanoTime() - this.recordStart;
-            if (this.recordSpan != null) {
-                this.recordSpan.close(ex);
-            }
-            if (this.metrics != null) {
-                this.metrics.onRecordProcessed(consumerName, this.record, duration, ex);
-            }
-            if (this.logger != null) {
-                this.logger.logRecordProcessed(this.record, ex);
-            }
-        }
-    }
 }

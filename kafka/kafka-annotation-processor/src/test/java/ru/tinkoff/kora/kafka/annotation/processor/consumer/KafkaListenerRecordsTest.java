@@ -119,49 +119,4 @@ public class KafkaListenerRecordsTest extends AbstractKafkaListenerAnnotationPro
             )
         );
     }
-
-    @Test
-    public void testProcessRecordsAndConsumerAndTelemetry() {
-        var handler = compile("""
-            public class KafkaListenerClass {
-                @KafkaListener("test.config.path")
-                public void process(Consumer<?, ?> consumer, ConsumerRecords<byte[], String> event, KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext<?, ?> telemetry) {
-                }
-            }
-            """)
-            .recordsHandler(byte[].class, String.class);
-
-        handler.handle(record("test".getBytes(), "test-value"), i -> i
-            .assertConsumer(0)
-            .assertTelemetry(2)
-            .assertRecords(1)
-            .hasSize(1)
-            .hasRecord(0, v -> v
-                .hasKey("test".getBytes())
-                .hasValue("test-value")
-            )
-        );
-    }
-
-    @Test
-    public void testProcessRecordsAndTelemetry() {
-        var handler = compile("""
-            public class KafkaListenerClass {
-                @KafkaListener("test.config.path")
-                public void process(KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext<?, ?> telemetry, ConsumerRecords<byte[], String> event) {
-                }
-            }
-            """)
-            .recordsHandler(byte[].class, String.class);
-
-        handler.handle(record("test".getBytes(), "test-value"), i -> i
-            .assertTelemetry(0)
-            .assertRecords(1)
-            .hasSize(1)
-            .hasRecord(0, v -> v
-                .hasKey("test".getBytes())
-                .hasValue("test-value")
-            )
-        );
-    }
 }

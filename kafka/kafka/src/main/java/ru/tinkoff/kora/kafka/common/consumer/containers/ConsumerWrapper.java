@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
+import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
+import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.*;
 import org.apache.kafka.common.serialization.Deserializer;
@@ -11,11 +13,14 @@ import java.util.regex.Pattern;
 public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
 
     private final Consumer<byte[], byte[]> realConsumer;
+    @Nullable
+    private final KafkaClientMetrics driverMetrics;
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
 
-    public ConsumerWrapper(Consumer<byte[], byte[]> realConsumer, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
+    public ConsumerWrapper(Consumer<byte[], byte[]> realConsumer, @Nullable KafkaClientMetrics driverMetrics, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
         this.realConsumer = realConsumer;
+        this.driverMetrics = driverMetrics;
         this.keyDeserializer = keyDeserializer;
         this.valueDeserializer = valueDeserializer;
     }
@@ -255,7 +260,7 @@ public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
 
     @Override
     public void close() {
-        realConsumer.close();
+        try (driverMetrics; realConsumer) {}
     }
 
     @Override

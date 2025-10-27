@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kafka.annotation.processor.publisher;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
@@ -43,7 +42,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -59,7 +58,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -73,7 +72,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -87,11 +86,11 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_PublisherModule");
         assertThat(clazz).isNotNull();
-        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, MeterRegistry.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
+        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
         assertThat(m).isNotNull();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
-        assertThat(m.getParameters()[5].getAnnotationsByType(Tag.class)).isEmpty();
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isNotEmpty();
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isEmpty();
     }
 
     @Test
@@ -105,11 +104,11 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_PublisherModule");
         assertThat(clazz).isNotNull();
-        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, MeterRegistry.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
+        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
         assertThat(m).isNotNull();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isEmpty();
-        assertThat(m.getParameters()[5].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[5].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isEmpty();
+        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isNotEmpty();
+        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
     }
 
     @Test
@@ -124,7 +123,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -139,7 +138,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -154,7 +153,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -168,10 +167,10 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
             """);
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_PublisherModule");
-        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, MeterRegistry.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
+        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
         assertThat(m).isNotNull();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isNotEmpty();
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
     }
 
     @Test
@@ -186,7 +185,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
     }
 
     @Test
@@ -201,7 +200,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
     }
 
     @Test
@@ -215,11 +214,11 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
             """);
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_PublisherModule");
-        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, MeterRegistry.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
+        var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
         assertThat(m).isNotNull();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isEmpty();
-        assertThat(m.getParameters()[5].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[5].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isEmpty();
+        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isNotEmpty();
+        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
     }
 
     @Test
@@ -234,7 +233,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -267,7 +266,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -282,7 +281,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -297,8 +296,9 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
+
     @Test
     public void testReturnCompletableFuture() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
@@ -311,7 +311,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -326,7 +326,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -341,7 +341,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -356,7 +356,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test
@@ -371,7 +371,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         this.compileResult.assertSuccess();
         var clazz = this.compileResult.loadClass("$TestProducer_Impl");
         assertThat(clazz).isNotNull();
-        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), MeterRegistry.class, Serializer.class);
+        clazz.getConstructor(KafkaPublisherTelemetryFactory.class, KafkaPublisherTelemetryConfig.class, Properties.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
     }
 
     @Test

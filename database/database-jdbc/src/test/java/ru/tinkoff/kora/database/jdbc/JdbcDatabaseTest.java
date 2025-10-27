@@ -55,7 +55,7 @@ class JdbcDatabaseTest {
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
             )
         );
-        var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), new CompositeMeterRegistry());
+        var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()));
         db.init();
         try {
             consumer.accept(db);

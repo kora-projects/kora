@@ -1,70 +1,30 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.TracerProvider;
 import jakarta.annotation.Nullable;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Properties;
 
-public final class DefaultKafkaConsumerTelemetryFactory<K, V> implements KafkaConsumerTelemetryFactory<K, V> {
+public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumerTelemetryFactory {
+    private final Tracer tracer;
+    private final MeterRegistry meterRegistry;
 
-    private final KafkaConsumerTelemetry<K, V> empty;
-
-    @Nullable
-    private final KafkaConsumerLoggerFactory<K, V> logger;
-    @Nullable
-    private final KafkaConsumerMetricsFactory metrics;
-    @Nullable
-    private final KafkaConsumerTracerFactory tracer;
-
-    public DefaultKafkaConsumerTelemetryFactory(@Nullable KafkaConsumerLoggerFactory<K, V> logger, @Nullable KafkaConsumerMetricsFactory metrics, @Nullable KafkaConsumerTracerFactory tracer) {
-        this.logger = logger;
-        this.metrics = metrics;
+    public DefaultKafkaConsumerTelemetryFactory(@Nullable Tracer tracer, @Nullable MeterRegistry meterRegistry) {
         this.tracer = tracer;
-
-        KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext<K, V> emptyRcdContext = ex -> {};
-        KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext<K, V> emptyCtx = new KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext<K, V>() {
-            @Override
-            public KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext<K, V> get(ConsumerRecord<K, V> record) {
-                return emptyRcdContext;
-            }
-
-            @Override
-            public void close(@Nullable Throwable ex) {
-
-            }
-        };
-
-        this.empty = new KafkaConsumerTelemetry<>() {
-            @Override
-            public KafkaConsumerRecordsTelemetryContext<K, V> get(ConsumerRecords<K, V> records) {
-                return emptyCtx;
-            }
-
-            @Override
-            public void reportLag(TopicPartition partition, long lag) {
-
-            }
-
-            @Override
-            public KafkaConsumerTelemetryContext<K, V> get(Consumer<K, V> consumer) {
-                return () -> {};
-            }
-        };
+        this.meterRegistry = meterRegistry;
     }
 
     @Override
-    public KafkaConsumerTelemetry<K, V> get(String consumerName, Properties driverProperties, TelemetryConfig config) {
-        var logger = this.logger == null ? null : this.logger.get(driverProperties, config.logging());
-        var metrics = this.metrics == null ? null : this.metrics.get(driverProperties, config.metrics());
-        var tracer = this.tracer == null ? null : this.tracer.get(driverProperties, config.tracing());
-        if (logger == null && metrics == null && tracer == null) {
-            return empty;
+    public KafkaConsumerTelemetry get(String consumerName, Properties driverProperties, KafkaConsumerTelemetryConfig config) {
+        if (!config.tracing().enabled() && !config.metrics().enabled() && !config.logging().enabled()) {
+            return new NoopKafkaConsumerTelemetry();
         }
+        var tracer = config.tracing().enabled() ? this.tracer : TracerProvider.noop().get("kafka-consumer");
+        var meterRegistry = config.metrics().enabled() ? this.meterRegistry : new CompositeMeterRegistry();
 
-        return new DefaultKafkaConsumerTelemetry<>(consumerName, logger, tracer, metrics);
+        return new DefaultKafkaConsumerTelemetry(config, tracer, meterRegistry, consumerName, driverProperties);
     }
 }

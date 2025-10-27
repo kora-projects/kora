@@ -6,34 +6,26 @@ import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHand
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.impl.RecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.impl.RecordsHandler;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 
 public final class HandlerWrapper {
 
     private HandlerWrapper() {}
 
-    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandlerRecord(KafkaConsumerTelemetry<K, V> telemetry, boolean shouldCommit, ValueOf<KafkaRecordHandler<K, V>> handler) {
-        return new RecordHandler<>(telemetry, shouldCommit, handler);
+    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandlerRecord(boolean shouldCommit, ValueOf<KafkaRecordHandler<K, V>> handler) {
+        return new RecordHandler<>(shouldCommit, handler);
     }
 
-    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandlerRecords(KafkaConsumerTelemetry<K, V> telemetry, boolean shouldCommit, ValueOf<KafkaRecordsHandler<K, V>> handler, boolean allowEmptyRecords) {
-        return new RecordsHandler<>(telemetry, shouldCommit, handler, allowEmptyRecords);
+    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandlerRecords(boolean shouldCommit, ValueOf<KafkaRecordsHandler<K, V>> handler, boolean allowEmptyRecords) {
+        return new RecordsHandler<>(shouldCommit, handler, allowEmptyRecords);
     }
 
-    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandler(KafkaConsumerTelemetry<K, V> telemetry, ValueOf<BaseKafkaRecordsHandler<K, V>> realHandler, boolean allowEmptyRecords) {
-        return (records, consumer, commitAllowed) -> {
+    public static <K, V> BaseKafkaRecordsHandler<K, V> wrapHandler(ValueOf<BaseKafkaRecordsHandler<K, V>> realHandler, boolean allowEmptyRecords) {
+        return (observation, records, consumer, commitAllowed) -> {
             if (records.isEmpty() && !allowEmptyRecords) {
                 return;
             }
 
-            var ctx = telemetry.get(records);
-            try {
-                realHandler.get().handle(records, consumer, commitAllowed);
-                ctx.close(null);
-            } catch (Exception e) {
-                ctx.close(e);
-                throw e;
-            }
+            realHandler.get().handle(observation, records, consumer, commitAllowed);
         };
     }
 }

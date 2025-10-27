@@ -32,9 +32,6 @@ import ru.tinkoff.kora.micrometer.module.http.server.MicrometerPrivateApiMetrics
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DefaultMicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.MicrometerHttpServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.jms.consumer.MicrometerJmsConsumerMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.MicrometerKafkaConsumerMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.MicrometerKafkaConsumerTagsProvider;
-import ru.tinkoff.kora.micrometer.module.kafka.consumer.tag.OpentelemetryKafkaConsumerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
@@ -100,17 +97,6 @@ public interface MetricsModule {
     default MicrometerGrpcClientMetricsFactory micrometerGrpcClientMetricsFactory(MeterRegistry registry,
                                                                                   MicrometerGrpcClientTagsProvider tagsProvider) {
         return new MicrometerGrpcClientMetricsFactory(registry, tagsProvider);
-    }
-
-    @DefaultComponent
-    default MicrometerKafkaConsumerTagsProvider micrometerKafkaConsumerTagsProvider() {
-        return new OpentelemetryKafkaConsumerTagsProvider();
-    }
-
-    @DefaultComponent
-    default MicrometerKafkaConsumerMetricsFactory micrometerKafkaConsumerMetricsFactory(MeterRegistry meterRegistry,
-                                                                                        MicrometerKafkaConsumerTagsProvider tagsProvider) {
-        return new MicrometerKafkaConsumerMetricsFactory(meterRegistry, tagsProvider);
     }
 
     @DefaultComponent

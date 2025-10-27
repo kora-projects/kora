@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
+import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -38,7 +39,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     private final AtomicLong backoffTimeout;
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
-    private final KafkaConsumerTelemetry<K, V> telemetry;
+    private final KafkaConsumerTelemetry telemetry;
     private volatile ExecutorService executorService;
 
     private final BaseKafkaRecordsHandler<K, V> handler;
@@ -54,7 +55,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                                            Deserializer<K> keyDeserializer,
                                            Deserializer<V> valueDeserializer,
                                            BaseKafkaRecordsHandler<K, V> handler,
-                                           KafkaConsumerTelemetry<K, V> telemetry,
+                                           KafkaConsumerTelemetry telemetry,
                                            @Nullable ConsumerAwareRebalanceListener rebalanceListener) {
         if (config.driverProperties().get(CommonClientConfigs.GROUP_ID_CONFIG) == null) {
             throw new IllegalArgumentException("Group id is required for subscribe container");
@@ -82,7 +83,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     }
 
     public void launchPollLoop(Consumer<K, V> consumer, long started) {
-        try (consumer; var t = this.telemetry.get(consumer)) {
+        try (consumer) {
             consumers.add(consumer);
             logger.info("Kafka Consumer '{}' started in {}", consumerPrefix, TimeUtils.tookForLogging(started));
 
@@ -91,6 +92,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                 try {
                     logger.trace("Kafka Consumer '{}' polling...", consumerPrefix);
 
+                    var observation = this.telemetry.observePoll();
                     var records = consumer.poll(config.pollTimeout());
                     if (isFirstPoll) {
                         logger.info("Kafka Consumer '{}' first poll in {}",
@@ -98,23 +100,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                         isFirstPoll = false;
                     }
 
-                    if (!records.isEmpty() && logger.isTraceEnabled()) {
-                        var logTopics = new HashSet<String>(records.partitions().size());
-                        var logPartitions = new HashSet<Integer>(records.partitions().size());
-                        for (TopicPartition partition : records.partitions()) {
-                            logPartitions.add(partition.partition());
-                            logTopics.add(partition.topic());
-                        }
-
-                        logger.trace("Kafka Consumer '{}' polled '{}' records from topics {} and partitions {}",
-                            consumerPrefix, records.count(), logTopics, logPartitions);
-                    } else if (!records.isEmpty() && logger.isDebugEnabled()) {
-                        logger.debug("Kafka Consumer '{}' polled '{}' records", consumerPrefix, records.count());
-                    } else {
-                        logger.trace("Kafka Consumer '{}' polled '0' records", consumerPrefix);
-                    }
-
-                    handler.handle(records, consumer, this.commitAllowed);
+                    handler.handle(observation, records, consumer, this.commitAllowed);
                     backoffTimeout.set(config.backoffTimeout().toMillis());
                 } catch (WakeupException ignore) {
                 } catch (Exception e) {
@@ -268,7 +254,13 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             }
             throw e;
         }
+        var driverMetrics = (KafkaClientMetrics) null;
+        if (this.config.telemetry().metrics().driverMetrics()) {
+            var metrics = new KafkaClientMetrics(consumer);
+            metrics.bindTo(this.telemetry.meterRegistry());
+            driverMetrics = metrics;
+        }
 
-        return new ConsumerWrapper<>(consumer, keyDeserializer, valueDeserializer);
+        return new ConsumerWrapper<>(consumer, driverMetrics, keyDeserializer, valueDeserializer);
     }
 }

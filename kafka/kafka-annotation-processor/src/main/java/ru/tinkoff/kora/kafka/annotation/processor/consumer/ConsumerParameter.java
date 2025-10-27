@@ -49,11 +49,6 @@ public sealed interface ConsumerParameter {
                 result.add(new ConsumerParameter.Consumer(parameter, dt.getTypeArguments().get(0), dt.getTypeArguments().get(1)));
                 continue;
             }
-            if (KafkaUtils.isRecordsTelemetry(type)) {
-                var dt = (DeclaredType) type;
-                result.add(new ConsumerParameter.RecordsTelemetry(parameter, dt.getTypeArguments().get(0), dt.getTypeArguments().get(1)));
-                continue;
-            }
             if (KafkaUtils.isHeaders(type)) {
                 result.add(new Headers(parameter));
                 continue;

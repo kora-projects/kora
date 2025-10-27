@@ -24,6 +24,8 @@ public interface KafkaPublisherTelemetryConfig extends TelemetryConfig {
 
     @ConfigValueExtractor
     interface KafkaProducerMetricsConfig extends MetricsConfig {
-        boolean driverMetrics();
+        default boolean driverMetrics() {
+            return false;
+        }
     }
 }

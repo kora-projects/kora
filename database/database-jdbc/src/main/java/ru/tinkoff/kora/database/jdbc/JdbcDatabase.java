@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariDataSource;
-import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +25,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     private final HikariDataSource dataSource;
     private final DataBaseTelemetry telemetry;
 
-    public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory, MeterRegistry meterRegistry) {
+    public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory) {
         this.databaseConfig = Objects.requireNonNull(config);
         var jdbcUrl = config.jdbcUrl();
         this.telemetry = telemetryFactory.get(
@@ -36,7 +35,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
         );
         this.dataSource = new HikariDataSource(JdbcDatabaseConfig.toHikariConfig(this.databaseConfig));
         if (this.databaseConfig.telemetry().metrics().driverMetrics()) {
-            this.dataSource.setMetricRegistry(meterRegistry);
+            this.dataSource.setMetricRegistry(this.telemetry.meterRegistry());
         }
     }
 
