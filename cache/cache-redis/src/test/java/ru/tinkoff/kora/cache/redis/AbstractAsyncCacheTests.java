@@ -2,6 +2,7 @@ package ru.tinkoff.kora.cache.redis;
 
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
+import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.util.List;
 import java.util.Map;
@@ -11,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 abstract class AbstractAsyncCacheTests extends CacheRunner {
 
     protected DummyCache cache = null;
+    protected RedisParams redisParams = null;
 
     @Test
     void getWhenCacheEmpty() {
@@ -228,7 +230,7 @@ abstract class AbstractAsyncCacheTests extends CacheRunner {
         cache.putAsync(key, value).toCompletableFuture().join();
 
         // when
-        cache.invalidate(key);
+        cache.invalidateAsync(key).toCompletableFuture().join();
 
         // then
         final String fromCache = cache.getAsync(key).toCompletableFuture().join();
@@ -242,11 +244,16 @@ abstract class AbstractAsyncCacheTests extends CacheRunner {
         var value = "1";
         cache.putAsync(key, value).toCompletableFuture().join();
 
+        redisParams.execute(cmd -> cmd.set("someKey", "someValue"));
+        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
+
         // when
-        cache.invalidateAll();
+        cache.invalidateAllAsync().toCompletableFuture().join();
 
         // then
         final String fromCache = cache.getAsync(key).toCompletableFuture().join();
         assertNull(fromCache);
+
+        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
     }
 }

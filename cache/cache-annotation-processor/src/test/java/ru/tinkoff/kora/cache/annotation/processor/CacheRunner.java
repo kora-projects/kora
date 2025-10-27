@@ -2,15 +2,14 @@ package ru.tinkoff.kora.cache.annotation.processor;
 
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
+import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import ru.tinkoff.kora.cache.redis.RedisCacheConfig;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -64,6 +63,17 @@ final class CacheRunner {
 
     public static RedisCacheClient lettuceClient(final Map<ByteBuffer, ByteBuffer> cache) {
         return new RedisCacheClient() {
+            @Override
+            public @NotNull CompletionStage<List<byte[]>> scan(byte[] prefix) {
+                List<byte[]> keys = new ArrayList<>();
+                for (ByteBuffer buffer : cache.keySet()) {
+                    if (Arrays.equals(Arrays.copyOf(buffer.array(), prefix.length), prefix)) {
+                        keys.add(buffer.array());
+                    }
+                }
+                return CompletableFuture.completedFuture(keys);
+            }
+
             @Override
             public CompletionStage<byte[]> get(byte[] key) {
                 var r = cache.get(ByteBuffer.wrap(key));

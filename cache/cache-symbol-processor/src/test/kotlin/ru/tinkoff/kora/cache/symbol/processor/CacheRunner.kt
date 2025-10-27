@@ -3,8 +3,8 @@ package ru.tinkoff.kora.cache.symbol.processor
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig
-import ru.tinkoff.kora.cache.redis.RedisCacheConfig
 import ru.tinkoff.kora.cache.redis.RedisCacheClient
+import ru.tinkoff.kora.cache.redis.RedisCacheConfig
 import java.nio.ByteBuffer
 import java.time.Duration
 import java.util.*
@@ -44,6 +44,19 @@ class CacheRunner {
 
         fun lettuceClient(cache: MutableMap<ByteBuffer?, ByteBuffer?>): RedisCacheClient {
             return object : RedisCacheClient {
+
+                override fun scan(prefix: ByteArray): CompletionStage<List<ByteArray>> {
+                    val keys: MutableList<ByteArray> = ArrayList()
+                    for (buffer in cache.keys) {
+                        if (buffer != null) {
+                            if (buffer.array().copyOf(prefix.size).contentEquals(prefix)) {
+                                keys.add(buffer.array())
+                            }
+                        }
+                    }
+                    return CompletableFuture.completedFuture(keys)
+                }
+
                 override fun get(key: ByteArray): CompletionStage<ByteArray?> {
                     val r = cache[ByteBuffer.wrap(key)]
                     return CompletableFuture.completedFuture(r?.array())

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.cache.redis;
 
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
+import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.util.List;
 import java.util.Map;
@@ -10,6 +11,7 @@ import java.util.Set;
 abstract class AbstractSyncCacheTests extends CacheRunner {
 
     protected DummyCache cache = null;
+    protected RedisParams redisParams = null;
 
     @Test
     void getWhenCacheEmpty() {
@@ -219,11 +221,16 @@ abstract class AbstractSyncCacheTests extends CacheRunner {
         var value = "1";
         cache.put(key, value);
 
+        redisParams.execute(cmd -> cmd.set("someKey", "someValue"));
+        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
+
         // when
         cache.invalidateAll();
 
         // then
         final String fromCache = cache.get(key);
         assertNull(fromCache);
+
+        assertEquals("someValue", redisParams.execute(cmd -> cmd.get("someKey")));
     }
 }
