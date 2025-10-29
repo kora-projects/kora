@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.camunda.engine.bpmn;
 
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.junit.jupiter.api.Test;
@@ -185,7 +184,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
             )
         );
 
-        var db = new JdbcDatabase(config, DataBaseTelemetryFactory.NOOP, new CompositeMeterRegistry());
+        var db = new JdbcDatabase(config, DataBaseTelemetryFactory.NOOP);
         try {
             db.init();
         } catch (SQLException e) {

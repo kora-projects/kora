@@ -61,7 +61,7 @@ class CassandraDatabaseTest {
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
             )
         );
-        return new CassandraDatabase(config, (b, _) -> b, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), new CompositeMeterRegistry());
+        return new CassandraDatabase(config, (b, _) -> b, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()));
     }
 
     private static void withDb(CassandraParams params, Consumer<CassandraDatabase> consumer) {

@@ -36,6 +36,11 @@ public class DefaultDataBaseTelemetry implements DataBaseTelemetry {
     }
 
     @Override
+    public MeterRegistry meterRegistry() {
+        return this.meterRegistry;
+    }
+
+    @Override
     public DataBaseObservation observe(QueryContext query) {
         var span = this.createSpan(query);
         var timer = this.createTimer(query);

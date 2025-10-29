@@ -4,30 +4,21 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.ConsumerRecords;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
-import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.consumer.containers.KafkaSubscribeConsumerContainer;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.*;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.test.kafka.KafkaParams;
 import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -42,6 +33,7 @@ class KafkaSubscribeConsumerContainerTest {
             log.setLevel(Level.OFF);
         }
     }
+
     KafkaParams params;
 
     @Test
@@ -65,14 +57,14 @@ class KafkaSubscribeConsumerContainerTest {
             Duration.ofMillis(10000),
             Duration.ofMillis(10000),
             true,
-            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
-                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, new Duration[0], Map.of())
+            new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueExtractor.KafkaConsumerTracingConfig_Defaults()
             )
         );
         var queue = new ArrayBlockingQueue<>(3);
-        var container = new KafkaSubscribeConsumerContainer<>("test", config, new StringDeserializer(), new IntegerDeserializer(), (records, consumer, commitAllowed) -> {
+        var container = new KafkaSubscribeConsumerContainer<>("test", config, new StringDeserializer(), new IntegerDeserializer(), (observation, records, consumer, commitAllowed) -> {
             for (var record : records) {
                 try {
                     var value = record.value();
@@ -82,23 +74,7 @@ class KafkaSubscribeConsumerContainerTest {
                 }
             }
             consumer.commitSync();
-        }, new KafkaConsumerTelemetry<>() {
-            @Override
-            public KafkaConsumerRecordsTelemetryContext<String, Integer> get(ConsumerRecords<String, Integer> records) {
-                return new KafkaConsumerRecordsTelemetryContext<>() {
-                    @Override
-                    public KafkaConsumerRecordTelemetryContext<String, Integer> get(ConsumerRecord<String, Integer> record) {
-                        return ex -> { };
-                    }
-
-                    @Override
-                    public void close(@Nullable Throwable ex) { }
-                };
-            }
-
-            @Override
-            public void reportLag(TopicPartition partition, long lag) { }
-        }, null);
+        }, new NoopKafkaConsumerTelemetry(), null);
         try {
             container.init();
             params.send("test-topic", 0, "1", 1);

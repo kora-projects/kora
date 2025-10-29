@@ -8,7 +8,6 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isConsumer
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isConsumerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isConsumerRecords
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isKeyDeserializationException
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isRecordsTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.isValueDeserializationException
 
 sealed interface ConsumerParameter {
@@ -37,7 +36,6 @@ sealed interface ConsumerParameter {
                 type.isConsumerRecord() -> Record(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
                 type.isConsumerRecords() -> Records(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
                 type.isConsumer() -> Consumer(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
-                type.isRecordsTelemetry() -> RecordsTelemetry(it, type.arguments[0].type?.resolve(), type.arguments[1].type?.resolve())
                 type.isKeyDeserializationException() -> KeyDeserializationException(it)
                 type.isValueDeserializationException() -> ValueDeserializationException(it)
                 type.isAnyException() -> Exception(it)

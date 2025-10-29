@@ -37,6 +37,11 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     }
 
     @Override
+    public MeterRegistry meterRegistry() {
+        return this.meterRegistry;
+    }
+
+    @Override
     public KafkaPublisherTransactionObservation observeTx() {
         var span = this.createTxSpan();
         var logger = this.config.logging().enabled() ? this.logger : NOPLogger.NOP_LOGGER;

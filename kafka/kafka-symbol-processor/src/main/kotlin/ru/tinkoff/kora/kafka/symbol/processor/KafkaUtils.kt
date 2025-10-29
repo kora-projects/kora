@@ -11,7 +11,6 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumer
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumerRecord
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.consumerRecords
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaConsumerRecordsTelemetry
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
@@ -58,8 +57,6 @@ object KafkaUtils {
     fun KSType.isAnyException() = toTypeName().copy(false).let {
         it is ClassName && (it == THROWABLE || it.toString() == "kotlin.Exception" || it.toString() == "java.lang.Exception" || it.toString() == "java.lang.Throwable")
     }
-
-    fun KSType.isRecordsTelemetry() = declaration.let { it is KSClassDeclaration && it.toClassName() == kafkaConsumerRecordsTelemetry }
 
     fun KSType.isConsumer() = declaration.let { it is KSClassDeclaration && it.toClassName() == consumer }
 }

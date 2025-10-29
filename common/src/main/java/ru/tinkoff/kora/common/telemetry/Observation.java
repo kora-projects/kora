@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.common.telemetry;
 
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.context.Context;
 
 public interface Observation {
     ScopedValue<Observation> VALUE = ScopedValue.newInstance();
@@ -14,4 +15,10 @@ public interface Observation {
     void end();
 
     void observeError(Throwable e);
+
+    default ScopedValue.Carrier scoped() {
+        return ScopedValue
+            .where(Observation.VALUE, this)
+            .where(OpentelemetryContext.VALUE, Context.current().with(this.span()));
+    }
 }

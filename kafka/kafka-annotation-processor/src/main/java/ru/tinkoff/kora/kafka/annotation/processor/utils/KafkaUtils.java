@@ -98,10 +98,6 @@ public final class KafkaUtils {
         return tm.toString().equals("java.lang.Throwable") || tm.toString().equals("java.lang.Exception");
     }
 
-    public static boolean isRecordsTelemetry(TypeMirror tm) {
-        return tm instanceof DeclaredType dt && ClassName.get((TypeElement) dt.asElement()).equals(KafkaClassNames.kafkaConsumerRecordsTelemetry);
-    }
-
     public static boolean isConsumer(TypeMirror tm) {
         return tm instanceof DeclaredType dt && ClassName.get((TypeElement) dt.asElement()).equals(KafkaClassNames.consumer);
     }

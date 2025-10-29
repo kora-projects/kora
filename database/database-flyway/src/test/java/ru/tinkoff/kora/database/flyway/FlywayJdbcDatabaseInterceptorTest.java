@@ -44,7 +44,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
             )
         );
-        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), new CompositeMeterRegistry());
+        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()));
         dataBase.init();
         try {
 

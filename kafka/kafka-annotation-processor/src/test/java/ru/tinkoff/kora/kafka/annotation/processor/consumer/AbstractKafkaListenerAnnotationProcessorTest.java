@@ -24,8 +24,9 @@ import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.containers.ConsumerRecordWrapper;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordsHandler;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.NoopKafkaConsumerPollObservation;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.NoopKafkaConsumerRecordObservation;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordKeyDeserializationException;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
 
@@ -46,12 +47,9 @@ import static org.mockito.Mockito.when;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public abstract class AbstractKafkaListenerAnnotationProcessorTest extends AbstractAnnotationProcessorTest {
     protected Consumer consumer = Mockito.mock(Consumer.class);
-    protected KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext recordTelemetry = Mockito.mock(KafkaConsumerTelemetry.KafkaConsumerRecordTelemetryContext.class);
-    protected KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext recordsTelemetry = Mockito.mock(KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext.class);
 
     @BeforeEach
     void setUp() {
-        when(recordsTelemetry.get(Mockito.any())).thenReturn(recordTelemetry);
     }
 
     protected <K, V> ConsumerRecord<K, V> record(K key, V value) {
@@ -239,7 +237,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 assertThat(containerMethod.getParameters()[0].getAnnotation(Tag.class).value()).isEqualTo(tagValue);
                 assertThat(containerMethod.getParameters()[2].getParameterizedType()).isEqualTo(TypeRef.of(Deserializer.class, keyType));
                 assertThat(containerMethod.getParameters()[3].getParameterizedType()).isEqualTo(TypeRef.of(Deserializer.class, valueType));
-                assertThat(containerMethod.getParameters()[4].getParameterizedType()).isEqualTo(TypeRef.of(KafkaConsumerTelemetryFactory.class, keyType, valueType));
+                assertThat(containerMethod.getParameters()[4].getParameterizedType()).isEqualTo(KafkaConsumerTelemetryFactory.class);
 
                 return containerMethod;
             }
@@ -315,12 +313,12 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 }
 
                 public void handle(ConsumerRecord<K, V> record, ThrowingConsumer<InvocationAssertions<K, V>> verifier) {
-                    moduleHandler.handle(consumer, recordTelemetry, record);
+                    moduleHandler.handle(consumer, NoopKafkaConsumerRecordObservation.INSTANCE, record);
                     assertThat(invocation).isNotNull().satisfies(i -> verifier.accept(new InvocationAssertions<K, V>(i)));
                 }
 
                 public void handle(ConsumerRecord<K, V> record, Class<? extends Throwable> expectedError) {
-                    assertThatThrownBy(() -> moduleHandler.handle(consumer, recordTelemetry, record)).isInstanceOf(expectedError);
+                    assertThatThrownBy(() -> moduleHandler.handle(consumer, NoopKafkaConsumerRecordObservation.INSTANCE, record)).isInstanceOf(expectedError);
                 }
             }
 
@@ -339,11 +337,11 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 }
 
                 public void handle(ConsumerRecords<K, V> record) {
-                    moduleHandler.handle(consumer, recordsTelemetry, record);
+                    moduleHandler.handle(consumer, new NoopKafkaConsumerPollObservation(), record);
                 }
 
                 public void handle(ConsumerRecord<K, V> record, ThrowingConsumer<InvocationAssertions<K, V>> verifier) {
-                    moduleHandler.handle(consumer, recordsTelemetry, new ConsumerRecords<>(Map.of(
+                    moduleHandler.handle(consumer, new NoopKafkaConsumerPollObservation(), new ConsumerRecords<>(Map.of(
                         new TopicPartition("test", 1),
                         List.of(record)
                     )));
@@ -352,7 +350,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
                 public void handle(ConsumerRecord<K, V> record, Class<? extends Throwable> expectedError) {
                     assertThatThrownBy(() -> {
-                        moduleHandler.handle(consumer, recordsTelemetry, new ConsumerRecords<>(Map.of(
+                        moduleHandler.handle(consumer, new NoopKafkaConsumerPollObservation(), new ConsumerRecords<>(Map.of(
                             new TopicPartition("test", 1),
                             List.of(record)
                         )));
@@ -441,7 +439,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 }
 
                 public InvocationAssertions<K, V> assertTelemetry(int i) {
-                    assertThat(invocation.getArgument(i, KafkaConsumerTelemetry.KafkaConsumerRecordsTelemetryContext.class)).isNotNull();
+                    assertThat(invocation.getArgument(i, Object.class)).isNotNull();
 
                     return this;
                 }
