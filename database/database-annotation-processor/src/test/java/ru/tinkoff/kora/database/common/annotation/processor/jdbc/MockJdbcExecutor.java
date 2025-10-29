@@ -2,7 +2,7 @@ package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
 import org.mockito.Mockito;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
-import ru.tinkoff.kora.database.common.telemetry.NoopDataBaseObservation;
+import ru.tinkoff.kora.database.common.telemetry.NoopDatabaseTelemetry;
 import ru.tinkoff.kora.database.jdbc.ConnectionContext;
 import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
 import ru.tinkoff.kora.database.jdbc.JdbcHelper;
@@ -62,7 +62,7 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
 
     @Override
     public DataBaseTelemetry telemetry() {
-        return _ -> new NoopDataBaseObservation();
+        return new NoopDatabaseTelemetry();
     }
 
 }

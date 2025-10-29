@@ -90,7 +90,6 @@ final class KafkaPublisherGenerator {
         var builder = MethodSpec.methodBuilder(CommonUtils.decapitalize(publisher.getSimpleName().toString()) + "_PublisherFactory")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(producerTelemetryFactory, "telemetryFactory")
-            .addParameter(CommonClassNames.meterRegistry, "meterRegistry")
             .addParameter(config)
             .addParameter(topicConfigTypeName, "topicConfig")
             .returns(ParameterizedTypeName.get(ClassName.get(Function.class), ClassName.get(Properties.class), implementationName));
@@ -99,7 +98,7 @@ final class KafkaPublisherGenerator {
         builder.addStatement("var properties = new $T()", Properties.class);
         builder.addStatement("properties.putAll(config.driverProperties())");
         builder.addStatement("properties.putAll(additionalProperties)");
-        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig, meterRegistry$>", aopProxy == null ? implementationName : ClassName.get(aopProxy));
+        builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig$>", aopProxy == null ? implementationName : ClassName.get(aopProxy));
 
         record TypeWithTag(TypeName typeName, Set<String> tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
@@ -175,9 +174,8 @@ final class KafkaPublisherGenerator {
             .addParameter(publisherTelemetryConfig, "telemetryConfig")
             .addParameter(ClassName.get(Properties.class), "driverProperties")
             .addParameter(topicConfigTypeName, "topicConfig")
-            .addParameter(CommonClassNames.meterRegistry, "meterRegistry")
             .addStatement("var telemetry = telemetryFactory.get($S, telemetryConfig, driverProperties);", configPath)
-            .addStatement("super(driverProperties, telemetryConfig, telemetry, meterRegistry)")
+            .addStatement("super(driverProperties, telemetryConfig, telemetry)")
             .addStatement("this.topicConfig = topicConfig");
         record TypeWithTag(TypeName typeName, Set<String> tag) {}
         var parameters = new HashMap<TypeWithTag, String>();

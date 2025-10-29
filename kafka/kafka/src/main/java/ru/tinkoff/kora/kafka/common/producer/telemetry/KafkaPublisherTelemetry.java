@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -11,6 +12,8 @@ import ru.tinkoff.kora.common.telemetry.Observation;
 import java.util.Map;
 
 public interface KafkaPublisherTelemetry {
+    MeterRegistry meterRegistry();
+
     KafkaPublisherTransactionObservation observeTx();
 
     KafkaPublisherRecordObservation observeSend(String topic);
