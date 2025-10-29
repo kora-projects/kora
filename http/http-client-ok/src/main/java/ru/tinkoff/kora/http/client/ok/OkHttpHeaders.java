@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.client.ok;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import okhttp3.Headers;
-import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.Iterator;
@@ -43,7 +43,7 @@ public final class OkHttpHeaders implements HttpHeaders {
         return this.headers.names();
     }
 
-    @NotNull
+    @Nonnull
     @Override
     public Iterator<Map.Entry<String, List<String>>> iterator() {
         var i = this.headers.names().iterator();

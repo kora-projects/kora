@@ -41,6 +41,18 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
 
     @Nonnull
     @Override
+    public CompletionStage<List<byte[]>> scan(byte[] prefix) {
+        byte[] asterix = "*".getBytes();
+        byte[] prefixWithAsterix = new byte[prefix.length + asterix.length];
+        System.arraycopy(prefix, 0, prefixWithAsterix, 0, prefix.length);
+        System.arraycopy(asterix, 0, prefixWithAsterix, prefix.length, asterix.length);
+
+        return commands.scan(ScanArgs.Builder.matches(prefixWithAsterix))
+            .thenApply(KeyScanCursor::getKeys);
+    }
+
+    @Nonnull
+    @Override
     public CompletionStage<byte[]> get(byte[] key) {
         return commands.get(key);
     }
@@ -61,6 +73,40 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
     @Override
     public CompletionStage<byte[]> getex(byte[] key, long expireAfterMillis) {
         return commands.getex(key, GetExArgs.Builder.px(expireAfterMillis));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Nonnull
+    @Override
+    public CompletionStage<Map<byte[], byte[]>> getex(Collection<byte[]> keys, long expireAfterMillis) {
+        return pool.acquire().thenCompose(connection -> {
+            connection.setAutoFlushCommands(false);
+
+            List<CompletableFuture<?>> futures = new ArrayList<>();
+
+            var async = connection.async();
+            for (byte[] key : keys) {
+                var future = async.getex(key, GetExArgs.Builder.px(expireAfterMillis))
+                    .thenApply(v -> (v == null) ? null : Map.entry(key, v))
+                    .toCompletableFuture();
+
+                futures.add(future);
+            }
+
+            connection.flushCommands();
+            connection.setAutoFlushCommands(true);
+
+            return pool.release(connection)
+                .thenCompose(_v -> CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)))
+                .thenApply(_void -> futures.stream()
+                    .map(f -> f.getNow(null))
+                    .filter(Objects::nonNull)
+                    .map(v -> ((Map.Entry<byte[], byte[]>) v))
+                    .collect(Collectors.toMap(Map.Entry::getKey,
+                        Map.Entry::getValue,
+                        (k1, k2) -> k2,
+                        LinkedHashMap::new)));
+        });
     }
 
     @SuppressWarnings("unchecked")

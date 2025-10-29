@@ -11,7 +11,9 @@ import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.time.Duration;
 
-abstract class CacheRunner extends Assertions implements RedisCacheModule {
+public abstract class CacheRunner extends Assertions implements RedisCacheModule {
+
+    public static final String PREFIX = "pref";
 
     public static RedisCacheConfig getConfig(@Nullable Duration expireWrite,
                                              @Nullable Duration expireRead) {
@@ -19,7 +21,7 @@ abstract class CacheRunner extends Assertions implements RedisCacheModule {
 
             @Override
             public String keyPrefix() {
-                return "pref";
+                return PREFIX;
             }
 
             @Nullable

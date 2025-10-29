@@ -3,7 +3,6 @@ package ru.tinkoff.kora.resilient.circuitbreaker;
 import jakarta.annotation.Nonnull;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker.State;
@@ -232,12 +231,12 @@ class KoraCircuitBreakerTests extends Assertions {
             true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new CircuitBreakerPredicate() {
             @Override
-            public @NotNull String name() {
+            public @Nonnull String name() {
                 return "kora";
             }
 
             @Override
-            public boolean test(@NotNull Throwable throwable) {
+            public boolean test(@Nonnull Throwable throwable) {
                 return !(throwable instanceof UncheckedIOException);
             }
         }, new NoopCircuitBreakerMetrics());

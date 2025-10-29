@@ -348,7 +348,12 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
         var telemetryContext = telemetry.create("INVALIDATE_ALL", name);
 
         try {
-            redisClient.flushAll().toCompletableFuture().join();
+            List<byte[]> keys = redisClient.scan(keyPrefix).toCompletableFuture().join();
+            if (keys.isEmpty()) {
+                return;
+            }
+
+            redisClient.del(keys).toCompletableFuture().join();
             telemetryContext.recordSuccess();
         } catch (CompletionException e) {
             telemetryContext.recordFailure(e.getCause());
@@ -634,10 +639,18 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Override
     public CompletionStage<Boolean> invalidateAllAsync() {
         var telemetryContext = telemetry.create("INVALIDATE_ALL", name);
-        return redisClient.flushAll()
+
+        return redisClient.scan(keyPrefix)
+            .thenCompose(keys -> {
+                if (keys.isEmpty()) {
+                    return CompletableFuture.completedFuture(0L);
+                }
+
+                return redisClient.del(keys);
+            })
             .thenApply(r -> {
                 telemetryContext.recordSuccess();
-                return r;
+                return true;
             })
             .exceptionally(e -> {
                 telemetryContext.recordFailure(e);

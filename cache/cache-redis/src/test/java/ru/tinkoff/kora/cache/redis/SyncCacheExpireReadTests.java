@@ -14,6 +14,7 @@ class SyncCacheExpireReadTests extends AbstractSyncCacheTests {
 
     @BeforeEach
     void setup(RedisParams redisParams) throws Exception {
+        this.redisParams = redisParams;
         redisParams.execute(cmd -> cmd.flushall(FlushMode.SYNC));
         if (cache == null) {
             cache = createCacheExpireRead(redisParams, Duration.ofSeconds(1));

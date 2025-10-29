@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.client.ok;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import okhttp3.*;
-import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
 import java.net.Proxy;
@@ -18,7 +18,7 @@ final class ProxyAuthenticator implements Authenticator {
 
     @Nullable
     @Override
-    public Request authenticate(@Nullable Route route, @NotNull Response response) throws IOException {
+    public Request authenticate(@Nullable Route route, @Nonnull Response response) throws IOException {
 
         var challenges = response.challenges();
         var request = response.request();
