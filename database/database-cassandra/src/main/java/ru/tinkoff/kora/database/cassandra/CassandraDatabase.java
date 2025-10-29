@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,12 +20,10 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     @Nullable
     private final CassandraConfigurer configurer;
     private volatile CqlSession cqlSession;
-    private final MeterRegistry meterRegistry;
 
-    public CassandraDatabase(CassandraConfig config, @Nullable CassandraConfigurer configurer, DataBaseTelemetryFactory telemetryFactory, @Nullable MeterRegistry meterRegistry) {
+    public CassandraDatabase(CassandraConfig config, @Nullable CassandraConfigurer configurer, DataBaseTelemetryFactory telemetryFactory) {
         this.config = config;
         this.configurer = configurer;
-        this.meterRegistry = meterRegistry;
         this.telemetry = telemetryFactory.get(
             config.telemetry(),
             Objects.requireNonNullElse(config.basic().sessionName(), "cassandra"),
@@ -50,7 +47,7 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
         var started = System.nanoTime();
 
         try {
-            cqlSession = new CassandraSessionBuilder().build(config, configurer, this.meterRegistry);
+            cqlSession = new CassandraSessionBuilder().build(config, configurer, this.telemetry.meterRegistry());
         } catch (Exception e) {
             throw new RuntimeException("CassandraDatabase '%s' failed to start, due to: %s".formatted(
                 config.basic().contactPoints(), e.getMessage()), e);

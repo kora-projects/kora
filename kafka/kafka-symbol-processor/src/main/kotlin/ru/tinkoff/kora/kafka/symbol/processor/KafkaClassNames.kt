@@ -24,8 +24,6 @@ object KafkaClassNames {
     val kafkaConsumerTelemetry = ClassName("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetry")
     val kafkaConsumerTelemetryFactory = ClassName("ru.tinkoff.kora.kafka.common.consumer.telemetry", "KafkaConsumerTelemetryFactory")
     val consumerRebalanceListener = ClassName("ru.tinkoff.kora.kafka.common.consumer", "ConsumerAwareRebalanceListener")
-    val kafkaConsumerRecordsTelemetry = kafkaConsumerTelemetry.nestedClass("KafkaConsumerRecordsTelemetryContext")
-    val kafkaConsumerRecordTelemetry = kafkaConsumerTelemetry.nestedClass("KafkaConsumerRecordTelemetryContext")
     val recordKeyDeserializationException = ClassName("ru.tinkoff.kora.kafka.common.exceptions", "RecordKeyDeserializationException")
     val recordValueDeserializationException = ClassName("ru.tinkoff.kora.kafka.common.exceptions", "RecordValueDeserializationException")
     val recordPublisherException = ClassName("ru.tinkoff.kora.kafka.common.exceptions", "KafkaPublishException")

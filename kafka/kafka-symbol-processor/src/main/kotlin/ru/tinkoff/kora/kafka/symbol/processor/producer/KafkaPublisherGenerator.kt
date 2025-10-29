@@ -133,7 +133,6 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
         val funBuilder = FunSpec.builder(publisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_PublisherFactory")
             .addParameter("telemetryFactory", producerTelemetryFactory)
-            .addParameter("meterRegistry", CommonClassNames.meterRegistry)
             .addParameter(config)
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
             .returns(returnType)
@@ -148,7 +147,6 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             addStatement("properties.putAll(additionalProperties)")
             add("%T(telemetryFactory, config.telemetry(), properties", aopProxy?.toClassName() ?: implementationTypeName).indent()
             topicConfig?.let { add(", topicConfig") }
-            add(", meterRegistry")
             val parameters = HashMap<TypeWithTag, String>()
             val counter = AtomicInteger(0)
             for (method in publishMethods) {
@@ -213,7 +211,6 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .addSuperclassConstructorParameter("driverProperties")
             .addSuperclassConstructorParameter("telemetryConfig")
             .addSuperclassConstructorParameter("telemetryFactory.get(%S, telemetryConfig, driverProperties)", configPath)
-            .addSuperclassConstructorParameter("meterRegistry")
             .apply { topicConfig?.let { addProperty(PropertySpec.builder("topicConfig", it, KModifier.PRIVATE, KModifier.FINAL).initializer("topicConfig").build()) } }
 
         val constructorBuilder = FunSpec.constructorBuilder()
@@ -221,7 +218,6 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .addParameter("telemetryConfig", KafkaClassNames.publisherTelemetryConfig)
             .addParameter("driverProperties", Properties::class)
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
-            .addParameter("meterRegistry", CommonClassNames.meterRegistry)
 
         data class TypeWithTag(val type: TypeName, val tag: Set<String>)
 

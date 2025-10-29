@@ -15,11 +15,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.consumer.containers.KafkaAssignConsumerContainer;
-import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.kafka.common.consumer.telemetry.*;
 import ru.tinkoff.kora.test.kafka.KafkaParams;
 import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 
@@ -61,16 +57,15 @@ class KafkaAssignConsumerContainerTest {
             Duration.ofSeconds(1),
             Duration.ofMillis(10000),
             true,
-            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
-                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, new Duration[0], Map.of())
+            new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueExtractor.KafkaConsumerTracingConfig_Defaults()
             )
         );
         var deque = new ConcurrentLinkedDeque<>();
-        @SuppressWarnings("unchecked")
-        var telemetry = (KafkaConsumerTelemetry<String, Integer>) Mockito.mock(KafkaConsumerTelemetry.class);
-        var container = new KafkaAssignConsumerContainer<>("test", config, params.topic("test-topic"), new StringDeserializer(), new IntegerDeserializer(), telemetry, (records, consumer, commitAllowed) -> {
+        var telemetry = Mockito.mock(KafkaConsumerTelemetry.class);
+        var container = new KafkaAssignConsumerContainer<>("test", config, params.topic("test-topic"), new StringDeserializer(), new IntegerDeserializer(), telemetry, (observation, records, consumer, commitAllowed) -> {
             for (var record : records) {
                 try {
                     deque.offer(record);

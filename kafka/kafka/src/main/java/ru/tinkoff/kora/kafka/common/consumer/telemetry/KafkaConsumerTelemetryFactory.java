@@ -1,10 +1,8 @@
 package ru.tinkoff.kora.kafka.common.consumer.telemetry;
 
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
-
 import java.util.Properties;
 
-public interface KafkaConsumerTelemetryFactory<K, V> {
+public interface KafkaConsumerTelemetryFactory {
 
-    KafkaConsumerTelemetry<K, V> get(String consumerName, Properties driverProperties, TelemetryConfig config);
+    KafkaConsumerTelemetry get(String consumerName, Properties driverProperties, KafkaConsumerTelemetryConfig config);
 }
