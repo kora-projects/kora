@@ -9,9 +9,12 @@ import ru.tinkoff.kora.kafka.common.consumer.ConsumerAwareRebalanceListener;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 
+import java.util.Arrays;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProcessorTest {
+
     @Test
     public void testProcessRecord() {
         var handler = compile("""
@@ -233,5 +236,29 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
             .hasKey("test")
             .hasValueError()
         );
+    }
+
+    @Test
+    public void testConsumerWithTag() {
+        var handler = compile("""
+            @Tag(KafkaListenerClass.class)
+            @Component
+            public class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                public void process(ConsumerRecord<String, String> event) {
+                }
+            }
+            """)
+            .handler(String.class, String.class);
+
+        handler.handle(record("test", "test-value"), i -> i
+            .assertRecord(0)
+            .hasKey("test")
+            .hasValue("test-value"));
+
+        assertThat(Arrays.stream(handler.moduleClass.getDeclaredMethods())
+            .filter(m -> m.getName().equals("kafkaListenerClassProcessHandler"))
+            .findFirst().get()
+            .getParameters()[0].getDeclaredAnnotation(Tag.class)).isNotNull();
     }
 }

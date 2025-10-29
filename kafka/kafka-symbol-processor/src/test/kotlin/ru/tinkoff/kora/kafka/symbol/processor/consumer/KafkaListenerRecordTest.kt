@@ -9,6 +9,7 @@ import ru.tinkoff.kora.kafka.common.consumer.ConsumerAwareRebalanceListener
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory
+import java.util.*
 
 class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
     @Test
@@ -156,5 +157,27 @@ class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
             
             """.trimIndent()
         )
+    }
+
+    @Test
+    fun testConsumerWithTag() {
+        compile(
+            """
+            @Tag(KafkaListenerClass::class)
+            @Component
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>) {
+                }
+            }
+            """.trimIndent()
+        )
+
+        Assertions.assertThat(
+            Arrays.stream(compileResult.loadClass("KafkaListenerClassModule").getDeclaredMethods())
+                .filter { it.name == "kafkaListenerClassProcessHandler" }
+                .findFirst().get()
+                .parameters[0].getDeclaredAnnotation(Tag::class.java)).isNotNull()
+
     }
 }

@@ -17,6 +17,7 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.handlerFunName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
@@ -27,8 +28,15 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
     fun generate(functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         val controller = functionDeclaration.parentDeclaration as KSClassDeclaration
         val tag = functionDeclaration.getConsumerTags().toTagSpecTypes()
+
+        val delegateParamBuilder = ParameterSpec.builder("controller", controller.toClassName())
+        val delegateTags = functionDeclaration.parentDeclaration?.parseTags()
+        if (!delegateTags.isNullOrEmpty()) {
+            delegateParamBuilder.addAnnotation(delegateTags.toTagAnnotation())
+        }
+
         val b = FunSpec.builder(functionDeclaration.handlerFunName())
-            .addParameter("controller", controller.toClassName())
+            .addParameter(delegateParamBuilder.build())
             .addAnnotation(tag)
 
         val hasRecords = parameters.any { it is ConsumerParameter.Records }
@@ -245,7 +253,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 endControlFlow()
             }
             if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context,  context)
+                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context, context)
             }
 
             add("controller.%N(", functionDeclaration.simpleName.asString())
