@@ -16,9 +16,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
 
-import static java.util.function.Predicate.not;
 import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.findAnnotations;
 import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.isAnnotationPresent;
+import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.parseAnnotationValueWithoutDefault;
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdc;
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcAnnotation;
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcContainerAnnotation;
@@ -81,19 +81,18 @@ public class MdcAspect implements KoraAspect {
     private static Set<String> fillMdcByMethodAnnotations(List<AnnotationMirror> methodAnnotations, CodeBlock.Builder currentContextBuilder, CodeBlock.Builder fillMdcBuilder) {
         final Set<String> keys = new HashSet<>();
         for (AnnotationMirror annotation : methodAnnotations) {
-            final String key = extractParameter(annotation, String.class, "key")
+            final String key = extractStringParameter(annotation, "key")
                 .orElseThrow(() -> new ProcessingErrorException("@Mdc annotation must have 'key' attribute", annotation.getAnnotationType().asElement()));
-            final String value = extractParameter(annotation, String.class, "value")
+            final String value = extractStringParameter(annotation, "value")
                 .orElseThrow(() -> new ProcessingErrorException("@Mdc annotation must have 'value' attribute", annotation.getAnnotationType().asElement()));
-            final boolean global = extractParameter(annotation, Boolean.class, "global")
-                .orElse(false);
+            final Boolean global = parseAnnotationValueWithoutDefault(annotation, "global");
 
-            if (!global) {
+            if (global == null || !global) {
                 keys.add(key);
                 currentContextBuilder.addStatement("var __$N = $N.get($S)", key, MDC_CONTEXT_VAR_NAME, key);
             }
             if (value.startsWith("${") && value.endsWith("}")) {
-                fillMdcBuilder.addStatement("$T.put($S, $N)", mdc, key, value.substring(2, value.length() - 1));
+                fillMdcBuilder.addStatement("$T.put($S, $L)", mdc, key, value.substring(2, value.length() - 1));
             } else {
                 fillMdcBuilder.addStatement("$T.put($S, $S)", mdc, key, value);
             }
@@ -108,14 +107,11 @@ public class MdcAspect implements KoraAspect {
             final AnnotationMirror firstAnnotation = findAnnotations(parameter, mdcAnnotation, mdcContainerAnnotation)
                 .get(0);
 
-            final String key = extractParameter(firstAnnotation, String.class, "key")
-                .filter(not(String::isEmpty))
-                .or(() -> extractParameter(firstAnnotation, String.class, "value"))
-                .filter(not(String::isEmpty))
+            final String key = extractStringParameter(firstAnnotation, "key")
+                .or(() -> extractStringParameter(firstAnnotation, "value"))
                 .orElse(parameterName);
 
-            final boolean global = extractParameter(firstAnnotation, Boolean.class, "global")
-                .orElse(false);
+            final Boolean global = parseAnnotationValueWithoutDefault(firstAnnotation, "global");
 
             fillMdcBuilder.addStatement(
                 "$T.put($S, $N)",
@@ -124,7 +120,7 @@ public class MdcAspect implements KoraAspect {
                 parameterName
             );
 
-            if (!global) {
+            if (global == null || !global) {
                 keys.add(key);
                 currentContextBuilder.addStatement("var __$N = $N.get($S)", key, MDC_CONTEXT_VAR_NAME, key);
             }
@@ -132,14 +128,10 @@ public class MdcAspect implements KoraAspect {
         return keys;
     }
 
-    private static <T> Optional<T> extractParameter(AnnotationMirror annotation, Class<T> type, String name) {
-        return annotation.getElementValues()
-            .entrySet()
-            .stream()
-            .filter(entry -> entry.getKey().getSimpleName().toString().contains(name))
-            .findFirst()
-            .map(entry -> entry.getValue().getValue())
-            .map(type::cast);
+    private static Optional<String> extractStringParameter(AnnotationMirror annotation, String name) {
+        final String value = parseAnnotationValueWithoutDefault(annotation, name);
+        return Optional.ofNullable(value)
+            .filter(s -> !s.isBlank());
     }
 
     private static void clearMdc(Set<String> keys, CodeBlock.Builder b) {
