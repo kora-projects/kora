@@ -14,6 +14,7 @@ import ru.tinkoff.kora.database.r2dbc.R2dbcConnectionFactory;
 import ru.tinkoff.kora.database.r2dbc.mapper.parameter.R2dbcParameterColumnMapper;
 import ru.tinkoff.kora.database.r2dbc.mapper.result.R2dbcResultFluxMapper;
 
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Executor;
@@ -244,7 +245,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
     }
 
     @Test
-    public void testEntityFieldMappingByTag() throws ClassNotFoundException {
+    public void testEntityFieldMappingByTag() {
         var mapper = Mockito.mock(R2dbcParameterColumnMapper.class);
         var repository = compileR2dbc(List.of(mapper), """
             public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
@@ -269,7 +270,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
     }
 
     @Test
-    public void testParameterMappingByTag() throws ClassNotFoundException {
+    public void testParameterMappingByTag() {
         var mapper = Mockito.mock(R2dbcParameterColumnMapper.class);
         var repository = compileR2dbc(List.of(mapper), """
             @Repository
@@ -291,7 +292,7 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
     }
 
     @Test
-    public void testRecordParameterMappingByTag() throws ClassNotFoundException {
+    public void testRecordParameterMappingByTag() {
         var mapper = Mockito.mock(R2dbcParameterColumnMapper.class);
         var repository = compileR2dbc(List.of(mapper), """
             @Repository
@@ -310,5 +311,33 @@ public class R2dbcParametersTest extends AbstractR2dbcRepositoryTest {
         assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
     }
 
+    @Test
+    public void testSamePrefixParameterNameMapping() {
+        var repository = compileR2dbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = :status")
+                void test(String status);
+            }
+            """);
 
+        repository.invoke("test", "someStatus");
+
+        verify(executor.con).createStatement("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = $1");
+    }
+
+    @Test
+    public void testSamePrefixMultiParameterNameMapping() {
+        var repository = compileR2dbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends R2dbcRepository {
+                @Query("SELECT * FROM test WHERE some_status = :status AND user_status = 'CREATED'::status_type AND diff_status = :statusDiff AND other_status = :status AND status = :status")
+                void test(String status, String statusDiff);
+            }
+            """);
+
+        repository.invoke("test", "someStatus", "otherStatus");
+
+        verify(executor.con).createStatement("SELECT * FROM test WHERE some_status = $1 AND user_status = 'CREATED'::status_type AND diff_status = $2 AND other_status = $3 AND status = $4");
+    }
 }

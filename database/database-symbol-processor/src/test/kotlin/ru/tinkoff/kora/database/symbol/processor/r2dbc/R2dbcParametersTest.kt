@@ -370,4 +370,36 @@ class R2dbcParametersTest : AbstractR2dbcTest() {
         Assertions.assertThat(tag).isNotNull()
         Assertions.assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
     }
+
+    @Test
+    fun testSamePrefixParameterNameMapping() {
+        val repository = compile(
+            listOf<Any>(), """            
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = :status")
+                fun test(status: String)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", "someStatus")
+        verify(executor.con).createStatement("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = $1")
+    }
+
+    @Test
+    fun testSamePrefixMultiParameterNameMapping() {
+        val repository = compile(
+            listOf<Any>(), """            
+            @Repository
+            interface TestRepository : R2dbcRepository {
+                @Query("SELECT * FROM test WHERE some_status = :status AND user_status = 'CREATED'::status_type AND diff_status = :statusDiff AND other_status = :status AND status = :status")
+                fun test(status: String, statusDiff: String)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", "someStatus", "otherStatus")
+        verify(executor.con).createStatement("SELECT * FROM test WHERE some_status = $1 AND user_status = 'CREATED'::status_type AND diff_status = $2 AND other_status = $3 AND status = $4")
+    }
 }

@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
@@ -14,10 +14,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 public record QueryWithParameters(String rawQuery, List<QueryParameter> parameters) {
 
-    public record QueryParameter(String sqlParameterName, int methodIndex, List<Integer> sqlIndexes) {}
+    public record QueryParameter(String sqlParameterName, int methodIndex, List<QueryIndex> queryIndexes, List<Integer> sqlIndexes) {
+
+        public record QueryIndex(int start, int end) { }
+    }
 
     @Nullable
     public QueryParameter find(String name) {
@@ -104,7 +108,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             .toList();
 
         params = params.stream()
-            .map(p -> new QueryParameter(p.sqlParameterName(), p.methodIndex(), p.sqlIndexes()
+            .map(p -> new QueryParameter(p.sqlParameterName(), p.methodIndex(), p.queryIndexes(), p.sqlIndexes()
                 .stream()
                 .map(paramsNumbers::indexOf)
                 .toList()
@@ -116,40 +120,38 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
 
 
     private static Optional<QueryParameter> parseSimpleParameter(String rawSql, int methodParameterNumber, String sqlParameterName) {
-        int index = -1;
-        var result = new ArrayList<Integer>();
-        while ((index = rawSql.indexOf(":" + sqlParameterName, index + 1)) >= 0) {
-            var indexAfter = index + sqlParameterName.length() + 1;
-            if (rawSql.length() >= indexAfter + 1) {
-                var charAfter = rawSql.charAt(indexAfter);
-                if (Character.isAlphabetic(charAfter) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
-                    continue;
-                }
-            }
-            result.add(index);
+        var result = new ArrayList<QueryParameter.QueryIndex>();
+        var pattern = Pattern.compile("[\\s\\n,(](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)]|$)");
+        var matcher = pattern.matcher(rawSql);
+        while (matcher.find()) {
+            var mr = matcher.toMatchResult();
+            var start = mr.start(1);
+            var end = mr.end();
+            result.add(new QueryParameter.QueryIndex(start, end));
         }
 
         return (result.isEmpty())
             ? Optional.empty()
-            : Optional.of(new QueryParameter(sqlParameterName, methodParameterNumber, result));
+            : Optional.of(new QueryParameter(sqlParameterName, methodParameterNumber, result, result.stream()
+            .map(QueryParameter.QueryIndex::start)
+            .toList()));
     }
 
     private static Optional<QueryParameter> parseEntityDirectParameter(String rawSql, int methodParameterNumber, String sqlParameterName) {
-        int index = -1;
-        var result = new ArrayList<Integer>();
-        while ((index = rawSql.indexOf(":" + sqlParameterName, index + 1)) >= 0) {
-            var indexAfter = index + sqlParameterName.length() + 1;
-            if (rawSql.length() >= indexAfter + 1) {
-                var charAfter = rawSql.charAt(indexAfter);
-                if ('.' == charAfter || Character.isAlphabetic(charAfter) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
-                    continue;
-                }
-            }
-            result.add(index);
+        var result = new ArrayList<QueryParameter.QueryIndex>();
+        var pattern = Pattern.compile("[\\s\\n,(](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)]|$)");
+        var matcher = pattern.matcher(rawSql);
+        while (matcher.find()) {
+            var mr = matcher.toMatchResult();
+            var start = mr.start(1);
+            var end = mr.end();
+            result.add(new QueryParameter.QueryIndex(start, end));
         }
 
         return (result.isEmpty())
             ? Optional.empty()
-            : Optional.of(new QueryParameter(sqlParameterName, methodParameterNumber, result));
+            : Optional.of(new QueryParameter(sqlParameterName, methodParameterNumber, result, result.stream()
+            .map(QueryParameter.QueryIndex::start)
+            .toList()));
     }
 }

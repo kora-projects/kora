@@ -62,6 +62,8 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
+    private data class QueryReplace(val index: Int, val name: String)
+
     private fun generate(
         typeBuilder: TypeSpec.Builder,
         methodNumber: Int,
@@ -73,9 +75,18 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         parameterMappers: FieldFactory
     ): FunSpec {
         var sql = query.rawQuery
-        for (parameter in query.parameters.asSequence().sortedByDescending { it.sqlParameterName.length }) {
-            sql = sql.replace(":" + parameter.sqlParameterName, "?")
+
+        val replaceParams = query.parameters
+            .flatMap { p -> p.queryIndexes.map { i -> QueryReplace(i.start, p.sqlParameterName) } }
+            .sortedBy { it.index }
+            .toList()
+        var sqlIndexDiff = 0
+        for (parameter in replaceParams) {
+            val queryIndexAdjusted: Int = parameter.index - sqlIndexDiff
+            sql = sql.substring(0, queryIndexAdjusted) + "?" + sql.substring(queryIndexAdjusted + parameter.name.length + 1)
+            sqlIndexDiff += parameter.name.length
         }
+
         val b = funDeclaration.queryMethodBuilder(resolver)
 
         val queryContextFieldName = "_queryContext_$methodNumber"

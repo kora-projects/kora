@@ -63,12 +63,40 @@ class R2DbcRepositoryGenerator(val resolver: Resolver) : RepositoryGenerator {
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
-    private fun generate(typeBuilder: TypeSpec.Builder, methodNumber:Int, method: KSFunctionDeclaration, function: KSFunction, query: QueryWithParameters, parameters: List<QueryParameter>, resultMapperName: String?, parameterMappers: FieldFactory): FunSpec {
+    private data class QueryReplace(val index: Int, val sqlIndex: Int, val name: String)
+
+    private fun generate(
+        typeBuilder: TypeSpec.Builder,
+        methodNumber: Int,
+        method: KSFunctionDeclaration,
+        function: KSFunction,
+        query: QueryWithParameters,
+        parameters: List<QueryParameter>,
+        resultMapperName: String?,
+        parameterMappers: FieldFactory
+    ): FunSpec {
         var sql = query.rawQuery
-        for (p in query.parameters.asSequence().withIndex().sortedByDescending { it.value.sqlParameterName.length }) {
-            val parameter = p.value
-            sql = sql.replace(":" + parameter.sqlParameterName, "$" + (p.index + 1))
+
+        val replaceParams = query.parameters.asSequence()
+            .flatMap { p ->
+                val replaces = mutableListOf<QueryReplace>()
+                for (i in p.queryIndexes.indices) {
+                    val queryIndex = p.queryIndexes.get(i)
+                    val sqlIndex = p.sqlIndexes.get(i)
+                    replaces.add(QueryReplace(queryIndex.start, sqlIndex, p.sqlParameterName))
+                }
+                replaces.asSequence()
+            }
+            .sortedBy { it.index }
+            .toList()
+        var sqlIndexDiff = 0
+        for (parameter in replaceParams) {
+            val queryIndexAdjusted: Int = parameter.index - sqlIndexDiff
+            val index: Int = parameter.sqlIndex + 1
+            sql = sql.substring(0, queryIndexAdjusted) + "$" + index + sql.substring(queryIndexAdjusted + parameter.name.length + 1)
+            sqlIndexDiff += (parameter.name.length - index.toString().length)
         }
+
         val b = method.queryMethodBuilder(resolver)
 
         val queryContextFieldName = "_queryContext_$methodNumber"

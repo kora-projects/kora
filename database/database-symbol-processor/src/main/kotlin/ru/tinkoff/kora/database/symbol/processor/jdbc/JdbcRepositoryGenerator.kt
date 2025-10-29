@@ -65,6 +65,8 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         return typeBuilder.primaryConstructor(constructorBuilder.build()).build()
     }
 
+    private data class QueryReplace(val index: Int, val name: String)
+
     private fun generate(
         typeBuilder: TypeSpec.Builder,
         methodNumber: Int,
@@ -78,8 +80,16 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val batchParam = parameters.firstOrNull { it is QueryParameter.BatchParameter }
         val isGeneratedKeys = method.isAnnotationPresent(DbUtils.idAnnotation)
         var sql = query.rawQuery
-        for (parameter in query.parameters.sortedByDescending { it.sqlParameterName.length }) {
-            sql = sql.replace(":${parameter.sqlParameterName}", "?")
+
+        val replaceParams = query.parameters
+            .flatMap { p -> p.queryIndexes.map { i -> QueryReplace(i.start, p.sqlParameterName) } }
+            .sortedBy { it.index }
+            .toList()
+        var sqlIndexDiff = 0
+        for (parameter in replaceParams) {
+            val queryIndexAdjusted: Int = parameter.index - sqlIndexDiff
+            sql = sql.substring(0, queryIndexAdjusted) + "?" + sql.substring(queryIndexAdjusted + parameter.name.length + 1)
+            sqlIndexDiff += parameter.name.length
         }
 
         val returnTypeName = methodType.returnType?.toTypeName()

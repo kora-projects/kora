@@ -8,5 +8,6 @@ import ru.tinkoff.kora.database.jdbc.JdbcRepository
 interface InvalidParameterUsage : JdbcRepository {
     @Query("SELECT * FROM table WHERE field3 = :param1.field3")
     fun wrongFieldUsedInTemplate(param1: Dto?, param2: String?): String?
-    class Dto
+
+    data class Dto(val field3: String)
 }

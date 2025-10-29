@@ -4,9 +4,13 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.io.BufferedInputStream
 import java.nio.charset.Charset
+import java.util.regex.Pattern
 
 data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryParameter>) {
-    data class QueryParameter(val sqlParameterName: String, val methodIndex: Int, val sqlIndexes: List<Int>)
+
+    data class QueryParameter(val sqlParameterName: String, val methodIndex: Int, val sqlIndexes: List<Int>, val queryIndexes: List<QueryIndex>)
+
+    data class QueryIndex(val start: Int, val end: Int)
 
     fun find(name: String): QueryParameter? {
         for (parameter in parameters) {
@@ -91,42 +95,40 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                     QueryParameter(
                         p.sqlParameterName,
                         p.methodIndex,
-                        p.sqlIndexes.map { paramsNumbers.indexOf(it) })
+                        p.sqlIndexes.map { paramsNumbers.indexOf(it) },
+                        p.queryIndexes
+                    )
                 }
 
             return QueryWithParameters(rawSql, processedParams)
         }
 
         private fun parseSimpleParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
-            var index = -1
-            val result = ArrayList<Int>()
-            while (rawSql.indexOf(":$sqlParameterName", index + 1).also { index = it } >= 0) {
-                val indexAfter = index + sqlParameterName.length + 1
-                if (rawSql.length >= indexAfter + 1) {
-                    val charAfter = rawSql[indexAfter]
-                    if (Character.isAlphabetic(charAfter.code) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
-                        continue
-                    }
-                }
-                result.add(index)
+            val result = ArrayList<QueryIndex>()
+            val pattern = Pattern.compile("[\\s\\n,(](?<param>:$sqlParameterName)(?=[\\s\\n,:)]|$)")
+            val matcher = pattern.matcher(rawSql)
+            while (matcher.find()) {
+                val mr = matcher.toMatchResult()
+                val start = mr.start(1)
+                val end = mr.end()
+                result.add(QueryIndex(start, end))
             }
-            return QueryParameter(sqlParameterName, methodParameterNumber, result)
+
+            return QueryParameter(sqlParameterName, methodParameterNumber, result.map { it.start }, result)
         }
 
         private fun parseEntityDirectParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
-            var index = -1
-            val result = ArrayList<Int>()
-            while (rawSql.indexOf(":$sqlParameterName", index + 1).also { index = it } >= 0) {
-                val indexAfter = index + sqlParameterName.length + 1
-                if (rawSql.length >= indexAfter + 1) {
-                    val charAfter = rawSql[indexAfter]
-                    if ('.' == charAfter || Character.isAlphabetic(charAfter.code) || charAfter == '_' || charAfter == '$' || Character.isDigit(charAfter)) {
-                        continue
-                    }
-                }
-                result.add(index)
+            val result = ArrayList<QueryIndex>()
+            val pattern = Pattern.compile("[\\s\\n,(](?<param>:$sqlParameterName)(?=[\\s\\n,:)]|$)")
+            val matcher = pattern.matcher(rawSql)
+            while (matcher.find()) {
+                val mr = matcher.toMatchResult()
+                val start = mr.start(1)
+                val end = mr.end()
+                result.add(QueryIndex(start, end))
             }
-            return QueryParameter(sqlParameterName, methodParameterNumber, result)
+
+            return QueryParameter(sqlParameterName, methodParameterNumber, result.map { it.start }, result)
         }
     }
 }

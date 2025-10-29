@@ -8,6 +8,7 @@ import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameterParser;
+import ru.tinkoff.kora.database.annotation.processor.r2dbc.R2dbcRepositoryGenerator;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -69,18 +70,26 @@ public final class VertxRepositoryGenerator implements RepositoryGenerator {
         return type.addMethod(constructor.build()).build();
     }
 
+    private record QueryReplace(int start, int end, int paramIndex, String name) {}
+
     private MethodSpec generate(TypeSpec.Builder type, int methodNumber, ExecutableElement method, ExecutableType methodType, QueryWithParameters query, List<QueryParameter> parameters, @Nullable String resultMapperName, FieldFactory parameterMappers) {
         var sql = query.rawQuery();
-        {
-            var params = new ArrayList<Map.Entry<QueryWithParameters.QueryParameter, Integer>>(query.parameters().size());
-            for (int i = 0; i < query.parameters().size(); i++) {
-                var parameter = query.parameters().get(i);
-                params.add(Map.entry(parameter, i));
-            }
-            for (var parameter : params.stream().sorted(Comparator.<Map.Entry<QueryWithParameters.QueryParameter, Integer>, Integer>comparing(p -> p.getKey().sqlParameterName().length()).reversed()).toList()) {
-                sql = sql.replace(":" + parameter.getKey().sqlParameterName(), "$" + (parameter.getValue() + 1));
+
+        List<QueryReplace> replaceParams = new ArrayList<>();
+        for (int i = 0; i < query.parameters().size(); i++) {
+             var parameter = query.parameters().get(i);
+            for (var queryIndex : parameter.queryIndexes()) {
+                replaceParams.add(new QueryReplace(queryIndex.start(), queryIndex.end(), i + 1, parameter.sqlParameterName()));
             }
         }
+        replaceParams.sort(Comparator.comparingInt(QueryReplace::start));
+        int sqlIndexDiff = 0;
+        for (var parameter : replaceParams) {
+            int queryIndexAdjusted = parameter.start() - sqlIndexDiff;
+            sql = sql.substring(0, queryIndexAdjusted) + "$" + parameter.paramIndex() + sql.substring(queryIndexAdjusted + parameter.name().length() + 1);
+            sqlIndexDiff += (parameter.name().length() - String.valueOf(parameter.paramIndex()).length());
+        }
+
         var b = DbUtils.queryMethodBuilder(method, methodType);
 
         var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;

@@ -15,6 +15,7 @@ import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
+import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
@@ -414,5 +415,37 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
         assertThat(tag.value.map { it.java }).isEqualTo(listOf(compileResult.loadClass("TestRepository")))
+    }
+
+    @Test
+    fun testSamePrefixParameterNameMapping() {
+        val repository = compile(
+            listOf<Any>(), """            
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = :status")
+                fun test(status: String)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", "someStatus")
+        Mockito.verify(executor.mockSession).prepare("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = ?")
+    }
+
+    @Test
+    fun testSamePrefixMultiParameterNameMapping() {
+        val repository = compile(
+            listOf<Any>(), """            
+            @Repository
+            interface TestRepository : CassandraRepository {
+                @Query("SELECT * FROM test WHERE some_status = :status AND user_status = 'CREATED'::status_type AND diff_status = :statusDiff AND other_status = :status AND status = :status")
+                fun test(status: String, statusDiff: String)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", "someStatus", "otherStatus")
+        Mockito.verify(executor.mockSession).prepare("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?")
     }
 }
