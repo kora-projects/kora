@@ -6,7 +6,6 @@ import ru.tinkoff.kora.opentelemetry.module.cache.OpentelementryCacheTracer;
 import ru.tinkoff.kora.opentelemetry.module.camunda.engine.bpmn.OpentelemetryCamundaEngineBpmnTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.camunda.rest.OpentelemetryCamundaRestTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.camunda.zeebe.worker.OpentelemetryZeebeWorkerTracerFactory;
-import ru.tinkoff.kora.opentelemetry.module.grpc.client.OpentelemetryGrpcClientTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.grpc.server.OpentelemetryGrpcServerTracer;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.http.server.OpentelemetryHttpServerTracerFactory;
@@ -31,11 +30,6 @@ public interface OpentelemetryModule {
     @DefaultComponent
     default OpentelemetrySoapClientTracerFactory opentelemetrySoapClientTracingFactory(Tracer tracer) {
         return new OpentelemetrySoapClientTracerFactory(tracer);
-    }
-
-    @DefaultComponent
-    default OpentelemetryGrpcClientTracerFactory opentelemetryGrpcClientTracerFactory(Tracer tracer) {
-        return new OpentelemetryGrpcClientTracerFactory(tracer);
     }
 
     @DefaultComponent

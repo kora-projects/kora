@@ -7,10 +7,10 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
 import ru.tinkoff.grpc.client.config.DefaultServiceConfig;
 import ru.tinkoff.grpc.client.config.GrpcClientConfig;
+import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Wrapped;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.net.SocketAddress;
 import java.time.Duration;
@@ -50,7 +50,7 @@ final class ZeebeManagedChannelFactory {
             }
 
             @Override
-            public TelemetryConfig telemetry() {
+            public GrpcClientTelemetryConfig telemetry() {
                 return clientConfig.telemetry();
             }
 
