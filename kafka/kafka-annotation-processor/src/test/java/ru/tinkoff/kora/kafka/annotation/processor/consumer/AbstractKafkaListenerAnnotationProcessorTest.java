@@ -161,6 +161,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
             import ru.tinkoff.kora.kafka.common.exceptions.RecordKeyDeserializationException;
             import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
             import org.apache.kafka.common.header.Headers;
+            import ru.tinkoff.kora.common.*;
             """;
     }
 
@@ -276,9 +277,11 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 protected final Object mock;
                 protected final Method handlerMethod;
                 protected final Object module;
+                protected final Class<?> moduleClass;
                 protected volatile InvocationOnMock invocation;
 
                 public AbstractHandlerAssertions(Class<?> controllerClass, Class<?> moduleClass) {
+                    this.moduleClass = moduleClass;
                     this.mock = Mockito.mock(controllerClass, new Answer() {
                         @Override
                         public Object answer(InvocationOnMock invocation) throws Throwable {
