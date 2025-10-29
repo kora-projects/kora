@@ -14,6 +14,7 @@ import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim.DependencyClaimTyp
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.kora.app.ksp.exception.CircularDependencyException
+import ru.tinkoff.kora.kora.app.ksp.exception.DuplicateDependencyException
 import ru.tinkoff.kora.kora.app.ksp.exception.NewRoundException
 import ru.tinkoff.kora.kora.app.ksp.exception.UnresolvedDependencyException
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
@@ -142,15 +143,7 @@ object GraphBuilder {
                         }
                     }
                     if (results.size > 1) {
-                        val deps = templates.stream().map { Objects.toString(it) }
-                            .collect(Collectors.joining("\n"))
-                            .prependIndent("  ")
-                        throw ProcessingErrorException(
-                            """
-                            More than one component matches dependency claim ${dependencyClaim.type}:
-                            $deps
-                            """.trimIndent(), declaration.source
-                        )
+                        throw DuplicateDependencyException(dependencyClaim, declaration, templates)
                     }
                     throw exception!!
                 }
@@ -538,7 +531,7 @@ object GraphBuilder {
             if (frame !is ProcessingState.ResolutionFrame.Component || frame.declaration !== declaration) {
                 continue
             }
-            val circularDependencyException = CircularDependencyException(listOf(prevFrame.declaration.toString(), declaration.toString()), frame.declaration)
+            val circularDependencyException = CircularDependencyException(listOf(prevFrame.declaration, declaration), frame.declaration)
             if (claimTypeDeclaration !is KSClassDeclaration) throw circularDependencyException
             if (claimTypeDeclaration.classKind != ClassKind.INTERFACE && !(claimTypeDeclaration.classKind == ClassKind.CLASS && claimTypeDeclaration.isOpen())) throw circularDependencyException
             val proxyDependencyClaim = DependencyClaim(

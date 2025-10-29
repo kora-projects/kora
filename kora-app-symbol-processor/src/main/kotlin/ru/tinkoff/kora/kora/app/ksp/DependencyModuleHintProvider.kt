@@ -40,7 +40,7 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                 if (tags.isEmpty()) {
                     return """
                         Missing component: ${type.toTypeName()}
-                            Component can be provided by standard Kora module you may forgot to plug it:
+                            Component is provided by standard Kora module you may forgot to plug it:
                                 Gradle dependency:  implementation("$artifact")
                                 Module interface:  $module
                                 """.trimIndent()
@@ -55,7 +55,7 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
 
                     return """
                         Missing component: ${type.toTypeName()} with $tagForMsg
-                            Component can be provided by standard Kora module you may forgot to plug it:
+                            Component is provided by standard Kora module you may forgot to plug it:
                                 Gradle dependency:  implementation("$artifact")
                                 Module interface:  $module
                                 """.trimIndent()

@@ -41,7 +41,7 @@ public class DependencyModuleHintProvider {
                 if (tags.isEmpty()) {
                     return """
                         Missing component: %s
-                            Component can be provided by standard Kora module you may forgot to plug it:
+                            Component is provided by standard Kora module you may forgot to plug it:
                                 Gradle dependency:  implementation("%s")
                                 Module interface:  %s
                         """.formatted(type, artifact, module);
