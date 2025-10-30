@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.quartz.DisallowConcurrentExecution
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import ru.tinkoff.kora.scheduling.ksp.controller.*
 import kotlin.reflect.KClass
@@ -37,7 +38,9 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
     }
 
     private fun <T : Any> process(type: KClass<T>) {
-        val cl = symbolProcess(listOf(SchedulingKspProvider()), listOf(type))
+        val cl = KotlinCompilation()
+            .withClasspathJar("quartz")
+            .symbolProcess(listOf(SchedulingKspProvider()), listOf(type))
 
         val module = cl.loadClass(type.asClassName().packageName + ".$" + type.simpleName + "_SchedulingModule")
     }
@@ -45,8 +48,10 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testDisallowConcurrentExecutionOnClass() {
-        val cr = compile0(
-            listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
+        val cr = KotlinCompilation()
+            .withClasspathJar("quartz")
+            .compile(
+                listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
             @org.quartz.DisallowConcurrentExecution
             class TestClass {
                 @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(Tag(TestClass::class))
@@ -54,7 +59,7 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
             }
             
             """.trimIndent()
-        )
+            )
         cr.assertSuccess()
         val clazz = loadClass("\$TestClass_job_Job")
         Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)
@@ -62,8 +67,10 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testDisallowConcurrentExecutionOnMethod() {
-        val cr = compile0(
-            listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
+        val cr = KotlinCompilation()
+            .withClasspathJar("quartz")
+            .compile(
+                listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
             class TestClass {
                 @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(Tag(TestClass::class))
                 @ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
@@ -71,7 +78,7 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
             }
             
             """.trimIndent()
-        )
+            )
         cr.assertSuccess()
         val clazz = loadClass("\$TestClass_job_Job")
         Assertions.assertThat(clazz).hasAnnotation(DisallowConcurrentExecution::class.java)

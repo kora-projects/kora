@@ -91,3 +91,15 @@ fun symbolProcess(processors: List<SymbolProcessorProvider>, targetClasses: List
         .apply { processorsOptions.putAll(params) }
         .compile()
 }
+
+fun KotlinCompilation.symbolProcess(processors: List<SymbolProcessorProvider>, targetClasses: List<KClass<*>>, params: Map<String, String> = mapOf()): ClassLoader {
+    val srcFilesPath = targetClasses
+        .map { targetClass ->
+            "src/test/kotlin/" + targetClass.qualifiedName!!.replace(".", "/") + ".kt"
+        }
+        .map { Path.of(it) }
+    return withProcessors(processors)
+        .withSrc(srcFilesPath)
+        .apply { processorsOptions.putAll(params) }
+        .compile()
+}

@@ -9,12 +9,13 @@ import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.AbstractRepositoryTest
 import ru.tinkoff.kora.database.symbol.processor.RepositorySymbolProcessorProvider
 import ru.tinkoff.kora.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import kotlin.reflect.KClass
 
 class CassandraUdtTest : AbstractRepositoryTest() {
     @Test
     fun testUdt() {
-        compile0(
+        KotlinCompilation().withClasspathJar("java-driver-core").compile(
             listOf(CassandraUdtSymbolProcessorProvider()),
             """
                 @ru.tinkoff.kora.database.cassandra.annotation.UDT

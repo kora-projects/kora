@@ -14,7 +14,8 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testSealedInterface() {
-        compile0(listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                 @Valid
                 sealed interface TestInterface {
@@ -31,7 +32,8 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
 
     @Test
     fun testExtension() {
-        compile0(listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                 @Valid
                 sealed interface TestInterface {

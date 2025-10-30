@@ -9,6 +9,7 @@ import ru.tinkoff.kora.kafka.common.producer.KafkaPublisherConfig
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaPublisherTelemetryFactory
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 import java.util.*
 
 class KafkaPublisherTest : AbstractSymbolProcessorTest() {
@@ -26,7 +27,9 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         """.trimIndent()
     }
 
-    fun compile0(@Language("kotlin") vararg sources: String) = compile0(listOf(KafkaPublisherSymbolProcessorProvider()), *sources)
+    fun compile0(@Language("kotlin") vararg sources: String) = KotlinCompilation()
+        .withClasspathJar("kafka-clients")
+        .compile(listOf(KafkaPublisherSymbolProcessorProvider()), *sources)
 
     @Test
     fun testPublisherWithRecord() {

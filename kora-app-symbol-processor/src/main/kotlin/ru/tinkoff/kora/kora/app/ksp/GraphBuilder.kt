@@ -224,6 +224,7 @@ class GraphBuilder {
                 }
                 val finalClassComponent = GraphResolutionHelper.findFinalDependency(ctx, dependencyClaim)
                 if (finalClassComponent != null) {
+                    // TODO remove
                     sourceDeclarations.add(finalClassComponent)
                     stack.addLast(frame.copy(currentDependency = currentDependency))
                     stack.addLast(ResolutionFrame.Component(finalClassComponent))

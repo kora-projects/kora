@@ -197,6 +197,7 @@ public class GraphBuilder {
                 }
                 var finalClassComponent = GraphResolutionHelper.findFinalDependency(ctx, dependencyClaim);
                 if (finalClassComponent != null) {
+                    // TODO remove
                     sourceDeclarations.add(finalClassComponent);
                     this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), finalClassComponent);
                     continue frame;

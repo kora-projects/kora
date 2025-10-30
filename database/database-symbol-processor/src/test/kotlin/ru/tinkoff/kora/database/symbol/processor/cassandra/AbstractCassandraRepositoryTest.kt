@@ -14,7 +14,6 @@ abstract class AbstractCassandraRepositoryTest : AbstractRepositoryTest() {
             import ru.tinkoff.kora.database.cassandra.mapper.parameter.*;
 
             import java.util.concurrent.CompletionStage;
-            import reactor.core.publisher.*;
 
             import com.datastax.oss.driver.api.core.cql.*;
             import com.datastax.oss.driver.api.core.data.*;
@@ -22,4 +21,6 @@ abstract class AbstractCassandraRepositoryTest : AbstractRepositoryTest() {
     }
 
     protected fun compile(arguments: List<*>, @Language("kotlin") vararg sources: String) = compile(executor, arguments, *sources)
+
+
 }
