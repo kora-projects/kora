@@ -9,6 +9,9 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.fail
 import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_ConfigValueExtractor`.DatabaseTelemetryConfig_Impl
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTracingConfig_ConfigValueExtractor`.DatabaseTracingConfig_Impl
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory
 import ru.tinkoff.kora.database.r2dbc.`$R2dbcDatabaseConfig_ConfigValueExtractor`.R2dbcDatabaseConfig_Impl
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl
@@ -109,9 +112,9 @@ class R2dbcDatabaseExtensionTest {
                 0,
                 false,
                 mapOf<String, String>(),
-                TelemetryConfig_Impl(
+                DatabaseTelemetryConfig_Impl(
+                    DatabaseTracingConfig_Impl(true, false),
                     LogConfig_Impl(true),
-                    TracingConfig_Impl(true),
                     MetricsConfig_Impl(null, null)
                 )
             )

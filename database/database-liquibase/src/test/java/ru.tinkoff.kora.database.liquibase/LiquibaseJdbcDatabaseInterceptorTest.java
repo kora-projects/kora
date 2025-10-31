@@ -3,6 +3,8 @@ package ru.tinkoff.kora.database.liquibase;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
@@ -39,9 +41,9 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
             Duration.ofMillis(1000L),
             false,
             new Properties(),
-            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(false,  false),
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
             )
         );

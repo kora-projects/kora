@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
     compileOnly libs.jetbrains.annotations
 
     api project(":common")
