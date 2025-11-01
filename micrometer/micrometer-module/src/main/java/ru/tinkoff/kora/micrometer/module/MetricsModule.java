@@ -17,9 +17,6 @@ import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEn
 import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.job.MicrometerZeebeClientWorkerJobMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker.MicrometerZeebeWorkerMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.grpc.client.MicrometerGrpcClientMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.grpc.client.tag.DefaultMicrometerGrpcClientTagsProvider;
-import ru.tinkoff.kora.micrometer.module.grpc.client.tag.MicrometerGrpcClientTagsProvider;
 import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.grpc.server.tag.DefaultMicrometerGrpcServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.grpc.server.tag.MicrometerGrpcServerTagsProvider;
@@ -85,17 +82,6 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerGrpcServerMetricsFactory micrometerGrpcServerMetricsFactory(MeterRegistry meterRegistry, MicrometerGrpcServerTagsProvider grpcServerTagsProvider) {
         return new MicrometerGrpcServerMetricsFactory(meterRegistry, grpcServerTagsProvider);
-    }
-
-    @DefaultComponent
-    default MicrometerGrpcClientTagsProvider micrometerGrpcClientTagsProvider() {
-        return new DefaultMicrometerGrpcClientTagsProvider();
-    }
-
-    @DefaultComponent
-    default MicrometerGrpcClientMetricsFactory micrometerGrpcClientMetricsFactory(MeterRegistry registry,
-                                                                                  MicrometerGrpcClientTagsProvider tagsProvider) {
-        return new MicrometerGrpcClientMetricsFactory(registry, tagsProvider);
     }
 
     @DefaultComponent

@@ -1,12 +1,11 @@
 package ru.tinkoff.grpc.client;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import io.netty.channel.EventLoopGroup;
+import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.grpc.client.config.DefaultServiceConfigConfigValueExtractor;
 import ru.tinkoff.grpc.client.telemetry.DefaultGrpcClientTelemetryFactory;
-import ru.tinkoff.grpc.client.telemetry.GrpcClientLoggerFactory;
-import ru.tinkoff.grpc.client.telemetry.GrpcClientMetricsFactory;
-import ru.tinkoff.grpc.client.telemetry.GrpcClientTracerFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.netty.common.NettyChannelFactory;
@@ -19,8 +18,8 @@ public interface GrpcClientModule extends NettyCommonModule {
     }
 
     @DefaultComponent
-    default DefaultGrpcClientTelemetryFactory defaultGrpcClientTelemetryFactory(@Nullable GrpcClientMetricsFactory metrics, @Nullable GrpcClientTracerFactory tracer, @Nullable GrpcClientLoggerFactory logger) {
-        return new DefaultGrpcClientTelemetryFactory(metrics, tracer, logger);
+    default DefaultGrpcClientTelemetryFactory defaultGrpcClientTelemetryFactory(@Nullable Tracer tracer, @Nullable MeterRegistry meterRegistry) {
+        return new DefaultGrpcClientTelemetryFactory(tracer, meterRegistry);
     }
 
     @DefaultComponent

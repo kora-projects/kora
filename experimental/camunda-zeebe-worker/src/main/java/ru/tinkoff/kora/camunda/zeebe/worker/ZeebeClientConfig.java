@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.camunda.zeebe.worker;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -37,7 +37,7 @@ public interface ZeebeClientConfig {
 
     DeploymentConfig deployment();
 
-    TelemetryConfig telemetry();
+    GrpcClientTelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface RestConfig {
