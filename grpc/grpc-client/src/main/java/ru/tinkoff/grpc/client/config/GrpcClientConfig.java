@@ -1,9 +1,9 @@
 package ru.tinkoff.grpc.client.config;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -15,7 +15,7 @@ public interface GrpcClientConfig {
     @Nullable
     Duration timeout();
 
-    TelemetryConfig telemetry();
+    GrpcClientTelemetryConfig telemetry();
 
     @Nullable
     DefaultServiceConfig defaultServiceConfig();

@@ -81,9 +81,7 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         interceptors.addAll(this.interceptors);
 
         var telemetry = telemetryFactory.get(serviceDefinition, config.telemetry(), uri);
-        if (telemetry != null) {
-            interceptors.add(new GrpcClientTelemetryInterceptor(telemetry));
-        }
+        interceptors.add(new GrpcClientTelemetryInterceptor(telemetry));
         interceptors.add(new GrpcClientConfigInterceptor(this.config));
         builder.intercept(interceptors);
 
