@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
+import jakarta.annotation.Nullable;
 
 import java.net.URI;
 import java.util.Objects;
@@ -13,7 +14,7 @@ public final class DefaultGrpcClientTelemetryFactory implements GrpcClientTeleme
     private final Tracer tracer;
     private final MeterRegistry meterRegistry;
 
-    public DefaultGrpcClientTelemetryFactory(Tracer tracer, MeterRegistry meterRegistry) {
+    public DefaultGrpcClientTelemetryFactory(@Nullable Tracer tracer, @Nullable MeterRegistry meterRegistry) {
         this.tracer = Objects.requireNonNullElseGet(tracer, () -> TracerProvider.noop().get("grpc-client"));
         this.meterRegistry = Objects.requireNonNullElseGet(meterRegistry, CompositeMeterRegistry::new);
     }

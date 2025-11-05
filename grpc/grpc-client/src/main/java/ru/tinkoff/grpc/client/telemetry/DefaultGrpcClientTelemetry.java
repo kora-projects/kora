@@ -26,7 +26,7 @@ public class DefaultGrpcClientTelemetry implements GrpcClientTelemetry {
     private final URI uri;
     private final ConcurrentHashMap<String, ConcurrentHashMap<Tags, Timer>> durationCache = new ConcurrentHashMap<>();
 
-    DefaultGrpcClientTelemetry(TelemetryConfig config, Tracer tracer, MeterRegistry meterRegistry, ServiceDescriptor service, URI uri) {
+    public DefaultGrpcClientTelemetry(TelemetryConfig config, Tracer tracer, MeterRegistry meterRegistry, ServiceDescriptor service, URI uri) {
         this.config = config;
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
