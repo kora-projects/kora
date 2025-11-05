@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 public class DefaultGrpcServerObservation implements GrpcServerObservation {
     private static final Logger log = LoggerFactory.getLogger(DefaultGrpcServerObservation.class);
     private final long start = System.nanoTime();
+    private final GrpcServerTelemetryConfig config;
     private final String service;
     private final String method;
     private final Metadata rqHeaders;
@@ -27,7 +28,8 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     private volatile Throwable error;
     private volatile Status status;
 
-    public DefaultGrpcServerObservation(String service, String method, Metadata rqHeaders, Span span, Meter.MeterProvider<Timer> duration) {
+    public DefaultGrpcServerObservation(GrpcServerTelemetryConfig config, String service, String method, Metadata rqHeaders, Span span, Meter.MeterProvider<Timer> duration) {
+        this.config = config;
         this.service = service;
         this.method = method;
         this.rqHeaders = rqHeaders;
@@ -88,17 +90,19 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
 
     @Override
     public void observeStart() {
-        log.atInfo()
-            .addKeyValue("grpcRequest", StructuredArgument.value(gen -> {
-                gen.writeStartObject();
-                gen.writeStringField("serviceName", this.service);
-                gen.writeStringField("operation", this.service + "/" + this.method);
-                if (log.isDebugEnabled()) {
-                    gen.writeStringField("headers", this.rqHeaders.toString());
-                }
-                gen.writeEndObject();
-            }))
-            .log("GrpcCall received");
+        if (this.config.logging().enabled()) {
+            log.atInfo()
+                .addKeyValue("grpcRequest", StructuredArgument.value(gen -> {
+                    gen.writeStartObject();
+                    gen.writeStringField("serviceName", this.service);
+                    gen.writeStringField("operation", this.service + "/" + this.method);
+                    if (log.isDebugEnabled()) {
+                        gen.writeStringField("headers", this.rqHeaders.toString());
+                    }
+                    gen.writeEndObject();
+                }))
+                .log("GrpcCall received");
+        }
     }
 
     @Override
@@ -115,29 +119,31 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
     }
 
     protected void logEnd(long duration) {
-        var logArg = StructuredArgument.value(gen -> {
-            gen.writeStartObject();
-            gen.writeStringField("serviceName", this.service);
-            gen.writeStringField("operation", this.service + "/" + this.method);
-            gen.writeNumberField("processingTime", duration / 1_000_000);
-            if (this.status != null) {
-                gen.writeStringField("status", this.status.getCode().name());
+        if (this.config.logging().enabled()) {
+            var logArg = StructuredArgument.value(gen -> {
+                gen.writeStartObject();
+                gen.writeStringField("serviceName", this.service);
+                gen.writeStringField("operation", this.service + "/" + this.method);
+                gen.writeNumberField("processingTime", duration / 1_000_000);
+                if (this.status != null) {
+                    gen.writeStringField("status", this.status.getCode().name());
+                }
+                if (this.error != null) {
+                    var exceptionType = this.error.getClass().getCanonicalName();
+                    gen.writeStringField("exceptionType", exceptionType);
+                }
+                gen.writeEndObject();
+            });
+            if (this.error == null) {
+                log.atInfo()
+                    .addKeyValue("grpcError", logArg)
+                    .log("GrpcCall responded");
+            } else {
+                log.atWarn()
+                    .addKeyValue("grpcError", logArg)
+                    .setCause(this.error)
+                    .log("GrpcCall responded");
             }
-            if (this.error != null) {
-                var exceptionType = this.error.getClass().getCanonicalName();
-                gen.writeStringField("exceptionType", exceptionType);
-            }
-            gen.writeEndObject();
-        });
-        if (this.error == null) {
-            log.atInfo()
-                .addKeyValue("grpcError", logArg)
-                .log("GrpcCall responded");
-        } else {
-            log.atWarn()
-                .addKeyValue("grpcError", logArg)
-                .setCause(this.error)
-                .log("GrpcCall responded");
         }
 
     }

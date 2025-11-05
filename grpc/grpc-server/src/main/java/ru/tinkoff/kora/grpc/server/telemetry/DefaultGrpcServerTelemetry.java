@@ -4,6 +4,7 @@ import io.grpc.Grpc;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.noop.NoopTimer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
@@ -17,6 +18,8 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
+    private static final Meter.Id NOOP_TIMER_ID = new Meter.Id("", Tags.empty(), null, null, Meter.Type.TIMER);
+
     private final Tracer tracer;
     private final MeterRegistry meterRegistry;
     private final GrpcServerTelemetryConfig config;
@@ -34,12 +37,15 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
         var method = this.method(call);
         var span = this.createSpan(call, headers, service, method);
         var duration = this.duration(call, service, method);
-        return new DefaultGrpcServerObservation(service, method, headers, span, duration);
+        return new DefaultGrpcServerObservation(this.config, service, method, headers, span, duration);
     }
 
     record DurationKey(String service, String method) {}
 
     protected Meter.MeterProvider<Timer> duration(ServerCall<?, ?> call, String service, String method) {
+        if (!this.config.metrics().enabled()) {
+            return _ -> new NoopTimer(NOOP_TIMER_ID);
+        }
         var cache = this.durationCache.computeIfAbsent(new DurationKey(service, method), _ -> new ConcurrentHashMap<>());
 
         return additionalTags -> cache.computeIfAbsent(Tags.of(additionalTags), t -> {
@@ -61,6 +67,9 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
     }
 
     protected Span createSpan(ServerCall<?, ?> call, Metadata headers, String serviceName, String methodName) {
+        if (!this.config.tracing().enabled()) {
+            return Span.getInvalid();
+        }
         var ipAddress = call.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR).toString();
         var parentCtx = W3CTraceContextPropagator.getInstance().extract(Context.root(), headers, new TextMapGetter<>() {
             @Override
