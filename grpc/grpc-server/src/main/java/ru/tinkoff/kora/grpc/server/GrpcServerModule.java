@@ -4,7 +4,11 @@ import io.grpc.BindableService;
 import io.grpc.ServerInterceptor;
 import io.grpc.netty.NettyServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionService;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.netty.channel.EventLoopGroup;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.TracerProvider;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
@@ -18,7 +22,9 @@ import ru.tinkoff.kora.grpc.server.config.GrpcServerConfig;
 import ru.tinkoff.kora.grpc.server.interceptors.ContextServerInterceptor;
 import ru.tinkoff.kora.grpc.server.interceptors.CoroutineContextInjectInterceptor;
 import ru.tinkoff.kora.grpc.server.interceptors.TelemetryInterceptor;
-import ru.tinkoff.kora.grpc.server.telemetry.*;
+import ru.tinkoff.kora.grpc.server.telemetry.DefaultGrpcServerTelemetry;
+import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerTelemetry;
+import ru.tinkoff.kora.grpc.server.telemetry.NoopGrpcServerTelemetry;
 import ru.tinkoff.kora.netty.common.NettyChannelFactory;
 import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
@@ -38,13 +44,17 @@ public interface GrpcServerModule extends NettyCommonModule {
     }
 
     @DefaultComponent
-    default DefaultGrpcServerTelemetry defaultGrpcServerTelemetry(GrpcServerConfig config, @Nullable GrpcServerLogger logger, @Nullable GrpcServerMetricsFactory metrics, @Nullable GrpcServerTracer tracing) {
-        return new DefaultGrpcServerTelemetry(config.telemetry(), metrics, tracing, logger);
-    }
-
-    @DefaultComponent
-    default Slf4jGrpcServerLogger slf4jGrpcServerLogger() {
-        return new Slf4jGrpcServerLogger();
+    default GrpcServerTelemetry defaultGrpcServerTelemetry(GrpcServerConfig config, @Nullable Tracer tracer, @Nullable MeterRegistry meterRegistry) {
+        if (!config.telemetry().metrics().enabled() && !config.telemetry().logging().enabled() && !config.telemetry().tracing().enabled()) {
+            return NoopGrpcServerTelemetry.INSTANCE;
+        }
+        if (tracer == null || !config.telemetry().tracing().enabled()) {
+            tracer = TracerProvider.noop().get("grpc-server");
+        }
+        if (meterRegistry == null || !config.telemetry().metrics().enabled()) {
+            meterRegistry = new CompositeMeterRegistry();
+        }
+        return new DefaultGrpcServerTelemetry(config.telemetry(), tracer, meterRegistry);
     }
 
     default NettyServerBuilder grpcNettyServerBuilder(

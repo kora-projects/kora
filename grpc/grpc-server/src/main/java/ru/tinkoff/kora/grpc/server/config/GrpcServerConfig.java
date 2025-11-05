@@ -3,7 +3,7 @@ package ru.tinkoff.kora.grpc.server.config;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerTelemetryConfig;
 
 import java.time.Duration;
 
@@ -26,7 +26,7 @@ public interface GrpcServerConfig {
         return Duration.ofSeconds(30);
     }
 
-    TelemetryConfig telemetry();
+    GrpcServerTelemetryConfig telemetry();
 
     @Nullable
     Duration maxConnectionAge();
