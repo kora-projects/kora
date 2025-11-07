@@ -2,11 +2,12 @@ package ru.tinkoff.kora.database.symbol.processor.cassandra
 
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
+import ru.tinkoff.kora.ksp.common.KotlinCompilation
 
 class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
     @Test
     fun testEntityRowMapper() {
-        compile0(
+        KotlinCompilation().withClasspathJar("java-driver-core").compile(
             listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
             @KoraApp
@@ -25,7 +26,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
 
     @Test
     fun testEntityListResultSetMapper() {
-        compile0(
+        KotlinCompilation().withClasspathJar("java-driver-core").compile(
             listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
             @KoraApp
@@ -44,7 +45,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
 
     @Test
     fun testEntitySingleResultSetMapper() {
-        compile0(
+        KotlinCompilation().withClasspathJar("java-driver-core").compile(
             listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
             @KoraApp

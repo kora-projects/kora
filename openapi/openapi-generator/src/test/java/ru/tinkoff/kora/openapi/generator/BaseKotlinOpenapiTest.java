@@ -40,6 +40,7 @@ public abstract class BaseKotlinOpenapiTest extends BaseOpenapiTest {
         }
 
         kc.withProcessors(List.of(new JsonSymbolProcessorProvider(), new HttpControllerProcessorProvider(), new HttpClientSymbolProcessorProvider(), new ValidSymbolProcessorProvider(), new AopSymbolProcessorProvider()))
+            .withClasspathJar("swagger-annotations")
             .withGeneratedSourcesDir(kotlinSourcesDir)
             .compile();
 

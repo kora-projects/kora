@@ -283,7 +283,7 @@ class KoraAppKspTest {
 
     @Test
     fun extensionShouldHandleAnnotationsItProvidesAnnotationProcessorFor() {
-        val graphDraw = testClass(AppWithProcessorExtension::class, listOf(AppWithProcessorExtension.TestProcessorProvider()))
+        val graphDraw = testClass(AppWithProcessorExtension::class, listOf(AppWithProcessorExtensionProcessors.TestProcessorProvider()))
         assertThat(graphDraw.nodes).hasSize(2)
         val materializedGraph = graphDraw.init()
         assertThat(materializedGraph).isNotNull
@@ -478,7 +478,8 @@ class KoraAppKspTest {
         return try {
             val graphClass = targetClass.qualifiedName + "Graph"
             val processorsArray = (processorProviders + KoraAppProcessorProvider())
-            val classLoader = symbolProcess(processorsArray, listOf(targetClass))
+            val classLoader = KotlinCompilation()
+                .symbolProcess(processorsArray, listOf(targetClass))
             val clazz = try {
                 classLoader.loadClass(graphClass)
             } catch (e: ClassNotFoundException) {

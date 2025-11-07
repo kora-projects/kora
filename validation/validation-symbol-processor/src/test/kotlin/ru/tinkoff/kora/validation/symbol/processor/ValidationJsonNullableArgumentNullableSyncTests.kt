@@ -3,18 +3,16 @@ package ru.tinkoff.kora.validation.symbol.processor
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
-import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.json.common.JsonNullable
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.validation.common.ViolationException
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
 
 class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
 
+
     @Test
     fun argumentJsonNullableIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -35,8 +33,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -57,8 +54,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -79,8 +75,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableNonNullIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -103,8 +98,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableNonNullIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -127,8 +121,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableNonNullIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -149,8 +142,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableWithValidatorIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -171,8 +163,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableWithValidatorIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -196,8 +187,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableWithValidatorIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -218,8 +208,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableWithValidatorFailFastIsUndefined() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -240,8 +229,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableWithValidatorFailFastIsNull() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
@@ -265,8 +253,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
 
     @Test
     fun argumentJsonNullableWithValidatorFailFastIsPresent() {
-        compile0(
-            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+        compile(
             """
                 @Component
                 open class TestComponent {
