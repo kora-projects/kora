@@ -28,6 +28,7 @@ public interface CamundaRestUndertowModule extends CamundaRestModule {
         var tracer = (tracerFactory == null)
             ? null
             : tracerFactory.get(camundaRestConfig.telemetry().tracing());
+
         return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig, telemetry, tracer);
     }
 
