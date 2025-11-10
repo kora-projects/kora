@@ -2564,7 +2564,21 @@ public class KoraCodegen extends DefaultCodegen {
                         }
                     }
 
-                    if (op.authMethods.size() == 1 || params.primaryAuth == null) {
+                    if (params.primaryAuth != null) {
+                        CodegenSecurity authMethod = op.authMethods.stream()
+                            .filter(a -> a.name.equals(params.primaryAuth))
+                            .findFirst()
+                            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
+
+                        if (params.authAsMethodArgument) {
+                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
+                            op.allParams.add(fakeAuthParameter);
+                        } else {
+                            var authName = camelize(toVarName(authMethod.name));
+                            authTags.add(upperCase(authName));
+                            op.vendorExtensions.put("authInterceptorTag", authName);
+                        }
+                    } else {
                         if (op.authMethods.size() > 1) {
                             Set<String> secSchemes = op.authMethods.stream()
                                 .map(s -> s.name)
@@ -2593,20 +2607,6 @@ public class KoraCodegen extends DefaultCodegen {
                                 authTags.add(upperCase(authName));
                                 op.vendorExtensions.put("authInterceptorTag", authName);
                             }
-                        }
-                    } else {
-                        CodegenSecurity authMethod = op.authMethods.stream()
-                            .filter(a -> a.name.equals(params.primaryAuth))
-                            .findFirst()
-                            .orElseThrow(() -> new IllegalArgumentException("Can't find OpenAPI securitySchema named: " + params.primaryAuth));
-
-                        if (params.authAsMethodArgument) {
-                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
-                            op.allParams.add(fakeAuthParameter);
-                        } else {
-                            var authName = camelize(toVarName(authMethod.name));
-                            authTags.add(upperCase(authName));
-                            op.vendorExtensions.put("authInterceptorTag", authName);
                         }
                     }
                 }
