@@ -48,6 +48,7 @@ class KoraCodegenTest {
 
         static final class Options {
             private boolean authAsArg;
+            private boolean authAllowMultiple;
             private boolean jsonNullable;
             private boolean includeServerRequest;
             private boolean implicitHeaders;
@@ -56,6 +57,8 @@ class KoraCodegenTest {
             private boolean defaultDelegate;
 
             public boolean authAsArg() {return authAsArg;}
+
+            public boolean authAllowMultiple() {return authAllowMultiple;}
 
             public boolean jsonNullable() {return jsonNullable;}
 
@@ -70,6 +73,11 @@ class KoraCodegenTest {
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
+                return this;
+            }
+
+            public Options setAuthAllowMultiple(boolean authAllowMultiple) {
+                this.authAllowMultiple = authAllowMultiple;
                 return this;
             }
 
@@ -146,8 +154,11 @@ class KoraCodegenTest {
 
                 result.add(new SwaggerParams(mode, fileName, name, new SwaggerParams.Options()));
 
-                if (fileName.contains("security")) {
-                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options().setIncludeServerRequest(true)));
+                if (fileName.contains("security_multi")) {
+                    result.add(new SwaggerParams(mode, fileName, name + "_auth", new SwaggerParams.Options().setAuthAllowMultiple(true)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options().setAuthAllowMultiple(true).setAuthAsArg(true)));
+                } else if (fileName.contains("security")) {
+                    result.add(new SwaggerParams(mode, fileName, name + "_auth_arg", new SwaggerParams.Options().setAuthAsArg(true)));
                 }
 
                 if (name.equals("petstoreV2") || name.equals("petstoreV3")) {
@@ -215,9 +226,9 @@ class KoraCodegenTest {
                 """)
             .addAdditionalProperty("enableServerValidation", name.contains("validation"))
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg())
+            .addAdditionalProperty("authAllowMultiple", options.authAllowMultiple())
             .addAdditionalProperty("enableJsonNullable", options.jsonNullable())
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders())
-            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest())
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest())
             .addAdditionalProperty("clientConfigPrefix", "test");
 
