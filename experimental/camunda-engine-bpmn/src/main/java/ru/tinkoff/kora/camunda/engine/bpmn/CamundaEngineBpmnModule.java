@@ -182,7 +182,7 @@ public interface CamundaEngineBpmnModule {
 
     @Root
     @DefaultComponent
-    default Wrapped<ProcessEngine> camundaEngineBpmnKoraProcessEngine(ProcessEngineConfiguration processEngineConfiguration,
+    default KoraProcessEngine camundaEngineBpmnKoraProcessEngine(ProcessEngineConfiguration processEngineConfiguration,
                                                                       CamundaEngineBpmnConfig camundaEngineBpmnConfig,
                                                                       All<ProcessEngineConfigurator> camundaConfigurators,
                                                                       @Tag(CamundaBpmn.class) Executor executor) {
