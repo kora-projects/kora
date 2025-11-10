@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
-import ru.tinkoff.kora.common.Context;
+import io.opentelemetry.context.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
@@ -14,22 +16,21 @@ public class TelemetryInterceptor implements HttpClientInterceptor {
     }
 
     @Override
-    public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
-        if (!this.telemetry.isEnabled()) {
-            return chain.process(ctx, request);
-        }
-        var fork = ctx.fork();
-        var telemetryContext = this.telemetry.get(fork, request);
-        if (telemetryContext == null) {
-            return chain.process(ctx, request);
-        }
-        fork.inject();
-        try {
-            var rs = chain.process(fork, telemetryContext.request());
-            return telemetryContext.close(rs, null);
-        } catch (Exception e) {
-            telemetryContext.close(null, e);
-            throw e;
-        }
+    public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
+        var observation = this.telemetry.observe(request);
+        return ScopedValue.where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
+            .where(Observation.VALUE, observation)
+            .call(() -> {
+                try {
+                    var observedRequest = observation.observeRequest(request);
+                    var rs = chain.process(observedRequest);
+                    return observation.observeResponse(rs);
+                } catch (Throwable t) {
+                    observation.observeError(t);
+                    throw t;
+                } finally {
+                    observation.end();
+                }
+            });
     }
 }

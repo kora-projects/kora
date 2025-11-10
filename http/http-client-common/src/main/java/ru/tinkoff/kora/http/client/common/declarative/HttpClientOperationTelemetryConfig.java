@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.common.declarative;
 
-import ru.tinkoff.kora.http.client.common.telemetry.HttpClientLoggerConfig;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 
 import java.time.Duration;
@@ -25,12 +24,12 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
     }
 
     @Override
-    public TracingConfig tracing() {
+    public HttpClientTracingConfig tracing() {
         return this.tracing;
     }
 
     @Override
-    public MetricsConfig metrics() {
+    public HttpClientMetricsConfig metrics() {
         return this.metrics;
     }
 
@@ -77,7 +76,7 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
         }
     }
 
-    private static class OperationMetricConfig implements MetricsConfig {
+    private static class OperationMetricConfig implements HttpClientMetricsConfig {
         private final MetricsConfig client;
         private final HttpClientOperationConfig.OperationTelemetryConfig.MetricsConfig operation;
 
@@ -114,7 +113,7 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
         }
     }
 
-    private static class OperationTracingConfig implements TracingConfig {
+    private static class OperationTracingConfig implements HttpClientTracingConfig {
         private final TracingConfig client;
         private final HttpClientOperationConfig.OperationTelemetryConfig.TracingConfig operation;
 

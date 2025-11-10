@@ -1,24 +1,26 @@
-package ru.tinkoff.kora.http.client.common.telemetry;
+package ru.tinkoff.kora.http.client.common.telemetry.impl;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
+import java.nio.charset.Charset;
 
 public final class DefaultHttpClientTelemetryRequestBodyWrapper implements HttpBodyOutput {
 
+    private final HttpClientRequest rq;
     private final HttpBodyOutput body;
-    private final Consumer<List<ByteBuffer>> onComplete;
+    private final DefaultHttpClientLogger log;
+    private final Charset charset;
 
-    public DefaultHttpClientTelemetryRequestBodyWrapper(HttpBodyOutput body, Consumer<List<ByteBuffer>> onComplete) {
+    public DefaultHttpClientTelemetryRequestBodyWrapper(HttpClientRequest rq, HttpBodyOutput body, Charset charset, DefaultHttpClientLogger log) {
+        this.rq = rq;
         this.body = body;
-        this.onComplete = onComplete;
+        this.charset = charset;
+        this.log = log;
     }
 
     @Override
@@ -36,10 +38,8 @@ public final class DefaultHttpClientTelemetryRequestBodyWrapper implements HttpB
     public void write(OutputStream os) throws IOException {
         var baos = new ByteArrayOutputStream();
         body.write(baos);
-        // todo rewrite with custom byte array output stream
-        var buf = baos.toByteArray();
-        onComplete.accept(List.of(ByteBuffer.wrap(buf)));
-        os.write(buf);
+        log.logRequest(rq, baos.toString(this.charset));
+        baos.writeTo(os);
     }
 
     @Override
