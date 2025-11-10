@@ -9,11 +9,11 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public final class KoraJobExecutor extends DefaultJobExecutor {
+public final class KoraThreadPoolJobExecutor extends DefaultJobExecutor {
 
     private final CamundaEngineBpmnConfig engineConfig;
 
-    public KoraJobExecutor(CamundaEngineBpmnConfig engineConfig) {
+    public KoraThreadPoolJobExecutor(CamundaEngineBpmnConfig engineConfig) {
         this.engineConfig = engineConfig;
 
         var jobExecutorConfig = engineConfig.jobExecutor();

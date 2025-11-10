@@ -10,6 +10,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public final class KoraProcessEngineParallelInitializer implements Lifecycle {
 
@@ -19,15 +20,18 @@ public final class KoraProcessEngineParallelInitializer implements Lifecycle {
     private final CamundaEngineBpmnConfig camundaEngineConfig;
     private final ProcessEngineConfiguration engineConfiguration;
     private final List<ProcessEngineConfigurator> camundaConfigurators;
+    private final Executor executor;
 
     public KoraProcessEngineParallelInitializer(ProcessEngine processEngine,
                                                 CamundaEngineBpmnConfig camundaEngineConfig,
                                                 ProcessEngineConfiguration engineConfiguration,
-                                                List<ProcessEngineConfigurator> camundaConfigurators) {
+                                                List<ProcessEngineConfigurator> camundaConfigurators,
+                                                Executor executor) {
         this.processEngine = processEngine;
         this.camundaEngineConfig = camundaEngineConfig;
         this.engineConfiguration = engineConfiguration;
         this.camundaConfigurators = camundaConfigurators;
+        this.executor = executor;
     }
 
     @Override
@@ -43,7 +47,7 @@ public final class KoraProcessEngineParallelInitializer implements Lifecycle {
                     } catch (Exception e) {
                         throw new IllegalStateException(e);
                     }
-                }))
+                }, executor))
                 .toArray(CompletableFuture[]::new);
 
             CompletableFuture.allOf(setups).join();
