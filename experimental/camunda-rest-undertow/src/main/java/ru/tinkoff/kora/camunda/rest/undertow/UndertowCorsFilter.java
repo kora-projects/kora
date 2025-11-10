@@ -6,9 +6,7 @@ import io.undertow.util.HeaderValues;
 import io.undertow.util.HttpString;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
-import ru.tinkoff.kora.common.Component;
 
-@Component
 public class UndertowCorsFilter implements HttpHandler {
 
     /**
