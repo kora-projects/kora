@@ -6,19 +6,12 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.mockito.AdditionalMatchers;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
 import org.mockserver.matchers.Times;
 import org.mockserver.model.Header;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
-import ru.tinkoff.kora.http.client.common.telemetry.DefaultHttpClientTelemetry;
-import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
-import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -28,9 +21,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
 import static org.mockserver.model.HttpError.error;
 import static org.mockserver.model.HttpRequest.request;
 import static org.mockserver.model.HttpResponse.response;
@@ -43,21 +33,12 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/")
             .withMethod(POST)
-            .withHeader("traceparent", "00-" + rootSpan.getSpanContext().getTraceId() + ".*")
             .withHeader("Content-Type", "text/plain; charset=UTF-8")
             .withBody("test-request", StandardCharsets.UTF_8);
         server.when(expectedRequest).respond(response()
             .withBody("test-response", StandardCharsets.UTF_8)
             .withHeaders(Header.header("Content-type", "text/plain; charset=UTF-8"))
         );
-        doNothing().when(this.logger).logRequest(any(), any(), any(), any(), any(), any(), any(), any());
-        doNothing().when(this.logger).logResponse(any(), any(), any(), any(), any(), any(), anyLong(), any(), any(), any());
-        when(this.logger.logRequest()).thenReturn(true);
-        when(this.logger.logRequestHeaders()).thenReturn(true);
-        when(this.logger.logRequestBody()).thenReturn(true);
-        when(this.logger.logResponse()).thenReturn(true);
-        when(this.logger.logResponseHeaders()).thenReturn(true);
-        when(this.logger.logRequestBody()).thenReturn(true);
 
         var request = HttpClientRequest.post("/")
             .body(HttpBody.plaintext("test-request"))
@@ -71,12 +52,6 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .isEqualTo("test-response");
 
         server.verify(expectedRequest);
-        var authority = "localhost:" + server.getPort();
-        verify(this.logger).logRequest(eq(authority), eq(POST), eq("/"), eq("/"), eq("http://" + authority + "/"), eq(null), ArgumentMatchers.argThat(a ->
-                a.getFirst("traceparent").startsWith("00-" + rootSpan.getSpanContext().getTraceId())
-                    && !a.getFirst("traceparent").contains(rootSpan.getSpanContext().getSpanId())),
-            eq("test-request"));
-        verify(this.metrics).record(eq(200), eq(HttpResultCode.SUCCESS), eq("http"), eq("localhost"), eq("POST"), eq("/"), any(), ArgumentMatchers.longThat(l -> l > 0), any());
     }
 
     @Test
@@ -84,7 +59,6 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         for (int i = 0; i < 100; i++) {
             testHappyPath();
-            Mockito.clearInvocations(metrics, logger);
             // todo assert connection pool?
         }
     }
@@ -144,17 +118,6 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         assertThatThrownBy(() -> call(request))
             .isInstanceOf(HttpClientTimeoutException.class);
-
-        verify(this.metrics).record(
-            eq(-1),
-            eq(HttpResultCode.CONNECTION_ERROR),
-            eq("http"),
-            eq("localhost"),
-            eq("POST"),
-            eq("/"),
-            any(),
-            AdditionalMatchers.gt(Duration.ofMillis(500).toNanos()),
-            any());
     }
 
 
@@ -175,17 +138,6 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         assertThatThrownBy(() -> call(request))
             .isInstanceOf(HttpClientTimeoutException.class);
-
-        verify(this.metrics).record(
-            eq(-1),
-            eq(HttpResultCode.CONNECTION_ERROR),
-            eq("http"),
-            eq("localhost"),
-            eq("POST"),
-            eq("/"),
-            any(),
-            AdditionalMatchers.gt(Duration.ofMillis(200).toNanos()),
-            any());
     }
 
 
@@ -207,17 +159,6 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .build();
 
         call(request);
-
-        verify(this.metrics).record(
-            eq(200),
-            HttpResultCode.SUCCESS,
-            eq("http"),
-            eq("localhost"),
-            eq("POST"),
-            eq("/"),
-            any(),
-            AdditionalMatchers.lt(Duration.ofMillis(500).toNanos()),
-            any());
     }
 
 
@@ -230,45 +171,27 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .body(HttpBody.plaintext("test-request"))
             .build();
 
-        var base = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(Duration.ofMillis(100), Duration.ofMillis(100), null, false));
-        var client = base
-            .with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(
-                new OpentelemetryHttpClientTracer(this.tracer),
-                this.metrics,
-                this.logger
-            )));
+        var client = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(Duration.ofMillis(100), Duration.ofMillis(100), null, false));
+
 
         try {
-            if (base instanceof Lifecycle lifecycle) {
+            if (client instanceof Lifecycle lifecycle) {
                 lifecycle.init();
             }
             assertThatThrownBy(() -> call(client, request))
                 .isInstanceOf(HttpClientConnectionException.class);
         } finally {
-            if (base instanceof Lifecycle lifecycle) {
+            if (client instanceof Lifecycle lifecycle) {
                 lifecycle.release();
             }
         }
-
-        verify(this.metrics).record(
-            eq(-1),
-            eq(HttpResultCode.CONNECTION_ERROR),
-            eq("http"),
-            eq("google.com"),
-            eq("POST"),
-            eq("/foo/{bar}/baz"),
-            any(),
-            ArgumentMatchers.longThat(l -> l > 0),
-            any()
-        );
     }
 
     @Test
     protected void testNoResponseBody() {
         ctx.getLogger("ru.tinkoff.kora.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/")
-            .withMethod(POST)
-            .withHeader("traceparent", "00-" + rootSpan.getSpanContext().getTraceId() + ".*");
+            .withMethod(POST);
         server.when(expectedRequest).respond(response());
 
         var request = HttpClientRequest.post("/").build();

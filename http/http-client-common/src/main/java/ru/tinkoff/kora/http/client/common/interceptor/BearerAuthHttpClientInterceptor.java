@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.auth.HttpClientTokenProvider;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
@@ -18,13 +17,13 @@ public class BearerAuthHttpClientInterceptor implements HttpClientInterceptor {
     }
 
     @Override
-    public HttpClientResponse processRequest(Context context, InterceptChain chain, HttpClientRequest request) throws Exception {
+    public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
         var token = this.tokenProvider.getToken(request);
         if (token == null) {
-            return chain.process(context, request);
+            return chain.process(request);
         } else {
             var modifiedRequest = request.toBuilder().header("authorization", "Bearer " + token).build();
-            return chain.process(context, modifiedRequest);
+            return chain.process(modifiedRequest);
         }
     }
 }

@@ -1,11 +1,8 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
-
-import java.util.concurrent.CompletionStage;
 
 /**
  * <b>Русский</b>: Аннотация позволяет указывать обработчики HTTP ответов на определенные HTTP статус коды
@@ -19,8 +16,8 @@ import java.util.concurrent.CompletionStage;
  * public final class MyHttpClientInterceptor implements HttpClientInterceptor {
  *
  *    @Override
- *    public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
- *      return chain.process(ctx, request);
+ *    public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
+ *      return chain.process(request);
  *    }
  * }
  *
@@ -38,14 +35,14 @@ import java.util.concurrent.CompletionStage;
  */
 public interface HttpClientInterceptor {
 
-    HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception;
+    HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception;
 
     interface InterceptChain {
-        HttpClientResponse process(Context ctx, HttpClientRequest request) throws Exception;
+        HttpClientResponse process(HttpClientRequest request) throws Exception;
     }
 
 
     static HttpClientInterceptor noop() {
-        return (ctx, chain, request) -> chain.process(ctx, request);
+        return InterceptChain::process;
     }
 }

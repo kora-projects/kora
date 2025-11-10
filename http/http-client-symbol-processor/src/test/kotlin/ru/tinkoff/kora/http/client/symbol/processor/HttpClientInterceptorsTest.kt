@@ -28,7 +28,8 @@ class HttpClientInterceptorsTest : AbstractHttpClientTest() {
                 return methodLevelInterceptor.get()
             }
         }
-        val client = compile(listOf<Any>(clientLevelInterceptorFactory, methodLevelInterceptorFactory), """
+        val client = compile(
+            listOf<Any>(clientLevelInterceptorFactory, methodLevelInterceptorFactory), """
             @HttpClient
             @InterceptWith(ClientLevelInterceptor::class)
             interface TestClient {
@@ -39,26 +40,27 @@ class HttpClientInterceptorsTest : AbstractHttpClientTest() {
             
             """.trimIndent(), """
              open class ClientLevelInterceptor : HttpClientInterceptor {
-                 override fun processRequest(ctx: Context, chain: InterceptChain, request: HttpClientRequest) : HttpClientResponse{
-                     return chain.process(ctx, request)
+                 override fun processRequest(chain: InterceptChain, request: HttpClientRequest) : HttpClientResponse{
+                     return chain.process(request)
                  }
              }
             
             """.trimIndent(), """
              open class MethodLevelInterceptor : HttpClientInterceptor {
-                 override fun processRequest(ctx: Context, chain: InterceptChain, request: HttpClientRequest) : HttpClientResponse{
-                     return chain.process(ctx, request)
+                 override fun processRequest(chain: InterceptChain, request: HttpClientRequest) : HttpClientResponse{
+                     return chain.process(request)
                  }
              }
             
-            """.trimIndent())
-        whenever(clientLevelInterceptor.get().processRequest(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenCallRealMethod()
-        whenever(methodLevelInterceptor.get().processRequest(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())).thenCallRealMethod()
+            """.trimIndent()
+        )
+        whenever(clientLevelInterceptor.get().processRequest(ArgumentMatchers.any(), ArgumentMatchers.any())).thenCallRealMethod()
+        whenever(methodLevelInterceptor.get().processRequest(ArgumentMatchers.any(), ArgumentMatchers.any())).thenCallRealMethod()
         onRequest("POST", "http://test-url:8080/test/test1") { rs -> rs.withCode(200) }
         client.invoke<Any>("request", "test1")
         val order = Mockito.inOrder(clientLevelInterceptor.get(), methodLevelInterceptor.get())
-        order.verify(clientLevelInterceptor.get()).processRequest(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())
-        order.verify(methodLevelInterceptor.get()).processRequest(ArgumentMatchers.any(), ArgumentMatchers.any(), ArgumentMatchers.any())
+        order.verify(clientLevelInterceptor.get()).processRequest(ArgumentMatchers.any(), ArgumentMatchers.any())
+        order.verify(methodLevelInterceptor.get()).processRequest(ArgumentMatchers.any(), ArgumentMatchers.any())
         order.verifyNoMoreInteractions()
     }
 }

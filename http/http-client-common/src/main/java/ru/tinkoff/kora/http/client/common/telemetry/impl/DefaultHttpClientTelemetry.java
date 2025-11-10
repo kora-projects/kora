@@ -1,37 +1,45 @@
-package ru.tinkoff.kora.opentelemetry.module.http.client;
+package ru.tinkoff.kora.http.client.common.telemetry.impl;
 
+import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
-import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
-import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTracer;
-import ru.tinkoff.kora.http.common.HttpResultCode;
-import ru.tinkoff.kora.http.common.header.HttpHeaders;
-import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
-import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
+import ru.tinkoff.kora.http.client.common.telemetry.HttpClientObservation;
+import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
+import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 
-public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
-
+public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
+    private final HttpClientTelemetryConfig config;
     private final Tracer tracer;
+    private final DefaultHttpClientLogger logger;
+    private final DefaultHttpClientMetrics metrics;
 
-    public OpentelemetryHttpClientTracer(Tracer tracer) {
+    public DefaultHttpClientTelemetry(HttpClientTelemetryConfig config, Tracer tracer, DefaultHttpClientLogger logger, DefaultHttpClientMetrics metrics) {
+        this.config = config;
         this.tracer = tracer;
+        this.logger = logger;
+        this.metrics = metrics;
     }
 
     @Override
-    public HttpClientSpan createSpan(Context ctx, HttpClientRequest request) {
-        var otctx = OpentelemetryContext.get(ctx);
+    public HttpClientObservation observe(HttpClientRequest request) {
+        var span = startSpan(request);
+        return new DefaultHttpClientObservation(this.config, this.logger, this.metrics, request, span);
+    }
+
+    private Span startSpan(HttpClientRequest request) {
+        if (tracer == null || !config.tracing().enabled()) {
+            return Span.getInvalid();
+        }
         var builder = this.tracer.spanBuilder(operation(request.method(), request.uriTemplate(), request.uri()))
             .setSpanKind(SpanKind.CLIENT)
-            .setParent(otctx.getContext());
+            .setParent(io.opentelemetry.context.Context.current());
 
         var targetUri = request.uri();
         if (targetUri.getRawUserInfo() != null || targetUri.getRawQuery() != null) {
@@ -57,25 +65,11 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
             builder.setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme());
             builder.setAttribute(UrlAttributes.URL_FULL, targetUri.toString());
         }
-        var span = builder.startSpan();
+        for (var entry : this.config.tracing().attributes().entrySet()) {
+            builder.setAttribute(entry.getKey(), entry.getValue());
+        }
 
-        var newCtx = otctx.add(span);
-        OpentelemetryContext.set(ctx, newCtx);
-        W3CTraceContextPropagator.getInstance().inject(newCtx.getContext(), request.headers(), MutableHttpHeaders::set);
-
-        return new HttpClientSpan() {
-            @Override
-            public void close(Integer statusCode, HttpResultCode resultCode, HttpHeaders headers, Throwable exception) {
-                int code = statusCode == null ? -1 : statusCode;
-                span.setAttribute(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, code);
-                if (exception != null) {
-                    span.setAttribute("http.response.result_code", resultCode.string());
-                    span.recordException(exception);
-                    span.setStatus(StatusCode.ERROR);
-                }
-                span.end();
-            }
-        };
+        return builder.startSpan();
     }
 
     private static String operation(String method, String uriTemplate, URI uri) {
@@ -91,4 +85,16 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
         return method + " " + uriTemplate;
     }
 
+    private static String pathTemplate(String uriTemplate, URI uri) {
+        if (uri.getAuthority() != null) {
+            if (uri.getScheme() != null) {
+                uriTemplate = uriTemplate.replace(uri.getScheme() + "://" + uri.getAuthority(), "");
+            }
+        }
+        var questionMark = uriTemplate.indexOf('?');
+        if (questionMark >= 0) {
+            uriTemplate = uriTemplate.substring(0, questionMark);
+        }
+        return uriTemplate;
+    }
 }
