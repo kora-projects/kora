@@ -32,7 +32,7 @@ interface ApiSecurity {
 
     @ru.tinkoff.kora.common.DefaultComponent
     @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientAuthInterceptor(@ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) apiKey: String): HttpClientTokenProvider {
+    fun {{name}}HttpClientAuthInterceptor(@ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) apiKey: String): HttpClientInterceptor {
         val paramLocation = ApiKeyHttpClientInterceptor.ApiKeyLocation.{{#isKeyInQuery}}QUERY{{/isKeyInQuery}}{{#isKeyInHeader}}HEADER{{/isKeyInHeader}}{{#isKeyInCookie}}COOKIE{{/isKeyInCookie}}
         return ApiKeyHttpClientInterceptor(paramLocation, "{{keyParamName}}", apiKey)
     }
@@ -70,5 +70,21 @@ interface ApiSecurity {
     fun {{name}}HttpClientAuthInterceptor(@ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): HttpClientInterceptor {
         return BearerAuthHttpClientInterceptor(tokenProvider)
     }
-{{/isOAuth}}{{/authMethods}}
+{{/isOAuth}}{{/authMethods}}{{#vendorExtensions.authMethodTags}}
+
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+    class {{.}}
+{{/vendorExtensions.authMethodTags}}
+{{#vendorExtensions.authMethods}}
+
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag({{name}}::class)
+    fun {{name}}HttpClientAuthInterceptor({{#methods}}
+        @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}: HttpClientInterceptor{{^vendorExtensions.isLast}},{{/vendorExtensions.isLast}}{{/methods}}) : HttpClientInterceptor {
+        return HttpClientInterceptor { ctx, chain, request -> {{#methods}}{{#vendorExtensions.isFirst}} {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.processRequest(ctx, {{/vendorExtensions.isFirst}}{{^vendorExtensions.isFirst}}
+                { ctx{{vendorExtensions.index}}, request{{vendorExtensions.index}} -> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.processRequest(ctx{{vendorExtensions.index}}, {{/vendorExtensions.isFirst}}{{#vendorExtensions.isLast}}chain, request{{vendorExtensions.index}}) }, {{/vendorExtensions.isLast}} {{/methods}}{{#methods}} {{^vendorExtensions.isFirst}}{{^vendorExtensions.isLast}}
+                request{{vendorExtensions.revertIndex}}) }, {{/vendorExtensions.isLast}}{{/vendorExtensions.isFirst}} {{/methods}}
+            request) }
+    }
+{{/vendorExtensions.authMethods}}
 }
