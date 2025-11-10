@@ -30,6 +30,8 @@ public interface CamundaRestConfig {
 
     CamundaOpenApiConfig openapi();
 
+    CamundaCorsConfig cors();
+
     CamundaRestTelemetryConfig telemetry();
 
     @ConfigValueExtractor
@@ -103,6 +105,37 @@ public interface CamundaRestConfig {
             default String endpoint() {
                 return "/rapidoc";
             }
+        }
+    }
+
+    @ConfigValueExtractor
+    interface CamundaCorsConfig {
+
+        default boolean enabled() {
+            return false;
+        }
+
+        @Nullable
+        String allowOrigin();
+
+        default List<String> allowHeaders() {
+            return List.of("*");
+        }
+
+        default List<String> allowMethods() {
+            return List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
+        }
+
+        default Boolean allowCredentials() {
+            return true;
+        }
+
+        default List<String> exposeHeaders() {
+            return List.of("*");
+        }
+
+        default Duration maxAge() {
+            return Duration.ofHours(1);
         }
     }
 }
