@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.http.client.common.telemetry;
+package ru.tinkoff.kora.http.client.common.telemetry.impl;
 
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
