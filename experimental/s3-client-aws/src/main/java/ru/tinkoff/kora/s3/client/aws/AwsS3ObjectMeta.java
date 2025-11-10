@@ -19,7 +19,7 @@ final class AwsS3ObjectMeta implements S3ObjectMeta {
     public AwsS3ObjectMeta(String key, GetObjectResponse response) {
         this.key = key;
         this.modified = response.lastModified();
-        this.size = response.contentLength();
+        this.size = response.contentLength() == null ? -1 : response.contentLength();
     }
 
     public AwsS3ObjectMeta(String key, HeadObjectResponse response) {
@@ -31,7 +31,7 @@ final class AwsS3ObjectMeta implements S3ObjectMeta {
     public AwsS3ObjectMeta(S3Object object) {
         this.key = object.key();
         this.modified = object.lastModified();
-        this.size = object.size();
+        this.size = object.size() == null ? -1 : object.size();
     }
 
     @Override
