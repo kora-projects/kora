@@ -9,7 +9,7 @@ dependencies {
     api project(':http:http-common')
     api project(':telemetry:telemetry-common')
 
-    testImplementation libs.reactor.core
+    testImplementation project(':config:config-hocon')
 
     testFixturesImplementation libs.slf4j.api
     testFixturesImplementation(libs.logback.classic) {

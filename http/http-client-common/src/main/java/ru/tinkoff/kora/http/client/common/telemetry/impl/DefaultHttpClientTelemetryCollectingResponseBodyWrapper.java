@@ -1,35 +1,44 @@
-package ru.tinkoff.kora.http.client.common.telemetry;
+package ru.tinkoff.kora.http.client.common.telemetry.impl;
 
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper extends AtomicBoolean implements HttpBodyInput {
-    private final HttpClientResponse response;
-    private final DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext;
+    private final DefaultHttpClientLogger logger;
+    private final HttpClientRequest rq;
+    private final HttpClientResponse rs;
+    private final long processingTime;
+    private final Charset charset;
+
     private volatile InputStream is;
 
-    public DefaultHttpClientTelemetryCollectingResponseBodyWrapper(HttpClientResponse response, DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext) {
-        this.response = response;
-        this.telemetryContext = telemetryContext;
+    public DefaultHttpClientTelemetryCollectingResponseBodyWrapper(DefaultHttpClientLogger logger, HttpClientRequest rq, HttpClientResponse rs, long processingTime, Charset charset) {
+        this.logger = logger;
+        this.rq = rq;
+        this.rs = rs;
+        this.processingTime = processingTime;
+        this.charset = charset;
     }
 
     @Override
     public long contentLength() {
-        return response.body().contentLength();
+        return rs.body().contentLength();
     }
 
     @Nullable
     @Override
     public String contentType() {
-        return response.body().contentType();
+        return rs.body().contentType();
     }
 
     @Override
@@ -39,7 +48,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
             return is;
         }
         if (this.compareAndSet(false, true)) {
-            is = new WrappedInputStream(telemetryContext, response, response.body().asInputStream());
+            is = new WrappedInputStream(logger, rs, rs.body().asInputStream());
             return this.is = is;
         } else {
             throw new IllegalStateException("Body was already subscribed");
@@ -48,31 +57,30 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
 
     @Override
     public void close() throws IOException {
-        try (var body = this.response.body(); var _ = this.is) {
+        try (var body = this.rs.body(); var _ = this.is) {
             if (this.compareAndSet(false, true)) {
                 // input stream was never requested, so we should just collect body here
                 try {
                     var buf = body.asInputStream().readAllBytes();
-                    telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), List.of(ByteBuffer.wrap(buf)));
+                    logger.logResponse(rq, rs, processingTime, new String(buf, charset));
                 } catch (IOException e) {
-                    telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), null);
+                    logger.logError(rq, processingTime, e);
                     throw e;
                 }
-                new WrappedInputStream(telemetryContext, response, response.body().asInputStream()).readAllBytes();
             }
         }
     }
 
-    private static class WrappedInputStream extends InputStream {
+    private class WrappedInputStream extends InputStream {
         private final InputStream is;
-        private final DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext;
+        private final DefaultHttpClientLogger logger;
         private final HttpClientResponse response;
         private final List<ByteBuffer> body = new ArrayList<>();
         private boolean closed = false;
 
-        public WrappedInputStream(DefaultHttpClientTelemetry.DefaultHttpClientTelemetryContextImpl telemetryContext, HttpClientResponse response, InputStream inputStream) {
+        public WrappedInputStream(DefaultHttpClientLogger logger, HttpClientResponse response, InputStream inputStream) {
             this.is = inputStream;
-            this.telemetryContext = telemetryContext;
+            this.logger = logger;
             this.response = response;
         }
 
@@ -92,7 +100,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
                 var read = is.read(b, off, len);
                 if (read < 0) {
                     closed = true;
-                    telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
+                    logger.logResponse(rq, rs, processingTime, bodyToString(body));
                 }
                 if (read > 0) {
                     var copy = ByteBuffer.allocate(read);
@@ -104,7 +112,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
             } catch (IOException e) {
                 try {
                     closed = true;
-                    telemetryContext.onClose(e);
+                    logger.logError(rq, processingTime, e);
                 } catch (Throwable t) {
                     e.addSuppressed(t);
                 }
@@ -129,10 +137,16 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
                             }
                         }
                     } finally {
-                        telemetryContext.onClose(response.code(), response.headers(), response.body().contentType(), body);
+                        logger.logResponse(rq, rs, processingTime, bodyToString(body));
                     }
                 }
             }
+        }
+
+        private String bodyToString(List<ByteBuffer> body) {
+
+            // TODO
+            return null;
         }
     }
 }

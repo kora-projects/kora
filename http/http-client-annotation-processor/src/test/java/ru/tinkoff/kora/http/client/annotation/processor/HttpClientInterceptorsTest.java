@@ -39,26 +39,26 @@ public class HttpClientInterceptorsTest extends AbstractHttpClientTest {
             """, """
              public class ClientLevelInterceptor implements HttpClientInterceptor {
                  @Override
-                 public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
-                     return chain.process(ctx, request);
+                 public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
+                     return chain.process(request);
                  }
              }
             """, """
              public class MethodLevelInterceptor implements HttpClientInterceptor {
                  @Override
-                 public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
-                     return chain.process(ctx, request);
+                 public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
+                     return chain.process(request);
                  }
              }
             """);
 
-        when(clientLevelInterceptor.get().processRequest(any(), any(), any())).thenCallRealMethod();
-        when(methodLevelInterceptor.get().processRequest(any(), any(), any())).thenCallRealMethod();
+        when(clientLevelInterceptor.get().processRequest(any(), any())).thenCallRealMethod();
+        when(methodLevelInterceptor.get().processRequest(any(), any())).thenCallRealMethod();
         onRequest("POST", "http://test-url:8080/test/test1", rs -> rs.withCode(200));
         client.invoke("request", "test1");
         var order = Mockito.inOrder(clientLevelInterceptor.get(), methodLevelInterceptor.get());
-        order.verify(clientLevelInterceptor.get()).processRequest(any(), any(), any());
-        order.verify(methodLevelInterceptor.get()).processRequest(any(), any(), any());
+        order.verify(clientLevelInterceptor.get()).processRequest(any(), any());
+        order.verify(methodLevelInterceptor.get()).processRequest(any(), any());
         order.verifyNoMoreInteractions();
     }
 }

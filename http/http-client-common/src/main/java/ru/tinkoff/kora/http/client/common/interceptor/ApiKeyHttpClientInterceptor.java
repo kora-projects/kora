@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.common.interceptor;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 
@@ -22,13 +21,13 @@ public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor 
     }
 
     @Override
-    public HttpClientResponse processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+    public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest request) throws Exception {
         var modifiedRequest = switch (this.parameterLocation) {
             case HEADER -> request.toBuilder().header(this.parameterName, this.secret);
             case QUERY -> request.toBuilder().queryParam(this.parameterName, this.secret);
             case COOKIE -> throw new IllegalStateException("TODO: cookies");
         };
 
-        return chain.process(ctx, modifiedRequest.build());
+        return chain.process(modifiedRequest.build());
     }
 }

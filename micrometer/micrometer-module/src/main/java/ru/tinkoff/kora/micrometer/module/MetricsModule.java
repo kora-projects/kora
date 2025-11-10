@@ -9,7 +9,6 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
-import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
 import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
@@ -18,9 +17,6 @@ import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEn
 import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.job.MicrometerZeebeClientWorkerJobMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker.MicrometerZeebeWorkerMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.http.client.MicrometerHttpClientMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.http.client.tag.MicrometerHttpClientTagsProvider;
-import ru.tinkoff.kora.micrometer.module.http.client.tag.OpentelemetryMicrometerHttpClientTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerHttpServerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.http.server.MicrometerPrivateApiMetrics;
 import ru.tinkoff.kora.micrometer.module.http.server.tag.DefaultMicrometerHttpServerTagsProvider;
@@ -49,17 +45,6 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerHttpServerMetricsFactory micrometerHttpServerMetricsFactory(MeterRegistry meterRegistry, MicrometerHttpServerTagsProvider httpServerTagsProvider) {
         return new MicrometerHttpServerMetricsFactory(meterRegistry, httpServerTagsProvider);
-    }
-
-    @DefaultComponent
-    default MicrometerHttpClientTagsProvider micrometerHttpClientTagsProvider(HttpClientConfig httpClientConfig) {
-        return new OpentelemetryMicrometerHttpClientTagsProvider();
-    }
-
-    @DefaultComponent
-    default MicrometerHttpClientMetricsFactory micrometerHttpClientMetricsFactory(MeterRegistry meterRegistry,
-                                                                                  MicrometerHttpClientTagsProvider tagsProvider) {
-        return new MicrometerHttpClientMetricsFactory(meterRegistry, tagsProvider);
     }
 
     @DefaultComponent

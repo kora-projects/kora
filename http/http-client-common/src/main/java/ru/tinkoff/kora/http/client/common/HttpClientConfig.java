@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.client.common;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
-import jakarta.annotation.Nullable;
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
