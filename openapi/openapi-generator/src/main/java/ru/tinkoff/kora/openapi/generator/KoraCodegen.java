@@ -2762,7 +2762,7 @@ public class KoraCodegen extends DefaultCodegen {
         String authName = getAuthName(authMethod.name, parameters);
 
         fakeAuthParameter.paramName = authName;
-        fakeAuthParameter.baseName = authName;
+        fakeAuthParameter.baseName = authMethod.keyParamName;
         fakeAuthParameter.nameInLowerCase = authName.toLowerCase(Locale.ROOT);
         if (authMethod.isKeyInQuery) {
             fakeAuthParameter.isQueryParam = true;
