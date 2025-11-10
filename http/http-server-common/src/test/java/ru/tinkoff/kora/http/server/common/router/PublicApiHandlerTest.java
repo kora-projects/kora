@@ -8,17 +8,10 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerLoggerConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+import ru.tinkoff.kora.http.server.common.telemetry.*;
 
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 class PublicApiHandlerTest {
     private HttpServerTelemetryFactory telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
@@ -30,7 +23,7 @@ class PublicApiHandlerTest {
             handler("GET", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -40,7 +33,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), telemetryFactory, config));
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
     }
 
 
@@ -51,7 +44,7 @@ class PublicApiHandlerTest {
             handler("GET", "/foo/bar/{otherVariable}")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -61,7 +54,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), telemetryFactory, config));
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -71,7 +64,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -81,7 +74,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), telemetryFactory, config));
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -91,7 +84,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -101,7 +94,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), telemetryFactory, config));
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -111,7 +104,7 @@ class PublicApiHandlerTest {
             handler("GET", "/foo/bar")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -121,7 +114,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), telemetryFactory, config));
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -132,7 +125,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -143,7 +136,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), telemetryFactory, config));
+        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
@@ -161,9 +154,9 @@ class PublicApiHandlerTest {
             false,
             Duration.ofMillis(1),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, Collections.emptySet(), Collections.emptySet(), "***", true, false),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
             ));
     }
 
