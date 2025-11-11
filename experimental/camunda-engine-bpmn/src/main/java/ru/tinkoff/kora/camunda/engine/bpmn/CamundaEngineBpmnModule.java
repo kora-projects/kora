@@ -75,11 +75,7 @@ public interface CamundaEngineBpmnModule {
     @DefaultComponent
     default JobExecutor camundaEngineBpmnKoraJobExecutor(CamundaEngineBpmnConfig engineConfig) {
         if (engineConfig.jobExecutor().virtualThreadsEnabled()) {
-            if (VirtualThreadExecutorHolder.status() != VirtualThreadExecutorHolder.VirtualThreadStatus.ENABLED) {
-                throw new IllegalStateException("Camunda BPMN Engine starting failed cause Virtual Threads are not available but enabled in configuration, please check that you are using Java 21+ or disable Virtual Threads for Camunda BPMN Engine in configuration.");
-            }
-
-            return new KoraVirtualThreadJobExecutor(VirtualThreadExecutorHolder.executor(), engineConfig);
+            return new KoraVirtualThreadJobExecutor(engineConfig);
         } else {
             return new KoraThreadPoolJobExecutor(engineConfig);
         }
