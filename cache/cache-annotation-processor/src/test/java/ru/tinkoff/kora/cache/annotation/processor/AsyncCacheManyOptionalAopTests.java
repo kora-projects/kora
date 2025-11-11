@@ -7,7 +7,6 @@ import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache21;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache22;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.async.CacheableAsyncMany;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.async.CacheableAsyncManyOptional;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 import ru.tinkoff.kora.cache.redis.RedisCacheKeyMapper;
@@ -51,7 +50,7 @@ class AsyncCacheManyOptionalAopTests implements CaffeineCacheModule, RedisCacheM
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
             cache1 = (DummyCache21) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+                caffeineCacheFactory(null));
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
             if (cacheClass2 == null) {

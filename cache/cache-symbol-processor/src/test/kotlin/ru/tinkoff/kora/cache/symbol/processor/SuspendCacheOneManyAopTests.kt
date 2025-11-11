@@ -43,8 +43,7 @@ class SuspendCacheOneManyAopTests : CaffeineCacheModule, RedisCacheMapperModule 
             val cache1Class = classLoader.loadClass(CACHE1_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE1_CLASS")
             cache1 = cache1Class.constructors[0].newInstance(
                 CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null),
-                caffeineCacheTelemetry(null, null)
+                caffeineCacheFactory(null)
             ) as DummyCache11
 
             val cache2Class = classLoader.loadClass(CACHE2_CLASS) ?: throw IllegalArgumentException("Expected class not found: $CACHE2_CLASS")

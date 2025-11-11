@@ -9,7 +9,6 @@ import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache11;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache12;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.async.CacheableAsyncOneMany;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
-import ru.tinkoff.kora.cache.redis.RedisCacheMapperModule;
 import ru.tinkoff.kora.cache.redis.RedisCacheModule;
 
 import java.lang.reflect.Constructor;
@@ -48,8 +47,10 @@ class AsyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule
 
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
-            cache1 = (DummyCache11) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            cache1 = (DummyCache11) cacheConstructor1.newInstance(
+                CacheRunner.getCaffeineConfig(),
+                caffeineCacheFactory(null)
+            );
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
             if (cacheClass2 == null) {

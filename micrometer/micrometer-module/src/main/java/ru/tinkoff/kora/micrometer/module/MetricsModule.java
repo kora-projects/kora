@@ -9,7 +9,6 @@ import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFacto
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.micrometer.module.cache.MicrometerCacheMetrics;
-import ru.tinkoff.kora.micrometer.module.cache.caffeine.MicrometerCaffeineCacheMetricCollector;
 import ru.tinkoff.kora.micrometer.module.cache.redis.lettuce.MicrometerLettuceCommandLatencyRecorderFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEngineBpmnMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
@@ -69,11 +68,6 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerCacheMetrics micrometerCacheMetrics(MeterRegistry meterRegistry) {
         return new MicrometerCacheMetrics(meterRegistry);
-    }
-
-    @DefaultComponent
-    default MicrometerCaffeineCacheMetricCollector micrometerCaffeineCacheMetricsCollector(MeterRegistry meterRegistry) {
-        return new MicrometerCaffeineCacheMetricCollector(meterRegistry);
     }
 
     @DefaultComponent

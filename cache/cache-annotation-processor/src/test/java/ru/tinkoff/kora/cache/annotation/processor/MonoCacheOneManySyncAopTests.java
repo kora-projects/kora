@@ -6,20 +6,15 @@ import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache11;
-import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache12;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache13;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoOneMany;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoOneManySync;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 import ru.tinkoff.kora.cache.redis.RedisCacheModule;
 
 import java.lang.reflect.Constructor;
 import java.math.BigDecimal;
-import java.nio.ByteBuffer;
 import java.time.Duration;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -51,7 +46,7 @@ class MonoCacheOneManySyncAopTests implements CaffeineCacheModule, RedisCacheMod
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
             cache1 = (DummyCache11) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+                caffeineCacheFactory(null));
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
             if (cacheClass2 == null) {
@@ -61,7 +56,7 @@ class MonoCacheOneManySyncAopTests implements CaffeineCacheModule, RedisCacheMod
             final Constructor<?> cacheConstructor2 = cacheClass2.getDeclaredConstructors()[0];
             cacheConstructor2.setAccessible(true);
             cache2 = (DummyCache13) cacheConstructor2.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+                caffeineCacheFactory(null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {

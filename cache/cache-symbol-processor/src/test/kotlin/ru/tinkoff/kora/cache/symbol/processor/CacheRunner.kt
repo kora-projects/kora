@@ -2,33 +2,35 @@ package ru.tinkoff.kora.cache.symbol.processor
 
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.runBlocking
+import org.mockito.Mockito
+import org.mockito.Mockito.`when`
+import ru.tinkoff.kora.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig
-import ru.tinkoff.kora.cache.redis.RedisCacheConfig
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig.CaffeineTelemetryConfig
 import ru.tinkoff.kora.cache.redis.RedisCacheClient
+import ru.tinkoff.kora.cache.redis.RedisCacheConfig
 import java.nio.ByteBuffer
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 
+
 class CacheRunner {
 
     companion object {
 
         fun getCaffeineConfig(): CaffeineCacheConfig {
-            return object : CaffeineCacheConfig {
-                override fun expireAfterWrite(): Duration? {
-                    return null;
-                }
-
-                override fun expireAfterAccess(): Duration? {
-                    return null;
-                }
-
-                override fun initialSize(): Int? {
-                    return null;
-                }
-            }
+            val config = Mockito.mock(CaffeineCacheConfig::class.java)
+            val telemetry = Mockito.mock(CaffeineTelemetryConfig::class.java)
+            `when`(config.telemetry()).thenReturn(telemetry)
+            `when`(config.maximumSize()).thenReturn(100000L)
+            `when`(config.expireAfterAccess()).thenReturn(null)
+            `when`(config.expireAfterWrite()).thenReturn(null)
+            `when`(telemetry.metrics()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor`.CaffeineMetricsConfig_Defaults())
+            `when`(telemetry.logging()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor`.CaffeineLoggingConfig_Defaults())
+            return config
         }
 
         fun getRedisConfig(): RedisCacheConfig {
