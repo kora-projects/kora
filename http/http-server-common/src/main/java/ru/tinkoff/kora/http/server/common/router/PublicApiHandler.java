@@ -6,10 +6,11 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.*;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -29,10 +30,8 @@ public class PublicApiHandler {
     private final Map<String, PathTemplateMatcher<HttpServerRequestHandler>> pathTemplateMatcher;
     private final PathTemplateMatcher<List<String>> allMethodMatchers;
     private final AtomicReference<RequestHandler> requestHandler = new AtomicReference<>();
-    private final HttpServerTelemetry telemetry;
 
-    public PublicApiHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerTelemetryFactory httpServerTelemetry, HttpServerConfig config) {
-        this.telemetry = Objects.requireNonNullElse(httpServerTelemetry.get(config.telemetry()), HttpServerTelemetry.EMPTY);
+    public PublicApiHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerConfig config) {
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
@@ -72,8 +71,23 @@ public class PublicApiHandler {
         }
     }
 
-    // should not throw
-    public PublicApiResponse process(Context context, PublicApiRequest publicApiRequest) {
+    public static class PublicApiInvocation {
+        private final RequestHandler handler;
+        private final HttpServerRequestHandler.HandlerFunction handlerFunction;
+        public final HttpServerRequest request;
+
+        private PublicApiInvocation(RequestHandler handler, HttpServerRequestHandler.HandlerFunction handlerFunction, HttpServerRequest request) {
+            this.handler = handler;
+            this.handlerFunction = handlerFunction;
+            this.request = request;
+        }
+
+        public HttpServerResponse proceed(HttpServerRequest request) throws Exception {
+            return this.handler.apply(Context.current(), request, this.handlerFunction);
+        }
+    }
+
+    public PublicApiInvocation route(PublicApiRequest publicApiRequest) {
         final HttpServerRequestHandler.HandlerFunction handlerFunction;
         final Map<String, String> templateParameters;
         final @Nullable String routeTemplate;
@@ -99,16 +113,9 @@ public class PublicApiHandler {
             routeTemplate = pathTemplateMatch.matchedTemplate();
             handlerFunction = pathTemplateMatch.value()::handle;
         }
-
         var request = new LazyRequest(publicApiRequest, templateParameters, routeTemplate);
-        var tctx = this.telemetry.get(publicApiRequest, routeTemplate);
-
-        try {
-            var response = this.requestHandler.get().apply(context, request, handlerFunction);
-            return new PublicApiResponseImpl(tctx, response, null);
-        } catch (Throwable error) {
-            return new PublicApiResponseImpl(tctx, null, error);
-        }
+        var handler = this.requestHandler.get();
+        return new PublicApiInvocation(handler, handlerFunction, request);
     }
 
 

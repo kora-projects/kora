@@ -68,6 +68,11 @@ public class UndertowPublicApiRequest implements PublicApiRequest {
         return this.body = b;
     }
 
+    @Override
+    public long requestStartTime() {
+        return exchange.getRequestStartTime();
+    }
+
     private static Map<String, List<String>> queryParams(HttpServerExchange httpServerExchange) {
         var undertowQueryParams = httpServerExchange.getQueryParameters();
         if (undertowQueryParams.isEmpty()) {
