@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.http.server.common;
 
+import io.opentelemetry.api.trace.Span;
 import jakarta.annotation.Nullable;
 import okhttp3.*;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
-import org.mockito.AdditionalMatchers;
+import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.verification.VerificationMode;
@@ -19,7 +20,6 @@ import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.liveness.LivenessProbeFailure;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
-import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -29,26 +29,22 @@ import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.*;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 import static java.time.Instant.now;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static ru.tinkoff.kora.http.common.HttpMethod.GET;
 import static ru.tinkoff.kora.http.common.HttpMethod.POST;
@@ -73,24 +69,22 @@ public abstract class HttpServerTestKit {
     protected final OkHttpClient client = new OkHttpClient.Builder()
         .connectionPool(new ConnectionPool(0, 1, TimeUnit.MICROSECONDS))
         .build();
+    private final HttpServerObservation observation = Mockito.mock(HttpServerObservation.class);
+    private final HttpServerTelemetry telemetry = Mockito.mock(HttpServerTelemetry.class, AdditionalAnswers.answer((_, _) -> observation));
 
-    protected HttpServerMetrics metrics = Mockito.mock(HttpServerMetrics.class);
-    protected HttpServerMetricsFactory metricsFactory = new HttpServerMetricsFactory() {
-        @Nullable
-        public HttpServerMetrics get(TelemetryConfig.MetricsConfig config) {
-            return metrics;
-        }
-    };
-    protected HttpServerLogger logger = Mockito.mock(HttpServerLogger.class);
-    protected HttpServerLoggerFactory loggerFactory = new HttpServerLoggerFactory() {
-        @Nullable
-        @Override
-        public HttpServerLogger get(HttpServerLoggerConfig logging) {
-            return logger;
-        }
-    };
+    protected HttpServerTestKit() {
+        this.reset();
+    }
 
-    protected abstract HttpServer httpServer(ValueOf<HttpServerConfig> config, PublicApiHandler publicApiHandler);
+    private void reset() {
+        Mockito.reset(telemetry, observation);
+        when(telemetry.observe(any(), any())).thenReturn(observation);
+        when(observation.span()).thenReturn(Span.getInvalid());
+        when(observation.observeRequest(any())).thenAnswer(AdditionalAnswers.returnsArgAt(0));
+        when(observation.observeResponse(any())).thenAnswer(AdditionalAnswers.returnsArgAt(0));
+    }
+
+    protected abstract HttpServer httpServer(ValueOf<HttpServerConfig> config, PublicApiHandler publicApiHandler, HttpServerTelemetry telemetry);
 
     protected abstract PrivateHttpServer privateHttpServer(ValueOf<HttpServerConfig> config, PrivateApiHandler privateApiHandler);
 
@@ -206,7 +200,7 @@ public abstract class HttpServerTestKit {
             try (var response = client.newCall(request).execute()) {
                 assertThat(response.code()).isEqualTo(500);
             }
-            verifyResponse("GET", "/", 500, HttpResultCode.SERVER_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(RuntimeException.class), anyLong());
+            verifyResponse("GET", "/", 500, () -> ArgumentMatchers.isA(RuntimeException.class));
         }
 
         @Test
@@ -224,7 +218,7 @@ public abstract class HttpServerTestKit {
             try (var response = client.newCall(request).execute()) {
                 assertThat(response.code()).isEqualTo(400);
             }
-            verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(HttpServerResponseException.class), anyLong());
+            verifyResponse("GET", "/", 400, () -> ArgumentMatchers.isA(HttpServerResponseException.class));
         }
 
         @Test
@@ -242,7 +236,7 @@ public abstract class HttpServerTestKit {
             try (var response = client.newCall(request).execute()) {
                 assertThat(response.code()).isEqualTo(400);
             }
-            verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(HttpServerResponseExceptionNoBody.class), anyLong());
+            verifyResponse("GET", "/", 400, () -> ArgumentMatchers.isA(HttpServerResponseExceptionNoBody.class));
         }
 
         @Test
@@ -261,7 +255,7 @@ public abstract class HttpServerTestKit {
             try (var response = client.newCall(request).execute()) {
                 assertThat(response.code()).isEqualTo(400);
             }
-            verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", () -> ArgumentMatchers.isA(HttpServerResponseException.class), anyLong());
+            verifyResponse("GET", "/", 400, () -> ArgumentMatchers.isA(HttpServerResponseException.class));
         }
 
         @Test
@@ -281,7 +275,7 @@ public abstract class HttpServerTestKit {
                 assertThat(response.code()).isEqualTo(200);
                 assertThat(response.body().string()).isEqualTo("hello world");
             }
-            verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+            verifyResponse("GET", "/", 200, null);
         }
 
         @Test
@@ -333,7 +327,7 @@ public abstract class HttpServerTestKit {
                 assertThat(response.code()).isEqualTo(200);
                 assertThat(response.body().string()).isEqualTo("hello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello worldhello world");
             }
-            verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+            verifyResponse("GET", "/", 200, null);
         }
 
         @Test
@@ -394,7 +388,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.body().string()).isEqualTo("hello world");
         }
         Thread.sleep(1000);
-        verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        verifyResponse("GET", "/", 200, null);
     }
 
     @Test
@@ -417,7 +411,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(200);
             assertThat(response.body().bytes()).isEqualTo(data);
         }
-        verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        verifyResponse("GET", "/", 200, null);
     }
 
     @Test
@@ -464,7 +458,7 @@ public abstract class HttpServerTestKit {
         try (var response = client.newBuilder().readTimeout(10, TimeUnit.SECONDS).build().newCall(request).execute()) {
             assertThat(response.code()).isEqualTo(200);
         }
-        verifyResponse("POST", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        verifyResponse("POST", "/", 200, null);
     }
 
     @Test
@@ -499,7 +493,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(200);
             assertThat(response.body().bytes()).isEqualTo(data);
         }
-        verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        verifyResponse("GET", "/", 200, null);
     }
 
     @Test
@@ -533,7 +527,7 @@ public abstract class HttpServerTestKit {
             assertThat(future.get().getT1()).isEqualTo(200);
             assertThat(future.get().getT2()).isEqualTo("hello world");
         }
-        verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong(), timeout(100).times(100));
+        verifyResponse("GET", "/", 200, null, timeout(100).times(100));
     }
 
     @Test
@@ -551,10 +545,7 @@ public abstract class HttpServerTestKit {
         try (var response = client.newCall(request).execute()) {
             assertThat(response.code()).isEqualTo(404);
         }
-        verify(logger, never()).logStart(any(), any(), any(), any(), any());
-        verify(logger, never()).logEnd(anyInt(), any(), any(), any(), any(), anyLong().getAsLong(), any(), any(), any());
-        verify(metrics, times(1)).requestStarted(eq(GET), eq("UNKNOWN_ROUTE"), eq("localhost"), eq("http"));
-        verify(metrics, timeout(100).times(1)).requestFinished(eq(404), eq(HttpResultCode.CLIENT_ERROR), eq("http"), eq("localhost"), eq(GET), eq("UNKNOWN_ROUTE"), Mockito.any(), Mockito.anyLong(), eq(null));
+        verify(this.observation).observeRequest(ArgumentMatchers.argThat(rq -> rq.route() == null));
     }
 
     @Test
@@ -591,7 +582,7 @@ public abstract class HttpServerTestKit {
         })
             .isInstanceOf(IOException.class);
         var duration = Duration.between(start, now()).toNanos();
-        verifyResponse("GET", "/", 200, HttpResultCode.CONNECTION_ERROR, "localhost", "http", ArgumentMatchers::notNull, () -> longThat(argument -> argument >= duration), timeout(10000));
+        verifyResponse("GET", "/", 200, ArgumentMatchers::notNull, timeout(10000));
     }
 
     @Test
@@ -611,7 +602,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(500);
             assertThat(response.body().string()).isEqualTo("test");
         }
-        verifyResponse("GET", "/", 500, HttpResultCode.SERVER_ERROR, "localhost", "http", any(RuntimeException.class), anyLong());
+        verifyResponse("GET", "/", 500, any(RuntimeException.class));
     }
 
     @Test
@@ -662,7 +653,7 @@ public abstract class HttpServerTestKit {
             }
         })
             .isInstanceOf(IOException.class);
-        verifyResponse("GET", "/", 200, HttpResultCode.SERVER_ERROR, "localhost", "http", any(RuntimeException.class), anyLong());
+        verifyResponse("GET", "/", 200, any(RuntimeException.class));
     }
 
     @Test
@@ -683,7 +674,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(500);
             assertThat(response.body().string()).isEqualTo("test");
         }
-        verifyResponse("GET", "/", 500, HttpResultCode.SERVER_ERROR, "localhost", "http", any(RuntimeException.class), anyLong());
+        verifyResponse("GET", "/", 500, any(RuntimeException.class));
     }
 
     @Test
@@ -702,7 +693,7 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(400);
             assertThat(response.body().string()).isEqualTo("test");
         }
-        verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", any(HttpServerResponseException.class), anyLong());
+        verifyResponse("GET", "/", 400, any(HttpServerResponseException.class));
     }
 
     @Test
@@ -866,8 +857,9 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(200);
             assertThat(response.body().string()).isEqualTo("hello world");
         }
-        verifyResponse("GET", "/", 200, HttpResultCode.SUCCESS, "localhost", "http", ArgumentMatchers::isNull, anyLong());
-        reset(logger, metrics);
+        verifyResponse("GET", "/", 200, null);
+        reset();
+
         try (var response = client.newCall(request.newBuilder()
             .header("test-header1", "somevalue")
             .header("test-header2", "somevalue")
@@ -875,46 +867,39 @@ public abstract class HttpServerTestKit {
             assertThat(response.code()).isEqualTo(400);
             assertThat(response.body().string()).isEqualTo("error");
         }
-        verifyResponse("GET", "/", 400, HttpResultCode.CLIENT_ERROR, "localhost", "http", ArgumentMatchers::isNull, anyLong());
-        reset(logger, metrics);
+        verifyResponse("GET", "/", 400, null);
+        reset();
         try (var response = client.newCall(request.newBuilder()
             .header("test-header1", "somevalue")
             .build()).execute()) {
             assertThat(response.code()).isEqualTo(500);
             assertThat(response.body().string()).isEqualTo("error");
         }
-        verifyResponse("GET", "/", 500, HttpResultCode.SERVER_ERROR, "localhost", "http", ArgumentMatchers::isNull, anyLong());
+        verifyResponse("GET", "/", 500, null);
     }
 
     private <T> Supplier<T> any(Class<T> t) {
         return () -> Mockito.any(t);
     }
 
-    private <T> LongSupplier anyLong() {
-        return Mockito::anyLong;
-    }
-
     private <T> T any() {
         return Mockito.any();
     }
 
-    private <T extends Comparable<T>> Supplier<T> lt(T t) {
-        return () -> AdditionalMatchers.lt(t);
+    private void verifyResponse(String method, String route, int code, @Nullable Supplier<? extends Throwable> throwable) {
+        this.verifyResponse(method, route, code, throwable, timeout(100));
     }
 
-    private <T extends Comparable<T>> Supplier<T> gt(T t) {
-        return () -> AdditionalMatchers.gt(t);
-    }
-
-    private void verifyResponse(String method, String route, int code, HttpResultCode resultCode, String host, String scheme, Supplier<? extends Throwable> throwable, LongSupplier duration) {
-        this.verifyResponse(method, route, code, resultCode, host, scheme, throwable, duration, timeout(100));
-    }
-
-    private void verifyResponse(String method, String route, int code, HttpResultCode resultCode, String host, String scheme, Supplier<? extends Throwable> throwable, LongSupplier duration, VerificationMode mode) {
-        verify(metrics, mode).requestStarted(eq(method), eq(route), eq(host), eq(scheme));
-        verify(logger, mode).logStart(eq(method), eq(route), eq(route), any(), any());
-        verify(logger, mode).logEnd(eq(code), eq(resultCode), eq(method), eq(route), eq(route), duration.getAsLong(), any(), any(), throwable.get());
-        verify(metrics, mode).requestFinished(eq(code), eq(resultCode), eq(scheme), eq(host), eq(method), eq(route), any(), Mockito.anyLong(), throwable.get());
+    private void verifyResponse(String method, String route, int code, @Nullable Supplier<? extends Throwable> throwable, VerificationMode mode) {
+        if (throwable != null) {
+            verify(this.observation, mode).observeError(throwable.get());
+        } else {
+            verify(this.observation, never()).observeError(any());
+        }
+        verify(this.observation, mode).observeRequest(ArgumentMatchers.argThat(rq -> rq.route().equals(route)
+            && rq.method().equals(method)));
+        verify(this.observation, mode).end();
+        verify(this.observation, mode).observeResponse(ArgumentMatchers.argThat(rs -> rs.code() == code));
     }
 
 
@@ -980,13 +965,13 @@ public abstract class HttpServerTestKit {
             false,
             Duration.ofMillis(1),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true,  Collections.emptySet(), Collections.emptySet(), "***", false, false),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
             )
         );
-        var publicApiHandler = new PublicApiHandler(List.of(handlers), interceptors, new DefaultHttpServerTelemetryFactory(this.loggerFactory, this.metricsFactory, null), config);
-        this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
+        var publicApiHandler = new PublicApiHandler(List.of(handlers), interceptors, config);
+        this.httpServer = this.httpServer(valueOf(config), publicApiHandler, this.telemetry);
         try {
             this.httpServer.init();
         } catch (Exception e) {

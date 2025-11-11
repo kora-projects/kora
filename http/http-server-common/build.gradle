@@ -11,6 +11,7 @@ dependencies {
     api project(':http:http-common')
 
     testImplementation libs.reactor.core
+    testImplementation project(':config:config-hocon')
 
     testFixturesImplementation libs.reactor.core
     testFixturesApi libs.okhttp

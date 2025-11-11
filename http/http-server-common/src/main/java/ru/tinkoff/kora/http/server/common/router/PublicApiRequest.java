@@ -20,4 +20,6 @@ public interface PublicApiRequest {
     Map<String, ? extends Collection<String>> queryParams();
 
     HttpBodyInput body();
+
+    long requestStartTime();
 }

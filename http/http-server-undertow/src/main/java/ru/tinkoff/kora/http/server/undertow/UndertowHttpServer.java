@@ -17,7 +17,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTracer;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import java.net.BindException;
@@ -36,24 +36,23 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
     private final ValueOf<HttpServerConfig> config;
     private final GracefulShutdownHandler gracefulShutdown;
     private final String name;
-    @Nullable
-    private final HttpServerTracer tracer;
     private final XnioWorker xnioWorker;
     private final ValueOf<PublicApiHandler> publicApiHandler;
+    private final HttpServerTelemetry telemetry;
 
     private volatile Undertow undertow;
 
     public UndertowHttpServer(ValueOf<HttpServerConfig> config,
                               ValueOf<PublicApiHandler> publicApiHandler,
                               String name,
-                              @Nullable HttpServerTracer tracer,
+                              HttpServerTelemetry telemetry,
                               @Nullable XnioWorker xnioWorker) {
         this.config = config;
         this.name = name;
-        this.tracer = tracer;
         this.xnioWorker = xnioWorker;
         this.publicApiHandler = publicApiHandler;
         this.gracefulShutdown = new GracefulShutdownHandler(this);
+        this.telemetry = telemetry;
     }
 
     @Override
@@ -104,7 +103,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
     private Undertow createServer() {
         var config = this.config.get();
         return Undertow.builder()
-            .addHttpListener(config.publicApiHttpPort(), "0.0.0.0", this.gracefulShutdown)
+            .setHandler(this.gracefulShutdown)
+            .addHttpListener(config.publicApiHttpPort(), "0.0.0.0")
             .setWorker(this.xnioWorker)
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
@@ -113,9 +113,9 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
     }
 
     @Override
-    public void handleRequest(HttpServerExchange exchange) throws Exception {
+    public void handleRequest(HttpServerExchange exchange) {
         var context = new UndertowContext(exchange);
-        var exchangeProcessor = new UndertowExchangeProcessor(this.publicApiHandler.get(), context, this.tracer);
+        var exchangeProcessor = new UndertowExchangeProcessor(this.telemetry, context, this.publicApiHandler.get());
         var executor = getOrCreateExecutor(exchange, executorServiceAttachmentKey, this.name);
         exchange.dispatch(executor, exchangeProcessor);
     }
