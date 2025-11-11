@@ -95,6 +95,10 @@ public interface CamundaEngineBpmnConfig {
         default Integer maxJobsPerAcquisition() {
             return Runtime.getRuntime().availableProcessors() * 2;
         }
+
+        default boolean virtualThreadsEnabled() {
+            return false;
+        }
     }
 
     @ConfigValueExtractor
