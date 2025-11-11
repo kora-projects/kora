@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.camunda.engine.bpmn.transaction;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.database.jdbc.RuntimeSqlException;
 
 import javax.sql.DataSource;
@@ -47,8 +46,6 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
 
     @Override
     public <T> T inContinueTx(Supplier<T> supplier) {
-        var ctx = Context.current();
-
         if (this.camundaConnectionKey.isBound()) {
             var currentConnection = this.camundaConnectionKey.get();
             boolean isClosed;

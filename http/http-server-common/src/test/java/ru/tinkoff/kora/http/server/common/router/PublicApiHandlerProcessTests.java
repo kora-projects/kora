@@ -6,7 +6,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.All;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -15,12 +14,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandlerImpl;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerLoggerConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.telemetry.*;
 
 import java.time.Duration;
 import java.util.Collection;
@@ -29,7 +23,8 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.when;
 
 class PublicApiHandlerProcessTests {
 
@@ -66,23 +61,22 @@ class PublicApiHandlerProcessTests {
 
     @ParameterizedTest
     @MethodSource("dataWhenDefault")
-    void processRequestWhenDefault(String method, String route, String path, int responseCode, int expectedCode) {
+    void processRequestWhenDefault(String method, String route, String path, int responseCode, int expectedCode) throws Exception {
         // given
         var handlers = List.of(handler(method, route));
-        var telemetry = Mockito.mock(HttpServerTelemetry.class);
-        when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
+        var telemetry = NoopHttpServerTelemetry.INSTANCE;
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(any())).thenReturn(telemetry);
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, All.of(), config);
 
         // when
         var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
-        var rs = handler.process(Context.clear(), request);
-        var httpRs = rs.response();
-        assertThat(httpRs.code()).isEqualTo(expectedCode);
+        var routedRq = handler.route(request);
+        var rs = routedRq.proceed(routedRq.request);
+        assertThat(rs.code()).isEqualTo(expectedCode);
     }
 
     static Stream<Arguments> dataWhenIgnoreTrailingSlash() {
@@ -115,43 +109,39 @@ class PublicApiHandlerProcessTests {
 
     @ParameterizedTest
     @MethodSource("dataWhenIgnoreTrailingSlash")
-    void processRequestWhenIgnoreTrailingSlash(String method, String route, String path, int responseCode, int expectedCode) {
+    void processRequestWhenIgnoreTrailingSlash(String method, String route, String path, int responseCode, int expectedCode) throws Exception {
         // given
         var handlers = List.of(handler(method, route));
-        var telemetry = Mockito.mock(HttpServerTelemetry.class);
-        when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
+        var telemetry = NoopHttpServerTelemetry.INSTANCE;
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(any())).thenReturn(telemetry);
         var config = config(true);
-        var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
+        var handler = new PublicApiHandler(handlers, All.of(), config);
 
         // when
         var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
-        var rs = handler.process(Context.clear(), request);
-        var httpRs = rs.response();
-        assertThat(httpRs.code()).isEqualTo(expectedCode);
+        var routedRq = handler.route(request);
+        var rs = routedRq.proceed(routedRq.request);
+        assertThat(rs.code()).isEqualTo(expectedCode);
     }
 
     @Test
-    void testWildcard() {
+    void testWildcard() throws Exception {
         var handlers = All.of(
             handler("GET", "/baz"),
             handler("POST", "/*")
         );
-        var telemetry = Mockito.mock(HttpServerTelemetry.class);
-        when(telemetry.get(any(), anyString())).thenReturn(mock(HttpServerTelemetry.HttpServerTelemetryContext.class));
         var config = config(false);
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
-        when(telemetryFactory.get(any())).thenReturn(telemetry);
-        var handler = new PublicApiHandler(handlers, All.of(), telemetryFactory, config);
+        when(telemetryFactory.get(any())).thenReturn(NoopHttpServerTelemetry.INSTANCE);
+        var handler = new PublicApiHandler(handlers, All.of(), config);
 
         var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
-        var rs = handler.process(Context.clear(), request);
-        var httpRs = rs.response();
-
-        assertThat(httpRs.code()).isEqualTo(200);
+        var routedRq = handler.route(request);
+        var rs = routedRq.proceed(routedRq.request);
+        assertThat(rs.code()).isEqualTo(200);
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
@@ -169,9 +159,9 @@ class PublicApiHandlerProcessTests {
             false,
             Duration.ofMillis(100),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Defaults(),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, new Duration[0], Map.of())
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
             )
         );
     }
@@ -189,5 +179,9 @@ class PublicApiHandlerProcessTests {
         Map<String, ? extends Collection<String>> queryParams,
         HttpBodyInput body
     ) implements PublicApiRequest {
+        @Override
+        public long requestStartTime() {
+            return 0;
+        }
     }
 }
