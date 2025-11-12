@@ -6,7 +6,6 @@ import org.junit.jupiter.api.TestInstance;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCache21;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.async.CacheableAsync;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.async.CacheableAsyncOptional;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
 
@@ -42,7 +41,7 @@ class AsyncCacheOptionalAopTests implements CaffeineCacheModule {
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
             cache = (DummyCache21) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+                caffeineCacheFactory(null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {

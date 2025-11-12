@@ -14,16 +14,10 @@ import java.util.concurrent.TimeUnit;
 
 public final class MicrometerCacheMetrics implements CacheMetrics {
 
-    record Key(String cacheName, String origin, String operationName, String status) {}
-
+    record DurationKey(String cacheName, String origin, String operationName, String status) {}
     record RatioKey(String cacheName, String origin, String type) {}
 
-    record OpKey(String cacheName, String origin) {}
-
     private static final String METRIC_CACHE_DURATION = "cache.duration";
-    private static final String METRIC_CACHE_RATIO = "cache.ratio";
-    private static final String METRIC_CACHE_HIT = "cache.hit";
-    private static final String METRIC_CACHE_MISS = "cache.miss";
 
     private static final String TAG_OPERATION = "operation";
     private static final String TAG_CACHE_NAME = "cache";
@@ -37,12 +31,8 @@ public final class MicrometerCacheMetrics implements CacheMetrics {
     private static final String TYPE_HIT = "hit";
     private static final String TYPE_MISS = "miss";
 
-    private final ConcurrentHashMap<Key, Timer> durations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<DurationKey, Timer> durations = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<RatioKey, Counter> counters = new ConcurrentHashMap<>();
-    @Deprecated(forRemoval = true)
-    private final ConcurrentHashMap<OpKey, Counter> missCounters = new ConcurrentHashMap<>();
-    @Deprecated(forRemoval = true)
-    private final ConcurrentHashMap<OpKey, Counter> hitCounters = new ConcurrentHashMap<>();
 
     private final MeterRegistry meterRegistry;
 
@@ -52,8 +42,8 @@ public final class MicrometerCacheMetrics implements CacheMetrics {
 
     @Override
     public void recordSuccess(@Nonnull CacheTelemetryOperation operation, long durationInNanos, @Nullable Object valueFromCache) {
-        final Key key = new Key(operation.cacheName(), operation.origin(), operation.name(), STATUS_SUCCESS);
-        final Timer timer = durations.computeIfAbsent(key, k -> {
+        var key = new DurationKey(operation.cacheName(), operation.origin(), operation.name(), STATUS_SUCCESS);
+        var timer = durations.computeIfAbsent(key, k -> {
             var builder = Timer.builder(METRIC_CACHE_DURATION)
                 .tag(TAG_CACHE_NAME, k.cacheName())
                 .tag(TAG_OPERATION, k.operationName())
@@ -66,52 +56,24 @@ public final class MicrometerCacheMetrics implements CacheMetrics {
         timer.record(durationInNanos, TimeUnit.NANOSECONDS);
 
         if ("GET".startsWith(operation.name())) {
-            final String ratioType;
-            var operationKey = new OpKey(operation.cacheName(), operation.origin());
-            if (valueFromCache == null || valueFromCache instanceof Collection<?> vc && !vc.isEmpty()) {
-                ratioType = TYPE_MISS;
-
-                var counter = missCounters.computeIfAbsent(operationKey, k -> {
-                    var builder = Counter.builder(METRIC_CACHE_MISS)
-                        .description("!!! DEPRECATED !!! Please use cache.ratio metric")
-                        .tag(TAG_CACHE_NAME, k.cacheName())
-                        .tag(TAG_ORIGIN, k.origin());
-
-                    return builder.register(meterRegistry);
-                });
-                counter.increment();
-            } else {
-                ratioType = TYPE_HIT;
-
-                var counter = hitCounters.computeIfAbsent(operationKey, k -> {
-                    var builder = Counter.builder(METRIC_CACHE_HIT)
-                        .description("!!! DEPRECATED !!! Please use cache.ratio metric")
-                        .tag(TAG_CACHE_NAME, k.cacheName())
-                        .tag(TAG_ORIGIN, k.origin());
-
-                    return builder.register(meterRegistry);
-                });
-                counter.increment();
-            }
-
-            final RatioKey ratioKey = new RatioKey(operation.cacheName(), operation.origin(), ratioType);
+            var ratioType = valueFromCache == null || valueFromCache instanceof Collection<?> vc && !vc.isEmpty() ? TYPE_MISS : TYPE_HIT;
+            var ratioKey = new RatioKey(operation.cacheName(), operation.origin(), ratioType);
             var counter = counters.computeIfAbsent(ratioKey, k -> {
-                var builder = Counter.builder(METRIC_CACHE_RATIO)
+                var builder = Counter.builder("cache.ratio")
                     .tag(TAG_CACHE_NAME, k.cacheName())
                     .tag(TAG_ORIGIN, k.origin())
                     .tag(TAG_TYPE, ratioType);
 
                 return builder.register(meterRegistry);
             });
-
             counter.increment();
         }
     }
 
     @Override
     public void recordFailure(@Nonnull CacheTelemetryOperation operation, long durationInNanos, @Nullable Throwable throwable) {
-        final Key key = new Key(operation.cacheName(), operation.origin(), operation.name(), STATUS_FAILED);
-        final Timer timer = durations.computeIfAbsent(key, k -> {
+        var key = new DurationKey(operation.cacheName(), operation.origin(), operation.name(), STATUS_FAILED);
+        var timer = durations.computeIfAbsent(key, k -> {
             var builder = Timer.builder(METRIC_CACHE_DURATION)
                 .tag(TAG_CACHE_NAME, k.cacheName())
                 .tag(TAG_OPERATION, k.operationName())

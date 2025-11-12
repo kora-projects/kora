@@ -15,19 +15,12 @@ dependencies {
         exclude group: 'io.netty', module: 'netty-handler'
         exclude group: 'io.netty', module: 'netty-transport'
     }
-    compileOnly project(':http:http-server-common')
     compileOnly project(':http:soap-client')
-    compileOnly project(':http:http-client-common')
-    compileOnly project(':grpc:grpc-server')
-    compileOnly project(':grpc:grpc-client')
-    compileOnly project(':kafka:kafka')
     compileOnly project(':jms')
-    compileOnly project(':database:database-common')
     compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':resilient:resilient-kora')
     compileOnly project(':cache:cache-common')
     compileOnly project(':cache:cache-redis')
-    compileOnly project(':cache:cache-caffeine')
     compileOnly project(':experimental:s3-client-common')
     compileOnly project(':experimental:camunda-engine-bpmn')
     compileOnly project(':experimental:camunda-rest-undertow')

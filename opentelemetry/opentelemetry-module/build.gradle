@@ -1,17 +1,12 @@
 dependencies {
     api project(':opentelemetry:opentelemetry-common')
 
-    compileOnly project(':http:http-server-common')
-    compileOnly project(':http:http-client-common')
     compileOnly project(':http:soap-client')
-    compileOnly project(':grpc:grpc-server')
-    compileOnly project(':grpc:grpc-client')
-    compileOnly project(':kafka:kafka')
     compileOnly project(':jms')
-    compileOnly project(':database:database-common')
     compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':cache:cache-common')
     compileOnly project(':experimental:s3-client-common')
+    compileOnly project(':http:http-server-common')
     compileOnly project(':experimental:camunda-rest-undertow')
     compileOnly project(':experimental:camunda-engine-bpmn')
     compileOnly project(':experimental:camunda-zeebe-worker')
