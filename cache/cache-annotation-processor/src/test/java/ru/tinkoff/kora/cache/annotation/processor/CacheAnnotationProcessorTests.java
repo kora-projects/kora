@@ -6,12 +6,6 @@ import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCacheTagged;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.flux.CacheableFluxWrongGet;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.flux.CacheableWrongFluxPut;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoWrongGetVoid;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.mono.CacheableMonoWrongPutVoid;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.publisher.CacheableWrongPublisherGet;
-import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.publisher.CacheableWrongPublisherPut;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.sync.*;
 
 import java.util.List;
@@ -64,36 +58,6 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
     @Test
     void cachePutForVoidSignature() {
         assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableSyncWrongPutVoid.class, new AopAnnotationProcessor()));
-    }
-
-    @Test
-    void cacheGetForMonoVoidSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableMonoWrongGetVoid.class, new AopAnnotationProcessor()));
-    }
-
-    @Test
-    void cachePutForMonoVoidSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableMonoWrongPutVoid.class, new AopAnnotationProcessor()));
-    }
-
-    @Test
-    void cacheGetForFluxSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableFluxWrongGet.class, new AopAnnotationProcessor()));
-    }
-
-    @Test
-    void cachePutForFluxSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableWrongFluxPut.class, new AopAnnotationProcessor()));
-    }
-
-    @Test
-    void cacheGetForPublisherSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableWrongPublisherGet.class, new AopAnnotationProcessor()));
-    }
-
-    @Test
-    void cachePutForPublisherSignature() {
-        assertThrows(CompilationErrorException.class, () -> TestUtils.annotationProcess(CacheableWrongPublisherPut.class, new AopAnnotationProcessor()));
     }
 
     @Test

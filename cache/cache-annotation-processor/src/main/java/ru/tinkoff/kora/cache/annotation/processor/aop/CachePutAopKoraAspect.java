@@ -164,144 +164,54 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         // cache variables
         final CodeBlock.Builder builder = CodeBlock.builder();
 
-        if (operation.executions().stream().allMatch(e -> e.contract() == CacheOperation.CacheExecution.Contract.SYNC)) {
-            // create keys
-            for (int i = 0; i < operation.executions().size(); i++) {
-                var cache = operation.executions().get(i);
-                boolean prevKeyMatch = false;
-                for (int j = 0; j < i; j++) {
-                    var prevCachePut = operation.executions().get(j);
-                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
-                        prevKeyMatch = true;
-                        break;
-                    }
-                }
-
-                if (!prevKeyMatch) {
-                    var keyField = "_key" + (i + 1);
-                    builder
-                        .add("var $L = ", keyField)
-                        .addStatement(cache.cacheKey().code());
+        // create keys
+        for (int i = 0; i < operation.executions().size(); i++) {
+            var cache = operation.executions().get(i);
+            boolean prevKeyMatch = false;
+            for (int j = 0; j < i; j++) {
+                var prevCachePut = operation.executions().get(j);
+                if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
+                    prevKeyMatch = true;
+                    break;
                 }
             }
 
-            builder.add("return ").add(superMethod)
-                .beginControlFlow(".doOnSuccess(_result -> ");
-
-            if (isOptional) {
-                builder.beginControlFlow("if(_result.isPresent())");
-            } else {
-                builder.beginControlFlow("if(_result != null)");
-            }
-
-            // cache put
-            for (int i = 0; i < operation.executions().size(); i++) {
-                var cache = operation.executions().get(i);
-
-                String keyField = "_key" + (i + 1);
-                for (int i1 = 0; i1 < i; i1++) {
-                    var prevCache = operation.executions().get(i1);
-                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCache.cacheKey().type())) {
-                        keyField = "_key" + (i1 + 1);
-                    }
-                }
-
-                if (isOptional) {
-                    builder.addStatement("$L.put($L, _result.get())", cache.field(), keyField);
-                } else {
-                    builder.addStatement("$L.put($L, _result)", cache.field(), keyField);
-                }
-            }
-            builder.endControlFlow().endControlFlow(")");
-        } else if (operation.executions().size() > 1) {
-            // create keys
-            for (int i = 0; i < operation.executions().size(); i++) {
-                var cache = operation.executions().get(i);
-                boolean prevKeyMatch = false;
-                for (int j = 0; j < i; j++) {
-                    var prevCachePut = operation.executions().get(j);
-                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCachePut.cacheKey().type())) {
-                        prevKeyMatch = true;
-                        break;
-                    }
-                }
-
-                if (!prevKeyMatch) {
-                    var keyField = "_key" + (i + 1);
-                    builder
-                        .add("var $L = ", keyField)
-                        .addStatement(cache.cacheKey().code());
-                }
-            }
-
-            builder.add("return ").add(superMethod);
-
-            if (isOptional) {
-                builder.beginControlFlow(".flatMap(_result -> ")
-                    .beginControlFlow("if(_result.isPresent())")
-                    .add("return $T.merge(\n", CommonClassNames.flux);
-            } else {
-                builder.add(".flatMap(_result -> $T.merge(\n", CommonClassNames.flux);
-            }
-
-            // cache put
-            for (int i = 0; i < operation.executions().size(); i++) {
-                final CacheOperation.CacheExecution cache = operation.executions().get(i);
-
-                String keyField = "_key" + (i + 1);
-                for (int i1 = 0; i1 < i; i1++) {
-                    var prevCache = operation.executions().get(i1);
-                    if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCache.cacheKey().type())) {
-                        keyField = "_key" + (i1 + 1);
-                    }
-                }
-
-                final String template;
-                final String resultField = (isOptional) ? "_result.get()" : "_result";
-                if (cache.contract() == CacheOperation.CacheExecution.Contract.ASYNC) {
-                    template = (i == operation.executions().size() - 1)
-                        ? "$T.fromCompletionStage(() -> $L.putAsync($L, $L))\n"
-                        : "$T.fromCompletionStage(() -> $L.putAsync($L, $L)),\n";
-                } else {
-                    template = (i == operation.executions().size() - 1)
-                        ? "$T.just($L.put($L, $L))\n"
-                        : "$T.just($L.put($L, $L)),\n";
-                }
-
-                builder.add("\t").add(template, CommonClassNames.mono, cache.field(), keyField, resultField);
-            }
-
-            if (isOptional) {
-                builder.addStatement(").then(Mono.just(_result))")
-                    .endControlFlow()
-                    .add("\n")
-                    .addStatement("return Mono.just(_result)")
-                    .endControlFlow(")");
-            } else {
-                builder.add(").then(Mono.just(_result)));");
-            }
-        } else {
-            builder.add("return ").add(superMethod);
-            if (isOptional) {
-                builder.add("""
-                    .doOnSuccess(_result -> {
-                        if(_result.isPresent()) {
-                            var _key = $L;
-                            $L.put(_key, _result.get());
-                        }
-                    });
-                    """, operation.executions().get(0).cacheKey().code(), operation.executions().get(0).field());
-            } else {
-                builder.add("""
-                    .doOnSuccess(_result -> {
-                        if(_result != null) {
-                            var _key = $L;
-                            $L.put(_key, _result);
-                        }
-                    });
-                    """, operation.executions().get(0).cacheKey().code(), operation.executions().get(0).field());
+            if (!prevKeyMatch) {
+                var keyField = "_key" + (i + 1);
+                builder
+                    .add("var $L = ", keyField)
+                    .addStatement(cache.cacheKey().code());
             }
         }
+
+        builder.add("return ").add(superMethod)
+            .beginControlFlow(".doOnSuccess(_result -> ");
+
+        if (isOptional) {
+            builder.beginControlFlow("if(_result.isPresent())");
+        } else {
+            builder.beginControlFlow("if(_result != null)");
+        }
+
+        // cache put
+        for (int i = 0; i < operation.executions().size(); i++) {
+            var cache = operation.executions().get(i);
+
+            String keyField = "_key" + (i + 1);
+            for (int i1 = 0; i1 < i; i1++) {
+                var prevCache = operation.executions().get(i1);
+                if (env.getTypeUtils().isSubtype(cache.cacheKey().type(), prevCache.cacheKey().type())) {
+                    keyField = "_key" + (i1 + 1);
+                }
+            }
+
+            if (isOptional) {
+                builder.addStatement("$L.put($L, _result.get())", cache.field(), keyField);
+            } else {
+                builder.addStatement("$L.put($L, _result)", cache.field(), keyField);
+            }
+        }
+        builder.endControlFlow().endControlFlow(")");
 
         return builder.build();
     }
@@ -358,70 +268,28 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         }
 
         // Generate puts
-        boolean allAreSync = executions.stream().allMatch(o -> o.contract() == CacheOperation.CacheExecution.Contract.SYNC);
-        if (allAreSync) {
-            for (int j = 0; j < executions.size(); j++) {
-                final CacheOperation.CacheExecution cachePrevPut = executions.get(j);
-                var putKeyField = "_key" + (j + 1);
-                for (int i1 = 0; i1 < executions.size(); i1++) {
-                    var prevCachePut = executions.get(i1);
-                    if (env.getTypeUtils().isSubtype(cachePrevPut.cacheKey().type(), prevCachePut.cacheKey().type())) {
-                        putKeyField = "_key" + (i1 + 1);
-                        break;
-                    }
-                }
-
-                if (isValueOptional) {
-                    builder.addStatement("$L.put($L, $L.get())", cachePrevPut.field(), putKeyField, valueField);
-                } else {
-                    builder.addStatement("$L.put($L, $L)", cachePrevPut.field(), putKeyField, valueField);
+        for (int j = 0; j < executions.size(); j++) {
+            final CacheOperation.CacheExecution cachePrevPut = executions.get(j);
+            var putKeyField = "_key" + (j + 1);
+            for (int i1 = 0; i1 < executions.size(); i1++) {
+                var prevCachePut = executions.get(i1);
+                if (env.getTypeUtils().isSubtype(cachePrevPut.cacheKey().type(), prevCachePut.cacheKey().type())) {
+                    putKeyField = "_key" + (i1 + 1);
+                    break;
                 }
             }
 
-            if (isValueOptional || !CommonUtils.isOptional(completionType)) {
-                builder.addStatement("return $T.completedFuture($L)", CompletableFuture.class, valueField);
+            if (isValueOptional) {
+                builder.addStatement("$L.put($L, $L.get())", cachePrevPut.field(), putKeyField, valueField);
             } else {
-                builder.addStatement("return $T.completedFuture($T.of($L))", CompletableFuture.class, Optional.class, valueField);
+                builder.addStatement("$L.put($L, $L)", cachePrevPut.field(), putKeyField, valueField);
             }
+        }
+
+        if (isValueOptional || !CommonUtils.isOptional(completionType)) {
+            builder.addStatement("return $T.completedFuture($L)", CompletableFuture.class, valueField);
         } else {
-            var codeBlock = CodeBlock.builder();
-            for (int j = 0; j < executions.size(); j++) {
-                final CacheOperation.CacheExecution cachePrevPut = executions.get(j);
-                var putKeyField = "_key" + (j + 1);
-                if (j != 0) {
-                    codeBlock.add(",\n");
-                }
-
-                for (int i1 = 0; i1 < executions.size(); i1++) {
-                    var prevCachePut = executions.get(i1);
-                    if (env.getTypeUtils().isSubtype(cachePrevPut.cacheKey().type(), prevCachePut.cacheKey().type())) {
-                        putKeyField = "_key" + (i1 + 1);
-                        break;
-                    }
-                }
-
-                if (cachePrevPut.contract() == CacheOperation.CacheExecution.Contract.ASYNC) {
-                    if (isValueOptional) {
-                        codeBlock.add("\t$L.putAsync($L, $L.get()).toCompletableFuture()", cachePrevPut.field(), putKeyField, valueField);
-                    } else {
-                        codeBlock.add("\t$L.putAsync($L, $L).toCompletableFuture()", cachePrevPut.field(), putKeyField, valueField);
-                    }
-                } else {
-                    if (isValueOptional) {
-                        codeBlock.add("\t$T.completedFuture($L.put($L, $L.get()))", CompletableFuture.class, cachePrevPut.field(), putKeyField, valueField);
-                    } else {
-                        codeBlock.add("\t$T.completedFuture($L.put($L, $L))", CompletableFuture.class, cachePrevPut.field(), putKeyField, valueField);
-                    }
-                }
-            }
-
-            builder.add("return CompletableFuture.allOf(\n").add(codeBlock.build());
-
-            if (isValueOptional || !CommonUtils.isOptional(completionType)) {
-                builder.add("\n).thenApply(_ignore -> $L);\n", valueField);
-            } else {
-                builder.add("\n).thenApply(_ignore -> $T.ofNullable($L));\n", Optional.class, valueField);
-            }
+            builder.addStatement("return $T.completedFuture($T.of($L))", CompletableFuture.class, Optional.class, valueField);
         }
 
         builder.endControlFlow();

@@ -9,11 +9,10 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.cache.symbol.processor.CacheOperation
 import ru.tinkoff.kora.cache.symbol.processor.CacheOperationUtils.Companion.getCacheOperation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -43,12 +42,7 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         }
 
         val operation = getCacheOperation(ksFunction, aspectContext)
-        val body = if (ksFunction.isSuspend()) {
-            buildBodySync(ksFunction, operation, superCall)
-        } else {
-            buildBodySync(ksFunction, operation, superCall)
-        }
-
+        val body = buildBodySync(ksFunction, operation, superCall)
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
@@ -60,7 +54,7 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         val superMethod = getSuperMethod(method, superCall)
         val builder = CodeBlock.builder()
 
-        if (!method.isSuspend() && operation.executions.size == 1) {
+        if (operation.executions.size == 1) {
             val keyBlock = CodeBlock.of("val _key = %L\n", operation.executions[0].cacheKey!!.code)
             val isSingleNullableParam = operation.executions[0].type.isMarkedNullable
             val codeBlock = if (isSingleNullableParam) {

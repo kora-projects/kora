@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.cache.redis;
 
-import ru.tinkoff.kora.cache.AsyncCache;
+import ru.tinkoff.kora.cache.Cache;
 
-public interface RedisCache<K, V> extends AsyncCache<K, V> {
+public interface RedisCache<K, V> extends Cache<K, V> {
 
 }
