@@ -10,7 +10,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
-import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import jakarta.annotation.Nullable
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
@@ -48,7 +47,6 @@ class CacheOperationUtils {
         private val KEY_MAPPER_9 = ClassName("ru.tinkoff.kora.cache", "CacheKeyMapper", "CacheKeyMapper9")
 
         private val REDIS_CACHE = ClassName("ru.tinkoff.kora.cache.redis", "RedisCache")
-        private val CACHE_ASYNC = ClassName("ru.tinkoff.kora.cache", "AsyncCache")
         private val ANNOTATION_CACHEABLE = ClassName("ru.tinkoff.kora.cache.annotation", "Cacheable")
         private val ANNOTATION_CACHEABLES = ClassName("ru.tinkoff.kora.cache.annotation", "Cacheables")
         private val ANNOTATION_CACHE_PUT = ClassName("ru.tinkoff.kora.cache.annotation", "CachePut")
@@ -212,7 +210,7 @@ class CacheOperationUtils {
                             )
                         }
 
-                        if(parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
+                        if (parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
                             throw ProcessingErrorException(
                                 "@${annotation.shortName.asString()} requires minimum 1 Cache Key method argument, but got 0",
                                 method
@@ -228,13 +226,8 @@ class CacheOperationUtils {
                     }
                 }
 
-                var contractType = CacheOperation.CacheExecution.Contract.SYNC
-                if (superTypes.any { t -> t.resolve().declaration.let { if (it is KSClassDeclaration) it.toClassName() else null} == CACHE_ASYNC }) {
-                    contractType = CacheOperation.CacheExecution.Contract.ASYNC
-                }
-
                 allParameters.add(parameters)
-                cacheExecs.add(CacheOperation.CacheExecution(fieldCache, cacheImpl, superType, contractType, cacheKey))
+                cacheExecs.add(CacheOperation.CacheExecution(fieldCache, cacheImpl, superType, cacheKey))
             }
 
             return CacheOperation(type, cacheExecs, origin)
