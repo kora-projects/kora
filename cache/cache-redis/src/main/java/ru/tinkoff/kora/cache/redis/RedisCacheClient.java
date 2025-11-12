@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.concurrent.CompletionStage;
 
 public interface RedisCacheClient {
+    RedisCacheClientConfig config();
 
     @Nonnull
     CompletionStage<byte[]> get(byte[] key);
@@ -39,4 +40,5 @@ public interface RedisCacheClient {
 
     @Nonnull
     CompletionStage<Boolean> flushAll();
+
 }

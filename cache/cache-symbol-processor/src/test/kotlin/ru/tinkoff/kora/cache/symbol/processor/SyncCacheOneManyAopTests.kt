@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
-import ru.tinkoff.kora.cache.redis.RedisCacheMapperModule
+import ru.tinkoff.kora.cache.redis.RedisCacheModule
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache11
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache12
 import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSyncOneMany
@@ -17,7 +17,7 @@ import java.nio.ByteBuffer
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class SyncCacheOneManyAopTests : CaffeineCacheModule, RedisCacheMapperModule {
+class SyncCacheOneManyAopTests : CaffeineCacheModule, RedisCacheModule {
 
     private val CACHE1_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache11Impl"
     private val CACHE2_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache12Impl"
@@ -50,7 +50,7 @@ class SyncCacheOneManyAopTests : CaffeineCacheModule, RedisCacheMapperModule {
             cache2 = cache2Class.constructors[0].newInstance(
                 CacheRunner.getRedisConfig(),
                 CacheRunner.lettuceClient(cache),
-                redisCacheTelemetry(null, null),
+                redisCacheTelemetryFactory(null, null),
                 stringRedisKeyMapper(),
                 stringRedisValueMapper()
             ) as DummyCache12

@@ -9,7 +9,7 @@ import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.cache.CacheKeyMapper
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule
 import ru.tinkoff.kora.cache.redis.RedisCacheKeyMapper
-import ru.tinkoff.kora.cache.redis.RedisCacheMapperModule
+import ru.tinkoff.kora.cache.redis.RedisCacheModule
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache21
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCache22
 import ru.tinkoff.kora.cache.symbol.processor.testdata.CacheableSyncMany
@@ -20,7 +20,7 @@ import java.nio.charset.StandardCharsets
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheMapperModule {
+class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
 
     private val CACHE1_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache21Impl"
     private val CACHE2_CLASS = "ru.tinkoff.kora.cache.symbol.processor.testcache.\$DummyCache22Impl"
@@ -53,7 +53,7 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheMapperModule {
             cache2 = cache2Class.constructors[0].newInstance(
                 CacheRunner.getRedisConfig(),
                 CacheRunner.lettuceClient(cache),
-                redisCacheTelemetry(null, null),
+                redisCacheTelemetryFactory(null, null),
                 RedisCacheKeyMapper<DummyCache22.Key> { key ->
                     val k1 = key.k1.toByteArray(StandardCharsets.UTF_8)
                     val k2 = key.k2.toString().toByteArray(StandardCharsets.UTF_8)

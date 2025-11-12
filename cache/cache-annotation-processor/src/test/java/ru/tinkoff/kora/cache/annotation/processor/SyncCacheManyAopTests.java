@@ -61,7 +61,7 @@ class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
             cacheConstructor2.setAccessible(true);
             final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
             cache2 = (DummyCache22) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
-                CacheRunner.lettuceClient(cache), redisCacheTelemetry(null, null),
+                CacheRunner.lettuceClient(cache), redisCacheTelemetryFactory(null, null),
                 (RedisCacheKeyMapper<DummyCache22.Key>) key -> {
                     var _key1 = key.k1().getBytes(StandardCharsets.UTF_8);
                     var _key2 = key.k2().toString().getBytes(StandardCharsets.UTF_8);

@@ -2,7 +2,6 @@ package ru.tinkoff.kora.opentelemetry.module;
 
 import io.opentelemetry.api.trace.Tracer;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.opentelemetry.module.cache.OpentelementryCacheTracer;
 import ru.tinkoff.kora.opentelemetry.module.camunda.engine.bpmn.OpentelemetryCamundaEngineBpmnTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.camunda.rest.OpentelemetryCamundaRestTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.camunda.zeebe.worker.OpentelemetryZeebeWorkerTracerFactory;
@@ -27,11 +26,6 @@ public interface OpentelemetryModule {
     @DefaultComponent
     default OpentelemetrySchedulingTracerFactory opentelemetrySchedulingTracerFactory(Tracer tracer) {
         return new OpentelemetrySchedulingTracerFactory(tracer);
-    }
-
-    @DefaultComponent
-    default OpentelementryCacheTracer opentelemetryCacheTracer(Tracer tracer) {
-        return new OpentelementryCacheTracer(tracer);
     }
 
     @DefaultComponent
