@@ -1,65 +1,42 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
 import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.mockito.Mockito;
+import ru.tinkoff.kora.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
 import ru.tinkoff.kora.cache.redis.RedisCacheConfig;
 
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
+import static org.mockito.Mockito.when;
+
 final class CacheRunner {
 
     private CacheRunner() {}
 
     public static CaffeineCacheConfig getCaffeineConfig() {
-        return new CaffeineCacheConfig() {
-            @Nullable
-            @Override
-            public Duration expireAfterWrite() {
-                return null;
-            }
-
-            @Nullable
-            @Override
-            public Duration expireAfterAccess() {
-                return null;
-            }
-
-            @Nullable
-            @Override
-            public Integer initialSize() {
-                return null;
-            }
-        };
+        var config = Mockito.mock(CaffeineCacheConfig.class);
+        var telemetry = Mockito.mock(CaffeineCacheConfig.CaffeineTelemetryConfig.class);
+        when(config.telemetry()).thenReturn(telemetry);
+        when(config.maximumSize()).thenReturn(100_000L);
+        when(config.expireAfterAccess()).thenReturn(null);
+        when(config.expireAfterWrite()).thenReturn(null);
+        when(telemetry.metrics()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor.CaffeineMetricsConfig_Defaults());
+        when(telemetry.logging()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor.CaffeineLoggingConfig_Defaults());
+        return config;
     }
 
     public static RedisCacheConfig getRedisConfig() {
-        return new RedisCacheConfig() {
-
-            @Override
-            public String keyPrefix() {
-                return "pref";
-            }
-
-            @Nullable
-            @Override
-            public Duration expireAfterWrite() {
-                return null;
-            }
-
-            @Nullable
-            @Override
-            public Duration expireAfterAccess() {
-                return null;
-            }
-        };
+        var config = Mockito.mock(RedisCacheConfig.class);
+        when(config.keyPrefix()).thenReturn("pref");
+        return config;
     }
 
     public static RedisCacheClient lettuceClient(final Map<ByteBuffer, ByteBuffer> cache) {

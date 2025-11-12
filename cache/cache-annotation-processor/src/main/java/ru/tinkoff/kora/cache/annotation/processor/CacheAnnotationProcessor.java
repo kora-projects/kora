@@ -22,7 +22,6 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
 
     private static final ClassName ANNOTATION_CACHE = ClassName.get("ru.tinkoff.kora.cache.annotation", "Cache");
 
-    private static final ClassName CAFFEINE_TELEMETRY = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheTelemetry");
     private static final ClassName CAFFEINE_CACHE = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCache");
     private static final ClassName CAFFEINE_CACHE_FACTORY = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheFactory");
     private static final ClassName CAFFEINE_CACHE_CONFIG = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheConfig");
@@ -262,8 +261,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                         .build())
                     .build())
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addParameter(CAFFEINE_TELEMETRY, "telemetry")
-                .addStatement("return new $T(config, factory, telemetry)", cacheImplName)
+                .addStatement("return new $T(config, factory)", cacheImplName)
                 .returns(TypeName.get(cacheContract.asType()))
                 .build();
         }
@@ -314,8 +312,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             return MethodSpec.constructorBuilder()
                 .addParameter(CAFFEINE_CACHE_CONFIG, "config")
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addParameter(CAFFEINE_TELEMETRY, "telemetry")
-                .addStatement("super($S, config, factory, telemetry)", configPath)
+                .addStatement("super($S, config, factory)", configPath)
                 .build();
         }
 

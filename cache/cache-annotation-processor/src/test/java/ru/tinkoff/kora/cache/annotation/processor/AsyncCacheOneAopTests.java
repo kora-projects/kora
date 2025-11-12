@@ -40,8 +40,10 @@ class AsyncCacheOneAopTests implements CaffeineCacheModule {
 
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
-            cache = (DummyCache11) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            cache = (DummyCache11) cacheConstructor.newInstance(
+                CacheRunner.getCaffeineConfig(),
+                caffeineCacheFactory(null)
+            );
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {

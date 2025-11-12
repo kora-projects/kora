@@ -11,7 +11,6 @@ import io.opentelemetry.semconv.UrlAttributes;
 import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTracer;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResultCode;
-import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;

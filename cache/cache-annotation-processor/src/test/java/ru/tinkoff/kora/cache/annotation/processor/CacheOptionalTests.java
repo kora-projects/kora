@@ -40,7 +40,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache);
@@ -83,10 +83,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
         var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache1, cache2);
@@ -123,7 +123,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache);
@@ -166,10 +166,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
         var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache1, cache2);
@@ -206,7 +206,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache);
@@ -249,10 +249,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
         var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache1, cache2);
@@ -295,10 +295,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
         var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache1, cache2);
@@ -341,10 +341,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
         compileResult.assertSuccess();
 
         var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
         var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
-            caffeineCacheFactory(null), caffeineCacheTelemetry(null, null));
+            caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
         var service = newObject("$CacheableSync__AopProxy", cache1, cache2);

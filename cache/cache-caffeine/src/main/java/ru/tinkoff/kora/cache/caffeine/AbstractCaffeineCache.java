@@ -1,61 +1,67 @@
 package ru.tinkoff.kora.cache.caffeine;
 
+import com.github.benmanes.caffeine.cache.Cache;
 import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.NOPLogger;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 
+@NullMarked
 public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V> {
 
-    private final String name;
-    private final com.github.benmanes.caffeine.cache.Cache<K, V> caffeine;
-    private final CaffeineCacheTelemetry telemetry;
+    private final Cache<K, V> caffeine;
+    private final Logger log;
 
-    protected AbstractCaffeineCache(String name,
-                                    CaffeineCacheConfig config,
-                                    CaffeineCacheFactory factory,
-                                    CaffeineCacheTelemetry telemetry) {
-        this.name = name;
+    protected AbstractCaffeineCache(String name, CaffeineCacheConfig config, CaffeineCacheFactory factory) {
         this.caffeine = factory.build(name, config);
-        this.telemetry = telemetry;
+        if (config.telemetry().logging().enabled()) {
+            this.log = LoggerFactory.getLogger("ru.tinkoff.kora.cache.caffeine." + name);
+        } else {
+            this.log = NOPLogger.NOP_LOGGER;
+        }
     }
 
     @Override
+    @Nullable
     public V get(@Nonnull K key) {
         if (key == null) {
             return null;
         }
-
-        var telemetryContext = telemetry.create("GET", name);
+        log.trace("Operation 'GET' started");
         var value = caffeine.getIfPresent(key);
-        telemetryContext.recordSuccess(value);
+        if (value == null) {
+            log.trace("Operation 'GET' didn't return a value");
+        } else {
+            log.debug("Operation 'GET' returned a value");
+        }
         return value;
     }
 
-    @Nonnull
     @Override
-    public Map<K, V> get(@Nonnull Collection<K> keys) {
+    public Map<K, V> get(Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyMap();
         }
 
-        var telemetryContext = telemetry.create("GET_MANY", name);
+        log.trace("Operation 'GET_MANY' started");
         var values = caffeine.getAllPresent(keys);
-        telemetryContext.recordSuccess();
+        log.trace("Operation 'GET_MANY' completed");
         return values;
     }
 
-    @Nonnull
     @Override
     public Map<K, V> getAll() {
-        var telemetryContext = telemetry.create("GET_ALL", name);
+        log.trace("Operation 'GET_ALL' started");
         var values = Collections.unmodifiableMap(caffeine.asMap());
-        telemetryContext.recordSuccess();
+        log.trace("Operation 'GET_ALL' completed");
         return values;
     }
 
@@ -65,23 +71,22 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return mappingFunction.apply(key);
         }
 
-        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT", name);
+        log.trace("Operation 'COMPUTE_IF_ABSENT' started");
         var value = caffeine.get(key, mappingFunction);
-        telemetryContext.recordSuccess();
+        log.trace("Operation 'COMPUTE_IF_ABSENT' completed");
         return value;
     }
 
     @SuppressWarnings("unchecked")
-    @Nonnull
     @Override
-    public Map<K, V> computeIfAbsent(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Map<K, V>> mappingFunction) {
+    public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
             return mappingFunction.apply(Collections.emptySet());
         }
 
-        var telemetryContext = telemetry.create("COMPUTE_IF_ABSENT_MANY", name);
+        log.trace("Operation 'COMPUTE_IF_ABSENT_MANY' started");
         var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
-        telemetryContext.recordSuccess();
+        log.trace("Operation 'COMPUTE_IF_ABSENT_MANY' completed");
         return value;
     }
 
@@ -91,9 +96,9 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return value;
         }
 
-        var telemetryContext = telemetry.create("PUT", name);
+        log.trace("Operation 'PUT' started");
         caffeine.put(key, value);
-        telemetryContext.recordSuccess();
+        log.trace("Operation 'PUT' completed");
         return value;
     }
 
@@ -104,34 +109,36 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return Collections.emptyMap();
         }
 
-        var telemetryContext = telemetry.create("PUT_MANY", name);
+        log.trace("Operation 'PUT_MANY' started");
         caffeine.putAll(keyAndValues);
-        telemetryContext.recordSuccess();
+        log.trace("Operation 'PUT_MANY' completed");
         return keyAndValues;
     }
 
     @Override
     public void invalidate(@Nonnull K key) {
-        if (key != null) {
-            var telemetryContext = telemetry.create("INVALIDATE", name);
-            caffeine.invalidate(key);
-            telemetryContext.recordSuccess();
+        if (key == null) {
+            return;
         }
+        log.trace("Operation 'INVALIDATE' started");
+        caffeine.invalidate(key);
+        log.trace("Operation 'INVALIDATE' completed");
     }
 
     @Override
     public void invalidate(@Nonnull Collection<K> keys) {
-        if (keys != null && !keys.isEmpty()) {
-            var telemetryContext = telemetry.create("INVALIDATE_MANY", name);
-            caffeine.invalidateAll(keys);
-            telemetryContext.recordSuccess();
+        if (keys == null || keys.isEmpty()) {
+            return;
         }
+        log.trace("Operation 'INVALIDATE_MANY' started");
+        caffeine.invalidateAll(keys);
+        log.trace("Operation 'INVALIDATE_MANY' completed");
     }
 
     @Override
     public void invalidateAll() {
-        var telemetryContext = telemetry.create("INVALIDATE_ALL", name);
+        log.trace("Operation 'INVALIDATE_ALL' started");
         caffeine.invalidateAll();
-        telemetryContext.recordSuccess();
+        log.trace("Operation 'INVALIDATE_ALL' completed");
     }
 }

@@ -36,7 +36,6 @@ class CacheSymbolProcessor(
     companion object {
         private val ANNOTATION_CACHE = ClassName("ru.tinkoff.kora.cache.annotation", "Cache")
 
-        private val CAFFEINE_TELEMETRY = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheTelemetry")
         private val CAFFEINE_CACHE = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCache")
         private val CAFFEINE_CACHE_FACTORY = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheFactory")
         private val CAFFEINE_CACHE_CONFIG = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheConfig")
@@ -196,8 +195,7 @@ class CacheSymbolProcessor(
                             .build()
                     )
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
-                    .addParameter("telemetry", CAFFEINE_TELEMETRY)
-                    .addStatement("return %T(config, factory, telemetry)", cacheImplName)
+                    .addStatement("return %T(config, factory)", cacheImplName)
                     .returns(cacheTypeName)
                     .build()
             }
@@ -256,7 +254,6 @@ class CacheSymbolProcessor(
                 FunSpec.constructorBuilder()
                     .addParameter("config", CAFFEINE_CACHE_CONFIG)
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
-                    .addParameter("telemetry", CAFFEINE_TELEMETRY)
                     .build()
             }
 
@@ -367,7 +364,7 @@ class CacheSymbolProcessor(
             ?.findValueNoDefault<String>("value")!!
 
         return when (cacheType.rawType) {
-            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory, telemetry", configPath)
+            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory", configPath)
             REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetry, keyMapper, valueMapper", configPath)
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
