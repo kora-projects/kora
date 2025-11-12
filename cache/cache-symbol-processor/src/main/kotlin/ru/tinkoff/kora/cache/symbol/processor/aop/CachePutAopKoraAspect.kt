@@ -9,11 +9,10 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.cache.symbol.processor.CacheOperation
 import ru.tinkoff.kora.cache.symbol.processor.CacheOperationUtils.Companion.getCacheOperation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -43,12 +42,7 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
         }
 
         val operation = getCacheOperation(ksFunction, aspectContext)
-        val body = if (ksFunction.isSuspend()) {
-            buildBodySync(ksFunction, operation, superCall)
-        } else {
-            buildBodySync(ksFunction, operation, superCall)
-        }
-
+        val body = buildBodySync(ksFunction, operation, superCall)
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
