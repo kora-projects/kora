@@ -41,7 +41,7 @@ class CacheSymbolProcessor(
         private val CAFFEINE_CACHE_CONFIG = ClassName("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheConfig")
         private val CAFFEINE_CACHE_IMPL = ClassName("ru.tinkoff.kora.cache.caffeine", "AbstractCaffeineCache")
 
-        private val REDIS_TELEMETRY = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheTelemetry")
+        private val REDIS_TELEMETRY_FACTORY = ClassName("ru.tinkoff.kora.cache.redis.telemetry", "RedisCacheTelemetryFactory")
         private val REDIS_CACHE = ClassName("ru.tinkoff.kora.cache.redis", "RedisCache")
         private val REDIS_CACHE_IMPL = ClassName("ru.tinkoff.kora.cache.redis", "AbstractRedisCache")
         private val REDIS_CACHE_CONFIG = ClassName("ru.tinkoff.kora.cache.redis", "RedisCacheConfig")
@@ -234,10 +234,10 @@ class CacheSymbolProcessor(
                             .build()
                     )
                     .addParameter("redisClient", REDIS_CACHE_CLIENT)
-                    .addParameter("telemetry", REDIS_TELEMETRY)
+                    .addParameter("telemetryFactory", REDIS_TELEMETRY_FACTORY)
                     .addParameter(keyMapperBuilder.build())
                     .addParameter(valueMapperBuilder.build())
-                    .addStatement("return %L(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
+                    .addStatement("return %L(config, redisClient, telemetryFactory, keyMapper, valueMapper)", cacheImplName)
                     .returns(cacheTypeName)
                     .build()
             }
@@ -265,7 +265,7 @@ class CacheSymbolProcessor(
                 FunSpec.constructorBuilder()
                     .addParameter("config", REDIS_CACHE_CONFIG)
                     .addParameter("redisClient", REDIS_CACHE_CLIENT)
-                    .addParameter("telemetry", REDIS_TELEMETRY)
+                    .addParameter("telemetryFactory", REDIS_TELEMETRY_FACTORY)
                     .addParameter("keyMapper", keyMapperType)
                     .addParameter("valueMapper", valueMapperType)
                     .build()
@@ -365,7 +365,7 @@ class CacheSymbolProcessor(
 
         return when (cacheType.rawType) {
             CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory", configPath)
-            REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetry, keyMapper, valueMapper", configPath)
+            REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetryFactory, keyMapper, valueMapper", configPath)
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
     }

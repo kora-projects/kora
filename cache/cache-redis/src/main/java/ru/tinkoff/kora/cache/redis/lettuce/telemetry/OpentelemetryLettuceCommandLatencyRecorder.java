@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.micrometer.module.cache.redis.lettuce;
+package ru.tinkoff.kora.cache.redis.lettuce.telemetry;
 
 import io.lettuce.core.metrics.CommandLatencyRecorder;
 import io.lettuce.core.protocol.ProtocolKeyword;
@@ -8,7 +8,7 @@ import io.micrometer.core.instrument.Timer;
 import io.netty.channel.local.LocalAddress;
 import io.opentelemetry.semconv.ErrorAttributes;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+import ru.tinkoff.kora.cache.redis.lettuce.LettuceClientConfig;
 
 import java.net.SocketAddress;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,11 +32,11 @@ public class OpentelemetryLettuceCommandLatencyRecorder implements CommandLatenc
 
     private final String type;
     private final MeterRegistry registry;
-    private final TelemetryConfig.MetricsConfig config;
+    private final LettuceClientConfig.LettuceTelemetryConfig.LettuceMetricsConfig config;
 
     public OpentelemetryLettuceCommandLatencyRecorder(String type,
                                                       MeterRegistry registry,
-                                                      TelemetryConfig.MetricsConfig config) {
+                                                      LettuceClientConfig.LettuceTelemetryConfig.LettuceMetricsConfig config) {
         this.type = type;
         this.registry = registry;
         this.config = config;
@@ -74,6 +74,9 @@ public class OpentelemetryLettuceCommandLatencyRecorder implements CommandLatenc
             .tag(LABEL_REMOTE, key.remote())
             .tag(LABEL_LOCAL, key.local())
             .tag(LABEL_COMMAND, key.command());
+        for (var e : this.config.tags().entrySet()) {
+            builder.tag(e.getKey(), e.getValue());
+        }
 
         if (key.error != null) {
             builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), key.error);
