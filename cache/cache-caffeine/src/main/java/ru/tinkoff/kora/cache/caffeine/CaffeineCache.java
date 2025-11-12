@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 import jakarta.annotation.Nonnull;
-import ru.tinkoff.kora.cache.AsyncCache;
 import ru.tinkoff.kora.cache.Cache;
 
 import java.util.Map;

@@ -16,9 +16,6 @@ import javax.tools.Diagnostic;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static ru.tinkoff.kora.cache.annotation.processor.CacheOperation.CacheExecution.Contract.ASYNC;
-import static ru.tinkoff.kora.cache.annotation.processor.CacheOperation.CacheExecution.Contract.SYNC;
-
 public final class CacheOperationUtils {
 
     private static final ClassName KEY_MAPPER_1 = ClassName.get("ru.tinkoff.kora.cache", "CacheKeyMapper");
@@ -31,7 +28,6 @@ public final class CacheOperationUtils {
     private static final ClassName KEY_MAPPER_8 = ClassName.get("ru.tinkoff.kora.cache", "CacheKeyMapper", "CacheKeyMapper8");
     private static final ClassName KEY_MAPPER_9 = ClassName.get("ru.tinkoff.kora.cache", "CacheKeyMapper", "CacheKeyMapper9");
 
-    private static final ClassName CACHE_ASYNC = ClassName.get("ru.tinkoff.kora.cache", "AsyncCache");
     private static final ClassName ANNOTATION_CACHEABLE = ClassName.get("ru.tinkoff.kora.cache.annotation", "Cacheable");
     private static final ClassName ANNOTATION_CACHEABLES = ClassName.get("ru.tinkoff.kora.cache.annotation", "Cacheables");
     private static final ClassName ANNOTATION_CACHE_PUT = ClassName.get("ru.tinkoff.kora.cache.annotation", "CachePut");
@@ -181,7 +177,7 @@ public final class CacheOperationUtils {
                             .formatted(annotation.getAnnotationType().asElement().getSimpleName()), method);
                     }
 
-                    if(parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
+                    if (parameters.isEmpty() && (type == CacheOperation.Type.GET || type == CacheOperation.Type.EVICT)) {
                         throw new ProcessingErrorException(
                             "@%s requires minimum 1 Cache Key method argument, but got 0".formatted(annotation.getAnnotationType().asElement().getSimpleName().toString()),
                             method);
@@ -193,12 +189,7 @@ public final class CacheOperationUtils {
                 }
             }
 
-            var contractType = SYNC;
-            if (env.getTypeUtils().directSupertypes(superType).stream().anyMatch(t -> t instanceof DeclaredType dt && dt.asElement().toString().equals(CACHE_ASYNC.canonicalName()))) {
-                contractType = ASYNC;
-            }
-
-            cacheExecutions.add(new CacheOperation.CacheExecution(fieldCache, cacheElement, superType, contractType, cacheKey));
+            cacheExecutions.add(new CacheOperation.CacheExecution(fieldCache, cacheElement, superType, cacheKey));
         }
 
         return new CacheOperation(type, cacheExecutions, origin);

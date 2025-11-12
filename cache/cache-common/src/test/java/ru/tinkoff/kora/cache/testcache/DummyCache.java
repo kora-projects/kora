@@ -1,18 +1,16 @@
 package ru.tinkoff.kora.cache.testcache;
 
 import jakarta.annotation.Nonnull;
-import ru.tinkoff.kora.cache.AsyncCache;
+import ru.tinkoff.kora.cache.Cache;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class DummyCache implements AsyncCache<String, String> {
+public class DummyCache implements Cache<String, String> {
 
     private final Map<String, String> cache = new HashMap<>();
 
@@ -56,44 +54,6 @@ public class DummyCache implements AsyncCache<String, String> {
         cache.clear();
     }
 
-    @Nonnull
-    @Override
-    public CompletionStage<String> getAsync(@Nonnull String key) {
-        return CompletableFuture.completedFuture(get(key));
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<String> putAsync(@Nonnull String key, @Nonnull String value) {
-        put(key, value);
-        return CompletableFuture.completedFuture(value);
-    }
-
-    @Override
-    public CompletionStage<String> computeIfAbsentAsync(@Nonnull String key, @Nonnull Function<String, CompletionStage<String>> mappingFunction) {
-        return CompletableFuture.completedFuture(computeIfAbsent(key, (k) -> mappingFunction.apply(k).toCompletableFuture().join()));
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Map<String, String>> computeIfAbsentAsync(@Nonnull Collection<String> keys, @Nonnull Function<Set<String>, CompletionStage<Map<String, String>>> mappingFunction) {
-        return CompletableFuture.completedFuture(computeIfAbsent(keys, (k) -> mappingFunction.apply(k).toCompletableFuture().join()));
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Boolean> invalidateAsync(@Nonnull String key) {
-        invalidate(key);
-        return CompletableFuture.completedFuture(true);
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Boolean> invalidateAllAsync() {
-        invalidateAll();
-        return CompletableFuture.completedFuture(true);
-    }
-
     @Override
     public void invalidate(@Nonnull Collection<String> keys) {
         for (String key : keys) {
@@ -101,31 +61,11 @@ public class DummyCache implements AsyncCache<String, String> {
         }
     }
 
-    @Override
-    public CompletionStage<Boolean> invalidateAsync(@Nonnull Collection<String> keys) {
-        for (String key : keys) {
-            invalidate(key);
-        }
-        return CompletableFuture.completedFuture(true);
-    }
-
     @Nonnull
     @Override
     public Map<String, String> get(@Nonnull Collection<String> keys) {
         return keys.stream()
             .collect(Collectors.toMap(k -> k, cache::get));
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Map<String, String>> getAsync(@Nonnull Collection<String> keys) {
-        return CompletableFuture.completedFuture(get(keys));
-    }
-
-    @Nonnull
-    @Override
-    public CompletionStage<Map<String, String>> putAsync(@Nonnull Map<String, String> keyAndValues) {
-        return CompletableFuture.completedFuture(put(keyAndValues));
     }
 
     @Nonnull
