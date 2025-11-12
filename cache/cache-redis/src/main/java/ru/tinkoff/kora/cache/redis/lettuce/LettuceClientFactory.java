@@ -7,10 +7,11 @@ import io.lettuce.core.cluster.RedisClusterURIUtil;
 import io.lettuce.core.metrics.CommandLatencyRecorder;
 import io.lettuce.core.protocol.ProtocolVersion;
 import io.lettuce.core.resource.DefaultClientResources;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.netty.channel.EventLoopGroup;
 import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
+import ru.tinkoff.kora.cache.redis.lettuce.telemetry.OpentelemetryLettuceCommandLatencyRecorder;
 
 import java.net.URI;
 import java.time.Duration;
@@ -25,14 +26,14 @@ public class LettuceClientFactory {
 
     @Nonnull
     public AbstractRedisClient build(LettuceClientConfig config,
-                                     @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                     @Nullable MeterRegistry meterRegistry,
                                      @Nullable LettuceConfigurator lettuceConfigurator,
                                      @Nullable EventLoopGroup eventLoopGroup) {
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
 
         return (mappedRedisUris.size() == 1 && !config.forceClusterClient())
-            ? buildRedisClientInternal(config, mappedRedisUris.get(0), recorderFactory, lettuceConfigurator, eventLoopGroup)
-            : buildRedisClusterClientInternal(config, mappedRedisUris, recorderFactory, lettuceConfigurator, eventLoopGroup);
+            ? buildRedisClientInternal(config, mappedRedisUris.get(0), meterRegistry, lettuceConfigurator, eventLoopGroup)
+            : buildRedisClusterClientInternal(config, mappedRedisUris, meterRegistry, lettuceConfigurator, eventLoopGroup);
     }
 
     @Nonnull
@@ -42,11 +43,11 @@ public class LettuceClientFactory {
 
     @Nonnull
     public RedisClusterClient buildRedisClusterClient(LettuceClientConfig config,
-                                                      @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                      @Nullable MeterRegistry meterRegistry,
                                                       @Nullable LettuceConfigurator lettuceConfigurator,
                                                       @Nullable EventLoopGroup eventLoopGroup) {
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
-        return buildRedisClusterClientInternal(config, mappedRedisUris, recorderFactory, lettuceConfigurator, eventLoopGroup);
+        return buildRedisClusterClientInternal(config, mappedRedisUris, meterRegistry, lettuceConfigurator, eventLoopGroup);
     }
 
     @Nonnull
@@ -56,11 +57,11 @@ public class LettuceClientFactory {
 
     @Nonnull
     public RedisClient buildRedisClient(LettuceClientConfig config,
-                                        @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                        @Nullable MeterRegistry meterRegistry,
                                         @Nullable LettuceConfigurator lettuceConfigurator,
                                         @Nullable EventLoopGroup eventLoopGroup) {
         final List<RedisURI> mappedRedisUris = buildRedisURI(config);
-        return buildRedisClientInternal(config, mappedRedisUris.get(0), recorderFactory, lettuceConfigurator, eventLoopGroup);
+        return buildRedisClientInternal(config, mappedRedisUris.get(0), meterRegistry, lettuceConfigurator, eventLoopGroup);
     }
 
     public ClusterClientOptions.Builder buildRedisClusterClientOptionsBuilder(LettuceClientConfig config) {
@@ -95,12 +96,12 @@ public class LettuceClientFactory {
     @Nonnull
     private RedisClusterClient buildRedisClusterClientInternal(LettuceClientConfig config,
                                                                List<RedisURI> redisURIs,
-                                                               @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                               @Nullable MeterRegistry meterRegistry,
                                                                @Nullable LettuceConfigurator lettuceConfigurator,
                                                                @Nullable EventLoopGroup eventLoopGroup) {
 
-        CommandLatencyRecorder recorder = recorderFactory != null
-            ? recorderFactory.get("cluster", config.telemetry().metrics())
+        var recorder = meterRegistry != null && config.telemetry().metrics().enabled()
+            ? new OpentelemetryLettuceCommandLatencyRecorder("single", meterRegistry, config.telemetry().metrics())
             : CommandLatencyRecorder.disabled();
 
         var clientResourcesBuilder = DefaultClientResources.builder()
@@ -155,11 +156,11 @@ public class LettuceClientFactory {
     @Nonnull
     private RedisClient buildRedisClientInternal(LettuceClientConfig config,
                                                  RedisURI redisURI,
-                                                 @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                 @Nullable MeterRegistry meterRegistry,
                                                  @Nullable LettuceConfigurator lettuceConfigurator,
                                                  @Nullable EventLoopGroup eventLoopGroup) {
-        CommandLatencyRecorder recorder = recorderFactory != null
-            ? recorderFactory.get("single", config.telemetry().metrics())
+        var recorder = meterRegistry != null && config.telemetry().metrics().enabled()
+            ? new OpentelemetryLettuceCommandLatencyRecorder("single", meterRegistry, config.telemetry().metrics())
             : CommandLatencyRecorder.disabled();
 
         var clientResourcesBuilder = DefaultClientResources.builder()

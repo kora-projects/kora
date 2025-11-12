@@ -5,8 +5,7 @@ import org.mockito.Mockito;
 import ru.tinkoff.kora.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
-import ru.tinkoff.kora.cache.redis.RedisCacheClient;
-import ru.tinkoff.kora.cache.redis.RedisCacheConfig;
+import ru.tinkoff.kora.cache.redis.*;
 
 import java.nio.ByteBuffer;
 import java.time.Duration;
@@ -35,6 +34,11 @@ final class CacheRunner {
     public static RedisCacheConfig getRedisConfig() {
         var config = Mockito.mock(RedisCacheConfig.class);
         when(config.keyPrefix()).thenReturn("pref");
+        when(config.telemetry()).thenReturn(new $RedisCacheConfig_RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
+            new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
+            new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
+            new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
+        ));
         return config;
     }
 
@@ -49,6 +53,11 @@ final class CacheRunner {
                     }
                 }
                 return CompletableFuture.completedFuture(keys);
+            }
+
+            @Override
+            public RedisCacheClientConfig config() {
+                return Mockito.mock(RedisCacheClientConfig.class);
             }
 
             @Override

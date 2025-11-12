@@ -3,6 +3,7 @@ package ru.tinkoff.kora.cache.redis.lettuce;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.SocketOptions;
 import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.cache.redis.RedisCacheClientConfig;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
@@ -10,7 +11,7 @@ import java.time.Duration;
 import java.util.List;
 
 @ConfigValueExtractor
-public interface LettuceClientConfig {
+public interface LettuceClientConfig extends RedisCacheClientConfig {
 
     String uri();
 
@@ -39,13 +40,17 @@ public interface LettuceClientConfig {
         return Duration.ofSeconds(RedisURI.DEFAULT_TIMEOUT);
     }
 
-    TelemetryConfig telemetry();
+    LettuceTelemetryConfig telemetry();
 
     enum Protocol {
 
-        /** Redis 2 to Redis 5 */
+        /**
+         * Redis 2 to Redis 5
+         */
         RESP2,
-        /** Redis 6+ */
+        /**
+         * Redis 6+
+         */
         RESP3
     }
 
@@ -61,5 +66,15 @@ public interface LettuceClientConfig {
         default Duration handshakeTimeout() {
             return Duration.ofSeconds(10);
         }
+    }
+
+    @ConfigValueExtractor
+    interface LettuceTelemetryConfig {
+        LettuceMetricsConfig metrics();
+
+        @ConfigValueExtractor
+        interface LettuceMetricsConfig extends TelemetryConfig.MetricsConfig {
+        }
+
     }
 }

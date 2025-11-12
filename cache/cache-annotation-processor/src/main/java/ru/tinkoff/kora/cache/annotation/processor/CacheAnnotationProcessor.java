@@ -27,7 +27,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     private static final ClassName CAFFEINE_CACHE_CONFIG = ClassName.get("ru.tinkoff.kora.cache.caffeine", "CaffeineCacheConfig");
     private static final ClassName CAFFEINE_CACHE_IMPL = ClassName.get("ru.tinkoff.kora.cache.caffeine", "AbstractCaffeineCache");
 
-    private static final ClassName REDIS_TELEMETRY = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheTelemetry");
+    private static final ClassName REDIS_TELEMETRY_FACTORY = ClassName.get("ru.tinkoff.kora.cache.redis.telemetry", "RedisCacheTelemetryFactory");
     private static final ClassName REDIS_CACHE = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCache");
     private static final ClassName REDIS_CACHE_IMPL = ClassName.get("ru.tinkoff.kora.cache.redis", "AbstractRedisCache");
     private static final ClassName REDIS_CACHE_CONFIG = ClassName.get("ru.tinkoff.kora.cache.redis", "RedisCacheConfig");
@@ -297,10 +297,10 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                         .build())
                     .build())
                 .addParameter(REDIS_CACHE_CLIENT, "redisClient")
-                .addParameter(REDIS_TELEMETRY, "telemetry")
+                .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")
                 .addParameter(keyParamBuilder.build())
                 .addParameter(valueParamBuilder.build())
-                .addStatement("return new $T(config, redisClient, telemetry, keyMapper, valueMapper)", cacheImplName)
+                .addStatement("return new $T(config, redisClient, telemetryFactory, keyMapper, valueMapper)", cacheImplName)
                 .returns(TypeName.get(cacheContract.asType()))
                 .build();
         }
@@ -324,10 +324,10 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             return MethodSpec.constructorBuilder()
                 .addParameter(REDIS_CACHE_CONFIG, "config")
                 .addParameter(REDIS_CACHE_CLIENT, "redisClient")
-                .addParameter(REDIS_TELEMETRY, "telemetry")
+                .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")
                 .addParameter(keyMapperType, "keyMapper")
                 .addParameter(valueMapperType, "valueMapper")
-                .addStatement("super($S, config, redisClient, telemetry, keyMapper, valueMapper)", configPath)
+                .addStatement("super($S, config, redisClient, telemetryFactory, keyMapper, valueMapper)", configPath)
                 .build();
         }
 

@@ -3,14 +3,14 @@ package ru.tinkoff.kora.cache.redis;
 import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.cache.redis.lettuce.$LettuceClientConfig_LettuceTelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.cache.redis.lettuce.$LettuceClientConfig_LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.redis.lettuce.$LettuceClientConfig_SslConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.redis.lettuce.LettuceClientConfig;
 import ru.tinkoff.kora.cache.redis.testdata.DummyCache;
-import ru.tinkoff.kora.telemetry.common.*;
 import ru.tinkoff.kora.test.redis.RedisParams;
 
 import java.time.Duration;
-import java.util.Map;
 
 public abstract class CacheRunner extends Assertions implements RedisCacheModule {
 
@@ -35,6 +35,15 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
             @Override
             public Duration expireAfterAccess() {
                 return expireRead;
+            }
+
+            @Override
+            public RedisCacheTelemetryConfig telemetry() {
+                return new $RedisCacheConfig_RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
+                    new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
+                    new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
+                    new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
+                );
             }
         };
     }
@@ -68,10 +77,10 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
             }
 
             @Override
-            public TelemetryConfig telemetry() {
-                return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(false),
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false, Map.of()),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, new Duration[0], Map.of()));
+            public LettuceTelemetryConfig telemetry() {
+                return new $LettuceClientConfig_LettuceTelemetryConfig_ConfigValueExtractor.LettuceTelemetryConfig_Impl(
+                    new $LettuceClientConfig_LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueExtractor.LettuceMetricsConfig_Defaults()
+                );
             }
         };
 
@@ -84,7 +93,7 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
 
     private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead) throws Exception {
         var lettuceClient = createLettuce(redisParams);
-        return new DummyCache(getConfig(expireWrite, expireRead), lettuceClient, redisCacheTelemetry(null, null),
+        return new DummyCache(getConfig(expireWrite, expireRead), lettuceClient, redisCacheTelemetryFactory(null, null),
             stringRedisKeyMapper(), stringRedisValueMapper());
     }
 
