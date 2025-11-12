@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.cluster.RedisClusterClient;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.netty.channel.EventLoopGroup;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
-import ru.tinkoff.kora.cache.redis.lettuce.telemetry.CommandLatencyRecorderFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
@@ -24,14 +24,14 @@ public interface LettuceModule {
     @DefaultComponent
     default RedisCacheClient lettuceRedisClient(LettuceClientFactory factory,
                                                 LettuceClientConfig config,
-                                                @Nullable CommandLatencyRecorderFactory recorderFactory,
+                                                @Nullable MeterRegistry meterRegistry,
                                                 @Nullable LettuceConfigurator lettuceConfigurator,
                                                 @Nullable EventLoopGroup eventLoopGroup) {
-        var redisClient = factory.build(config, recorderFactory, lettuceConfigurator, eventLoopGroup);
+        var redisClient = factory.build(config, meterRegistry, lettuceConfigurator, eventLoopGroup);
         if (redisClient instanceof io.lettuce.core.RedisClient rc) {
             return new LettuceRedisCacheClient(rc, factory, config);
         } else if (redisClient instanceof RedisClusterClient rcc) {
-            return new LettuceClusterRedisCacheClient(rcc);
+            return new LettuceClusterRedisCacheClient(rcc, config);
         } else {
             throw new UnsupportedOperationException("Unknown Redis Client: " + redisClient.getClass());
         }

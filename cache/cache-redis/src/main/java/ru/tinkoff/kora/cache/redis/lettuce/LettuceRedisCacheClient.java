@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
+import ru.tinkoff.kora.cache.redis.RedisCacheClientConfig;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.*;
@@ -23,6 +24,7 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(LettuceRedisCacheClient.class);
 
+    private final RedisCacheClientConfig config;
     private final RedisURI redisURI;
     private final RedisClient redisClient;
 
@@ -34,9 +36,15 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
     private RedisAsyncCommands<byte[], byte[]> commands;
 
     public LettuceRedisCacheClient(RedisClient redisClient, LettuceClientFactory factory, LettuceClientConfig config) {
+        this.config = config;
         this.redisClient = redisClient;
         final List<RedisURI> redisURIs = factory.buildRedisURI(config);
         this.redisURI = redisURIs.size() == 1 ? redisURIs.get(0) : null;
+    }
+
+    @Override
+    public RedisCacheClientConfig config() {
+        return this.config;
     }
 
     @Nonnull

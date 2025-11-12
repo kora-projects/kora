@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.RedisCacheClient;
+import ru.tinkoff.kora.cache.redis.RedisCacheClientConfig;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.*;
@@ -25,6 +26,7 @@ public class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecyc
     private static final Logger logger = LoggerFactory.getLogger(LettuceClusterRedisCacheClient.class);
 
     private final RedisClusterClient redisClient;
+    private final LettuceClientConfig config;
 
     // use for pipeline commands only cause lettuce have bad performance when using pool
     private BoundedAsyncPool<StatefulRedisClusterConnection<byte[], byte[]>> pool;
@@ -33,8 +35,14 @@ public class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecyc
     // always use async cause sync uses JDK Proxy wrapped async impl
     private RedisAdvancedClusterAsyncCommands<byte[], byte[]> commands;
 
-    public LettuceClusterRedisCacheClient(RedisClusterClient redisClient) {
+    public LettuceClusterRedisCacheClient(RedisClusterClient redisClient, LettuceClientConfig config) {
         this.redisClient = redisClient;
+        this.config = config;
+    }
+
+    @Override
+    public RedisCacheClientConfig config() {
+        return this.config;
     }
 
     @Nonnull

@@ -59,7 +59,7 @@ class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule 
             cacheConstructor2.setAccessible(true);
             final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
             cache2 = (DummyCache12) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
-                CacheRunner.lettuceClient(cache), redisCacheTelemetry(null, null),
+                CacheRunner.lettuceClient(cache), redisCacheTelemetryFactory(null, null),
                 stringRedisKeyMapper(), stringRedisValueMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
