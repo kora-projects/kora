@@ -20,7 +20,7 @@ jetbrains-annotations = "24.1.0"
 swagger = "2.2.35"
 opentelemetry = "1.53.0"
 undertow = "2.3.18.Final"
-undertow-jakarta = "6.2.12.Final"
+resteasy = "6.2.12.Final"
 camunda7 = "7.21.0"
 zeebe = "8.7.10"
 jakarta = "2.1.1"
@@ -181,7 +181,8 @@ s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.29.52" }
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
 camunda7-openapi = { module = "org.camunda.bpm:camunda-engine-rest-openapi", version.ref = "camunda7" }
-resteasy-undertow-jakarta = { module = "org.jboss.resteasy:resteasy-undertow", version.ref = "undertow-jakarta" }
+resteasy-undertow = { module = "org.jboss.resteasy:resteasy-undertow", version.ref = "resteasy" }
+resteasy-jackson = { module = "org.jboss.resteasy:resteasy-jackson2-provider", version.ref = "resteasy" }
 fasterxml-uuidgenerator = { module = "com.fasterxml.uuid:java-uuid-generator", version = "5.1.0" }
 jakarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "3.1.0" }
 
