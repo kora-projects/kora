@@ -8,6 +8,7 @@ import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.scheduling.common.telemetry.NoopSchedulingObservation;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
 import java.util.Date;
@@ -25,7 +26,7 @@ class KoraQuartzJobRegistrarTest {
     void testRegistrarWorks() throws Exception {
         java.util.logging.Logger.getLogger("org.quartz").setLevel(java.util.logging.Level.OFF);
         var telemetry = Mockito.mock(SchedulingTelemetry.class);
-        when(telemetry.get(any())).thenReturn(Mockito.mock(SchedulingTelemetry.SchedulingTelemetryContext.class));
+        when(telemetry.observe()).thenReturn(NoopSchedulingObservation.INSTANCE);
         var trigger1 = TriggerBuilder.newTrigger()
             .withIdentity(UUID.randomUUID().toString())
             .withSchedule(SimpleScheduleBuilder.repeatSecondlyForever())

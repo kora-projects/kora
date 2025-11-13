@@ -1,26 +1,36 @@
 package ru.tinkoff.kora.scheduling.common.telemetry;
 
-import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanKind;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.semconv.CodeAttributes;
+import org.slf4j.Logger;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
-public final class DefaultSchedulingTelemetry implements SchedulingTelemetry {
-    @Nullable
-    private final SchedulingMetrics metrics;
-    @Nullable
-    private final SchedulingTracer tracer;
-    @Nullable
-    private final SchedulingLogger logger;
+public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
     private final Class<?> jobClass;
     private final String jobMethod;
+    private final TelemetryConfig config;
+    private final MeterRegistry meterRegistry;
+    private final Tracer tracer;
+    private final Logger logger;
+    private final ConcurrentMap<Tags, Timer> durationCache = new ConcurrentHashMap<>();
 
-    public DefaultSchedulingTelemetry(Class<?> jobClass, String jobMethod, @Nullable SchedulingMetrics metrics, @Nullable SchedulingTracer tracer, @Nullable SchedulingLogger logger) {
-        this.metrics = metrics;
-        this.tracer = tracer;
-        this.logger = logger;
+    public DefaultSchedulingTelemetry(Class<?> jobClass, String jobMethod, TelemetryConfig config, MeterRegistry meterRegistry, Tracer tracer, Logger logger) {
         this.jobClass = Objects.requireNonNull(jobClass);
         this.jobMethod = Objects.requireNonNull(jobMethod);
+        this.config = config;
+        this.meterRegistry = meterRegistry;
+        this.tracer = tracer;
+        this.logger = logger;
     }
 
     @Override
@@ -34,51 +44,38 @@ public final class DefaultSchedulingTelemetry implements SchedulingTelemetry {
     }
 
     @Override
-    public SchedulingTelemetryContext get(Context ctx) {
-        var metrics = this.metrics;
-        var logger = this.logger;
-        var tracer = this.tracer;
-        if (metrics == null && logger == null && tracer == null) {
-            return (t) -> {};
+    public SchedulingObservation observe() {
+        if (!this.config.tracing().enabled() && !this.config.metrics().enabled() && !this.config.logging().enabled()) {
+            return NoopSchedulingObservation.INSTANCE;
         }
 
-        var span = tracer == null ? null : tracer.createSpan(ctx);
-        if (logger != null) {
-            logger.logJobStart();
-        }
-
-        return new DefaultTelemetryContext(metrics, span, logger);
+        var span = createSpan();
+        var duration = createDuration();
+        return new DefaultSchedulingObservation(this.jobClass, this.jobMethod, span, duration, this.logger);
     }
 
-    private static class DefaultTelemetryContext implements SchedulingTelemetryContext {
-        private final long start = System.nanoTime();
-        @Nullable
-        private final SchedulingMetrics metrics;
-        @Nullable
-        private final SchedulingTracer.SchedulingSpan span;
-        @Nullable
-        private final SchedulingLogger logger;
+    protected Meter.MeterProvider<Timer> createDuration() {
+        return tags -> durationCache.computeIfAbsent(Tags.of(tags), t -> {
+            var builder = Timer.builder("scheduling.job.duration")
+                .serviceLevelObjectives(this.config.metrics().slo())
+                .tag(CodeAttributes.CODE_FUNCTION_NAME.getKey(), this.jobClass.getCanonicalName() + "." + jobMethod)
+                .tags(t);
+            for (var tag : this.config.metrics().tags().entrySet()) {
+                builder.tag(tag.getValue(), tag.getValue());
+            }
 
-        private DefaultTelemetryContext(@Nullable SchedulingMetrics metrics, @Nullable SchedulingTracer.SchedulingSpan span, @Nullable SchedulingLogger logger) {
-            this.metrics = metrics;
-            this.span = span;
-            this.logger = logger;
+            return builder.register(this.meterRegistry);
+        });
+    }
+
+    protected Span createSpan() {
+        var span = this.tracer
+            .spanBuilder(this.jobClass.getCanonicalName() + " " + this.jobMethod)
+            .setSpanKind(SpanKind.INTERNAL)
+            .setAttribute(CodeAttributes.CODE_FUNCTION_NAME, this.jobClass.getCanonicalName() + "." + jobMethod);
+        for (var entry : this.config.tracing().attributes().entrySet()) {
+            span.setAttribute(entry.getKey(), entry.getValue());
         }
-
-
-        @Override
-        public void close(@Nullable Throwable exception) {
-            var end = System.nanoTime();
-            var duration = end - start;
-            if (this.metrics != null) {
-                this.metrics.record(duration, exception);
-            }
-            if (this.logger != null) {
-                this.logger.logJobFinish(duration, exception);
-            }
-            if (this.span != null) {
-                this.span.close(exception);
-            }
-        }
+        return span.startSpan();
     }
 }
