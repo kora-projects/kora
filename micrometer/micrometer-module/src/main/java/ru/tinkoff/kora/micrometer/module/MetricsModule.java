@@ -16,7 +16,6 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetri
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
-import ru.tinkoff.kora.micrometer.module.scheduling.MicrometerSchedulingMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
 public interface MetricsModule {
@@ -33,11 +32,6 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerJmsConsumerMetricsFactory micrometerJmsConsumerMetricsFactory(MeterRegistry meterRegistry) {
         return new MicrometerJmsConsumerMetricsFactory(meterRegistry);
-    }
-
-    @DefaultComponent
-    default MicrometerSchedulingMetricsFactory micrometerSchedulingMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerSchedulingMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent

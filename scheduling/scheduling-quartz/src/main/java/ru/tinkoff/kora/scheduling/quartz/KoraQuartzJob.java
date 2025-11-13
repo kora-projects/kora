@@ -4,7 +4,7 @@ import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.quartz.Trigger;
 import org.slf4j.MDC;
-import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
 import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
 
@@ -32,15 +32,20 @@ public abstract class KoraQuartzJob implements Job {
             .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
             .run(() -> {
                 MDC.clear();
-                var ctx = Context.clear();
-                var telemetryCtx = this.telemetry.get(ctx);
-                try {
-                    this.job.accept(jobExecutionContext);
-                    telemetryCtx.close(null);
-                } catch (Throwable e) {
-                    telemetryCtx.close(e);
-                    throw e;
-                }
+                var observation = this.telemetry.observe();
+                ScopedValue.where(Observation.VALUE, observation)
+                    .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root().with(observation.span()))
+                    .run(() -> {
+                        observation.observeRun();
+                        try {
+                            this.job.accept(jobExecutionContext);
+                        } catch (Throwable e) {
+                            observation.observeError(e);
+                            throw e;
+                        } finally {
+                            observation.end();
+                        }
+                    });
             });
     }
 
