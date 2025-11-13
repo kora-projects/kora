@@ -2252,8 +2252,8 @@ public class KoraCodegen extends DefaultCodegen {
         record AuthMethodGroup(String name, int index, List<CodegenSecurity> methods) {}
 
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
-        var authMethodTags = (Set<String>) this.vendorExtensions.computeIfAbsent("authMethodTags", k -> new TreeSet<String>());
-        var authTags = (Set<String>) this.vendorExtensions.computeIfAbsent("authTags", k -> new TreeSet<String>());
+        var authMethodTags = (Set<String>) this.vendorExtensions.computeIfAbsent("authMethodTags", k -> new LinkedHashSet<>());
+        var authTags = (Set<String>) this.vendorExtensions.computeIfAbsent("authTags", k -> new LinkedHashSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
         if (params.clientConfigPrefix != null) {
             httpClientAnnotationParams.put("configPath", "\"" + params.clientConfigPrefix + "." + operations.get("classname") + "\"");
