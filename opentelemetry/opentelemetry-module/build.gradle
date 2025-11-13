@@ -4,7 +4,6 @@ dependencies {
     compileOnly project(':http:soap-client')
     compileOnly project(':jms')
     compileOnly project(':scheduling:scheduling-common')
-    compileOnly project(':experimental:s3-client-common')
     compileOnly project(':http:http-server-common')
     compileOnly project(':experimental:camunda-rest-undertow')
     compileOnly project(':experimental:camunda-engine-bpmn')
