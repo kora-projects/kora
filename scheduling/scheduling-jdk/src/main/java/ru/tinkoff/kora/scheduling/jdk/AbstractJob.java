@@ -4,7 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
 import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTelemetry;
@@ -62,14 +62,19 @@ public abstract class AbstractJob implements Lifecycle {
                 .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
                 .run(() -> {
                     MDC.clear();
-                    var ctx = Context.clear();
-                    var telemetryCtx = this.telemetry.get(ctx);
-                    try {
-                        this.command.run();
-                        telemetryCtx.close(null);
-                    } catch (Throwable e) {
-                        telemetryCtx.close(e);
-                    }
+                    var observation = this.telemetry.observe();
+                    ScopedValue.where(Observation.VALUE, observation)
+                        .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root().with(observation.span()))
+                        .run(() -> {
+                            observation.observeRun();
+                            try {
+                                this.command.run();
+                            } catch (Throwable e) {
+                                observation.observeError(e);
+                            } finally {
+                                observation.end();
+                            }
+                        });
                 });
         } finally {
             this.lock.unlock();
