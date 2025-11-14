@@ -1892,7 +1892,6 @@ public class KoraCodegen extends DefaultCodegen {
                     return Stream.of();
                 }
             })
-            .filter(res -> res.getContent() != null)
             .flatMap(res -> {
                 if (res.getContent() != null) {
                     return res.getContent().values().stream();
