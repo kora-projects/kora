@@ -34,13 +34,11 @@ public final class CaffeineCacheTelemetry {
 
     @Nullable
     private final CacheMetrics metrics;
-    @Nullable
-    private final CacheTracer tracer;
     private final boolean isStubTelemetry;
 
+    // ALWAYS disable Caffeine tracing cause useless
     CaffeineCacheTelemetry(@Nullable CacheMetrics metrics, @Nullable CacheTracer tracer) {
         this.metrics = metrics;
-        this.tracer = tracer;
         this.isStubTelemetry = metrics == null && tracer == null;
     }
 
@@ -60,14 +58,10 @@ public final class CaffeineCacheTelemetry {
 
         private final Operation operation;
 
-        private CacheTracer.CacheSpan span;
         private final long startedInNanos = System.nanoTime();
 
         DefaultCacheTelemetryContext(Operation operation) {
             logger.trace("Operation '{}' for cache '{}' started", operation.name(), operation.cacheName());
-            if (tracer != null) {
-                span = tracer.trace(operation);
-            }
             this.operation = operation;
         }
 
@@ -81,9 +75,6 @@ public final class CaffeineCacheTelemetry {
             if (metrics != null) {
                 final long durationInNanos = System.nanoTime() - startedInNanos;
                 metrics.recordSuccess(operation, durationInNanos, valueFromCache);
-            }
-            if (span != null) {
-                span.recordSuccess();
             }
 
             if (operation.name().startsWith("GET")) {
@@ -102,9 +93,6 @@ public final class CaffeineCacheTelemetry {
             if (metrics != null) {
                 final long durationInNanos = System.nanoTime() - startedInNanos;
                 metrics.recordFailure(operation, durationInNanos, throwable);
-            }
-            if (span != null) {
-                span.recordFailure(throwable);
             }
 
             if (throwable != null) {
