@@ -154,7 +154,6 @@ jakarta-xml-ws-api = { module = "jakarta.xml.ws:jakarta.xml.ws-api", version = "
 jakarta-xml-bind-api = { module = "jakarta.xml.bind:jakarta.xml.bind-api", version = "3.0.1" }
 
 glassfish-jaxb-jakarta = { module = "org.glassfish.jaxb:jaxb-runtime", version = "3.0.1" }
-glassfish-jaxb-javax = { module = "org.glassfish.jaxb:jaxb-runtime", version = "2.3.0.1" }
 
 commons-codec = { module = "commons-codec:commons-codec", version = "1.19.0" }
 commons-io = { module = "commons-io:commons-io", version = "2.20.0" }

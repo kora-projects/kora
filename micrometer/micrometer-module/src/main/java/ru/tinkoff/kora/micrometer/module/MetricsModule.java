@@ -16,17 +16,11 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetri
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
-import ru.tinkoff.kora.micrometer.module.soap.client.MicrometerSoapClientMetricsFactory;
 
 public interface MetricsModule {
     @Root
     default PrometheusMeterRegistryWrapper prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
         return new PrometheusMeterRegistryWrapper(initializers);
-    }
-
-    @DefaultComponent
-    default MicrometerSoapClientMetricsFactory micrometerSoapClientMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerSoapClientMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent

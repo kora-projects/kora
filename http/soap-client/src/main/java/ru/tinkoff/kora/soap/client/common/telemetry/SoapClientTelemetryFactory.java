@@ -1,8 +1,9 @@
 package ru.tinkoff.kora.soap.client.common.telemetry;
 
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+import ru.tinkoff.kora.soap.client.common.SoapMethodDescriptor;
+import ru.tinkoff.kora.soap.client.common.SoapServiceConfig;
 
 public interface SoapClientTelemetryFactory {
 
-    SoapClientTelemetry get(TelemetryConfig config, String serviceClass, String serviceName, String soapMethod, String url);
+    SoapClientTelemetry get(SoapServiceConfig.SoapClientTelemetryConfig config, SoapMethodDescriptor descriptor, String url);
 }

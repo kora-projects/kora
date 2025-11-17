@@ -22,17 +22,20 @@ import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.doesImplement
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
-import ru.tinkoff.kora.soap.client.common.*
-import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope
-import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory
 import java.util.*
 import java.util.function.Function
 
 class SoapClientImplGenerator(private val resolver: Resolver) {
 
+    private val soapFaultException = ClassName("ru.tinkoff.kora.soap.client.common", "SoapFaultException")
+    private val soapException = ClassName("ru.tinkoff.kora.soap.client.common", "SoapException")
     private val soapConfig = ClassName("ru.tinkoff.kora.soap.client.common", "SoapServiceConfig")
+    private val soapRequestExecutor = ClassName("ru.tinkoff.kora.soap.client.common", "SoapRequestExecutor")
     private val httpClient = ClassName("ru.tinkoff.kora.http.client.common", "HttpClient")
     private val soapTelemetry = ClassName("ru.tinkoff.kora.soap.client.common.telemetry", "SoapClientTelemetryFactory")
+    private val soapEnvelope = ClassName("ru.tinkoff.kora.soap.client.common.envelope", "SoapEnvelope")
+    private val soapResult = ClassName("ru.tinkoff.kora.soap.client.common", "SoapResult")
+    private val soapMethodDescriptor = ClassName("ru.tinkoff.kora.soap.client.common", "SoapMethodDescriptor")
 
     fun generateModule(declaration: KSClassDeclaration, soapClasses: SoapClasses): TypeSpec {
         val webService = declaration.findAnnotation(soapClasses.webServiceType())!!
@@ -84,9 +87,14 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                             .addAnnotation(listOf(elementType.canonicalName).toTagAnnotation())
                             .build()
                     )
+                    .addParameter(
+                        ParameterSpec.builder("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope).copy(true))
+                            .addAnnotation(listOf(elementType.canonicalName).toTagAnnotation())
+                            .build()
+                    )
                     .addStatement(
-                        "return %T(httpClient, telemetry, config, %T.identity())",
-                        ClassName(declaration.packageName.asString(), implName), Function::class
+                        "return %T(httpClient, telemetry, config, envelopeProcessor)",
+                        ClassName(declaration.packageName.asString(), implName)
                     )
                     .build()
             )
@@ -165,13 +173,13 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         val builder = TypeSpec.classBuilder(service.getOuterClassesAsPrefix() + service.simpleName.asString() + "_SoapClientImpl")
             .generated(WebServiceClientSymbolProcessor::class)
             .addOriginatingKSFile(service)
-            .addProperty("envelopeProcessor", Function::class.parameterizedBy(SoapEnvelope::class, SoapEnvelope::class), KModifier.PRIVATE)
+            .addProperty("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope), KModifier.PRIVATE)
             .addProperty("jaxb", soapClasses.jaxbContextTypeName(), KModifier.PRIVATE)
             .primaryConstructor(
                 FunSpec.constructorBuilder()
                     .addParameter("httpClient", soapClasses.httpClientTypeName())
-                    .addParameter("telemetry", SoapClientTelemetryFactory::class)
-                    .addParameter("config", SoapServiceConfig::class)
+                    .addParameter("telemetry", soapTelemetry)
+                    .addParameter("config", soapConfig)
                     .throws(soapClasses.jaxbExceptionTypeName())
                     .build()
             )
@@ -198,11 +206,11 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         addRequestClasses(soapClasses, builder, jaxbClassesCode, targetNamespace, webMethods)
         val constructorBuilder = FunSpec.constructorBuilder()
             .addParameter("httpClient", soapClasses.httpClientTypeName())
-            .addParameter("telemetry", SoapClientTelemetryFactory::class)
-            .addParameter("config", SoapServiceConfig::class.asClassName())
-            .addParameter("envelopeProcessor", Function::class.parameterizedBy(SoapEnvelope::class, SoapEnvelope::class))
+            .addParameter("telemetry", soapTelemetry)
+            .addParameter("config", soapConfig)
+            .addParameter("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope).copy(true))
             .addCode("this.jaxb = %T.newInstance(%L)\n", soapClasses.jaxbContextTypeName(), jaxbClassesCode.build())
-            .addCode("this.envelopeProcessor = envelopeProcessor\n")
+            .addCode("this.envelopeProcessor = envelopeProcessor ?: %T.identity()\n", Function::class.asClassName())
             .throws(soapClasses.jaxbExceptionTypeName())
         for (method in webMethods) {
             val webMethod = method.findAnnotation(soapClasses.webMethodType())!!
@@ -218,10 +226,10 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             }
             val executorFieldName = operationName + "RequestExecutor"
             constructorBuilder.addCode(
-                "this.%L = %T(httpClient, telemetry, %T(jaxb), %S, %S, config, %S, %S)\n",
-                executorFieldName, SoapRequestExecutor::class.java, soapClasses.xmlToolsType(), service.toClassName().canonicalName, serviceName, operationName, soapAction
+                "this.%L = %T(httpClient, telemetry, %T(jaxb), config, %T(%S, %S,  %S, %S))\n",
+                executorFieldName, soapRequestExecutor, soapClasses.xmlToolsType(), soapMethodDescriptor, service.toClassName().canonicalName, serviceName, operationName, soapAction
             )
-            builder.addProperty(executorFieldName, SoapRequestExecutor::class, KModifier.PRIVATE)
+            builder.addProperty(executorFieldName, soapRequestExecutor, KModifier.PRIVATE)
             val m = FunSpec.builder(method.simpleName.asString()).addModifiers(KModifier.OVERRIDE)
             method.parameters.forEach { param ->
                 m.addParameter(param.name!!.asString(), param.type.toTypeName())
@@ -345,7 +353,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
 
     @OptIn(KspExperimental::class)
     private fun addMapResponse(m: FunSpec.Builder, method: KSFunctionDeclaration, soapClasses: SoapClasses, objectFactories: List<ObjectFactory>) {
-        m.controlFlow("if (__response is %T )", SoapResult.Failure::class.java) {
+        m.controlFlow("if (__response is %T )", soapResult.nestedClass("Failure")) {
             m.addCode("val __fault = __response.fault()\n")
             val throws = resolver.getJvmCheckedException(method).toList()
             if (throws.isNotEmpty()) {
@@ -364,9 +372,9 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     m.addCode("else ")
                 }
             }
-            m.addStatement("throw %T(__response.faultMessage(), __fault)", SoapFaultException::class)
+            m.addStatement("throw %T(__response.faultMessage(), __fault)", soapFaultException)
         }
-        m.addCode("val __success =  __response as %T\n", SoapResult.Success::class)
+        m.addCode("val __success =  __response as %T\n", soapResult.nestedClass("Success"))
         val responseWrapper = method.findAnnotation(soapClasses.responseWrapperType())
         if (responseWrapper != null) {
             val wrapperClass = responseWrapper.findValue<String>("className")!!
@@ -418,7 +426,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                             }
                             addCode("\n}\n")
                             nextControlFlow("catch (__jaxbException: %T)", soapClasses.jaxbExceptionTypeName())
-                            addStatement("throw %T(__jaxbException)", SoapException::class.java)
+                            addStatement("throw %T(__jaxbException)", soapException)
                         }
 
                     }

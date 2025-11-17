@@ -21,6 +21,8 @@ public class SoapClientImplGenerator {
     private static final ClassName SOAP_CONFIG = ClassName.get("ru.tinkoff.kora.soap.client.common", "SoapServiceConfig");
     private static final ClassName HTTP_CLIENT = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClient");
     private static final ClassName SOAP_TELEMETRY = ClassName.get("ru.tinkoff.kora.soap.client.common.telemetry", "SoapClientTelemetryFactory");
+    private static final ClassName SOAP_METHOD_DESCRIPTOR = ClassName.get("ru.tinkoff.kora.soap.client.common", "SoapMethodDescriptor");
+    private static final ClassName SOAP_ENVELOPE = ClassName.get("ru.tinkoff.kora.soap.client.common.envelope", "SoapEnvelope");
 
     private final ProcessingEnvironment processingEnv;
 
@@ -73,8 +75,12 @@ public class SoapClientImplGenerator {
                 .addParameter(ParameterSpec.builder(HTTP_CLIENT, "httpClient").build())
                 .addParameter(ParameterSpec.builder(SOAP_TELEMETRY, "telemetry").build())
                 .addParameter(ParameterSpec.builder(SOAP_CONFIG, "config").addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString()))).build())
+                .addParameter(ParameterSpec.builder(ParameterizedTypeName.get(ClassName.get(Function.class), SOAP_ENVELOPE, SOAP_ENVELOPE), "envelopeProcessor")
+                    .addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString())))
+                    .addAnnotation(CommonClassNames.nullable)
+                    .build())
                 .beginControlFlow("try")
-                .addStatement("return new $L(httpClient, telemetry, config)", NameUtils.generatedType(element, "SoapClientImpl"))
+                .addStatement("return new $L(httpClient, telemetry, config, envelopeProcessor)", NameUtils.generatedType(element, "SoapClientImpl"))
                 .nextControlFlow("catch (Exception e)")
                 .addStatement("throw new $T(e)", IllegalStateException.class)
                 .endControlFlow()
@@ -198,7 +204,7 @@ public class SoapClientImplGenerator {
             .addParameter(soapClasses.soapServiceConfig(), "config")
             .addParameter(ParameterizedTypeName.get(ClassName.get(Function.class), soapClasses.soapEnvelopeTypeName(), soapClasses.soapEnvelopeTypeName()), "envelopeProcessor")
             .addCode("this.jaxb = $T.newInstance($L);\n", soapClasses.jaxbContextTypeName(), jaxbClassesCode.build())
-            .addCode("this.envelopeProcessor = envelopeProcessor;\n")
+            .addCode("this.envelopeProcessor = envelopeProcessor != null ? envelopeProcessor : $T.identity();\n", Function.class)
             .addException(soapClasses.jaxbExceptionTypeName());
 
         for (var method : webMethods) {
@@ -215,8 +221,8 @@ public class SoapClientImplGenerator {
             }
             var executorFieldName = operationName + "RequestExecutor";
             constructorBuilder.addCode(
-                "this.$L = new $T(httpClient, telemetry, new $T(jaxb), $S, $S, config, $S, $S);\n",
-                executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), service.toString(), serviceName, operationName, soapAction
+                "this.$L = new $T(httpClient, telemetry, new $T(jaxb), config, new $T($S, $S, $S, $S));\n",
+                executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), SOAP_METHOD_DESCRIPTOR, service.toString(), serviceName, operationName, soapAction
             );
             builder.addField(soapClasses.soapRequestExecutor(), executorFieldName, Modifier.PRIVATE, Modifier.FINAL);
 
