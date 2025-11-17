@@ -1,103 +1,46 @@
 package ru.tinkoff.kora.soap.client.common.telemetry;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.TracerProvider;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.soap.client.common.SoapResult;
-import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
-import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
+import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.NOPLoggerFactory;
+import ru.tinkoff.kora.soap.client.common.SoapMethodDescriptor;
+import ru.tinkoff.kora.soap.client.common.SoapServiceConfig;
 
 public class DefaultSoapClientTelemetryFactory implements SoapClientTelemetryFactory {
 
-    private static final SoapClientTelemetry.SoapTelemetryContext NOOP_CTX = new SoapClientTelemetry.SoapTelemetryContext() {
-
-        @Override
-        public boolean logResponseBody() {
-            return false;
-        }
-
-        @Override
-        public void prepared(SoapEnvelope requestEnvelope, byte[] requestAsBytes) {}
-
-        @Override
-        public void success(SoapResult.Success success, @Nullable byte[] responseAsBytes) {}
-
-        @Override
-        public void failure(SoapClientFailure failure, @Nullable byte[] responseAsBytes) {}
-    };
-
     @Nullable
-    private final SoapClientLoggerFactory loggerFactory;
+    private final MeterRegistry meterRegistry;
     @Nullable
-    private final SoapClientMetricsFactory metricsFactory;
-    @Nullable
-    private final SoapClientTracerFactory tracingFactory;
+    private final Tracer tracer;
 
-    public DefaultSoapClientTelemetryFactory(@Nullable SoapClientLoggerFactory loggerFactory,
-                                             @Nullable SoapClientMetricsFactory metricsFactory,
-                                             @Nullable SoapClientTracerFactory tracingFactory) {
-        this.loggerFactory = loggerFactory;
-        this.metricsFactory = metricsFactory;
-        this.tracingFactory = tracingFactory;
+    public DefaultSoapClientTelemetryFactory(
+        @Nullable MeterRegistry meterRegistry,
+        @Nullable Tracer tracer) {
+        this.meterRegistry = meterRegistry;
+        this.tracer = tracer;
     }
 
     @Override
-    public SoapClientTelemetry get(TelemetryConfig config, String serviceClass, String serviceName, String soapMethod, String url) {
-        var tracing = this.tracingFactory == null ? null : this.tracingFactory.get(config.tracing(), serviceClass, serviceName, soapMethod, url);
-        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics(), serviceClass, serviceName, soapMethod, url);
-        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging(), serviceClass, serviceName, soapMethod, url);
-        if (tracing == null && metrics == null && logger == null) {
-            return envelope -> NOOP_CTX;
+    public SoapClientTelemetry get(SoapServiceConfig.SoapClientTelemetryConfig config, SoapMethodDescriptor descriptor, String url) {
+        if (!config.metrics().enabled() && !config.tracing().enabled() && !config.logging().enabled()) {
+            return NoopSoapClientTelemetry.INSTANCE;
         }
 
-        return requestEnvelope -> {
-            var start = System.nanoTime();
-
-            var span = (tracing == null)
-                ? null
-                : tracing.createSpan(Context.current(), requestEnvelope);
-
-            return new SoapClientTelemetry.SoapTelemetryContext() {
-
-                @Override
-                public boolean logResponseBody() {
-                    return logger != null && logger.logResponseBody();
-                }
-
-                @Override
-                public void prepared(SoapEnvelope requestEnvelope, byte[] requestAsBytes) {
-                    if (logger != null) {
-                        logger.logRequest(requestEnvelope, requestAsBytes);
-                    }
-                }
-
-                @Override
-                public void success(SoapResult.Success success, @Nullable byte[] responseAsBytes) {
-                    var processingTime = System.nanoTime() - start;
-                    if (metrics != null) {
-                        metrics.recordSuccess(success, processingTime);
-                    }
-                    if (span != null) {
-                        span.success(success);
-                    }
-                    if (logger != null) {
-                        logger.logSuccess(success, responseAsBytes);
-                    }
-                }
-
-                @Override
-                public void failure(SoapClientFailure failure, @Nullable byte[] responseAsBytes) {
-                    var processingTime = System.nanoTime() - start;
-                    if (metrics != null) {
-                        metrics.recordFailure(failure, processingTime);
-                    }
-                    if (span != null) {
-                        span.failure(failure);
-                    }
-                    if (logger != null) {
-                        logger.logFailure(failure, responseAsBytes);
-                    }
-                }
-            };
-        };
+        var meterRegistry = this.meterRegistry;
+        if (meterRegistry == null || !config.metrics().enabled()) {
+            meterRegistry = new CompositeMeterRegistry();
+        }
+        var tracer = this.tracer;
+        if (tracer == null || !config.tracing().enabled()) {
+            tracer = TracerProvider.noop().get("soap-client-telemetry");
+        }
+        var loggerFactory = config.logging().enabled()
+            ? LoggerFactory.getILoggerFactory()
+            : new NOPLoggerFactory();
+        return new DefaultSoapClientTelemetry(config, tracer, meterRegistry, loggerFactory, descriptor, url);
     }
 }

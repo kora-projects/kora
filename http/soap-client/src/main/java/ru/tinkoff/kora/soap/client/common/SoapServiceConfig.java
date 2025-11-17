@@ -14,5 +14,10 @@ public interface SoapServiceConfig {
         return Duration.ofSeconds(60);
     }
 
-    TelemetryConfig telemetry();
+    SoapClientTelemetryConfig telemetry();
+
+    @ConfigValueExtractor
+    interface SoapClientTelemetryConfig extends TelemetryConfig {
+
+    }
 }
