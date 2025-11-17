@@ -20,14 +20,7 @@ static ClassLoader getClassLoader(Configuration config) {
 }
 
 dependencies {
-    implementation libs.ksp.api
-    implementation libs.kotlin.reflect
-    implementation libs.kotlinpoet
-    implementation libs.kotlinpoet.ksp
-
     api project(':symbol-processor-common')
-    api project(':http:http-client-common')
-    api project(':http:soap-client')
 
     cxf "org.apache.cxf:cxf-tools-wsdlto-core:$cxfVersion"
     cxf "org.apache.cxf:cxf-tools-wsdlto-frontend-jaxws:$cxfVersion"
@@ -47,7 +40,7 @@ dependencies {
     testImplementation 'org.apache.cxf:cxf-rt-bindings-soap:3.4.5'
     testImplementation 'org.apache.cxf:cxf-rt-transports-http-jetty:3.4.5'
     testImplementation 'org.apache.cxf:cxf-rt-frontend-jaxws:3.4.5'
-
+    testImplementation project(':http:soap-client')
     testImplementation project(':http:http-client-jdk')
 }
 

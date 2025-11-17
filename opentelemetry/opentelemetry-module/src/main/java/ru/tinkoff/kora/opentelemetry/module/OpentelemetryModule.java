@@ -6,14 +6,8 @@ import ru.tinkoff.kora.opentelemetry.module.camunda.engine.bpmn.OpentelemetryCam
 import ru.tinkoff.kora.opentelemetry.module.camunda.rest.OpentelemetryCamundaRestTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.camunda.zeebe.worker.OpentelemetryZeebeWorkerTracerFactory;
 import ru.tinkoff.kora.opentelemetry.module.jms.consumer.OpentelemetryJmsConsumerTracer;
-import ru.tinkoff.kora.opentelemetry.module.soap.client.OpentelemetrySoapClientTracerFactory;
 
 public interface OpentelemetryModule {
-
-    @DefaultComponent
-    default OpentelemetrySoapClientTracerFactory opentelemetrySoapClientTracingFactory(Tracer tracer) {
-        return new OpentelemetrySoapClientTracerFactory(tracer);
-    }
 
     @DefaultComponent
     default OpentelemetryJmsConsumerTracer opentelemetryJmsConsumerTracing(Tracer tracer) {

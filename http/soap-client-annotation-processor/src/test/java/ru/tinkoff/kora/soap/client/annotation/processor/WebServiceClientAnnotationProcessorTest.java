@@ -14,10 +14,13 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.annotation.processor.common.JavaCompilation;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.jdk.JdkHttpClient;
+import ru.tinkoff.kora.soap.client.common.$SoapServiceConfig_SoapClientTelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.soap.client.common.SoapServiceConfig;
-import ru.tinkoff.kora.soap.client.common.telemetry.DefaultSoapClientTelemetryFactory;
+import ru.tinkoff.kora.soap.client.common.telemetry.NoopSoapClientTelemetry;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory;
-import ru.tinkoff.kora.telemetry.common.*;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 
 import javax.xml.ws.Endpoint;
 import java.io.ByteArrayOutputStream;
@@ -32,10 +35,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -260,7 +261,7 @@ class WebServiceClientAnnotationProcessorTest {
         var type = cl.loadClass(className);
         var constructor = type.getConstructor(HttpClient.class, SoapClientTelemetryFactory.class, SoapServiceConfig.class);
         var httpClient = this.httpClient;
-        var telemetry = new DefaultSoapClientTelemetryFactory(null, null, null);
+        var telemetry = (SoapClientTelemetryFactory) (_, _, _) -> NoopSoapClientTelemetry.INSTANCE;
         return constructor.newInstance(httpClient, telemetry, new SoapServiceConfig() {
             @Override
             public String url() {
@@ -268,11 +269,11 @@ class WebServiceClientAnnotationProcessorTest {
             }
 
             @Override
-            public TelemetryConfig telemetry() {
-                return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
-                    new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, new Duration[0], Map.of())
+            public SoapClientTelemetryConfig telemetry() {
+                return new $SoapServiceConfig_SoapClientTelemetryConfig_ConfigValueExtractor.SoapClientTelemetryConfig_Impl(
+                    new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Defaults(),
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Defaults(),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
                 );
             }
         });
