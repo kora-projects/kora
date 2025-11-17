@@ -1,6 +1,8 @@
 package ru.tinkoff.kora.soap.client.common;
 
-import jakarta.annotation.Nullable;
+import io.opentelemetry.context.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.HttpClientException;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
@@ -8,16 +10,12 @@ import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 import ru.tinkoff.kora.soap.client.common.envelope.SoapFault;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry;
-import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure.InternalServerError;
-import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure.InvalidHttpCode;
-import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry.SoapTelemetryContext.SoapClientFailure.ProcessException;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetryFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
-import java.util.Objects;
 
 public class SoapRequestExecutor {
     private final HttpClient httpClient;
@@ -27,87 +25,77 @@ public class SoapRequestExecutor {
     private final SoapClientTelemetry telemetry;
     private final Duration timeout;
 
-    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, String serviceClass, String service, SoapServiceConfig config, String method, @Nullable String soapAction) {
+    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, SoapServiceConfig config, SoapMethodDescriptor methodDescriptor) {
         this.httpClient = httpClient;
         this.xmlTools = xmlTools;
         this.url = config.url();
         this.timeout = config.timeout();
-        this.soapAction = soapAction;
-        this.telemetry = telemetryFactory.get(config.telemetry(), serviceClass, service, method, url);
+        this.soapAction = methodDescriptor.soapAction;
+        this.telemetry = telemetryFactory.get(config.telemetry(), methodDescriptor, url);
     }
 
     public SoapResult call(SoapEnvelope requestEnvelope) throws SoapException {
-        var telemetry = this.telemetry.get(requestEnvelope);
-        var requestXml = this.xmlTools.marshal(requestEnvelope);
-        telemetry.prepared(requestEnvelope, requestXml);
-        var httpClientRequest = HttpClientRequest.post(this.url)
-            .body(HttpBody.of("text/xml", requestXml))
-            .requestTimeout((int) timeout.toMillis());
-        if (this.soapAction != null) {
-            httpClientRequest.header("SOAPAction", this.soapAction);
-        }
-        try (var httpClientResponse = this.httpClient.execute(httpClientRequest.build())) {
-            if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
-                try (var body = httpClientResponse.body();
-                     var is = body.asInputStream()) {
-                    if (is == null) {
-                        telemetry.failure(new InvalidHttpCode(httpClientResponse.code()), null);
-                        throw new InvalidHttpResponseSoapException(httpClientResponse.code(), new byte[0]);
-                    } else {
-                        var bodyAsBytes = is.readAllBytes();
-                        telemetry.failure(new InvalidHttpCode(httpClientResponse.code()), bodyAsBytes);
-                        throw new InvalidHttpResponseSoapException(httpClientResponse.code(), bodyAsBytes);
+        var observation = this.telemetry.observe(requestEnvelope);
+        return ScopedValue.where(Observation.VALUE, observation)
+            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
+            .call(() -> {
+                try {
+                    observation.observeRequest(requestEnvelope);
+                    var requestXml = this.xmlTools.marshal(requestEnvelope);
+                    observation.observeRequestXml(requestXml);
+                    var httpClientRequest = HttpClientRequest.post(this.url)
+                        .body(HttpBody.of("text/xml", requestXml))
+                        .requestTimeout((int) timeout.toMillis());
+                    if (this.soapAction != null) {
+                        httpClientRequest.header("SOAPAction", this.soapAction);
                     }
-                } catch (IOException e) {
-                    telemetry.failure(new InvalidHttpCode(httpClientResponse.code()), null);
-                    var ex = new InvalidHttpResponseSoapException(httpClientResponse.code(), new byte[0]);
-                    ex.addSuppressed(e);
-                    throw ex;
+                    try (var httpClientResponse = this.httpClient.execute(httpClientRequest.build());
+                         var body = httpClientResponse.body();
+                         var is = body.asInputStream()) {
+                        observation.observeHttpResponse(httpClientResponse);
+
+                        if (httpClientResponse.code() != 200 && httpClientResponse.code() != 500) {
+                            try {
+                                var bodyAsBytes = is.readAllBytes();
+                                observation.observeResponseBody(bodyAsBytes);
+                                throw new InvalidHttpResponseSoapException(httpClientResponse.code(), bodyAsBytes);
+                            } catch (IOException e) {
+                                var ex = new InvalidHttpResponseSoapException(httpClientResponse.code(), new byte[0]);
+                                ex.addSuppressed(e);
+                                throw ex;
+                            }
+                        }
+                        if (httpClientResponse.code() != 200) {
+                            var bytes = is.readAllBytes();
+                            var result = readFailure(new ByteArrayInputStream(bytes));
+                            observation.observeResponseBody(bytes);
+                            observation.observeFailure(result);
+                            return result;
+                        }
+                        var contentType = httpClientResponse.headers().getFirst("content-type");
+                        if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
+                            var result = readMultipart(contentType, is);
+                            observation.observeResponseBody(result.xmlPart().getContentArray());
+                            observation.observeResult(result.result.body());
+                            return result.result;
+                        } else {
+                            var xml = is.readAllBytes();
+                            observation.observeResponseBody(xml);
+                            var success = readSuccess(new ByteArrayInputStream(xml));
+                            observation.observeResult(success.body());
+                            return success;
+                        }
+                    } catch (IOException | HttpClientException e) {
+                        throw new SoapException(e);
+                    }
+                } catch (Throwable t) {
+                    observation.observeError(t);
+                    throw t;
+                } finally {
+                    observation.end();
                 }
-            }
-            try (var body = httpClientResponse.body();
-                 var is = Objects.requireNonNull(body.asInputStream())) {
-                if (httpClientResponse.code() != 200) {
-                    if (telemetry.logResponseBody()) {
-                        var bytes = is.readAllBytes();
-                        var result = readFailure(new ByteArrayInputStream(bytes));
-                        telemetry.failure(new InternalServerError(result), bytes);
-                        return result;
-                    } else {
-                        var result = readFailure(is);
-                        telemetry.failure(new InternalServerError(result), null);
-                        return result;
-                    }
-                }
-                var contentType = httpClientResponse.headers().getFirst("content-type");
-                if (contentType != null && contentType.toLowerCase().startsWith("multipart")) {
-                    var result = readMultipart(contentType, is);
-                    if (telemetry.logResponseBody()) {
-                        telemetry.success(result.result, result.xmlPart().getContentArray());
-                    } else {
-                        telemetry.success(result.result, null);
-                    }
-                    return result.result;
-                } else {
-                    if (telemetry.logResponseBody()) {
-                        var xml = is.readAllBytes();
-                        var result = readSuccess(new ByteArrayInputStream(xml));
-                        telemetry.success(result, xml);
-                        return result;
-                    } else {
-                        var result = readSuccess(is);
-                        telemetry.success(result, null);
-                        return result;
-                    }
-                }
-            }
-        } catch (IOException | HttpClientException e) {
-            telemetry.failure(new ProcessException(e), null);
-            throw new SoapException(e);
-        } catch (Exception e) {
-            telemetry.failure(new ProcessException(e), null);
-            throw e;
-        }
+            });
+
     }
 
     private SoapResult.Success readSuccess(InputStream body) throws IOException {
