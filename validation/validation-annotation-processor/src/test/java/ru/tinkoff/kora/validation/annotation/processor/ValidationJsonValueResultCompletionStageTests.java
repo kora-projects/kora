@@ -11,7 +11,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
+public class ValidationJsonValueResultCompletionStageTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
 
     @Test
     public void resultJsonNullableIsUndefined() {
@@ -20,8 +20,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.undefined());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -41,8 +41,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.nullValue());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -62,8 +62,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.of("1"));
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
                     }
                 }
                 """);
@@ -84,8 +84,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                 public class TestComponent {
                     @Validate
                     @Nonnull
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.undefined());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -106,8 +106,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                 public class TestComponent {
                     @Validate
                     @Nonnull
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.nullValue());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -128,8 +128,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                 public class TestComponent {
                     @Validate
                     @Nonnull
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.of("1"));
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
                     }
                 }
                 """);
@@ -151,8 +151,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.undefined());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -174,8 +174,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.nullValue());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -198,8 +198,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.of("1"));
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
                     }
                 }
                 """);
@@ -221,8 +221,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.undefined());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -244,8 +244,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.nullValue());
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -268,8 +268,8 @@ public class ValidationJsonNullableResultMonoTests extends AbstractValidationAnn
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    public Mono<JsonNullable<String>> test() {
-                        return Mono.just(JsonNullable.of("1"));
+                    public CompletionStage<JsonNullable<String>> test() {
+                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
                     }
                 }
                 """);

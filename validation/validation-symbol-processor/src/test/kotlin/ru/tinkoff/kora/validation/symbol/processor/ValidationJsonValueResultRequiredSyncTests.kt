@@ -8,7 +8,7 @@ import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.validation.common.ViolationException
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
 
-class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
+class ValidationJsonValueResultRequiredSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
 
     @Test
     fun resultJsonNullableIsUndefined() {
@@ -18,7 +18,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 @Component                 
                 open class TestComponent {
                     @Validate
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.undefined()
                     }
                 }
@@ -42,7 +42,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.nullValue()
                     }
                 }
@@ -66,7 +66,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.of("1")
                     }
                 }
@@ -91,7 +91,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 open class TestComponent {
                     @Validate
                     @Nonnull
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.undefined()
                     }
                 }
@@ -116,7 +116,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 open class TestComponent {
                     @Validate
                     @Nonnull
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.nullValue()
                     }
                 }
@@ -141,7 +141,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 open class TestComponent {
                     @Validate
                     @Nonnull
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.of("1")
                     }
                 }
@@ -167,7 +167,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.undefined()
                     }
                 }
@@ -193,7 +193,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.nullValue()
                     }
                 }
@@ -220,7 +220,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.of("1")
                     }
                 }
@@ -246,7 +246,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.undefined()
                     }
                 }
@@ -272,7 +272,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.nullValue()
                     }
                 }
@@ -299,7 +299,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): JsonNullable<String> {
                         return JsonNullable.of("1")
                     }
                 }

@@ -2,7 +2,7 @@ package ru.tinkoff.kora.validation.annotation.processor;
 
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.json.common.JsonNullable;
+import ru.tinkoff.kora.json.common.JsonValue;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 import ru.tinkoff.kora.validation.common.ViolationException;
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
@@ -12,7 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ValidationJsonNullableArgumentComletableFutureTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
+public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
 
     @Test
     public void argumentJsonNullableIsUndefined() {
@@ -21,9 +21,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -32,7 +30,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -42,9 +40,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -53,7 +49,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.nullValue()));
     }
 
     @Test
@@ -63,9 +59,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -74,7 +68,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 
     @Test
@@ -84,9 +78,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@Nonnull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -95,7 +87,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -105,9 +97,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@Nonnull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -116,7 +106,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
     }
 
     @Test
@@ -126,9 +116,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@Nonnull JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@Nonnull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -137,7 +125,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 
     @Test
@@ -147,9 +135,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -158,7 +144,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -168,9 +154,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -179,7 +163,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
         assertEquals(2, ex.getViolations().size());
     }
 
@@ -190,9 +174,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -201,7 +183,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 
     @Test
@@ -211,9 +193,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -222,7 +202,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -232,9 +212,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -243,7 +221,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
         assertEquals(1, ex.getViolations().size());
     }
 
@@ -254,9 +232,7 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public CompletableFuture<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return CompletableFuture.completedFuture(null);
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -265,6 +241,6 @@ public class ValidationJsonNullableArgumentComletableFutureTests extends Abstrac
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 }

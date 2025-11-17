@@ -11,7 +11,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ValidationJsonNullableResultCompletableFutureTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
+public class ValidationJsonValueResultFluxTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
 
     @Test
     public void resultJsonNullableIsUndefined() {
@@ -20,8 +20,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.undefined());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -41,8 +41,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -62,8 +62,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                 @Component
                 public class TestComponent {
                     @Validate
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.of("1"));
                     }
                 }
                 """);
@@ -84,8 +84,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                 public class TestComponent {
                     @Validate
                     @Nonnull
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.undefined());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -106,8 +106,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                 public class TestComponent {
                     @Validate
                     @Nonnull
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -128,8 +128,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                 public class TestComponent {
                     @Validate
                     @Nonnull
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.of("1"));
                     }
                 }
                 """);
@@ -151,8 +151,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.undefined());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -174,8 +174,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -198,8 +198,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.of("1"));
                     }
                 }
                 """);
@@ -221,8 +221,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.undefined());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.undefined());
                     }
                 }
                 """);
@@ -244,8 +244,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.nullValue());
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.nullValue());
                     }
                 }
                 """);
@@ -268,8 +268,8 @@ public class ValidationJsonNullableResultCompletableFutureTests extends Abstract
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    public CompletableFuture<JsonNullable<String>> test() {
-                        return CompletableFuture.completedFuture(JsonNullable.of("1"));
+                    public Flux<JsonNullable<String>> test() {
+                        return Flux.just(JsonNullable.of("1"));
                     }
                 }
                 """);

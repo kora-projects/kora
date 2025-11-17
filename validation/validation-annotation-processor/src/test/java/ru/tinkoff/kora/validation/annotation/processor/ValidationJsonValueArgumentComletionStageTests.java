@@ -2,7 +2,7 @@ package ru.tinkoff.kora.validation.annotation.processor;
 
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.json.common.JsonNullable;
+import ru.tinkoff.kora.json.common.JsonValue;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 import ru.tinkoff.kora.validation.common.ViolationException;
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
@@ -12,7 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
+public class ValidationJsonValueArgumentComletionStageTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
 
     @Test
     public void argumentJsonNullableIsUndefined() {
@@ -21,8 +21,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -32,7 +32,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -42,8 +42,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -53,7 +53,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.nullValue()));
     }
 
     @Test
@@ -63,8 +63,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -74,7 +74,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.of("1")));
     }
 
     @Test
@@ -84,8 +84,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@Nonnull JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@Nonnull JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -95,7 +95,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -105,8 +105,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@Nonnull JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@Nonnull JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -116,7 +116,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonValue.nullValue()));
     }
 
     @Test
@@ -126,8 +126,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@Nonnull JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@Nonnull JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -137,7 +137,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.of("1")));
     }
 
     @Test
@@ -147,8 +147,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@NotBlank @NotEmpty JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -158,7 +158,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -168,8 +168,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@NotBlank @NotEmpty JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -179,7 +179,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        ViolationException ex = assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonValue.nullValue()));
         assertEquals(2, ex.getViolations().size());
     }
 
@@ -190,8 +190,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@NotBlank @NotEmpty JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -201,7 +201,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.of("1")));
     }
 
     @Test
@@ -211,8 +211,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@NotBlank @NotEmpty JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -222,7 +222,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.undefined()));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.undefined()));
     }
 
     @Test
@@ -232,8 +232,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@NotBlank @NotEmpty JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -243,7 +243,7 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonNullable.nullValue()));
+        ViolationException ex = assertThrows(ViolationException.class, () -> invokeAndCast(component, "test", JsonValue.nullValue()));
         assertEquals(1, ex.getViolations().size());
     }
 
@@ -254,8 +254,8 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    public Mono<Void> test(@NotBlank @NotEmpty JsonNullable<String> arg) {
-                        return Mono.empty();
+                    public CompletionStage<Void> test(@NotBlank @NotEmpty JsonValue<String> arg) {
+                        return CompletableFuture.completedFuture(null);
                     }
                 }
                 """);
@@ -265,6 +265,6 @@ public class ValidationJsonNullableArgumentMonoTests extends AbstractValidationA
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonNullable.of("1")));
+        assertDoesNotThrow(() -> invokeAndCast(component, "test", JsonValue.of("1")));
     }
 }
