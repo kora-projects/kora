@@ -5,11 +5,11 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
 import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetry;
 import ru.tinkoff.kora.jms.telemetry.JmsConsumerTelemetryFactory;
-import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
 import javax.jms.ConnectionFactory;
 import javax.jms.JMSException;
@@ -125,29 +125,24 @@ public class JmsMessageListenerContainer implements Lifecycle {
                         session.commit();
                         continue;
                     }
-                    var telemetryCtx = this.telemetry.get(message);
+                    var observation = this.telemetry.observe(message);
                     try {
-                        if (log.isDebugEnabled()) {
-                            var body = JmsUtils.text(message);
-                            var headers = JmsUtils.dumpHeaders(message).toString();
-                            log.debug(StructuredArgument.marker("jmsInputMessage", (gen) -> {
-                                gen.writeStartObject();
-                                gen.writeStringField("headers", headers);
-                                gen.writeStringField("body", body);
-                                gen.writeEndObject();
-                            }), "JmsListener.message");
-                        }
                         ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
-                            .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.current())
+                            .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root().with(observation.span()))
+                            .where(Observation.VALUE, observation)
                             .call(() -> {
-                                this.messageListener.onMessage(session, message);
+                                try {
+                                    observation.observeProcess();
+                                    this.messageListener.onMessage(session, message);
+                                } catch (Throwable t) {
+                                    observation.observeError(t);
+                                    throw t;
+                                } finally {
+                                    observation.end();
+                                }
                                 return null;
                             });
                         session.commit();
-                        telemetryCtx.close(null);
-                    } catch (Exception e) {
-                        telemetryCtx.close(e);
-                        throw e;
                     } finally {
                         Context.clear();
                         MDC.clear();
