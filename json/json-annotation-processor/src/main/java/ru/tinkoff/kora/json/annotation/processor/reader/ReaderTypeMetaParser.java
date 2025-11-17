@@ -51,18 +51,27 @@ public class ReaderTypeMetaParser {
 
     @Nullable
     public ReaderFieldType parseReaderFieldType(TypeMirror jsonClass) {
-        var isJsonNullable = false;
-        var realType = jsonClass;
-        if (jsonClass instanceof DeclaredType dt && JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
-            realType = dt.getTypeArguments().get(0);
-            isJsonNullable = true;
+        @Nullable
+        ReaderFieldType.JsonValueType jsonValueType = null;
+        TypeMirror realType = jsonClass;
+        if (jsonClass instanceof DeclaredType dt) {
+            if (JsonTypes.jsonValue.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().get(0);
+                jsonValueType = ReaderFieldType.JsonValueType.VALUE;
+            } else if (JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().get(0);
+                jsonValueType = ReaderFieldType.JsonValueType.NULLABLE;
+            } else if (JsonTypes.jsonUndefined.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().get(0);
+                jsonValueType = ReaderFieldType.JsonValueType.UNDEFINED;
+            }
         }
 
         var knownType = this.knownTypes.detect(realType);
         if (knownType != null) {
-            return new KnownTypeReaderMeta(knownType, realType, isJsonNullable);
+            return new KnownTypeReaderMeta(knownType, realType, jsonValueType);
         } else {
-            return new ReaderFieldType.UnknownTypeReaderMeta(realType, isJsonNullable);
+            return new ReaderFieldType.UnknownTypeReaderMeta(realType, jsonValueType);
         }
     }
 

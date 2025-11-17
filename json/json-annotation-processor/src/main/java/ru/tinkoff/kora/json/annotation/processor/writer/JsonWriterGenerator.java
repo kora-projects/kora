@@ -66,7 +66,6 @@ public class JsonWriterGenerator {
         return typeBuilder.build();
     }
 
-
     private void addWriters(TypeSpec.Builder typeBuilder, JsonClassWriterMeta classMeta) {
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
@@ -125,10 +124,10 @@ public class JsonWriterGenerator {
         }
 
         var isEmptyCheck = field.includeType() == JsonClassWriterMeta.IncludeType.NON_EMPTY
-            && (CommonUtils.isCollection(field.writerTypeMeta().typeMirror())
-            || CommonUtils.isMap(field.writerTypeMeta().typeMirror()));
+                           && (CommonUtils.isCollection(field.writerTypeMeta().typeMirror())
+                               || CommonUtils.isMap(field.writerTypeMeta().typeMirror()));
 
-        if (field.writerTypeMeta().isJsonNullable()) {
+        if (field.writerTypeMeta().jsonValueType() != null) {
             method.addCode("if (_object.$L.isDefined()) {$>\n", field.accessor());
             if (isEmptyCheck) {
                 method.beginControlFlow("if (_object.$L.value() != null && !_object.$L.value().isEmpty())", field.accessor(), field.accessor());
@@ -140,25 +139,33 @@ public class JsonWriterGenerator {
         }
 
 
-        method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
-            if (typeMeta.isJsonNullable()) {
+            if (typeMeta.isJsonUndefined()) {
+                method.beginControlFlow("if (_object.$L.isDefined())", field.accessor());
+                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+                method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L.value()", field.accessor())));
+                method.endControlFlow();
+            } else if (typeMeta.isJsonNullable()) {
+                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
                 method.beginControlFlow("if (_object.$L.isNull())", field.accessor());
                 method.addStatement("_gen.writeNull()");
                 method.nextControlFlow("else");
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L.value()", field.accessor())));
                 method.endControlFlow();
             } else if (field.includeType() == JsonClassWriterMeta.IncludeType.ALWAYS) {
+                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
                 method.beginControlFlow("if (_object.$L == null)", field.accessor());
                 method.addStatement("_gen.writeNull()");
                 method.nextControlFlow("else");
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
                 method.endControlFlow();
             } else {
+                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
             }
         } else {
-            if (field.writerTypeMeta().isJsonNullable()) {
+            method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+            if (field.writerTypeMeta().jsonValueType() != null) {
                 method.beginControlFlow("if (_object.$L.isNull())", field.accessor());
                 method.addStatement("_gen.writeNull()");
                 method.nextControlFlow("else");
@@ -169,7 +176,7 @@ public class JsonWriterGenerator {
             }
         }
 
-        if (field.writerTypeMeta().isJsonNullable()) {
+        if (field.writerTypeMeta().jsonValueType() != null) {
             method.addCode("$<}\n");
             if (isEmptyCheck) {
                 method.addCode("$<}\n");

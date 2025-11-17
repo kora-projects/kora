@@ -11,7 +11,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
+public class ValidationJsonValueResultSyncTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
 
     @Test
     public void resultJsonNullableIsUndefined() {
