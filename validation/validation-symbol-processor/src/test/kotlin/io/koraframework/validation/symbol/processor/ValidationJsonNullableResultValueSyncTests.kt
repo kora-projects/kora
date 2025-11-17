@@ -8,7 +8,7 @@ import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.validation.common.ViolationException
 import io.koraframework.validation.common.constraint.ValidatorModule
 
-class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
+class ValidationJsonNullableResultValueSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
 
     @Test
     fun resultJsonNullableIsUndefined() {
