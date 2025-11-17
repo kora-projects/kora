@@ -1,19 +1,14 @@
 package ru.tinkoff.kora.jms;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.jms.telemetry.DefaultJmsConsumerTelemetryFactory;
-import ru.tinkoff.kora.jms.telemetry.JmsConsumerLoggerFactory;
-import ru.tinkoff.kora.jms.telemetry.JmsConsumerMetricsFactory;
-import ru.tinkoff.kora.jms.telemetry.JmsConsumerTracer;
-
-import jakarta.annotation.Nullable;
 
 public interface JmsConsumerModule {
     @DefaultComponent
-    default DefaultJmsConsumerTelemetryFactory defaultJmsConsumerTelemetryFactory(
-        @Nullable JmsConsumerLoggerFactory loggerFactory,
-        @Nullable JmsConsumerMetricsFactory metricsFactory,
-        @Nullable JmsConsumerTracer tracing) {
-        return new DefaultJmsConsumerTelemetryFactory(loggerFactory, metricsFactory, tracing);
+    default DefaultJmsConsumerTelemetryFactory defaultJmsConsumerTelemetryFactory(@Nullable Tracer tracer, @Nullable MeterRegistry meterRegistry) {
+        return new DefaultJmsConsumerTelemetryFactory(tracer, meterRegistry);
     }
 }
