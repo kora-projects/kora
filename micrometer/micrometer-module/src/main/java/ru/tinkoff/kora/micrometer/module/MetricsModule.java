@@ -11,7 +11,6 @@ import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEn
 import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.job.MicrometerZeebeClientWorkerJobMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker.MicrometerZeebeWorkerMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.jms.consumer.MicrometerJmsConsumerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
@@ -21,11 +20,6 @@ public interface MetricsModule {
     @Root
     default PrometheusMeterRegistryWrapper prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
         return new PrometheusMeterRegistryWrapper(initializers);
-    }
-
-    @DefaultComponent
-    default MicrometerJmsConsumerMetricsFactory micrometerJmsConsumerMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerJmsConsumerMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
