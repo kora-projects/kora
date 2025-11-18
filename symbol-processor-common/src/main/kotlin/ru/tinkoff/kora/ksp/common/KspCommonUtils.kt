@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.ksp.common
 
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
@@ -188,8 +189,8 @@ data class MappersData(val mapperClasses: List<KSType>, val tags: Set<String>) {
 
 }
 
-fun KSClassDeclaration.doesImplement(type: ClassName) = this.toClassName() == type || this.superTypes
-    .any { (it.resolve().declaration as KSClassDeclaration).toClassName() == type }
+fun KSClassDeclaration.doesImplement(type: ClassName) = this.toClassName() == type || this.getAllSuperTypes()
+    .any { (it.declaration as KSClassDeclaration).toClassName() == type }
 
 
 data class MappingData(val mapper: KSType?, val tags: Set<String>) {

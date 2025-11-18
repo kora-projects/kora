@@ -131,22 +131,68 @@ class BlockingApiTest : AbstractHttpClientTest() {
     @Test
     fun testBlockingCustomMapper() {
         compile(
-            listOf(newGenerated("TestMapper")), """
+            listOf(newGenerated("TestMapper", "test")), """
             @HttpClient
             interface TestClient {
-              @Mapping(TestMapper::class)
               @HttpRoute(method = "GET", path = "/test")
+              @Mapping(TestMapper::class)
               fun request(): String
             }
             
             """.trimIndent(), """
-            open class TestMapper : HttpClientResponseMapper<String> {
+            class TestMapper(str: String) : AbstractTestMapper<String>(str) {
               override fun apply(rs: HttpClientResponse): String {
-                  return "test-string-from-mapper";
+                  return "test-string-from-mapper"
               }
+              override fun value() = "test"
+            }
+            
+            """.trimIndent(), """
+            abstract class AbstractTestMapper<T>(str: String) : HttpClientResponseMapper<T> {
+              override fun apply(rs: HttpClientResponse): T {
+                  return value()
+              }
+            abstract fun value(): T
+
             }
             
             """.trimIndent()
+
+        )
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        Assertions.assertThat(client.invoke<String>("request"))
+            .isEqualTo("test-string-from-mapper")
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        Assertions.assertThat(client.invoke<String>("request"))
+            .isEqualTo("test-string-from-mapper")
+    }
+
+    @Test
+    fun testAbstractClassMapper() {
+        compile(
+            listOf(newGenerated("TestMapper", "test")), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "GET", path = "/test")
+              @Mapping(TestMapper::class)
+              fun request(): String
+            }
+            
+            """.trimIndent(), """
+            class TestMapper(str: String) : AbstractTestMapper<String>(str) {
+              override fun apply(rs: HttpClientResponse): String {
+                  return "test-string-from-mapper"
+              }
+            }
+            
+            """.trimIndent(), """
+            abstract class AbstractTestMapper<T>(str: String) : HttpClientResponseMapper<T>
+            """.trimIndent()
+
         )
 
         reset(httpClient)
