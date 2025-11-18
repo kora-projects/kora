@@ -195,8 +195,8 @@ public class UndertowExchangeProcessor implements HttpHandler {
         }
     }
 
-    private static class HttpServerExchangeMapGetter implements TextMapGetter<HeaderMap>, TextMapSetter<HeaderMap> {
-        private static final HttpServerExchangeMapGetter INSTANCE = new HttpServerExchangeMapGetter();
+    public static class HttpServerExchangeMapGetter implements TextMapGetter<HeaderMap>, TextMapSetter<HeaderMap> {
+        public static final HttpServerExchangeMapGetter INSTANCE = new HttpServerExchangeMapGetter();
 
         @Override
         public Iterable<String> keys(HeaderMap header) {

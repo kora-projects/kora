@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.camunda.rest.telemetry;
 
+import io.undertow.server.HttpServerExchange;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -24,4 +25,7 @@ public interface CamundaRestTelemetry {
                                     @Nullable String pathTemplate,
                                     HttpHeaders headers,
                                     Map<String, ? extends Collection<String>> queryParams);
+
+
+    CamundaRestObservation observe(HttpServerExchange exchange, String pathTemplate);
 }
