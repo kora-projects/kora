@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.client.symbol.processor
 
 import com.google.devtools.ksp.getConstructors
-import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
@@ -14,6 +13,7 @@ import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpBod
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClient
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderException
+import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderUtils
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientException
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequest
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientRequestMapper
@@ -30,7 +30,6 @@ import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.respons
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.responseCodeMappers
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.stringParameterConverter
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.uriQueryBuilder
-import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientEncoderUtils
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
@@ -100,6 +99,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
+
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -112,6 +112,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
+
                     is Parameter.HeaderParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
@@ -124,11 +125,12 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
+
                     is Parameter.CookieParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
-                        } else if(parameterType.isMap()) {
+                        } else if (parameterType.isMap()) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
@@ -417,7 +419,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if(httpCookie == parameterType.toClassName()) {
+            if (httpCookie == parameterType.toClassName()) {
                 b.addStatement("_headers.add(\"Cookie\", %L.toValue())", literalName)
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
@@ -429,7 +431,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     .beginControlFlow("if(!_k.isNullOrBlank())")
 
                 val argType = parameterType.arguments[1].type?.resolve()!!
-                if(argType.isMarkedNullable) {
+                if (argType.isMarkedNullable) {
                     b.beginControlFlow("if(_v != null)")
                 }
 
@@ -439,7 +441,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     b.addStatement("_headers.add(\"Cookie\", _k + \"=\" + %L.convert(_v))", getConverterName(methodData, it.parameter))
                 }
 
-                if(argType.isMarkedNullable) {
+                if (argType.isMarkedNullable) {
                     b.endControlFlow()
                 }
                 b.endControlFlow().endControlFlow()
@@ -799,7 +801,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             val isAssignable = when {
                 type != null -> declaration.returnType!!.resolve().isAssignableFrom(type)
                 mapperType != null -> {
-                    val supertype = mapperType.findSupertype(httpClientResponseMapper)!!
+                    val supertype = mapperType.findSupertype(resolver, httpClientResponseMapper)!!
                     var typeArg = supertype.arguments[0].type!!.resolve()
                     if (typeArg.isCompletionStage()) {
                         typeArg = typeArg.arguments[0].type!!.resolve()
@@ -885,21 +887,81 @@ class ClientClassGenerator(private val resolver: Resolver) {
     }
 }
 
-private fun KSType.findSupertype(httpClientResponseMapper: ClassName): KSType? {
+data class KSParameter(val typeParam: KSTypeParameter, val typeArg: KSTypeArgument)
+
+private fun KSType.findSupertype(resolver: Resolver, targetClass: ClassName): KSType? {
+    return this.findSupertype(resolver, targetClass, listOf())
+}
+
+private fun KSType.findSupertype(
+    resolver: Resolver,
+    targetClass: ClassName,
+    superTypes: List<KSParameter>,
+): KSType? {
     val decl = this.declaration
     if (decl !is KSClassDeclaration) {
         return null
     }
+
     for (superType in decl.superTypes) {
         val supertypeResolved = superType.resolve()
         val supertypeDecl = supertypeResolved.declaration
-        if (supertypeDecl is KSClassDeclaration && supertypeDecl.qualifiedName?.asString() == httpClientResponseMapper.canonicalName) {
-            return supertypeResolved
+        if (supertypeDecl is KSClassDeclaration && supertypeDecl.qualifiedName?.asString() == targetClass.canonicalName) {
+            val enriched = enrich(resolver, supertypeResolved, superTypes)
+            return enriched
         }
-        val recursiveAttempt = supertypeResolved.findSupertype(httpClientResponseMapper)
+
+        val typeParams = mutableListOf<KSParameter>()
+        if (supertypeDecl.typeParameters.isNotEmpty()) {
+            for ((index, parameter) in supertypeDecl.typeParameters.withIndex()) {
+                val typeArg = supertypeResolved.arguments[index]
+                typeParams.add(KSParameter(parameter, typeArg))
+            }
+        }
+
+        val recursiveAttempt = supertypeResolved.findSupertype(resolver, targetClass, typeParams)
         if (recursiveAttempt != null) {
             return recursiveAttempt
         }
     }
     return null
+}
+
+private fun enrich(
+    resolver: Resolver,
+    type: KSType,
+    superParams: List<KSParameter>
+): KSType {
+    if (type.arguments.isNotEmpty()) {
+        val argsForReplace = mutableListOf<KSTypeArgument>()
+        for (currentArg in type.arguments) {
+            if (currentArg.type == null) {
+                continue
+            }
+
+            val curArgTypeRef = currentArg.type!!
+            val curArgType = curArgTypeRef.resolve()
+            val curArgDec = curArgType.declaration
+            if (curArgDec is KSClassDeclaration) {
+                val enrichedCurArgType = enrich(resolver, curArgType, superParams)
+                if (enrichedCurArgType != curArgType) {
+                    val enrichedTypeRef = resolver.createKSTypeReferenceFromKSType(enrichedCurArgType)
+                    val enrichedTypeArg = resolver.getTypeArgument(enrichedTypeRef, Variance.INVARIANT)
+                    argsForReplace.add(enrichedTypeArg)
+                }
+            } else if (curArgDec is KSTypeParameter) {
+                for (superParam in superParams) {
+                    if (superParam.typeParam.qualifiedName?.asString() == curArgDec.qualifiedName?.asString()) {
+                        argsForReplace.add(superParam.typeArg)
+                    }
+                }
+            }
+        }
+
+        if (argsForReplace.isNotEmpty()) {
+            return type.replace(argsForReplace)
+        }
+    }
+
+    return type
 }
