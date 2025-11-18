@@ -190,6 +190,9 @@ public class CommonUtils {
                 }
             }
         }
+        if (typeElement.getSuperclass() != null) {
+            return doesImplement(typeElement.getSuperclass(), i);
+        }
         return false;
     }
 
