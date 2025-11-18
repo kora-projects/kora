@@ -16,6 +16,10 @@ public abstract class CollectionConfigValueExtractor<T, C extends Collection<T>>
     @Override
     public C extract(ConfigValue<?> value) {
         if (value instanceof ConfigValue.StringValue str) {
+            if (str.value().isEmpty()) {
+                return newCollection(0);
+            }
+
             var values = str.value().split(",");
             var result = newCollection(values.length);
             for (var stringValue : values) {
