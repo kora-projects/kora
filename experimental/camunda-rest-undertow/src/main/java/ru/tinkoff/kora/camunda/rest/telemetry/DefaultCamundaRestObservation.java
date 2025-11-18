@@ -7,13 +7,16 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.HttpAttributes;
+import io.undertow.server.HttpServerExchange;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
-import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.http.server.common.router.LazyRequest;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryConfig;
 import ru.tinkoff.kora.http.server.common.telemetry.impl.DefaultHttpServerLogger;
+import ru.tinkoff.kora.http.server.undertow.request.UndertowPublicApiRequest;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -22,6 +25,7 @@ import java.util.function.Function;
 public class DefaultCamundaRestObservation implements CamundaRestObservation {
 
     protected int statusCode = 0;
+    protected final HttpServerExchange exchange;
     @Nullable
     protected HttpResultCode resultCode;
     @Nullable
@@ -34,8 +38,13 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
     protected final DefaultHttpServerLogger logger;
     protected final Meter.MeterProvider<io.micrometer.core.instrument.Timer> requestDuration;
     protected Function<Tags, AtomicLong> activeRequests;
+    @Nullable
+    private String route;
+    @Nullable
+    private Map<String, String> pathParams;
 
-    public DefaultCamundaRestObservation(HttpServerTelemetryConfig config, long requestStartTime, Span span, DefaultHttpServerLogger logger, Meter.MeterProvider<Timer> requestDuration, Function<Tags, AtomicLong> activeRequests) {
+    public DefaultCamundaRestObservation(HttpServerExchange exchange, HttpServerTelemetryConfig config, long requestStartTime, Span span, DefaultHttpServerLogger logger, Meter.MeterProvider<Timer> requestDuration, Function<Tags, AtomicLong> activeRequests) {
+        this.exchange = exchange;
         this.config = config;
         this.requestStartTime = requestStartTime;
         this.span = span;
@@ -52,15 +61,21 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
     }
 
     @Override
-    public HttpServerRequest observeRequest(HttpServerRequest rq) {
+    public void observeRequest(@Nullable String route, Map<String, String> pathParams) {
         var logger = this.logger;
         if (this.config.metrics().enabled()) {
             this.activeRequests.apply(Tags.empty()).decrementAndGet();
         }
-        if (this.request.route() != null && this.config.logging().enabled()) {
+        this.route = route;
+        this.pathParams = pathParams;
+        if (route != null && this.config.logging().enabled()) {
+            var request = new LazyRequest(
+                new UndertowPublicApiRequest(this.exchange),
+                pathParams,
+                route
+            );
             logger.logStart(request);
         }
-        return rq;
     }
 
     @Override
@@ -95,13 +110,18 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
     }
 
     protected void writeLog(long processingTime) {
-        if (request.route() != null && this.config.logging().enabled()) {
+        if (route != null && this.config.logging().enabled()) {
+            var request = new LazyRequest(
+                new UndertowPublicApiRequest(exchange),
+                pathParams,
+                route
+            );
             this.logger.logEnd(request, statusCode, Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR), processingTime, httpHeaders, exception);
         }
     }
 
     protected void closeSpan(HttpResultCode resultCode) {
-        if (request.route() != null) {
+        if (route != null) {
             span.setAttribute("http.response.result_code", resultCode.string());
             if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR) {
                 span.setStatus(StatusCode.ERROR);

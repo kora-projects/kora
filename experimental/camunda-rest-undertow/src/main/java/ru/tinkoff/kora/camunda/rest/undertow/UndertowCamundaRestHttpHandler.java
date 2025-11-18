@@ -106,18 +106,20 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
                     MDC.clear();
                     var match = restMatcher.getMatch(exchange.getRequestMethod().toString(), exchange.getRequestPath());
                     var pathTemplate = match == null ? null : match.pathTemplate();
+                    var pathParams = match == null ? Map.<String, String>of() : match.pathParameters();
                     var observation = this.telemetry.observe(exchange, pathTemplate);
+                    exchange.addExchangeCompleteListener((e, nextListener) -> {
+                        observation.observeResponseCode(e.getStatusCode());
+                        observation.end();
+                        nextListener.proceed();
+                    });
+                    observation.observeRequest(pathTemplate, pathParams);
                     var ctx = rootCtx.with(observation.span());
                     W3CTraceContextPropagator.getInstance().inject(
                         ctx,
                         exchange.getResponseHeaders(),
                         UndertowExchangeProcessor.HttpServerExchangeMapGetter.INSTANCE
                     );
-                    exchange.addExchangeCompleteListener((e, nextListener) -> {
-                        observation.observeResponseCode(e.getStatusCode());
-                        observation.end();
-                        nextListener.proceed();
-                    });
 
                     ScopedValue
                         .where(OpentelemetryContext.VALUE, ctx)

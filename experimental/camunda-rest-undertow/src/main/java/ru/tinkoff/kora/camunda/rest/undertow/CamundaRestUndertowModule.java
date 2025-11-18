@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.camunda.rest.undertow;
 
 import io.undertow.server.HttpHandler;
-import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.Application;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -11,7 +10,6 @@ import ru.tinkoff.kora.camunda.rest.CamundaRest;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 import ru.tinkoff.kora.camunda.rest.CamundaRestModule;
 import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetryFactory;
-import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTracerFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
@@ -22,13 +20,9 @@ public interface CamundaRestUndertowModule extends CamundaRestModule {
     @DefaultComponent
     default Wrapped<HttpHandler> camundaRestUndertowHttpHandler(@Tag(CamundaRest.class) All<Application> applications,
                                                                 CamundaRestConfig camundaRestConfig,
-                                                                CamundaRestTelemetryFactory telemetryFactory,
-                                                                @Nullable CamundaRestTracerFactory tracerFactory) {
+                                                                CamundaRestTelemetryFactory telemetryFactory) {
         var telemetry = telemetryFactory.get(camundaRestConfig.telemetry());
-        var tracer = (tracerFactory == null)
-            ? null
-            : tracerFactory.get(camundaRestConfig.telemetry().tracing());
-        return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig, telemetry, tracer);
+        return new UndertowCamundaRestHttpHandler(applications, camundaRestConfig, telemetry);
     }
 
     @Tag(CamundaRest.class)
