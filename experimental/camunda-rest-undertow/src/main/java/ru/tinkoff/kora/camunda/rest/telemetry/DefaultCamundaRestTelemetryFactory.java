@@ -1,37 +1,34 @@
 package ru.tinkoff.kora.camunda.rest.telemetry;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.TracerProvider;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryConfig;
+import ru.tinkoff.kora.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 
 public final class DefaultCamundaRestTelemetryFactory implements CamundaRestTelemetryFactory {
+    private final MeterRegistry meterRegistry;
+    private final Tracer tracer;
 
-    private static final CamundaRestTelemetry.CamundaRestTelemetryContext EMPTY_CTX = (_, _, _, _) -> {};
-    private static final CamundaRestTelemetry EMPTY = (_, _, _, _, _, _, _) -> EMPTY_CTX;
-
-    @Nullable
-    private final CamundaRestLoggerFactory logger;
-    @Nullable
-    private final CamundaRestMetricsFactory metrics;
-    @Nullable
-    private final CamundaRestTracerFactory tracer;
-
-    public DefaultCamundaRestTelemetryFactory(@Nullable CamundaRestLoggerFactory logger,
-                                              @Nullable CamundaRestMetricsFactory metrics,
-                                              @Nullable CamundaRestTracerFactory tracer) {
-        this.logger = logger;
-        this.metrics = metrics;
+    public DefaultCamundaRestTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
+        if (meterRegistry == null) {
+            meterRegistry = new CompositeMeterRegistry();
+        }
+        if (tracer == null) {
+            tracer = TracerProvider.noop().get("http-server");
+        }
+        this.meterRegistry = meterRegistry;
         this.tracer = tracer;
     }
 
     @Override
-    public CamundaRestTelemetry get(CamundaRestConfig.CamundaRestTelemetryConfig config) {
-        var metrics = this.metrics == null ? null : this.metrics.get(config.metrics());
-        var logging = this.logger == null ? null : this.logger.get(config.logging());
-        var tracer = this.tracer == null ? null : this.tracer.get(config.tracing());
-        if (metrics == null && logging == null && tracer == null) {
-            return EMPTY;
+    public CamundaRestTelemetry get(HttpServerTelemetryConfig config) {
+        if (!config.metrics().enabled() && !config.tracing().enabled() && !config.logging().enabled()) {
+            return NoopCamundaRestTelemetry.INSTANCE;
         }
 
-        return new DefaultCamundaRestTelemetry(metrics, logging, tracer);
+        return new DefaultCamundaRestTelemetry(config, tracer, new DefaultHttpServerLogger(config.logging()), meterRegistry);
     }
 }
