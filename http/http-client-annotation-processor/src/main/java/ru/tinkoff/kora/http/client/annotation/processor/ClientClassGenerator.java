@@ -814,7 +814,7 @@ public class ClientClassGenerator {
         if (mappingType != null) {
             return types.isAssignable(mappingType, resultType);
         }
-        var responseMapperType = TypeUtils.findSupertype(mappingMapper, httpClientResponseMapper);
+        var responseMapperType = TypeUtils.findSupertype(processingEnv, mappingMapper, httpClientResponseMapper);
         var typeArg = responseMapperType.getTypeArguments().get(0);
         if (CommonUtils.isFuture(typeArg)) {
             typeArg = ((DeclaredType) typeArg).getTypeArguments().get(0);
