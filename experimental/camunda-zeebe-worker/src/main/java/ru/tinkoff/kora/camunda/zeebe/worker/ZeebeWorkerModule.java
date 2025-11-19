@@ -8,6 +8,7 @@ import io.camunda.zeebe.client.api.worker.BackoffSupplier;
 import io.camunda.zeebe.client.impl.ZeebeClientBuilderImpl;
 import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
 import ru.tinkoff.grpc.client.GrpcClientModule;
@@ -119,6 +120,11 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
                                                    ZeebeClientConfiguration clientConfiguration,
                                                    @Tag(ZeebeClient.class) ManagedChannel managedChannel) {
         return new KoraZeebeClient(clientConfig, clientConfiguration, managedChannel);
+    }
+
+    @DefaultComponent
+    default MicrometerZeebeClientWorkerJobMetricsFactory micrometerZeebeClientWorkerJobMetricsFactory(@Nullable MeterRegistry meterRegistry) {
+        return new MicrometerZeebeClientWorkerJobMetricsFactory(meterRegistry);
     }
 
     @Root
