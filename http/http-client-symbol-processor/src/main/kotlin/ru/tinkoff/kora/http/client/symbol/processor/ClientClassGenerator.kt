@@ -929,9 +929,7 @@ private fun getTypeParams(type: KSType): MutableList<KSParameter> {
     if (type.declaration.typeParameters.isNotEmpty()) {
         for ((index, parameter) in type.declaration.typeParameters.withIndex()) {
             val typeArg = type.arguments[index]
-//            if(typeArg.variance != Variance.STAR) {
-                typeParams.add(KSParameter(parameter, typeArg))
-//            }
+            typeParams.add(KSParameter(parameter, typeArg))
         }
     }
     return typeParams
