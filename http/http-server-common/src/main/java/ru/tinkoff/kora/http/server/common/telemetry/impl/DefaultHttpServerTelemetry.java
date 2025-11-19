@@ -21,8 +21,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 
 public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
-    private static final Meter.Id NOOP_TIMER_ID = new Meter.Id("noop", Tags.empty(), null, null, Meter.Type.TIMER);
-    private static final Timer NOOP_TIMER = new NoopTimer(NOOP_TIMER_ID);
+    private static final Timer NOOP_TIMER = new NoopTimer(new Meter.Id("noop", Tags.empty(), null, null, Meter.Type.TIMER));
     private final HttpServerTelemetryConfig config;
     private final Tracer tracer;
     private final DefaultHttpServerLogger logger;

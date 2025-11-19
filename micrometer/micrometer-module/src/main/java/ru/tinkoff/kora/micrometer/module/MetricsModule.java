@@ -8,7 +8,6 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEngineBpmnMetricsFactory;
-import ru.tinkoff.kora.micrometer.module.camunda.rest.MicrometerCamundaRestMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.job.MicrometerZeebeClientWorkerJobMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.camunda.zeebe.worker.MicrometerZeebeWorkerMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
@@ -45,11 +44,6 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerCamundaEngineBpmnMetricsFactory micrometerCamundaEngineBpmnMetricsFactory(MeterRegistry meterRegistry) {
         return new MicrometerCamundaEngineBpmnMetricsFactory(meterRegistry);
-    }
-
-    @DefaultComponent
-    default MicrometerCamundaRestMetricsFactory micrometerCamundaRestMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerCamundaRestMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent
