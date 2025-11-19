@@ -11,8 +11,6 @@ import javax.lang.model.type.TypeMirror;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -76,12 +74,11 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             var specBuilder = implSpecBuilder
                 .addMethod(methodConstructor)
                 .addMethod(getMethodType(method));
-
             if (MethodUtils.isFuture(method) || MethodUtils.isMono(method)) {
-                specBuilder.addMethod(getMethodAsyncHandler(ownerType, method, variables));
-            } else {
-                specBuilder.addMethod(getMethodHandler(ownerType, method, variables));
+                throw new ProcessingErrorException("Async invocation is not supported", method);
             }
+
+            specBuilder.addMethod(getMethodHandler(ownerType, method, variables));
 
             var spec = specBuilder.build();
             try {
@@ -104,7 +101,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             .addAnnotation(Override.class)
             .addParameter(CLASS_CLIENT, "client")
             .addParameter(CLASS_ACTIVE_JOB, "job")
-            .returns(ParameterizedTypeName.get(ClassName.get(CompletionStage.class), ParameterizedTypeName.get(CLASS_FINAL_COMMAND, WildcardTypeName.subtypeOf(Object.class))));
+            .returns(ParameterizedTypeName.get(CLASS_FINAL_COMMAND, WildcardTypeName.subtypeOf(Object.class)));
 
         CodeBlock.Builder codeBuilder = CodeBlock.builder();
         codeBuilder.beginControlFlow("try");
@@ -127,7 +124,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
         String varsArg = String.join(", ", vars);
         if (MethodUtils.isVoid(method)) {
             codeBuilder.addStatement("this.handler.$L($L)", methodName, varsArg);
-            codeBuilder.addStatement("return $T.completedFuture(client.newCompleteCommand(job))", CompletableFuture.class);
+            codeBuilder.addStatement("return client.newCompleteCommand(job)");
         } else {
             if (MethodUtils.isOptional(method)) {
                 codeBuilder.addStatement("var result = this.handler.$L($L).orElse(null)", methodName, varsArg);
@@ -135,7 +132,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 codeBuilder.addStatement("var result = this.handler.$L($L)", methodName, varsArg);
             }
 
-            codeBuilder.beginControlFlow("if(result != null)");
+            codeBuilder.beginControlFlow("if (result != null)");
             AnnotationMirror returnJobVariable = AnnotationUtils.findAnnotation(method, ANNOTATION_VARIABLE);
             if (returnJobVariable != null) {
                 String varName = AnnotationUtils.parseAnnotationValueWithoutDefault(returnJobVariable, "value");
@@ -148,13 +145,13 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 }
 
                 codeBuilder.addStatement("var _vars = $S + varsWriter.toStringUnchecked(result) + $S", "{\"" + varName + "\":", "}");
-                codeBuilder.addStatement("return $T.completedFuture(client.newCompleteCommand(job).variables(_vars))", CompletableFuture.class);
+                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
             } else {
                 codeBuilder.addStatement("var _vars = varsWriter.toStringUnchecked(result)");
-                codeBuilder.addStatement("return $T.completedFuture(client.newCompleteCommand(job).variables(_vars))", CompletableFuture.class);
+                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
             }
             codeBuilder.nextControlFlow("else");
-            codeBuilder.addStatement("return $T.completedFuture(client.newCompleteCommand(job))", CompletableFuture.class);
+            codeBuilder.addStatement("return client.newCompleteCommand(job)");
             codeBuilder.endControlFlow();
         }
 
@@ -173,97 +170,6 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
 
         codeBuilder.nextControlFlow("catch (Exception e)");
         codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "UNEXPECTED");
-        codeBuilder.endControlFlow();
-
-        return methodBuilder
-            .addCode(codeBuilder.build())
-            .build();
-    }
-
-    private MethodSpec getMethodAsyncHandler(TypeElement ownerType, ExecutableElement method, List<Variable> variables) {
-        MethodSpec.Builder methodBuilder = MethodSpec.methodBuilder("handle")
-            .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(Override.class)
-            .addParameter(CLASS_CLIENT, "client")
-            .addParameter(CLASS_ACTIVE_JOB, "job")
-            .returns(ParameterizedTypeName.get(ClassName.get(CompletionStage.class), ParameterizedTypeName.get(CLASS_FINAL_COMMAND, WildcardTypeName.subtypeOf(Object.class))));
-
-        CodeBlock.Builder codeBuilder = CodeBlock.builder();
-        codeBuilder.beginControlFlow("try");
-        int varCounter = 1;
-        final List<String> vars = new ArrayList<>();
-        for (Variable variable : variables) {
-            var varName = "var" + (vars.size() + 1);
-            vars.add(varName);
-            if (variable.isVars) {
-                codeBuilder.addStatement("var $L = varsReader.read(job.getVariables())", varName);
-            } else if (variable.isContext) {
-                codeBuilder.addStatement("var $L = new $T(jobName, job)", varName, CLASS_ACTIVE_CONTEXT);
-            } else if (variable.isVar) {
-                String varReaderName = "var" + varCounter++ + "Reader";
-                codeBuilder.addStatement("var $L = $L.read(job.getVariables())", varName, varReaderName);
-            }
-        }
-
-        String methodName = method.getSimpleName().toString();
-        String varsArg = String.join(", ", vars);
-
-        if (MethodUtils.isVoidGeneric(method)) {
-            if (MethodUtils.isMono(method)) {
-                codeBuilder.add("return this.handler.$L($L).toFuture()\n", methodName, varsArg);
-            } else {
-                codeBuilder.add("return this.handler.$L($L)\n", methodName, varsArg);
-            }
-            codeBuilder.indent();
-            codeBuilder.addStatement(".thenApply(_r -> client.newCompleteCommand(job))");
-            codeBuilder.unindent();
-        } else {
-            if (MethodUtils.isMono(method)) {
-                codeBuilder.beginControlFlow("return this.handler.$L($L).toFuture().thenApply(result -> \n", methodName, varsArg);
-            } else {
-                codeBuilder.beginControlFlow("return this.handler.$L($L).thenApply(result -> \n", methodName, varsArg);
-            }
-            codeBuilder.indent();
-
-            codeBuilder.beginControlFlow("if(result != null)");
-            codeBuilder.beginControlFlow("try");
-            AnnotationMirror returnJobVariable = AnnotationUtils.findAnnotation(method, ANNOTATION_VARIABLE);
-            if (returnJobVariable != null) {
-                String varName = AnnotationUtils.parseAnnotationValueWithoutDefault(returnJobVariable, "value");
-                if (varName == null) {
-                    throw new ProcessingErrorException("Worker result job variable must specify name or @JobVariable annotation must be removed if result represent all variables", method);
-                }
-
-                if (isVariableInvalid(varName)) {
-                    throw new ProcessingErrorException("Worker result job variable name must be alphanumeric ( _ symbol is allowed) and not start with number, but was: " + varName, method);
-                }
-
-                codeBuilder.addStatement("var _vars = $S + varsWriter.toStringUnchecked(result) + $S", "{\"" + varName + "\":", "}");
-                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
-            } else {
-                codeBuilder.addStatement("var _vars = varsWriter.toStringUnchecked(result)");
-                codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
-            }
-            codeBuilder.nextControlFlow("catch ($T e)", UncheckedIOException.class);
-            codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "SERIALIZATION");
-            codeBuilder.endControlFlow();
-            codeBuilder.nextControlFlow("else");
-            codeBuilder.addStatement("return client.newCompleteCommand(job)");
-            codeBuilder.endControlFlow();
-            codeBuilder.endControlFlow(")");
-            codeBuilder.unindent();
-        }
-
-        codeBuilder.nextControlFlow("catch ($T e)", CLASS_WORKER_EXCEPTION);
-        codeBuilder.addStatement("throw e");
-
-        if (variables.stream().anyMatch(v -> v.isVars || v.isVar)) {
-            codeBuilder.nextControlFlow("catch ($T e)", IOException.class);
-            codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "DESERIALIZATION");
-        }
-
-        codeBuilder.nextControlFlow("catch (Exception e)");
-        codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "INTERNAL");
         codeBuilder.endControlFlow();
 
         return methodBuilder

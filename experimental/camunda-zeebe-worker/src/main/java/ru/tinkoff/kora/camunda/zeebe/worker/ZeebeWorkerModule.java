@@ -24,6 +24,7 @@ import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
 
 import java.net.URI;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
@@ -54,7 +55,8 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
             .defaultMessageTimeToLive(clientConfig.grpc().ttl())
             .maxMessageSize((int) clientConfig.grpc().maxMessageSize().toBytes())
             .grpcAddress(URI.create(clientConfig.grpc().url()))
-            .applyEnvironmentVariableOverrides(false);
+            .applyEnvironmentVariableOverrides(false)
+            .jobWorkerExecutor(Executors.newScheduledThreadPool(0, Thread.ofVirtual().name("zeebe-worker-", 1).factory()), true);
 
         if (defaultJobConfig.streamEnabled() != null) {
             zeebeClientConfiguration = (ZeebeClientBuilderImpl) zeebeClientConfiguration.defaultJobWorkerStreamEnabled(defaultJobConfig.streamEnabled());
