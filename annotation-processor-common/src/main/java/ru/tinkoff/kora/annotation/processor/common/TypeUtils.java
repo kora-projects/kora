@@ -85,14 +85,17 @@ public final class TypeUtils {
 
     record ParameterMirror(TypeMirror realType, TypeVariable genericType) {}
 
-    private static List<ParameterMirror> combineParams(ProcessingEnvironment pe,
+    private static List<ParameterMirror> combineParams(@Nullable ProcessingEnvironment pe,
                                                        List<ParameterMirror> superTypes,
                                                        List<ParameterMirror> currentTypes) {
         var result = new ArrayList<ParameterMirror>();
         for (var currentType : currentTypes) {
             var initSize = result.size();
             for (var superType : superTypes) {
-                if (pe.getTypeUtils().isSameType(superType.genericType(), currentType.realType())) {
+                if (pe != null && pe.getTypeUtils().isSameType(superType.genericType(), currentType.realType())) {
+                    result.add(new ParameterMirror(superType.realType(), currentType.genericType()));
+                    break;
+                } else if (superType.genericType().toString().equals(currentType.realType().toString())) {
                     result.add(new ParameterMirror(superType.realType(), currentType.genericType()));
                     break;
                 }
@@ -105,9 +108,13 @@ public final class TypeUtils {
         return result;
     }
 
-    private static DeclaredType enrich(ProcessingEnvironment pe,
+    private static DeclaredType enrich(@Nullable ProcessingEnvironment pe,
                                        DeclaredType type,
                                        List<ParameterMirror> superParams) {
+        if (pe == null) {
+            return type;
+        }
+
         if (!type.getTypeArguments().isEmpty()) {
             var argsForReplace = new ArrayList<TypeMirror>();
             var argsReplaced = new ArrayList<TypeMirror>();
