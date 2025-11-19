@@ -22,13 +22,13 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
             """.trimIndent(), """
             class TestMapper : HttpClientResponseMapper<String> {
               override fun apply(rs: HttpClientResponse): String {
-                  return "test-string-from-mapper";
+                  return "test-string-from-mapper"
               }
             }
             """.trimIndent(), """
-            class NullMapper <T> : HttpClientResponseMapper<T> {
+            class NullMapper<T> : HttpClientResponseMapper<T> {
               override fun apply(rs: HttpClientResponse): T? {
-                  return null;
+                  return null
               }
             }
             """.trimIndent()

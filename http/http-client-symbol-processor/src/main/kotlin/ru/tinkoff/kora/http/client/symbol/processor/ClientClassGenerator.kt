@@ -806,7 +806,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     if (typeArg.isCompletionStage()) {
                         typeArg = typeArg.arguments[0].type!!.resolve()
                     }
-                    typeArg.declaration is KSTypeParameter || declaration.returnType!!.resolve().isAssignableFrom(typeArg)
+                    typeArg.declaration is KSTypeParameter
+                        || declaration.returnType!!.resolve().isAssignableFrom(typeArg)
+                        || typeArg.declaration.qualifiedName?.asString() == Any::class.qualifiedName
                 }
 
                 else -> throw IllegalStateException()
@@ -927,7 +929,9 @@ private fun getTypeParams(type: KSType): MutableList<KSParameter> {
     if (type.declaration.typeParameters.isNotEmpty()) {
         for ((index, parameter) in type.declaration.typeParameters.withIndex()) {
             val typeArg = type.arguments[index]
-            typeParams.add(KSParameter(parameter, typeArg))
+//            if(typeArg.variance != Variance.STAR) {
+                typeParams.add(KSParameter(parameter, typeArg))
+//            }
         }
     }
     return typeParams
@@ -961,10 +965,13 @@ private fun enrich(
 ): KSType {
     if (type.arguments.isNotEmpty()) {
         val argsForReplace = mutableListOf<KSTypeArgument>()
+        val argsReplaced = mutableListOf<KSTypeArgument>()
         for (currentArg in type.arguments) {
             if (currentArg.type == null) {
                 continue
             }
+
+            val curSize = argsReplaced.size
 
             val curArgTypeRef = currentArg.type!!
             val curArgType = curArgTypeRef.resolve()
@@ -975,17 +982,24 @@ private fun enrich(
                     val enrichedTypeRef = resolver.createKSTypeReferenceFromKSType(enrichedCurArgType)
                     val enrichedTypeArg = resolver.getTypeArgument(enrichedTypeRef, Variance.INVARIANT)
                     argsForReplace.add(enrichedTypeArg)
+                    argsReplaced.add(enrichedTypeArg)
                 }
             } else if (curArgDec is KSTypeParameter) {
                 for (superParam in superParams) {
                     if (superParam.typeParam.qualifiedName?.asString() == curArgDec.qualifiedName?.asString()) {
                         argsForReplace.add(superParam.typeArg)
+                        argsReplaced.add(superParam.typeArg)
+                        break
                     }
                 }
             }
+
+            if (argsReplaced.size == curSize) {
+                argsForReplace.add(currentArg)
+            }
         }
 
-        if (argsForReplace.isNotEmpty()) {
+        if (argsReplaced.isNotEmpty()) {
             return type.replace(argsForReplace)
         }
     }
