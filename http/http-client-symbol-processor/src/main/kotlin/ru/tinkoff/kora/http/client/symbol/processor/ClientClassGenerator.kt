@@ -890,7 +890,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 data class KSParameter(val typeParam: KSTypeParameter, val typeArg: KSTypeArgument)
 
 private fun KSType.findSupertype(resolver: Resolver, targetClass: ClassName): KSType? {
-    return this.findSupertype(resolver, targetClass, listOf())
+    return this.findSupertype(resolver, targetClass, getTypeParams(this))
 }
 
 private fun KSType.findSupertype(
@@ -911,20 +911,47 @@ private fun KSType.findSupertype(
             return enriched
         }
 
-        val typeParams = mutableListOf<KSParameter>()
-        if (supertypeDecl.typeParameters.isNotEmpty()) {
-            for ((index, parameter) in supertypeDecl.typeParameters.withIndex()) {
-                val typeArg = supertypeResolved.arguments[index]
-                typeParams.add(KSParameter(parameter, typeArg))
-            }
-        }
+        val currentTypes = getTypeParams(supertypeResolved)
+        val resultedTypes = combineParams(superTypes, currentTypes)
 
-        val recursiveAttempt = supertypeResolved.findSupertype(resolver, targetClass, typeParams)
+        val recursiveAttempt = supertypeResolved.findSupertype(resolver, targetClass, resultedTypes)
         if (recursiveAttempt != null) {
             return recursiveAttempt
         }
     }
     return null
+}
+
+private fun getTypeParams(type: KSType): MutableList<KSParameter> {
+    val typeParams = mutableListOf<KSParameter>()
+    if (type.declaration.typeParameters.isNotEmpty()) {
+        for ((index, parameter) in type.declaration.typeParameters.withIndex()) {
+            val typeArg = type.arguments[index]
+            typeParams.add(KSParameter(parameter, typeArg))
+        }
+    }
+    return typeParams
+}
+
+private fun combineParams(
+    superTypes: List<KSParameter>,
+    currentTypes: List<KSParameter>
+): MutableList<KSParameter> {
+    val result = mutableListOf<KSParameter>()
+    for (currentType in currentTypes) {
+        val initSize = result.size
+        for (superType in superTypes) {
+            if (superType.typeParam.qualifiedName?.asString() == currentType.typeArg.type?.resolve()?.declaration?.qualifiedName?.asString()) {
+                result.add(KSParameter(currentType.typeParam, superType.typeArg))
+                break
+            }
+        }
+        if (result.size == initSize) {
+            result.add(currentType)
+        }
+    }
+
+    return result
 }
 
 private fun enrich(

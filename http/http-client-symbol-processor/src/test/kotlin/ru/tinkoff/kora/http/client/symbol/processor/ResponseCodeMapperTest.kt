@@ -247,19 +247,23 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
     }
 
     @Test
-    fun testGenericAbstractResponseMapper() {
+    fun testAbstractGenericResponseMapper() {
         compile(
             listOf(), """
             @HttpClient             
             interface TestClient {
-              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestMapper::class)
+            
+              @ResponseCodeMapper(code = 200, mapper = Test200Mapper::class)
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper::class)
               @HttpRoute(method = "GET", path = "/test")
               fun test(): ru.tinkoff.kora.common.util.Either<String, Throwable>
             }
             """.trimIndent(),
             """
-            class TestMapper : AbstractTestMapper<String, Throwable>("test-string-from-mapper") {
-            }
+            class Test200Mapper : AbstractTestMapper<String, Throwable>("200-string-from-mapper") 
+            """.trimIndent(),
+            """
+            class TestDefaultMapper : AbstractTestMapper<String, Throwable>("default-string-from-mapper") 
             """.trimIndent(),
             """
             abstract class AbstractTestMapper<T, E>(val t: T) : HttpClientResponseMapper<ru.tinkoff.kora.common.util.Either<T, E>> {
@@ -272,18 +276,66 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
         )
 
         reset(httpClient)
-        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
-        assertThat(client.invoke<Either<String, Throwable>>("test"))
-            .isEqualTo(Either.left<String, Throwable>("test-string-from-mapper"))
-
-        reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         assertThat(client.invoke<Either<String, Throwable>>("test"))
-            .isEqualTo(Either.left<String, Throwable>("test-string-from-mapper"))
+            .isEqualTo(Either.left<String, Throwable>("200-string-from-mapper"))
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
         assertThat(client.invoke<Either<String, Throwable>>("test"))
-            .isEqualTo(Either.left<String, Throwable>("test-string-from-mapper"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
+    }
+
+    @Test
+    fun testComplexAbstractGenericResponseMapper() {
+        compile(
+            listOf(), """
+            @HttpClient             
+            interface TestClient {
+            
+              @ResponseCodeMapper(code = 200, mapper = Test200Mapper::class)
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper::class)
+              @HttpRoute(method = "GET", path = "/test")
+              fun test(): ru.tinkoff.kora.common.util.Either<String, Throwable>
+            }
+            """.trimIndent(),
+            """
+            class Test200Mapper : AbstractChildTestMapper<String, Int, Throwable>("200-string-from-mapper") 
+            """.trimIndent(),
+            """
+            class TestDefaultMapper : AbstractChildTestMapper<String, Long, Throwable>("default-string-from-mapper") 
+            """.trimIndent(),
+            """
+            abstract class AbstractChildTestMapper<T, G, E>(t: T) : AbstractParentTestMapper<T, E, G>(t)
+            """.trimIndent(),
+            """
+            abstract class AbstractParentTestMapper<T, E, GRO>(val t: T) : HttpClientResponseMapper<ru.tinkoff.kora.common.util.Either<T, E>> {
+            
+              override fun apply(rs: HttpClientResponse): ru.tinkoff.kora.common.util.Either<T, E> {
+                  return ru.tinkoff.kora.common.util.Either.left(t)
+              }
+            }
+            """.trimIndent()
+        )
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("200-string-from-mapper"))
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
     }
 }
