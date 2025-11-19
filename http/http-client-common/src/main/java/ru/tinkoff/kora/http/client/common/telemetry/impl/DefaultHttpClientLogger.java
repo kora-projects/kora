@@ -7,10 +7,9 @@ import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 import ru.tinkoff.kora.http.common.HttpResultCode;
-import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.common.telemetry.Masking;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
 
-import java.util.Arrays;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -74,10 +73,10 @@ public class DefaultHttpClientLogger {
             gen.writeStringField("authority", rq.uri().getAuthority());
             gen.writeStringField("operation", operation);
             if (finalQuery != null && !finalQuery.isEmpty()) {
-                gen.writeStringField("queryParams", toMaskedString(finalQuery));
+                gen.writeStringField("queryParams", Masking.toMaskedString(maskedQueryParams, mask, finalQuery));
             }
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringField("headers", toMaskedString(finalHeaders));
+                gen.writeStringField("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             if (finalBody != null) {
                 gen.writeStringField("body", requestBodyString(finalBody));
@@ -123,7 +122,7 @@ public class DefaultHttpClientLogger {
                 gen.writeNumberField("statusCode", statusCode);
             }
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringField("headers", toMaskedString(finalHeaders));
+                gen.writeStringField("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             if (finalBody != null) {
                 gen.writeStringField("body", responseBodyString(finalBody));
@@ -163,45 +162,6 @@ public class DefaultHttpClientLogger {
 
     public String requestBodyString(String body) {
         return body;
-    }
-
-    private String toMaskedString(HttpHeaders headers) {
-        var sb = new StringBuilder(headers.size() * AVERAGE_HEADER_SIZE);
-        var iterator = headers.iterator();
-        while (iterator.hasNext()) {
-            var headerEntry = iterator.next();
-            // В HttpHeaders все заголовки в нижнем регистре, приведение не требуется
-            var headerKey = headerEntry.getKey();
-            var headerValues = headerEntry.getValue();
-            sb.append(headerKey)
-                .append(": ")
-                .append(maskedHeaders.contains(headerKey) ? mask : String.join(", ", headerValues));
-            if (iterator.hasNext()) {
-                sb.append('\n');
-            }
-        }
-        return sb.toString();
-    }
-
-    private String toMaskedString(String queryParams) {
-        if (maskedQueryParams.isEmpty()) {
-            return queryParams;
-        }
-
-        return Arrays.stream(queryParams.split("&"))
-            .map(str -> {
-                final int i = str.indexOf('=');
-                if (i == -1) {
-                    return str;
-                }
-                final String paramName = str.substring(0, i);
-                if (maskedQueryParams.contains(paramName.toLowerCase(Locale.ROOT))) {
-                    return paramName + '=' + mask;
-                } else {
-                    return str;
-                }
-            })
-            .collect(Collectors.joining("&"));
     }
 
     private boolean shouldWritePath(Logger logger) {

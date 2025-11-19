@@ -1,76 +1,51 @@
 package ru.tinkoff.kora.camunda.rest.undertow;
 
-import io.undertow.io.IoCallback;
-import io.undertow.io.Sender;
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.undertow.server.HttpHandler;
-import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.PathHandler;
-import io.undertow.servlet.api.DeploymentInfo;
 import io.undertow.servlet.api.DeploymentManager;
 import io.undertow.servlet.api.ServletContainer;
 import io.undertow.util.AttachmentKey;
-import io.undertow.util.HeaderMap;
-import io.undertow.util.Headers;
-import io.undertow.util.HttpString;
-import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.Application;
 import org.jboss.resteasy.core.ResteasyDeploymentImpl;
 import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
-import org.jboss.resteasy.spi.ResteasyDeployment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.xnio.IoUtils;
+import org.slf4j.MDC;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetry;
-import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetry.CamundaRestTelemetryContext;
-import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTracer;
 import ru.tinkoff.kora.camunda.rest.undertow.UndertowPathMatcher.HttpMethodPath;
-import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.telemetry.Observation;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.common.util.TimeUtils;
-import ru.tinkoff.kora.http.common.HttpMethod;
-import ru.tinkoff.kora.http.common.HttpResultCode;
-import ru.tinkoff.kora.http.common.body.HttpBodyInput;
-import ru.tinkoff.kora.http.common.cookie.Cookie;
-import ru.tinkoff.kora.http.common.header.HttpHeaders;
-import ru.tinkoff.kora.http.server.common.HttpServerRequest;
-import ru.tinkoff.kora.http.server.common.HttpServerResponse;
-import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
-import ru.tinkoff.kora.http.server.undertow.UndertowHttpHeaders;
+import ru.tinkoff.kora.http.server.undertow.UndertowContext;
+import ru.tinkoff.kora.http.server.undertow.UndertowExchangeProcessor;
 import ru.tinkoff.kora.http.server.undertow.UndertowHttpServer;
-import ru.tinkoff.kora.openapi.management.OpenApiHttpServerHandler;
-import ru.tinkoff.kora.openapi.management.RapidocHttpServerHandler;
-import ru.tinkoff.kora.openapi.management.SwaggerUIHttpServerHandler;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 
 final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHandler> {
 
     private static final Logger logger = LoggerFactory.getLogger(UndertowCamundaRestHttpHandler.class);
+    private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
 
     private final Application application;
     private final CamundaRestConfig camundaRestConfig;
     private final CamundaRestTelemetry telemetry;
-    @Nullable
-    private final CamundaRestTracer tracer;
 
     private volatile DeploymentManager deploymentManager;
     private volatile HttpHandler realhttpHandler;
 
     UndertowCamundaRestHttpHandler(List<Application> applications,
                                    CamundaRestConfig camundaRestConfig,
-                                   CamundaRestTelemetry telemetry,
-                                   @Nullable CamundaRestTracer tracer) {
+                                   CamundaRestTelemetry telemetry) {
         this.telemetry = telemetry;
-        this.tracer = tracer;
-        Set<Class<?>> classes = new HashSet<>();
-        Map<String, Object> props = new HashMap<>();
-        for (Application app : applications) {
+        var classes = new HashSet<Class<?>>();
+        var props = new HashMap<String, Object>();
+        for (var app : applications) {
             classes.addAll(app.getClasses());
             props.putAll(app.getProperties());
         }
@@ -98,18 +73,19 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
     @Override
     public void init() throws Exception {
         logger.debug("Camunda Rest Handler (Undertow) configuring...");
-        final long started = TimeUtils.started();
+        var started = TimeUtils.started();
 
-        final ResteasyDeployment deployment = new ResteasyDeploymentImpl();
+        var deployment = new ResteasyDeploymentImpl();
         deployment.setApplication(application);
         deployment.start();
 
-        final PathHandler root = new PathHandler();
-        final ServletContainer container = ServletContainer.Factory.newInstance();
+        var root = new PathHandler();
+        var container = ServletContainer.Factory.newInstance();
 
         var server = new UndertowJaxrsServer();
-        final DeploymentInfo di = server.undertowDeployment(deployment);
-        final ClassLoader classLoader = UndertowCamundaRestHttpHandler.class.getClassLoader();
+        var di = server.undertowDeployment(deployment);
+
+        var classLoader = UndertowCamundaRestHttpHandler.class.getClassLoader();
         di.setClassLoader(classLoader);
         di.setContextPath(camundaRestConfig.path());
         di.setDeploymentName("ResteasyCamundaKora");
@@ -121,28 +97,51 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
 
         var restHandler = deploymentManager.start();
         root.addPrefixPath(camundaRestConfig.path(), exchange -> {
-            var match = restMatcher.getMatch(exchange.getRequestMethod().toString(), exchange.getRequestPath());
-            var pathTemplate = match == null ? null : match.pathTemplate();
-            var telemetryContext = telemetry.get(
-                exchange.getRequestScheme(),
-                exchange.getHostName(),
-                exchange.getRequestMethod().toString(),
-                exchange.getRelativePath(),
-                pathTemplate,
-                new UndertowHttpHeaders(exchange.getRequestHeaders()),
-                Map.of()// todo do we need query here?
-            );
+            var rootCtx = W3CTraceContextPropagator.getInstance().extract(io.opentelemetry.context.Context.root(), exchange.getRequestHeaders(), UndertowExchangeProcessor.HttpServerExchangeMapGetter.INSTANCE);
+            ScopedValue
+                .where(UndertowContext.VALUE, new UndertowContext(exchange))
+                .where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+                .where(OpentelemetryContext.VALUE, rootCtx)
+                .call(() -> {
+                    MDC.clear();
+                    var match = restMatcher.getMatch(exchange.getRequestMethod().toString(), exchange.getRequestPath());
+                    var pathTemplate = match == null ? null : match.pathTemplate();
+                    var pathParams = match == null ? Map.<String, String>of() : match.pathParameters();
+                    var observation = this.telemetry.observe(exchange, pathTemplate);
+                    exchange.addExchangeCompleteListener((e, nextListener) -> {
+                        observation.observeResponseCode(e.getStatusCode());
+                        observation.end();
+                        nextListener.proceed();
+                    });
+                    observation.observeRequest(pathTemplate, pathParams);
+                    var ctx = rootCtx.with(observation.span());
+                    W3CTraceContextPropagator.getInstance().inject(
+                        ctx,
+                        exchange.getResponseHeaders(),
+                        UndertowExchangeProcessor.HttpServerExchangeMapGetter.INSTANCE
+                    );
 
-            restHandler.handleRequest(exchange.addExchangeCompleteListener((ex, nextListener) -> {
-                var httpResultCode = HttpResultCode.fromStatusCode(ex.getStatusCode());
-                telemetryContext.close(ex.getStatusCode(), httpResultCode, new UndertowHttpHeaders(ex.getResponseHeaders()), null);
-                nextListener.proceed();
-            }));
+                    ScopedValue
+                        .where(OpentelemetryContext.VALUE, ctx)
+                        .where(Observation.VALUE, observation)
+                        .call(() -> {
+                            try {
+                                restHandler.handleRequest(exchange);
+                                return null;
+                            } catch (Throwable t) {
+                                observation.observeError(t);
+                                throw t;
+                            }
+                        });
+                    return null;
+                });
         });
 
-        OpenApiHttpHandler openApiHttpHandler = new OpenApiHttpHandler(camundaRestConfig, telemetry, tracer);
-        root.addPrefixPath("/", openApiHttpHandler);
-        this.realhttpHandler = root;
+        root.addPrefixPath("/", new OpenApiHttpHandler(camundaRestConfig));
+        this.realhttpHandler = exchange -> {
+            var executor = UndertowHttpServer.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "camunda-rest");
+            exchange.dispatch(executor, root);
+        };
 
         logger.info("Camunda Rest Handler (Undertow) configured in {}", TimeUtils.tookForLogging(started));
     }
@@ -555,297 +554,4 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         return restPaths;
     }
 
-    private static final class OpenApiHttpHandler implements HttpHandler {
-
-        private final UndertowPathMatcher pathMatcher;
-        private final CamundaRestConfig restConfig;
-        private final CamundaRestTelemetry telemetry;
-        @Nullable
-        private final CamundaRestTracer tracer;
-
-        private final OpenApiHttpServerHandler openApiHandler;
-        private final SwaggerUIHttpServerHandler swaggerUIHandler;
-        private final RapidocHttpServerHandler rapidocHandler;
-        private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
-
-        private OpenApiHttpHandler(CamundaRestConfig restConfig,
-                                   CamundaRestTelemetry telemetry,
-                                   @Nullable CamundaRestTracer tracer) {
-            this.restConfig = restConfig;
-            this.telemetry = telemetry;
-            this.tracer = tracer;
-
-            final List<HttpMethodPath> openapiMethods = new ArrayList<>();
-            var openapi = restConfig.openapi();
-            if (openapi.file().size() == 1) {
-                openapiMethods.add(new HttpMethodPath(HttpMethod.GET, openapi.endpoint()));
-            } else {
-                openapiMethods.add(new HttpMethodPath(HttpMethod.GET, openapi.endpoint() + "/{file}"));
-            }
-            openapiMethods.add(new HttpMethodPath(HttpMethod.GET, openapi.rapidoc().endpoint()));
-            openapiMethods.add(new HttpMethodPath(HttpMethod.GET, openapi.swaggerui().endpoint()));
-            this.pathMatcher = new UndertowPathMatcher(openapiMethods);
-
-            this.openApiHandler = new OpenApiHttpServerHandler(openapi.file(), f -> {
-                if ("/engine-rest".equals(restConfig.path())) {
-                    String fileAsStr = new String(f, StandardCharsets.UTF_8);
-                    return fileAsStr
-                        .replace("8080", String.valueOf(restConfig.port()))
-                        .getBytes(StandardCharsets.UTF_8);
-                } else {
-                    String fileAsStr = new String(f, StandardCharsets.UTF_8);
-                    String newEnginePath = restConfig.path().startsWith("/")
-                        ? restConfig.path().substring(1)
-                        : restConfig.path();
-
-                    return fileAsStr
-                        .replace("engine-rest", newEnginePath)
-                        .replace("8080", String.valueOf(restConfig.port()))
-                        .getBytes(StandardCharsets.UTF_8);
-                }
-            });
-            this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.endpoint(), openapi.swaggerui().endpoint(), openapi.file());
-            this.rapidocHandler = new RapidocHttpServerHandler(openapi.endpoint(), openapi.rapidoc().endpoint(), openapi.file());
-        }
-
-        @Override
-        public void handleRequest(HttpServerExchange exchange) {
-            var requestPath = exchange.getRequestPath();
-            var match = pathMatcher.getMatch(exchange.getRequestMethod().toString(), requestPath);
-            if (match == null) {
-                exchange.setStatusCode(404);
-                exchange.endExchange();
-                return;
-            }
-            var executor = UndertowHttpServer.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "undertow-kora-camunda");
-            exchange.dispatch(executor, exchange1 -> {
-                var context = Context.clear();
-
-                var telemetryContext = telemetry.get(
-                    exchange.getRequestScheme(),
-                    exchange.getHostName(),
-                    exchange.getRequestMethod().toString(),
-                    exchange.getRelativePath(),
-                    match.pathTemplate(),
-                    new UndertowHttpHeaders(exchange.getRequestHeaders()),
-                    Map.of()// todo do we need query here?
-                );
-
-                var fakeRequest = getFakeRequest(match);
-                var openapi = restConfig.openapi();
-                if (openapi.enabled() && requestPath.startsWith(openapi.endpoint())) {
-                    executeHandler(context, telemetryContext, exchange1, openApiHandler, fakeRequest);
-                } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().endpoint())) {
-                    executeHandler(context, telemetryContext, exchange1, swaggerUIHandler, fakeRequest);
-                } else if (openapi.rapidoc().enabled() && requestPath.startsWith(openapi.rapidoc().endpoint())) {
-                    executeHandler(context, telemetryContext, exchange1, rapidocHandler, fakeRequest);
-                } else {
-                    telemetryContext.close(404, HttpResultCode.CLIENT_ERROR, HttpHeaders.empty(), null);
-                    exchange.setStatusCode(404);
-                    exchange.endExchange();
-                }
-            });
-        }
-
-        private HttpServerRequest getFakeRequest(UndertowPathMatcher.Match match) {
-            return new HttpServerRequest() {
-                @Override
-                public String method() {
-                    return "";
-                }
-
-                @Override
-                public String path() {
-                    return "";
-                }
-
-                @Override
-                public String route() {
-                    return "";
-                }
-
-                @Override
-                public HttpHeaders headers() {
-                    return null;
-                }
-
-                @Override
-                public List<Cookie> cookies() {
-                    return List.of();
-                }
-
-                @Override
-                public Map<String, ? extends Collection<String>> queryParams() {
-                    return Map.of();
-                }
-
-                @Override
-                public Map<String, String> pathParams() {
-                    return restConfig.openapi().file().size() == 1
-                        ? Map.of()
-                        : Map.of("file", match.pathParameters().get("file"));
-                }
-
-                @Override
-                public HttpBodyInput body() {
-                    return null;
-                }
-            };
-        }
-
-        private void executeHandler(Context ctx, CamundaRestTelemetryContext telemetryContext, HttpServerExchange exchange, HttpServerRequestHandler.HandlerFunction handler, HttpServerRequest request) {
-            final HttpServerResponse response;
-            try {
-                response = handler.apply(ctx, request);
-            } catch (Throwable e) {
-                sendException(exchange, ctx, telemetryContext, e);
-                return;
-            }
-            sendResponse(exchange, response, ctx, telemetryContext);
-
-        }
-
-        private void sendResponse(HttpServerExchange exchange,
-                                  HttpServerResponse httpResponse,
-                                  Context context,
-                                  CamundaRestTelemetryContext telemetryContext) {
-            var headers = httpResponse.headers();
-            exchange.setStatusCode(httpResponse.code());
-            if (tracer != null) {
-                tracer.inject(context, exchange.getResponseHeaders(),
-                    (carrier, key, value) -> carrier.add(HttpString.tryFromString(key), value)
-                );
-            }
-
-            setHeaders(exchange.getResponseHeaders(), headers, null);
-            var body = httpResponse.body();
-            if (body == null) {
-                exchange.addExchangeCompleteListener((e, nextListener) -> {
-                    var httpResultCode = HttpResultCode.fromStatusCode(e.getStatusCode());
-                    telemetryContext.close(e.getStatusCode(), httpResultCode, httpResponse.headers(), null);
-                    nextListener.proceed();
-                });
-                exchange.endExchange();
-                return;
-            }
-
-            var contentType = body.contentType();
-            if (contentType != null) {
-                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, contentType);
-            }
-
-            var full = body.getFullContentIfAvailable();
-            if (full != null) {
-                this.sendBody(exchange, httpResponse, telemetryContext, full);
-            } else {
-                throw new IllegalStateException("Shouldn't happen");
-            }
-        }
-
-        private void setHeaders(HeaderMap responseHeaders, HttpHeaders headers, @Nullable String contentType) {
-            for (var header : headers) {
-                var key = header.getKey();
-                if (key.equals("server")) {
-                    continue;
-                }
-                if (key.equals("content-type") && contentType != null) {
-                    continue;
-                }
-                if (key.equals("content-length")) {
-                    continue;
-                }
-                if (key.equals("transfer-encoding")) {
-                    continue;
-                }
-                responseHeaders.addAll(HttpString.tryFromString(key), header.getValue());
-            }
-        }
-
-        private void sendBody(HttpServerExchange exchange,
-                              HttpServerResponse httpResponse,
-                              CamundaRestTelemetryContext telemetryContext,
-                              @Nullable ByteBuffer body) {
-            var headers = httpResponse.headers();
-            if (body == null || body.remaining() == 0) {
-                exchange.setResponseContentLength(0);
-                exchange.addExchangeCompleteListener((e, nextListener) -> {
-                    var resultCode = HttpResultCode.fromStatusCode(exchange.getStatusCode());
-                    telemetryContext.close(exchange.getStatusCode(), resultCode, headers, null);
-                    nextListener.proceed();
-                });
-                exchange.endExchange();
-            } else {
-                exchange.setResponseContentLength(body.remaining());
-                // io.undertow.io.DefaultIoCallback
-                exchange.getResponseSender().send(body, new IoCallback() {
-                    @Override
-                    public void onComplete(HttpServerExchange exchange, Sender sender) {
-                        sender.close(new IoCallback() {
-                            @Override
-                            public void onComplete(HttpServerExchange exchange, Sender sender) {
-                                if (exchange.isComplete()) {
-                                    var resultCode = HttpResultCode.fromStatusCode(exchange.getStatusCode());
-                                    telemetryContext.close(exchange.getStatusCode(), resultCode, headers, null);
-                                } else {
-                                    exchange.addExchangeCompleteListener((e, nextListener) -> {
-                                        var resultCode = HttpResultCode.fromStatusCode(e.getStatusCode());
-                                        telemetryContext.close(e.getStatusCode(), resultCode, headers, null);
-                                        nextListener.proceed();
-                                    });
-                                    exchange.endExchange();
-                                }
-                            }
-
-                            @Override
-                            public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
-                                try {
-                                    exchange.endExchange();
-                                } finally {
-                                    var resultCode = HttpResultCode.fromStatusCode(exchange.getStatusCode());
-                                    telemetryContext.close(exchange.getStatusCode(), resultCode, HttpHeaders.empty(), exception);
-                                }
-                            }
-                        });
-                    }
-
-                    @Override
-                    public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
-                        try {
-                            exchange.endExchange();
-                        } finally {
-                            IoUtils.safeClose(exchange.getConnection());
-                            var resultCode = HttpResultCode.fromStatusCode(exchange.getStatusCode());
-                            telemetryContext.close(exchange.getStatusCode(), resultCode, HttpHeaders.empty(), exception);
-                        }
-                    }
-                });
-            }
-        }
-
-        private void sendException(HttpServerExchange exchange,
-                                   Context context,
-                                   CamundaRestTelemetryContext telemetryContext,
-                                   Throwable error) {
-            if (!(error instanceof HttpServerResponse rs)) {
-                exchange.setStatusCode(500);
-                exchange.getResponseSender().send(Objects.requireNonNullElse(error.getMessage(), "Unknown error"), StandardCharsets.UTF_8, new IoCallback() {
-                    @Override
-                    public void onComplete(HttpServerExchange exchange, Sender sender) {
-                        telemetryContext.close(500, HttpResultCode.SERVER_ERROR, HttpHeaders.empty(), error);
-                        IoCallback.END_EXCHANGE.onComplete(exchange, sender);
-                    }
-
-                    @Override
-                    public void onException(HttpServerExchange exchange, Sender sender, IOException exception) {
-                        error.addSuppressed(exception);
-                        telemetryContext.close(500, HttpResultCode.CONNECTION_ERROR, HttpHeaders.empty(), error);
-                        IoCallback.END_EXCHANGE.onException(exchange, sender, exception);
-                    }
-                });
-                exchange.endExchange();
-            } else {
-                sendResponse(exchange, rs, context, telemetryContext);
-            }
-        }
-    }
 }

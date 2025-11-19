@@ -12,7 +12,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-class LazyRequest implements HttpServerRequest {
+public class LazyRequest implements HttpServerRequest {
     private final PublicApiRequest publicApiRequest;
     private final String method;
     private final String path;
@@ -22,7 +22,7 @@ class LazyRequest implements HttpServerRequest {
     private Map<String, ? extends Collection<String>> queryParams;
     private List<Cookie> cookies;
 
-    LazyRequest(PublicApiRequest publicApiRequest, Map<String, String> pathParams, @Nullable String routeTemplate) {
+    public LazyRequest(PublicApiRequest publicApiRequest, Map<String, String> pathParams, @Nullable String routeTemplate) {
         this.publicApiRequest = publicApiRequest;
         this.method = publicApiRequest.method();
         this.path = publicApiRequest.path();
