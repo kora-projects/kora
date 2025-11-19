@@ -311,10 +311,10 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
             class TestDefaultMapper : AbstractChildTestMapper<String, Long, Throwable>("default-string-from-mapper") 
             """.trimIndent(),
             """
-            abstract class AbstractChildTestMapper<T, G, E>(t: T) : AbstractParentTestMapper<T, E, G>(t)
+            abstract class AbstractChildTestMapper<K, G, E>(t: K) : AbstractParentTestMapper<K, E, G, Double>(t)
             """.trimIndent(),
             """
-            abstract class AbstractParentTestMapper<T, E, GRO>(val t: T) : HttpClientResponseMapper<ru.tinkoff.kora.common.util.Either<T, E>> {
+            abstract class AbstractParentTestMapper<T, E, GRO, STATIC>(val t: T) : HttpClientResponseMapper<ru.tinkoff.kora.common.util.Either<T, E>> {
             
               override fun apply(rs: HttpClientResponse): ru.tinkoff.kora.common.util.Either<T, E> {
                   return ru.tinkoff.kora.common.util.Either.left(t)
