@@ -6,8 +6,11 @@ import io.camunda.zeebe.client.api.command.ThrowErrorCommandStep1.ThrowErrorComm
 import io.camunda.zeebe.client.api.response.ActivatedJob;
 import io.camunda.zeebe.client.api.worker.JobClient;
 import io.camunda.zeebe.client.api.worker.JobHandler;
+import io.opentelemetry.context.Context;
+import org.slf4j.MDC;
 import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
 import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry.ZeebeWorkerTelemetryContext;
+import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 
 import java.util.concurrent.CompletionException;
 
@@ -26,17 +29,20 @@ final class WrappedJobHandler implements JobHandler {
         final JobContext jobContext = new ActiveJobContext(jobHandler.type(), job);
         var telemetryContext = telemetry.get(jobContext);
 
-        try {
-            jobHandler.handle(client, job).whenComplete((command, ex) -> {
-                if (command != null) {
-                    handlerSuccess(telemetryContext, command);
-                } else {
-                    handleError(client, job, telemetryContext, ex);
+        MDC.clear();
+        ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
+            .where(OpentelemetryContext.VALUE, Context.root())
+            .where(JobContext.VALUE, jobContext)
+            .run(() -> {
+                FinalCommandStep<?> finalCommand;
+                try {
+                    finalCommand = jobHandler.handle(client, job);
+                } catch (Exception e) {
+                    handleError(client, job, telemetryContext, e);
+                    return;
                 }
+                handlerSuccess(telemetryContext, finalCommand);
             });
-        } catch (Exception e) {
-            handleError(client, job, telemetryContext, e);
-        }
     }
 
     private void handlerSuccess(ZeebeWorkerTelemetryContext telemetryContext,
