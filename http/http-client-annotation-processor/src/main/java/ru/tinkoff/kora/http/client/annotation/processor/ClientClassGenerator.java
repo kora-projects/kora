@@ -819,7 +819,7 @@ public class ClientClassGenerator {
         if (CommonUtils.isFuture(typeArg)) {
             typeArg = ((DeclaredType) typeArg).getTypeArguments().get(0);
         }
-        return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(typeArg, resultType);
+        return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(resultType, typeArg);
     }
 
     record ResponseCodeMapperData(int code, @Nullable TypeMirror type, @Nullable DeclaredType mapper) {
