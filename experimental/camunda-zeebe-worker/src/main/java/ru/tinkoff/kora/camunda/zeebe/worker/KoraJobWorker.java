@@ -7,7 +7,6 @@ import ru.tinkoff.kora.camunda.zeebe.worker.annotation.JobWorker;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.CompletionStage;
 
 public interface KoraJobWorker {
 
@@ -25,5 +24,5 @@ public interface KoraJobWorker {
         return Collections.emptyList();
     }
 
-    CompletionStage<FinalCommandStep<?>> handle(JobClient client, ActivatedJob job) throws JobWorkerException;
+    FinalCommandStep<?> handle(JobClient client, ActivatedJob job) throws JobWorkerException;
 }

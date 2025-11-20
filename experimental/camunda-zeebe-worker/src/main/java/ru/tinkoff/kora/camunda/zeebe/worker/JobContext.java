@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.Map;
 
 public interface JobContext {
+    ScopedValue<JobContext> VALUE = ScopedValue.newInstance();
 
     long jobKey();
 
