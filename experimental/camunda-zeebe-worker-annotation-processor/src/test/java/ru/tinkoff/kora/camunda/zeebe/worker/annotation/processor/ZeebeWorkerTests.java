@@ -24,7 +24,6 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
             @Component
             public final class Handler {
-                        
                 @JobWorker("worker")
                 void handle() {
                     // do something
@@ -46,9 +45,9 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
             @Component
             public final class Handler {
-                        
+            
                 public record SomeVariables(String name, String id) {}
-                        
+            
                 @JobWorker("worker")
                 void handle(@JobVariables SomeVariables vars) {
                     // do something
@@ -70,7 +69,6 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
             @Component
             public final class Handler {
-                        
                 @JobWorker("worker")
                 void handle(@JobVariable String var1, @Nullable @JobVariable("var12345") String var2) {
                     // do something
@@ -92,9 +90,9 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
             @Component
             public final class Handler {
-                        
+            
                 public record SomeResponse(String name, String id) {}
-                
+            
                 @JobWorker("worker")
                 SomeResponse handle() {
                     return new SomeResponse("1", "2");
@@ -116,7 +114,6 @@ public class ZeebeWorkerTests extends AbstractAnnotationProcessorTest {
         this.compile(List.of(new ZeebeWorkerAnnotationProcessor()), """
             @Component
             public final class Handler {
-                        
                 @JobWorker("worker")
                 void handle(JobContext context) {
                     // do something
