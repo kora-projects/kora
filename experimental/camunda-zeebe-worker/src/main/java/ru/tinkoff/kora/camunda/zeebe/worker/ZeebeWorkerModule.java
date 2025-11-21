@@ -9,13 +9,17 @@ import io.camunda.zeebe.client.impl.ZeebeClientBuilderImpl;
 import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
 import ru.tinkoff.grpc.client.GrpcClientModule;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Wrapped;
-import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.*;
+import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.DefaultZeebeWorkerTelemetryFactory;
+import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.MicrometerZeebeClientWorkerJobMetricsFactory;
+import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeClientWorkerMetricsFactory;
+import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
@@ -99,15 +103,8 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
     }
 
     @DefaultComponent
-    default ZeebeWorkerLoggerFactory zeebeWorkerLoggerFactory() {
-        return new DefaultZeebeWorkerLoggerFactory();
-    }
-
-    @DefaultComponent
-    default ZeebeWorkerTelemetryFactory zeebeWorkerTelemetryFactory(@Nullable ZeebeWorkerLoggerFactory loggerFactory,
-                                                                    @Nullable ZeebeWorkerMetricsFactory metricsFactory,
-                                                                    @Nullable ZeebeWorkerTracerFactory tracerFactory) {
-        return new DefaultZeebeWorkerTelemetryFactory(loggerFactory, metricsFactory, tracerFactory);
+    default ZeebeWorkerTelemetryFactory zeebeWorkerTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
+        return new DefaultZeebeWorkerTelemetryFactory(meterRegistry, tracer);
     }
 
     @Tag(ZeebeClient.class)

@@ -1,20 +1,32 @@
 package ru.tinkoff.kora.camunda.zeebe.worker;
 
-import io.camunda.zeebe.client.api.command.FailJobCommandStep1.FailJobCommandStep2;
-import io.camunda.zeebe.client.api.command.FinalCommandStep;
-import io.camunda.zeebe.client.api.command.ThrowErrorCommandStep1.ThrowErrorCommandStep2;
 import io.camunda.zeebe.client.api.response.ActivatedJob;
 import io.camunda.zeebe.client.api.worker.JobClient;
 import io.camunda.zeebe.client.api.worker.JobHandler;
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
+import io.opentelemetry.context.propagation.TextMapGetter;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.MDC;
 import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
-import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry.ZeebeWorkerTelemetryContext;
 import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 
-import java.util.concurrent.CompletionException;
+import java.util.Map;
+import java.util.Set;
 
 final class WrappedJobHandler implements JobHandler {
+    private static final TextMapGetter<Map<String, String>> TEXT_MAP_GETTER = new TextMapGetter<>() {
+        @Override
+        public Set<String> keys(Map<String, String> carrier) {
+            return carrier.keySet();
+        }
+
+        @Override
+        @Nullable
+        public String get(@Nullable Map<String, String> carrier, String key) {
+            return carrier == null ? null : carrier.get(key);
+        }
+    };
 
     private final ZeebeWorkerTelemetry telemetry;
     private final KoraJobWorker jobHandler;
@@ -26,77 +38,36 @@ final class WrappedJobHandler implements JobHandler {
 
     @Override
     public void handle(JobClient client, ActivatedJob job) {
-        final JobContext jobContext = new ActiveJobContext(jobHandler.type(), job);
-        var telemetryContext = telemetry.get(jobContext);
+        var jobContext = new ActiveJobContext(jobHandler.type(), job);
 
-        MDC.clear();
-        ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, new ru.tinkoff.kora.logging.common.MDC())
-            .where(OpentelemetryContext.VALUE, Context.root())
-            .where(JobContext.VALUE, jobContext)
-            .run(() -> {
-                FinalCommandStep<?> finalCommand;
-                try {
-                    finalCommand = jobHandler.handle(client, job);
-                } catch (Exception e) {
-                    handleError(client, job, telemetryContext, e);
-                    return;
-                }
-                handlerSuccess(telemetryContext, finalCommand);
-            });
-    }
+        var rootCtx = W3CTraceContextPropagator.getInstance().extract(
+            Context.root(),
+            job.getCustomHeaders(),
+            TEXT_MAP_GETTER
+        );
+        ScopedValue.where(OpentelemetryContext.VALUE, rootCtx).run(() -> {
+            var observation = telemetry.observe(job);
+            var mdc = new ru.tinkoff.kora.logging.common.MDC();
 
-    private void handlerSuccess(ZeebeWorkerTelemetryContext telemetryContext,
-                                FinalCommandStep<?> command) {
-        command.send().whenComplete((r, e) -> {
-            if (e != null) {
-                telemetryContext.close(ZeebeWorkerTelemetry.ErrorType.SYSTEM, e);
-            } else {
-                if (command instanceof ThrowErrorCommandStep2 || command instanceof FailJobCommandStep2) {
-                    telemetryContext.close(ZeebeWorkerTelemetry.ErrorType.USER, null);
-                } else {
-                    telemetryContext.close();
-                }
-            }
+            MDC.clear();
+            ScopedValue.where(ru.tinkoff.kora.logging.common.MDC.VALUE, mdc)
+                .where(OpentelemetryContext.VALUE, Context.root())
+                .where(JobContext.VALUE, jobContext)
+                .run(() -> {
+                    try {
+                        observation.observeHandle(jobHandler.type(), job);
+                        var command = jobHandler.handle(client, job);
+                        observation.observeFinalCommandStep(command);
+                        command
+                            .send()
+                            .join();
+                    } catch (Throwable t) {
+                        observation.observeError(t);
+                        throw t;
+                    } finally {
+                        observation.end();
+                    }
+                });
         });
-    }
-
-    private void handleError(JobClient client,
-                             ActivatedJob job,
-                             ZeebeWorkerTelemetryContext telemetryContext,
-                             Throwable e) {
-        Throwable cause = (e instanceof CompletionException)
-            ? e.getCause()
-            : e;
-
-        JobWorkerException je;
-        if (cause instanceof JobWorkerException ex) {
-            je = ex;
-        } else {
-            je = new JobWorkerException("INTERNAL", cause);
-        }
-
-        var command = createErrorCommand(client, job, je);
-        command.send().whenComplete((r, ex) -> {
-            if (ex != null) {
-                telemetryContext.close(ZeebeWorkerTelemetry.ErrorType.SYSTEM, je);
-            } else {
-                telemetryContext.close(ZeebeWorkerTelemetry.ErrorType.USER, je);
-            }
-        });
-    }
-
-    private FinalCommandStep<Void> createErrorCommand(JobClient client,
-                                                      ActivatedJob job,
-                                                      JobWorkerException exception) {
-        ThrowErrorCommandStep2 command = client
-            .newThrowErrorCommand(job.getKey())
-            .errorCode(exception.getCode())
-            .errorMessage(exception.getMessage());
-
-        if (exception.getVariables() != null) {
-            command.variables(exception.getVariables());
-        }
-
-        return command;
     }
 }

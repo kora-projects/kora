@@ -1,57 +1,35 @@
 package ru.tinkoff.kora.camunda.zeebe.worker.telemetry;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.TracerProvider;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.camunda.zeebe.worker.JobContext;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
-public final class DefaultZeebeWorkerTelemetryFactory implements ZeebeWorkerTelemetryFactory {
+public class DefaultZeebeWorkerTelemetryFactory implements ZeebeWorkerTelemetryFactory {
+    @Nullable
+    private final MeterRegistry meterRegistry;
+    @Nullable
+    private final Tracer tracer;
 
-    private static final ZeebeWorkerTelemetry EMPTY = new NoopZeebeWorkerTelemetry();
-
-    private final ZeebeWorkerLoggerFactory loggerFactory;
-    private final ZeebeWorkerMetricsFactory metricsFactory;
-    private final ZeebeWorkerTracerFactory tracerFactory;
-
-    public DefaultZeebeWorkerTelemetryFactory(@Nullable ZeebeWorkerLoggerFactory loggerFactory,
-                                              @Nullable ZeebeWorkerMetricsFactory metricsFactory,
-                                              @Nullable ZeebeWorkerTracerFactory tracerFactory) {
-        this.loggerFactory = loggerFactory;
-        this.metricsFactory = metricsFactory;
-        this.tracerFactory = tracerFactory;
+    public DefaultZeebeWorkerTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
+        this.meterRegistry = meterRegistry;
+        this.tracer = tracer;
     }
 
     @Override
     public ZeebeWorkerTelemetry get(String workerType, TelemetryConfig config) {
-        var logger = this.loggerFactory == null ? null : this.loggerFactory.get(config.logging());
-        var metrics = this.metricsFactory == null ? null : this.metricsFactory.get(config.metrics());
-        var tracer = this.tracerFactory == null ? null : this.tracerFactory.get(config.tracing());
-        if (metrics == null && tracer == null && logger == null) {
-            return EMPTY;
+        if (!config.logging().enabled() && !config.tracing().enabled() && !config.metrics().enabled()) {
+            return NoopZeebeWorkerTelemetry.INSTANCE;
         }
+        var meterRegistry = this.meterRegistry == null || !config.metrics().enabled()
+            ? new CompositeMeterRegistry()
+            : this.meterRegistry;
+        var tracer = this.tracer == null || !config.tracing().enabled()
+            ? TracerProvider.noop().get("zeebe-worker")
+            : this.tracer;
 
-        return new DefaultZeebeWorkerTelemetry(workerType, logger, metrics, tracer);
-    }
-
-    private static final class NoopZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
-
-        private static final class NoopZeebeWorkerTelemetryContext implements ZeebeWorkerTelemetryContext {
-
-            @Override
-            public void close() {
-                // do nothing
-            }
-
-            @Override
-            public void close(ErrorType errorType, Throwable throwable) {
-                // do nothing
-            }
-        }
-
-        private static final ZeebeWorkerTelemetryContext EMPTY = new NoopZeebeWorkerTelemetryContext();
-
-        @Override
-        public ZeebeWorkerTelemetryContext get(JobContext jobContext) {
-            return EMPTY;
-        }
+        return new DefaultZeebeWorkerTelemetry(config, workerType, tracer, meterRegistry);
     }
 }

@@ -5,14 +5,10 @@ dependencies {
     api libs.opentelemetry.semconv.incubating
     api libs.opentelemetry.api
     api libs.opentelemetry.micrometer.meter.provider
+    api project(":telemetry:telemetry-common")
 
     annotationProcessor project(':config:config-annotation-processor')
 
-    compileOnly project(':http:soap-client')
-    compileOnly project(':jms')
-    compileOnly project(':scheduling:scheduling-common')
     compileOnly project(':resilient:resilient-kora')
     compileOnly project(':experimental:camunda-engine-bpmn')
-    compileOnly project(':experimental:camunda-rest-undertow')
-    compileOnly project(':experimental:camunda-zeebe-worker')
 }
