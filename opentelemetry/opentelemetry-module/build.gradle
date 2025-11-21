@@ -1,11 +1,6 @@
 dependencies {
     api project(':opentelemetry:opentelemetry-common')
+    api project(':telemetry:telemetry-common')
 
-    compileOnly project(':http:soap-client')
-    compileOnly project(':jms')
-    compileOnly project(':scheduling:scheduling-common')
-    compileOnly project(':http:http-server-common')
-    compileOnly project(':experimental:camunda-rest-undertow')
     compileOnly project(':experimental:camunda-engine-bpmn')
-    compileOnly project(':experimental:camunda-zeebe-worker')
 }
