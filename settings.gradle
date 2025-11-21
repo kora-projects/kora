@@ -31,7 +31,6 @@ include(
     'json:json-symbol-processor',
     'micrometer:micrometer-module',
     'opentelemetry:opentelemetry-common',
-    'opentelemetry:opentelemetry-module',
     'opentelemetry:opentelemetry-tracing',
     'opentelemetry:opentelemetry-tracing-exporter-grpc',
     'opentelemetry:opentelemetry-tracing-exporter-http',

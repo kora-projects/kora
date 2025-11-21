@@ -16,9 +16,9 @@ public interface Observation {
 
     void observeError(Throwable e);
 
-    default ScopedValue.Carrier scoped() {
+    static ScopedValue.Carrier scoped(Observation observation) {
         return ScopedValue
-            .where(Observation.VALUE, this)
-            .where(OpentelemetryContext.VALUE, this.span().getSpanContext().isValid() ? Context.current().with(this.span()) : Context.current());
+            .where(Observation.VALUE, observation)
+            .where(OpentelemetryContext.VALUE, observation.span().getSpanContext().isValid() ? Context.current().with(observation.span()) : Context.current());
     }
 }

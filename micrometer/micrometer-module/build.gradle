@@ -10,5 +10,4 @@ dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
     compileOnly project(':resilient:resilient-kora')
-    compileOnly project(':experimental:camunda-engine-bpmn')
 }
