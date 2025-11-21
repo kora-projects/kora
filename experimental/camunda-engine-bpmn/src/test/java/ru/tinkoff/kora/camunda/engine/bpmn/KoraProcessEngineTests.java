@@ -70,8 +70,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 camundaEngineDataSource,
                 config,
                 camundaEngineBpmnKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
-                camundaEngineBpmnPackageVersion(),
-                null
+                camundaEngineBpmnPackageVersion()
             );
 
             var koraProcessEngine = camundaEngineBpmnKoraProcessEngine(koraProcessEngineConfiguration,
@@ -139,8 +138,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 camundaEngineDataSource,
                 config,
                 camundaEngineBpmnKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
-                camundaEngineBpmnPackageVersion(),
-                null
+                camundaEngineBpmnPackageVersion()
             );
 
             KoraProcessEngine koraProcessEngine = camundaEngineBpmnKoraProcessEngine(koraProcessEngineConfiguration,

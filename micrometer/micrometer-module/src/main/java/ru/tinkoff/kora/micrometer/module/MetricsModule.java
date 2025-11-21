@@ -7,7 +7,6 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.annotation.Root;
-import ru.tinkoff.kora.micrometer.module.camunda.engine.bpmn.MicrometerCamundaEngineBpmnMetricsFactory;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerFallbackMetrics;
 import ru.tinkoff.kora.micrometer.module.resilient.MicrometerRetryMetrics;
@@ -37,11 +36,6 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerTimeoutMetrics micrometerTimeoutMetrics(MeterRegistry meterRegistry) {
         return new MicrometerTimeoutMetrics(meterRegistry);
-    }
-
-    @DefaultComponent
-    default MicrometerCamundaEngineBpmnMetricsFactory micrometerCamundaEngineBpmnMetricsFactory(MeterRegistry meterRegistry) {
-        return new MicrometerCamundaEngineBpmnMetricsFactory(meterRegistry);
     }
 
     @DefaultComponent

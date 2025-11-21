@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.camunda.engine.bpmn;
 
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.*;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
@@ -19,16 +21,19 @@ import ru.tinkoff.kora.camunda.engine.bpmn.configurator.AdminUserProcessEngineCo
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.DeploymentProcessEngineConfigurator;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.SecondStageKoraProcessEngineConfigurator;
-import ru.tinkoff.kora.camunda.engine.bpmn.telemetry.*;
+import ru.tinkoff.kora.camunda.engine.bpmn.telemetry.CamundaEngineBpmnTelemetryFactory;
+import ru.tinkoff.kora.camunda.engine.bpmn.telemetry.DefaultCamundaEngineBpmnTelemetryFactory;
+import ru.tinkoff.kora.camunda.engine.bpmn.telemetry.KoraEngineTelemetryRegistry;
 import ru.tinkoff.kora.camunda.engine.bpmn.transaction.CamundaTransactionManager;
 import ru.tinkoff.kora.camunda.engine.bpmn.transaction.JdbcCamundaTransactionManager;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
+import ru.tinkoff.kora.common.telemetry.Observation;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
+import ru.tinkoff.kora.logging.common.MDC;
 
 import javax.sql.DataSource;
 import java.util.Optional;
@@ -85,16 +90,10 @@ public interface CamundaEngineBpmnModule {
         return new JobExecutorReadinessProbe(jobExecutor);
     }
 
-    @DefaultComponent
-    default CamundaEngineBpmnLoggerFactory camundaEngineBpmnLoggerFactory() {
-        return new DefaultCamundaEngineBpmnLoggerFactory();
-    }
 
     @DefaultComponent
-    default CamundaEngineBpmnTelemetryFactory camundaEngineBpmnTelemetryFactory(@Nullable CamundaEngineBpmnLoggerFactory logger,
-                                                                                @Nullable CamundaEngineBpmnMetricsFactory metrics,
-                                                                                @Nullable CamundaEngineBpmnTracerFactory tracer) {
-        return new DefaultCamundaEngineBpmnTelemetryFactory(logger, metrics, tracer);
+    default CamundaEngineBpmnTelemetryFactory camundaEngineBpmnTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
+        return new DefaultCamundaEngineBpmnTelemetryFactory(meterRegistry, tracer);
     }
 
     @DefaultComponent
@@ -103,20 +102,19 @@ public interface CamundaEngineBpmnModule {
         return delegate -> {
             var telemetry = telemetryFactory.get(camundaEngineBpmnConfig.telemetry());
             return execution -> {
-                var current = Context.current();
-                var fork = current.fork();
-                fork.inject();
-
-                var telemetryContext = telemetry.get(delegate.getClass().getCanonicalName(), execution);
-                try {
-                    delegate.execute(execution);
-                    telemetryContext.close();
-                } catch (Exception e) {
-                    telemetryContext.close(e);
-                    throw e;
-                } finally {
-                    current.inject();
-                }
+                var observation = telemetry.observe(delegate.getClass().getCanonicalName());
+                Observation.scoped(observation)
+                    .where(MDC.VALUE, new MDC())
+                    .call(() -> {
+                        try {
+                            observation.observeExecution(execution);
+                            delegate.execute(execution);
+                            return null;
+                        } catch (Throwable e) {
+                            observation.observeError(e);
+                            throw e;
+                        }
+                    });
             };
         };
     }
@@ -164,9 +162,8 @@ public interface CamundaEngineBpmnModule {
                                                                                        CamundaEngineDataSource camundaEngineDataSource,
                                                                                        CamundaEngineBpmnConfig camundaEngineBpmnConfig,
                                                                                        KoraResolverFactory componentResolverFactory,
-                                                                                       CamundaVersion camundaVersion,
-                                                                                       @Nullable CamundaEngineBpmnMetricsFactory metricsFactory) {
-        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaEngineDataSource, camundaEngineBpmnConfig, componentResolverFactory, camundaVersion, metricsFactory);
+                                                                                       CamundaVersion camundaVersion) {
+        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaEngineDataSource, camundaEngineBpmnConfig, componentResolverFactory, camundaVersion);
     }
 
     @Tag(CamundaBpmn.class)
