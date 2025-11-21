@@ -1,6 +1,0 @@
-dependencies {
-    api project(':opentelemetry:opentelemetry-common')
-    api project(':telemetry:telemetry-common')
-
-    compileOnly project(':experimental:camunda-engine-bpmn')
-}

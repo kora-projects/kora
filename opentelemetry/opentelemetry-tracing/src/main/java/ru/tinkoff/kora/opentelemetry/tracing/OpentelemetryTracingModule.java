@@ -13,11 +13,10 @@ import ru.tinkoff.kora.application.graph.LifecycleWrapper;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.opentelemetry.module.OpentelemetryModule;
 
 import java.util.function.Supplier;
 
-public interface OpentelemetryTracingModule extends OpentelemetryModule {
+public interface OpentelemetryTracingModule {
 
     default OpentelemetryResourceConfig opentelemetryResourceConfig(Config config, ConfigValueExtractor<OpentelemetryResourceConfig> extractor) {
         return extractor.extract(config.get("tracing"));
