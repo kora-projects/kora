@@ -20,12 +20,8 @@ object CommonClassNames {
     val list = List::class.asClassName()
     val future = Future::class.asClassName()
     val completableFuture = CompletableFuture::class.asClassName()
-    val synchronousSink = ClassName("reactor.core.publisher", "SynchronousSink")
     val await = MemberName("kotlinx.coroutines.future", "await")
-    val flowBuilder = MemberName("kotlinx.coroutines.flow", "flow")
 
-    val context = ClassName("ru.tinkoff.kora.common", "Context")
-    val contextReactor = ClassName("ru.tinkoff.kora.common", "Context", "Reactor")
     val aopAnnotation = ClassName("ru.tinkoff.kora.common", "AopAnnotation")
     val aopProxy = ClassName("ru.tinkoff.kora.common", "AopProxy")
     val mapping = ClassName("ru.tinkoff.kora.common", "Mapping")

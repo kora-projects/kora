@@ -38,7 +38,6 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             .addModifiers(Modifier.PUBLIC);
         var apply = MethodSpec.methodBuilder("apply")
             .returns(Classes.httpBodyOutput)
-            .addParameter(Classes.context, "ctx")
             .addParameter(formParamClassName, "value")
             .addException(Exception.class)
             .addModifiers(Modifier.PUBLIC)

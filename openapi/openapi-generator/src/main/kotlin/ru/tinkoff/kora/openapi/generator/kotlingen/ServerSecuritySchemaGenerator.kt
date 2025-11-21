@@ -58,7 +58,6 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val intercept = FunSpec.builder("intercept")
             .addModifiers(KModifier.OVERRIDE)
             .returns(Classes.httpServerResponse.asKt())
-            .addParameter("ctx", Classes.context.asKt())
             .addParameter("request", Classes.httpServerRequest.asKt())
             .addParameter("chain", Classes.httpServerInterceptChain.asKt())
         for (method in authGroup.methods) {
@@ -95,7 +94,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     intercept.endControlFlow()
                 }
             }
-            intercept.addStatement("return %T.with<%T, %T>(%N) { chain.process(ctx, request) }", Classes.principal.asKt(), Classes.httpServerResponse.asKt(), RuntimeException::class.asClassName(), method.name)
+            intercept.addStatement("return %T.with<%T, %T>(%N) { chain.process(request) }", Classes.principal.asKt(), Classes.httpServerResponse.asKt(), RuntimeException::class.asClassName(), method.name)
             intercept.endControlFlow()
         }
         intercept.addStatement("throw %T.of(403, %S)", Classes.httpServerResponseException.asKt(), "Forbidden")

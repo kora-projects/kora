@@ -44,7 +44,6 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
         b.primaryConstructor(constructor.build())
         val m = FunSpec.builder("apply")
             .addModifiers(KModifier.OVERRIDE)
-            .addParameter("ctx", Classes.context.asKt())
             .addParameter("request", Classes.httpServerRequest.asKt())
             .addParameter("rs", responseClassName)
             .returns(Classes.httpServerResponse.asKt())
@@ -89,7 +88,7 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
             return b.build()
         }
         b.addStatement("val entity = %T.of(%L, headers, rs.content)", Classes.httpResponseEntity.asKt(), responseCode)
-        b.addStatement("return this.%N.apply(ctx, request, entity)", "response" + rs.code + "Delegate")
+        b.addStatement("return this.%N.apply(request, entity)", "response" + rs.code + "Delegate")
         return b.build()
     }
 }

@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.TestInstance
 import reactor.core.publisher.Mono
-import ru.tinkoff.kora.common.Context
 import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
@@ -156,7 +155,7 @@ abstract class AbstractSymbolProcessorTest {
                         }
 
                         val result = if (repositoryClassMethod.isSuspend) {
-                            runBlocking(Context.Kotlin.asCoroutineContext(Context.current())) { repositoryClassMethod.callSuspend(*realArgs) }
+                            runBlocking { repositoryClassMethod.callSuspend(*realArgs) }
                         } else {
                             repositoryClassMethod.call(*realArgs)
                         }

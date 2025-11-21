@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.openapi.management;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -28,7 +27,7 @@ public final class RapidocHttpServerHandler implements HttpServerRequestHandler.
     }
 
     @Override
-    public HttpServerResponse apply(Context context, HttpServerRequest request) {
+    public HttpServerResponse apply(HttpServerRequest request) {
         var bytes = content.get();
         if (bytes != null) {
             return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, bytes));

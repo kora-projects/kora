@@ -2,11 +2,10 @@ package ru.tinkoff.kora.s3.client.aws;
 
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
-import ru.tinkoff.kora.common.Context;
-import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.*;
-import ru.tinkoff.kora.s3.client.model.S3Object;
+import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.model.*;
+import ru.tinkoff.kora.s3.client.model.S3Object;
 import ru.tinkoff.kora.s3.client.telemetry.S3KoraClientTelemetry;
 import software.amazon.awssdk.awscore.exception.AwsServiceException;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -183,29 +182,21 @@ public class AwsS3KoraClient implements S3KoraClient {
 
         var request = requestBuilder.build();
 
-        var ctx = Context.current();
+        var context = telemetry.get("PutObject", bucket, key, body.size() > 0 ? body.size() : null);
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = telemetry.get("PutObject", bucket, key, body.size() > 0 ? body.size() : null);
-            try {
-                if (body instanceof ByteS3Body bb) {
-                    final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromBytes(bb.bytes()));
-                    context.close();
-                    return new AwsS3ObjectUpload(response);
-                } else {
-                    final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromContentProvider(body::asInputStream, body.size(), body.type()));
-                    context.close();
-                    return new AwsS3ObjectUpload(response);
-                }
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
+            if (body instanceof ByteS3Body bb) {
+                final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromBytes(bb.bytes()));
+                context.close();
+                return new AwsS3ObjectUpload(response);
+            } else {
+                final PutObjectResponse response = syncClient.putObject(request, RequestBody.fromContentProvider(body::asInputStream, body.size(), body.type()));
+                context.close();
+                return new AwsS3ObjectUpload(response);
             }
-        } finally {
-            ctx.inject();
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 
@@ -216,22 +207,14 @@ public class AwsS3KoraClient implements S3KoraClient {
             .key(key)
             .build();
 
-        var ctx = Context.current();
+        var context = telemetry.get("DeleteObject", bucket, key, null);
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = telemetry.get("DeleteObject", bucket, key, null);
-            try {
-                syncClient.deleteObject(request);
-                context.close();
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
-            }
-        } finally {
-            ctx.inject();
+            syncClient.deleteObject(request);
+            context.close();
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 
@@ -248,51 +231,35 @@ public class AwsS3KoraClient implements S3KoraClient {
                 .build())
             .build();
 
-        var ctx = Context.current();
+        var context = telemetry.get("DeleteObjects", bucket, null, null);
         try {
-            var fork = ctx.fork();
-            fork.inject();
+            var response = syncClient.deleteObjects(request);
+            if (response.hasErrors()) {
+                var errors = response.errors().stream()
+                    .map(e -> new S3DeleteException.Error(e.key(), bucket, e.code(), e.message()))
+                    .toList();
 
-            var context = telemetry.get("DeleteObjects", bucket, null, null);
-            try {
-                var response = syncClient.deleteObjects(request);
-                if (response.hasErrors()) {
-                    var errors = response.errors().stream()
-                        .map(e -> new S3DeleteException.Error(e.key(), bucket, e.code(), e.message()))
-                        .toList();
-
-                    throw new S3DeleteException(errors);
-                }
-                context.close();
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
+                throw new S3DeleteException(errors);
             }
-        } finally {
-            ctx.inject();
+            context.close();
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 
     private static <T> T wrapWithTelemetry(Supplier<T> operationSupplier,
                                            Supplier<S3KoraClientTelemetry.S3KoraClientTelemetryContext> contextSupplier) {
-        var ctx = Context.current();
+        var context = contextSupplier.get();
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = contextSupplier.get();
-            try {
-                T value = operationSupplier.get();
-                context.close();
-                return value;
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
-            }
-        } finally {
-            ctx.inject();
+            T value = operationSupplier.get();
+            context.close();
+            return value;
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 

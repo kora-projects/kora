@@ -7,7 +7,6 @@ import org.mockito.Mockito
 import org.mockito.Mockito.reset
 import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.common.Component
-import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException
 import ru.tinkoff.kora.http.client.common.HttpClientResponseException
@@ -358,20 +357,19 @@ class BlockingApiTest : AbstractHttpClientTest() {
             }
             """.trimIndent()
         )
-        val ctx = Context.current()
-        whenever(mapper.apply(ArgumentMatchers.any(), ArgumentMatchers.any()))
+        whenever(mapper.apply(ArgumentMatchers.any()))
             .thenAnswer { HttpBody.plaintext("test-value") }
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         client.invoke<Unit>("request", "test-value")
-        Mockito.verify(mapper).apply(ArgumentMatchers.same(ctx), ArgumentMatchers.eq("test-value"))
+        Mockito.verify(mapper).apply(ArgumentMatchers.eq("test-value"))
 
         reset(httpClient, mapper)
         Assertions.setMaxStackTraceElementsDisplayed(1000)
-        whenever(mapper.apply(ArgumentMatchers.any(), ArgumentMatchers.any()))
+        whenever(mapper.apply(ArgumentMatchers.any()))
             .thenAnswer { throw Exception() }
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         Assertions.assertThatThrownBy { client.invoke<Unit>("request", "test-value") }.isInstanceOf(HttpClientEncoderException::class.java)
-        Mockito.verify(mapper).apply(ArgumentMatchers.same(ctx), ArgumentMatchers.eq("test-value"))
+        Mockito.verify(mapper).apply(ArgumentMatchers.eq("test-value"))
     }
 
     @Test

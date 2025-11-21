@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.json.module.http.client;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.json.common.JsonWriter;
@@ -15,7 +14,7 @@ public class JsonHttpClientRequestMapper<T> implements HttpClientRequestMapper<T
 
 
     @Override
-    public HttpBodyOutput apply(Context ctx, T value) {
-        return new JsonHttpBodyOutput<>(this.jsonWriter, ctx, value);
+    public HttpBodyOutput apply(T value) {
+        return new JsonHttpBodyOutput<>(this.jsonWriter, value);
     }
 }

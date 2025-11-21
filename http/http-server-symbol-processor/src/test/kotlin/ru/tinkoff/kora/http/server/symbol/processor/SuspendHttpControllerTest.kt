@@ -144,17 +144,17 @@ class SuspendHttpControllerTest : AbstractHttpControllerTest() {
             
             """.trimIndent(), """
             class TestInterceptor1 : HttpServerInterceptor {
-                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
+                override fun intercept(request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
                     if (request.queryParams().isEmpty()) return HttpServerResponse.of(400)
-                    return chain.process(context, request)
+                    return chain.process(request)
                 }
             }
             
             """.trimIndent(), """
             class TestInterceptor2 : HttpServerInterceptor {
-                override fun intercept(context: Context, request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
+                override fun intercept(request: HttpServerRequest, chain: HttpServerInterceptor.InterceptChain) : HttpServerResponse {
                     if (request.queryParams().isEmpty()) return HttpServerResponse.of(400)
-                    return chain.process(context, request)
+                    return chain.process(request)
                 }
             }
             

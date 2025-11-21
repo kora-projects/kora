@@ -3,7 +3,6 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 import org.assertj.core.api.Assertions;
 import org.intellij.lang.annotations.Language;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -123,7 +122,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
     }
 
     protected HttpServerResponseMapper<String> strResponseMapper() {
-        return (ctx, request, result) -> HttpServerResponse.of(200, HttpBody.plaintext(result));
+        return (request, result) -> HttpServerResponse.of(200, HttpBody.plaintext(result));
     }
 
     protected HttpServerRequestMapper<String> stringRequestMapper() {
@@ -140,7 +139,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
 
     protected HttpResponseAssert assertThat(HttpServerRequestHandler handler, HttpServerRequest request) {
         try {
-            return new HttpResponseAssert(handler.handle(Context.clear(), request));
+            return new HttpResponseAssert(handler.handle(request));
         } catch (Throwable e) {
             if (e instanceof HttpServerResponse rs) {
                 return new HttpResponseAssert(rs);

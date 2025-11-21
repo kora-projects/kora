@@ -481,7 +481,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
         } else {
             val requestMapperName = method.simpleName.asString() + "RequestMapper";
             b.add("val _body = ").controlFlow("try") {
-                addStatement("this.%N.apply(%T.current(), %N)", requestMapperName, CommonClassNames.context, bodyParameter.parameter.name?.asString())
+                addStatement("this.%N.apply(%N)", requestMapperName, bodyParameter.parameter.name?.asString())
                 nextControlFlow("catch (_e: %T)", httpClientException)
                 addStatement("throw _e")
                 nextControlFlow("catch (_e: Exception)")

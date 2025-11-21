@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
@@ -10,13 +9,13 @@ public interface HttpServerRequestHandler {
 
     String routeTemplate();
 
-    HttpServerResponse handle(Context ctx, HttpServerRequest request) throws Exception;
+    HttpServerResponse handle(HttpServerRequest request) throws Exception;
 
     default boolean enabled() {
         return true;
     }
 
     interface HandlerFunction {
-        HttpServerResponse apply(Context context, HttpServerRequest request) throws Exception;
+        HttpServerResponse apply(HttpServerRequest request) throws Exception;
     }
 }

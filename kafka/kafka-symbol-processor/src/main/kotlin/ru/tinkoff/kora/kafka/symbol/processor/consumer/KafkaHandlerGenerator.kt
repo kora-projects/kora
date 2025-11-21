@@ -22,7 +22,6 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
     val dispatchers = ClassName("kotlinx.coroutines", "Dispatchers")
-    val context = ClassName("ru.tinkoff.kora.common", "Context")
 
     fun generate(functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         val controller = functionDeclaration.parentDeclaration as KSClassDeclaration
@@ -84,10 +83,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 }
             }
 
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context, context)
-            }
-
             addCode("controller.%N(", function.simpleName.asString())
             for ((i, it) in parameters.withIndex()) {
                 if (i > 0) addCode(", ")
@@ -106,9 +101,6 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 )
             }
             addCode(")\n")
-            if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.endControlFlow()
-            }
         }
         val keyTag = recordParameter.key?.parseTags() ?: setOf()
         val valueTag = recordParameter.value?.parseTags() ?: setOf()
@@ -136,7 +128,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         b.returns(handlerType)
         b.controlFlow("return %T { consumer, tctx, records ->", handlerType) {
             if (function.modifiers.contains(Modifier.SUSPEND)) {
-                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context, context)
+                b.beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined)", dispatchers)
             }
             addCode("controller.%N(", function.simpleName.asString())
             for ((i, it) in parameters.withIndex()) {
@@ -245,7 +237,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
                 endControlFlow()
             }
             if (functionDeclaration.modifiers.contains(Modifier.SUSPEND)) {
-                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined + %T.Kotlin.asCoroutineContext(%T.current()))", dispatchers, context, context)
+                beginControlFlow("kotlinx.coroutines.runBlocking(%T.Unconfined)", dispatchers)
             }
 
             add("controller.%N(", functionDeclaration.simpleName.asString())

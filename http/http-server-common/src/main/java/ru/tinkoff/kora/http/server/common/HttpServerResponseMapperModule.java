@@ -10,19 +10,19 @@ import java.nio.ByteBuffer;
 public interface HttpServerResponseMapperModule {
 
     default HttpServerResponseMapper<HttpServerResponse> noopResponseMapper() {
-        return (ctx, request, r) -> r;
+        return (request, r) -> r;
     }
 
     default HttpServerResponseMapper<ByteBuffer> byteBufBodyResponseMapper() {
-        return (ctx, request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
+        return (request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
     }
 
     default HttpServerResponseMapper<byte[]> byteArrayResponseMapper() {
-        return (ctx, request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
+        return (request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
     }
 
     default HttpServerResponseMapper<String> stringResponseMapper() {
-        return (ctx, request, r) -> HttpServerResponse.of(200, HttpBody.plaintext(r));
+        return (request, r) -> HttpServerResponse.of(200, HttpBody.plaintext(r));
     }
 
     default <T> HttpServerResponseMapper<HttpResponseEntity<T>> httpServerResponseEntityMapper(HttpServerResponseMapper<T> delegate) {
