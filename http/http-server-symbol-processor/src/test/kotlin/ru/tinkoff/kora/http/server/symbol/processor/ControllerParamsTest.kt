@@ -486,24 +486,6 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
     }
 
     @Test
-    fun testContext() {
-        val m = compile(
-            """
-            import ru.tinkoff.kora.common.Context;
-                        
-            @HttpController
-            class Controller {
-                @HttpRoute(method = GET, path = "/ctx")
-                suspend fun context(ctx: Context) {}
-            }
-            
-            """.trimIndent()
-        )
-        compileResult.assertSuccess()
-        loadClass("ControllerModule").verifyNoDependencies()
-    }
-
-    @Test
     fun testRequest() {
         val m = compile(
             """

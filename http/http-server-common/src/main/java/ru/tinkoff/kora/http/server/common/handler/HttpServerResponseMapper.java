@@ -1,14 +1,11 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.Mapping;
-import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 /**
  * <b>Русский</b>: Контракт обработчика определенного типа данных в HTTP ответ
@@ -22,7 +19,7 @@ import java.nio.ByteBuffer;
  * public final class StringServerResponseMapper implements HttpServerResponseMapper<String> {
  *
  *     @Override
- *     public HttpServerResponse apply(Context ctx, HttpServerRequest request, @Nullable String result) throws IOException {
+ *     public HttpServerResponse apply(HttpServerRequest request, @Nullable String result) throws IOException {
  *         return HttpServerResponse.of(200, HttpBody.plaintext(result));
  *     }
  * }
@@ -31,5 +28,5 @@ import java.nio.ByteBuffer;
  */
 public interface HttpServerResponseMapper<T> extends Mapping.MappingFunction {
 
-    HttpServerResponse apply(Context ctx, HttpServerRequest request, @Nullable T result) throws IOException;
+    HttpServerResponse apply(HttpServerRequest request, @Nullable T result) throws IOException;
 }

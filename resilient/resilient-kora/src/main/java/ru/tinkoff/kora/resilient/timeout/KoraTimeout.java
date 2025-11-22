@@ -3,7 +3,6 @@ package ru.tinkoff.kora.resilient.timeout;
 import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.common.Context;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -23,13 +22,15 @@ final class KoraTimeout implements Timeout {
     KoraTimeout(String name,
                 long delayMaxNanos,
                 TimeoutMetrics metrics,
-                TimeoutConfig.NamedConfig config,
-                Executor executor) {
+                TimeoutConfig.NamedConfig config) {
         this.name = name;
         this.delayMaxNanos = delayMaxNanos;
         this.metrics = metrics;
         this.config = config;
-        this.executor = executor;
+        var threadFactory = Thread.ofVirtual()
+            .name("timeout-" + name + "-", 1)
+            .factory();
+        this.executor = e -> threadFactory.newThread(e).start();
     }
 
     @Nonnull
@@ -52,10 +53,8 @@ final class KoraTimeout implements Timeout {
 
         internalExecute(e -> {
             var future = new CompletableFuture<Void>();
-            Context current = Context.current();
             e.execute(() -> {
                 try {
-                    current.inject();
                     runnable.run();
                     future.complete(null);
                 } catch (Throwable ex) {
@@ -83,10 +82,8 @@ final class KoraTimeout implements Timeout {
 
         return internalExecute(e -> {
             var future = new CompletableFuture<T>();
-            Context current = Context.current();
             e.execute(() -> {
                 try {
-                    current.inject();
                     var result = callable.call();
                     future.complete(result);
                 } catch (Throwable ex) {
@@ -142,10 +139,10 @@ final class KoraTimeout implements Timeout {
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (KoraTimeout) obj;
         return Objects.equals(this.name, that.name) &&
-               this.delayMaxNanos == that.delayMaxNanos &&
-               Objects.equals(this.metrics, that.metrics) &&
-               Objects.equals(this.config, that.config) &&
-               Objects.equals(this.executor, that.executor);
+            this.delayMaxNanos == that.delayMaxNanos &&
+            Objects.equals(this.metrics, that.metrics) &&
+            Objects.equals(this.config, that.config) &&
+            Objects.equals(this.executor, that.executor);
     }
 
     @Override
@@ -156,11 +153,11 @@ final class KoraTimeout implements Timeout {
     @Override
     public String toString() {
         return "KoraTimeout[" +
-               "name=" + name + ", " +
-               "delayMaxNanos=" + delayMaxNanos + ", " +
-               "metrics=" + metrics + ", " +
-               "config=" + config + ", " +
-               "executor=" + executor + ']';
+            "name=" + name + ", " +
+            "delayMaxNanos=" + delayMaxNanos + ", " +
+            "metrics=" + metrics + ", " +
+            "config=" + config + ", " +
+            "executor=" + executor + ']';
     }
 
 }

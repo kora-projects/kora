@@ -19,8 +19,6 @@ import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.grpc.server.config.GrpcServerConfig;
-import ru.tinkoff.kora.grpc.server.interceptors.ContextServerInterceptor;
-import ru.tinkoff.kora.grpc.server.interceptors.CoroutineContextInjectInterceptor;
 import ru.tinkoff.kora.grpc.server.interceptors.TelemetryInterceptor;
 import ru.tinkoff.kora.grpc.server.telemetry.DefaultGrpcServerTelemetry;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerTelemetry;
@@ -101,9 +99,7 @@ public interface GrpcServerModule extends NettyCommonModule {
 
         interceptors.forEach(builder::intercept);
         builder
-            .intercept(new TelemetryInterceptor(telemetry))
-            .intercept(new ContextServerInterceptor())
-            .intercept(CoroutineContextInjectInterceptor.newInstance());
+            .intercept(new TelemetryInterceptor(telemetry));
 
         services.forEach(builder::addService);
 

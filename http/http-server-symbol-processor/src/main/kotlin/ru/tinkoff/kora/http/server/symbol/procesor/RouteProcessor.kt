@@ -23,7 +23,6 @@ import ru.tinkoff.kora.http.server.symbol.procesor.HttpServerClassNames.stringPa
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
-import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCollection
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isSet
@@ -90,7 +89,7 @@ class RouteProcessor {
                 it.isAnnotationPresent(cookie) -> funBuilder.addCookieParameterMapper(it)
                 else -> {
                     val type = it.type.toTypeName()
-                    if (type != CommonClassNames.context && type != httpServerRequest) {
+                    if (type != httpServerRequest) {
                         funBuilder.addRequestParameterMapper(it)
                         bodyParams.add(it)
                     }
@@ -104,7 +103,7 @@ class RouteProcessor {
         } else {
             CodeBlock.of("")
         }
-        funBuilder.controlFlow("return %T.of(%S, %S) %L{ _ctx, _request ->", httpServerRequestHandlerImpl, requestMappingData.method, requestMappingData.pathTemplate, processLabel) {
+        funBuilder.controlFlow("return %T.of(%S, %S) %L{ _request ->", httpServerRequestHandlerImpl, requestMappingData.method, requestMappingData.pathTemplate, processLabel) {
             var requestName = "_request"
             for (i in interceptors.indices) {
                 val interceptor = interceptors[i]
@@ -116,7 +115,7 @@ class RouteProcessor {
                     CodeBlock.of("")
                 }
 
-                funBuilder.beginControlFlow("%N.intercept(_ctx, %N) %L{ _ctx, %N ->", interceptorName, requestName, label, newRequestName)
+                funBuilder.beginControlFlow("%N.intercept(%N) %L{ %N ->", interceptorName, requestName, label, newRequestName)
                 requestName = newRequestName
                 val builder = ParameterSpec.builder(interceptorName, interceptor.type)
                 if (interceptor.tag != null) {
@@ -155,7 +154,7 @@ class RouteProcessor {
             } else if (returnTypeName == httpServerResponse) {
                 addStatement("return@process _result")
             } else {
-                addStatement("return@process _responseMapper.apply(_ctx, _request, _result)")
+                addStatement("return@process _responseMapper.apply(_request, _result)")
             }
 
         }
@@ -181,9 +180,6 @@ class RouteProcessor {
             return parseCookieParameter(param, it)
         }
         val type = param.type.toTypeName()
-        if (type == CommonClassNames.context) {
-            addStatement("val %N = _ctx", param.name!!.asString())
-        }
         if (type == httpServerRequest) {
             addStatement("val %N = %N", param.name!!.asString(), requestName)
         }

@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.json.module.http.server;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
@@ -15,7 +14,7 @@ public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponse
     }
 
     @Override
-    public HttpServerResponse apply(Context ctx, HttpServerRequest request, T value) {
-        return HttpServerResponse.of(200, new JsonHttpBodyOutput<>(this.writer, ctx, value));
+    public HttpServerResponse apply(HttpServerRequest request, T value) {
+        return HttpServerResponse.of(200, new JsonHttpBodyOutput<>(this.writer, value));
     }
 }

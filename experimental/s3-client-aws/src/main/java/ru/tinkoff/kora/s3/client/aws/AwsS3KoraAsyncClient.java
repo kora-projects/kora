@@ -3,7 +3,6 @@ package ru.tinkoff.kora.s3.client.aws;
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
 import reactor.adapter.JdkFlowAdapter;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
@@ -27,7 +26,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutorService;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 @ApiStatus.Experimental
@@ -122,32 +120,26 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
 
     @Override
     public CompletionStage<S3ObjectList> list(String bucket, String prefix, @Nullable String delimiter, int limit) {
-        return wrapWithTelemetry(fork -> listInternal(bucket, prefix, delimiter, limit, fork),
+        return wrapWithTelemetry(() -> listInternal(bucket, prefix, delimiter, limit),
             () -> telemetry.get("ListObjects", bucket, prefix, null));
     }
 
-    private CompletionStage<S3ObjectList> listInternal(String bucket, String prefix, @Nullable String delimiter, int limit, Context context) {
+    private CompletionStage<S3ObjectList> listInternal(String bucket, String prefix, @Nullable String delimiter, int limit) {
         return listMetaInternal(bucket, prefix, delimiter, limit)
             .thenCompose(metaList -> {
-                try {
-                    context.inject();
+                var futures = metaList.metas().stream()
+                    .map(meta -> getInternal(bucket, meta.key()).toCompletableFuture())
+                    .toArray(CompletableFuture[]::new);
 
-                    var futures = metaList.metas().stream()
-                        .map(meta -> getInternal(bucket, meta.key()).toCompletableFuture())
-                        .toArray(CompletableFuture[]::new);
+                return CompletableFuture.allOf(futures)
+                    .thenApply(_v -> {
+                        final List<S3Object> objects = new ArrayList<>(futures.length);
+                        for (var future : futures) {
+                            objects.add(((S3Object) future.join()));
+                        }
 
-                    return CompletableFuture.allOf(futures)
-                        .thenApply(_v -> {
-                            final List<S3Object> objects = new ArrayList<>(futures.length);
-                            for (var future : futures) {
-                                objects.add(((S3Object) future.join()));
-                            }
-
-                            return new AwsS3ObjectList(((AwsS3ObjectMetaList) metaList).response(), objects);
-                        });
-                } finally {
-                    Context.clear();
-                }
+                        return new AwsS3ObjectList(((AwsS3ObjectMetaList) metaList).response(), objects);
+                    });
             });
     }
 
@@ -171,9 +163,9 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
 
     @Override
     public CompletionStage<List<S3ObjectList>> list(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
-        return wrapWithTelemetry(fork -> {
+        return wrapWithTelemetry(() -> {
             var futures = prefixes.stream()
-                .map(p -> listInternal(bucket, p, delimiter, limitPerPrefix, fork).toCompletableFuture())
+                .map(p -> listInternal(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
                 .toArray(CompletableFuture[]::new);
 
             return CompletableFuture.allOf(futures)
@@ -185,7 +177,7 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
 
     @Override
     public CompletionStage<List<S3ObjectMetaList>> listMeta(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
-        return wrapWithTelemetry(fork -> {
+        return wrapWithTelemetry(() -> {
             var futures = prefixes.stream()
                 .map(p -> listMetaInternal(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
                 .toArray(CompletableFuture[]::new);
@@ -211,41 +203,33 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
 
         var request = requestBuilder.build();
 
-        var ctx = Context.current();
-        try {
-            var fork = ctx.fork();
-            fork.inject();
+        var size = body.size() > 0 ? body.size() : null;
+        var context = telemetry.get("PutObject", bucket, key, size);
 
-            var size = body.size() > 0 ? body.size() : null;
-            var context = telemetry.get("PutObject", bucket, key, size);
-
-            final CompletionStage<S3ObjectUpload> operation;
-            if (body instanceof ByteS3Body bb) {
-                operation = asyncClient.putObject(request, AsyncRequestBody.fromBytes(bb.bytes()))
-                    .thenApply(AwsS3ObjectUpload::new);
-            } else if (body instanceof PublisherS3Body) {
-                operation = asyncClient.putObject(request, AsyncRequestBody.fromPublisher(JdkFlowAdapter.flowPublisherToFlux(body.asPublisher())))
-                    .thenApply(AwsS3ObjectUpload::new);
-            } else if (body.size() > 0 && body.size() <= awsS3ClientConfig.upload().partSize().toBytes()) {
-                operation = asyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), body.size(), awsExecutor))
-                    .thenApply(AwsS3ObjectUpload::new);
-            } else {
-                operation = multipartAsyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), size, awsExecutor))
-                    .thenApply(AwsS3ObjectUpload::new);
-            }
-
-            return operation
-                .exceptionallyCompose(AwsS3KoraAsyncClient::handleExceptionStage)
-                .whenComplete((r, e) -> {
-                    if (e != null) {
-                        context.close(handleException(e));
-                    } else {
-                        context.close();
-                    }
-                });
-        } finally {
-            ctx.inject();
+        final CompletionStage<S3ObjectUpload> operation;
+        if (body instanceof ByteS3Body bb) {
+            operation = asyncClient.putObject(request, AsyncRequestBody.fromBytes(bb.bytes()))
+                .thenApply(AwsS3ObjectUpload::new);
+        } else if (body instanceof PublisherS3Body) {
+            operation = asyncClient.putObject(request, AsyncRequestBody.fromPublisher(JdkFlowAdapter.flowPublisherToFlux(body.asPublisher())))
+                .thenApply(AwsS3ObjectUpload::new);
+        } else if (body.size() > 0 && body.size() <= awsS3ClientConfig.upload().partSize().toBytes()) {
+            operation = asyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), body.size(), awsExecutor))
+                .thenApply(AwsS3ObjectUpload::new);
+        } else {
+            operation = multipartAsyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), size, awsExecutor))
+                .thenApply(AwsS3ObjectUpload::new);
         }
+
+        return operation
+            .exceptionallyCompose(AwsS3KoraAsyncClient::handleExceptionStage)
+            .whenComplete((r, e) -> {
+                if (e != null) {
+                    context.close(handleException(e));
+                } else {
+                    context.close();
+                }
+            });
     }
 
     @Override
@@ -294,29 +278,21 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
 
     private static <T> CompletionStage<T> wrapWithTelemetry(CompletionStage<T> operationSupplier,
                                                             Supplier<S3KoraClientTelemetry.S3KoraClientTelemetryContext> contextSupplier) {
-        return wrapWithTelemetry(context -> operationSupplier, contextSupplier);
+        return wrapWithTelemetry(() -> operationSupplier, contextSupplier);
     }
 
-    private static <T> CompletionStage<T> wrapWithTelemetry(Function<Context, CompletionStage<T>> operationSupplier,
+    private static <T> CompletionStage<T> wrapWithTelemetry(Supplier<CompletionStage<T>> operationSupplier,
                                                             Supplier<S3KoraClientTelemetry.S3KoraClientTelemetryContext> contextSupplier) {
-        var ctx = Context.current();
-        try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = contextSupplier.get();
-            return operationSupplier.apply(fork)
-                .exceptionallyCompose(AwsS3KoraAsyncClient::handleExceptionStage)
-                .whenComplete((r, e) -> {
-                    if (e != null) {
-                        context.close(handleException(e));
-                    } else {
-                        context.close();
-                    }
-                });
-        } finally {
-            ctx.inject();
-        }
+        var context = contextSupplier.get();
+        return operationSupplier.get()
+            .exceptionallyCompose(AwsS3KoraAsyncClient::handleExceptionStage)
+            .whenComplete((r, e) -> {
+                if (e != null) {
+                    context.close(handleException(e));
+                } else {
+                    context.close();
+                }
+            });
     }
 
     private static <T> CompletionStage<T> handleExceptionStage(Throwable e) {

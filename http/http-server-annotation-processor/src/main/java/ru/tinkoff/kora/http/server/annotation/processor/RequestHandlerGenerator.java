@@ -3,7 +3,6 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 
@@ -64,7 +63,7 @@ public class RequestHandlerGenerator {
 
         var handlerCode = this.buildRequestHandler(controller, requestMappingData, parameters, methodBuilder);
 
-        methodBuilder.addCode("return $T.of($S, $S, (_ctx, _request) -> {$>\n$L\n$<});",
+        methodBuilder.addCode("return $T.of($S, $S, (_request) -> {$>\n$L\n$<});",
             HttpServerClassNames.httpServerRequestHandlerImpl,
             requestMappingData.httpMethod().toUpperCase(),
             requestMappingData.route(),
@@ -93,9 +92,8 @@ public class RequestHandlerGenerator {
             var interceptor = interceptors.get(i);
             var interceptorName = "_interceptor" + (i + 1);
             var newRequestName = "_request" + (i + 1);
-            var ctxName = "_ctx_" + (i + 1);
             requestMappingBlock.add("return ");
-            requestMappingBlock.add("$L.intercept(_ctx, $L, ($N, $N) -> $>{\n", interceptorName, requestName, ctxName, newRequestName);
+            requestMappingBlock.add("$L.intercept($L, ($N) -> $>{\n", interceptorName, requestName, newRequestName);
             requestName = newRequestName;
             var builder = ParameterSpec.builder(interceptor.type(), interceptorName);
             if (interceptor.tag() != null) {
@@ -112,7 +110,6 @@ public class RequestHandlerGenerator {
                     hasNonBodyParams = true;
                 }
                 case REQUEST -> handler.add("var $N = _request;\n", parameter.name());
-                case CONTEXT -> handler.add("var $N = _ctx;\n", parameter.name());
                 default -> {}
             }
         }
@@ -127,7 +124,7 @@ public class RequestHandlerGenerator {
                 case QUERY -> this.defineQueryParameter(parameter, methodBuilder);
                 case HEADER -> this.defineHeaderParameter(parameter, methodBuilder);
                 case COOKIE -> this.defineCookieParameter(parameter, methodBuilder);
-                case MAPPED_HTTP_REQUEST, REQUEST, CONTEXT -> CodeBlock.of("");
+                case MAPPED_HTTP_REQUEST, REQUEST -> CodeBlock.of("");
             };
             handler.add(codeBlock);
             handler.add("\n");
@@ -184,7 +181,7 @@ public class RequestHandlerGenerator {
             b.addStatement("return _controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
         } else {
             b.addStatement("var _result = _controller.$N($L)", requestMappingData.executableElement().getSimpleName(), executeParameters);
-            b.addStatement("return _responseMapper.apply(_ctx, _request, _result)");
+            b.addStatement("return _responseMapper.apply(_request, _result)");
         }
         return b.build();
     }
@@ -759,10 +756,6 @@ public class RequestHandlerGenerator {
                     continue;
                 }
             }
-            if (parameter.asType().toString().equals(CommonClassNames.context.canonicalName())) {
-                parameters.add(new Parameter(CONTEXT, parameter.getSimpleName().toString(), parameterType, parameter));
-                continue;
-            }
             if (parameter.asType().toString().equals(HttpServerClassNames.httpServerRequest.canonicalName())) {
                 parameters.add(new Parameter(REQUEST, parameter.getSimpleName().toString(), parameterType, parameter));
                 continue;
@@ -860,7 +853,6 @@ public class RequestHandlerGenerator {
         COOKIE,
         QUERY,
         PATH,
-        REQUEST,
-        CONTEXT
+        REQUEST
     }
 }

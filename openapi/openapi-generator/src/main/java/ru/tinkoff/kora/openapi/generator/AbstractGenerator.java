@@ -26,7 +26,6 @@ public abstract class AbstractGenerator<C, R> {
     private static final Logger log = LoggerFactory.getLogger(AbstractGenerator.class);
 
     public static class Classes {
-        public static final ClassName context = ClassName.get("ru.tinkoff.kora.common", "Context");
         public static final ClassName generated = ClassName.get("ru.tinkoff.kora.common.annotation", "Generated");
         public static final ClassName tag = ClassName.get("ru.tinkoff.kora.common", "Tag");
         public static final ClassName component = ClassName.get("ru.tinkoff.kora.common", "Component");

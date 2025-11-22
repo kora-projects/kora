@@ -168,7 +168,6 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val intercept = FunSpec.builder("processRequest")
             .addModifiers(KModifier.OVERRIDE)
             .returns(Classes.httpClientResponse.asKt())
-            .addParameter("ctx", Classes.context.asKt())
             .addParameter("chain", Classes.httpClientInterceptChain.asKt())
             .addParameter("request", Classes.httpClientRequest.asKt())
 
@@ -200,11 +199,11 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     else -> throw IllegalArgumentException("Unsupported schema $securitySchemaName")
                 }
             }
-            intercept.addStatement("return chain.process(ctx, b.build())")
+            intercept.addStatement("return chain.process(b.build())")
             intercept.endControlFlow()
         }
         intercept.addStatement("log.warn(%S)", "Security schema is defined for api but no data was provided")
-        intercept.addStatement("return chain.process(ctx, request)")
+        intercept.addStatement("return chain.process(request)")
         b.addFunction(intercept.build())
         return b.build()
     }

@@ -50,7 +50,6 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
         var m = MethodSpec.methodBuilder("apply")
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class)
-            .addParameter(Classes.context, "ctx")
             .addParameter(Classes.httpServerRequest, "request")
             .addParameter(responseClassName, "response")
             .returns(Classes.httpServerResponse)
@@ -95,7 +94,7 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
             return b.build();
         }
         b.addStatement("var entity = $T.of($L, headers, $N.content())", Classes.httpResponseEntity, responseCode, rsName);
-        b.addStatement("return this.$N.apply(ctx, request, entity)", "response" + rs.code + "Delegate");
+        b.addStatement("return this.$N.apply(request, entity)", "response" + rs.code + "Delegate");
         return b.build();
     }
 }

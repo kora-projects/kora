@@ -14,7 +14,6 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.kafka.common.KafkaUtils;
 import ru.tinkoff.kora.kafka.common.KafkaUtils.NamedThreadFactory;
@@ -114,8 +113,6 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                         backoffTimeout.set(backoffTimeout.get() * 2);
                     }
                     break;
-                } finally {
-                    Context.clear();
                 }
             }
         } catch (Exception e) {

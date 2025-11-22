@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.common.util;
 
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.util.flow.*;
 
 import java.nio.ByteBuffer;
@@ -16,7 +15,7 @@ import java.util.concurrent.Flow.Subscription;
 
 public class FlowUtils {
 
-    private FlowUtils() { }
+    private FlowUtils() {}
 
     public static <T> CompletionStage<T> toFuture(Publisher<T> publisher) {
         var future = new FutureSubscriber<T>();
@@ -24,24 +23,24 @@ public class FlowUtils {
         return future;
     }
 
-    public static <T> Publisher<T> empty(Context context) {
+    public static <T> Publisher<T> empty() {
         return subscriber -> {
-            var s = new EmptySubscription<T>(context, subscriber);
+            var s = new EmptySubscription<T>(subscriber);
             subscriber.onSubscribe(s);
         };
     }
 
-    public static <T> Publisher<T> one(Context context, T value) {
-        return new OnePublisher<>(context, value);
+    public static <T> Publisher<T> one(T value) {
+        return new OnePublisher<>(value);
     }
 
-    public static <T> Publisher<T> fromCallable(Context context, Callable<T> value) {
-        return new FromCallablePublisher<>(context, value);
+    public static <T> Publisher<T> fromCallable(Callable<T> value) {
+        return new FromCallablePublisher<>(value);
     }
 
-    public static <T> Publisher<T> error(Context context, Throwable error) {
+    public static <T> Publisher<T> error(Throwable error) {
         return subscriber -> {
-            var s = new ErrorSubscription<>(subscriber, context, error);
+            var s = new ErrorSubscription<>(subscriber, error);
             subscriber.onSubscribe(s);
         };
     }
