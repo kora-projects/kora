@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.server.symbol.processor
 
 import org.intellij.lang.annotations.Language
-import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.http.common.body.HttpBody
 import ru.tinkoff.kora.http.common.header.HttpHeaders
 import ru.tinkoff.kora.http.server.common.HttpServerRequest
@@ -18,9 +17,7 @@ import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
 import java.lang.reflect.Proxy
 import java.nio.charset.StandardCharsets
-import java.util.UUID
 import java.util.concurrent.CompletionException
-import java.util.concurrent.CompletionStage
 
 abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     override fun commonImports() = super.commonImports() + """
@@ -82,7 +79,7 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun strResponseMapper(): HttpServerResponseMapper<String> {
-        return HttpServerResponseMapper { ctx: Context?, request: HttpServerRequest, result: String -> HttpServerResponse.of(200, HttpBody.plaintext(result)) }
+        return HttpServerResponseMapper { request: HttpServerRequest, result: String -> HttpServerResponse.of(200, HttpBody.plaintext(result)) }
     }
 
     protected fun stringRequestMapper(): HttpServerRequestMapper<String> {
@@ -99,7 +96,7 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
 
     protected fun assertThat(handler: HttpServerRequestHandler, rq: HttpServerRequest): HttpResponseAssert {
         try {
-            return HttpResponseAssert(handler.handle(Context.clear(), rq))
+            return HttpResponseAssert(handler.handle(rq))
         } catch (e: CompletionException) {
             e.cause?.let {
                 if (it is HttpServerResponse) {

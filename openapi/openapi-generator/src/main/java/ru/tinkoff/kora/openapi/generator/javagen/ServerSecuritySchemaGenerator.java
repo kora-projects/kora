@@ -81,7 +81,6 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addAnnotation(Override.class)
             .addModifiers(Modifier.PUBLIC)
             .returns(Classes.httpServerResponse)
-            .addParameter(Classes.context, "ctx")
             .addParameter(Classes.httpServerRequest, "request")
             .addParameter(Classes.httpServerInterceptChain, "chain")
             .addException(Exception.class);
@@ -111,7 +110,7 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                     intercept.endControlFlow();
                 }
             }
-            intercept.addStatement("return $T.with($N, () -> chain.process(ctx, request))", Classes.principal, method.name);
+            intercept.addStatement("return $T.with($N, () -> chain.process(request))", Classes.principal, method.name);
             intercept.endControlFlow();
         }
         intercept.addStatement("throw $T.of(403, $S)", Classes.httpServerResponseException, "Forbidden");

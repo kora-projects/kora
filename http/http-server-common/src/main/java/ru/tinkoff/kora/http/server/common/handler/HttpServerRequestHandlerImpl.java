@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 
@@ -84,7 +83,7 @@ public final class HttpServerRequestHandlerImpl implements HttpServerRequestHand
     }
 
     @Override
-    public HttpServerResponse handle(Context ctx, HttpServerRequest request) throws Exception {
-        return this.handler.apply(ctx, request);
+    public HttpServerResponse handle(HttpServerRequest request) throws Exception {
+        return this.handler.apply(request);
     }
 }

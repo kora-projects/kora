@@ -14,7 +14,6 @@ import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.mockserver.integration.ClientAndServer;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.DefaultHttpClientRequest;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.logging.common.MDC;
@@ -88,7 +87,6 @@ public abstract class HttpClientTestBase {
             lifecycle.release();
         }
         server.stop();
-        Context.clear();
     }
 
     protected ResponseWithBody call(HttpClient client, HttpClientRequest request) {

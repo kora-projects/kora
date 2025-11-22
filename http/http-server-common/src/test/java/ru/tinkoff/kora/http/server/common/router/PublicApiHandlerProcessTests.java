@@ -167,7 +167,7 @@ class PublicApiHandlerProcessTests {
     }
 
     private HttpServerRequestHandler handler(String method, String route) {
-        return new HttpServerRequestHandlerImpl(method, route, (ctx, httpServerRequest) -> HttpServerResponse.of(200));
+        return new HttpServerRequestHandlerImpl(method, route, (httpServerRequest) -> HttpServerResponse.of(200));
     }
 
     private record PublicApiRequestImpl(

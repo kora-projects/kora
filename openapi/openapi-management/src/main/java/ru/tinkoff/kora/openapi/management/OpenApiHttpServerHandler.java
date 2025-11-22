@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.openapi.management;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -33,7 +32,7 @@ public final class OpenApiHttpServerHandler implements HttpServerRequestHandler.
     }
 
     @Override
-    public HttpServerResponse apply(Context context, HttpServerRequest request) {
+    public HttpServerResponse apply(HttpServerRequest request) {
         var fileName = (openapiFiles.size() == 1)
             ? openapiFiles.keySet().iterator().next()
             : request.pathParams().get("file");

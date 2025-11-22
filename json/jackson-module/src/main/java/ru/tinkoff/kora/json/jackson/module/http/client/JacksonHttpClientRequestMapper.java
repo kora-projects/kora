@@ -4,7 +4,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.json.jackson.module.http.JacksonHttpBodyOutput;
@@ -21,7 +20,7 @@ public final class JacksonHttpClientRequestMapper<T> implements HttpClientReques
     }
 
     @Override
-    public HttpBodyOutput apply(Context ctx, T value) {
+    public HttpBodyOutput apply(T value) {
         return new JacksonHttpBodyOutput<>(this.objectWriter, value);
     }
 }

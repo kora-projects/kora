@@ -318,7 +318,7 @@ public class ClientClassGenerator {
             var ref = findMapperField(builder, requestMapperName).modifiers().contains(Modifier.STATIC)
                 ? CodeBlock.of("$T", implClassName(methodData.element))
                 : CodeBlock.of("this");
-            b.addCode("_body = $L.$N.apply($T.current(), $L);$<\n", ref, requestMapperName, CommonClassNames.context, bodyParameter.parameter());
+            b.addCode("_body = $L.$N.apply($L);$<\n", ref, requestMapperName, bodyParameter.parameter());
             b.addCode("} catch (Exception _e) {$>\n");
             b.addCode("throw new $T(_e);$<\n", httpClientEncoderException);
             b.addCode("}\n");

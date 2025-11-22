@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.json.module.http.server;
 
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResponseEntity;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -16,7 +15,7 @@ public final class JsonWriterHttpServerEntityResponseMapper<T> implements HttpSe
     }
 
     @Override
-    public HttpServerResponse apply(Context ctx, HttpServerRequest request, HttpResponseEntity<T> value) {
-        return HttpServerResponse.of(value.code(), value.headers(), new JsonHttpBodyOutput<>(this.writer, ctx, value.body()));
+    public HttpServerResponse apply(HttpServerRequest request, HttpResponseEntity<T> value) {
+        return HttpServerResponse.of(value.code(), value.headers(), new JsonHttpBodyOutput<>(this.writer, value.body()));
     }
 }

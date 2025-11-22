@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.http.server.common;
 
-import ru.tinkoff.kora.common.Context;
-
 /**
  * <b>Русский</b>: Аннотация позволяет указывать обработчики HTTP ответов на определенные HTTP статус коды для контроллеров
  * <hr>
@@ -14,8 +12,8 @@ import ru.tinkoff.kora.common.Context;
  * public final class MyHttpServerInterceptor implements HttpServerInterceptor {
  *
  *    @Override
- *    public HttpServerResponse processRequest(Context context, HttpServerRequest request, InterceptChain chain) throws Exception {
- *      return chain.process(context, request);
+ *    public HttpServerResponse processRequest(HttpServerRequest request, InterceptChain chain) throws Exception {
+ *      return chain.process(request);
  *    }
  * }
  *
@@ -33,13 +31,13 @@ import ru.tinkoff.kora.common.Context;
  */
 public interface HttpServerInterceptor {
 
-    HttpServerResponse intercept(Context context, HttpServerRequest request, InterceptChain chain) throws Exception;
+    HttpServerResponse intercept(HttpServerRequest request, InterceptChain chain) throws Exception;
 
     interface InterceptChain {
-        HttpServerResponse process(Context ctx, HttpServerRequest request) throws Exception;
+        HttpServerResponse process(HttpServerRequest request) throws Exception;
     }
 
     static HttpServerInterceptor noop() {
-        return (context, request, chain) -> chain.process(context, request);
+        return (request, chain) -> chain.process(request);
     }
 }

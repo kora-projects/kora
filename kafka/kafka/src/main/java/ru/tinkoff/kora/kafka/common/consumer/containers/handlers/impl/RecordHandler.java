@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers.handlers.impl;
 
-import io.opentelemetry.context.Context;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -9,7 +8,6 @@ import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.requests.OffsetFetchResponse;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.telemetry.Observation;
-import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import ru.tinkoff.kora.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerPollObservation;
@@ -34,20 +32,16 @@ public class RecordHandler<K, V> implements BaseKafkaRecordsHandler<K, V> {
             return;
         }
         var mdc = new MDC();
-        var opentelemetryCtx = Context.root().with(observation.span());
-        ScopedValue.where(OpentelemetryContext.VALUE, Context.root())
+        Observation.scoped(observation)
             .where(MDC.VALUE, mdc)
-            .where(Observation.VALUE, observation)
-            .where(OpentelemetryContext.VALUE, opentelemetryCtx)
             .run(() -> {
                 observation.observeRecords(records);
                 try {
                     var handler = this.handler.get();
                     for (var record : records) {
                         var recordObservation = observation.observeRecord(record);
-                        ScopedValue.where(MDC.VALUE, mdc.fork())
-                            .where(Observation.VALUE, recordObservation)
-                            .where(OpentelemetryContext.VALUE, opentelemetryCtx.with(recordObservation.span()))
+                        Observation.scoped(recordObservation)
+                            .where(MDC.VALUE, mdc.fork())
                             .run(() -> {
                                 try {
                                     try {

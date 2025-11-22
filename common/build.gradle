@@ -1,5 +1,3 @@
-apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
-
 dependencies {
     compileOnly libs.reactor.core
     compileOnly libs.kotlin.stdlib.lib

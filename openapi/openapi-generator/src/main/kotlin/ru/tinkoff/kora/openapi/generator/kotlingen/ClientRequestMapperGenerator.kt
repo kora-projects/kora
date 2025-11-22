@@ -31,7 +31,6 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val constructor = FunSpec.constructorBuilder()
         val apply = FunSpec.builder("apply")
             .returns(Classes.httpBodyOutput.asKt())
-            .addParameter("ctx", Classes.context.asKt())
             .addParameter("value", formParamClassName)
             .addModifiers(KModifier.OVERRIDE)
         for (p in operation.formParams) {

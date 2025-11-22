@@ -25,7 +25,6 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
-import ru.tinkoff.kora.ksp.common.CommonClassNames.context
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
@@ -100,7 +99,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val returnType = function.returnType!!
         val isSuspend = funDeclaration.isSuspend()
 
-        b.addStatement("val _observation = this._cassandraConnectionFactory.telemetry().observe(_query)", context)
+        b.addStatement("val _observation = this._cassandraConnectionFactory.telemetry().observe(_query)")
         b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
         b.addStatement("_observation.observeConnection()")
         if (isSuspend) {

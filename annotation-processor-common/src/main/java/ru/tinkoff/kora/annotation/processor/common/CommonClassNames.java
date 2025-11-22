@@ -10,13 +10,9 @@ public class CommonClassNames {
     public static final ClassName observation = ClassName.get("ru.tinkoff.kora.common.telemetry", "Observation");
     public static final ClassName opentelemetryContext = ClassName.get("ru.tinkoff.kora.common.telemetry", "OpentelemetryContext");
     public static final ClassName contextOpentelemetry = ClassName.get("io.opentelemetry.context", "Context");
-    public static final ClassName context = ClassName.get("ru.tinkoff.kora.common", "Context");
-    public static final ClassName contextReactor = ClassName.get("ru.tinkoff.kora.common", "Context","Reactor");
-    public static final ClassName flowUtils = ClassName.get("ru.tinkoff.kora.common.util", "FlowUtils");
     public static final ClassName publisher = ClassName.get("org.reactivestreams", "Publisher");
     public static final ClassName mono = ClassName.get("reactor.core.publisher", "Mono");
     public static final ClassName flux = ClassName.get("reactor.core.publisher", "Flux");
-    public static final ClassName synchronousSink = ClassName.get("reactor.core.publisher", "SynchronousSink");
 
     public static final ClassName root = ClassName.get("ru.tinkoff.kora.common.annotation", "Root");
     public static final ClassName aopAnnotation = ClassName.get("ru.tinkoff.kora.common", "AopAnnotation");

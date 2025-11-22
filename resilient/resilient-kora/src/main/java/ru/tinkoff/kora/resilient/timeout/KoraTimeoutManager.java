@@ -13,12 +13,10 @@ final class KoraTimeoutManager implements TimeoutManager {
 
     private final Map<String, Timeout> timeouterMap = new ConcurrentHashMap<>();
     private final TimeoutMetrics metrics;
-    private final TimeoutExecutor timeoutExecutor;
     private final TimeoutConfig config;
 
-    KoraTimeoutManager(TimeoutMetrics metrics, TimeoutExecutor timeoutExecutor, TimeoutConfig config) {
+    KoraTimeoutManager(TimeoutMetrics metrics, TimeoutConfig config) {
         this.metrics = metrics;
-        this.timeoutExecutor = timeoutExecutor;
         this.config = config;
     }
 
@@ -28,7 +26,7 @@ final class KoraTimeoutManager implements TimeoutManager {
         return timeouterMap.computeIfAbsent(name, (k) -> {
             var config = this.config.getNamedConfig(name);
             logger.debug("Creating Timeout named '{}' and config {}", name, config);
-            return new KoraTimeout(name, config.duration().toNanos(), metrics, config, timeoutExecutor.executor());
+            return new KoraTimeout(name, config.duration().toNanos(), metrics, config);
         });
     }
 }

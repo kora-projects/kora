@@ -3,8 +3,6 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseEntityMapper;
 
-import java.util.concurrent.ForkJoinPool;
-
 public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
     @Test
     public void testReturnBlockingResponse() throws Exception {
@@ -138,17 +136,17 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             """, """
             public class TestInterceptor1 implements HttpServerInterceptor {
                 @Override
-                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                public HttpServerResponse intercept(HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
                     if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
-                    return chain.process(context, request);
+                    return chain.process(request);
                 }
             }
             """, """
             public class TestInterceptor2 implements HttpServerInterceptor {
                 @Override
-                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                public HttpServerResponse intercept(HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
                     if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
-                    return chain.process(context, request);
+                    return chain.process(request);
                 }
             }
             """);
@@ -178,17 +176,17 @@ public class BlockingHttpControllerTest extends AbstractHttpControllerTest {
             """, """
             public class TestInterceptor1 implements HttpServerInterceptor {
                 @Override
-                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                public HttpServerResponse intercept(HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
                     if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
-                    return chain.process(context, request);
+                    return chain.process(request);
                 }
             }
             """, """
             public class TestInterceptor2 implements HttpServerInterceptor {
                 @Override
-                public HttpServerResponse intercept(Context context, HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
+                public HttpServerResponse intercept(HttpServerRequest request, HttpServerInterceptor.InterceptChain chain) throws Exception {
                     if (request.queryParams().isEmpty()) return HttpServerResponse.of(400);
-                    return chain.process(context, request);
+                    return chain.process(request);
                 }
             }
             """);

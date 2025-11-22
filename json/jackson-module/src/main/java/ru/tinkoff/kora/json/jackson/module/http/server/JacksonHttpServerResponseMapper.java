@@ -3,7 +3,6 @@ package ru.tinkoff.kora.json.jackson.module.http.server;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
@@ -17,7 +16,7 @@ public final class JacksonHttpServerResponseMapper<T> implements HttpServerRespo
     }
 
     @Override
-    public HttpServerResponse apply(Context ctx, HttpServerRequest request, T result) {
+    public HttpServerResponse apply(HttpServerRequest request, T result) {
         var body = new JacksonHttpBodyOutput<>(objectMapper, result);
         return HttpServerResponse.of(200, body);
     }
