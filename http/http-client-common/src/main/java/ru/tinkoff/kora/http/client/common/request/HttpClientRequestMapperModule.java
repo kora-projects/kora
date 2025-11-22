@@ -9,15 +9,15 @@ import java.nio.ByteBuffer;
 public interface HttpClientRequestMapperModule {
 
     default HttpClientRequestMapper<byte[]> byteArrayHttpClientRequestMapper() {
-        return (ctx, body) -> HttpBody.octetStream(body);
+        return (body) -> HttpBody.octetStream(body);
     }
 
     default HttpClientRequestMapper<ByteBuffer> byteBufferHttpClientRequestMapper() {
-        return (ctx, body) -> HttpBody.octetStream(body);
+        return (body) -> HttpBody.octetStream(body);
     }
 
     default HttpClientRequestMapper<String> stringHttpClientRequestMapper() {
-        return (ctx, body) -> HttpBody.plaintext(body);
+        return (body) -> HttpBody.plaintext(body);
     }
 
     default FormUrlEncodedClientRequestMapper formUrlEncodedClientRequestMapper() {

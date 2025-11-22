@@ -98,7 +98,6 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val intercept = FunSpec.builder("intercept")
             .addModifiers(KModifier.OVERRIDE)
             .returns(Classes.httpServerResponse.asKt())
-            .addParameter("ctx", Classes.context.asKt())
             .addParameter("request", Classes.httpServerRequest.asKt())
             .addParameter("chain", Classes.httpServerInterceptChain.asKt())
 
@@ -159,7 +158,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                     }
                 }
             }
-            intercept.addStatement("return %T.with<%T, %T>(%N) { chain.process(ctx, request) }", Classes.principal.asKt(), Classes.httpServerResponse.asKt(), RuntimeException::class.asClassName(), extractorTag)
+            intercept.addStatement("return %T.with<%T, %T>(%N) { chain.process(request) }", Classes.principal.asKt(), Classes.httpServerResponse.asKt(), RuntimeException::class.asClassName(), extractorTag)
             for (i in 0 until scopesCount) {
                 intercept.endControlFlow()
             }

@@ -542,23 +542,6 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     }
 
     @Test
-    void testContext() {
-        var m = compile("""
-            import ru.tinkoff.kora.common.Context;
-            
-            @HttpController
-            public class Controller {
-                @HttpRoute(method = GET, path = "/ctx")
-                void context(Context ctx) {
-                }
-            }
-            """);
-
-        compileResult.assertSuccess();
-        verifyNoDependencies(compileResult.loadClass("ControllerModule"));
-    }
-
-    @Test
     void testRequest() {
         var m = compile("""
             @HttpController

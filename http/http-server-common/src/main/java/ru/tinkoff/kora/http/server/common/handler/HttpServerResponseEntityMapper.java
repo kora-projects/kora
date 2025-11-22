@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpResponseEntity;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -21,10 +20,10 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
     }
 
     @Override
-    public HttpServerResponse apply(Context ctx, HttpServerRequest request, HttpResponseEntity<T> result) throws IOException {
+    public HttpServerResponse apply(HttpServerRequest request, HttpResponseEntity<T> result) throws IOException {
         Objects.requireNonNull(result);
 
-        var response = this.delegate.apply(ctx, request, result.body());
+        var response = this.delegate.apply(request, result.body());
 
         final HttpBodyOutput body;
         final String contentType = result.headers().getFirst("content-type");

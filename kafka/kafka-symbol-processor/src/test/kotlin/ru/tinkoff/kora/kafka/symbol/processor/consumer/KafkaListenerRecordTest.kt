@@ -27,20 +27,6 @@ class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
     }
 
     @Test
-    fun testProcessRecordSuspend() {
-        compile(
-            """
-            class KafkaListenerClass {
-                @KafkaListener("test.config.path")
-                suspend fun process(event: ConsumerRecord<String, String>) {
-                }
-            }
-            
-            """.trimIndent()
-        )
-    }
-
-    @Test
     @Disabled("Is not supported by ksp yet")
     fun testProcessRecordWithTags() {
         compile(

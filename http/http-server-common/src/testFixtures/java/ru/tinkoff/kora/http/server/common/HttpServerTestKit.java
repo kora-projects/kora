@@ -15,7 +15,6 @@ import reactor.util.function.Tuples;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.liveness.LivenessProbeFailure;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
@@ -187,7 +186,7 @@ public abstract class HttpServerTestKit {
     public class PublicApiTest {
         @Test
         void testException() throws IOException {
-            var handler = handler(GET, "/", (ctx, request) -> {
+            var handler = handler(GET, "/", (request) -> {
                 throw new RuntimeException();
             });
 
@@ -205,7 +204,7 @@ public abstract class HttpServerTestKit {
 
         @Test
         void testExceptionIsResponse() throws IOException {
-            var handler = handler(GET, "/", (ctx, request) -> {
+            var handler = handler(GET, "/", (request) -> {
                 throw HttpServerResponseException.of(400, "Bad Request");
             });
 
@@ -223,7 +222,7 @@ public abstract class HttpServerTestKit {
 
         @Test
         void testExceptionIsResponseNoBody() throws IOException {
-            var handler = handler(GET, "/", (ctx, request) -> {
+            var handler = handler(GET, "/", (request) -> {
                 throw new HttpServerResponseExceptionNoBody(400);
             });
 
@@ -241,7 +240,7 @@ public abstract class HttpServerTestKit {
 
         @Test
         void testExceptionIsFutureOfResponse() throws IOException {
-            var handler = handler(GET, "/", (ctx, request) -> {
+            var handler = handler(GET, "/", (request) -> {
                 Thread.sleep(100);
                 throw HttpServerResponseException.of(400, "Bad Request");
             });
@@ -261,7 +260,7 @@ public abstract class HttpServerTestKit {
         @Test
         void testCompletedFullResponseBody() throws IOException {
             var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
-            var handler = handler(GET, "/", (ctx, request) -> {
+            var handler = handler(GET, "/", (request) -> {
                 return httpResponse;
             });
 
@@ -280,7 +279,7 @@ public abstract class HttpServerTestKit {
 
         @Test
         void testStreamingResponseBody() throws IOException {
-            var handler = handler(GET, "/", (ctx, request) -> {
+            var handler = handler(GET, "/", (request) -> {
                 var body = new HttpBodyOutput() {
 
                     @Override
@@ -332,7 +331,7 @@ public abstract class HttpServerTestKit {
 
         @Test
         void testHeadRequest() throws Exception {
-            startServer(handler("HEAD", "/test", (ctx, request) -> HttpServerResponse.of(200, HttpHeaders.of(), new HttpBodyOutput() {
+            startServer(handler("HEAD", "/test", (request) -> HttpServerResponse.of(200, HttpHeaders.of(), new HttpBodyOutput() {
                 @Override
                 public long contentLength() {
                     return 100;
@@ -371,7 +370,7 @@ public abstract class HttpServerTestKit {
     @Test
     void testHelloWorld() throws IOException, InterruptedException {
         var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
         });
@@ -396,7 +395,7 @@ public abstract class HttpServerTestKit {
         var data = new byte[10 * 1024 * 1024];
         ThreadLocalRandom.current().nextBytes(data);
         var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 10 * 1024 * 1024, os -> os.write(data)));
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
         });
@@ -419,7 +418,7 @@ public abstract class HttpServerTestKit {
         var data = new byte[10 * 1024 * 1024];
         ThreadLocalRandom.current().nextBytes(data);
         var httpResponse = HttpServerResponse.of(200);
-        var handler = handler(POST, "/", (_, request) -> {
+        var handler = handler(POST, "/", (request) -> {
             try (var body = request.body(); var is = body.asInputStream()) {
                 var b = is.readAllBytes();
                 assertThat(b).isEqualTo(data);
@@ -477,7 +476,7 @@ public abstract class HttpServerTestKit {
                 os.write(bytes);
             }
         }));
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
         });
@@ -499,7 +498,7 @@ public abstract class HttpServerTestKit {
     @Test
     void testHelloWorldParallel() throws ExecutionException, InterruptedException {
         var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
         });
@@ -533,7 +532,7 @@ public abstract class HttpServerTestKit {
     @Test
     void testUnknownPath() throws IOException {
         var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
         });
@@ -562,7 +561,7 @@ public abstract class HttpServerTestKit {
 
             }
         });
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 200)));
             return httpResponse;
         });
@@ -587,7 +586,7 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testExceptionOnResponse() throws IOException {
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             throw new RuntimeException("test");
         });
@@ -635,7 +634,7 @@ public abstract class HttpServerTestKit {
             }
         };
         var httpResponse = HttpServerResponse.of(200, body);
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             return httpResponse;
         });
         this.startServer(handler);
@@ -662,7 +661,7 @@ public abstract class HttpServerTestKit {
         var httpResponse = httpResponse(200, bytes.remaining() * 5, "text/plain", os -> {
             throw new RuntimeException("test");
         });
-        var handler = handler(GET, "/", (_, _) -> httpResponse);
+        var handler = handler(GET, "/", (_) -> httpResponse);
         this.startServer(handler);
 
         var request = request("/")
@@ -679,7 +678,7 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testHttpResponseExceptionOnHandle() throws IOException {
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             throw HttpServerResponseException.of(400, "test");
         });
         this.startServer(handler);
@@ -698,7 +697,7 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testErrorWithEmptyMessage() throws IOException {
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             throw new RuntimeException();
         });
         this.startServer(handler);
@@ -715,7 +714,7 @@ public abstract class HttpServerTestKit {
 
     @Test
     void testEmptyBodyHandling() throws IOException {
-        var handler = handler(POST, "/", (ctx, request) -> {
+        var handler = handler(POST, "/", (request) -> {
             try (var body = request.body(); var is = body.asInputStream()) {
                 is.readAllBytes();
                 return new SimpleHttpServerResponse(
@@ -741,7 +740,7 @@ public abstract class HttpServerTestKit {
         var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
         var executor = Executors.newSingleThreadExecutor();
         var size = 20 * 1024 * 1024;
-        var handler = handler(POST, "/", (ctx, request) -> {
+        var handler = handler(POST, "/", (request) -> {
             try (var is = request.body().asInputStream()) {
                 var data = is.readAllBytes();
                 Assertions.assertEquals(data.length, size);
@@ -787,7 +786,7 @@ public abstract class HttpServerTestKit {
             ThreadLocalRandom.current().nextBytes(buf);
             body.add(buf);
         }
-        var handler = handler(POST, "/", (_, request) -> {
+        var handler = handler(POST, "/", (request) -> {
             try {
                 var data = mapper.apply(request);
                 var expectedData = body.pollFirst();
@@ -820,30 +819,30 @@ public abstract class HttpServerTestKit {
     @Test
     void testInterceptor() throws IOException {
         var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("hello world"));
-        var handler = handler(GET, "/", (_, _) -> {
+        var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
         });
         var interceptor1 = new HttpServerInterceptor() {
             @Override
-            public HttpServerResponse intercept(Context ctx, HttpServerRequest request, InterceptChain chain) throws Exception {
+            public HttpServerResponse intercept(HttpServerRequest request, InterceptChain chain) throws Exception {
                 var header = request.headers().getFirst("test-header1");
                 if (header != null) {
                     request.body().close();
                     return HttpServerResponse.of(500, HttpBody.plaintext("error"));
                 }
-                return chain.process(ctx, request);
+                return chain.process(request);
             }
         };
         var interceptor2 = new HttpServerInterceptor() {
             @Override
-            public HttpServerResponse intercept(Context ctx, HttpServerRequest request, InterceptChain chain) throws Exception {
+            public HttpServerResponse intercept(HttpServerRequest request, InterceptChain chain) throws Exception {
                 var header = request.headers().getFirst("test-header2");
                 if (header != null) {
                     request.body().close();
                     return HttpServerResponse.of(400, HttpBody.plaintext("error"));
                 }
-                return chain.process(ctx, request);
+                return chain.process(request);
             }
         };
 
@@ -936,8 +935,8 @@ public abstract class HttpServerTestKit {
             }
 
             @Override
-            public HttpServerResponse handle(Context ctx, HttpServerRequest request) throws Exception {
-                return handler.apply(ctx, request);
+            public HttpServerResponse handle(HttpServerRequest request) throws Exception {
+                return handler.apply(request);
             }
         };
     }

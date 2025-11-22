@@ -165,7 +165,6 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addAnnotation(Override.class)
             .addModifiers(Modifier.PUBLIC)
             .returns(Classes.httpClientResponse)
-            .addParameter(Classes.context, "ctx")
             .addParameter(Classes.httpClientInterceptChain, "chain")
             .addParameter(Classes.httpClientRequest, "request")
             .addException(Exception.class);
@@ -203,12 +202,12 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 }
             }
             if (needReturn) {
-                intercept.addStatement("return chain.process(ctx, b.build())");
+                intercept.addStatement("return chain.process(b.build())");
             }
             intercept.endControlFlow();
         }
         intercept.addStatement("log.warn($S)", "Security schema is defined for api but no data was provided");
-        intercept.addStatement("return chain.process(ctx, request)");
+        intercept.addStatement("return chain.process(request)");
         b.addMethod(intercept.build());
         return b.build();
     }

@@ -7,7 +7,6 @@ import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
@@ -17,6 +16,7 @@ import ru.tinkoff.kora.s3.client.telemetry.S3KoraClientTelemetry;
 
 import java.io.ByteArrayInputStream;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CompletionStage;
@@ -107,40 +107,32 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
 
     @Override
     public CompletionStage<S3ObjectList> list(String bucket, String prefix, @Nullable String delimiter, int limit) {
-        return wrapWithTelemetry(fork -> listInternal(bucket, prefix, delimiter, limit, fork),
+        return wrapWithTelemetry(() -> listInternal(bucket, prefix, delimiter, limit),
             () -> telemetry.get("ListObjects", bucket, prefix, null));
     }
 
-    private CompletionStage<S3ObjectList> listInternal(String bucket, String prefix, @Nullable String delimiter, int limit, Context context) {
-        return listMetaInternal(bucket, prefix, delimiter, limit, context)
+    private CompletionStage<S3ObjectList> listInternal(String bucket, String prefix, @Nullable String delimiter, int limit) {
+        return listMetaInternal(bucket, prefix, delimiter, limit)
             .thenCompose(metaList -> {
-                try {
-                    context.inject();
+                var futures = metaList.metas().stream()
+                    .map(meta -> getInternal(bucket, meta.key()).toCompletableFuture())
+                    .toArray(CompletableFuture[]::new);
 
-                    var futures = metaList.metas().stream()
-                        .map(meta -> getInternal(bucket, meta.key()).toCompletableFuture())
-                        .toArray(CompletableFuture[]::new);
+                return CompletableFuture.allOf(futures)
+                    .thenApply(_v -> {
+                        final List<S3Object> objects = new ArrayList<>(futures.length);
+                        for (var future : futures) {
+                            objects.add(((S3Object) future.join()));
+                        }
 
-                    return CompletableFuture.allOf(futures)
-                        .thenApply(_v -> {
-                            final List<S3Object> objects = new ArrayList<>(futures.length);
-                            for (var future : futures) {
-                                objects.add(((S3Object) future.join()));
-                            }
-
-                            return new MinioS3ObjectList(metaList, objects);
-                        });
-                } finally {
-                    Context.clear();
-                }
+                        return new MinioS3ObjectList(metaList, objects);
+                    });
             });
     }
 
-    private CompletionStage<S3ObjectMetaList> listMetaInternal(String bucket, String prefix, @Nullable String delimiter, int limit, Context context) {
+    private CompletionStage<S3ObjectMetaList> listMetaInternal(String bucket, String prefix, @Nullable String delimiter, int limit) {
         return CompletableFuture.<S3ObjectMetaList>supplyAsync(() -> {
                 try {
-                    context.inject();
-
                     var response = minioClient.listObjects(ListObjectsArgs.builder()
                         .bucket(bucket)
                         .prefix(prefix)
@@ -157,8 +149,6 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
                     return new MinioS3ObjectMetaList(prefix, metas);
                 } catch (Exception e) {
                     throw handleException(e);
-                } finally {
-                    Context.clear();
                 }
             })
             .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage);
@@ -166,15 +156,15 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
 
     @Override
     public CompletionStage<S3ObjectMetaList> listMeta(String bucket, String prefix, @Nullable String delimiter, int limit) {
-        return wrapWithTelemetry(fork -> listMetaInternal(bucket, prefix, delimiter, limit, fork),
+        return wrapWithTelemetry(() -> listMetaInternal(bucket, prefix, delimiter, limit),
             () -> telemetry.get("ListObjectMetas", bucket, prefix, null));
     }
 
     @Override
     public CompletionStage<List<S3ObjectList>> list(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
-        return wrapWithTelemetry(fork -> {
+        return wrapWithTelemetry(() -> {
             var futures = prefixes.stream()
-                .map(p -> listInternal(bucket, p, delimiter, limitPerPrefix, fork).toCompletableFuture())
+                .map(p -> listInternal(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
                 .toArray(CompletableFuture[]::new);
 
             return CompletableFuture.allOf(futures)
@@ -186,9 +176,9 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
 
     @Override
     public CompletionStage<List<S3ObjectMetaList>> listMeta(String bucket, Collection<String> prefixes, @Nullable String delimiter, int limitPerPrefix) {
-        return wrapWithTelemetry(fork -> {
+        return wrapWithTelemetry(() -> {
             var futures = prefixes.stream()
-                .map(p -> listMetaInternal(bucket, p, delimiter, limitPerPrefix, fork).toCompletableFuture())
+                .map(p -> listMetaInternal(bucket, p, delimiter, limitPerPrefix).toCompletableFuture())
                 .toArray(CompletableFuture[]::new);
 
             return CompletableFuture.allOf(futures)
@@ -220,49 +210,41 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
             ));
         }
 
-        var ctx = Context.current();
+        var size = body.size() > 0 ? body.size() : null;
+        var context = telemetry.get("PutObject", bucket, key, size);
+
+        final CompletionStage<S3ObjectUpload> operation;
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var size = body.size() > 0 ? body.size() : null;
-            var context = telemetry.get("PutObject", bucket, key, size);
-
-            final CompletionStage<S3ObjectUpload> operation;
-            try {
-                if (body instanceof ByteS3Body bb) {
-                    operation = minioClient.putObject(requestBuilder.stream(new ByteArrayInputStream(bb.bytes()), bb.size(), -1).build())
-                        .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
-                } else if (body.size() > 0) {
-                    operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize().toBytes()).build())
-                        .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
-                } else {
-                    operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize().toBytes()).build())
-                        .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
-                }
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                return CompletableFuture.failedFuture(ex);
+            if (body instanceof ByteS3Body bb) {
+                operation = minioClient.putObject(requestBuilder.stream(new ByteArrayInputStream(bb.bytes()), bb.size(), -1).build())
+                    .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
+            } else if (body.size() > 0) {
+                operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize().toBytes()).build())
+                    .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
+            } else {
+                operation = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize().toBytes()).build())
+                    .thenApply(r -> new MinioS3ObjectUpload(r.versionId()));
             }
-
-            return operation
-                .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage)
-                .whenComplete((r, e) -> {
-                    if (e != null) {
-                        context.close(handleException(e));
-                    } else {
-                        context.close();
-                    }
-                });
-        } finally {
-            ctx.inject();
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            return CompletableFuture.failedFuture(ex);
         }
+
+        return operation
+            .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage)
+            .whenComplete((r, e) -> {
+                if (e != null) {
+                    context.close(handleException(e));
+                } else {
+                    context.close();
+                }
+            });
     }
 
     @Override
     public CompletionStage<Void> delete(String bucket, String key) {
-        return wrapWithTelemetry(fork -> minioClient.removeObject(RemoveObjectArgs.builder()
+        return wrapWithTelemetry(() -> minioClient.removeObject(RemoveObjectArgs.builder()
                 .bucket(bucket)
                 .object(key)
                 .build()),
@@ -271,9 +253,8 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
 
     @Override
     public CompletionStage<Void> delete(String bucket, Collection<String> keys) {
-        return wrapWithTelemetry(fork -> CompletableFuture.supplyAsync(() -> {
+        return wrapWithTelemetry(() -> CompletableFuture.supplyAsync(() -> {
             try {
-                fork.inject();
                 var response = minioClient.removeObjects(RemoveObjectsArgs.builder()
                     .bucket(bucket)
                     .objects(keys.stream()
@@ -292,53 +273,37 @@ public class MinioS3KoraAsyncClient implements S3KoraAsyncClient {
                 return null;
             } catch (Exception e) {
                 throw handleException(e);
-            } finally {
-                Context.clear();
             }
         }), () -> telemetry.get("DeleteObjects", bucket, null, null));
     }
 
-    @FunctionalInterface
-    private interface FunctionThrowable<T, R> {
-
-        R apply(T t) throws Throwable;
-    }
-
     private static <T> CompletionStage<T> wrapWithTelemetry(CompletionStage<T> operationSupplier,
                                                             Supplier<S3KoraClientTelemetry.S3KoraClientTelemetryContext> contextSupplier) {
-        return wrapWithTelemetry(context -> operationSupplier, contextSupplier);
+        return wrapWithTelemetry(() -> operationSupplier, contextSupplier);
     }
 
-    private static <T> CompletionStage<T> wrapWithTelemetry(FunctionThrowable<Context, CompletionStage<T>> operationSupplier,
+    private static <T> CompletionStage<T> wrapWithTelemetry(Callable<CompletionStage<T>> operationSupplier,
                                                             Supplier<S3KoraClientTelemetry.S3KoraClientTelemetryContext> contextSupplier) {
-        var ctx = Context.current();
+        var context = contextSupplier.get();
+
+        final CompletionStage<T> operation;
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = contextSupplier.get();
-
-            final CompletionStage<T> operation;
-            try {
-                operation = operationSupplier.apply(fork);
-            } catch (Throwable e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                return CompletableFuture.failedFuture(ex);
-            }
-
-            return operation
-                .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage)
-                .whenComplete((r, e) -> {
-                    if (e != null) {
-                        context.close(handleException(e));
-                    } else {
-                        context.close();
-                    }
-                });
-        } finally {
-            ctx.inject();
+            operation = operationSupplier.call();
+        } catch (Throwable e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            return CompletableFuture.failedFuture(ex);
         }
+
+        return operation
+            .exceptionallyCompose(MinioS3KoraAsyncClient::handleExceptionStage)
+            .whenComplete((r, e) -> {
+                if (e != null) {
+                    context.close(handleException(e));
+                } else {
+                    context.close();
+                }
+            });
     }
 
     private static <T> CompletionStage<T> handleExceptionStage(Throwable e) {

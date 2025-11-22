@@ -7,7 +7,6 @@ import io.minio.messages.DeleteObject;
 import io.minio.messages.Item;
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3KoraClient;
@@ -199,113 +198,81 @@ public class MinioS3KoraClient implements S3KoraClient {
             ));
         }
 
-        var ctx = Context.current();
+        var context = telemetry.get("PutObject", bucket, key, body.size() > 0 ? body.size() : null);
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = telemetry.get("PutObject", bucket, key, body.size() > 0 ? body.size() : null);
-            try {
-                if (body instanceof ByteS3Body bb) {
-                    final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(new BufferedInputStream(new ByteArrayInputStream(bb.bytes())), bb.size(), -1).build());
-                    return new MinioS3ObjectUpload(response.versionId());
-                } else if (body.size() > 0) {
-                    final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize().toBytes()).build());
-                    return new MinioS3ObjectUpload(response.versionId());
-                } else {
-                    final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize().toBytes()).build());
-                    return new MinioS3ObjectUpload(response.versionId());
-                }
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
+            if (body instanceof ByteS3Body bb) {
+                final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(new BufferedInputStream(new ByteArrayInputStream(bb.bytes())), bb.size(), -1).build());
+                return new MinioS3ObjectUpload(response.versionId());
+            } else if (body.size() > 0) {
+                final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), body.size(), minioS3ClientConfig.upload().partSize().toBytes()).build());
+                return new MinioS3ObjectUpload(response.versionId());
+            } else {
+                final ObjectWriteResponse response = minioClient.putObject(requestBuilder.stream(body.asInputStream(), -1, minioS3ClientConfig.upload().partSize().toBytes()).build());
+                return new MinioS3ObjectUpload(response.versionId());
             }
-        } finally {
-            ctx.inject();
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 
     @Override
     public void delete(String bucket, String key) {
-        var ctx = Context.current();
+        var context = telemetry.get("DeleteObject", bucket, key, null);
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = telemetry.get("DeleteObject", bucket, key, null);
-            try {
-                minioClient.removeObject(RemoveObjectArgs.builder()
-                    .bucket(bucket)
-                    .object(key)
-                    .build());
-                context.close();
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
-            }
-        } finally {
-            ctx.inject();
+            minioClient.removeObject(RemoveObjectArgs.builder()
+                .bucket(bucket)
+                .object(key)
+                .build());
+            context.close();
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 
     @Override
     public void delete(String bucket, Collection<String> keys) {
-        var ctx = Context.current();
+        var context = telemetry.get("DeleteObjects", bucket, null, null);
         try {
-            var fork = ctx.fork();
-            fork.inject();
+            var response = minioClient.removeObjects(RemoveObjectsArgs.builder()
+                .bucket(bucket)
+                .objects(keys.stream()
+                    .map(DeleteObject::new)
+                    .toList())
+                .build());
 
-            var context = telemetry.get("DeleteObjects", bucket, null, null);
-            try {
-                var response = minioClient.removeObjects(RemoveObjectsArgs.builder()
-                    .bucket(bucket)
-                    .objects(keys.stream()
-                        .map(DeleteObject::new)
-                        .toList())
-                    .build());
-
-                final List<S3DeleteException.Error> errors = new ArrayList<>(keys.size());
-                for (Result<DeleteError> result : response) {
-                    DeleteError er = result.get();
-                    errors.add(new S3DeleteException.Error(er.objectName(), er.bucketName(), er.code(), er.message()));
-                }
-
-                if (!errors.isEmpty()) {
-                    throw new S3DeleteException(errors);
-                }
-
-                context.close();
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
+            final List<S3DeleteException.Error> errors = new ArrayList<>(keys.size());
+            for (Result<DeleteError> result : response) {
+                DeleteError er = result.get();
+                errors.add(new S3DeleteException.Error(er.objectName(), er.bucketName(), er.code(), er.message()));
             }
-        } finally {
-            ctx.inject();
+
+            if (!errors.isEmpty()) {
+                throw new S3DeleteException(errors);
+            }
+
+            context.close();
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 
     private static <T> T wrapWithTelemetry(Supplier<T> operationSupplier,
                                            Supplier<S3KoraClientTelemetry.S3KoraClientTelemetryContext> contextSupplier) {
-        var ctx = Context.current();
+        var context = contextSupplier.get();
         try {
-            var fork = ctx.fork();
-            fork.inject();
-
-            var context = contextSupplier.get();
-            try {
-                T value = operationSupplier.get();
-                context.close();
-                return value;
-            } catch (Exception e) {
-                S3Exception ex = handleException(e);
-                context.close(ex);
-                throw ex;
-            }
-        } finally {
-            ctx.inject();
+            T value = operationSupplier.get();
+            context.close();
+            return value;
+        } catch (Exception e) {
+            S3Exception ex = handleException(e);
+            context.close(ex);
+            throw ex;
         }
     }
 

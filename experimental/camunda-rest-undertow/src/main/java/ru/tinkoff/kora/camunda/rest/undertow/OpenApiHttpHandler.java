@@ -11,7 +11,6 @@ import io.undertow.util.HttpString;
 import jakarta.annotation.Nullable;
 import org.xnio.IoUtils;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.HttpMethod;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.cookie.Cookie;
@@ -87,15 +86,14 @@ final class OpenApiHttpHandler implements HttpHandler {
         }
         var executor = UndertowHttpServer.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "undertow-kora-camunda");
         exchange.dispatch(executor, exchange1 -> {
-            var context = Context.clear();
             var fakeRequest = getFakeRequest(match);
             var openapi = restConfig.openapi();
             if (openapi.enabled() && requestPath.startsWith(openapi.endpoint())) {
-                executeHandler(context, exchange1, openApiHandler, fakeRequest);
+                executeHandler(exchange1, openApiHandler, fakeRequest);
             } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().endpoint())) {
-                executeHandler(context, exchange1, swaggerUIHandler, fakeRequest);
+                executeHandler(exchange1, swaggerUIHandler, fakeRequest);
             } else if (openapi.rapidoc().enabled() && requestPath.startsWith(openapi.rapidoc().endpoint())) {
-                executeHandler(context, exchange1, rapidocHandler, fakeRequest);
+                executeHandler(exchange1, rapidocHandler, fakeRequest);
             } else {
                 exchange.setStatusCode(404);
                 exchange.endExchange();
@@ -149,10 +147,10 @@ final class OpenApiHttpHandler implements HttpHandler {
         };
     }
 
-    private void executeHandler(Context ctx, HttpServerExchange exchange, HttpServerRequestHandler.HandlerFunction handler, HttpServerRequest request) {
+    private void executeHandler(HttpServerExchange exchange, HttpServerRequestHandler.HandlerFunction handler, HttpServerRequest request) {
         final HttpServerResponse response;
         try {
-            response = handler.apply(ctx, request);
+            response = handler.apply(request);
         } catch (Throwable e) {
             sendException(exchange, e);
             return;

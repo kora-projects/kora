@@ -6,7 +6,6 @@ import reactor.core.CoreSubscriber;
 import reactor.core.Exceptions;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Signal;
-import reactor.util.context.Context;
 
 import java.io.InputStream;
 import java.nio.ByteBuffer;
@@ -17,7 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ByteBufferFluxInputStream extends InputStream implements CoreSubscriber<ByteBuffer> {
     private final BlockingQueue<Signal<ByteBuffer>> queue = new ArrayBlockingQueue<>(4);
     private final AtomicInteger demand = new AtomicInteger(1);
-    private final Context context = ru.tinkoff.kora.common.Context.Reactor.inject(Context.empty(), ru.tinkoff.kora.common.Context.current());
     private ByteBuffer currentBuffer = null;
     private volatile Subscription subscription = null;
     private volatile boolean completed = false;
@@ -119,11 +117,5 @@ public class ByteBufferFluxInputStream extends InputStream implements CoreSubscr
     @Override
     public void onComplete() {
         this.queue.offer(Signal.complete());
-    }
-
-    @Override
-    @Nonnull
-    public Context currentContext() {
-        return this.context;
     }
 }

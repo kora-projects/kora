@@ -1,16 +1,12 @@
 package ru.tinkoff.kora.common.util.flow;
 
-import ru.tinkoff.kora.common.Context;
-
 import java.util.concurrent.Flow;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class EmptySubscription<T> extends AtomicBoolean implements Flow.Subscription {
-    private final Context context;
     private final Flow.Subscriber<? super T> subscriber;
 
-    public EmptySubscription(Context context, Flow.Subscriber<? super T> subscriber) {
-        this.context = context;
+    public EmptySubscription(Flow.Subscriber<? super T> subscriber) {
         this.subscriber = subscriber;
     }
 
@@ -19,13 +15,7 @@ public final class EmptySubscription<T> extends AtomicBoolean implements Flow.Su
         assert n > 0;
         if (this.compareAndSet(false, true)) {
             var subscriber = this.subscriber;
-            var ctx = Context.current();
-            this.context.inject();
-            try {
-                subscriber.onComplete();
-            } finally {
-                ctx.inject();
-            }
+            subscriber.onComplete();
         }
     }
 

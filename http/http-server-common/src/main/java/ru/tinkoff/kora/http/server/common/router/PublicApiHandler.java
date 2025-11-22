@@ -2,7 +2,6 @@ package ru.tinkoff.kora.http.server.common.router;
 
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.*;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
@@ -25,7 +24,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PublicApiHandler {
 
     private static final HttpServerResponse NOT_FOUND_RESPONSE = HttpServerResponse.of(404);
-    private static final HttpServerRequestHandler.HandlerFunction NOT_FOUND_HANDLER = (ctx, request) -> NOT_FOUND_RESPONSE;
+    private static final HttpServerRequestHandler.HandlerFunction NOT_FOUND_HANDLER = (_) -> NOT_FOUND_RESPONSE;
 
     private final Map<String, PathTemplateMatcher<HttpServerRequestHandler>> pathTemplateMatcher;
     private final PathTemplateMatcher<List<String>> allMethodMatchers;
@@ -83,7 +82,7 @@ public class PublicApiHandler {
         }
 
         public HttpServerResponse proceed(HttpServerRequest request) throws Exception {
-            return this.handler.apply(Context.current(), request, this.handlerFunction);
+            return this.handler.apply(request, this.handlerFunction);
         }
     }
 
@@ -98,7 +97,7 @@ public class PublicApiHandler {
             var allMethodMatch = this.allMethodMatchers.match(publicApiRequest.path());
             if (allMethodMatch != null) {
                 var allowed = String.join(", ", allMethodMatch.value());
-                handlerFunction = (_, _) -> {
+                handlerFunction = _ -> {
                     throw HttpServerResponseException.of(405, "Method Not Allowed", HttpHeaders.of("allow", allowed));
                 };
                 routeTemplate = allMethodMatch.matchedTemplate();
@@ -111,7 +110,7 @@ public class PublicApiHandler {
         } else {
             templateParameters = pathTemplateMatch.parameters();
             routeTemplate = pathTemplateMatch.matchedTemplate();
-            handlerFunction = pathTemplateMatch.value()::handle;
+            handlerFunction = (rq) -> pathTemplateMatch.value().handle(rq);
         }
         var request = new LazyRequest(publicApiRequest, templateParameters, routeTemplate);
         var handler = this.requestHandler.get();
@@ -120,40 +119,32 @@ public class PublicApiHandler {
 
 
     private interface RequestHandler {
-        HttpServerResponse apply(Context context, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception;
+        HttpServerResponse apply(HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception;
     }
 
     private static class SimpleRequestHandler implements RequestHandler {
         @Override
-        public HttpServerResponse apply(Context context, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
-            return lastHandlerInChain.apply(context, request);
+        public HttpServerResponse apply(HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
+            return lastHandlerInChain.apply(request);
         }
     }
 
     private static class AggregatedRequestHandler implements RequestHandler {
-        private static final RequestHandler FINAL_HANDLER = (ctx, request, lastHandlerInChain) -> lastHandlerInChain.apply(ctx, request);
+        private static final RequestHandler FINAL_HANDLER = (request, lastHandlerInChain) -> lastHandlerInChain.apply(request);
         private final RequestHandler chain;
 
         private AggregatedRequestHandler(List<HttpServerInterceptor> interceptors) {
             var chain = FINAL_HANDLER;
             for (var interceptor : interceptors) {
                 var remainingChain = chain;
-                chain = (ctx, r, lastHandler) -> {
-                    var oldCtx = Context.current();
-                    try {
-                        ctx.inject();
-                        return interceptor.intercept(ctx, r, (_ctx, httpServerRequest) -> remainingChain.apply(_ctx, httpServerRequest, lastHandler));
-                    } finally {
-                        oldCtx.inject();
-                    }
-                };
+                chain = (r, lastHandler) -> interceptor.intercept(r, (httpServerRequest) -> remainingChain.apply(httpServerRequest, lastHandler));
             }
             this.chain = chain;
         }
 
         @Override
-        public HttpServerResponse apply(Context ctx, HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
-            return this.chain.apply(ctx, request, lastHandlerInChain);
+        public HttpServerResponse apply(HttpServerRequest request, HttpServerRequestHandler.HandlerFunction lastHandlerInChain) throws Exception {
+            return this.chain.apply(request, lastHandlerInChain);
         }
     }
 }
