@@ -1,11 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor.dto;
 
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import ru.tinkoff.kora.json.common.annotation.JsonField;
 import ru.tinkoff.kora.json.common.annotation.JsonReader;
-
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
 
 @JsonReader
 public record DtoOnlyReader(
@@ -17,7 +15,7 @@ public record DtoOnlyReader(
     public static final class Field3Reader implements ru.tinkoff.kora.json.common.JsonReader<Inner> {
 
         @Override
-        public Inner read(JsonParser parser) throws IOException {
+        public Inner read(JsonParser parser) {
             var token = parser.currentToken();
             if (token != JsonToken.VALUE_STRING) {
                 throw new RuntimeException();

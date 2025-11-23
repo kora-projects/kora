@@ -1,34 +1,36 @@
 package ru.tinkoff.kora.json.common.util;
 
-import com.fasterxml.jackson.core.*;
-import com.fasterxml.jackson.core.base.ParserBase;
-import com.fasterxml.jackson.core.io.ContentReference;
-import com.fasterxml.jackson.core.io.IOContext;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
+import tools.jackson.core.*;
+import tools.jackson.core.io.ContentReference;
+import tools.jackson.core.io.IOContext;
+import tools.jackson.core.json.JsonParserBase;
 
-import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-public class BufferingJsonParser extends ParserBase {
+public class BufferingJsonParser extends JsonParserBase {
     private final ArrayList<JsonSegment> tokens = new ArrayList<>();
     private final JsonParser delegate;
     private int currentToken;
 
-    public BufferingJsonParser(JsonParser delegate) throws IOException {
+    public BufferingJsonParser(JsonParser delegate) {
         super(
+            delegate.objectReadContext(),
             new IOContext(
                 delegate.streamReadConstraints(),
                 StreamWriteConstraints.defaults(),
                 ErrorReportConfiguration.defaults(),
                 JsonCommonModule.JSON_FACTORY._getBufferRecycler(),
                 ContentReference.rawReference(delegate),
-                false
+                false,
+                JsonEncoding.UTF8
             ),
-            delegate.getFeatureMask()
+            delegate.streamReadFeatures(),
+            delegate.objectReadContext().getFormatReadFeatures(0)
         );
         this.delegate = delegate;
         this._currToken = delegate.currentToken();
@@ -42,7 +44,7 @@ public class BufferingJsonParser extends ParserBase {
         this._currToken = data.token();
         this._textBuffer.resetWithShared(data.data(), 0, data.data().length);
 
-        return new JsonSegmentJsonParser(this._ioContext, this._features, new ArrayList<>(this.tokens));
+        return new JsonSegmentJsonParser(this._objectReadContext, this._ioContext, this._streamReadFeatures, this._formatReadFeatures, new ArrayList<>(this.tokens));
     }
 
     @Override
@@ -50,20 +52,10 @@ public class BufferingJsonParser extends ParserBase {
 
     }
 
-    @Override
-    public ObjectCodec getCodec() {
-        return this.delegate.getCodec();
-    }
-
-    @Override
-    public void setCodec(ObjectCodec oc) {
-        this.delegate.setCodec(oc);
-    }
-
-    private JsonSegment data(JsonToken token, JsonParser parser) throws IOException {
-        var textCharacters = parser.getTextCharacters();
-        var textOffset = parser.getTextOffset();
-        var textLength = parser.getTextLength();
+    private JsonSegment data(JsonToken token, JsonParser parser) {
+        var textCharacters = parser.getStringCharacters();
+        var textOffset = parser.getStringOffset();
+        var textLength = parser.getStringLength();
         final boolean isNegative;
         if (!token.isNumeric()) {
             isNegative = false;
@@ -73,7 +65,7 @@ public class BufferingJsonParser extends ParserBase {
         return new JsonSegment(token, Arrays.copyOfRange(textCharacters, textOffset, textOffset + textLength), isNegative);
     }
 
-    private boolean isCurrentNumberNegative(JsonParser parser) throws IOException {
+    private boolean isCurrentNumberNegative(JsonParser parser) {
         return switch (parser.getNumberType()) {
             case INT -> parser.getIntValue() < 0;
             case LONG -> parser.getLongValue() < 0;
@@ -85,22 +77,37 @@ public class BufferingJsonParser extends ParserBase {
     }
 
     @Override
-    public JsonToken nextToken() throws IOException {
+    public TokenStreamLocation currentTokenLocation() {
+        return TokenStreamLocation.NA;
+    }
+
+    @Override
+    public TokenStreamLocation currentLocation() {
+        return TokenStreamLocation.NA;
+    }
+
+    @Override
+    public Object streamReadInputSource() {
+        return null;
+    }
+
+    @Override
+    public JsonToken nextToken() {
         if (this.currentToken < 0) {
             this.currentToken--;
             var data = this.currentData();
             if (data != null) {
                 var nextToken = data.token();
-                if (nextToken == JsonToken.FIELD_NAME) {
-                    this._parsingContext.setCurrentName(new String(data.data()));
+                if (nextToken == JsonToken.PROPERTY_NAME) {
+                    this._streamReadContext.setCurrentName(new String(data.data()));
                 }
                 this._currToken = nextToken;
                 this._textBuffer.resetWithShared(data.data(), 0, data.data().length);
                 return nextToken;
             } else {
                 var token = this.delegate.nextToken();
-                if (token == JsonToken.FIELD_NAME) {
-                    this._parsingContext.setCurrentName(this.delegate.currentName());
+                if (token == JsonToken.PROPERTY_NAME) {
+                    this._streamReadContext.setCurrentName(new String(data.data()));
                 } else if (token.isNumeric()) {
                     _numTypesValid = NR_UNKNOWN; // to force parsing
                     _numberNegative = isCurrentNumberNegative(this.delegate);
@@ -119,8 +126,8 @@ public class BufferingJsonParser extends ParserBase {
             this.currentToken++;
             this.tokens.add(data);
             this._currToken = nextToken;
-            if (nextToken == JsonToken.FIELD_NAME) {
-                this._parsingContext.setCurrentName(new String(data.data()));
+            if (nextToken == JsonToken.PROPERTY_NAME) {
+                this._streamReadContext.setCurrentName(new String(data.data()));
             }
             this._textBuffer.resetWithShared(data.data(), 0, data.data().length);
             this._currToken = nextToken;
@@ -130,8 +137,8 @@ public class BufferingJsonParser extends ParserBase {
         var data = this.tokens.get(this.currentToken - 1);
         var nextToken = data.token();
         this._currToken = nextToken;
-        if (nextToken == JsonToken.FIELD_NAME) {
-            this._parsingContext.setCurrentName(new String(data.data()));
+        if (nextToken == JsonToken.PROPERTY_NAME) {
+            this._streamReadContext.setCurrentName(new String(data.data()));
         }
         this._textBuffer.resetWithShared(data.data(), 0, data.data().length);
         this._currToken = nextToken;
@@ -148,38 +155,39 @@ public class BufferingJsonParser extends ParserBase {
     }
 
     @Override
-    public String getText() throws IOException {
+    public String getString() throws JacksonException {
         var currentData = this.currentData();
         if (currentData == null) {
-            return delegate.getText();
+            return delegate.getString();
         }
         return new String(currentData.data());
     }
 
     @Override
-    public char[] getTextCharacters() throws IOException {
+    public char[] getStringCharacters() throws JacksonException {
         var currentData = this.currentData();
         if (currentData == null) {
-            return delegate.getTextCharacters();
+            return delegate.getStringCharacters();
         }
         return currentData.data();
     }
 
     @Override
-    public int getTextLength() throws IOException {
+    public int getStringLength() throws JacksonException {
         var currentData = this.currentData();
         if (currentData == null) {
-            return delegate.getTextLength();
+            return delegate.getStringLength();
         }
         return currentData.data().length;
     }
 
     @Override
-    public int getTextOffset() throws IOException {
+    public int getStringOffset() throws JacksonException {
         var currentData = this.currentData();
         if (currentData == null) {
-            return delegate.getTextOffset();
+            return delegate.getStringOffset();
         }
         return 0;
     }
+
 }

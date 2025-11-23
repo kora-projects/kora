@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.json.jackson.module.http.server;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectWriter;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.json.jackson.module.http.JacksonHttpBodyOutput;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
 
 public final class JacksonHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
     private final ObjectWriter objectMapper;

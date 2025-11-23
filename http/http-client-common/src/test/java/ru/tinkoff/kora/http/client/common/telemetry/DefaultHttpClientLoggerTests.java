@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.common.telemetry;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -17,6 +16,7 @@ import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
+import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
 import java.net.URI;
@@ -63,15 +63,15 @@ public class DefaultHttpClientLoggerTests {
         var gen = Mockito.mock(JsonGenerator.class);
         writer.writeTo(gen);
 
-        verify(gen).writeStringField("operation", (String) expectedArgs[0]);
+        verify(gen).writeStringProperty("operation", (String) expectedArgs[0]);
         if (expectedArgs.length > 1) {
-            verify(gen).writeStringField("queryParams", (String) expectedArgs[1]);
+            verify(gen).writeStringProperty("queryParams", (String) expectedArgs[1]);
         }
         if (expectedArgs.length > 2) {
-            verify(gen).writeStringField("headers", (String) expectedArgs[2]);
+            verify(gen).writeStringProperty("headers", (String) expectedArgs[2]);
         }
         if (expectedArgs.length > 3) {
-            verify(gen).writeStringField("body", (String) expectedArgs[3]);
+            verify(gen).writeStringProperty("body", (String) expectedArgs[3]);
         }
 
         verify(eventBuilder).log("HttpServer received request");
@@ -104,15 +104,15 @@ public class DefaultHttpClientLoggerTests {
         writer.writeTo(gen);
 
         verify(eventBuilder).log("HttpClient received response");
-        verify(gen).writeNumberField("statusCode", (Integer) expectedArgs[0]);
+        verify(gen).writeNumberProperty("statusCode", (Integer) expectedArgs[0]);
         if (expectedArgs.length > 1) {
-            verify(gen).writeStringField("operation", (String) expectedArgs[1]);
+            verify(gen).writeStringProperty("operation", (String) expectedArgs[1]);
         }
         if (expectedArgs.length > 2) {
-            verify(gen).writeStringField("headers", (String) expectedArgs[2]);
+            verify(gen).writeStringProperty("headers", (String) expectedArgs[2]);
         }
         if (expectedArgs.length > 3) {
-            verify(gen).writeStringField("body", (String) expectedArgs[3]);
+            verify(gen).writeStringProperty("body", (String) expectedArgs[3]);
         }
     }
 

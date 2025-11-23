@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.json.ksp
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.JsonParser
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
+import tools.jackson.core.JsonGenerator
+import tools.jackson.core.JsonParser
 
 class EnumTest : AbstractJsonSymbolProcessorTest() {
     private var stringReader = JsonReader<String> { obj: JsonParser -> obj.valueAsString }

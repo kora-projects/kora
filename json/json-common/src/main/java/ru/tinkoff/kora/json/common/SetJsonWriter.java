@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-
 import jakarta.annotation.Nullable;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+
 import java.util.Set;
 
 public class SetJsonWriter<T> implements JsonWriter<Set<T>> {
@@ -14,7 +13,7 @@ public class SetJsonWriter<T> implements JsonWriter<Set<T>> {
     }
 
     @Override
-    public void write(JsonGenerator gen, @Nullable Set<T> object) throws IOException {
+    public void write(JsonGenerator gen, @Nullable Set<T> object) {
         if (object == null) {
             gen.writeNull();
         } else {

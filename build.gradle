@@ -91,9 +91,6 @@ subprojects {
     def versions = libs.versions
     configurations {
         configureEach {
-            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-annotations:${versions.jackson.get()}"
-            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-core:${versions.jackson.get()}"
-            resolutionStrategy.force "com.fasterxml.jackson.core:jackson-databind:${versions.jackson.get()}"
             resolutionStrategy.force "io.netty:netty-buffer:${versions.netty.get()}"
             resolutionStrategy.force "io.netty:netty-codec:${versions.netty.get()}"
             resolutionStrategy.force "io.netty:netty-codec-dns:${versions.netty.get()}"

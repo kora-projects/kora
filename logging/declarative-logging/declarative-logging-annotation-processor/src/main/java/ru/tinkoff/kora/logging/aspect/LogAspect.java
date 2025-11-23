@@ -94,10 +94,10 @@ public class LogAspect implements KoraAspect {
                 var resultWriterBuilder = CodeBlock.builder().beginControlFlow("gen ->")
                     .addStatement("gen.writeStartObject()")
                     .beginControlFlow("if (this.$N != null)", mapper)
-                    .addStatement("gen.writeFieldName($S)", "out")
+                    .addStatement("gen.writeName($S)", "out")
                     .addStatement("this.$N.write(gen, $N)", mapper, RESULT_VAR_NAME)
                     .nextControlFlow("else")
-                    .addStatement("gen.writeStringField($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
+                    .addStatement("gen.writeStringProperty($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
                     .endControlFlow()
                     .addStatement("gen.writeEndObject()")
                     .endControlFlow();
@@ -131,8 +131,8 @@ public class LogAspect implements KoraAspect {
             .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
             .beginControlFlow("gen ->")
             .addStatement("gen.writeStartObject()")
-            .addStatement("gen.writeStringField($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-            .addStatement("gen.writeStringField($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
+            .addStatement("gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
+            .addStatement("gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
             .addStatement("gen.writeEndObject()")
             .endControlFlow(")");
 
@@ -182,10 +182,10 @@ public class LogAspect implements KoraAspect {
                 var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
                     .add("gen.writeStartObject();\n")
                     .beginControlFlow("if (this.$N != null)", mapper)
-                    .addStatement("gen.writeFieldName($S)", "out")
+                    .addStatement("gen.writeName($S)", "out")
                     .addStatement("this.$N.write(gen, $N)", mapper, RESULT_VAR_NAME)
                     .nextControlFlow("else")
-                    .addStatement("gen.writeStringField($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
+                    .addStatement("gen.writeStringProperty($S, String.valueOf($N))", "out", RESULT_VAR_NAME)
                     .endControlFlow()
                     .add("gen.writeEndObject();")
                     .add("$<\n}");
@@ -216,8 +216,8 @@ public class LogAspect implements KoraAspect {
                 .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
                 .beginControlFlow("gen ->")
                 .addStatement("gen.writeStartObject()")
-                .addStatement("gen.writeStringField($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-                .addStatement("gen.writeStringField($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
+                .addStatement("gen.writeStringProperty($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
+                .addStatement("gen.writeStringProperty($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
                 .addStatement("gen.writeEndObject()")
                 .endControlFlow(")");
 
@@ -268,8 +268,8 @@ public class LogAspect implements KoraAspect {
     /**
      * <pre> {@code var __dataIn = StructuredArgument.marker("data", gen -> {
      *      gen.writeStartObject();
-     *      gen.writeStringField("param1", String.valueOf(param1));
-     *      gen.writeStringField("param2", String.valueOf(param2));
+     *      gen.writeStringProperty("param1", String.valueOf(param1));
+     *      gen.writeStringProperty("param2", String.valueOf(param2));
      *      gen.writeEndObject();
      *  });
      * } </pre>
@@ -317,10 +317,10 @@ public class LogAspect implements KoraAspect {
                     List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
                 );
                 b.beginControlFlow("if (this.$N != null)", mapper);
-                b.addStatement("gen.writeFieldName($S)", param.getSimpleName());
+                b.addStatement("gen.writeName($S)", param.getSimpleName());
                 b.addStatement("this.$N.write(gen, $N)", mapper, param.getSimpleName());
                 b.nextControlFlow("else");
-                b.addStatement("gen.writeStringField($S, String.valueOf($N))", param.getSimpleName(), param.getSimpleName());
+                b.addStatement("gen.writeStringProperty($S, String.valueOf($N))", param.getSimpleName(), param.getSimpleName());
                 b.endControlFlow();
             }
             if (i > minLevelIdx) {

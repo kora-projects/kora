@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.logging.aspect;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.intellij.lang.annotations.Language;
@@ -15,8 +14,8 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTe
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
+import tools.jackson.core.JsonGenerator;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,17 +71,13 @@ public abstract class AbstractLogAspectTest extends AbstractAnnotationProcessorT
         var mockGen = Mockito.mock(JsonGenerator.class);
         var data = new HashMap<String, String>();
         var lastFieldName = new String[1];
-        try {
-            doAnswer(invocation -> data.put(invocation.getArgument(0, String.class), invocation.getArgument(1, String.class)))
-                .when(mockGen).writeStringField(anyString(), anyString());
-            doAnswer(invocation -> lastFieldName[0] = invocation.getArgument(0, String.class))
-                .when(mockGen).writeFieldName(anyString());
-            doAnswer(invocation -> data.put(lastFieldName[0], invocation.getArgument(0, String.class)))
-                .when(mockGen).writeString(anyString());
-            writer.writeTo(mockGen);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        doAnswer(invocation -> data.put(invocation.getArgument(0, String.class), invocation.getArgument(1, String.class)))
+            .when(mockGen).writeStringProperty(anyString(), anyString());
+        doAnswer(invocation -> lastFieldName[0] = invocation.getArgument(0, String.class))
+            .when(mockGen).writeName(anyString());
+        doAnswer(invocation -> data.put(lastFieldName[0], invocation.getArgument(0, String.class)))
+            .when(mockGen).writeString(anyString());
+        writer.writeTo(mockGen);
         Assertions.assertThat(data).containsExactlyInAnyOrderEntriesOf(expectedData);
     }
 

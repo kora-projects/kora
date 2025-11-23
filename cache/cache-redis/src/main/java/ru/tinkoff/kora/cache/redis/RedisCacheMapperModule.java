@@ -6,7 +6,6 @@ import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.annotation.Json;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
@@ -19,20 +18,12 @@ public interface RedisCacheMapperModule extends JsonCommonModule {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(V value) {
-                try {
-                    return jsonWriter.toByteArray(value);
-                } catch (IOException e) {
-                    throw new IllegalStateException(e.getMessage());
-                }
+                return jsonWriter.toByteArray(value);
             }
 
             @Override
             public V read(byte[] serializedValue) {
-                try {
-                    return (serializedValue == null) ? null : jsonReader.read(serializedValue);
-                } catch (IOException e) {
-                    throw new IllegalStateException(e.getMessage());
-                }
+                return (serializedValue == null) ? null : jsonReader.read(serializedValue);
             }
         };
     }

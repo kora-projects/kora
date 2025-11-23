@@ -1,13 +1,11 @@
 package ru.tinkoff.kora.logging.common.arg;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.io.SegmentedStringWriter;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
-
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.io.SegmentedStringWriter;
 
 public interface StructuredArgumentWriter {
-    void writeTo(JsonGenerator generator) throws IOException;
+    void writeTo(JsonGenerator generator);
 
     default String writeToString() {
         try (var sw = new SegmentedStringWriter(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
@@ -15,8 +13,6 @@ public interface StructuredArgumentWriter {
             this.writeTo(gen);
             gen.flush();
             return sw.getAndClear();
-        } catch (IOException e) {
-            return "<error>";
         }
     }
 }

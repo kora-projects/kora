@@ -25,10 +25,10 @@ object JsonTypes {
     val bufferingJsonParser = ClassName("ru.tinkoff.kora.json.common.util", "BufferingJsonParser");
     val discriminatorHelper = ClassName("ru.tinkoff.kora.json.common.util", "DiscriminatorHelper");
 
-    val jsonParseException = ClassName("com.fasterxml.jackson.core", "JsonParseException")
-    val jsonParser = ClassName("com.fasterxml.jackson.core", "JsonParser")
-    val jsonGenerator = ClassName("com.fasterxml.jackson.core", "JsonGenerator")
-    val jsonToken = ClassName("com.fasterxml.jackson.core", "JsonToken")
-    val jsonParserSequence = ClassName("com.fasterxml.jackson.core.util", "JsonParserSequence")
-    val serializedString = ClassName("com.fasterxml.jackson.core.io", "SerializedString")
+    val jsonParseException = ClassName("tools.jackson.core.exc", "StreamReadException")
+    val jsonParser = ClassName("tools.jackson.core", "JsonParser")
+    val jsonGenerator = ClassName("tools.jackson.core", "JsonGenerator")
+    val jsonToken = ClassName("tools.jackson.core", "JsonToken")
+    val jsonParserSequence = ClassName("tools.jackson.core.util", "JsonParserSequence")
+    val serializedString = ClassName("tools.jackson.core.io", "SerializedString")
 }

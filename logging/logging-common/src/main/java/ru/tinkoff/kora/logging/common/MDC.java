@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.logging.common;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
+import tools.jackson.core.JsonGenerator;
 
 import java.util.HashMap;
 import java.util.Map;

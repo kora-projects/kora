@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.json.annotation.processor.dto;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.json.common.annotation.JsonField;
 import ru.tinkoff.kora.json.common.annotation.JsonSkip;
 import ru.tinkoff.kora.json.common.annotation.JsonWriter;
-
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
 
 @JsonWriter
 public record DtoOnlyWriter(
@@ -18,7 +16,7 @@ public record DtoOnlyWriter(
 
     public static final class FieldWriter implements ru.tinkoff.kora.json.common.JsonWriter<Inner> {
         @Override
-        public void write(JsonGenerator gen, @Nullable Inner object) throws IOException {
+        public void write(JsonGenerator gen, @Nullable Inner object) {
             if (object == null) {
                 gen.writeNull();
             } else {

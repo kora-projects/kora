@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.logging.symbol.processor.aop
 
-import com.fasterxml.jackson.core.JsonGenerator
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.InstanceOfAssertFactories
 import org.intellij.lang.annotations.Language
@@ -17,6 +16,7 @@ import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter
+import tools.jackson.core.JsonGenerator
 
 abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
     protected var loggers = mutableMapOf<String, Logger>()
@@ -113,11 +113,11 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
                 invocation.getArgument(0, String::class.java),
                 invocation.getArgument(1, String::class.java)
             )
-        }.`when`(mockGen).writeStringField(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())
+        }.`when`(mockGen).writeStringProperty(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())
         Mockito.doAnswer { invocation: InvocationOnMock ->
             lastFieldName = invocation.getArgument(0, String::class.java)
             null
-        }.`when`(mockGen).writeFieldName(ArgumentMatchers.anyString())
+        }.`when`(mockGen).writeName(ArgumentMatchers.anyString())
         Mockito.doAnswer { invocation: InvocationOnMock ->
             data[lastFieldName] = invocation.getArgument(0, String::class.java)
             null

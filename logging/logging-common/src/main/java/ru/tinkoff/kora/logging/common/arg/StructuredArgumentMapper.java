@@ -1,10 +1,8 @@
 package ru.tinkoff.kora.logging.common.arg;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import ru.tinkoff.kora.common.Mapping;
-
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
 
 public interface StructuredArgumentMapper<T> extends Mapping.MappingFunction {
-    void write(JsonGenerator gen, T value) throws IOException;
+    void write(JsonGenerator gen, T value);
 }

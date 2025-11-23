@@ -58,12 +58,12 @@ public class DefaultSoapClientObservation implements SoapClientObservation {
             .atInfo()
             .addKeyValue("soapRequest", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("soapMethod", descriptor.method);
+                gen.writeStringProperty("soapMethod", descriptor.method);
                 if (requestLog.isTraceEnabled()) {
                     var body = prepareRequestBodyForLog(requestXml);
-                    gen.writeStringField("xml", body);
+                    gen.writeStringProperty("xml", body);
                 }
-                gen.writeStringField("soapService", descriptor.service);
+                gen.writeStringProperty("soapService", descriptor.service);
                 gen.writeEndObject();
             }))
             .log("SoapService requesting");
@@ -90,12 +90,12 @@ public class DefaultSoapClientObservation implements SoapClientObservation {
             .atInfo()
             .addKeyValue("soapRequest", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("soapMethod", descriptor.method);
-                gen.writeStringField("soapService", descriptor.service);
-                gen.writeStringField("soapStatus", "success");
+                gen.writeStringProperty("soapMethod", descriptor.method);
+                gen.writeStringProperty("soapService", descriptor.service);
+                gen.writeStringProperty("soapStatus", "success");
                 if (responseLog.isTraceEnabled()) {
                     var body = this.prepareResponseBodyForLog(resultXml);
-                    gen.writeStringField("xml", body);
+                    gen.writeStringProperty("xml", body);
                 }
                 gen.writeEndObject();
             }))
@@ -114,11 +114,11 @@ public class DefaultSoapClientObservation implements SoapClientObservation {
             .atInfo()
             .addKeyValue("soapResponse", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("soapMethod", descriptor.method);
-                gen.writeStringField("soapService", descriptor.service);
-                gen.writeStringField("soapStatus", "success");
-                gen.writeStringField("soapFaultCode", result.fault().getFaultcode().toString());
-                gen.writeStringField("soapFaultActor", result.fault().getFaultactor());
+                gen.writeStringProperty("soapMethod", descriptor.method);
+                gen.writeStringProperty("soapService", descriptor.service);
+                gen.writeStringProperty("soapStatus", "success");
+                gen.writeStringProperty("soapFaultCode", result.fault().getFaultcode().toString());
+                gen.writeStringProperty("soapFaultActor", result.fault().getFaultactor());
                 gen.writeEndObject();
             }))
             .log("SoapService received 'failure'");
@@ -139,10 +139,10 @@ public class DefaultSoapClientObservation implements SoapClientObservation {
             .atInfo()
             .addKeyValue("soapResponse", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("soapMethod", descriptor.method);
-                gen.writeStringField("soapService", descriptor.service);
-                gen.writeStringField("soapStatus", "failure");
-                gen.writeStringField("exceptionType", e.getClass().getCanonicalName());
+                gen.writeStringProperty("soapMethod", descriptor.method);
+                gen.writeStringProperty("soapService", descriptor.service);
+                gen.writeStringProperty("soapStatus", "failure");
+                gen.writeStringProperty("exceptionType", e.getClass().getCanonicalName());
                 gen.writeEndObject();
             }))
             .log("SoapService received 'failure'");

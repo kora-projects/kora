@@ -7,10 +7,10 @@ import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import ch.qos.logback.core.Context;
 import ch.qos.logback.core.encoder.Encoder;
 import ch.qos.logback.core.status.Status;
-import com.fasterxml.jackson.core.JsonFactory;
 import io.opentelemetry.api.trace.SpanContext;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
+import tools.jackson.core.json.JsonFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -117,12 +117,6 @@ public final class ConsoleTextRecordEncoder implements Encoder<ILoggingEvent> {
     private void writeJson(ByteArrayOutputStream b, StructuredArgumentWriter value) {
         try (var gen = this.jsonFactory.createGenerator(b)) {
             value.writeTo(gen);
-        } catch (IOException e) {
-            try {
-                b.write("<error>".getBytes(StandardCharsets.UTF_8));
-            } catch (IOException ex) {
-                // ignore
-            }
         }
     }
 
