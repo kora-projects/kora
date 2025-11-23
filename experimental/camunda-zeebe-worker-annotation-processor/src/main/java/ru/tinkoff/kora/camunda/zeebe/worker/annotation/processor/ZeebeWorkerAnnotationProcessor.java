@@ -74,7 +74,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             var specBuilder = implSpecBuilder
                 .addMethod(methodConstructor)
                 .addMethod(getMethodType(method));
-            if (MethodUtils.isFuture(method) || MethodUtils.isMono(method)) {
+            if (MethodUtils.isFuture(method) || MethodUtils.isPublisher(method)) {
                 throw new ProcessingErrorException("Async invocation is not supported", method);
             }
 
@@ -224,12 +224,13 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             methodBuilder.addParameter(CLASS_WORKER_CONFIG, "config");
             constructorBuilder.addStatement("this.jobName = config.getJobConfig($S).name()", getJobType(method));
         }
+        if (MethodUtils.isFuture(method) || MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("@JobWorker annotated method can't have async signatures", method);
+        }
 
-        if (MethodUtils.isFlux(method) || MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@JobWorker return type can't be Flux/Publisher", method);
-        } else if (!MethodUtils.isVoid(method)) {
+        if (!MethodUtils.isVoid(method)) {
             final TypeMirror returnType;
-            if (MethodUtils.isOptional(method) || MethodUtils.isFuture(method) || MethodUtils.isMono(method)) {
+            if (MethodUtils.isOptional(method)) {
                 returnType = MethodUtils.getGenericType(method.getReturnType()).orElseThrow(() -> new ProcessingErrorException("Method return type must have type signature", method));
             } else {
                 returnType = method.getReturnType();

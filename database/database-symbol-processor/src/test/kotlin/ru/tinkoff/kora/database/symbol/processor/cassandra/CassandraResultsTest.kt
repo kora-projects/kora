@@ -9,9 +9,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.whenever
 import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraAsyncResultSetMapper
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraResultSetMapper
-import java.util.concurrent.CompletableFuture
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure
@@ -90,63 +88,6 @@ class CassandraResultsTest : AbstractCassandraRepositoryTest() {
         assertThat(result).isNull()
         verify(executor.mockSession).prepare("SELECT count(*) FROM test")
         verify(executor.mockSession).execute(ArgumentMatchers.any(Statement::class.java))
-    }
-
-    @Test
-    fun testReturnSuspendObject() {
-        val mapper = Mockito.mock(CassandraAsyncResultSetMapper::class.java)
-        val repository = compile(
-            listOf(mapper), """
-            @Repository
-            interface TestRepository : CassandraRepository {
-                @Query("SELECT count(*) FROM test")
-                suspend fun test(): Int
-            }
-            
-            """.trimIndent()
-        )
-        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(CompletableFuture.completedFuture(42))
-        val result = repository.invoke<Any>("test")
-        assertThat(result).isEqualTo(42)
-        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test")
-        verify(executor.mockSession).executeAsync(ArgumentMatchers.any(Statement::class.java))
-    }
-
-    @Test
-    fun testReturnSuspendNullableObject() {
-        val mapper = Mockito.mock(CassandraAsyncResultSetMapper::class.java)
-        val repository = compile(
-            listOf(mapper), """
-            @Repository
-            interface TestRepository : CassandraRepository {
-                @Query("SELECT count(*) FROM test")
-                suspend fun test(): Int?
-            }
-            
-            """.trimIndent()
-        )
-        whenever(mapper.apply(ArgumentMatchers.any())).thenReturn(CompletableFuture.completedFuture(42))
-        val result = repository.invoke<Any>("test")
-        assertThat(result).isEqualTo(42)
-        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test")
-        verify(executor.mockSession).executeAsync(ArgumentMatchers.any(Statement::class.java))
-    }
-
-    @Test
-    fun testReturnSuspendVoid() {
-        val repository = compile(
-            listOf<Any>(), """
-            @Repository
-            interface TestRepository : CassandraRepository {
-                @Query("SELECT count(*) FROM test")
-                suspend fun test()
-            }
-            
-            """.trimIndent()
-        )
-        repository.invoke<Any>("test")
-        verify(executor.mockSession).prepareAsync("SELECT count(*) FROM test")
-        verify(executor.mockSession).executeAsync(ArgumentMatchers.any(Statement::class.java))
     }
 
     @Test

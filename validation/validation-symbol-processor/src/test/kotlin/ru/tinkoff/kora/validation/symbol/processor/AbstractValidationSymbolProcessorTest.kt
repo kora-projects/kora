@@ -7,8 +7,6 @@ abstract class AbstractValidationSymbolProcessorTest : AbstractSymbolProcessorTe
     override fun commonImports(): String {
         return super.commonImports() +
             """
-           import reactor.core.publisher.Flux
-           import reactor.core.publisher.Mono
            import java.util.concurrent.CompletableFuture
            import java.util.concurrent.CompletionStage
            import ru.tinkoff.kora.json.common.JsonNullable

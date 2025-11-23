@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.`typealias`
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.annotation.Root

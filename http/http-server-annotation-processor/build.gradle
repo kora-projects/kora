@@ -15,5 +15,4 @@ dependencies {
     testImplementation libs.mockito.kotlin
     testImplementation libs.byte.buddy.core
     testImplementation libs.byte.buddy.agent
-    testImplementation libs.reactor.core
 }

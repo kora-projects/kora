@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.application.graph.TypeRef;
-import ru.tinkoff.kora.validation.annotation.processor.testdata.*;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidTaz;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateFuture;
+import ru.tinkoff.kora.validation.annotation.processor.testdata.ValidateSync;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
 
@@ -38,44 +40,6 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
             final ClassLoader classLoader = getClassLoader();
             final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidateFuture__AopProxy");
             return (ValidateFuture) clazz.getConstructors()[0].newInstance(
-                    rangeIntegerConstraintFactory(),
-                    notEmptyStringConstraintFactory(),
-                    patternStringConstraintFactory(),
-                    getTazValidator(),
-                    sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
-                    listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
-            );
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    protected ValidateMono getValidateMono() {
-        try {
-            final ClassLoader classLoader = getClassLoader();
-            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidateMono__AopProxy");
-            return (ValidateMono) clazz.getConstructors()[0].newInstance(
-                rangeIntegerConstraintFactory(),
-                notEmptyStringConstraintFactory(),
-                patternStringConstraintFactory(),
-                getTazValidator(),
-                sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
-                listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
-            );
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    protected ValidateFlux getValidateFlux() {
-        try {
-            final ClassLoader classLoader = getClassLoader();
-            final Class<?> clazz = classLoader.loadClass("ru.tinkoff.kora.validation.annotation.processor.testdata.$ValidateFlux__AopProxy");
-            return (ValidateFlux) clazz.getConstructors()[0].newInstance(
                 rangeIntegerConstraintFactory(),
                 notEmptyStringConstraintFactory(),
                 patternStringConstraintFactory(),
@@ -105,7 +69,7 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
     private ClassLoader getClassLoader() {
         try {
             if (classLoader == null) {
-                final List<Class<?>> classes = List.of(ValidTaz.class, ValidateFuture.class, ValidateFlux.class, ValidateMono.class, ValidateSync.class);
+                final List<Class<?>> classes = List.of(ValidTaz.class, ValidateFuture.class, ValidateSync.class);
                 classLoader = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor(), new AopAnnotationProcessor());
             }
 

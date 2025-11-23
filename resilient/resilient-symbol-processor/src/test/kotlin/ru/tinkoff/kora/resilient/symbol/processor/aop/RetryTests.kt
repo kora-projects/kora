@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -121,64 +119,6 @@ class RetryTests : AppRunner() {
 
         assertThrows<RetryExhaustedException> {
             service.retrySync("1")
-        }
-    }
-
-    @Test
-    fun suspendRetrySuccess() {
-        // given
-        val service = retryTarget
-
-        // then
-        service.setRetryAttempts(RETRY_SUCCESS)
-
-        // then
-        assertEquals("1", runBlocking { service.retrySuspend("1") })
-    }
-
-    @Test
-    fun suspendRetryFail() {
-        // given
-        val service = retryTarget
-
-        // then
-        service.setRetryAttempts(RETRY_FAIL)
-
-        // then
-        try {
-            runBlocking { service.retrySuspend("1") }
-            fail("Should not happen")
-        } catch (e: RetryExhaustedException) {
-            assertNotNull(e.message)
-        }
-    }
-
-    @Test
-    fun flowRetrySuccess() {
-        // given
-        val service = retryTarget
-
-        // then
-        service.setRetryAttempts(RETRY_SUCCESS)
-
-        // then
-        assertEquals("1", runBlocking { service.retryFlow("1").first() })
-    }
-
-    @Test
-    fun flowRetryFail() {
-        // given
-        val service = retryTarget
-
-        // then
-        service.setRetryAttempts(RETRY_FAIL)
-
-        // then
-        try {
-            runBlocking { service.retryFlow("1").first() }
-            fail("Should not happen")
-        } catch (e: RetryExhaustedException) {
-            assertNotNull(e.message)
         }
     }
 }

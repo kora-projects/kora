@@ -9,5 +9,4 @@ dependencies {
     api libs.netty.common
     api libs.netty.handlers
     api libs.netty.transports
-    api libs.reactor.core
 }

@@ -14,7 +14,6 @@ dependencies {
     testImplementation libs.mockito.kotlin
 
     testImplementation(libs.kotlin.stdlib.lib)
-    testImplementation(libs.kotlin.coroutines.jdk8)
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
