@@ -15,8 +15,6 @@ public abstract class AbstractMdcAspectTest extends AbstractAnnotationProcessorT
             import ru.tinkoff.kora.logging.aspect.mdc.MDCContextHolder;
             import java.util.concurrent.CompletionStage;
             import java.util.concurrent.CompletableFuture;
-            import reactor.core.publisher.Mono;
-            import reactor.core.publisher.Flux;
             """;
     }
 

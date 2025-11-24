@@ -5,7 +5,6 @@ dependencies {
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation project(':http:http-client-common')
     testImplementation project(':config:config-annotation-processor')
-    testImplementation libs.reactor.core
     testImplementation project(':common')
     testImplementation project(':logging:logging-common')
 }

@@ -11,8 +11,6 @@ abstract class AbstractMdcAspectTest : AbstractSymbolProcessorTest() {
             import ru.tinkoff.kora.logging.symbol.processor.aop.mdc.MDCContextHolder
             import java.util.concurrent.CompletionStage
             import java.util.concurrent.CompletableFuture
-            import reactor.core.publisher.Mono
-            import reactor.core.publisher.Flux
             """.trimIndent()
     }
 }

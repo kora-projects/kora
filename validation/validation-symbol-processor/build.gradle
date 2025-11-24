@@ -16,7 +16,6 @@ dependencies {
     testImplementation project(":kora-app-symbol-processor")
     testImplementation project(":json:json-common")
     testImplementation(libs.kotlin.stdlib.lib)
-    testImplementation(libs.kotlin.coroutines.reactor)
 }
 
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"

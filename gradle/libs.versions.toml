@@ -1,9 +1,7 @@
 ["versions"]
 slf4j = "2.0.17"
 micrometer = "1.12.13"
-reactor = "3.6.18"
 kotlin-stdlib = "2.2.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
-kotlin-coroutines = "1.7.3"
 jackson = "2.19.2"
 mockserver = "5.15.0"
 netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
@@ -27,7 +25,6 @@ junit-platform = "1.12.2"
 guava = "33.3.1-jre"
 
 ["libraries"]
-jsr305 = { module = "com.google.code.findbugs:jsr305", version = "3.0.2" }
 jakarta-annotations = { module = "jakarta.annotation:jakarta.annotation-api", version.ref = "jakarta" }
 
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
@@ -53,20 +50,11 @@ snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "2.7" 
 cassandra-driver = { module = "org.apache.cassandra:java-driver-core", version.ref = "cassandra" }
 cassandra-metrics = { module = "org.apache.cassandra:java-driver-metrics-micrometer", version.ref = "cassandra" }
 
-reactive-streams = { module = "org.reactivestreams:reactive-streams", version = "1.0.4" }
-reactor-core = { module = "io.projectreactor:reactor-core", version.ref = "reactor" }
-reactor-test = { module = "io.projectreactor:reactor-test", version.ref = "reactor" }
-reactor-pool = { module = "io.projectreactor.addons:reactor-pool", version = "1.1.3" }
-
 kotlin-stdlib-common = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin-stdlib" }
 kotlin-stdlib-lib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin-stdlib" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin-stdlib" }
 kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin-stdlib" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
-
-kotlin-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlin-coroutines" }
-kotlin-coroutines-reactor = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-reactor", version.ref = "kotlin-coroutines" }
-kotlin-coroutines-jdk8 = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-jdk8", version.ref = "kotlin-coroutines" }
 
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }

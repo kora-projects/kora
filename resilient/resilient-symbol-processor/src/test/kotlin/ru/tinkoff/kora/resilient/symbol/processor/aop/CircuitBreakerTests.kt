@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
@@ -80,50 +79,6 @@ class CircuitBreakerTests : AppRunner() {
         // then
         try {
             service.getValueSyncVoid()
-            fail("Should not happen")
-        } catch (ex: CallNotPermittedException) {
-            assertNotNull(ex.message)
-        }
-    }
-
-    @Test
-    fun suspendCircuitBreaker() {
-        // given
-        val service = getService<CircuitBreakerTarget>()
-
-        // when
-        try {
-            runBlocking { service.getValueSuspend() }
-            fail("Should not happen")
-        } catch (e: IllegalStateException) {
-            assertNotNull(e.message)
-        }
-
-        // then
-        try {
-            runBlocking { service.getValueSuspend() }
-            fail("Should not happen")
-        } catch (ex: CallNotPermittedException) {
-            assertNotNull(ex.message)
-        }
-    }
-
-    @Test
-    fun flowCircuitBreaker() {
-        // given
-        val service = getService<CircuitBreakerTarget>()
-
-        // when
-        try {
-            runBlocking { service.getValueFLow().collect { v -> v } }
-            fail("Should not happen")
-        } catch (e: IllegalStateException) {
-            assertNotNull(e.message)
-        }
-
-        // then
-        try {
-            runBlocking { service.getValueFLow().collect { v -> v } }
             fail("Should not happen")
         } catch (ex: CallNotPermittedException) {
             assertNotNull(ex.message)

@@ -2,7 +2,6 @@ package ru.tinkoff.kora.logging.aspect.mdc;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
@@ -46,9 +45,6 @@ public class MdcAspect implements KoraAspect {
         }
         if (MethodUtils.isFuture(executableElement)) {
             throw new ProcessingErrorException("@Mdc can't be applied for types assignable from " + ClassName.get(Future.class), executableElement);
-        }
-        if (MethodUtils.isMono(executableElement) || MethodUtils.isFlux(executableElement)) {
-            throw new ProcessingErrorException("@Mdc can't be applied for types assignable from " + CommonClassNames.publisher, executableElement);
         }
 
         final CodeBlock.Builder currentContextBuilder = CodeBlock.builder();

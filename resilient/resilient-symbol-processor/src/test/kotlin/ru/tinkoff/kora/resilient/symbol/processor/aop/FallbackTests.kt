@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
@@ -87,33 +85,5 @@ class FallbackTests : AppRunner() {
 
         // then
         assertEquals(FallbackAliasTarget.FALLBACK, service.getValueSync())
-    }
-
-    @Test
-    fun monoFallback() {
-        // given
-        val service = getService<FallbackTarget>()
-        service.alwaysFail = false
-
-        // when
-        assertEquals(FallbackTarget.VALUE, runBlocking { service.getValueSuspend() })
-        service.alwaysFail = true
-
-        // then
-        assertEquals(FallbackTarget.FALLBACK, runBlocking { service.getValueSuspend() })
-    }
-
-    @Test
-    fun fluxFallback() {
-        // given
-        val service = getService<FallbackTarget>()
-        service.alwaysFail = false
-
-        // when
-        assertEquals(FallbackTarget.VALUE, runBlocking { service.getValueFLow().first() })
-        service.alwaysFail = true
-
-        // then
-        assertEquals(FallbackTarget.FALLBACK, runBlocking { service.getValueFLow().first() })
     }
 }

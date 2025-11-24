@@ -9,13 +9,7 @@ public record S3Operation(ExecutableElement method,
                           AnnotationMirror annotation,
                           OperationType type,
                           ImplType impl,
-                          Mode mode,
                           CodeBlock code) {
-
-    public enum Mode {
-        ASYNC,
-        SYNC
-    }
 
     public enum OperationType {
         GET,

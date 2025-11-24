@@ -3,6 +3,7 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -38,6 +39,9 @@ public class FallbackKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("Publisher methods are not supported", method);
+        }
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
         final FallbackMeta fallback = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("method"))
@@ -57,11 +61,7 @@ public class FallbackKoraAspect implements KoraAspect {
             fallbackType, CodeBlock.of("$L.get($S)", fieldManager, name));
 
         final CodeBlock body;
-        if (MethodUtils.isMono(method)) {
-            body = buildBodyMono(method, fallback, superCall, fieldFallback);
-        } else if (MethodUtils.isFlux(method)) {
-            body = buildBodyFlux(method, fallback, superCall, fieldFallback);
-        } else if (MethodUtils.isFuture(method)) {
+        if (MethodUtils.isFuture(method)) {
             body = buildBodyFuture(method, fallback, superCall, fieldFallback);
         } else {
             body = buildBodySync(method, fallback, superCall, fieldFallback);
@@ -117,22 +117,6 @@ public class FallbackKoraAspect implements KoraAspect {
                     return $T.failedFuture(_cause);
                 });""", superMethod.toString(), CompletionException.class, fieldFallback, fallbackMethod,
             CompletableFuture.class).build();
-    }
-
-    private CodeBlock buildBodyMono(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
-        final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final String fallbackMethod = fallbackCall.call();
-        return CodeBlock.builder().add("""
-            return $L.onErrorResume($L::canFallback, _e -> $L);
-            """, superMethod.toString(), fieldFallback, fallbackMethod).build();
-    }
-
-    private CodeBlock buildBodyFlux(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
-        final CodeBlock superMethod = buildMethodCall(method, superCall);
-        final String fallbackMethod = fallbackCall.call();
-        return CodeBlock.builder().add("""
-            return $L.onErrorResume($L::canFallback, _e -> $L);
-            """, superMethod.toString(), fieldFallback, fallbackMethod).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

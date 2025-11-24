@@ -17,7 +17,6 @@ public abstract class AbstractJdbcRepositoryTest extends AbstractRepositoryTest 
             import ru.tinkoff.kora.database.jdbc.mapper.result.*;
             import ru.tinkoff.kora.database.jdbc.mapper.parameter.*;
             import ru.tinkoff.kora.common.Mapping;
-            import reactor.core.publisher.Mono;
             import java.util.concurrent.CompletableFuture;
             import java.util.concurrent.CompletionStage;
 

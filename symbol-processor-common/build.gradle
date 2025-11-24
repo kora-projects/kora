@@ -21,6 +21,4 @@ dependencies {
     testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.ksp
     testFixturesImplementation libs.ksp.api
-    testFixturesImplementation libs.kotlin.coroutines.reactor
-    testFixturesImplementation libs.kotlin.coroutines.jdk8
 }

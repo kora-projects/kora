@@ -30,8 +30,6 @@ dependencies {
     testFixturesImplementation libs.junit.jupiter
     testFixturesImplementation libs.assertj
     testFixturesImplementation libs.mockito.core
-    testFixturesImplementation libs.reactor.test
 
     testFixturesImplementation(libs.kotlin.stdlib.lib)
-    testFixturesImplementation(libs.kotlin.coroutines.jdk8)
 }

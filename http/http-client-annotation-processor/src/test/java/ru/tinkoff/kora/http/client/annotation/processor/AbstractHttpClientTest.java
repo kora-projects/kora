@@ -51,8 +51,6 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
             import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
             import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
             import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor.InterceptChain;
-            import reactor.core.publisher.Mono;
-            import reactor.core.publisher.Flux;
             import java.util.concurrent.CompletionStage;
             import java.util.concurrent.CompletableFuture;
             """;

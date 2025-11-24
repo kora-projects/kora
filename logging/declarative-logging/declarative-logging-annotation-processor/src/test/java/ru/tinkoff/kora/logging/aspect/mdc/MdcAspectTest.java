@@ -1,27 +1,21 @@
 package ru.tinkoff.kora.logging.aspect.mdc;
 
 import org.intellij.lang.annotations.Language;
-import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import ru.tinkoff.kora.annotation.processor.common.CompileResult;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
 import ru.tinkoff.kora.logging.common.MDC;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Stream;
 
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toMap;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class MdcAspectTest extends AbstractMdcAspectTest {
 
@@ -32,11 +26,15 @@ class MdcAspectTest extends AbstractMdcAspectTest {
     void testMdc(@Language("java") String source) throws Exception {
         var aopProxy = compile(List.of(new AopAnnotationProcessor()), source);
 
-        invokeMethod(aopProxy);
+        ScopedValue.where(MDC.VALUE, new MDC()).call(() -> {
+            invokeMethod(aopProxy);
 
-        final Map<String, String> context = extractMdcContextFromHolder();
-        assertEquals(Map.of("key", "\"value\"", "key1", "\"value2\"", "123", "\"test\""), context);
-        assertEquals(emptyMap(), currentMdcContext());
+            final Map<String, String> context = extractMdcContextFromHolder();
+            assertEquals(Map.of("key", "\"value\"", "key1", "\"value2\"", "123", "\"test\""), context);
+            assertEquals(emptyMap(), currentMdcContext());
+
+            return null;
+        });
     }
 
     @Test
@@ -61,13 +59,15 @@ class MdcAspectTest extends AbstractMdcAspectTest {
                 """
         );
 
-        invokeMethod(aopProxy);
-
-        final Map<String, String> context = extractMdcContextFromHolder();
-        final String value = context.get("key");
-        assertNotNull(value);
-        assertDoesNotThrow(() -> UUID.fromString(value.substring(1, value.length() - 1)));
-        assertEquals(emptyMap(), currentMdcContext());
+        ScopedValue.where(MDC.VALUE, new MDC()).call(() -> {
+            invokeMethod(aopProxy);
+            final Map<String, String> context = extractMdcContextFromHolder();
+            final String value = context.get("key");
+            assertNotNull(value);
+            assertDoesNotThrow(() -> UUID.fromString(value.substring(1, value.length() - 1)));
+            assertEquals(emptyMap(), currentMdcContext());
+            return null;
+        });
     }
 
     @Test
@@ -93,12 +93,14 @@ class MdcAspectTest extends AbstractMdcAspectTest {
                 """
         );
 
-        invokeMethod(aopProxy);
+        ScopedValue.where(MDC.VALUE, new MDC()).call(() -> {
+            invokeMethod(aopProxy);
+            final Map<String, String> context = extractMdcContextFromHolder();
+            assertEquals(Map.of("key", "\"value\"", "key1", "\"value2\"", "123", "\"test\""), context);
+            assertEquals(Map.of("key", "\"value\"", "123", "\"test\""), currentMdcContext());
+            return null;
+        });
 
-        final Map<String, String> context = extractMdcContextFromHolder();
-        assertEquals(Map.of("key", "\"value\"", "key1", "\"value2\"", "123", "\"test\""), context);
-        assertEquals(Map.of("key", "\"value\"", "123", "\"test\""), currentMdcContext());
-        clearCurrentContext();
     }
 
     @Test
@@ -124,14 +126,16 @@ class MdcAspectTest extends AbstractMdcAspectTest {
                 """
         );
 
-        MDC.put("key", "special-value");
-        MDC.put("123", "special-123");
-        invokeMethod(aopProxy);
+        ScopedValue.where(MDC.VALUE, new MDC()).call(() -> {
+            MDC.put("key", "special-value");
+            MDC.put("123", "special-123");
 
-        final Map<String, String> context = extractMdcContextFromHolder();
-        assertEquals(Map.of("key", "\"value\"", "key1", "\"value2\"", "123", "\"test\""), context);
-        assertEquals(Map.of("key", "\"special-value\"", "123", "\"special-123\""), currentMdcContext());
-        clearCurrentContext();
+            invokeMethod(aopProxy);
+            final Map<String, String> context = extractMdcContextFromHolder();
+            assertEquals(Map.of("key", "\"value\"", "key1", "\"value2\"", "123", "\"test\""), context);
+            assertEquals(Map.of("key", "\"special-value\"", "123", "\"special-123\""), currentMdcContext());
+            return null;
+        });
     }
 
     private static List<String> provideTestCases() {
@@ -154,21 +158,21 @@ class MdcAspectTest extends AbstractMdcAspectTest {
                 }
                 """,
             """
-               public class TestMdc {
-               
-                 private final MDCContextHolder mdcContextHolder;
-               
-                 public TestMdc(MDCContextHolder mdcContextHolder) {
-                     this.mdcContextHolder = mdcContextHolder;
-                 }
-               
-                 @Mdc(key = "key", value = "value")
-                 @Mdc(key = "key1", value = "value2")
-                 public void test(@Mdc("123") String s) {
-                     mdcContextHolder.set(MDC.get().values());
-                 }
-               }
-               """
+                public class TestMdc {
+                
+                  private final MDCContextHolder mdcContextHolder;
+                
+                  public TestMdc(MDCContextHolder mdcContextHolder) {
+                      this.mdcContextHolder = mdcContextHolder;
+                  }
+                
+                  @Mdc(key = "key", value = "value")
+                  @Mdc(key = "key1", value = "value2")
+                  public void test(@Mdc("123") String s) {
+                      mdcContextHolder.set(MDC.get().values());
+                  }
+                }
+                """
         );
     }
 
@@ -199,9 +203,5 @@ class MdcAspectTest extends AbstractMdcAspectTest {
                 Map.Entry::getKey,
                 entry -> entry.getValue().writeToString()
             ));
-    }
-
-    private static void clearCurrentContext() {
-        MDC.get().values().keySet().forEach(MDC::remove);
     }
 }

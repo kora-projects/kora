@@ -1,13 +1,11 @@
 package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
-import kotlinx.coroutines.runBlocking
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.TestInfo
 import org.junit.jupiter.api.TestInstance
-import reactor.core.publisher.Mono
 import java.io.File
 import java.lang.reflect.InvocationTargetException
 import java.lang.reflect.Method
@@ -18,7 +16,6 @@ import java.nio.file.StandardOpenOption
 import java.util.*
 import java.util.concurrent.Future
 import kotlin.reflect.KClass
-import kotlin.reflect.full.callSuspend
 import kotlin.reflect.full.memberFunctions
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
@@ -154,13 +151,8 @@ abstract class AbstractSymbolProcessorTest {
                             }
                         }
 
-                        val result = if (repositoryClassMethod.isSuspend) {
-                            runBlocking { repositoryClassMethod.callSuspend(*realArgs) }
-                        } else {
-                            repositoryClassMethod.call(*realArgs)
-                        }
+                        val result = repositoryClassMethod.call(*realArgs)
                         return when (result) {
-                            is Mono<*> -> result.block()
                             is Future<*> -> result.get()
                             else -> result
                         } as T?

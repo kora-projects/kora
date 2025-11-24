@@ -5,12 +5,10 @@ dependencies {
     api project(":telemetry:telemetry-common")
     api libs.netty.transports
 
-    api libs.reactor.core
     api libs.bundles.netty
     api libs.netty.resolver.dns
     api(libs.lettuce.core) {
         exclude group: 'io.netty'
-        exclude group: 'io.projectreactor', module: 'reactor-core'
     }
 
     implementation project(":json:json-common")

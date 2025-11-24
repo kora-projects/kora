@@ -96,22 +96,6 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
     }
 
     @ParameterizedTest
-    @MethodSource("provideSuspendTestCases")
-    fun testMdcWithCoroutines(source: String) {
-        val aopProxy = compile0(listOf(AopSymbolProcessorProvider()), source.trimIndent())
-
-        withMdc {
-            invokeMethod(aopProxy)
-
-            val context = contextHolder.get()
-                ?.mapValues { it.value.writeToString() }
-
-            assertEquals(mapOf("key" to "\"value\"", "key1" to "\"value2\"", "123" to "\"test\""), context)
-            assertEquals(emptyMap<String, String>(), currentContext())
-        }
-    }
-
-    @ParameterizedTest
     @MethodSource("provideGlobalSuspendTestCases")
     fun testGlobalMdcWithCoroutines(source: String) {
         val aopProxy = compile0(listOf(AopSymbolProcessorProvider()), source.trimIndent())
@@ -192,33 +176,6 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
         """
         )
 
-        @JvmStatic
-        @Language("kotlin")
-        private fun provideSuspendTestCases() = listOf(
-            """
-            open class TestMdc(
-                private val mdcContextHolder: MDCContextHolder
-            ) {
-                @Mdc(key = "key", value = "value")
-                @Mdc(key = "key1", value = "value2")
-                open suspend fun test(@Mdc(key = "123") s: String): Int? {
-                    mdcContextHolder.set(MDC.get().values())
-                    return null
-                }
-            }
-        """,
-            """
-            open class TestMdc(
-                private val mdcContextHolder: MDCContextHolder
-            ) {
-                @Mdc(key = "key", value = "value")
-                @Mdc(key = "key1", value = "value2")
-                open suspend fun test(@Mdc(key = "123") s: String) {
-                    mdcContextHolder.set(MDC.get().values())
-                }
-            }
-        """
-        )
 
         @JvmStatic
         @Language("kotlin")

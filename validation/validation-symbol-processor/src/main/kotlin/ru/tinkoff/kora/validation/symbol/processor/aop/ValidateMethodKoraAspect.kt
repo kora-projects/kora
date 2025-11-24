@@ -67,7 +67,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         val body = if (ksFunction.isFlow()) {
             buildBodyFlow(ksFunction, superCall, validationOutputCode, validationInputCode)
         } else if (ksFunction.isSuspend()) {
-            buildBodySuspend(ksFunction, superCall, validationOutputCode, validationInputCode)
+            buildBodySync(ksFunction, superCall, validationOutputCode, validationInputCode)
         } else {
             buildBodySync(ksFunction, superCall, validationOutputCode, validationInputCode)
         }
@@ -141,7 +141,8 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val constraintFactory = aspectContext.fieldFactory.constructorParam(factoryType, listOf())
             val constraintType = constraint.factory.validator().asKSType(resolver)
 
-            val parameters = CodeBlock.of(constraint.factory.parameters.values.asSequence()
+            val parameters = CodeBlock.of(
+                constraint.factory.parameters.values.asSequence()
                 .map {
                     when (it) {
                         is String -> CodeBlock.of("%S", it)
@@ -276,11 +277,17 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val constraintFactory = aspectContext.fieldFactory.constructorParam(factoryType, listOf())
                 val constraintType = constraint.factory.validator().asKSType(resolver)
 
-                val parameters = CodeBlock.of(constraint.factory.parameters.values.asSequence()
+                val parameters = CodeBlock.of(
+                    constraint.factory.parameters.values.asSequence()
                     .map {
                         when (it) {
                             is String -> CodeBlock.of("%S", it)
-                            is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (it.parentDeclaration as KSClassDeclaration).toClassName(), it.simpleName.asString())
+                            is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of(
+                                "%T.%N",
+                                (it.parentDeclaration as KSClassDeclaration).toClassName(),
+                                it.simpleName.asString()
+                            )
+
                             else -> CodeBlock.of("%L", it)
                         }
                     }
@@ -363,7 +370,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
         val resolvedType = type.resolve()
         val isNotNull = isAnnotationPresent(Nonnull::class.asClassName())
-        val isJsonNullable = resolvedType.declaration.let { it is KSClassDeclaration && it.toClassName() == ValidTypes.jsonNullable}
+        val isJsonNullable = resolvedType.declaration.let { it is KSClassDeclaration && it.toClassName() == ValidTypes.jsonNullable }
         return isJsonNullable && isNotNull
     }
 
@@ -407,15 +414,6 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         }
 
         return builder.build()
-    }
-
-    private fun buildBodySuspend(
-        method: KSFunctionDeclaration,
-        superCall: String,
-        validationOutput: CodeBlock?,
-        validationInput: CodeBlock?
-    ): CodeBlock {
-        return buildBodySync(method, superCall, validationOutput, validationInput)
     }
 
     private fun buildBodyFlow(

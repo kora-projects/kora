@@ -18,5 +18,4 @@ dependencies {
     testImplementation project(":config:config-common")
     testImplementation testFixtures(project(":symbol-processor-common"))
     testImplementation(libs.kotlin.stdlib.lib)
-    testImplementation(libs.kotlin.coroutines.jdk8)
 }

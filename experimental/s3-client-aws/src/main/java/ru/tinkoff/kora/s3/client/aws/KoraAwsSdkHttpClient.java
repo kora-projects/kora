@@ -4,7 +4,6 @@ import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
 import org.reactivestreams.Subscriber;
 import org.reactivestreams.Subscription;
-import reactor.adapter.JdkFlowAdapter;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestBuilder;
@@ -27,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Flow;
 
 @ApiStatus.Experimental
 public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpClient {
@@ -110,7 +108,6 @@ public final class KoraAwsSdkHttpClient implements SdkHttpClient, SdkAsyncHttpCl
         final SdkHttpRequest sdkHttpRequest = asyncExecuteRequest.request();
         final HttpClientRequestBuilder builder = getBaseBuilder(sdkHttpRequest.getUri(), sdkHttpRequest.method().name(), sdkHttpRequest.rawQueryParameters(), sdkHttpRequest.headers());
 
-        Flow.Publisher<ByteBuffer> bodyFlow = JdkFlowAdapter.publisherToFlowPublisher(asyncExecuteRequest.requestContentPublisher());
         var contentType = sdkHttpRequest.firstMatchingHeader("Content-Type").orElse("application/octet-stream");
         var contentLengthStr = sdkHttpRequest.firstMatchingHeader("Content-Length").orElse(null);
         var contentLength = contentLengthStr == null ? -1 : Long.parseLong(contentLengthStr);
