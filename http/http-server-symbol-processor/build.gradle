@@ -5,8 +5,6 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 
 dependencies {
-    api libs.reactive.streams
-
     api project(':common')
     api project(':http:http-server-common')
     api project(':symbol-processor-common')
@@ -23,7 +21,6 @@ dependencies {
     testImplementation project(':json:json-common')
     testImplementation libs.mockito.kotlin
     testImplementation(libs.kotlin.stdlib.lib)
-    testImplementation(libs.kotlin.coroutines.jdk8)
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

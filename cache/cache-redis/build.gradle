@@ -8,12 +8,10 @@ dependencies {
     implementation project(":config:config-common")
     implementation project(":netty-common")
     implementation(libs.lettuce.core) {
-        exclude group: 'io.projectreactor', module: 'reactor-core'
         exclude group: 'io.netty', module: 'netty-common'
         exclude group: 'io.netty', module: 'netty-handler'
         exclude group: 'io.netty', module: 'netty-transport'
     }
-    implementation libs.reactor.core
     implementation libs.netty.common
     implementation libs.netty.handlers
     implementation libs.netty.transports

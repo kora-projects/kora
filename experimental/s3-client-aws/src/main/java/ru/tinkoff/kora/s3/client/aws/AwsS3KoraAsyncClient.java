@@ -2,7 +2,7 @@ package ru.tinkoff.kora.s3.client.aws;
 
 import jakarta.annotation.Nullable;
 import org.jetbrains.annotations.ApiStatus;
-import reactor.adapter.JdkFlowAdapter;
+import org.reactivestreams.FlowAdapters;
 import ru.tinkoff.kora.s3.client.S3DeleteException;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.S3KoraAsyncClient;
@@ -211,7 +211,7 @@ public class AwsS3KoraAsyncClient implements S3KoraAsyncClient {
             operation = asyncClient.putObject(request, AsyncRequestBody.fromBytes(bb.bytes()))
                 .thenApply(AwsS3ObjectUpload::new);
         } else if (body instanceof PublisherS3Body) {
-            operation = asyncClient.putObject(request, AsyncRequestBody.fromPublisher(JdkFlowAdapter.flowPublisherToFlux(body.asPublisher())))
+            operation = asyncClient.putObject(request, AsyncRequestBody.fromPublisher(FlowAdapters.toPublisher(body.asPublisher())))
                 .thenApply(AwsS3ObjectUpload::new);
         } else if (body.size() > 0 && body.size() <= awsS3ClientConfig.upload().partSize().toBytes()) {
             operation = asyncClient.putObject(request, AsyncRequestBody.fromInputStream(body.asInputStream(), body.size(), awsExecutor))

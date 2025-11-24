@@ -5,6 +5,7 @@ import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -43,6 +44,9 @@ public class TimeoutKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("Publisher methods are not supported", method);
+        }
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
         final String timeoutName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
@@ -58,11 +62,7 @@ public class TimeoutKoraAspect implements KoraAspect {
             CodeBlock.of("$L.get($S)", fieldManager, timeoutName));
 
         final CodeBlock body;
-        if (MethodUtils.isMono(method)) {
-            body = buildBodyMono(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
-        } else if (MethodUtils.isFlux(method)) {
-            body = buildBodyFlux(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
-        } else if (MethodUtils.isFuture(method)) {
+        if (MethodUtils.isFuture(method)) {
             body = buildBodyFuture(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
         } else {
             body = buildBodySync(method, superCall, fieldTimeout);

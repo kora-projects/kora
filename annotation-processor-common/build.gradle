@@ -13,7 +13,6 @@ dependencies {
 
     testFixturesApi project(':aop:aop-annotation-processor')
     testFixturesApi project(':common')
-    testFixturesImplementation libs.reactor.core
 
     testFixturesImplementation libs.classgraph
     testFixturesImplementation libs.junit.jupiter

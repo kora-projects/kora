@@ -24,13 +24,4 @@ public interface RetryModule {
     default RetryPredicate koraRetryFailurePredicate() {
         return new KoraRetryPredicate();
     }
-
-    default KoraRetryReactorBuilder koraRetryReactorBuilder(All<RetryPredicate> failurePredicates,
-                                                            RetryConfig config,
-                                                            @Nullable RetryMetrics metrics) {
-        return new KoraRetryReactorBuilder(config, failurePredicates,
-            metrics == null
-                ? new NoopRetryMetrics()
-                : metrics);
-    }
 }

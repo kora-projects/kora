@@ -2,8 +2,8 @@ package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -40,6 +40,9 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("Publisher methods are not supported", method);
+        }
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
         final String circuitBreakerName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
@@ -53,11 +56,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             CodeBlock.of("$L.get($S)", fieldManager, circuitBreakerName));
 
         final CodeBlock body;
-        if (MethodUtils.isMono(method)) {
-            body = buildBodyMono(method, superCall, fieldCircuit);
-        } else if (MethodUtils.isFlux(method)) {
-            body = buildBodyFlux(method, superCall, fieldCircuit);
-        } else if (MethodUtils.isFuture(method)) {
+        if (MethodUtils.isFuture(method)) {
             body = buildBodyFuture(method, superCall, fieldCircuit);
         } else {
             body = buildBodySync(method, superCall, fieldCircuit);
@@ -114,34 +113,6 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
                 throw _e;
             }
             """, cbField, superMethod, CompletionException.class, cbField, cbField, PERMITTED_EXCEPTION, CompletableFuture.class, cbField).build();
-    }
-
-    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String cbField) {
-        final CodeBlock superMethod = buildMethodCall(method, superCall);
-
-        return CodeBlock.builder().add("""
-            return $T.defer(() -> {
-                  $L.acquire();
-                  return $L
-                      .doOnSuccess(r -> $L.releaseOnSuccess())
-                      .doOnCancel($L::releaseOnSuccess)
-                      .doOnError($L::releaseOnError);
-            });
-            """, CommonClassNames.mono, cbField, superMethod.toString(), cbField, cbField, cbField).build();
-    }
-
-    private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String cbField) {
-        final CodeBlock superMethod = buildMethodCall(method, superCall);
-
-        return CodeBlock.builder().add("""
-            return $T.defer(() -> {
-                  $L.acquire();
-                  return $L
-                      .doOnComplete($L::releaseOnSuccess)
-                      .doOnCancel($L::releaseOnSuccess)
-                      .doOnError($L::releaseOnError);
-            });
-            """, CommonClassNames.flux, cbField, superMethod.toString(), cbField, cbField, cbField).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.cache.symbol.processor
 
-import kotlinx.coroutines.future.await
-import kotlinx.coroutines.runBlocking
 import org.mockito.Mockito
 import org.mockito.Mockito.`when`
 import ru.tinkoff.kora.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor`
@@ -104,7 +102,7 @@ class CacheRunner {
                 override fun del(keys: Array<ByteArray>): CompletionStage<Long> {
                     var counter = 0
                     for (key in keys) {
-                        counter += runBlocking { del(key).await().toInt() }
+                        counter += del(key).toCompletableFuture().get().toInt()
                     }
                     return CompletableFuture.completedFuture(counter.toLong())
                 }

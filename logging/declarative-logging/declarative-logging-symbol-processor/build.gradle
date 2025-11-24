@@ -7,7 +7,6 @@ dependencies {
     testImplementation project(':logging:logging-logback')
     testImplementation testFixtures(project(':symbol-processor-common'))
 
-    testImplementation(libs.kotlin.coroutines.reactor)
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

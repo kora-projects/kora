@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.resilient.symbol.processor.aop.testdata
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.annotation.Root
@@ -26,22 +24,6 @@ open class RetryTarget {
         logger.info("Retry Sync executed for: {}", arg)
         check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
         return arg
-    }
-
-    @Retry("custom3")
-    open suspend fun retrySuspend(arg: String): String {
-        logger.info("Retry Suspend executed for: {}", arg)
-        check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
-        return arg
-    }
-
-    @Retry("custom4")
-    open fun retryFlow(arg: String): Flow<String> {
-        return flow {
-            logger.info("Retry Flow executed for: {}", arg)
-            check(retryAttempts.getAndDecrement() <= 0) { "Ops" }
-            emit(arg)
-        }
     }
 
     // Throws here is an alias for kotlin.jvm.Throws

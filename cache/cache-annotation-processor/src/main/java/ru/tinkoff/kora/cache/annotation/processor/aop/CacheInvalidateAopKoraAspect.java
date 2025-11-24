@@ -35,9 +35,7 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFlux(method)) {
-            throw new ProcessingErrorException("@CacheInvalidate can't be applied for types assignable from " + CommonClassNames.flux, method);
-        } else if (MethodUtils.isPublisher(method)) {
+        if (MethodUtils.isPublisher(method)) {
             throw new ProcessingErrorException("@CacheInvalidate can't be applied for type " + CommonClassNames.publisher, method);
         }
 
