@@ -36,7 +36,7 @@ public final class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
                                            @Nullable String routeTemplate,
                                            HttpHeaders headers,
                                            Map<String, ? extends Collection<String>> queryParams,
-                                           HttpBodyInput body) {
+                                           @Nullable HttpBodyInput body) {
         var metrics = this.metrics;
         var logger = this.logger;
         var tracer = this.tracer;

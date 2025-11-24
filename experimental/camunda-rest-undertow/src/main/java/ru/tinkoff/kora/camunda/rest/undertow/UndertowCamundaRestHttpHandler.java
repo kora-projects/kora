@@ -69,9 +69,11 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         this.telemetry = telemetry;
         this.tracer = tracer;
         Set<Class<?>> classes = new HashSet<>();
+        Set<Object> singletons = new HashSet<>();
         Map<String, Object> props = new HashMap<>();
         for (Application app : applications) {
             classes.addAll(app.getClasses());
+            singletons.addAll(app.getSingletons());
             props.putAll(app.getProperties());
         }
 
@@ -79,6 +81,11 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
             @Override
             public Set<Class<?>> getClasses() {
                 return classes;
+            }
+
+            @Override
+            public Set<Object> getSingletons() {
+                return singletons;
             }
 
             @Override
@@ -126,9 +133,9 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
             var context = Context.clear();
             var req = new UndertowPublicApiRequest(exchange, context);
             if (match.isPresent()) {
-                telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), req.body());
+                telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), null);
             } else {
-                telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), null, req.headers(), req.queryParams(), req.body());
+                telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), null, req.headers(), req.queryParams(), null);
             }
 
             restHandler.handleRequest(exchange.addExchangeCompleteListener((ex, nextListener) -> {
@@ -614,7 +621,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
                     Context context = Context.clear();
 
                     var req = new UndertowPublicApiRequest(exchange, context);
-                    var telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), req.body());
+                    var telemetryContext = telemetry.get(req.scheme(), req.hostName(), req.method(), req.path(), match.get().pathTemplate(), req.headers(), req.queryParams(), null);
 
                     var fakeRequest = getFakeRequest(match.get());
                     var openapi = restConfig.openapi();
