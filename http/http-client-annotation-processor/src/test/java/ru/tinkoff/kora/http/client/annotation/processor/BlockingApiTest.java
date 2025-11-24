@@ -149,6 +149,37 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     }
 
     @Test
+    public void testBlockingCustomMapperFromAbstract() {
+        compileClient(List.of(newGeneratedObject("TestMapper")), """
+            @HttpClient
+            public interface TestClient {
+              @Mapping(TestMapper.class)
+              @HttpRoute(method = "GET", path = "/test")
+              String request();
+            }
+            """, """
+            public class TestMapper extends AbstractTestMapper {
+              public String apply(HttpClientResponse rs) {
+                  return "test-string-from-mapper";
+              }
+            }
+            """, """
+            public abstract class AbstractTestMapper implements HttpClientResponseMapper<String> {
+            }
+            """);
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
+        assertThat(client.<String>invoke("request"))
+            .isEqualTo("test-string-from-mapper");
+
+        reset(httpClient);
+        onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(500));
+        assertThat(client.<String>invoke("request"))
+            .isEqualTo("test-string-from-mapper");
+    }
+
+    @Test
     public void testBlockingCustomMapperTag() {
         compileClient(List.of(newGeneratedObject("TestMapper")), """
             @HttpClient
