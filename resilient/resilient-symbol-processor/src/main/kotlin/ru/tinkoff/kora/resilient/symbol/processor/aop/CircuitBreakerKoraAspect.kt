@@ -10,12 +10,11 @@ import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -56,12 +55,9 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
 
         val body = if (ksFunction.isFlow()) {
             buildBodyFlow(ksFunction, superCall, fieldCircuit)
-        } else if (ksFunction.isSuspend()) {
-            buildBodySync(ksFunction, superCall, fieldCircuit)
         } else {
             buildBodySync(ksFunction, superCall, fieldCircuit)
         }
-
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 

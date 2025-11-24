@@ -35,7 +35,6 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
             import ru.tinkoff.kora.http.common.annotation.*;
             import ru.tinkoff.kora.http.common.body.*;
             import ru.tinkoff.kora.http.common.header.*;
-            import reactor.core.publisher.*;
             import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
             import ru.tinkoff.kora.http.server.common.HttpServerResponse;
             import ru.tinkoff.kora.http.server.common.HttpServerRequest;

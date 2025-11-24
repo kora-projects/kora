@@ -1,7 +1,6 @@
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
-    compileOnly libs.reactor.core
 
     api project(":common")
     api project(":database:database-common")

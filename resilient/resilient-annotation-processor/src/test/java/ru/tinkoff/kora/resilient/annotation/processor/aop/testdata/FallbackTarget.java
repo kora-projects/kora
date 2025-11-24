@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop.testdata;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
@@ -87,27 +85,4 @@ public class FallbackTarget {
         return CompletableFuture.completedFuture(FALLBACK);
     }
 
-    @Fallback(value = "custom_fallback3", method = "getFallbackMono()")
-    public Mono<String> getValueMono() {
-        if (alwaysFail)
-            return Mono.error(new IllegalStateException("Failed"));
-
-        return Mono.just(VALUE);
-    }
-
-    protected Mono<String> getFallbackMono() {
-        return Mono.just(FALLBACK);
-    }
-
-    @Fallback(value = "custom_fallback4", method = "getFallbackFlux()")
-    public Flux<String> getValueFlux() {
-        if (alwaysFail)
-            return Flux.error(new IllegalStateException("Failed"));
-
-        return Flux.just(VALUE);
-    }
-
-    protected Flux<String> getFallbackFlux() {
-        return Flux.just(FALLBACK);
-    }
 }

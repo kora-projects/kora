@@ -1,13 +1,10 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop.testdata;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
@@ -80,17 +77,5 @@ public class TimeoutTarget {
                 throw new IllegalStateException(e);
             }
         });
-    }
-
-    @Timeout("custom4")
-    public Mono<String> getValueMono() {
-        return Mono.fromCallable(() -> "OK")
-            .delayElement(Duration.ofMillis(300));
-    }
-
-    @Timeout("custom5")
-    public Flux<String> getValueFlux() {
-        return Flux.from(Mono.fromCallable(() -> "OK"))
-            .delayElements(Duration.ofMillis(300));
     }
 }

@@ -2,7 +2,6 @@ package ru.tinkoff.kora.cache.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -12,11 +11,9 @@ import ru.tinkoff.kora.cache.annotation.processor.CacheOperationUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.PrimitiveType;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
@@ -41,11 +38,10 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isFlux(method)) {
-            throw new ProcessingErrorException("@Cacheable can't be applied for types assignable from " + CommonClassNames.flux, method);
-        } else if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@Cacheable can't be applied for type " + CommonClassNames.publisher, method);
-        } else if (MethodUtils.isVoid(method)) {
+        if (MethodUtils.isPublisher(method) || MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@Cacheable can't be applied for async methods", method);
+        }
+        if (MethodUtils.isVoid(method)) {
             throw new ProcessingErrorException("@Cacheable can't be applied for type Void", method);
         }
 
@@ -129,20 +125,6 @@ public class CacheableAopKoraAspect extends AbstractAopCacheAspect {
 
             if (isOptionalMethodSkip) {
                 builder.add("return $T.of(_value);", Optional.class);
-            } else if (MethodUtils.isFuture(method)) {
-                var completionType = ((DeclaredType) method.getReturnType()).getTypeArguments().get(0);
-                if (CommonUtils.isOptional(completionType)) {
-                    builder.add("return $T.completedFuture($T.of(_value));", CompletableFuture.class, Optional.class);
-                } else {
-                    builder.add("return $T.completedFuture(_value);", CompletableFuture.class);
-                }
-            } else if (MethodUtils.isMono(method)) {
-                var completionType = ((DeclaredType) method.getReturnType()).getTypeArguments().get(0);
-                if (CommonUtils.isOptional(completionType)) {
-                    builder.add("return $T.just($T.of(_value));", CommonClassNames.mono, Optional.class);
-                } else {
-                    builder.add("return $T.just(_value);", CommonClassNames.mono);
-                }
             } else {
                 builder.add("return _value;");
             }

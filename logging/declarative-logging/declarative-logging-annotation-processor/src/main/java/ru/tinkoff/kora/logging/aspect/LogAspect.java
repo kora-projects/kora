@@ -2,10 +2,7 @@ package ru.tinkoff.kora.logging.aspect;
 
 import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
-import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
+import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -57,11 +54,10 @@ public class LogAspect implements KoraAspect {
             CodeBlock.builder().add("$N.getLogger($S)", loggerFactoryFieldName, loggerName).build()
         );
 
-        if (MethodUtils.isMono(executableElement)) {
-            return this.monoBody(aspectContext, executableElement, superCall, loggerFieldName);
-        } else if (MethodUtils.isFlux(executableElement)) {
-            return this.fluxBody(aspectContext, executableElement, superCall, loggerFieldName);
-        } else if (MethodUtils.isFuture(executableElement)) {
+        if (MethodUtils.isPublisher(executableElement)) {
+            throw new ProcessingErrorException("Publisher methods are not supported", executableElement);
+        }
+        if (MethodUtils.isFuture(executableElement)) {
             return this.futureBody(aspectContext, executableElement, superCall, loggerFieldName);
         } else {
             return this.blockingBody(aspectContext, executableElement, superCall, loggerFieldName);
@@ -151,151 +147,6 @@ public class LogAspect implements KoraAspect {
         b.addStatement("throw $L", ERROR_VAR_NAME);
         b.endControlFlow();
         return new ApplyResult.MethodBody(b.build());
-    }
-
-    private ApplyResult monoBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {
-        var logInLevel = logInLevel(executableElement, env);
-        var logOutLevel = logOutLevel(executableElement, env);
-        var b = CodeBlock.builder();
-
-        b.add("var $N = $L;\n", RESULT_VAR_NAME, KoraAspect.callSuper(executableElement, superCall));
-        if (logInLevel != null) {
-            var finalResultName = RESULT_VAR_NAME + "_final";
-            b.add("var $N = $N;\n", finalResultName, RESULT_VAR_NAME);
-            ifLogLevelEnabled(b, loggerFieldName, logInLevel, () -> {
-                b.add("$N = $T.defer(() -> {$>\n", RESULT_VAR_NAME, CommonClassNames.mono);
-                b.add(this.buildLogIn(aspectContext, executableElement, logInLevel, loggerFieldName));
-                b.add("return $N;", finalResultName);
-                b.add("$<\n});");
-            }).add("\n");
-        }
-        if (logOutLevel != null) {
-            var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
-            ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
-                var returnType = (ParameterizedTypeName) TypeName.get(executableElement.getReturnType());
-                if (logResultLevel == null || returnType.typeArguments().get(0).equals(TypeName.VOID.box())) {
-                    b.add("$N = $N.doOnSuccess(_v -> $N.$L($S));", RESULT_VAR_NAME, RESULT_VAR_NAME, loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
-                } else {
-                    var resultValue = RESULT_VAR_NAME + "_value";
-                    b.add("var $N = this.$N;\n", loggerFieldName, loggerFieldName);
-                    b.add("$N = $N.doOnSuccess($N -> $>{\n", RESULT_VAR_NAME, RESULT_VAR_NAME, resultValue);
-                    b.add("if ($N != null) {$>\n", resultValue);
-                    if (logOutLevel.equals(logResultLevel)) {
-                        ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
-                            b.addStatement("var $N = $T.marker($S, gen -> gen.writeStringField($S, String.valueOf($N)))", DATA_OUT_VAR_NAME, structuredArgument, "data", "out", resultValue);
-                            b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
-                        });
-                    } else {
-                        ifLogLevelEnabled(b, loggerFieldName, logResultLevel, () -> {
-                            b.addStatement("var $N = $T.marker($S, gen -> gen.writeStringField($S, String.valueOf($N)))", DATA_OUT_VAR_NAME, structuredArgument, "data", "out", resultValue);
-                            b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT);
-                            b.add("$<\n} else {$>\n");
-                            b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
-                        });
-                    }
-                    b.add("$<\n} else {$>\n");
-                    b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
-                    b.add("$<\n}");
-                    b.add("$<\n});");
-                }
-                b.add("\n");
-                b.add("$N = $N.doOnCancel(() -> $N.$L($S));", RESULT_VAR_NAME, RESULT_VAR_NAME, loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
-            }).add("\n");
-
-            var errorWriterBuilder = CodeBlock.builder()
-                .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
-                .beginControlFlow("gen ->")
-                .addStatement("gen.writeStartObject()")
-                .addStatement("gen.writeStringField($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-                .addStatement("gen.writeStringField($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
-                .addStatement("gen.writeEndObject()")
-                .endControlFlow(")");
-
-            b.beginControlFlow("$N = $N.doOnError($L -> ", RESULT_VAR_NAME, RESULT_VAR_NAME, ERROR_VAR_NAME);
-            b.add(errorWriterBuilder.build());
-            b.add("\n");
-            b.beginControlFlow("if($N.isDebugEnabled())", loggerFieldName);
-            b.addStatement("$N.$L($N, $S, $L)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT, ERROR_VAR_NAME);
-            b.nextControlFlow("else");
-            b.addStatement("$N.$L($N, $S)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT);
-            b.endControlFlow();
-            b.endControlFlow(")");
-        }
-
-        return new ApplyResult.MethodBody(b.add("return $N;\n", RESULT_VAR_NAME).build());
-    }
-
-    private ApplyResult fluxBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {
-        var logInLevel = logInLevel(executableElement, env);
-        var logOutLevel = logOutLevel(executableElement, env);
-        var b = CodeBlock.builder();
-
-        b.add("var $N = $L;\n", RESULT_VAR_NAME, KoraAspect.callSuper(executableElement, superCall));
-        if (logInLevel != null) {
-            var finalResultName = RESULT_VAR_NAME + "_final";
-            b.add("var $N = $N;\n", finalResultName, RESULT_VAR_NAME);
-            ifLogLevelEnabled(b, loggerFieldName, logInLevel, () -> {
-                b.add("$N = $T.defer(() -> {$>\n", RESULT_VAR_NAME, CommonClassNames.flux);
-                b.add(this.buildLogIn(aspectContext, executableElement, logInLevel, loggerFieldName));
-                b.add("return $N;", finalResultName);
-                b.add("$<\n});");
-            }).add("\n");
-        }
-
-        if (logOutLevel != null) {
-            var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
-            ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
-                var returnType = (ParameterizedTypeName) TypeName.get(executableElement.getReturnType());
-                if (logResultLevel == null || returnType.typeArguments().get(0).equals(TypeName.VOID.box())) {
-                    b.add("$N = $N.doOnNext(_v -> $N.$L($S));", RESULT_VAR_NAME, RESULT_VAR_NAME, loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT_ELEMENT);
-                } else {
-                    b.add("var $N = this.$N;\n", loggerFieldName, loggerFieldName);
-                    b.add("$N = $N.doOnNext($N -> $>{\n", RESULT_VAR_NAME, RESULT_VAR_NAME, ELEMENT_VAR_NAME);
-                    b.add("if ($N != null) {$>\n", ELEMENT_VAR_NAME);
-                    if (logOutLevel.equals(logResultLevel)) {
-                        ifLogLevelEnabled(b, loggerFieldName, logOutLevel, () -> {
-                            b.addStatement("var $N = $T.marker($S, gen -> gen.writeStringField($S, String.valueOf($N)))", DATA_OUT_VAR_NAME, structuredArgument, "data", "out", ELEMENT_VAR_NAME);
-                            b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT_ELEMENT);
-                        });
-                    } else {
-                        ifLogLevelEnabled(b, loggerFieldName, logResultLevel, () -> {
-                            b.addStatement("var $N = $T.marker($S, gen -> gen.writeStringField($S, String.valueOf($N)))", DATA_OUT_VAR_NAME, structuredArgument, "data", "out", ELEMENT_VAR_NAME);
-                            b.add("$N.$L($N, $S);", loggerFieldName, logOutLevel.toLowerCase(), DATA_OUT_VAR_NAME, MESSAGE_OUT_ELEMENT);
-                            b.add("$<\n} else {$>\n");
-                            b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT_ELEMENT);
-                        });
-                    }
-                    b.add("$<\n} else {$>\n");
-                    b.add("$N.$L($S);", loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT_ELEMENT);
-                    b.add("$<\n}");
-                    b.add("$<\n});");
-                }
-                b.add("\n");
-                b.add("$N = $N.doOnComplete(() -> $N.$L($S));", RESULT_VAR_NAME, RESULT_VAR_NAME, loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
-                b.add("$N = $N.doOnCancel(() -> $N.$L($S));", RESULT_VAR_NAME, RESULT_VAR_NAME, loggerFieldName, logOutLevel.toLowerCase(), MESSAGE_OUT);
-            }).add("\n");
-
-            var errorWriterBuilder = CodeBlock.builder()
-                .add("var $N = $T.marker($S, ", DATA_ERROR_VAR_NAME, structuredArgument, "data")
-                .beginControlFlow("gen ->")
-                .addStatement("gen.writeStartObject()")
-                .addStatement("gen.writeStringField($S, $L.getClass().getCanonicalName())", "errorType", ERROR_VAR_NAME)
-                .addStatement("gen.writeStringField($S, $L.getMessage())", "errorMessage", ERROR_VAR_NAME)
-                .addStatement("gen.writeEndObject()")
-                .endControlFlow(")");
-
-            b.beginControlFlow("$N = $N.doOnError($L -> ", RESULT_VAR_NAME, RESULT_VAR_NAME, ERROR_VAR_NAME);
-            b.add(errorWriterBuilder.build());
-            b.add("\n");
-            b.beginControlFlow("if($N.isDebugEnabled())", loggerFieldName);
-            b.addStatement("$N.$L($N, $S, $L)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT, ERROR_VAR_NAME);
-            b.nextControlFlow("else");
-            b.addStatement("$N.$L($N, $S)", loggerFieldName, "warn", DATA_ERROR_VAR_NAME, MESSAGE_OUT);
-            b.endControlFlow();
-            b.endControlFlow(")");
-        }
-
-        return new ApplyResult.MethodBody(b.add("return $N;\n", RESULT_VAR_NAME).build());
     }
 
     private ApplyResult futureBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {

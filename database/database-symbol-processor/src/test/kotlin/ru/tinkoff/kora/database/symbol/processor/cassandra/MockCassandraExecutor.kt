@@ -1,17 +1,12 @@
 package ru.tinkoff.kora.database.symbol.processor.cassandra
 
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet
-import com.datastax.dse.driver.api.core.cql.reactive.ReactiveRow
 import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.cql.*
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-import org.reactivestreams.Publisher
-import org.reactivestreams.Subscriber
-import reactor.core.publisher.Flux
-import reactor.core.publisher.Mono
 import ru.tinkoff.kora.database.cassandra.CassandraConnectionFactory
 import ru.tinkoff.kora.database.common.QueryContext
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry
@@ -53,8 +48,7 @@ class MockCassandraExecutor : CassandraConnectionFactory {
         Mockito.mockStatic(BatchStatement::class.java).use { ignored ->
             whenever(BatchStatement.builder(DefaultBatchType.UNLOGGED)).thenReturn(batchStatementBuilder)
         }
-        whenever(telemetry.observe( any())).thenReturn(NoopDataBaseObservation())
-        whenever(mockSession.executeReactive(any<Statement<*>>())).thenReturn(MockReactiveResultSet(listOf()))
+        whenever(telemetry.observe(any())).thenReturn(NoopDataBaseObservation())
         whenever(mockSession.executeAsync(any<Statement<*>>())).thenReturn(CompletableFuture.completedFuture(MockAsyncResultSet(listOf())))
         whenever(mockSession.execute(any<Statement<*>>())).thenReturn(resultSet)
     }
@@ -77,26 +71,6 @@ class MockCassandraExecutor : CassandraConnectionFactory {
         val statement: Statement<out Statement<*>?> = statementSetter.apply(sb)
         whenever(mockSession.execute(statement)).thenReturn(resultSet)
         return resultExtractor!!.apply(resultSet)
-    }
-
-    class MockReactiveResultSet(private val rows: List<ReactiveRow>) : ReactiveResultSet {
-
-        override fun subscribe(p0: Subscriber<in ReactiveRow>) {
-            Flux.fromIterable(rows).subscribe(p0)
-        }
-
-        override fun getColumnDefinitions(): Publisher<out ColumnDefinitions> {
-            TODO("Not yet implemented")
-        }
-
-        override fun getExecutionInfos(): Publisher<out ExecutionInfo> {
-            TODO("Not yet implemented")
-        }
-
-        override fun wasApplied(): Publisher<Boolean> {
-            return Mono.just(true)
-        }
-
     }
 
     class MockAsyncResultSet(private val rows: List<Row>) : AsyncResultSet {

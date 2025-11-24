@@ -10,8 +10,6 @@ import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.verification.VerificationMode;
-import reactor.util.function.Tuple2;
-import reactor.util.function.Tuples;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;
@@ -509,12 +507,13 @@ public abstract class HttpServerTestKit {
             .build();
 
 
-        var futures = new ArrayList<CompletableFuture<Tuple2<Integer, String>>>();
+        record CodeAndBody(int code, String body) {}
+        var futures = new ArrayList<CompletableFuture<CodeAndBody>>();
         for (int i = 0; i < 100; i++) {
-            var future = new CompletableFuture<Tuple2<Integer, String>>();
+            var future = new CompletableFuture<CodeAndBody>();
             ForkJoinPool.commonPool().submit(() -> {
                 try (var response = client.newCall(request).execute()) {
-                    future.complete(Tuples.of(response.code(), response.body().string()));
+                    future.complete(new CodeAndBody(response.code(), response.body().string()));
                 } catch (IOException e) {
                     future.completeExceptionally(e);
                 }
@@ -523,8 +522,8 @@ public abstract class HttpServerTestKit {
         }
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
         for (var future : futures) {
-            assertThat(future.get().getT1()).isEqualTo(200);
-            assertThat(future.get().getT2()).isEqualTo("hello world");
+            assertThat(future.get().code()).isEqualTo(200);
+            assertThat(future.get().body()).isEqualTo("hello world");
         }
         verifyResponse("GET", "/", 200, null, timeout(100).times(100));
     }

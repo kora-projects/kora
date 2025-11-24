@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.s3.client.model;
 
 import org.jetbrains.annotations.ApiStatus;
-import ru.tinkoff.kora.common.util.FlowUtils;
 
 import java.io.Closeable;
 import java.io.InputStream;
@@ -45,7 +44,27 @@ final class ByteBufferPublisher extends AtomicBoolean implements Flow.Publisher<
     @Override
     public void close() {
         if (this.compareAndSet(false, true)) {
-            this.publisher.subscribe(FlowUtils.drain());
+            this.publisher.subscribe(new Flow.Subscriber<ByteBuffer>() {
+                @Override
+                public void onSubscribe(Flow.Subscription subscription) {
+                    subscription.request(Long.MAX_VALUE);
+                }
+
+                @Override
+                public void onNext(ByteBuffer item) {
+
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+
+                }
+
+                @Override
+                public void onComplete() {
+
+                }
+            });
         }
     }
 }

@@ -48,10 +48,11 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        final boolean isMono = MethodUtils.isMono(method);
-        final boolean isFlux = MethodUtils.isFlux(method);
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("Publisher methods are not supported", method);
+        }
         final boolean isFuture = MethodUtils.isFuture(method);
-        final TypeMirror returnType = (isMono || isFlux || isFuture)
+        final TypeMirror returnType = isFuture
             ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
             : method.getReturnType();
 
@@ -66,7 +67,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 throw new ProcessingErrorException("@Validate for Return Value can't be applied for types assignable from " + Void.class, method);
             }
 
-            if (isMono || isFlux || isFuture) {
+            if (isFuture) {
                 if (MethodUtils.getGenericType(method.getReturnType()).filter(CommonUtils::isVoid).isPresent()) {
                     throw new ProcessingErrorException("@Validate for Return Value can't be applied for types assignable from " + Void.class, method);
                 }
@@ -74,11 +75,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         final CodeBlock body;
-        if (isMono) {
-            body = buildBodyMono(method, superCall, CommonClassNames.mono, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
-        } else if (isFlux) {
-            body = buildBodyFlux(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
-        } else if (isFuture) {
+        if (isFuture) {
             body = buildBodyFuture(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
         } else {
             body = buildBodySync(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
@@ -92,8 +89,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             return Optional.empty();
         }
 
-        final boolean isMono = MethodUtils.isMono(method);
-        final boolean isFlux = MethodUtils.isFlux(method);
         final boolean isFuture = MethodUtils.isFuture(method);
 
         final boolean isValid = method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()));
@@ -104,20 +99,20 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         var isPrimitive = returnType instanceof PrimitiveType;
         final boolean isNullable;
-        if (isMono || isFlux || isFuture) {
+        if (isFuture) {
             isNullable = MethodUtils.getGenericType(method.getReturnType())
-                             .map(CommonUtils::isNullable)
-                             .orElse(false)
-                         || CommonUtils.isNullable(method);
+                .map(CommonUtils::isNullable)
+                .orElse(false)
+                || CommonUtils.isNullable(method);
         } else {
             isNullable = CommonUtils.isNullable(method) && !isPrimitive;
         }
 
         final boolean isNotNull;
-        if (isMono || isFlux || isFuture) {
+        if (isFuture) {
             isNotNull = MethodUtils.getGenericType(method.getReturnType())
-                            .map(ValidUtils::isNotNull)
-                            .orElse(false) || isNotNull(method);
+                .map(ValidUtils::isNotNull)
+                .orElse(false) || isNotNull(method);
         } else {
             isNotNull = isNotNull(method);
         }
@@ -152,12 +147,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.add(resultCtxBlock);
             if (MethodUtils.isFuture(method)) {
                 builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
-            } else if (MethodUtils.isMono(method)) {
-                builder.addStatement("_sink.error(new $T(_returnCtx.violates(\"Result must be non null, but was null\")))", ValidTypes.violationException);
-                builder.addStatement("return");
-            } else if (MethodUtils.isFlux(method)) {
-                builder.addStatement("_sink.error(new $T(_returnCtx.violates(\"Result must be non null, but was null\")))", ValidTypes.violationException);
-                builder.addStatement("return");
             } else {
                 builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
             }
@@ -206,12 +195,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
                 if (MethodUtils.isFuture(method)) {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
-                } else if (MethodUtils.isMono(method)) {
-                    builder.addStatement("_sink.error(new $T($N))", EXCEPTION_TYPE, constraintResultField);
-                    builder.addStatement("return");
-                } else if (MethodUtils.isFlux(method)) {
-                    builder.addStatement("_sink.error(new $T($N))", EXCEPTION_TYPE, constraintResultField);
-                    builder.addStatement("return");
                 } else {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
                 }
@@ -236,12 +219,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField);
                 if (MethodUtils.isFuture(method)) {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatedResultField);
-                } else if (MethodUtils.isMono(method)) {
-                    builder.addStatement("_sink.error(new $T($N))", EXCEPTION_TYPE, validatedResultField);
-                    builder.addStatement("return");
-                } else if (MethodUtils.isFlux(method)) {
-                    builder.addStatement("_sink.error(new $T($N))", EXCEPTION_TYPE, validatedResultField);
-                    builder.addStatement("return");
                 } else {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatedResultField);
                 }
@@ -261,12 +238,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.beginControlFlow("if (!_returnViolations.isEmpty())");
             if (MethodUtils.isFuture(method)) {
                 builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
-            } else if (MethodUtils.isMono(method)) {
-                builder.addStatement("_sink.error(new $T(_returnViolations))", EXCEPTION_TYPE);
-                builder.addStatement("return");
-            } else if (MethodUtils.isFlux(method)) {
-                builder.addStatement("_sink.error(new $T(_returnViolations))", EXCEPTION_TYPE);
-                builder.addStatement("return");
             } else {
                 builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
             }

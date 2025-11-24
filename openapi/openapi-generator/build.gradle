@@ -45,10 +45,8 @@ dependencies {
     testImplementation(project(":aop:aop-symbol-processor"))
     testImplementation(testFixtures(project(":symbol-processor-common")))
 
-    testImplementation libs.reactor.core
     testImplementation(libs.kotlin.compiler)
     testImplementation(libs.kotlin.stdlib.lib)
-    testImplementation(libs.kotlin.coroutines.reactor)
 }
 
 test {
