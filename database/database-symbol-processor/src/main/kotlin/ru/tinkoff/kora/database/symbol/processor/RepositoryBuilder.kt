@@ -46,6 +46,9 @@ class RepositoryBuilder(
         repositoryDeclaration.findAnnotation(CommonClassNames.root)
             ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
 
+        repositoryDeclaration.findAnnotation(CommonClassNames.component)
+            ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
+
         repositoryDeclaration.findAnnotation(CommonClassNames.tag)
             ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
 

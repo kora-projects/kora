@@ -6,6 +6,7 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
@@ -67,9 +68,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val builder = declaration.extendsKeepAop(typeName, resolver)
             .generated(ClientClassGenerator::class)
 
-        if (declaration.findAnnotation(CommonClassNames.component) != null) {
-            builder.addAnnotation(CommonClassNames.component)
-        }
+        declaration.findAnnotation(CommonClassNames.root)
+            ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
+
+        declaration.findAnnotation(CommonClassNames.component)
+            ?.let { builder.addAnnotation(it.toAnnotationSpec()) }
 
         builder.primaryConstructor(this.buildConstructor(builder, declaration, methods))
         builder.addProperty("rootUrl", String::class.asClassName(), KModifier.PRIVATE, KModifier.FINAL);

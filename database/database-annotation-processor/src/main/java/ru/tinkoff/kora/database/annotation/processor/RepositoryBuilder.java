@@ -39,6 +39,9 @@ public class RepositoryBuilder {
         if (AnnotationUtils.findAnnotation(repositoryElement, CommonClassNames.root) != null) {
             builder.addAnnotation(CommonClassNames.root);
         }
+        if (AnnotationUtils.findAnnotation(repositoryElement, CommonClassNames.component) != null) {
+            builder.addAnnotation(CommonClassNames.component);
+        }
 
         var tags = parseTagValue(repositoryElement);
         if (!tags.isEmpty()) {

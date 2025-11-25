@@ -47,6 +47,9 @@ public class ClientClassGenerator {
         builder.addMethod(this.buildConstructor(builder, element, methods));
         builder.addField(String.class, "rootUrl", Modifier.PRIVATE, Modifier.FINAL);
 
+        if (AnnotationUtils.findAnnotation(element, CommonClassNames.root) != null) {
+            builder.addAnnotation(CommonClassNames.root);
+        }
         if (AnnotationUtils.findAnnotation(element, CommonClassNames.component) != null) {
             builder.addAnnotation(CommonClassNames.component);
         }
