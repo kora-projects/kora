@@ -12,6 +12,7 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 
 public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine> {
 
@@ -20,20 +21,27 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
     private final ProcessEngineConfiguration engineConfiguration;
     private final CamundaEngineBpmnConfig engineConfig;
     private final List<ProcessEngineConfigurator> camundaConfigurators;
+    private final Executor executor;
 
     private volatile ProcessEngine processEngine;
 
     public KoraProcessEngine(ProcessEngineConfiguration engineConfiguration,
                              CamundaEngineBpmnConfig engineConfig,
-                             List<ProcessEngineConfigurator> camundaConfigurators) {
-        this.engineConfiguration = engineConfiguration;
+                             List<ProcessEngineConfigurator> camundaConfigurators,
+                             Executor executor) {
         this.engineConfig = engineConfig;
+        this.engineConfiguration = engineConfiguration;
         this.camundaConfigurators = camundaConfigurators;
+        this.executor = executor;
     }
 
     @Override
     public void init() {
         try {
+            for (ProcessEngineConfigurator configurator : camundaConfigurators) {
+                configurator.prepare(engineConfiguration);
+            }
+
             if (engineConfig.parallelInitialization().enabled() && engineConfiguration instanceof KoraProcessEngineConfiguration) {
                 logger.info("Camunda BPMN Engine parallel initialization enabled");
 
@@ -61,7 +69,7 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
-                    }))
+                    }, executor))
                     .toArray(CompletableFuture[]::new);
 
                 CompletableFuture.allOf(setups).join();
