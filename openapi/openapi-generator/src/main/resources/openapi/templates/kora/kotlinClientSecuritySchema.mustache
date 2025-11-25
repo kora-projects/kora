@@ -6,11 +6,7 @@
 package {{apiPackage}}
 
 
-import ru.tinkoff.kora.common.Module
-import ru.tinkoff.kora.common.Tag
-import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
-import ru.tinkoff.kora.config.common.Config
 
 import ru.tinkoff.kora.http.client.common.interceptor.*
 import ru.tinkoff.kora.http.common.auth.*
@@ -26,16 +22,17 @@ interface ApiSecurity {
     class {{#lambda.classname}}{{name}}{{/lambda.classname}}
 
 {{#isApiKey}}
-    @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}Config(config: Config, extractor: ConfigValueExtractor<String>): String {
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
+    fun {{name}}Config(config: ru.tinkoff.kora.config.common.Config, extractor: ConfigValueExtractor<String>): String {
         val configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}"
         val configValue = config.get(configPath)
         return extractor.extract(configValue) ?: throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.missingValueAfterParse(configValue)
     }
 
-    @DefaultComponent
-    @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) apiKey: String): ApiKeyHttpClientInterceptor {
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
+    fun {{name}}HttpClientAuthInterceptor(@ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) apiKey: String): HttpClientInterceptor {
         val paramLocation = ApiKeyHttpClientInterceptor.ApiKeyLocation.{{#isKeyInQuery}}QUERY{{/isKeyInQuery}}{{#isKeyInHeader}}HEADER{{/isKeyInHeader}}{{#isKeyInCookie}}COOKIE{{/isKeyInCookie}}
         return ApiKeyHttpClientInterceptor(paramLocation, "{{keyParamName}}", apiKey)
     }
@@ -43,33 +40,51 @@ interface ApiSecurity {
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     data class {{#lambda.classname}}{{name}}{{/lambda.classname}}Config(val username: String, val password: String)
 
-    fun {{name}}Config(config: Config, extractor: ConfigValueExtractor<{{#lambda.classname}}{{name}}{{/lambda.classname}}Config>): {{#lambda.classname}}{{name}}{{/lambda.classname}}Config {
+    @ru.tinkoff.kora.common.DefaultComponent
+    fun {{name}}Config(config: ru.tinkoff.kora.config.common.Config, extractor: ConfigValueExtractor<{{#lambda.classname}}{{name}}{{/lambda.classname}}Config>): {{#lambda.classname}}{{name}}{{/lambda.classname}}Config {
         val configPath = "{{#hasSecurityConfigPrefix}}{{securityConfigPrefix}}.{{/hasSecurityConfigPrefix}}{{name}}"
         val configValue = config.get(configPath)
         return extractor.extract(configValue) ?: throw ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException.missingValueAfterParse(configValue)
     }
 
-    @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}BasicAuthHttpClientTokenProvider(config: {{#lambda.classname}}{{name}}{{/lambda.classname}}Config): BasicAuthHttpClientTokenProvider {
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
+    fun {{name}}BasicAuthHttpClientTokenProvider(config: {{#lambda.classname}}{{name}}{{/lambda.classname}}Config): HttpClientTokenProvider {
         return BasicAuthHttpClientTokenProvider(config.username, config.password)
     }
 
-    @DefaultComponent
-    @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) provider: BasicAuthHttpClientTokenProvider): BasicAuthHttpClientInterceptor {
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
+    fun {{name}}HttpClientAuthInterceptor(@ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) provider: HttpClientTokenProvider): HttpClientInterceptor {
         return BasicAuthHttpClientInterceptor(provider)
     }
 {{/isBasicBasic}}{{#isBasicBearer}}
-    @DefaultComponent
-    @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): BearerAuthHttpClientInterceptor {
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
+    fun {{name}}HttpClientAuthInterceptor(@ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): HttpClientInterceptor {
         return BearerAuthHttpClientInterceptor(tokenProvider)
     }
 {{/isBasicBearer}}{{#isOAuth}}
-    @DefaultComponent
-    @Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
-    fun {{name}}HttpClientAuthInterceptor(@Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): BearerAuthHttpClientInterceptor {
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class)
+    fun {{name}}HttpClientAuthInterceptor(@ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) tokenProvider: HttpClientTokenProvider): HttpClientInterceptor {
         return BearerAuthHttpClientInterceptor(tokenProvider)
     }
-{{/isOAuth}}{{/authMethods}}
+{{/isOAuth}}{{/authMethods}}{{#vendorExtensions.authMethodTags}}
+
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+    class {{.}}
+{{/vendorExtensions.authMethodTags}}
+{{#vendorExtensions.authMethods}}
+
+    @ru.tinkoff.kora.common.DefaultComponent
+    @ru.tinkoff.kora.common.Tag({{name}}::class)
+    fun {{name}}HttpClientAuthInterceptor({{#methods}}
+        @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}::class) {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}: HttpClientInterceptor{{^vendorExtensions.isLast}},{{/vendorExtensions.isLast}}{{/methods}}) : HttpClientInterceptor {
+        return HttpClientInterceptor { ctx, chain, request -> {{#methods}}{{#vendorExtensions.isFirst}} {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.processRequest(ctx, {{/vendorExtensions.isFirst}}{{^vendorExtensions.isFirst}}
+                { ctx{{vendorExtensions.index}}, request{{vendorExtensions.index}} -> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}.processRequest(ctx{{vendorExtensions.index}}, {{/vendorExtensions.isFirst}}{{#vendorExtensions.isLast}}chain, request{{vendorExtensions.index}}) }, {{/vendorExtensions.isLast}} {{/methods}}{{#methods}} {{^vendorExtensions.isFirst}}{{^vendorExtensions.isLast}}
+                request{{vendorExtensions.revertIndex}}) }, {{/vendorExtensions.isLast}}{{/vendorExtensions.isFirst}} {{/methods}}
+            request) }
+    }
+{{/vendorExtensions.authMethods}}
 }

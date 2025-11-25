@@ -160,6 +160,7 @@ public class KoraCodegen extends DefaultCodegen {
         String jsonAnnotation,
         boolean enableValidation,
         boolean authAsMethodArgument,
+        boolean authAllowMultiple,
         @Nullable String primaryAuth,
         @Nullable String clientConfigPrefix,
         String securityConfigPrefix,
@@ -203,6 +204,7 @@ public class KoraCodegen extends DefaultCodegen {
             var jsonAnnotation = "ru.tinkoff.kora.json.common.annotation.Json";
             var enableServerValidation = false;
             var authAsMethodArgument = false;
+            var authAllowMultiple = false;
             var primaryAuth = (String) null;
             var clientConfigPrefix = (String) null;
             var securityConfigPrefix = (String) null;
@@ -259,6 +261,9 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(AUTH_AS_METHOD_ARGUMENT)) {
                 authAsMethodArgument = Boolean.parseBoolean(additionalProperties.get(AUTH_AS_METHOD_ARGUMENT).toString());
             }
+            if (additionalProperties.containsKey(AUTH_ALLOW_MULTIPLE)) {
+                authAllowMultiple = Boolean.parseBoolean(additionalProperties.get(AUTH_ALLOW_MULTIPLE).toString());
+            }
             if (additionalProperties.containsKey(CLIENT_CONFIG_PREFIX)) {
                 clientConfigPrefix = additionalProperties.get(CLIENT_CONFIG_PREFIX).toString();
             }
@@ -299,7 +304,7 @@ public class KoraCodegen extends DefaultCodegen {
                 forceIncludeNonRequired = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_NON_REQUIRED).toString());
             }
 
-            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, primaryAuth, clientConfigPrefix,
+            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, authAllowMultiple, primaryAuth, clientConfigPrefix,
                 securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable,
                 filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex, forceIncludeOptional, forceIncludeNonRequired);
         }
@@ -361,6 +366,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String INTERCEPTORS = "interceptors";
     public static final String ADDITIONAL_CONTRACT_ANNOTATIONS = "additionalContractAnnotations";
     public static final String AUTH_AS_METHOD_ARGUMENT = "authAsMethodArgument";
+    public static final String AUTH_ALLOW_MULTIPLE = "authAllowMultiple";
     public static final String ENABLE_JSON_NULLABLE = "enableJsonNullable";
     public static final String FILTER_WITH_MODELS = "filterWithModels";
     public static final String PREFIX_PATH = "prefixPath";
@@ -2243,10 +2249,11 @@ public class KoraCodegen extends DefaultCodegen {
 
         var httpClientAnnotationParams = new HashMap<String, String>();
 
-        record AuthMethodGroup(String name, List<CodegenSecurity> methods) {}
+        record AuthMethodGroup(String name, int index, List<CodegenSecurity> methods) {}
 
         var authMethods = (List<AuthMethodGroup>) this.vendorExtensions.computeIfAbsent("authMethods", k -> new ArrayList<AuthMethodGroup>());
-        var tags = (Set<String>) this.vendorExtensions.computeIfAbsent("tags", k -> new TreeSet<String>());
+        var authMethodTags = (Set<String>) this.vendorExtensions.computeIfAbsent("authMethodTags", k -> new LinkedHashSet<>());
+        var authTags = (Set<String>) this.vendorExtensions.computeIfAbsent("authTags", k -> new LinkedHashSet<String>());
         var operations = (Map<String, Object>) objs.get("operations");
         if (params.clientConfigPrefix != null) {
             httpClientAnnotationParams.put("configPath", "\"" + params.clientConfigPrefix + "." + operations.get("classname") + "\"");
@@ -2504,69 +2511,60 @@ public class KoraCodegen extends DefaultCodegen {
                 response.vendorExtensions.put("singleResponse", op.responses.size() == 1);
             }
             if (op.hasAuthMethods) {
-                if (params.codegenMode.isServer()) {
-                    var operationAuthMethods = new TreeSet<String>();
-                    for (var authMethod : op.authMethods) {
-                        tags.add(upperCase(toVarName(authMethod.name)));
-                        final String authName;
-                        if (authMethod.isApiKey || authMethod.isBasic || authMethod.isBasicBearer) {
-                            authName = upperCase(toVarName(authMethod.name));
-                        } else if (authMethod.isOAuth) {
-                            if (authMethod.scopes == null || authMethod.scopes.isEmpty()) {
-                                authName = upperCase(toVarName(authMethod.name) + "NoScopes");
-                            } else {
-                                var scopes = authMethod.scopes.stream()
-                                    .map(it -> this.upperCase(toVarName(it.get("scope").toString())))
-                                    .sorted()
-                                    .collect(Collectors.joining("With"));
-                                authName = upperCase(toVarName(authMethod.name) + "With" + scopes);
-                            }
+                var operationAuthMethods = new TreeSet<String>();
+                for (var authMethod : op.authMethods) {
+                    authTags.add(upperCase(toVarName(authMethod.name)));
+                    final String authName;
+                    if (authMethod.isApiKey || authMethod.isBasic || authMethod.isBasicBearer) {
+                        authName = upperCase(toVarName(authMethod.name));
+                    } else if (authMethod.isOAuth) {
+                        if (authMethod.scopes == null || authMethod.scopes.isEmpty()) {
+                            authName = upperCase(toVarName(authMethod.name) + "NoScopes");
                         } else {
-                            throw new IllegalStateException();
+                            var scopes = authMethod.scopes.stream()
+                                .map(it -> this.upperCase(toVarName(it.get("scope").toString())))
+                                .sorted()
+                                .collect(Collectors.joining("With"));
+                            authName = upperCase(toVarName(authMethod.name) + "With" + scopes);
                         }
-                        operationAuthMethods.add(authName);
-                        tags.add(upperCase(authName));
+                    } else {
+                        throw new IllegalStateException();
                     }
-                    var authInterceptorTag = String.join("With", operationAuthMethods);
-                    var security = new ArrayList<CodegenSecurity>();
-                    for (int i = 0; i < op.authMethods.size(); i++) {
-                        var source = op.authMethods.get(i);
-                        var scopes = Objects.requireNonNullElse(source.scopes, List.<Map<String, Object>>of()).stream().map(m -> m.get("scope").toString()).toList();
-                        var copy = source.filterByScopeNames(scopes);
-                        security.add(copy);
-                        copy.vendorExtensions.put("isLast", i == op.authMethods.size() - 1);
-                        copy.vendorExtensions.put("isFirst", i == 0);
-                        copy.vendorExtensions.put("hasScopes", copy.scopes != null && !copy.scopes.isEmpty());
-                    }
+                    operationAuthMethods.add(authName);
+                    authTags.add(upperCase(authName));
+                }
+                var authInterceptorTag = String.join("With", operationAuthMethods);
+                var security = new ArrayList<CodegenSecurity>();
+                for (int i = 0; i < op.authMethods.size(); i++) {
+                    var source = op.authMethods.get(i);
+                    var scopes = Objects.requireNonNullElse(source.scopes, List.<Map<String, Object>>of()).stream().map(m -> m.get("scope").toString()).toList();
+                    var copy = source.filterByScopeNames(scopes);
+                    security.add(copy);
+                    copy.vendorExtensions.put("isLast", i == op.authMethods.size() - 1);
+                    copy.vendorExtensions.put("isFirst", i == 0);
+                    copy.vendorExtensions.put("index", i + 1);
+                    copy.vendorExtensions.put("revertIndex", op.authMethods.size() - i);
+                    copy.vendorExtensions.put("hasScopes", copy.scopes != null && !copy.scopes.isEmpty());
+                }
 
-                    tags.add(authInterceptorTag);
-                    if (authMethods.stream().noneMatch(a -> a.name.equals(authInterceptorTag))) {
-                        authMethods.add(new AuthMethodGroup(authInterceptorTag, security));
+                if (params.codegenMode().isServer()) {
+                    authTags.add(authInterceptorTag);
+                    if (!authMethodTags.contains(authInterceptorTag)) {
+                        authMethodTags.add(authInterceptorTag);
+                        authMethods.add(new AuthMethodGroup(authInterceptorTag, authMethods.size() + 1, security));
                     }
-
 
                     op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
                 } else {
-                    if (op.authMethods.size() == 1 || params.primaryAuth == null) {
-                        if (op.authMethods.size() > 1) {
-                            Set<String> secSchemes = op.authMethods.stream()
-                                .map(s -> s.name)
-                                .collect(Collectors.toSet());
-
-                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, or the first random will be used",
-                                secSchemes, op.httpMethod, op.path);
+                    if (!operationAuthMethods.contains(authInterceptorTag)) {
+                        authTags.add(authInterceptorTag);
+                        if (!authMethodTags.contains(authInterceptorTag)) {
+                            authMethodTags.add(authInterceptorTag);
+                            authMethods.add(new AuthMethodGroup(authInterceptorTag, authMethods.size() + 1, security));
                         }
+                    }
 
-                        CodegenSecurity authMethod = op.authMethods.get(0);
-                        if (params.authAsMethodArgument) {
-                            CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
-                            op.allParams.add(fakeAuthParameter);
-                        } else {
-                            var authName = camelize(toVarName(authMethod.name));
-                            tags.add(upperCase(authName));
-                            op.vendorExtensions.put("authInterceptorTag", authName);
-                        }
-                    } else {
+                    if (params.primaryAuth != null) {
                         CodegenSecurity authMethod = op.authMethods.stream()
                             .filter(a -> a.name.equals(params.primaryAuth))
                             .findFirst()
@@ -2577,8 +2575,38 @@ public class KoraCodegen extends DefaultCodegen {
                             op.allParams.add(fakeAuthParameter);
                         } else {
                             var authName = camelize(toVarName(authMethod.name));
-                            tags.add(upperCase(authName));
+                            authTags.add(upperCase(authName));
                             op.vendorExtensions.put("authInterceptorTag", authName);
+                        }
+                    } else {
+                        if (op.authMethods.size() > 1) {
+                            Set<String> secSchemes = op.authMethods.stream()
+                                .map(s -> s.name)
+                                .collect(Collectors.toSet());
+
+                            LOGGER.warn("Found multiple securitySchemes {} for {} {} it is recommended to specify preferred securityScheme using `primaryAuth` property, using first random: {}",
+                                secSchemes, op.httpMethod, op.path, op.authMethods.get(0).name);
+                        }
+
+                        if (params.authAllowMultiple) {
+                            if (params.authAsMethodArgument) {
+                                for (CodegenSecurity authMethod : op.authMethods) {
+                                    CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
+                                    op.allParams.add(fakeAuthParameter);
+                                }
+                            } else {
+                                op.vendorExtensions.put("authInterceptorTag", authInterceptorTag);
+                            }
+                        } else {
+                            CodegenSecurity authMethod = op.authMethods.get(0);
+                            if (params.authAsMethodArgument) {
+                                CodegenParameter fakeAuthParameter = getAuthArgumentParameter(authMethod, op.allParams);
+                                op.allParams.add(fakeAuthParameter);
+                            } else {
+                                var authName = camelize(toVarName(authMethod.name));
+                                authTags.add(upperCase(authName));
+                                op.vendorExtensions.put("authInterceptorTag", authName);
+                            }
                         }
                     }
                 }

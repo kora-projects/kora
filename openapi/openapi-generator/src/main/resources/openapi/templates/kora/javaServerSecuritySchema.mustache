@@ -30,10 +30,11 @@ import ru.tinkoff.kora.http.server.common.auth.*;
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
 @ru.tinkoff.kora.common.Module
 public interface ApiSecurity {
-{{#vendorExtensions.tags}}
+{{#vendorExtensions.authTags}}
 
+    @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
     static final class {{.}} {}
-{{/vendorExtensions.tags}}
+{{/vendorExtensions.authTags}}
 
 {{#vendorExtensions.authMethods}}
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
@@ -131,7 +132,7 @@ public interface ApiSecurity {
     }
 
     @ru.tinkoff.kora.common.Tag({{name}}.class)
-    @DefaultComponent
+    @ru.tinkoff.kora.common.DefaultComponent
     default {{name}}HttpServerInterceptor {{name}}HttpServerAuthInterceptor({{#methods}}
       @ru.tinkoff.kora.common.Tag(ApiSecurity.{{#lambda.classname}}{{name}}{{/lambda.classname}}.class) HttpServerPrincipalExtractor<{{#isOAuth}}PrincipalWithScopes{{/isOAuth}}{{^isOAuth}}Principal{{/isOAuth}}> {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}},{{/vendorExtensions.isLast}}{{/methods}}) {
         return new {{name}}HttpServerInterceptor({{#methods}}{{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}{{^vendorExtensions.isLast}}, {{/vendorExtensions.isLast}}{{/methods}});
