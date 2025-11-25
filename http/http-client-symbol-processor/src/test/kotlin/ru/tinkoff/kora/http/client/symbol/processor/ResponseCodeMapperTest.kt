@@ -3,12 +3,15 @@ package ru.tinkoff.kora.http.client.symbol.processor
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
-import org.mockito.Mockito
+import org.mockito.Mockito.reset
+import ru.tinkoff.kora.common.util.Either
 
 class ResponseCodeMapperTest : AbstractHttpClientTest() {
+
     @Test
     fun testGenericResponseMapper() {
-        val client = compile(listOf<Any>(), """
+        val client = compile(
+            listOf<Any>(), """
             @HttpClient
             interface TestClient {
               @ResponseCodeMapper(code = 200, mapper = TestMapper::class)
@@ -19,27 +22,29 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
             """.trimIndent(), """
             class TestMapper : HttpClientResponseMapper<String> {
               override fun apply(rs: HttpClientResponse): String {
-                  return "test-string-from-mapper";
+                  return "test-string-from-mapper"
               }
             }
             """.trimIndent(), """
-            class NullMapper <T> : HttpClientResponseMapper<T> {
+            class NullMapper<T> : HttpClientResponseMapper<T> {
               override fun apply(rs: HttpClientResponse): T? {
-                  return null;
+                  return null
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         assertThat(client.invoke<String?>("test")).isEqualTo("test-string-from-mapper")
 
-        Mockito.reset(httpClient)
+        reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
         assertThat(client.invoke<String?>("test")).isNull()
     }
 
     @Test
     fun testCodeMapperNoParams() {
-        val client = compile(listOf<Any>(newGenerated("TestMapper")), """
+        val client = compile(
+            listOf<Any>(newGenerated("TestMapper")), """
             @HttpClient
             interface TestClient {
               @Tag(TestClient::class)
@@ -60,18 +65,20 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
                   return null;
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         client.invoke<String?>("test")
 
-        Mockito.reset(httpClient)
+        reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
         assertThat(client.invoke<String?>("test")).isNull()
     }
 
     @Test
     fun testCodeMappersByType() {
-        val client = compile(listOf<Any>(newGenerated("Rs1Mapper"), newGenerated("Rs2Mapper")), """
+        val client = compile(
+            listOf<Any>(newGenerated("Rs1Mapper"), newGenerated("Rs2Mapper")), """
             @HttpClient
             interface TestClient {
               sealed interface TestResponse {
@@ -96,18 +103,20 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
                   return TestClient.TestResponse.Rs2(rs.code());
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         assertThat(client.invoke<Any?>("test")).hasToString("Rs1(code=200)")
 
-        Mockito.reset(httpClient)
+        reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
         assertThat(client.invoke<Any?>("test")).hasToString("Rs2(code=404)")
     }
 
     @Test
     fun testCodeMappersByTypeWithTag() {
-        val client = compile(listOf<Any>(newGenerated("Rs1Mapper"), newGenerated("Rs2Mapper")), """
+        val client = compile(
+            listOf<Any>(newGenerated("Rs1Mapper"), newGenerated("Rs2Mapper")), """
             @HttpClient
             interface TestClient {
               sealed interface TestResponse {
@@ -133,18 +142,20 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
                   return TestClient.TestResponse.Rs2(rs.code());
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         assertThat(client.invoke<Any?>("test")).hasToString("Rs1(code=200)")
 
-        Mockito.reset(httpClient)
+        reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
         assertThat(client.invoke<Any?>("test")).hasToString("Rs2(code=404)")
     }
 
     @Test
     fun testTypeException() {
-        val client = compile(listOf<Any>(newGenerated("ExceptionMapper")), """
+        val client = compile(
+            listOf<Any>(newGenerated("ExceptionMapper")), """
             @HttpClient
             interface TestClient {
               @ResponseCodeMapper(code = 200, mapper = TestMapper::class)
@@ -164,11 +175,12 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
                   return RuntimeException("test");
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         client.invoke<String?>("test")
 
-        Mockito.reset(httpClient)
+        reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
         assertThatThrownBy { client.invoke<String?>("test") }
             .isExactlyInstanceOf(RuntimeException::class.java)
@@ -177,7 +189,8 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
 
     @Test
     fun testMapperException() {
-        val client = compile(listOf<Any>(), """
+        val client = compile(
+            listOf<Any>(), """
             @HttpClient
             interface TestClient {
               @ResponseCodeMapper(code = 200, mapper = TestMapper::class)
@@ -197,11 +210,12 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
                 return RuntimeException("test")
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         client.invoke<String?>("test")
 
-        Mockito.reset(httpClient)
+        reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(404) }
         assertThatThrownBy { client.invoke<String?>("test") }
             .isExactlyInstanceOf(RuntimeException::class.java)
@@ -210,7 +224,8 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
 
     @Test
     fun testInheritedResponseMapper() {
-        val client = compile(listOf<Any>(), """
+        val client = compile(
+            listOf<Any>(), """
             @HttpClient
             interface TestClient {
               @ResponseCodeMapper(code = 200, mapper = TestMapper::class)
@@ -225,8 +240,102 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
                   return "test-string-from-mapper"
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
         assertThat(client.invoke<String?>("test")).isEqualTo("test-string-from-mapper")
+    }
+
+    @Test
+    fun testAbstractGenericResponseMapper() {
+        compile(
+            listOf(), """
+            @HttpClient             
+            interface TestClient {
+            
+              @ResponseCodeMapper(code = 200, mapper = Test200Mapper::class)
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper::class)
+              @HttpRoute(method = "GET", path = "/test")
+              fun test(): ru.tinkoff.kora.common.util.Either<String, Throwable>
+            }
+            """.trimIndent(),
+            """
+            class Test200Mapper : AbstractTestMapper<String, Throwable>("200-string-from-mapper") 
+            """.trimIndent(),
+            """
+            class TestDefaultMapper : AbstractTestMapper<String, Throwable>("default-string-from-mapper") 
+            """.trimIndent(),
+            """
+            abstract class AbstractTestMapper<T, E>(val t: T) : HttpClientResponseMapper<ru.tinkoff.kora.common.util.Either<T, E>> {
+            
+              override fun apply(rs: HttpClientResponse): ru.tinkoff.kora.common.util.Either<T, E> {
+                  return ru.tinkoff.kora.common.util.Either.left(t)
+              }
+            }
+            """.trimIndent()
+        )
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("200-string-from-mapper"))
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
+    }
+
+    @Test
+    fun testComplexAbstractGenericResponseMapper() {
+        compile(
+            listOf(), """
+            @HttpClient             
+            interface TestClient {
+            
+              @ResponseCodeMapper(code = 200, mapper = Test200Mapper::class)
+              @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper::class)
+              @HttpRoute(method = "GET", path = "/test")
+              fun test(): ru.tinkoff.kora.common.util.Either<String, Throwable>
+            }
+            """.trimIndent(),
+            """
+            class Test200Mapper : AbstractChildTestMapper<String, Int, Throwable>("200-string-from-mapper") 
+            """.trimIndent(),
+            """
+            class TestDefaultMapper : AbstractChildTestMapper<String, Long, Throwable>("default-string-from-mapper") 
+            """.trimIndent(),
+            """
+            abstract class AbstractChildTestMapper<K, G, E>(t: K) : AbstractParentTestMapper<K, E, G, Double>(t)
+            """.trimIndent(),
+            """
+            abstract class AbstractParentTestMapper<T, E, GRO, STATIC>(val t: T) : HttpClientResponseMapper<ru.tinkoff.kora.common.util.Either<T, E>> {
+            
+              override fun apply(rs: HttpClientResponse): ru.tinkoff.kora.common.util.Either<T, E> {
+                  return ru.tinkoff.kora.common.util.Either.left(t)
+              }
+            }
+            """.trimIndent()
+        )
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("200-string-from-mapper"))
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
+
+        reset(httpClient)
+        onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
+        assertThat(client.invoke<Either<String, Throwable>>("test"))
+            .isEqualTo(Either.left<String, Throwable>("default-string-from-mapper"))
     }
 }
