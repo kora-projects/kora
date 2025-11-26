@@ -24,14 +24,14 @@ public class LettuceClusterRedisCacheClient implements RedisCacheClient, Lifecyc
 
     private static final Logger logger = LoggerFactory.getLogger(LettuceClusterRedisCacheClient.class);
 
-    private final RedisClusterClient redisClient;
+    protected final RedisClusterClient redisClient;
 
     // use for pipeline commands only cause lettuce have bad performance when using pool
-    private BoundedAsyncPool<StatefulRedisClusterConnection<byte[], byte[]>> pool;
-    private StatefulRedisClusterConnection<byte[], byte[]> connection;
+    protected BoundedAsyncPool<StatefulRedisClusterConnection<byte[], byte[]>> pool;
+    protected StatefulRedisClusterConnection<byte[], byte[]> connection;
 
     // always use async cause sync uses JDK Proxy wrapped async impl
-    private RedisAdvancedClusterAsyncCommands<byte[], byte[]> commands;
+    protected RedisAdvancedClusterAsyncCommands<byte[], byte[]> commands;
 
     public LettuceClusterRedisCacheClient(RedisClusterClient redisClient) {
         this.redisClient = redisClient;
