@@ -71,11 +71,20 @@ public abstract class AbstractLogAspectTest extends AbstractAnnotationProcessorT
         var mockGen = Mockito.mock(JsonGenerator.class);
         var data = new HashMap<String, String>();
         var lastFieldName = new String[1];
-        doAnswer(invocation -> data.put(invocation.getArgument(0, String.class), invocation.getArgument(1, String.class)))
+        doAnswer(invocation -> {
+            data.put(invocation.getArgument(0, String.class), invocation.getArgument(1, String.class));
+            return invocation.getMock();
+        })
             .when(mockGen).writeStringProperty(anyString(), anyString());
-        doAnswer(invocation -> lastFieldName[0] = invocation.getArgument(0, String.class))
+        doAnswer(invocation -> {
+            lastFieldName[0] = invocation.getArgument(0, String.class);
+            return invocation.getMock();
+        })
             .when(mockGen).writeName(anyString());
-        doAnswer(invocation -> data.put(lastFieldName[0], invocation.getArgument(0, String.class)))
+        doAnswer(invocation -> {
+            data.put(lastFieldName[0], invocation.getArgument(0, String.class));
+            return invocation.getMock();
+        })
             .when(mockGen).writeString(anyString());
         writer.writeTo(mockGen);
         Assertions.assertThat(data).containsExactlyInAnyOrderEntriesOf(expectedData);
