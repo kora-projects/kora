@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.json.ksp.dto
 
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.core.JsonToken
 import ru.tinkoff.kora.json.common.annotation.JsonField
 import ru.tinkoff.kora.json.common.annotation.JsonReader
+import tools.jackson.core.JsonParser
+import tools.jackson.core.JsonToken
 
 @JsonReader
 data class DtoOnlyReader(

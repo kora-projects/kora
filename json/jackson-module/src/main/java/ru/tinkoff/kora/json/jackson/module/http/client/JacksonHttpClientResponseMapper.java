@@ -1,12 +1,12 @@
 package ru.tinkoff.kora.json.jackson.module.http.client;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JavaType;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JavaType;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
 
 import java.io.IOException;
 

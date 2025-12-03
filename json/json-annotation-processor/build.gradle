@@ -1,16 +1,7 @@
-plugins {
-    id "me.champeau.jmh" version "0.7.2"
-}
 
 dependencies {
     api project(":annotation-processor-common")
     api project(":kora-app-annotation-processor")
-
-    jmh "com.fasterxml.jackson.module:jackson-module-blackbird:${libs.versions.jackson.get()}"
-    jmh "com.fasterxml.jackson.module:jackson-module-afterburner:${libs.versions.jackson.get()}"
-    jmh "org.apache.commons:commons-lang3:3.11"
-    jmh project(":json:json-common")
-    jmhAnnotationProcessor project(":json:json-annotation-processor")
 
     testImplementation project(":json:json-common")
     testImplementation testFixtures(project(":annotation-processor-common"))

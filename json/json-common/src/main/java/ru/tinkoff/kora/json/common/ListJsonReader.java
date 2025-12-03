@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.exc.StreamReadException;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,13 +15,13 @@ public class ListJsonReader<T> implements JsonReader<List<T>> {
     }
 
     @Override
-    public List<T> read(JsonParser parser) throws IOException {
+    public List<T> read(JsonParser parser) {
         var token = parser.currentToken();
         if (token == JsonToken.VALUE_NULL) {
             return null;
         }
         if (token != JsonToken.START_ARRAY) {
-            throw new JsonParseException(parser, "Expecting START_ARRAY token, got " + token);
+            throw new StreamReadException(parser, "Expecting START_ARRAY token, got " + token);
         }
         token = parser.nextToken();
         if (token == JsonToken.END_ARRAY) {

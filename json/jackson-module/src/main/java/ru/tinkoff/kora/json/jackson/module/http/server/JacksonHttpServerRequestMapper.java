@@ -1,16 +1,15 @@
 package ru.tinkoff.kora.json.jackson.module.http.server;
 
-import com.fasterxml.jackson.core.JacksonException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.ObjectReader;
 import ru.tinkoff.kora.common.util.ByteBufferInputStream;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectReader;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
-import java.util.concurrent.ExecutionException;
 
 public final class JacksonHttpServerRequestMapper<T> implements HttpServerRequestMapper<T> {
     private final ObjectReader objectMapper;

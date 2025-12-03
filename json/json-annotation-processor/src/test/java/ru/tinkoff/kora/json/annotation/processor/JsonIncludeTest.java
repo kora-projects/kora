@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.ListJsonReader;
 import ru.tinkoff.kora.json.common.ListJsonWriter;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
 
 import java.util.List;
 

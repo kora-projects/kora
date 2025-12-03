@@ -56,12 +56,12 @@ public class DefaultHttpServerLogger {
         var operation = getOperation(request.method(), request.path(), request.route());
         var arg = (StructuredArgumentWriter) gen -> {
             gen.writeStartObject();
-            gen.writeStringField("operation", operation);
+            gen.writeStringProperty("operation", operation);
             if (finalQuery != null && !finalQuery.isEmpty()) {
-                gen.writeStringField("queryParams", Masking.toMaskedString(maskedQueryParams, mask, finalQuery));
+                gen.writeStringProperty("queryParams", Masking.toMaskedString(maskedQueryParams, mask, finalQuery));
             }
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringField("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
+                gen.writeStringProperty("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             gen.writeEndObject();
         };
@@ -82,16 +82,16 @@ public class DefaultHttpServerLogger {
 
         var w = (StructuredArgumentWriter) gen -> {
             gen.writeStartObject();
-            gen.writeStringField("operation", operation);
-            gen.writeStringField("resultCode", resultCode.string());
-            gen.writeNumberField("processingTime", processingTime / 1_000_000);
-            gen.writeNumberField("statusCode", statusCode);
+            gen.writeStringProperty("operation", operation);
+            gen.writeStringProperty("resultCode", resultCode.string());
+            gen.writeNumberProperty("processingTime", processingTime / 1_000_000);
+            gen.writeNumberProperty("statusCode", statusCode);
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringField("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
+                gen.writeStringProperty("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             if (exception != null) {
                 var exceptionType = exception.getClass().getCanonicalName();
-                gen.writeStringField("exceptionType", exceptionType);
+                gen.writeStringProperty("exceptionType", exceptionType);
             }
             gen.writeEndObject();
         };

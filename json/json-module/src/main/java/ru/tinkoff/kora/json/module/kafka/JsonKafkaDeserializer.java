@@ -6,7 +6,6 @@ import org.apache.kafka.common.serialization.Deserializer;
 import ru.tinkoff.kora.common.util.ByteBufferInputStream;
 import ru.tinkoff.kora.json.common.JsonReader;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public final class JsonKafkaDeserializer<T> implements Deserializer<T> {
@@ -23,7 +22,7 @@ public final class JsonKafkaDeserializer<T> implements Deserializer<T> {
         }
         try {
             return this.reader.read(data);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new SerializationException("Unable to deserialize from json", e);
         }
     }
@@ -36,14 +35,14 @@ public final class JsonKafkaDeserializer<T> implements Deserializer<T> {
         if (data.hasArray()) {
             try {
                 return this.reader.read(data.array(), data.arrayOffset() + data.position(), data.remaining());
-            } catch (IOException e) {
+            } catch (Exception e) {
                 throw new SerializationException("Unable to deserialize from json", e);
             }
         }
         var position = data.position();
         try (var is = new ByteBufferInputStream(data)) {
             return this.reader.read(is);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new SerializationException("Unable to deserialize from json", e);
         } finally {
             data.position(position);

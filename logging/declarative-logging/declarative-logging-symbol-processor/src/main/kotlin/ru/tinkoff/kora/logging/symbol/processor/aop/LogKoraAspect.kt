@@ -2,7 +2,6 @@ package ru.tinkoff.kora.logging.symbol.processor.aop
 
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
@@ -13,7 +12,6 @@ import org.slf4j.event.Level
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findEnumValue
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlowVoid
@@ -193,8 +191,8 @@ class LogKoraAspect : KoraAspect {
         controlFlow("if (%N.isWarnEnabled())", loggerName) {
             controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_ERROR_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
                 addStatement("gen.writeStartObject()")
-                addStatement("gen.writeStringField(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
-                addStatement("gen.writeStringField(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
+                addStatement("gen.writeStringProperty(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
+                addStatement("gen.writeStringProperty(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
                 addStatement("gen.writeEndObject()")
             }
 
@@ -343,8 +341,8 @@ class LogKoraAspect : KoraAspect {
             controlFlow("%L = %L.%M { %L -> ", RESULT_FIELD_NAME, RESULT_FIELD_NAME, MemberName("kotlinx.coroutines.flow", "catch"), ERROR_FIELD_NAME) {
                 controlFlow("val %L = %T.marker(%S) { gen -> ", DATA_ERROR_FIELD_NAME, structuredArgument, DATA_PARAMETER_NAME) {
                     addStatement("gen.writeStartObject()")
-                    addStatement("gen.writeStringField(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
-                    addStatement("gen.writeStringField(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
+                    addStatement("gen.writeStringProperty(%S, %L.javaClass.canonicalName)", "errorType", ERROR_FIELD_NAME)
+                    addStatement("gen.writeStringProperty(%S, %L.message)", "errorMessage", ERROR_FIELD_NAME)
                     addStatement("gen.writeEndObject()")
                 }
 
@@ -391,10 +389,10 @@ class LogKoraAspect : KoraAspect {
     private fun CodeBlock.Builder.writeWithMapper(mapperName: String, fieldName: String, parameterName: String) {
         controlFlow("%N.let", mapperName) {
             controlFlow("if (it != null)") {
-                addStatement("gen.writeFieldName(%S)", fieldName)
+                addStatement("gen.writeName(%S)", fieldName)
                 addStatement("it.write(gen, %N)", parameterName)
                 nextControlFlow("else")
-                addStatement("gen.writeStringField(%S, %L.toString())", fieldName, parameterName)
+                addStatement("gen.writeStringProperty(%S, %L.toString())", fieldName, parameterName)
             }
         }
 

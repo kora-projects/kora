@@ -3,21 +3,11 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 dependencies {
     api libs.slf4j.api
     api(libs.openapi.generator) {
-        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
-        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
-        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-annotations'
-        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-jsr310'
-        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-guava'
-        exclude group: 'com.fasterxml.jackson.datatype', module: 'jackson-datatype-joda'
-        exclude group: 'com.fasterxml.jackson.dataformat', module: 'jackson-dataformat-yaml'
         exclude group: 'org.slf4j', module: 'slf4j-api'
         exclude group: 'com.github.ben-manes.caffeine', module: 'caffeine'
         exclude group: 'commons-codec', module: 'commons-codec'
         exclude group: 'commons-io', module: 'commons-io'
     }
-    api("com.fasterxml.jackson.datatype:jackson-datatype-guava:${libs.versions.jackson.get()}")
-    api("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:${libs.versions.jackson.get()}")
-    api("com.fasterxml.jackson.dataformat:jackson-dataformat-yaml:${libs.versions.jackson.get()}")
     implementation libs.javapoet
     implementation libs.kotlinpoet
 

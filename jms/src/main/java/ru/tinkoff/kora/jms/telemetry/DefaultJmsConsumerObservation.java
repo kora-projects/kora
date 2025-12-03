@@ -37,8 +37,8 @@ public class DefaultJmsConsumerObservation implements JmsConsumerObservation {
                 .atDebug()
                 .addKeyValue("jmsInputMessage", StructuredArgument.value((gen) -> {
                     gen.writeStartObject();
-                    gen.writeStringField("headers", headers);
-                    gen.writeStringField("body", body);
+                    gen.writeStringProperty("headers", headers);
+                    gen.writeStringProperty("body", body);
                     gen.writeEndObject();
                 }))
                 .log("JmsListener.message");

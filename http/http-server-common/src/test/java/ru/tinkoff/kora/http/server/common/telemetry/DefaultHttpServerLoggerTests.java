@@ -5,7 +5,6 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.core.Appender;
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.typesafe.config.ConfigFactory;
 import jakarta.annotation.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -29,6 +28,7 @@ import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter;
+import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
 import java.util.*;
@@ -108,12 +108,12 @@ public class DefaultHttpServerLoggerTests {
         var httpRequest = (StructuredArgumentWriter) event.getKeyValuePairs().getFirst().value;
         var gen = Mockito.mock(JsonGenerator.class);
         httpRequest.writeTo(gen);
-        verify(gen).writeStringField("operation", expectedArgs[0].toString());
+        verify(gen).writeStringProperty("operation", expectedArgs[0].toString());
         if (expectedArgs.length > 1 && expectedArgs[1] != null) {
-            verify(gen).writeStringField("queryParams", expectedArgs[1].toString());
+            verify(gen).writeStringProperty("queryParams", expectedArgs[1].toString());
         }
         if (expectedArgs.length > 2 && expectedArgs[2] != null) {
-            verify(gen).writeStringField("headers", expectedArgs[2].toString());
+            verify(gen).writeStringProperty("headers", expectedArgs[2].toString());
         }
     }
 
@@ -150,12 +150,12 @@ public class DefaultHttpServerLoggerTests {
         var httpResponse = (StructuredArgumentWriter) event.getKeyValuePairs().getFirst().value;
         var gen = Mockito.mock(JsonGenerator.class);
         httpResponse.writeTo(gen);
-        verify(gen).writeNumberField("statusCode", 200);
-        verify(gen).writeStringField("operation", expectedOperation);
+        verify(gen).writeNumberProperty("statusCode", 200);
+        verify(gen).writeStringProperty("operation", expectedOperation);
         if (expectedHeaders == null) {
-            verify(gen, never()).writeStringField(eq("headers"), any());
+            verify(gen, never()).writeStringProperty(eq("headers"), any());
         } else {
-            verify(gen).writeStringField(eq("headers"), eq(expectedHeaders));
+            verify(gen).writeStringProperty(eq("headers"), eq(expectedHeaders));
         }
 
     }
@@ -203,12 +203,12 @@ public class DefaultHttpServerLoggerTests {
         var httpResponse = (StructuredArgumentWriter) event.getKeyValuePairs().getFirst().value;
         var gen = Mockito.mock(JsonGenerator.class);
         httpResponse.writeTo(gen);
-        verify(gen).writeNumberField("statusCode", 200);
-        verify(gen).writeStringField("operation", expectedOperation);
+        verify(gen).writeNumberProperty("statusCode", 200);
+        verify(gen).writeStringProperty("operation", expectedOperation);
         if (expectedHeaders == null) {
-            verify(gen, never()).writeStringField(eq("headers"), any());
+            verify(gen, never()).writeStringProperty(eq("headers"), any());
         } else {
-            verify(gen).writeStringField(eq("headers"), eq(expectedHeaders));
+            verify(gen).writeStringProperty(eq("headers"), eq(expectedHeaders));
         }
     }
 

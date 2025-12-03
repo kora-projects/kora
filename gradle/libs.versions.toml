@@ -2,7 +2,7 @@
 slf4j = "2.0.17"
 micrometer = "1.12.13"
 kotlin_ = "2.2.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
-jackson = "2.19.2"
+jackson = "3.0.2"
 mockserver = "5.15.0"
 netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
 kafka = "3.9.1"
@@ -45,16 +45,13 @@ snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "2.7" 
 cassandra-driver = { module = "org.apache.cassandra:java-driver-core", version.ref = "cassandra" }
 cassandra-metrics = { module = "org.apache.cassandra:java-driver-metrics-micrometer", version.ref = "cassandra" }
 
-kotlin-stdlib-common = { module = "org.jetbrains.kotlin:kotlin-stdlib-common", version.ref = "kotlin_" }
 kotlin-stdlib-lib = { module = "org.jetbrains.kotlin:kotlin-stdlib", version.ref = "kotlin_" }
 kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref = "kotlin_" }
 kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin_" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version = "24.1.0" }
 
-jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
-jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
-jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
+jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
 jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.7" }
 hikari = { module = "com.zaxxer:HikariCP", version = "5.1.0" }
 flyway = { module = "org.flywaydb:flyway-core", version = "9.22.3" }
@@ -120,7 +117,6 @@ grpc-java-gen = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-j
 
 testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
-testcontainers-r2dbc = { module = "org.testcontainers:r2dbc", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
 testcontainers-cassandra = { module = "org.testcontainers:cassandra", version.ref = "testcontainers" }
 testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }

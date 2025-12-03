@@ -1,8 +1,9 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.SerializableString;
 
 import jakarta.annotation.Nonnull;
+import tools.jackson.core.SerializableString;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;

@@ -73,7 +73,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             functionBody.addStatement("__token = __parser.currentToken()")
         }
         functionBody.controlFlow("while (__token != %T.END_OBJECT) ", JsonTypes.jsonToken) {
-            assertTokenType(functionBody, "FIELD_NAME")
+            assertTokenType(functionBody, "PROPERTY_NAME")
             functionBody.addStatement("val __fieldName = __parser.currentName()")
             functionBody.controlFlow("when (__fieldName)") {
                 meta.fields.forEach { field ->
@@ -248,7 +248,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
         functionBody.controlFlow("run") {
             for (i in meta.fields.indices) {
                 val field: JsonClassReaderMeta.FieldMeta = meta.fields[i]
-                addStatement("if (!__parser.nextFieldName(%N)) return@run", jsonNameStaticName(field))
+                addStatement("if (!__parser.nextName(%N)) return@run", jsonNameStaticName(field))
                 addStatement("%N = %N(__parser, __receivedFields)", field.parameter.name!!.asString(), readerMethodName(field))
                 functionBody.add("\n")
             }

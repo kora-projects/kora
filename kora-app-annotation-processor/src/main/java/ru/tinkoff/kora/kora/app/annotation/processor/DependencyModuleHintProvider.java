@@ -1,8 +1,13 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
-import com.fasterxml.jackson.core.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.json.JsonFactoryBuilder;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.type.TypeMirror;
@@ -23,7 +28,7 @@ public class DependencyModuleHintProvider {
         this.processingEnvironment = processingEnvironment;
         List<ModuleHint> hints;
         try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-modules.json");
-             var parser = new JsonFactory(new JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES)).createParser(r)) {
+             var parser = new JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_PROPERTY_NAMES).build().createParser(ObjectReadContext.empty(), r)) {
             hints = ModuleHint.parseList(parser);
         } catch (IOException e) {
             log.warn("Error while reading hint list", e);
@@ -96,7 +101,7 @@ public class DependencyModuleHintProvider {
         static List<ModuleHint> parseList(JsonParser p) throws IOException {
             var token = p.nextToken();
             if (token != JsonToken.START_ARRAY) {
-                throw new JsonParseException(p, "Expecting START_ARRAY token, got " + token);
+                throw new StreamReadException(p, "Expecting START_ARRAY token, got " + token, p.currentLocation());
             }
             token = p.nextToken();
             if (token == JsonToken.END_ARRAY) {
@@ -119,19 +124,19 @@ public class DependencyModuleHintProvider {
             String moduleName = null;
             String artifact = null;
             while (next != JsonToken.END_OBJECT) {
-                if (next != JsonToken.FIELD_NAME) {
-                    throw new JsonParseException(p, "expected FIELD_NAME, got " + next);
+                if (next != JsonToken.PROPERTY_NAME) {
+                    throw new StreamReadException(p, "expected PROPERTY_NAME, got " + next, p.currentLocation());
                 }
                 var name = p.currentName();
                 switch (name) {
                     case "tags" -> {
                         if (p.nextToken() != JsonToken.START_ARRAY) {
-                            throw new JsonParseException(p, "expected START_ARRAY, got " + next);
+                            throw new StreamReadException(p, "expected START_ARRAY, got " + next, p.currentLocation());
                         }
                         next = p.nextToken();
                         while (next != JsonToken.END_ARRAY) {
                             if (next != JsonToken.VALUE_STRING) {
-                                throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                                throw new StreamReadException(p, "expected VALUE_STRING, got " + next, p.currentLocation());
                             }
                             tags.add(p.getValueAsString());
                             next = p.nextToken();
@@ -139,19 +144,19 @@ public class DependencyModuleHintProvider {
                     }
                     case "typeRegex" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
-                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next, p.currentLocation());
                         }
                         typeRegex = p.getValueAsString();
                     }
                     case "moduleName" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
-                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next, p.currentLocation());
                         }
                         moduleName = p.getValueAsString();
                     }
                     case "artifact" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
-                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next, p.currentLocation());
                         }
                         artifact = p.getValueAsString();
                     }
@@ -163,7 +168,7 @@ public class DependencyModuleHintProvider {
                 next = p.nextToken();
             }
             if (typeRegex == null || moduleName == null || artifact == null) {
-                throw new JsonParseException(p, "Some required fields missing");
+                throw new StreamReadException(p, "Some required fields missing", p.currentLocation());
             }
             return new ModuleHint(tags, Pattern.compile(typeRegex), moduleName, artifact);
         }

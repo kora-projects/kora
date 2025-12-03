@@ -94,10 +94,10 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
             log.atInfo()
                 .addKeyValue("grpcRequest", StructuredArgument.value(gen -> {
                     gen.writeStartObject();
-                    gen.writeStringField("serviceName", this.service);
-                    gen.writeStringField("operation", this.service + "/" + this.method);
+                    gen.writeStringProperty("serviceName", this.service);
+                    gen.writeStringProperty("operation", this.service + "/" + this.method);
                     if (log.isDebugEnabled()) {
-                        gen.writeStringField("headers", this.rqHeaders.toString());
+                        gen.writeStringProperty("headers", this.rqHeaders.toString());
                     }
                     gen.writeEndObject();
                 }))
@@ -122,15 +122,15 @@ public class DefaultGrpcServerObservation implements GrpcServerObservation {
         if (this.config.logging().enabled()) {
             var logArg = StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("serviceName", this.service);
-                gen.writeStringField("operation", this.service + "/" + this.method);
-                gen.writeNumberField("processingTime", duration / 1_000_000);
+                gen.writeStringProperty("serviceName", this.service);
+                gen.writeStringProperty("operation", this.service + "/" + this.method);
+                gen.writeNumberProperty("processingTime", duration / 1_000_000);
                 if (this.status != null) {
-                    gen.writeStringField("status", this.status.getCode().name());
+                    gen.writeStringProperty("status", this.status.getCode().name());
                 }
                 if (this.error != null) {
                     var exceptionType = this.error.getClass().getCanonicalName();
-                    gen.writeStringField("exceptionType", exceptionType);
+                    gen.writeStringProperty("exceptionType", exceptionType);
                 }
                 gen.writeEndObject();
             });

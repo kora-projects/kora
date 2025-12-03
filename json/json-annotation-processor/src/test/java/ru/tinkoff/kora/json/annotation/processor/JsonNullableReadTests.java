@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.JsonNullable;
 import ru.tinkoff.kora.json.common.JsonReader;
+import tools.jackson.core.JsonParser;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -64,7 +64,7 @@ public class JsonNullableReadTests extends AbstractJsonAnnotationProcessorTest {
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -85,7 +85,7 @@ public class JsonNullableReadTests extends AbstractJsonAnnotationProcessorTest {
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -106,7 +106,7 @@ public class JsonNullableReadTests extends AbstractJsonAnnotationProcessorTest {
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -169,7 +169,7 @@ public class JsonNullableReadTests extends AbstractJsonAnnotationProcessorTest {
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -190,7 +190,7 @@ public class JsonNullableReadTests extends AbstractJsonAnnotationProcessorTest {
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -211,7 +211,7 @@ public class JsonNullableReadTests extends AbstractJsonAnnotationProcessorTest {
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };

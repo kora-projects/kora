@@ -59,7 +59,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         if (discriminatorField != null) {
             if (meta.fields.none { it.jsonName == discriminatorField }) {
                 val discriminatorValue = meta.type.discriminatorValues().first()
-                functionBody.addStatement("_gen.writeFieldName(%S)", discriminatorField)
+                functionBody.addStatement("_gen.writeName(%S)", discriminatorField)
                 functionBody.addStatement("_gen.writeString(%S)", discriminatorValue)
             }
         }
@@ -122,9 +122,9 @@ class JsonWriterGenerator(private val resolver: Resolver) {
 
         if (field.typeMeta.isJsonNullable) {
             read.beginControlFlow("if (it.isDefined())")
-            read.addStatement("_gen.writeFieldName(%N)\n", jsonNameStaticName(field))
+            read.addStatement("_gen.writeName(%N)\n", jsonNameStaticName(field))
         } else {
-            read.add("_gen.writeFieldName(%N)\n", jsonNameStaticName(field))
+            read.add("_gen.writeName(%N)\n", jsonNameStaticName(field))
         }
 
         if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
@@ -177,7 +177,7 @@ class JsonWriterGenerator(private val resolver: Resolver) {
                 add(read.build())
             }
         } else {
-            function.add("_gen.writeFieldName(%L)\n", jsonNameStaticName(field))
+            function.add("_gen.writeName(%L)\n", jsonNameStaticName(field))
             function.controlFlow("_object.%N.let {", field.accessor) {
                 if (field.writer == null && field.typeMeta is WriterFieldType.KnownWriterFieldType) {
                     controlFlow("if (it == null)") {

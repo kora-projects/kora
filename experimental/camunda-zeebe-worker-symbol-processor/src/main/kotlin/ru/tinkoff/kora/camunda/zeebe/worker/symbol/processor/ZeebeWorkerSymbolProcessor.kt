@@ -160,12 +160,12 @@ class ZeebeWorkerSymbolProcessor(
                 }
 
                 codeBuilder.addStatement(
-                    "val _vars = %S + varsWriter.toStringUnchecked(result) + %S",
+                    "val _vars = %S + varsWriter.toString(result) + %S",
                     "{\"$varName\":", "}"
                 )
                 codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)")
             } else {
-                codeBuilder.addStatement("val _vars = varsWriter.toStringUnchecked(result)")
+                codeBuilder.addStatement("val _vars = varsWriter.toString(result)")
                 codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)")
             }
 

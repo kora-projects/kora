@@ -10,7 +10,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import java.io.IOException;
 
 public class EnumWriterGenerator {
 
@@ -32,7 +31,6 @@ public class EnumWriterGenerator {
             .build());
         typeBuilder.addMethod(MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addException(IOException.class)
             .addParameter(JsonTypes.jsonGenerator, "_gen")
             .addParameter(ParameterSpec.builder(typeName, "_object").addAnnotation(Nullable.class).build())
             .addAnnotation(Override.class)

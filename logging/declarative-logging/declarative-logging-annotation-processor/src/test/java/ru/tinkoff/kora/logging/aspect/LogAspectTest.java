@@ -350,10 +350,10 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """, """
             import ru.tinkoff.kora.logging.common.arg.StructuredArgumentMapper;
-            import com.fasterxml.jackson.core.JsonGenerator;
+            import tools.jackson.core.JsonGenerator;
 
             public final class MyLogArgMapper implements StructuredArgumentMapper<String> {
-                public void write(JsonGenerator gen, String value) throws java.io.IOException {
+                public void write(JsonGenerator gen, String value) {
                   gen.writeString("mapped-" + value);
                 }
             }
@@ -386,10 +386,10 @@ public class LogAspectTest extends AbstractLogAspectTest {
             }
             """, """
             import ru.tinkoff.kora.logging.common.arg.StructuredArgumentMapper;
-            import com.fasterxml.jackson.core.JsonGenerator;
+            import tools.jackson.core.JsonGenerator;
 
             public final class MyLogArgMapper <T> implements StructuredArgumentMapper<T> {
-                public void write(JsonGenerator gen, T value) throws java.io.IOException {
+                public void write(JsonGenerator gen, T value) {
                   gen.writeString("mapped-" + value);
                 }
             }

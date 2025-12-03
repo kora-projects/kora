@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
 import jakarta.annotation.Nullable;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.exc.StreamReadException;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
@@ -23,14 +22,14 @@ public final class EnumJsonReader<T extends Enum<T>, V> implements JsonReader<T>
 
     @Nullable
     @Override
-    public T read(JsonParser parser) throws IOException {
+    public T read(JsonParser parser) {
         var jsonValue = this.valueReader.read(parser);
         if (jsonValue == null) {
             return null;
         }
         var value = this.values.get(jsonValue);
         if (value == null) {
-            throw new JsonParseException(parser, "Expecting one of " + this.values.keySet() + ", got " + jsonValue);
+            throw new StreamReadException(parser, "Expecting one of " + this.values.keySet() + ", got " + jsonValue);
         }
         return value;
     }

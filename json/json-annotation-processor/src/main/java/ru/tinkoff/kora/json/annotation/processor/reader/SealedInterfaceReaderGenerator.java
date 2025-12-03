@@ -14,7 +14,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.io.IOException;
 import java.util.List;
 
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.decapitalize;
@@ -49,7 +48,6 @@ public class SealedInterfaceReaderGenerator {
         }
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addException(IOException.class)
             .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(ClassName.get(jsonElement))
             .addAnnotation(Override.class)

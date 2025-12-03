@@ -358,7 +358,7 @@ class LogAspectTest : AbstractLogAspectTest() {
             }
         """.trimIndent(), """
             class MyLogArgMapper : ru.tinkoff.kora.logging.common.arg.StructuredArgumentMapper<String> {
-              override fun write(gen: com.fasterxml.jackson.core.JsonGenerator, value: String) {
+              override fun write(gen: tools.jackson.core.JsonGenerator, value: String) {
                 gen.writeString("mapped-" + value)
               }
             }
