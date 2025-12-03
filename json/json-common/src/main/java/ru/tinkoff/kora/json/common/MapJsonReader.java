@@ -1,10 +1,9 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.exc.StreamReadException;
 
-import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -16,13 +15,13 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
     }
 
     @Override
-    public Map<String, T> read(JsonParser parser) throws IOException {
+    public Map<String, T> read(JsonParser parser) {
         var token = parser.currentToken();
         if (token == JsonToken.VALUE_NULL) {
             return null;
         }
         if (token != JsonToken.START_OBJECT) {
-            throw new JsonParseException(parser, "Expecting START_OBJECT token, got " + token);
+            throw new StreamReadException(parser, "Expecting START_OBJECT token, got " + token);
         }
         token = parser.nextToken();
         if (token == JsonToken.END_OBJECT) {
@@ -31,8 +30,8 @@ public class MapJsonReader<T> implements JsonReader<Map<String, T>> {
 
         Map<String, T> result = new LinkedHashMap<>();
         while (token != JsonToken.END_OBJECT) {
-            if (token != JsonToken.FIELD_NAME) {
-                throw new JsonParseException(parser, "Expecting FIELD_NAME token, got " + token);
+            if (token != JsonToken.PROPERTY_NAME) {
+                throw new StreamReadException(parser, "Expecting PROPERTY_NAME token, got " + token);
             }
             var fieldName = parser.currentName();
             token = parser.nextToken();

@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonToken;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
+import tools.jackson.core.JsonToken;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
@@ -65,7 +65,7 @@ public class RoundProcessingTest extends AbstractJsonAnnotationProcessorTest {
         var generatedTypeReader = (JsonReader<Object>) parser -> {
             var t = parser.currentToken();
             if (t != JsonToken.VALUE_STRING) {
-                throw new IOException();
+                throw new RuntimeException();
             }
             return newObject("GeneratedType", parser.getValueAsString());
         };

@@ -44,11 +44,11 @@ public class DefaultDataBaseObservation implements DataBaseObservation {
             log.atDebug()
                 .addKeyValue("sqlQuery", StructuredArgument.value(gen -> {
                     gen.writeStartObject();
-                    gen.writeStringField("pool", this.poolName);
-                    gen.writeStringField("operation", query.operation());
-                    gen.writeStringField("queryId", query.queryId());
+                    gen.writeStringProperty("pool", this.poolName);
+                    gen.writeStringProperty("operation", query.operation());
+                    gen.writeStringProperty("queryId", query.queryId());
                     if (log.isTraceEnabled()) {
-                        gen.writeStringField("sql", query.sql());
+                        gen.writeStringProperty("sql", query.sql());
                     }
                     gen.writeEndObject();
                 }))
@@ -78,12 +78,12 @@ public class DefaultDataBaseObservation implements DataBaseObservation {
             log.atDebug()
                 .addKeyValue("sqlQuery", StructuredArgument.value(gen -> {
                     gen.writeStartObject();
-                    gen.writeStringField("pool", this.poolName);
-                    gen.writeStringField("operation", query.operation());
-                    gen.writeStringField("queryId", query.queryId());
-                    gen.writeNumberField("processingTime", took / 1_000_000);
+                    gen.writeStringProperty("pool", this.poolName);
+                    gen.writeStringProperty("operation", query.operation());
+                    gen.writeStringProperty("queryId", query.queryId());
+                    gen.writeNumberProperty("processingTime", took / 1_000_000);
                     if (log.isTraceEnabled()) {
-                        gen.writeStringField("sql", query.sql());
+                        gen.writeStringProperty("sql", query.sql());
                     }
                     gen.writeEndObject();
                 }))

@@ -41,8 +41,8 @@ public class DefaultSchedulingObservation implements SchedulingObservation {
             .atDebug()
             .addKeyValue("scheduledJob", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("jobClass", this.jobClass.getCanonicalName());
-                gen.writeStringField("jobMethod", this.jobMethod);
+                gen.writeStringProperty("jobClass", this.jobClass.getCanonicalName());
+                gen.writeStringProperty("jobMethod", this.jobMethod);
                 gen.writeEndObject();
             }))
             .log("Scheduled Job execution started...");
@@ -77,10 +77,10 @@ public class DefaultSchedulingObservation implements SchedulingObservation {
             .atLevel(error == null ? Level.INFO : Level.WARN)
             .addKeyValue("scheduledJob", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("jobClass", this.jobClass.getCanonicalName());
-                gen.writeStringField("jobMethod", this.jobMethod);
+                gen.writeStringProperty("jobClass", this.jobClass.getCanonicalName());
+                gen.writeStringProperty("jobMethod", this.jobMethod);
                 long durationMs = durationInNanos / 1_000_000;
-                gen.writeNumberField("duration", durationMs);
+                gen.writeNumberProperty("duration", durationMs);
                 gen.writeEndObject();
             }))
             .setCause(error)

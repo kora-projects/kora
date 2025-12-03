@@ -44,7 +44,7 @@ public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaim
     @Override
     public String toString() {
         return "DependencyClaim{type=" + TypeName.get(type)
-               + ", tags=" + tags
-               + ", claimType=" + claimType + '}';
+            + ", tags=" + tags
+            + ", claimType=" + claimType + '}';
     }
 }

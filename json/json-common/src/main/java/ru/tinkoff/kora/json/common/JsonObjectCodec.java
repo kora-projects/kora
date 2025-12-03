@@ -1,9 +1,13 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.*;
-
 import jakarta.annotation.Nullable;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.SerializableString;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.exc.StreamWriteException;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDate;
@@ -15,9 +19,9 @@ import java.util.UUID;
 
 public final class JsonObjectCodec {
 
-    private JsonObjectCodec() { }
+    private JsonObjectCodec() {}
 
-    public static Object parse(JsonParser parser) throws IOException {
+    public static Object parse(JsonParser parser) {
         var token = parser.currentToken();
         if (token == JsonToken.VALUE_NULL) {
             return null;
@@ -30,7 +34,7 @@ public final class JsonObjectCodec {
                 return false;
             }
             if (token == JsonToken.VALUE_STRING) {
-                return parser.getText();
+                return parser.getString();
             }
             if (token == JsonToken.VALUE_NUMBER_INT) {
                 return parser.getBigIntegerValue();
@@ -38,12 +42,12 @@ public final class JsonObjectCodec {
             if (token == JsonToken.VALUE_NUMBER_FLOAT) {
                 return parser.getDoubleValue();
             }
-            throw new JsonParseException(parser, "Expecting {VALUE_TRUE, VALUE_FALSE, VALUE_STRING, VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT} token, got " + token);
+            throw new StreamReadException(parser, "Expecting {VALUE_TRUE, VALUE_FALSE, VALUE_STRING, VALUE_NUMBER_INT, VALUE_NUMBER_FLOAT} token, got " + token);
         }
         if (token == JsonToken.START_OBJECT) {
             var object = new LinkedHashMap<String, Object>();
             String fieldName;
-            while ((fieldName = parser.nextFieldName()) != null) {
+            while ((fieldName = parser.nextName()) != null) {
                 parser.nextToken();
                 var value = parse(parser);
                 object.put(fieldName, value);
@@ -58,10 +62,10 @@ public final class JsonObjectCodec {
             }
             return object;
         }
-        throw new JsonParseException(parser, "Unexpected token " + token);
+        throw new StreamReadException(parser, "Unexpected token " + token);
     }
 
-    public static void write(JsonGenerator gen, @Nullable Object object) throws IOException {
+    public static void write(JsonGenerator gen, @Nullable Object object) {
         if (object == null) {
             gen.writeNull();
             return;
@@ -127,11 +131,11 @@ public final class JsonObjectCodec {
             for (var entry : map.entrySet()) {
                 var key = entry.getKey();
                 if (key instanceof String str) {
-                    gen.writeFieldName(str);
+                    gen.writeName(str);
                 } else if (key instanceof SerializableString str) {
-                    gen.writeFieldName(str);
+                    gen.writeName(str);
                 } else {
-                    throw new JsonGenerationException("Maps key should be strings", gen);
+                    throw new StreamWriteException(gen, "Maps key should be strings");
                 }
                 var value = entry.getValue();
                 write(gen, value);
@@ -147,6 +151,6 @@ public final class JsonObjectCodec {
             gen.writeEndArray();
             return;
         }
-        throw new IllegalStateException("Invalid type " + object.getClass() + ". Valid types are T: Integer, Long, String, Double, Float, Biginteger, BigDecimal, OffsetDateTime, LocalDateTime, Enum, byte[], RawJson, UUID, Map<String, T>, Iterable<T>");
+        throw new IllegalArgumentException("Invalid type " + object.getClass() + ". Valid types are T: Integer, Long, String, Double, Float, Biginteger, BigDecimal, OffsetDateTime, LocalDateTime, Enum, byte[], RawJson, UUID, Map<String, T>, Iterable<T>");
     }
 }

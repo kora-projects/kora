@@ -1,6 +1,4 @@
 dependencies {
-    compileOnly libs.kotlin.stdlib.lib
-
     api project(":application-graph")
     api libs.slf4j.api
     api libs.micrometer.core

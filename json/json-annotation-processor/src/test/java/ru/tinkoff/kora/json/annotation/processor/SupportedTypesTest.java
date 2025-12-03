@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonParseException;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.exc.StreamReadException;
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -21,7 +21,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42), "{\"value\":42}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -36,7 +36,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42), "{\"value\":42}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -67,7 +67,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42L), "{\"value\":42}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -82,7 +82,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42L), "{\"value\":42}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -113,7 +113,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", (short) 42), "{\"value\":42}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -128,7 +128,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", (short) 42), "{\"value\":42}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -160,7 +160,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42.1f), "{\"value\":42.1}");
         mapper.verifyRead("{\"value\":42}", newObject("TestRecord", 42f));
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -176,7 +176,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42.1f), "{\"value\":42.1}");
         mapper.verifyRead("{\"value\":42}", newObject("TestRecord", 42f));
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -209,7 +209,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42.1d), "{\"value\":42.1}");
         mapper.verifyRead("{\"value\":42}", newObject("TestRecord", 42d));
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -225,7 +225,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", 42.1d), "{\"value\":42.1}");
         mapper.verifyRead("{\"value\":42}", newObject("TestRecord", 42d));
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -258,7 +258,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", true), "{\"value\":true}");
         mapper.verify(newObject("TestRecord", false), "{\"value\":false}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -274,7 +274,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", true), "{\"value\":true}");
         mapper.verify(newObject("TestRecord", false), "{\"value\":false}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -306,7 +306,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", "test"), "{\"value\":\"test\"}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -338,7 +338,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", uuid), "{\"value\":\"" + uuid + "\"}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -370,7 +370,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", new BigInteger("42")), "{\"value\":42}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test
@@ -406,7 +406,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
 
         var mapper = mapper("TestRecord");
         mapper.verify(newObject("TestRecord", new Object[]{b}), "{\"value\":\"AQIDBA==\"}");
-        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(JsonParseException.class);
+        assertThatThrownBy(() -> mapper.read("{\"value\":null}")).isInstanceOf(StreamReadException.class);
     }
 
     @Test

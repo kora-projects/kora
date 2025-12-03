@@ -144,10 +144,10 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                     throw new ProcessingErrorException("Worker result job variable name must be alphanumeric ( _ symbol is allowed) and not start with number, but was: " + varName, method);
                 }
 
-                codeBuilder.addStatement("var _vars = $S + varsWriter.toStringUnchecked(result) + $S", "{\"" + varName + "\":", "}");
+                codeBuilder.addStatement("var _vars = $S + varsWriter.toString(result) + $S", "{\"" + varName + "\":", "}");
                 codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
             } else {
-                codeBuilder.addStatement("var _vars = varsWriter.toStringUnchecked(result)");
+                codeBuilder.addStatement("var _vars = varsWriter.toString(result)");
                 codeBuilder.addStatement("return client.newCompleteCommand(job).variables(_vars)");
             }
             codeBuilder.nextControlFlow("else");
@@ -158,10 +158,10 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
         codeBuilder.nextControlFlow("catch ($T e)", CLASS_WORKER_EXCEPTION);
         codeBuilder.addStatement("throw e");
 
-        if (variables.stream().anyMatch(v -> v.isVars || v.isVar)) {
-            codeBuilder.nextControlFlow("catch ($T e)", IOException.class);
-            codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "DESERIALIZATION");
-        }
+//        if (variables.stream().anyMatch(v -> v.isVars || v.isVar)) {
+//            codeBuilder.nextControlFlow("catch ($T e)", IOException.class);
+//            codeBuilder.addStatement("throw new $T($S, e)", CLASS_WORKER_EXCEPTION, "DESERIALIZATION");
+//        }
 
         if (!MethodUtils.isVoid(method)) {
             codeBuilder.nextControlFlow("catch ($T e)", UncheckedIOException.class);

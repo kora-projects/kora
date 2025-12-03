@@ -27,13 +27,13 @@ public class DefaultS3ClientLogger implements S3ClientLogger {
         if (requestLogger.isInfoEnabled()) {
             var marker = StructuredArgument.marker("s3Request", gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("method", method);
-                gen.writeStringField("bucket", bucket);
+                gen.writeStringProperty("method", method);
+                gen.writeStringProperty("bucket", bucket);
                 if(key != null) {
-                    gen.writeStringField("key", key);
+                    gen.writeStringProperty("key", key);
                 }
                 if (contentLength != null) {
-                    gen.writeNumberField("contentLength", contentLength);
+                    gen.writeNumberProperty("contentLength", contentLength);
                 }
                 gen.writeEndObject();
             });
@@ -56,19 +56,19 @@ public class DefaultS3ClientLogger implements S3ClientLogger {
         if (responseLogger.isInfoEnabled()) {
             var marker = StructuredArgument.marker("s3Response", gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("method", method);
-                gen.writeStringField("bucket", bucket);
+                gen.writeStringProperty("method", method);
+                gen.writeStringProperty("bucket", bucket);
                 if(key != null) {
-                    gen.writeStringField("key", key);
+                    gen.writeStringProperty("key", key);
                 }
-                gen.writeNumberField("statusCode", statusCode);
-                gen.writeNumberField("processingTime", processingTimeNanos / 1_000_000);
+                gen.writeNumberProperty("statusCode", statusCode);
+                gen.writeNumberProperty("processingTime", processingTimeNanos / 1_000_000);
                 if (exception != null) {
-                    gen.writeStringField("errorCode", exception.getErrorCode());
+                    gen.writeStringProperty("errorCode", exception.getErrorCode());
                     final String exType = (exception.getCause() == null)
                         ? exception.getClass().getCanonicalName()
                         : exception.getCause().getClass().getCanonicalName();
-                    gen.writeStringField("exceptionType", exType);
+                    gen.writeStringProperty("exceptionType", exType);
                 }
                 gen.writeEndObject();
             });

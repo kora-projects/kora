@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
 
 import java.util.List;
 
@@ -64,8 +64,8 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
                 VALUE1, VALUE2
               }
             
-              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
-              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
+              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return tools.jackson.core.JsonParser::getValueAsString; }
+              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return tools.jackson.core.JsonGenerator::writeString; }
             
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonReader<TestEnum> r) {return "";}
@@ -86,8 +86,8 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
                 VALUE1, VALUE2
               }
             
-              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
-              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
+              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return tools.jackson.core.JsonParser::getValueAsString; }
+              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return tools.jackson.core.JsonGenerator::writeString; }
             
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonWriter<TestEnum> r) {return "";}

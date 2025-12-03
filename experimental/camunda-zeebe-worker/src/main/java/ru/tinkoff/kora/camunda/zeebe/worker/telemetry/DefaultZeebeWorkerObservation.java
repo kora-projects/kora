@@ -50,12 +50,12 @@ public class DefaultZeebeWorkerObservation implements ZeebeWorkerObservation {
         logger.atInfo()
             .addKeyValue("zeebeJob", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("type", job.getType());
-                gen.writeStringField("bpmnProcessId", job.getBpmnProcessId());
-                gen.writeNumberField("key", job.getKey());
-                gen.writeNumberField("processInstanceKey", job.getProcessInstanceKey());
+                gen.writeStringProperty("type", job.getType());
+                gen.writeStringProperty("bpmnProcessId", job.getBpmnProcessId());
+                gen.writeNumberProperty("key", job.getKey());
+                gen.writeNumberProperty("processInstanceKey", job.getProcessInstanceKey());
                 if (logger.isDebugEnabled()) {
-                    gen.writeStringField("variables", job.getVariables());
+                    gen.writeStringProperty("variables", job.getVariables());
                 }
                 gen.writeEndObject();
             }))
@@ -102,13 +102,13 @@ public class DefaultZeebeWorkerObservation implements ZeebeWorkerObservation {
     protected void logEnd() {
         var data = StructuredArgument.value(gen -> {
             gen.writeStartObject();
-            gen.writeStringField("type", job.getType());
-            gen.writeStringField("bpmnProcessId", job.getBpmnProcessId());
-            gen.writeNumberField("key", job.getKey());
-            gen.writeNumberField("processInstanceKey", job.getProcessInstanceKey());
+            gen.writeStringProperty("type", job.getType());
+            gen.writeStringProperty("bpmnProcessId", job.getBpmnProcessId());
+            gen.writeNumberProperty("key", job.getKey());
+            gen.writeNumberProperty("processInstanceKey", job.getProcessInstanceKey());
             if (error instanceof JobWorkerException je) {
-                gen.writeStringField("errorCode", je.getCode());
-                gen.writeStringField("errorMessage", je.getMessage());
+                gen.writeStringProperty("errorCode", je.getCode());
+                gen.writeStringProperty("errorMessage", je.getMessage());
             }
             gen.writeEndObject();
         });

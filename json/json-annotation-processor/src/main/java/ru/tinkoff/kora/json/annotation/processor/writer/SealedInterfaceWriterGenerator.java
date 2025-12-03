@@ -13,7 +13,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.io.IOException;
 import java.util.List;
 
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.decapitalize;
@@ -43,7 +42,6 @@ public class SealedInterfaceWriterGenerator {
 
         var method = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addException(IOException.class)
             .addParameter(JsonTypes.jsonGenerator, "_gen")
             .addParameter(ParameterSpec.builder(TypeName.get(jsonElement.asType()), "_object").addAnnotation(Nullable.class).build())
             .addAnnotation(Override.class);

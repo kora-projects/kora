@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.json.ksp
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.JsonParser
 import org.assertj.core.api.Assertions
 import org.intellij.lang.annotations.Language
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
+import tools.jackson.core.JsonGenerator
+import tools.jackson.core.JsonParser
 import java.nio.charset.StandardCharsets
 
 abstract class AbstractJsonSymbolProcessorTest : AbstractSymbolProcessorTest() {

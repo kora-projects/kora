@@ -1,13 +1,13 @@
 package ru.tinkoff.kora.json.ksp.dto
 
-import com.fasterxml.jackson.core.JsonGenerator
-import com.fasterxml.jackson.core.JsonParseException
-import com.fasterxml.jackson.core.JsonParser
-import com.fasterxml.jackson.core.JsonToken
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.json.common.annotation.Json
 import ru.tinkoff.kora.json.common.annotation.JsonField
+import tools.jackson.core.JsonGenerator
+import tools.jackson.core.JsonParser
+import tools.jackson.core.JsonToken
+import tools.jackson.core.exc.StreamReadException
 import java.io.IOException
 
 @Json
@@ -40,7 +40,7 @@ data class DtoWithJsonFieldWriter(
             if (token == JsonToken.VALUE_NUMBER_INT) {
                 return parser.intValue.toString()
             }
-            throw JsonParseException(parser, "expecting null or int, got $token")
+            throw StreamReadException(parser, "expecting null or int, got $token")
         }
     }
 }

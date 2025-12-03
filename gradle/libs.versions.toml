@@ -2,7 +2,7 @@
 slf4j = "2.0.17"
 micrometer = "1.12.13"
 kotlin-stdlib = "2.2.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
-jackson = "2.19.2"
+jackson = "3.0.2"
 mockserver = "5.15.0"
 netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
 kafka = "3.9.1"
@@ -56,10 +56,8 @@ kotlin-reflect = { module = "org.jetbrains.kotlin:kotlin-reflect", version.ref =
 kotlin-compiler = { module = "org.jetbrains.kotlin:kotlin-compiler-embeddable", version.ref = "kotlin-stdlib" }
 jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrains-annotations" }
 
-jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
-jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
-jackson-kotlin = { module = "com.fasterxml.jackson.module:jackson-module-kotlin", version.ref = "jackson" }
-jackson-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson" }
+jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
+jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
 jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.7" }
 hikari = { module = "com.zaxxer:HikariCP", version = "5.1.0" }
 flyway = { module = "org.flywaydb:flyway-core", version = "9.22.3" }

@@ -17,7 +17,6 @@ import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.PrimitiveType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.UUID;
@@ -64,7 +63,6 @@ public class JsonReaderGenerator {
 
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addException(IOException.class)
             .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(TypeName.get(meta.typeElement().asType()))
             .addAnnotation(Override.class)
@@ -89,7 +87,7 @@ public class JsonReaderGenerator {
             method.addStatement("__token = __parser.currentToken()");
         }
         method.addCode("while (__token != $T.END_OBJECT) {$>\n", JsonTypes.jsonToken);
-        assertTokenType(method, "FIELD_NAME");
+        assertTokenType(method, "PROPERTY_NAME");
         method.addStatement("var __fieldName = __parser.currentName()");
         method.addCode("switch (__fieldName) {$>\n");
         for (int i = 0, fieldsSize = meta.fields().size(); i < fieldsSize; i++) {
@@ -200,7 +198,7 @@ public class JsonReaderGenerator {
     private void addFastPath(MethodSpec.Builder method, JsonClassReaderMeta meta) {
         for (int i = 0; i < meta.fields().size(); i++) {
             var field = meta.fields().get(i);
-            method.addCode("if (__parser.nextFieldName($L)) {$>\n", jsonNameStaticName(field));
+            method.addCode("if (__parser.nextName($L)) {$>\n", jsonNameStaticName(field));
             method.addCode("$L = $L(__parser, __receivedFields);\n", field.parameter(), readerMethodName(field));
             if (i == meta.fields().size() - 1) {
                 method.addCode("""
@@ -306,7 +304,6 @@ public class JsonReaderGenerator {
         var method = MethodSpec.methodBuilder(this.readerMethodName(field))
             .addModifiers(Modifier.PRIVATE)
             .addParameter(JsonTypes.jsonParser, "__parser")
-            .addException(IOException.class)
             .addParameter(size > 32 ? TypeName.get(BitSet.class) : ArrayTypeName.of(TypeName.INT), "__receivedFields")
             .returns(field.typeName());
         if (field.reader() != null) {

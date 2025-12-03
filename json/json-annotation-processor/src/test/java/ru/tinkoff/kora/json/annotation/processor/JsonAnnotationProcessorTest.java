@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.*;
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import jakarta.annotation.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -9,9 +7,11 @@ import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.json.annotation.processor.dto.*;
 import ru.tinkoff.kora.json.annotation.processor.dto.DtoWithInnerDto.InnerDto;
 import ru.tinkoff.kora.json.common.*;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.json.JsonFactoryBuilder;
 
-import java.io.IOException;
-import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.math.BigInteger;
 import java.util.List;
@@ -307,7 +307,7 @@ class JsonAnnotationProcessorTest {
             {
               "field2" : "field2"
             }"""))
-            .isInstanceOf(JsonParseException.class)
+            .isInstanceOf(StreamReadException.class)
             .hasMessageStartingWith("Some of required json fields were not received: field1(field_1)");
 
         assertThatThrownBy(() -> fromJson(reader, """
@@ -316,7 +316,7 @@ class JsonAnnotationProcessorTest {
               "field2" : "field2",
               "field4" : null
             }"""))
-            .isInstanceOf(JsonParseException.class)
+            .isInstanceOf(StreamReadException.class)
             .hasMessageStartingWith("Expecting [VALUE_NUMBER_INT] token for field 'field4', got VALUE_NULL");
     }
 
@@ -333,20 +333,11 @@ class JsonAnnotationProcessorTest {
     }
 
     <T> String toJson(JsonWriter<T> writer, T object) {
-        var jf = new JsonFactory(new JsonFactoryBuilder());
-        var sw = new StringWriter();
-
-        try (var gen = jf.createGenerator(sw)) {
-            gen.setPrettyPrinter(new DefaultPrettyPrinter());
-            writer.write(gen, object);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-        return sw.toString();
+        return writer.toPrettyString(object);
     }
 
-    <T> T fromJson(JsonReader<T> reader, String json) throws IOException {
-        var jf = new JsonFactory(new JsonFactoryBuilder());
+    <T> T fromJson(JsonReader<T> reader, String json) {
+        var jf = new JsonFactoryBuilder().build();
 
         try (var parser = jf.createParser(json)) {
             parser.nextToken();
@@ -357,12 +348,12 @@ class JsonAnnotationProcessorTest {
     private record WriterAndReader<T>(JsonWriter<T> writer, JsonReader<T> reader) implements JsonWriter<T>, JsonReader<T> {
 
         @Override
-        public T read(JsonParser parser) throws IOException {
+        public T read(JsonParser parser) {
             return this.reader.read(parser);
         }
 
         @Override
-        public void write(JsonGenerator gen, @Nullable T object) throws IOException {
+        public void write(JsonGenerator gen, @Nullable T object) {
             this.writer.write(gen, object);
         }
     }

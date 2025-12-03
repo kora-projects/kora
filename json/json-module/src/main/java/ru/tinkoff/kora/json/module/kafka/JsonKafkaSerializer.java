@@ -4,8 +4,6 @@ import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.serialization.Serializer;
 import ru.tinkoff.kora.json.common.JsonWriter;
 
-import java.io.IOException;
-
 public final class JsonKafkaSerializer<T> implements Serializer<T> {
     private final JsonWriter<T> writer;
 
@@ -17,7 +15,7 @@ public final class JsonKafkaSerializer<T> implements Serializer<T> {
     public byte[] serialize(String topic, T data) {
         try {
             return this.writer.toByteArray(data);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new SerializationException("Unable to serialize into json", e);
         }
     }

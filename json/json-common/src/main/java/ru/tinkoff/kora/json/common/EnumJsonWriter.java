@@ -1,10 +1,8 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import jakarta.annotation.Nullable;
+import tools.jackson.core.JsonGenerator;
 
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.function.Function;
 
 public final class EnumJsonWriter<T extends Enum<T>, V> implements JsonWriter<T> {
@@ -15,17 +13,13 @@ public final class EnumJsonWriter<T extends Enum<T>, V> implements JsonWriter<T>
         for (int i = 0; i < values.length; i++) {
             var enumValue = values[i];
             var value = valueExtractor.apply(enumValue);
-            try {
-                var bytes = valueWriter.toByteArray(value);
-                this.values[i] = new RawJson(bytes);
-            } catch (IOException e) {
-                throw new UncheckedIOException(e);
-            }
+            var bytes = valueWriter.toByteArray(value);
+            this.values[i] = new RawJson(bytes);
         }
     }
 
     @Override
-    public void write(JsonGenerator gen, @Nullable T object) throws IOException {
+    public void write(JsonGenerator gen, @Nullable T object) {
         if (object == null) {
             gen.writeNull();
             return;

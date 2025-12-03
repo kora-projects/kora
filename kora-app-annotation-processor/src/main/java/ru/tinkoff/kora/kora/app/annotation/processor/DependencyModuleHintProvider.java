@@ -1,9 +1,12 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
-import com.fasterxml.jackson.core.*;
 import com.palantir.javapoet.TypeName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.json.JsonFactoryBuilder;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.type.TypeMirror;
@@ -19,14 +22,12 @@ public class DependencyModuleHintProvider {
 
     private static final Logger log = LoggerFactory.getLogger(DependencyModuleHintProvider.class);
 
-    private final ProcessingEnvironment processingEnvironment;
     private final List<KoraHint> hints;
 
     public DependencyModuleHintProvider(ProcessingEnvironment processingEnvironment) {
-        this.processingEnvironment = processingEnvironment;
         var hints = List.<KoraHint>of();
         try (var r = DependencyModuleHintProvider.class.getResourceAsStream("/kora-hints.json");
-             var parser = new JsonFactory(new JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES)).createParser(r)) {
+             var parser = new JsonFactoryBuilder().build().createParser(r)) {
             hints = KoraHint.parseList(parser);
         } catch (IOException e) {}
         this.hints = hints;
@@ -77,7 +78,7 @@ public class DependencyModuleHintProvider {
     }
 
     List<Hint> findHints(TypeMirror missingType, Set<String> missingTag) {
-        TypeName typeName = TypeName.get(missingType);
+        var typeName = TypeName.get(missingType);
         log.trace("Checking hints for {}/{}", missingTag, typeName);
         var result = new ArrayList<Hint>();
         for (var hint : this.hints) {
@@ -130,7 +131,7 @@ public class DependencyModuleHintProvider {
         static List<KoraHint> parseList(JsonParser p) throws IOException {
             var token = p.nextToken();
             if (token != JsonToken.START_ARRAY) {
-                throw new JsonParseException(p, "Expecting START_ARRAY token, got " + token);
+                throw new StreamReadException(p, "Expecting START_ARRAY token, got " + token);
             }
             token = p.nextToken();
             if (token == JsonToken.END_ARRAY) {
@@ -154,19 +155,19 @@ public class DependencyModuleHintProvider {
             String artifact = null;
             String tip = null;
             while (next != JsonToken.END_OBJECT) {
-                if (next != JsonToken.FIELD_NAME) {
-                    throw new JsonParseException(p, "expected FIELD_NAME, got " + next);
+                if (next != JsonToken.PROPERTY_NAME) {
+                    throw new StreamReadException(p, "expected PROPERTY_NAME, got " + next);
                 }
                 var name = p.currentName();
                 switch (name) {
                     case "tags" -> {
                         if (p.nextToken() != JsonToken.START_ARRAY) {
-                            throw new JsonParseException(p, "expected START_ARRAY, got " + next);
+                            throw new StreamReadException(p, "expected START_ARRAY, got " + next);
                         }
                         next = p.nextToken();
                         while (next != JsonToken.END_ARRAY) {
                             if (next != JsonToken.VALUE_STRING) {
-                                throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                                throw new StreamReadException(p, "expected VALUE_STRING, got " + next);
                             }
                             tags.add(p.getValueAsString());
                             next = p.nextToken();
@@ -174,25 +175,25 @@ public class DependencyModuleHintProvider {
                     }
                     case "typeRegex" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
-                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next);
                         }
                         typeRegex = p.getValueAsString();
                     }
                     case "moduleName" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
-                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next);
                         }
                         moduleName = p.getValueAsString();
                     }
                     case "artifact" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
-                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next);
                         }
                         artifact = p.getValueAsString();
                     }
                     case "tip" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
-                            throw new JsonParseException(p, "expected VALUE_STRING, got " + next);
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next);
                         }
                         tip = p.getValueAsString();
                     }
@@ -205,9 +206,9 @@ public class DependencyModuleHintProvider {
             }
 
             if (typeRegex == null) {
-                throw new JsonParseException(p, "Some required fields missing: typeRegex=%s".formatted(typeRegex));
+                throw new StreamReadException(p, "Some required fields missing: typeRegex=%s".formatted(typeRegex));
             } else if (!(moduleName != null && artifact != null || tip != null)) {
-                throw new JsonParseException(p, "Some required fields missing: module=%s, artifact=%s, tip=%s".formatted(
+                throw new StreamReadException(p, "Some required fields missing: module=%s, artifact=%s, tip=%s".formatted(
                     moduleName, artifact, tip));
             }
 

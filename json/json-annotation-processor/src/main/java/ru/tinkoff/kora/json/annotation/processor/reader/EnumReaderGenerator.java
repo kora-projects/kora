@@ -10,7 +10,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
-import java.io.IOException;
 
 public class EnumReaderGenerator {
 
@@ -33,7 +32,6 @@ public class EnumReaderGenerator {
             .build());
         typeBuilder.addMethod(MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addException(IOException.class)
             .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(typeName)
             .addAnnotation(Override.class)

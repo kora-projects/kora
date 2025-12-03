@@ -70,16 +70,16 @@ public class DefaultHttpClientLogger {
         var finalBody = body;
         var arg = (StructuredArgumentWriter) gen -> {
             gen.writeStartObject();
-            gen.writeStringField("authority", rq.uri().getAuthority());
-            gen.writeStringField("operation", operation);
+            gen.writeStringProperty("authority", rq.uri().getAuthority());
+            gen.writeStringProperty("operation", operation);
             if (finalQuery != null && !finalQuery.isEmpty()) {
-                gen.writeStringField("queryParams", Masking.toMaskedString(maskedQueryParams, mask, finalQuery));
+                gen.writeStringProperty("queryParams", Masking.toMaskedString(maskedQueryParams, mask, finalQuery));
             }
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringField("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
+                gen.writeStringProperty("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             if (finalBody != null) {
-                gen.writeStringField("body", requestBodyString(finalBody));
+                gen.writeStringProperty("body", requestBodyString(finalBody));
             }
             gen.writeEndObject();
         };
@@ -114,18 +114,18 @@ public class DefaultHttpClientLogger {
 
         var arg = (StructuredArgumentWriter) gen -> {
             gen.writeStartObject();
-            gen.writeStringField("authority", rq.uri().getAuthority());
-            gen.writeStringField("operation", operation);
-            gen.writeStringField("resultCode", HttpResultCode.fromStatusCode(rs.code()).string());
-            gen.writeNumberField("processingTime", processingTime / 1_000_000);
+            gen.writeStringProperty("authority", rq.uri().getAuthority());
+            gen.writeStringProperty("operation", operation);
+            gen.writeStringProperty("resultCode", HttpResultCode.fromStatusCode(rs.code()).string());
+            gen.writeNumberProperty("processingTime", processingTime / 1_000_000);
             if (statusCode != null) {
-                gen.writeNumberField("statusCode", statusCode);
+                gen.writeNumberProperty("statusCode", statusCode);
             }
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringField("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
+                gen.writeStringProperty("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             if (finalBody != null) {
-                gen.writeStringField("body", responseBodyString(finalBody));
+                gen.writeStringProperty("body", responseBodyString(finalBody));
             }
             gen.writeEndObject();
         };
@@ -142,12 +142,12 @@ public class DefaultHttpClientLogger {
         var exceptionTypeString = exception.getClass().getCanonicalName();
         var arg = (StructuredArgumentWriter) gen -> {
             gen.writeStartObject();
-            gen.writeStringField("authority", rq.uri().getAuthority());
-            gen.writeStringField("operation", operation);
-            gen.writeStringField("resultCode", HttpResultCode.CONNECTION_ERROR.string());
-            gen.writeNumberField("processingTime", processingTime / 1_000_000);
+            gen.writeStringProperty("authority", rq.uri().getAuthority());
+            gen.writeStringProperty("operation", operation);
+            gen.writeStringProperty("resultCode", HttpResultCode.CONNECTION_ERROR.string());
+            gen.writeNumberProperty("processingTime", processingTime / 1_000_000);
             if (exceptionTypeString != null) {
-                gen.writeStringField("exceptionType", exceptionTypeString);
+                gen.writeStringProperty("exceptionType", exceptionTypeString);
             }
             gen.writeEndObject();
         };

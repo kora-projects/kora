@@ -1,14 +1,13 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
 
-import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -76,12 +75,12 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
 
         @Nullable
         @Override
-        public T read(JsonParser parser) throws IOException {
+        public T read(JsonParser parser) {
             return this.reader.read(parser);
         }
 
         @Override
-        public void write(JsonGenerator generator, @Nullable T object) throws IOException {
+        public void write(JsonGenerator generator, @Nullable T object) {
             this.writer.write(generator, object);
         }
 
@@ -91,21 +90,13 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
         }
 
         public void verifyRead(String expectedJson, T expectedObject) {
-            try {
-                var object = this.reader.read(expectedJson.getBytes(StandardCharsets.UTF_8));
-                assertThat(object).isEqualTo(expectedObject);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            var object = this.reader.read(expectedJson.getBytes(StandardCharsets.UTF_8));
+            assertThat(object).isEqualTo(expectedObject);
         }
 
         public void verifyWrite(T expectedObject, String expectedJson) {
-            try {
-                var json = this.writer.toByteArray(expectedObject);
-                assertThat(json).asString(StandardCharsets.UTF_8).isEqualTo(expectedJson);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
+            var json = this.writer.toByteArray(expectedObject);
+            assertThat(json).asString(StandardCharsets.UTF_8).isEqualTo(expectedJson);
         }
     }
 

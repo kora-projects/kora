@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.json.ksp
 
-import com.fasterxml.jackson.core.JsonParseException
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
+import tools.jackson.core.exc.StreamReadException
 import java.math.BigInteger
 import java.util.*
 
@@ -17,7 +17,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", 42), "{\"value\":42}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -42,7 +42,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", 42L), "{\"value\":42}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -67,7 +67,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", 42.toShort()), "{\"value\":42}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -93,7 +93,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", 42.1f), "{\"value\":42.1}")
         mapper.assertRead("{\"value\":42}", new("TestRecord", 42f))
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -120,7 +120,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", 42.1), "{\"value\":42.1}")
         mapper.assertRead("{\"value\":42}", new("TestRecord", 42.0))
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -147,7 +147,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", true), "{\"value\":true}")
         mapper.assert(new("TestRecord", false), "{\"value\":false}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -173,7 +173,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", "test"), "{\"value\":\"test\"}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -199,7 +199,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         val uuid = UUID.randomUUID()
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", uuid), "{\"value\":\"$uuid\"}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -225,7 +225,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", BigInteger("42")), "{\"value\":42}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
@@ -254,7 +254,7 @@ class SupportedTypesTest : AbstractJsonSymbolProcessorTest() {
         val b = byteArrayOf(1, 2, 3, 4)
         val mapper = mapper("TestRecord")
         mapper.assert(new("TestRecord", *arrayOf<Any>(b)), "{\"value\":\"AQIDBA==\"}")
-        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(JsonParseException::class.java)
+        Assertions.assertThatThrownBy { mapper.read("{\"value\":null}") }.isInstanceOf(StreamReadException::class.java)
     }
 
     @Test
