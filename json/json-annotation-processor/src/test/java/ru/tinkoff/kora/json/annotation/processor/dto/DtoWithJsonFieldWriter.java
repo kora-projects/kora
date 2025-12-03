@@ -1,15 +1,13 @@
 package ru.tinkoff.kora.json.annotation.processor.dto;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.annotation.Json;
 import ru.tinkoff.kora.json.common.annotation.JsonField;
-
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.exc.StreamReadException;
 
 @Json
 public record DtoWithJsonFieldWriter(
@@ -21,7 +19,7 @@ public record DtoWithJsonFieldWriter(
     public static final class CustomWriter implements JsonWriter<String> {
 
         @Override
-        public void write(JsonGenerator gen, String object) throws IOException {
+        public void write(JsonGenerator gen, String object) {
             gen.writeNumber(-1);
         }
     }
@@ -29,7 +27,7 @@ public record DtoWithJsonFieldWriter(
     public static final class CustomReader implements JsonReader<String> {
 
         @Override
-        public String read(JsonParser parser) throws IOException {
+        public String read(JsonParser parser) {
             var token = parser.currentToken();
             if (token == JsonToken.VALUE_NULL) {
                 return null;
@@ -37,7 +35,7 @@ public record DtoWithJsonFieldWriter(
             if (token == JsonToken.VALUE_NUMBER_INT) {
                 return Integer.toString(parser.getIntValue());
             }
-            throw new JsonParseException(parser, "expecting null or int, got " + token);
+            throw new StreamReadException(parser, "expecting null or int, got " + token);
         }
     }
 }

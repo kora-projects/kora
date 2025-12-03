@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.json.ksp
 
-import com.fasterxml.jackson.core.*
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter
 import com.google.devtools.ksp.KspExperimental
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
@@ -14,8 +12,9 @@ import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writer
 import ru.tinkoff.kora.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writerClass
 import ru.tinkoff.kora.json.ksp.dto.*
 import ru.tinkoff.kora.ksp.common.symbolProcess
-import java.io.IOException
-import java.io.StringWriter
+import tools.jackson.core.JsonGenerator
+import tools.jackson.core.JsonParser
+import tools.jackson.core.exc.StreamReadException
 import java.math.BigInteger
 import kotlin.reflect.KClass
 
@@ -212,7 +211,7 @@ internal class JsonAnnotationProcessorTest {
         val reader = processClass(DtoOnlyReader::class)
         assertThat(reader.reader).isNotNull()
 
-        val ex = assertThrows(JsonParseException::class.java) {
+        val ex = assertThrows(StreamReadException::class.java) {
             fromJson(
                 reader, """
             {
@@ -229,7 +228,7 @@ internal class JsonAnnotationProcessorTest {
         val reader = processClass(DtoWith32Fields::class)
         assertThat(reader.reader).isNotNull()
 
-        assertThrows(JsonParseException::class.java) {
+        assertThrows(StreamReadException::class.java) {
             fromJson(
                 reader, """
             {
@@ -324,7 +323,7 @@ internal class JsonAnnotationProcessorTest {
             }""".trimIndent()
             )
         }
-            .isInstanceOf(JsonParseException::class.java)
+            .isInstanceOf(StreamReadException::class.java)
             .hasMessageStartingWith("Some of required json fields were not received: field1(field_1)")
         Assertions.assertThatThrownBy {
             fromJson(
@@ -336,7 +335,7 @@ internal class JsonAnnotationProcessorTest {
             }""".trimIndent()
             )
         }
-            .isInstanceOf(JsonParseException::class.java)
+            .isInstanceOf(StreamReadException::class.java)
             .hasMessageStartingWith("Expecting [VALUE_NUMBER_INT] token for field 'field4', got VALUE_NULL")
     }
 
@@ -369,7 +368,7 @@ internal class JsonAnnotationProcessorTest {
             }""".trimIndent()
             )
         }
-            .isInstanceOf(JsonParseException::class.java)
+            .isInstanceOf(StreamReadException::class.java)
             .hasMessageStartingWith("Expecting [VALUE_STRING] token for field 'field1', got VALUE_NULL")
     }
 
@@ -385,27 +384,9 @@ internal class JsonAnnotationProcessorTest {
         cl.reader(DtoWith32Fields::class.java)
     }
 
-    private fun <T> toJson(writer: JsonWriter<T>, fromJson: T): String {
-        val jf = JsonFactory(JsonFactoryBuilder())
-        val sw = StringWriter()
-        try {
-            jf.createGenerator(sw).use { gen ->
-                gen.prettyPrinter = DefaultPrettyPrinter()
-                writer.write(gen, fromJson)
-            }
-        } catch (e: IOException) {
-            throw RuntimeException(e)
-        }
-        return sw.toString()
-    }
+    private fun <T> toJson(writer: JsonWriter<T>, fromJson: T): String = writer.toPrettyString(fromJson)
 
-    private fun <T> fromJson(reader: JsonReader<T>, json: String): T {
-        val jf = JsonFactory(JsonFactoryBuilder())
-        jf.createParser(json).use { parser ->
-            parser.nextToken()
-            return reader.read(parser)!!
-        }
-    }
+    private fun <T> fromJson(reader: JsonReader<T>, json: String): T = reader.read(json)!!
 
 
     private inner class WriterAndReader<T>(

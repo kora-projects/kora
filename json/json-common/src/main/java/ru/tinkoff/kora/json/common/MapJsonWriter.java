@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-
 import jakarta.annotation.Nullable;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+
 import java.util.Map;
 
 public class MapJsonWriter<T> implements JsonWriter<Map<String, T>> {
@@ -14,14 +13,14 @@ public class MapJsonWriter<T> implements JsonWriter<Map<String, T>> {
     }
 
     @Override
-    public void write(JsonGenerator gen, @Nullable Map<String, T> object) throws IOException {
+    public void write(JsonGenerator gen, @Nullable Map<String, T> object) {
         if (object == null) {
             gen.writeNull();
             return;
         }
         gen.writeStartObject(object, object.size());
         for (var field : object.entrySet()) {
-            gen.writeFieldName(field.getKey());
+            gen.writeName(field.getKey());
             this.writer.write(gen, field.getValue());
         }
         gen.writeEndObject();

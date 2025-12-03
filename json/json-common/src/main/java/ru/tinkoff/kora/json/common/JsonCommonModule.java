@@ -1,9 +1,11 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonFactoryBuilder;
-import com.fasterxml.jackson.core.JsonParseException;
 import ru.tinkoff.kora.common.DefaultComponent;
+import tools.jackson.core.StreamWriteFeature;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.json.JsonFactoryBuilder;
+import tools.jackson.core.util.JsonRecyclerPools;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -13,7 +15,10 @@ import java.util.*;
 
 public interface JsonCommonModule {
 
-    JsonFactory JSON_FACTORY = new JsonFactory(new JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES));
+    JsonFactory JSON_FACTORY = new JsonFactoryBuilder()
+        .recyclerPool(JsonRecyclerPools.threadLocalPool())
+        .enable(StreamWriteFeature.WRITE_BIGDECIMAL_AS_PLAIN)
+        .build();
 
     @DefaultComponent
     default JsonWriter<Object> objectJsonWriter() {
@@ -69,7 +74,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_INT -> parser.getShortValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -89,7 +94,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_INT -> parser.getIntValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -109,7 +114,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_INT -> parser.getLongValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -129,7 +134,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDoubleValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -149,7 +154,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getFloatValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -168,8 +173,8 @@ public interface JsonCommonModule {
     default JsonReader<String> stringJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
-            case VALUE_STRING -> parser.getText();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            case VALUE_STRING -> parser.getString();
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -190,7 +195,7 @@ public interface JsonCommonModule {
             case VALUE_NULL -> null;
             case VALUE_TRUE -> true;
             case VALUE_FALSE -> false;
-            default -> throw new JsonParseException(parser, "Expecting VALUE_TRUE or VALUE_FALSE token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_TRUE or VALUE_FALSE token, got " + parser.currentToken());
         };
     }
 
@@ -210,7 +215,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDecimalValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -231,7 +236,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_NUMBER_INT -> parser.getBigIntegerValue();
-            default -> throw new JsonParseException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -276,7 +281,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> LocalDate.parse(parser.getValueAsString(), DateTimeFormatter.ISO_DATE);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -301,7 +306,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> LocalTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_LOCAL_TIME);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -326,7 +331,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> LocalDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -351,7 +356,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> OffsetTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_OFFSET_TIME);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -376,7 +381,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> OffsetDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -401,7 +406,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> ZonedDateTime.parse(parser.getValueAsString(), DateTimeFormatter.ISO_ZONED_DATE_TIME);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -421,7 +426,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> DateTimeFormatter.ISO_INSTANT.parse(parser.getValueAsString()).query(Instant::from);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -441,7 +446,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> Year.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_YEAR);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -461,7 +466,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> YearMonth.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_YEAR_MONTH);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -481,7 +486,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> MonthDay.parse(parser.getValueAsString(), KoraDateTimeFormatters.ISO_MONTH_DAY);
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
 
     }
@@ -512,7 +517,7 @@ public interface JsonCommonModule {
                 yield Month.of(Integer.parseInt(valueAsString));
             }
             case VALUE_NUMBER_INT -> Month.of(parser.getValueAsInt());
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING or VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING or VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -542,7 +547,7 @@ public interface JsonCommonModule {
                 yield DayOfWeek.of(Integer.parseInt(valueAsString));
             }
             case VALUE_NUMBER_INT -> DayOfWeek.of(parser.getValueAsInt());
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING or VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING or VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
@@ -562,7 +567,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> ZoneId.of(parser.getValueAsString());
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 
@@ -582,7 +587,7 @@ public interface JsonCommonModule {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
             case VALUE_STRING -> Duration.parse(parser.getValueAsString());
-            default -> throw new JsonParseException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
         };
     }
 }

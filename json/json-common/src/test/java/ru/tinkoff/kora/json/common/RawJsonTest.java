@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonEncoding;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import tools.jackson.core.JsonEncoding;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

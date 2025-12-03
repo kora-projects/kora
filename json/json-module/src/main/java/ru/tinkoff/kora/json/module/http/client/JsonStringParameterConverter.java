@@ -4,8 +4,6 @@ import ru.tinkoff.kora.http.client.common.HttpClientEncoderException;
 import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
 import ru.tinkoff.kora.json.common.JsonWriter;
 
-import java.io.IOException;
-
 public class JsonStringParameterConverter<T> implements StringParameterConverter<T> {
     private final JsonWriter<T> writer;
 
@@ -18,7 +16,7 @@ public class JsonStringParameterConverter<T> implements StringParameterConverter
         try {
             var bytes = this.writer.toByteArray(value);
             return new String(bytes);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw new HttpClientEncoderException(e);
         }
     }

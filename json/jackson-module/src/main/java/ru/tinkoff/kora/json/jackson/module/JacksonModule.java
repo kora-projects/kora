@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.json.jackson.module;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
@@ -11,6 +10,7 @@ import ru.tinkoff.kora.json.jackson.module.http.client.JacksonHttpClientResponse
 import ru.tinkoff.kora.json.jackson.module.http.client.JacksonReaderHttpClientResponseEntityMapper;
 import ru.tinkoff.kora.json.jackson.module.http.server.JacksonHttpServerRequestMapper;
 import ru.tinkoff.kora.json.jackson.module.http.server.JacksonHttpServerResponseMapper;
+import tools.jackson.databind.ObjectMapper;
 
 public interface JacksonModule {
 

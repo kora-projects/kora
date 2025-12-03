@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.jackson.module.http;
 
-import com.fasterxml.jackson.databind.ObjectWriter;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
+import tools.jackson.databind.ObjectWriter;
 
 import java.io.IOException;
 import java.io.OutputStream;

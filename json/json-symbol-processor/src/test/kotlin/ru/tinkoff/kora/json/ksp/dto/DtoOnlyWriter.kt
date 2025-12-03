@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.json.ksp.dto
 
-import com.fasterxml.jackson.core.JsonGenerator
 import ru.tinkoff.kora.json.common.annotation.JsonField
 import ru.tinkoff.kora.json.common.annotation.JsonSkip
 import ru.tinkoff.kora.json.common.annotation.JsonWriter
+import tools.jackson.core.JsonGenerator
 
 @JsonWriter
 data class DtoOnlyWriter(

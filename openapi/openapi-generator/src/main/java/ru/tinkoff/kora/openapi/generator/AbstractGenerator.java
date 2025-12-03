@@ -91,8 +91,8 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName configSource = ClassName.get("ru.tinkoff.kora.config.common.annotation", "ConfigSource");
         public static final ClassName configValueExtractionException = ClassName.get("ru.tinkoff.kora.config.common.extractor", "ConfigValueExtractionException");
 
-        public static final ClassName jsonGenerator = ClassName.get("com.fasterxml.jackson.core", "JsonGenerator");
-        public static final ClassName jsonParser = ClassName.get("com.fasterxml.jackson.core", "JsonParser");
+        public static final ClassName jsonGenerator = ClassName.get("tools.jackson.core", "JsonGenerator");
+        public static final ClassName jsonParser = ClassName.get("tools.jackson.core", "JsonParser");
         public static final ClassName jsonWriterAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonWriter");
         public static final ClassName jsonReaderAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonReader");
         public static final ClassName json = ClassName.get("ru.tinkoff.kora.json.common.annotation", "Json");

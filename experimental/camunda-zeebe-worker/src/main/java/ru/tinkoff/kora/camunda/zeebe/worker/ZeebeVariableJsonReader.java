@@ -1,13 +1,11 @@
 package ru.tinkoff.kora.camunda.zeebe.worker;
 
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.io.SerializedString;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.json.common.JsonReader;
-
-import java.io.IOException;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.exc.StreamReadException;
+import tools.jackson.core.io.SerializedString;
 
 public final class ZeebeVariableJsonReader<T> implements JsonReader<T> {
 
@@ -21,13 +19,13 @@ public final class ZeebeVariableJsonReader<T> implements JsonReader<T> {
         this.fetchVariableName = new SerializedString(fetchVariableName);
     }
 
-    private T readValue(JsonParser parser) throws IOException {
+    private T readValue(JsonParser parser) {
         var token = parser.nextToken();
         if (token == JsonToken.VALUE_NULL) {
             if (isNullable) {
                 return null;
             } else {
-                throw new JsonParseException(parser, "Expecting NonNull value for Fetch Variable '" + fetchVariableName + "', but got VALUE_NULL token");
+                throw new StreamReadException(parser, "Expecting NonNull value for Fetch Variable '" + fetchVariableName + "', but got VALUE_NULL token");
             }
         }
         return valueReader.read(parser);
@@ -35,29 +33,29 @@ public final class ZeebeVariableJsonReader<T> implements JsonReader<T> {
 
     @Override
     @Nullable
-    public T read(JsonParser parser) throws IOException {
+    public T read(JsonParser parser) {
         var token = parser.currentToken();
         if (token == JsonToken.VALUE_NULL) {
             if (isNullable) {
                 return null;
             } else {
-                throw new JsonParseException(parser, "Expecting NonNull value for Fetch Variable '" + fetchVariableName + "', but got NULLABLE fetch variables");
+                throw new StreamReadException(parser, "Expecting NonNull value for Fetch Variable '" + fetchVariableName + "', but got NULLABLE fetch variables");
             }
         }
 
         if (token != JsonToken.START_OBJECT) {
-            throw new JsonParseException(parser, "Expecting START_OBJECT token, got " + token);
+            throw new StreamReadException(parser, "Expecting START_OBJECT token, got " + token);
         }
 
         T value = null;
-        if (parser.nextFieldName(fetchVariableName)) {
+        if (parser.nextName(fetchVariableName)) {
             value = readValue(parser);
             return value;
         }
 
         token = parser.currentToken();
         while (token != JsonToken.END_OBJECT) {
-            if (token == JsonToken.FIELD_NAME) {
+            if (token == JsonToken.PROPERTY_NAME) {
                 var fieldName = parser.currentName();
                 if (fieldName.equals(fetchVariableName.getValue())) {
                     value = readValue(parser);
@@ -70,7 +68,7 @@ public final class ZeebeVariableJsonReader<T> implements JsonReader<T> {
         }
 
         if (value == null && !isNullable) {
-            throw new JsonParseException(parser, "Expecting NonNull value for Fetch Variable '" + fetchVariableName + "', but got NULLABLE fetch variable");
+            throw new StreamReadException(parser, "Expecting NonNull value for Fetch Variable '" + fetchVariableName + "', but got NULLABLE fetch variable");
         }
 
         return value;

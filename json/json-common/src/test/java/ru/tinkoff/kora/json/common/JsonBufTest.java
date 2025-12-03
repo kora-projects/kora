@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonToken;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.util.BufferingJsonParser;
+import tools.jackson.core.JsonToken;
 
 import java.math.BigInteger;
 
@@ -31,19 +31,19 @@ public class JsonBufTest {
         }
         var buffered = bufferingParser.reset();
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.START_OBJECT);
-        assertThat(buffered.nextToken()).isEqualTo(JsonToken.FIELD_NAME);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_INT);
         assertThat(buffered.getValueAsInt()).isEqualTo(1);
-        assertThat(buffered.nextToken()).isEqualTo(JsonToken.FIELD_NAME);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_INT);
         assertThat(buffered.getValueAsInt()).isEqualTo(-2);
-        assertThat(buffered.nextToken()).isEqualTo(JsonToken.FIELD_NAME);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_FLOAT);
         assertThat(buffered.getDoubleValue()).isEqualTo(3.0);
-        assertThat(buffered.nextToken()).isEqualTo(JsonToken.FIELD_NAME);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_FLOAT);
         assertThat(buffered.getDoubleValue()).isEqualTo(-4.0);
-        assertThat(buffered.nextToken()).isEqualTo(JsonToken.FIELD_NAME);
+        assertThat(buffered.nextToken()).isEqualTo(JsonToken.PROPERTY_NAME);
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.VALUE_NUMBER_INT);
         assertThat(buffered.getNumberValue()).isEqualTo(new BigInteger("500000000000000000000000000000000000000000000"));
         assertThat(buffered.nextToken()).isEqualTo(JsonToken.END_OBJECT);

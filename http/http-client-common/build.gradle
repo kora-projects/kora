@@ -15,14 +15,14 @@ dependencies {
     testFixturesImplementation libs.logback.classic
     testFixturesImplementation project(':opentelemetry:opentelemetry-tracing')
     testFixturesImplementation(libs.mockserver.netty) {
-        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
+//        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
     }
     testFixturesImplementation(libs.mockserver.client) {
-        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
+//        exclude group: 'io.swagger.parser.v3', module: 'swagger-parser'
     }
     testFixturesImplementation(libs.swagger.models) {
-        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
-        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
+//        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-core'
+//        exclude group: 'com.fasterxml.jackson.core', module: 'jackson-databind'
     }
 
     testFixturesImplementation libs.bundles.netty

@@ -1,19 +1,20 @@
 package ru.tinkoff.kora.json.common.util;
 
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.core.ObjectCodec;
-import com.fasterxml.jackson.core.base.ParserBase;
-import com.fasterxml.jackson.core.io.IOContext;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.ObjectReadContext;
+import tools.jackson.core.TokenStreamLocation;
+import tools.jackson.core.io.IOContext;
+import tools.jackson.core.json.JsonParserBase;
 
 import java.io.IOException;
 import java.util.List;
 
-public class JsonSegmentJsonParser extends ParserBase {
+public class JsonSegmentJsonParser extends JsonParserBase {
     private final List<JsonSegment> segments;
     private int currentSegment = -1;
 
-    public JsonSegmentJsonParser(IOContext context, int features, List<JsonSegment> segments) {
-        super(context, features);
+    public JsonSegmentJsonParser(ObjectReadContext objectReadContext, IOContext ioContext, int features, int formatReadFeatures, List<JsonSegment> segments) {
+        super(objectReadContext, ioContext, features, formatReadFeatures);
         this.segments = segments;
     }
 
@@ -21,18 +22,24 @@ public class JsonSegmentJsonParser extends ParserBase {
     protected void _closeInput() throws IOException {
     }
 
+
     @Override
-    public ObjectCodec getCodec() {
+    public TokenStreamLocation currentTokenLocation() {
+        return TokenStreamLocation.NA;
+    }
+
+    @Override
+    public TokenStreamLocation currentLocation() {
+        return TokenStreamLocation.NA;
+    }
+
+    @Override
+    public Object streamReadInputSource() {
         return null;
     }
 
     @Override
-    public void setCodec(ObjectCodec oc) {
-
-    }
-
-    @Override
-    public JsonToken nextToken() throws IOException {
+    public JsonToken nextToken() {
         currentSegment++;
         if (currentSegment >= this.segments.size()) {
             return null;
@@ -41,8 +48,8 @@ public class JsonSegmentJsonParser extends ParserBase {
         var token = segment.token();
         this._currToken = token;
         _textBuffer.resetWithShared(segment.data(), 0, segment.data().length);
-        if (token == JsonToken.FIELD_NAME) {
-            _parsingContext.setCurrentName(new String(segment.data()));
+        if (token == JsonToken.PROPERTY_NAME) {
+            _streamReadContext.setCurrentName(new String(segment.data()));
         } else if (token.isNumeric()) {
             _numTypesValid = NR_UNKNOWN;
             _numberNegative = segment.isNumberNegative();
@@ -60,24 +67,25 @@ public class JsonSegmentJsonParser extends ParserBase {
     }
 
     @Override
-    public String getText() throws IOException {
+    public String getString() {
         var segment = this.current();
         return new String(segment.data());
     }
 
     @Override
-    public char[] getTextCharacters() throws IOException {
+    public char[] getStringCharacters() {
         var segment = this.current();
         return segment.data();
     }
 
     @Override
-    public int getTextLength() throws IOException {
+    public int getStringLength() {
         return this.current().data().length;
     }
 
     @Override
-    public int getTextOffset() throws IOException {
+    public int getStringOffset() {
         return 0;
     }
+
 }

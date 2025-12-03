@@ -1,9 +1,13 @@
 package ru.tinkoff.kora.kora.app.ksp
 
-import com.fasterxml.jackson.core.*
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ksp.toTypeName
 import org.slf4j.LoggerFactory
+import tools.jackson.core.JsonParser
+import tools.jackson.core.JsonToken
+import tools.jackson.core.ObjectReadContext
+import tools.jackson.core.exc.StreamReadException
+import tools.jackson.core.json.JsonFactoryBuilder
 import java.io.IOException
 import java.util.regex.Pattern
 
@@ -15,9 +19,7 @@ class DependencyModuleHintProvider {
     init {
         try {
             DependencyModuleHintProvider::class.java.getResourceAsStream("/kora-hints.json").use { r ->
-                JsonFactory(
-                    JsonFactoryBuilder().disable(JsonFactory.Feature.INTERN_FIELD_NAMES)
-                ).createParser(r).use { parser -> hints = KoraHint.parseList(parser) }
+                JsonFactoryBuilder().build().createParser(ObjectReadContext.empty(), r).use { parser -> hints = KoraHint.parseList(parser) }
             }
         } catch (e: IOException) {
             throw RuntimeException(e)
@@ -135,7 +137,7 @@ class DependencyModuleHintProvider {
             internal fun parseList(p: JsonParser): List<KoraHint> {
                 var token = p.nextToken()
                 if (token != JsonToken.START_ARRAY) {
-                    throw JsonParseException(p, "Expecting START_ARRAY token, got $token")
+                    throw StreamReadException(p, "Expecting START_ARRAY token, got $token")
                 }
                 token = p.nextToken()
                 if (token == JsonToken.END_ARRAY) {
@@ -160,19 +162,19 @@ class DependencyModuleHintProvider {
                 var artifact: String? = null
                 var tip: String? = null
                 while (next != JsonToken.END_OBJECT) {
-                    if (next != JsonToken.FIELD_NAME) {
-                        throw JsonParseException(p, "expected FIELD_NAME, got $next")
+                    if (next != JsonToken.PROPERTY_NAME) {
+                        throw StreamReadException(p, "expected PROPERTY_NAME, got $next")
                     }
                     val name = p.currentName()
                     when (name) {
                         "tags" -> {
                             if (p.nextToken() != JsonToken.START_ARRAY) {
-                                throw JsonParseException(p, "expected START_ARRAY, got $next")
+                                throw StreamReadException(p, "expected START_ARRAY, got $next")
                             }
                             next = p.nextToken()
                             while (next != JsonToken.END_ARRAY) {
                                 if (next != JsonToken.VALUE_STRING) {
-                                    throw JsonParseException(p, "expected VALUE_STRING, got $next")
+                                    throw StreamReadException(p, "expected VALUE_STRING, got $next")
                                 }
                                 tags.add(p.valueAsString)
                                 next = p.nextToken()
@@ -181,28 +183,28 @@ class DependencyModuleHintProvider {
 
                         "typeRegex" -> {
                             if (p.nextToken() != JsonToken.VALUE_STRING) {
-                                throw JsonParseException(p, "expected VALUE_STRING, got $next")
+                                throw StreamReadException(p, "expected VALUE_STRING, got $next")
                             }
                             typeRegex = p.valueAsString
                         }
 
                         "moduleName" -> {
                             if (p.nextToken() != JsonToken.VALUE_STRING) {
-                                throw JsonParseException(p, "expected VALUE_STRING, got $next")
+                                throw StreamReadException(p, "expected VALUE_STRING, got $next")
                             }
                             moduleName = p.valueAsString
                         }
 
                         "artifact" -> {
                             if (p.nextToken() != JsonToken.VALUE_STRING) {
-                                throw JsonParseException(p, "expected VALUE_STRING, got $next")
+                                throw StreamReadException(p, "expected VALUE_STRING, got $next")
                             }
                             artifact = p.valueAsString
                         }
 
                         "tip" -> {
                             if (p.nextToken() != JsonToken.VALUE_STRING) {
-                                throw JsonParseException(p, "expected VALUE_STRING, got $next")
+                                throw StreamReadException(p, "expected VALUE_STRING, got $next")
                             }
                             tip = p.valueAsString
                         }
@@ -216,9 +218,9 @@ class DependencyModuleHintProvider {
                 }
 
                 if (typeRegex == null) {
-                    throw JsonParseException(p, "Some required fields missing: typeRegex=$typeRegex")
+                    throw StreamReadException(p, "Some required fields missing: typeRegex=$typeRegex")
                 } else if (!(moduleName != null && artifact != null || tip != null)) {
-                    throw JsonParseException(p, "Some required fields missing: moduleName=$moduleName, artifact=$artifact, tip=$tip")
+                    throw StreamReadException(p, "Some required fields missing: moduleName=$moduleName, artifact=$artifact, tip=$tip")
                 }
 
                 return if (tip != null) {

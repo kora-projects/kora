@@ -24,11 +24,11 @@ public class JsonTypes {
     public static final ClassName bufferingJsonParser = ClassName.get("ru.tinkoff.kora.json.common.util", "BufferingJsonParser");
     public static final ClassName discriminatorHelper = ClassName.get("ru.tinkoff.kora.json.common.util", "DiscriminatorHelper");
 
-    public static final ClassName jsonParseException = ClassName.get("com.fasterxml.jackson.core", "JsonParseException");
-    public static final ClassName jsonParser = ClassName.get("com.fasterxml.jackson.core", "JsonParser");
-    public static final ClassName jsonParserSequence = ClassName.get("com.fasterxml.jackson.core.util", "JsonParserSequence");
-    public static final ClassName jsonGenerator = ClassName.get("com.fasterxml.jackson.core", "JsonGenerator");
-    public static final ClassName jsonToken = ClassName.get("com.fasterxml.jackson.core", "JsonToken");
-    public static final ClassName serializedString = ClassName.get("com.fasterxml.jackson.core.io", "SerializedString");
+    public static final ClassName jsonParseException = ClassName.get("tools.jackson.core.exc", "StreamReadException");
+    public static final ClassName jsonParser = ClassName.get("tools.jackson.core", "JsonParser");
+    public static final ClassName jsonParserSequence = ClassName.get("tools.jackson.core.util", "JsonParserSequence");
+    public static final ClassName jsonGenerator = ClassName.get("tools.jackson.core", "JsonGenerator");
+    public static final ClassName jsonToken = ClassName.get("tools.jackson.core", "JsonToken");
+    public static final ClassName serializedString = ClassName.get("tools.jackson.core.io", "SerializedString");
 
 }

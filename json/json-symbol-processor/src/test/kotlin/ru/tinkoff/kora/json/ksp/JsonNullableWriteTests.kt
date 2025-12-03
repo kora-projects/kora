@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.json.ksp
 
-import com.fasterxml.jackson.core.JsonGenerator
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.json.common.JsonNullable
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.json.common.ListJsonWriter
+import tools.jackson.core.JsonGenerator
 import java.sql.Timestamp
 import java.time.Instant
 
@@ -20,7 +20,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             """.trimIndent()
         )
 
-        val o = writer("TestRecord").toStringUnchecked(new("TestRecord", JsonNullable.undefined<Any>()))
+        val o = writer("TestRecord").toString(new("TestRecord", JsonNullable.undefined<Any>()))
 
         assertThat(o).isEqualTo(
             """
@@ -38,7 +38,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             """.trimIndent()
         )
 
-        val o = writer("TestRecord").toStringUnchecked(new("TestRecord", JsonNullable.nullValue<Any>()))
+        val o = writer("TestRecord").toString(new("TestRecord", JsonNullable.nullValue<Any>()))
 
         assertThat(o).isEqualTo(
             """
@@ -56,7 +56,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             """.trimIndent()
         )
 
-        val o = writer("TestRecord").toStringUnchecked(new("TestRecord", JsonNullable.of("test")))
+        val o = writer("TestRecord").toString(new("TestRecord", JsonNullable.of("test")))
 
         assertThat(o).isEqualTo(
             """
@@ -80,7 +80,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toStringUnchecked(new("TestRecord", JsonNullable.undefined<Any>()))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.undefined<Any>()))
 
         assertThat(o).isEqualTo(
             """
@@ -104,7 +104,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toStringUnchecked(new("TestRecord", JsonNullable.nullValue<Any>()))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.nullValue<Any>()))
 
         assertThat(o).isEqualTo(
             """
@@ -128,7 +128,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toStringUnchecked(new("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))
 
         assertThat(o).isEqualTo(
             """
@@ -156,7 +156,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toStringUnchecked(
+        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
             new("TestRecord", JsonNullable.undefined<Any>(), JsonNullable.undefined<Any>()))
 
         assertThat(o).isEqualTo(
@@ -185,7 +185,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toStringUnchecked(
+        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
             new("TestRecord", JsonNullable.nullValue<Any>(), JsonNullable.nullValue<Any>()))
 
         assertThat(o).isEqualTo(
@@ -214,7 +214,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toStringUnchecked(
+        val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
             new("TestRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1))),
                 JsonNullable.of(new("InnerRecord", JsonNullable.of(Timestamp.from(Instant.ofEpochMilli(1)))))))
 
@@ -240,7 +240,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toStringUnchecked(new("TestRecord", JsonNullable.of<List<Any>>(listOf())))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.of<List<Any>>(listOf())))
 
         assertThat(o).isEqualTo(
             """
@@ -264,7 +264,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toStringUnchecked(new("TestRecord", JsonNullable.of<List<Timestamp>>(listOf(Timestamp.from(Instant.ofEpochMilli(1))))))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.of<List<Timestamp>>(listOf(Timestamp.from(Instant.ofEpochMilli(1))))))
 
         assertThat(o).isEqualTo(
             """
@@ -288,7 +288,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toStringUnchecked(new("TestRecord", JsonNullable.of<List<Any>>(listOf())))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.of<List<Any>>(listOf())))
 
         assertThat(o).isEqualTo(
             """
@@ -312,7 +312,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toStringUnchecked(new("TestRecord", JsonNullable.of<List<Timestamp>>(listOf(Timestamp.from(Instant.ofEpochMilli(1))))))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.of<List<Timestamp>>(listOf(Timestamp.from(Instant.ofEpochMilli(1))))))
 
         assertThat(o).isEqualTo(
             """

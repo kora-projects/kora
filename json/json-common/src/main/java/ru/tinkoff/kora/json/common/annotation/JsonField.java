@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.json.common.annotation;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.core.JsonParser;
 import kotlin.annotation.AnnotationTarget;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

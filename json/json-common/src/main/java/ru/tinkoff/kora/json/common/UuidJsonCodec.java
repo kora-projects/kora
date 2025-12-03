@@ -1,9 +1,12 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.*;
-
 import jakarta.annotation.Nullable;
-import java.io.IOException;
+import tools.jackson.core.Base64Variants;
+import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.JsonParser;
+import tools.jackson.core.JsonToken;
+import tools.jackson.core.exc.StreamReadException;
+
 import java.util.Arrays;
 import java.util.UUID;
 
@@ -25,7 +28,7 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
     }
 
     @Override
-    public void write(JsonGenerator gen, @Nullable UUID object) throws IOException {
+    public void write(JsonGenerator gen, @Nullable UUID object) {
         if (object == null) {
             gen.writeNull();
             return;
@@ -51,7 +54,7 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
 
     @Nullable
     @Override
-    public UUID read(JsonParser parser) throws IOException {
+    public UUID read(JsonParser parser) {
         var token = parser.currentToken();
         if (token == JsonToken.VALUE_NULL) {
             return null;
@@ -101,26 +104,26 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
         ch[++offset] = HEX_CHARS[bits & 0xF];
     }
 
-    private UUID _badFormat(String id, JsonParser parser) throws JsonParseException {
-        throw new JsonParseException(
+    private UUID _badFormat(String id, JsonParser parser) throws StreamReadException {
+        throw new StreamReadException(
             parser,
             "UUID has to be represented by standard 36-char representation, got '%s'".formatted(id)
         );
     }
 
 
-    private int intFromChars(String str, int index, JsonParser ctxt) throws JsonParseException {
+    private int intFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
         return (byteFromChars(str, index, ctxt) << 24)
-               + (byteFromChars(str, index + 2, ctxt) << 16)
-               + (byteFromChars(str, index + 4, ctxt) << 8)
-               + byteFromChars(str, index + 6, ctxt);
+            + (byteFromChars(str, index + 2, ctxt) << 16)
+            + (byteFromChars(str, index + 4, ctxt) << 8)
+            + byteFromChars(str, index + 6, ctxt);
     }
 
-    private int shortFromChars(String str, int index, JsonParser ctxt) throws JsonParseException {
+    private int shortFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
         return (byteFromChars(str, index, ctxt) << 8) + byteFromChars(str, index + 2, ctxt);
     }
 
-    private int byteFromChars(String str, int index, JsonParser ctxt) throws JsonParseException {
+    private int byteFromChars(String str, int index, JsonParser ctxt) throws StreamReadException {
         final char c1 = str.charAt(index);
         final char c2 = str.charAt(index + 1);
 
@@ -136,18 +139,18 @@ public class UuidJsonCodec implements JsonReader<UUID>, JsonWriter<UUID> {
         return _badChar(str, index + 1, ctxt, c2);
     }
 
-    private int _badChar(String uuidStr, int index, JsonParser ctxt, char c) throws JsonParseException {
+    private int _badChar(String uuidStr, int index, JsonParser ctxt, char c) throws StreamReadException {
         // 15-May-2016, tatu: Ideally should not throw, but call `handleWeirdStringValue`...
         //   however, control flow is gnarly here, so for now just throw
-        throw new JsonParseException(ctxt, String.format(
+        throw new StreamReadException(ctxt, String.format(
             "Non-hex character '%c' (value 0x%s), not valid for UUID String (%s)",
             c, Integer.toHexString(c), uuidStr
         ));
     }
 
-    private UUID _fromBytes(byte[] bytes, JsonParser ctxt) throws JsonParseException {
+    private UUID _fromBytes(byte[] bytes, JsonParser ctxt) throws StreamReadException {
         if (bytes.length != 16) {
-            throw new JsonParseException(ctxt,
+            throw new StreamReadException(ctxt,
                 "Can only construct UUIDs from byte[16]; got " + bytes.length + " bytes");
         }
         return new UUID(_long(bytes, 0), _long(bytes, 8));

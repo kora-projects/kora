@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.logging.common.arg;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import jakarta.annotation.Nullable;
 import org.slf4j.Marker;
 import ru.tinkoff.kora.json.common.JsonWriter;
+import tools.jackson.core.JsonGenerator;
 
 import java.util.Map;
 
@@ -38,7 +38,7 @@ public interface StructuredArgument extends StructuredArgumentWriter {
         return new ArgumentWithValueAndWriter<>(fieldName, value, (gen, object) -> {
             gen.writeStartObject(object);
             for (var entry : object.entrySet()) {
-                gen.writeFieldName(entry.getKey());
+                gen.writeName(entry.getKey());
                 gen.writeString(entry.getValue());
             }
             gen.writeEndObject();
@@ -73,7 +73,7 @@ public interface StructuredArgument extends StructuredArgumentWriter {
         return new ArgumentMarkerWithValueAndWriter<>(fieldName, value, (gen, object) -> {
             gen.writeStartObject(object);
             for (var entry : object.entrySet()) {
-                gen.writeFieldName(entry.getKey());
+                gen.writeName(entry.getKey());
                 gen.writeString(entry.getValue());
             }
             gen.writeEndObject();

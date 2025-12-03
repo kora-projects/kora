@@ -14,7 +14,6 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
-import java.io.IOException;
 
 public class JsonWriterGenerator {
     private final Types types;
@@ -44,7 +43,6 @@ public class JsonWriterGenerator {
 
         var method = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addException(IOException.class)
             .addParameter(JsonTypes.jsonGenerator, "_gen")
             .addParameter(ParameterSpec.builder(TypeName.get(meta.typeMirror()), "_object").addAnnotation(Nullable.class).build())
             .addAnnotation(Override.class);
@@ -55,7 +53,7 @@ public class JsonWriterGenerator {
         if (discriminatorField != null) {
             if (meta.fields().stream().noneMatch(f -> f.jsonName().equals(discriminatorField))) {
                 var discriminatorFieldValues = JsonUtils.discriminatorValue(meta.typeElement());
-                method.addCode("_gen.writeFieldName($S);\n", discriminatorField);
+                method.addCode("_gen.writeName($S);\n", discriminatorField);
                 method.addStatement("_gen.writeString($S)", discriminatorFieldValues.get(0));
             }
         }
@@ -112,7 +110,7 @@ public class JsonWriterGenerator {
 
     private void addWriteParam(MethodSpec.Builder method, FieldMeta field) {
         if (field.typeMirror().getKind().isPrimitive()) {
-            method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+            method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
             if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
             } else {
@@ -137,7 +135,7 @@ public class JsonWriterGenerator {
         }
 
 
-        method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+        method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
             if (typeMeta.isJsonNullable()) {
                 method.beginControlFlow("if (_object.$L.isNull())", field.accessor());

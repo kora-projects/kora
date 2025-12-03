@@ -1,15 +1,14 @@
 package ru.tinkoff.kora.logging.common.arg;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import org.slf4j.Marker;
+import tools.jackson.core.JsonGenerator;
 
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Iterator;
 
 record ArgumentMarkerWithWriter(String fieldName, StructuredArgumentWriter writer) implements Marker, StructuredArgument {
     @Override
-    public void writeTo(JsonGenerator generator) throws IOException {
+    public void writeTo(JsonGenerator generator) {
         this.writer.writeTo(generator);
     }
 

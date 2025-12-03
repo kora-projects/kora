@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.json.common;
 
-import com.fasterxml.jackson.core.JsonGenerator;
-
 import jakarta.annotation.Nullable;
-import java.io.IOException;
+import tools.jackson.core.JsonGenerator;
+
 import java.util.List;
 
 public class ListJsonWriter<T> implements JsonWriter<List<T>> {
@@ -14,7 +13,7 @@ public class ListJsonWriter<T> implements JsonWriter<List<T>> {
     }
 
     @Override
-    public void write(JsonGenerator gen, @Nullable List<T> object) throws IOException {
+    public void write(JsonGenerator gen, @Nullable List<T> object) {
         if (object == null) {
             gen.writeNull();
         } else {

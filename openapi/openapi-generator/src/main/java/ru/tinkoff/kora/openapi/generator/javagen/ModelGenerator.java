@@ -40,9 +40,6 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             b.addAnnotation(Classes.valid);
         }
         var permittedSubclasses = new HashSet<ClassName>();
-//        for (var permittedSubclass : model.permits) {
-//            permittedSubclasses.add(ClassName.get(modelPackage, permittedSubclass));
-//        }
         for (var mappedModel : model.discriminator.getMappedModels()) {
             permittedSubclasses.add((ClassName) asType(mappedModel.getModel()));
         }
@@ -261,7 +258,6 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .addParameter(Classes.jsonGenerator, "gen")
                 .addParameter(enumClassName, "value")
                 .addStatement("this.delegate.write(gen, value)")
-                .addException(IOException.class)
                 .build())
             .build());
 
@@ -283,7 +279,6 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .addParameter(Classes.jsonParser, "parser")
                 .addStatement("return this.delegate.read(parser)")
                 .returns(enumClassName)
-                .addException(IOException.class)
                 .build())
             .build()
         );

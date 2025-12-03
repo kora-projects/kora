@@ -72,12 +72,12 @@ public class DefaultCamundaEngineBpmnObservation implements CamundaEngineObserva
             .atInfo()
             .addKeyValue("camundaExecution", StructuredArgument.value(gen -> {
                 gen.writeStartObject();
-                gen.writeStringField("processBusinessKey", execution.getProcessBusinessKey());
-                gen.writeStringField("processInstanceId", execution.getProcessInstanceId());
-                gen.writeStringField("activityId", execution.getCurrentActivityId());
-                gen.writeStringField("activityName", execution.getCurrentActivityName());
-                gen.writeStringField("eventName", execution.getEventName());
-                gen.writeStringField("businessKey", execution.getBusinessKey());
+                gen.writeStringProperty("processBusinessKey", execution.getProcessBusinessKey());
+                gen.writeStringProperty("processInstanceId", execution.getProcessInstanceId());
+                gen.writeStringProperty("activityId", execution.getCurrentActivityId());
+                gen.writeStringProperty("activityName", execution.getCurrentActivityName());
+                gen.writeStringProperty("eventName", execution.getEventName());
+                gen.writeStringProperty("businessKey", execution.getBusinessKey());
                 gen.writeEndObject();
             }))
             .log("Camunda BPMN Engine started");
@@ -86,17 +86,17 @@ public class DefaultCamundaEngineBpmnObservation implements CamundaEngineObserva
     protected void logEnd(DelegateExecution execution) {
         var data = StructuredArgument.value(gen -> {
             gen.writeStartObject();
-            gen.writeStringField("processBusinessKey", execution.getProcessBusinessKey());
-            gen.writeStringField("processInstanceId", execution.getProcessInstanceId());
-            gen.writeStringField("activityId", execution.getCurrentActivityId());
-            gen.writeStringField("activityName", execution.getCurrentActivityName());
-            gen.writeStringField("eventName", execution.getEventName());
-            gen.writeStringField("businessKey", execution.getBusinessKey());
+            gen.writeStringProperty("processBusinessKey", execution.getProcessBusinessKey());
+            gen.writeStringProperty("processInstanceId", execution.getProcessInstanceId());
+            gen.writeStringProperty("activityId", execution.getCurrentActivityId());
+            gen.writeStringProperty("activityName", execution.getCurrentActivityName());
+            gen.writeStringProperty("eventName", execution.getEventName());
+            gen.writeStringProperty("businessKey", execution.getBusinessKey());
             if (error != null) {
                 var exceptionType = error.getClass().getCanonicalName();
-                gen.writeStringField("exceptionType", exceptionType);
+                gen.writeStringProperty("exceptionType", exceptionType);
                 if (!config.logging().stacktrace()) {
-                    gen.writeStringField("exceptionMessage", error.getMessage());
+                    gen.writeStringProperty("exceptionMessage", error.getMessage());
                 }
             }
             gen.writeEndObject();
