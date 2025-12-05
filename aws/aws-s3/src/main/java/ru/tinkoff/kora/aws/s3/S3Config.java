@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.aws.s3;
 
+import ru.tinkoff.kora.aws.s3.telemetry.S3ClientTelemetryConfig;
 import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
@@ -28,6 +29,8 @@ public interface S3Config {
     }
 
     UploadConfig upload();
+
+    S3ClientTelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface UploadConfig {

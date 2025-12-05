@@ -6,7 +6,7 @@ jackson = "3.0.2"
 mockserver = "5.15.0"
 netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
 kafka = "3.9.1"
-testcontainers = "1.18.3"
+testcontainers = "2.0.2"
 cassandra = "4.19.0"
 grpc-java = "1.74.0"
 grpc-kotlin = "1.4.3"
@@ -116,10 +116,9 @@ grpc-services = { module = "io.grpc:grpc-services", version.ref = "grpc-java" }
 grpc-java-gen = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-java" }
 
 testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
-testcontainers-junit-jupiter = { module = "org.testcontainers:junit-jupiter", version.ref = "testcontainers" }
-testcontainers-postgresql = { module = "org.testcontainers:postgresql", version.ref = "testcontainers" }
-testcontainers-cassandra = { module = "org.testcontainers:cassandra", version.ref = "testcontainers" }
-testcontainers-kafka = { module = "org.testcontainers:kafka", version.ref = "testcontainers" }
+testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
+testcontainers-cassandra = { module = "org.testcontainers:testcontainers-cassandra", version.ref = "testcontainers" }
+testcontainers-kafka = { module = "org.testcontainers:testcontainers-kafka", version.ref = "testcontainers" }
 
 ksp-api = { module = "com.google.devtools.ksp:symbol-processing-api", version.ref = "ksp" }
 ksp = { module = "com.google.devtools.ksp:symbol-processing", version.ref = "ksp" }
