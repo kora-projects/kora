@@ -6,6 +6,7 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -35,12 +36,28 @@ public class ListPartsResultSaxHandler extends DefaultHandler {
     };
 
     private OffsetDateTime parseTime(String v) {
-        if (v == null || v.isEmpty()) return null;
+        if (v == null || v.isEmpty()) {
+            return null;
+        }
+        var exception = (DateTimeParseException) null;
         for (var f : TIME_FORMATS) {
-            try {return OffsetDateTime.parse(v, f);} catch (Exception ignore) {}
+            try {
+                return OffsetDateTime.parse(v, f);
+            } catch (DateTimeParseException e) {
+                if (exception != null) {
+                    exception.addSuppressed(e);
+                } else {
+                    exception = e;
+                }
+            }
         }
         // Fallback: attempt plain ISO_LOCAL_DATE_TIME as UTC
-        try {return OffsetDateTime.parse(v + "Z", DateTimeFormatter.ISO_OFFSET_DATE_TIME);} catch (Exception e) {return null;}
+        try {
+            return OffsetDateTime.parse(v + "Z", DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+        } catch (DateTimeParseException e) {
+            exception.addSuppressed(e);
+            throw exception;
+        }
     }
 
     public ListPartsResult toResult() {

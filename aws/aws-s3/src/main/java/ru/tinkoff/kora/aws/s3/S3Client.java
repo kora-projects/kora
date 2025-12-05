@@ -2,8 +2,8 @@ package ru.tinkoff.kora.aws.s3;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.aws.s3.exception.S3ClientException;
-import ru.tinkoff.kora.aws.s3.model.*;
-import ru.tinkoff.kora.aws.s3.model.rq.*;
+import ru.tinkoff.kora.aws.s3.model.request.*;
+import ru.tinkoff.kora.aws.s3.model.response.*;
 
 import java.io.Closeable;
 import java.io.IOException;

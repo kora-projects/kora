@@ -13,6 +13,28 @@ public sealed interface Range {
      * @param firstPosition An integer indicating the start position of the request range, inclusive
      * @param lastPosition  An integer indicating the end position of the requested range, inclusive
      */
+    static FromTo fromTo(long firstPosition, long lastPosition) {
+        return new FromTo(firstPosition, lastPosition);
+    }
+
+    /**
+     * @param firstPosition An integer indicating the start position of the request range, inclusive
+     */
+    static From from(long firstPosition) {
+        return new From(firstPosition);
+    }
+
+    /**
+     * @param bytes An integer indicating the number of bytes at the end of the resource, can be larger than resource size
+     */
+    static Last last(long bytes) {
+        return new Last(bytes);
+    }
+
+    /**
+     * @param firstPosition An integer indicating the start position of the request range, inclusive
+     * @param lastPosition  An integer indicating the end position of the requested range, inclusive
+     */
     record FromTo(long firstPosition, long lastPosition) implements Range {
         @Override
         public String toRangeValue() {
@@ -23,7 +45,7 @@ public sealed interface Range {
     /**
      * @param firstPosition An integer indicating the start position of the request range, inclusive
      */
-    record StartFrom(long firstPosition) implements ru.tinkoff.kora.aws.s3.model.Range {
+    record From(long firstPosition) implements ru.tinkoff.kora.aws.s3.model.Range {
         @Override
         public String toRangeValue() {
             return "bytes=" + firstPosition + "-";
@@ -34,7 +56,7 @@ public sealed interface Range {
     /**
      * @param bytes An integer indicating the number of bytes at the end of the resource, can be larger than resource size
      */
-    record LastN(long bytes) implements ru.tinkoff.kora.aws.s3.model.Range {
+    record Last(long bytes) implements ru.tinkoff.kora.aws.s3.model.Range {
         @Override
         public String toRangeValue() {
             return "bytes=-" + bytes;

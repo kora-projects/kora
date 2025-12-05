@@ -11,11 +11,12 @@ import org.mockito.Mockito;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 import ru.tinkoff.kora.aws.s3.exception.S3ClientErrorException;
+import ru.tinkoff.kora.aws.s3.exception.S3ClientNoSuchKeyException;
 import ru.tinkoff.kora.aws.s3.exception.S3ClientResponseException;
 import ru.tinkoff.kora.aws.s3.impl.S3ClientImpl;
-import ru.tinkoff.kora.aws.s3.model.ListBucketResult;
 import ru.tinkoff.kora.aws.s3.model.Range;
-import ru.tinkoff.kora.aws.s3.model.rq.ListObjectsArgs;
+import ru.tinkoff.kora.aws.s3.model.request.ListObjectsArgs;
+import ru.tinkoff.kora.aws.s3.model.response.ListBucketResult;
 import ru.tinkoff.kora.http.client.ok.OkHttpClient;
 
 import java.io.ByteArrayInputStream;
@@ -87,7 +88,7 @@ class S3ClientTest {
         @Test
         void testHeadObjectThrowsErrorOnUnknownObject() throws Exception {
             assertThatThrownBy(() -> s3Client().headObject(credentials, "test", UUID.randomUUID().toString()))
-                .isInstanceOf(S3ClientErrorException.class)
+                .isInstanceOf(S3ClientNoSuchKeyException.class)
                 .hasFieldOrPropertyWithValue("errorCode", "NoSuchKey")
                 .hasFieldOrPropertyWithValue("errorMessage", "Object does not exist");
         }
@@ -176,7 +177,7 @@ class S3ClientTest {
         @Test
         void testGetObjectThrowsErrorOnUnknownObject() {
             assertThatThrownBy(() -> s3Client().getObject(credentials, "test", UUID.randomUUID().toString(), null, true))
-                .isInstanceOf(S3ClientErrorException.class)
+                .isInstanceOf(S3ClientNoSuchKeyException.class)
                 .hasFieldOrPropertyWithValue("errorCode", "NoSuchKey")
                 .hasFieldOrPropertyWithValue("errorMessage", "The specified key does not exist.");
         }
@@ -232,8 +233,8 @@ class S3ClientTest {
                 .contentType("text/plain")
                 .stream(new ByteArrayInputStream(content), content.length, -1)
                 .build());
-            var args = new ru.tinkoff.kora.aws.s3.model.rq.GetObjectArgs();
-            try (var object = s3Client().getObject(credentials, "test", key, args.setRange(new Range.FromTo(1, 5)), true)) {
+            var args = new ru.tinkoff.kora.aws.s3.model.request.GetObjectArgs();
+            try (var object = s3Client().getObject(credentials, "test", key, args.setRange(Range.fromTo(1, 5)), true)) {
                 assertThat(object).isNotNull();
                 assertThat(object.contentRange().completeLength()).isEqualTo(content.length);
                 try (var body = object.body()) {
@@ -241,7 +242,7 @@ class S3ClientTest {
                     assertThat(body.asInputStream().readAllBytes()).isEqualTo(Arrays.copyOfRange(content, 1, 6));
                 }
             }
-            try (var object = s3Client().getObject(credentials, "test", key, args.setRange(new Range.StartFrom(5)), true)) {
+            try (var object = s3Client().getObject(credentials, "test", key, args.setRange(Range.from(5)), true)) {
                 assertThat(object).isNotNull();
                 assertThat(object.contentRange().completeLength()).isEqualTo(content.length);
                 try (var body = object.body()) {
@@ -249,7 +250,7 @@ class S3ClientTest {
                     assertThat(body.asInputStream().readAllBytes()).isEqualTo(Arrays.copyOfRange(content, 5, content.length));
                 }
             }
-            try (var object = s3Client().getObject(credentials, "test", key, args.setRange(new Range.LastN(5)), true)) {
+            try (var object = s3Client().getObject(credentials, "test", key, args.setRange(Range.last(5)), true)) {
                 assertThat(object).isNotNull();
                 assertThat(object.contentRange().completeLength()).isEqualTo(content.length);
                 try (var body = object.body()) {
@@ -527,8 +528,7 @@ class S3ClientTest {
             var args = new ListObjectsArgs()
                 .setPrefix(prefix + "/")
                 .setMaxKeys(10)
-                .setFetchOwner("true")
-                ;
+                .setFetchOwner("true");
             assertThat(s3Client().listObjectsV2(credentials, "test", args))
                 .isNotNull()
                 .extracting(ListBucketResult::items, InstanceOfAssertFactories.list(ListBucketResult.ListBucketItem.class))

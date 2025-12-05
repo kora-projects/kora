@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.aws.s3.model.rq;
+package ru.tinkoff.kora.aws.s3.model.request;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.aws.s3.model.Range;

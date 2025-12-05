@@ -4,17 +4,14 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.aws.s3.AwsCredentials;
 import ru.tinkoff.kora.aws.s3.S3Client;
 import ru.tinkoff.kora.aws.s3.S3Config;
-import ru.tinkoff.kora.aws.s3.exception.S3ClientErrorException;
-import ru.tinkoff.kora.aws.s3.exception.S3ClientException;
-import ru.tinkoff.kora.aws.s3.exception.S3ClientResponseException;
-import ru.tinkoff.kora.aws.s3.exception.S3ClientUnknownException;
+import ru.tinkoff.kora.aws.s3.exception.*;
 import ru.tinkoff.kora.aws.s3.impl.xml.*;
-import ru.tinkoff.kora.aws.s3.model.*;
-import ru.tinkoff.kora.aws.s3.model.ListBucketResult;
-import ru.tinkoff.kora.aws.s3.model.ListMultipartUploadsResult;
-import ru.tinkoff.kora.aws.s3.model.ListMultipartUploadsResult.Upload;
-import ru.tinkoff.kora.aws.s3.model.ListPartsResult;
-import ru.tinkoff.kora.aws.s3.model.rq.*;
+import ru.tinkoff.kora.aws.s3.model.request.*;
+import ru.tinkoff.kora.aws.s3.model.response.*;
+import ru.tinkoff.kora.aws.s3.model.response.ListBucketResult;
+import ru.tinkoff.kora.aws.s3.model.response.ListMultipartUploadsResult;
+import ru.tinkoff.kora.aws.s3.model.response.ListMultipartUploadsResult.Upload;
+import ru.tinkoff.kora.aws.s3.model.response.ListPartsResult;
 import ru.tinkoff.kora.aws.s3.telemetry.NoopS3ClientTelemetry;
 import ru.tinkoff.kora.aws.s3.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.common.telemetry.Observation;
@@ -946,6 +943,9 @@ public class S3ClientImpl implements S3Client {
             var bytes = is.readAllBytes();
             try {
                 var s3Error = S3Error.fromXml(new ByteArrayInputStream(bytes));
+                if ("NoSuchKey".equals(s3Error.code())) {
+                    throw new S3ClientNoSuchKeyException(rs.code(), s3Error.code(), s3Error.message(), s3Error.requestId());
+                }
                 throw new S3ClientErrorException(rs.code(), s3Error.code(), s3Error.message(), s3Error.requestId());
             } catch (S3ClientException e) {
                 throw e;

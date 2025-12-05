@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.aws.s3.model;
+package ru.tinkoff.kora.aws.s3.model.response;
 
 import java.util.List;
 

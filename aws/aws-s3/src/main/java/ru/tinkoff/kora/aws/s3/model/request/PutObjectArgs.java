@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.aws.s3.model.rq;
+package ru.tinkoff.kora.aws.s3.model.request;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
@@ -6,9 +6,9 @@ import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 import java.util.Map;
 
 /**
- * @see <a href="CreateMultipartUpload">https://docs.aws.amazon.com/AmazonS3/latest/API/API_CreateMultipartUpload.html</a>
+ * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html">PutObject</a>
  */
-public class CreateMultipartUploadArgs {
+public class PutObjectArgs {
     /**
      * The canned ACL to apply to the object. Amazon S3 supports a set of predefined ACLs, known as canned ACLs.
      * Each canned ACL has a predefined set of grantees and permissions. For more information, see Canned ACL in the Amazon S3 User Guide.
@@ -46,11 +46,29 @@ public class CreateMultipartUploadArgs {
     @Nullable
     public String contentType;
 
+
     /**
      * The date and time at which the object is no longer cacheable.
      */
     @Nullable
     public String expires;
+
+    /**
+     * Uploads the object only if the ETag (entity tag) value provided during the WRITE operation matches the ETag of the object in S3.
+     * If the ETag values do not match, the operation returns a 412 Precondition Failed error.<br />
+     * If a conflicting operation occurs during the upload S3 returns a 409 ConditionalRequestConflict response. On a 409 failure you should fetch the object's ETag and retry the upload.<br />
+     * Expects the ETag value as a string.
+     */
+    @Nullable
+    public String ifMatch;
+
+    /**
+     * Uploads the object only if the object key name does not already exist in the bucket specified. Otherwise, Amazon S3 returns a 412 Precondition Failed error.<br />
+     * If a conflicting operation occurs during the upload S3 returns a 409 ConditionalRequestConflict response. On a 409 failure you should retry the upload.<br />
+     * Expects the '*' (asterisk) character.
+     */
+    @Nullable
+    public String ifNoneMatch;
 
     /**
      * Specify access permissions explicitly to give the grantee READ, READ_ACP, and WRITE_ACP permissions on the object.
@@ -177,87 +195,6 @@ public class CreateMultipartUploadArgs {
     public String expectedBucketOwner;
 
 
-    public void writeHeaders(MutableHttpHeaders headers) {
-        if (this.acl != null) {
-            headers.add("x-amz-acl", this.acl);
-        }
-        if (this.cacheControl != null) {
-            headers.add("cache-control", this.cacheControl);
-        }
-        if (this.contentDisposition != null) {
-            headers.add("content-disposition", this.contentDisposition);
-        }
-        if (this.contentEncoding != null) {
-            headers.add("content-encoding", this.contentEncoding);
-        }
-        if (this.contentLanguage != null) {
-            headers.add("content-language", this.contentLanguage);
-        }
-        if (this.contentType != null) {
-            headers.add("content-type", this.contentType);
-        }
-        if (this.expires != null) {
-            headers.add("expires", this.expires);
-        }
-        if (this.grantFullControl != null) {
-            headers.add("x-amz-grant-full-control", this.grantFullControl);
-        }
-        if (this.grantRead != null) {
-            headers.add("x-amz-grant-read", this.grantRead);
-        }
-        if (this.grantReadAcp != null) {
-            headers.add("x-amz-grant-read-acp", this.grantReadAcp);
-        }
-        if (this.grantWriteAcp != null) {
-            headers.add("x-amz-grant-write-acp", this.grantWriteAcp);
-        }
-        if (this.serverSideEncryption != null) {
-            headers.add("x-amz-server-side-encryption", this.serverSideEncryption);
-        }
-        if (this.storageClass != null) {
-            headers.add("x-amz-storage-class", this.storageClass);
-        }
-        if (this.websiteRedirectLocation != null) {
-            headers.add("x-amz-website-redirect-location", this.websiteRedirectLocation);
-        }
-        if (this.sseCustomerAlgorithm != null) {
-            headers.add("x-amz-server-side-encryption-customer-algorithm", this.sseCustomerAlgorithm);
-        }
-        if (this.sseCustomerKey != null) {
-            headers.add("x-amz-server-side-encryption-customer-key", this.sseCustomerKey);
-        }
-        if (this.sseCustomerKeyMD5 != null) {
-            headers.add("x-amz-server-side-encryption-customer-key-md5", this.sseCustomerKeyMD5);
-        }
-        if (this.sseKmsKeyId != null) {
-            headers.add("x-amz-server-side-encryption-aws-kms-key-id", this.sseKmsKeyId);
-        }
-        if (this.sseKmsEncryptionContext != null) {
-            headers.add("x-amz-server-side-encryption-context", this.sseKmsEncryptionContext);
-        }
-        if (this.bucketKeyEnabled != null) {
-            headers.add("x-amz-server-side-encryption-bucket-key-enabled", this.bucketKeyEnabled);
-        }
-        if (this.requestPayer != null) {
-            headers.add("x-amz-request-payer", this.requestPayer);
-        }
-        if (this.tagging != null) {
-            headers.add("x-amz-tagging", this.tagging);
-        }
-        if (this.objectLockMode != null) {
-            headers.add("x-amz-object-lock-mode", this.objectLockMode);
-        }
-        if (this.objectLockRetainUntilDate != null) {
-            headers.add("x-amz-object-lock-retain-until-date", this.objectLockRetainUntilDate);
-        }
-        if (this.objectLockLegalHoldStatus != null) {
-            headers.add("x-amz-object-lock-legal-hold", this.objectLockLegalHoldStatus);
-        }
-        if (this.expectedBucketOwner != null) {
-            headers.add("x-amz-expected-bucket-owner", this.expectedBucketOwner);
-        }
-    }
-
     public void writeHeadersMap(Map<String, String> headers) {
         if (this.acl != null) {
             headers.put("x-amz-acl", this.acl);
@@ -279,6 +216,12 @@ public class CreateMultipartUploadArgs {
         }
         if (this.expires != null) {
             headers.put("expires", this.expires);
+        }
+        if (this.ifMatch != null) {
+            headers.put("if-match", this.ifMatch);
+        }
+        if (this.ifNoneMatch != null) {
+            headers.put("if-none-match", this.ifNoneMatch);
         }
         if (this.grantFullControl != null) {
             headers.put("x-amz-grant-full-control", this.grantFullControl);
@@ -340,133 +283,136 @@ public class CreateMultipartUploadArgs {
         }
     }
 
-    public CreateMultipartUploadArgs setAcl(@Nullable String acl) {
-        this.acl = acl;
-        return this;
+    public void writeHeaders(MutableHttpHeaders headers) {
+        if (this.acl != null) {
+            headers.add("x-amz-acl", this.acl);
+        }
+        if (this.cacheControl != null) {
+            headers.add("cache-control", this.cacheControl);
+        }
+        if (this.contentDisposition != null) {
+            headers.add("content-disposition", this.contentDisposition);
+        }
+        if (this.contentEncoding != null) {
+            headers.add("content-encoding", this.contentEncoding);
+        }
+        if (this.contentLanguage != null) {
+            headers.add("content-language", this.contentLanguage);
+        }
+        if (this.contentType != null) {
+            headers.add("content-type", this.contentType);
+        }
+        if (this.expires != null) {
+            headers.add("expires", this.expires);
+        }
+        if (this.ifMatch != null) {
+            headers.add("if-match", this.ifMatch);
+        }
+        if (this.ifNoneMatch != null) {
+            headers.add("if-none-match", this.ifNoneMatch);
+        }
+        if (this.grantFullControl != null) {
+            headers.add("x-amz-grant-full-control", this.grantFullControl);
+        }
+        if (this.grantRead != null) {
+            headers.add("x-amz-grant-read", this.grantRead);
+        }
+        if (this.grantReadAcp != null) {
+            headers.add("x-amz-grant-read-acp", this.grantReadAcp);
+        }
+        if (this.grantWriteAcp != null) {
+            headers.add("x-amz-grant-write-acp", this.grantWriteAcp);
+        }
+        if (this.serverSideEncryption != null) {
+            headers.add("x-amz-server-side-encryption", this.serverSideEncryption);
+        }
+        if (this.storageClass != null) {
+            headers.add("x-amz-storage-class", this.storageClass);
+        }
+        if (this.websiteRedirectLocation != null) {
+            headers.add("x-amz-website-redirect-location", this.websiteRedirectLocation);
+        }
+        if (this.sseCustomerAlgorithm != null) {
+            headers.add("x-amz-server-side-encryption-customer-algorithm", this.sseCustomerAlgorithm);
+        }
+        if (this.sseCustomerKey != null) {
+            headers.add("x-amz-server-side-encryption-customer-key", this.sseCustomerKey);
+        }
+        if (this.sseCustomerKeyMD5 != null) {
+            headers.add("x-amz-server-side-encryption-customer-key-md5", this.sseCustomerKeyMD5);
+        }
+        if (this.sseKmsKeyId != null) {
+            headers.add("x-amz-server-side-encryption-aws-kms-key-id", this.sseKmsKeyId);
+        }
+        if (this.sseKmsEncryptionContext != null) {
+            headers.add("x-amz-server-side-encryption-context", this.sseKmsEncryptionContext);
+        }
+        if (this.bucketKeyEnabled != null) {
+            headers.add("x-amz-server-side-encryption-bucket-key-enabled", this.bucketKeyEnabled);
+        }
+        if (this.requestPayer != null) {
+            headers.add("x-amz-request-payer", this.requestPayer);
+        }
+        if (this.tagging != null) {
+            headers.add("x-amz-tagging", this.tagging);
+        }
+        if (this.objectLockMode != null) {
+            headers.add("x-amz-object-lock-mode", this.objectLockMode);
+        }
+        if (this.objectLockRetainUntilDate != null) {
+            headers.add("x-amz-object-lock-retain-until-date", this.objectLockRetainUntilDate);
+        }
+        if (this.objectLockLegalHoldStatus != null) {
+            headers.add("x-amz-object-lock-legal-hold", this.objectLockLegalHoldStatus);
+        }
+        if (this.expectedBucketOwner != null) {
+            headers.add("x-amz-expected-bucket-owner", this.expectedBucketOwner);
+        }
     }
+    /*
+x-amz-acl: ACL
+Cache-Control: CacheControl
+Content-Disposition: ContentDisposition
+Content-Encoding: ContentEncoding
+Content-Language: ContentLanguage
+Content-Length: ContentLength
+Content-MD5: ContentMD5
+Content-Type: ContentType
 
-    public CreateMultipartUploadArgs setBucketKeyEnabled(@Nullable String bucketKeyEnabled) {
-        this.bucketKeyEnabled = bucketKeyEnabled;
-        return this;
-    }
+x-amz-sdk-checksum-algorithm: ChecksumAlgorithm
+x-amz-checksum-crc32: ChecksumCRC32
+x-amz-checksum-crc32c: ChecksumCRC32C
+x-amz-checksum-crc64nvme: ChecksumCRC64NVME
+x-amz-checksum-sha1: ChecksumSHA1
+x-amz-checksum-sha256: ChecksumSHA256
 
-    public CreateMultipartUploadArgs setCacheControl(@Nullable String cacheControl) {
-        this.cacheControl = cacheControl;
-        return this;
-    }
+Expires: Expires
 
-    public CreateMultipartUploadArgs setContentDisposition(@Nullable String contentDisposition) {
-        this.contentDisposition = contentDisposition;
-        return this;
-    }
+If-Match: IfMatch
+If-None-Match: IfNoneMatch
 
-    public CreateMultipartUploadArgs setContentEncoding(@Nullable String contentEncoding) {
-        this.contentEncoding = contentEncoding;
-        return this;
-    }
+x-amz-grant-full-control: GrantFullControl
+x-amz-grant-read: GrantRead
+x-amz-grant-read-acp: GrantReadACP
+x-amz-grant-write-acp: GrantWriteACP
 
-    public CreateMultipartUploadArgs setContentLanguage(@Nullable String contentLanguage) {
-        this.contentLanguage = contentLanguage;
-        return this;
-    }
+x-amz-write-offset-bytes: WriteOffsetBytes
 
-    public CreateMultipartUploadArgs setContentType(@Nullable String contentType) {
-        this.contentType = contentType;
-        return this;
-    }
+x-amz-server-side-encryption: ServerSideEncryption
+x-amz-storage-class: StorageClass
+x-amz-website-redirect-location: WebsiteRedirectLocation
+x-amz-server-side-encryption-customer-algorithm: SSECustomerAlgorithm
+x-amz-server-side-encryption-customer-key: SSECustomerKey
+x-amz-server-side-encryption-customer-key-MD5: SSECustomerKeyMD5
+x-amz-server-side-encryption-aws-kms-key-id: SSEKMSKeyId
+x-amz-server-side-encryption-context: SSEKMSEncryptionContext
+x-amz-server-side-encryption-bucket-key-enabled: BucketKeyEnabled
+x-amz-request-payer: RequestPayer
+x-amz-tagging: Tagging
+x-amz-object-lock-mode: ObjectLockMode
+x-amz-object-lock-retain-until-date: ObjectLockRetainUntilDate
+x-amz-object-lock-legal-hold: ObjectLockLegalHoldStatus
+x-amz-expected-bucket-owner: ExpectedBucketOwner
 
-    public CreateMultipartUploadArgs setExpectedBucketOwner(@Nullable String expectedBucketOwner) {
-        this.expectedBucketOwner = expectedBucketOwner;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setExpires(@Nullable String expires) {
-        this.expires = expires;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setGrantFullControl(@Nullable String grantFullControl) {
-        this.grantFullControl = grantFullControl;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setGrantRead(@Nullable String grantRead) {
-        this.grantRead = grantRead;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setGrantReadAcp(@Nullable String grantReadAcp) {
-        this.grantReadAcp = grantReadAcp;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setGrantWriteAcp(@Nullable String grantWriteAcp) {
-        this.grantWriteAcp = grantWriteAcp;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setObjectLockLegalHoldStatus(@Nullable String objectLockLegalHoldStatus) {
-        this.objectLockLegalHoldStatus = objectLockLegalHoldStatus;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setObjectLockMode(@Nullable String objectLockMode) {
-        this.objectLockMode = objectLockMode;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setObjectLockRetainUntilDate(@Nullable String objectLockRetainUntilDate) {
-        this.objectLockRetainUntilDate = objectLockRetainUntilDate;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setRequestPayer(@Nullable String requestPayer) {
-        this.requestPayer = requestPayer;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setServerSideEncryption(@Nullable String serverSideEncryption) {
-        this.serverSideEncryption = serverSideEncryption;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setSseCustomerAlgorithm(@Nullable String sseCustomerAlgorithm) {
-        this.sseCustomerAlgorithm = sseCustomerAlgorithm;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setSseCustomerKey(@Nullable String sseCustomerKey) {
-        this.sseCustomerKey = sseCustomerKey;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setSseCustomerKeyMD5(@Nullable String sseCustomerKeyMD5) {
-        this.sseCustomerKeyMD5 = sseCustomerKeyMD5;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setSseKmsEncryptionContext(@Nullable String sseKmsEncryptionContext) {
-        this.sseKmsEncryptionContext = sseKmsEncryptionContext;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setSseKmsKeyId(@Nullable String sseKmsKeyId) {
-        this.sseKmsKeyId = sseKmsKeyId;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setStorageClass(@Nullable String storageClass) {
-        this.storageClass = storageClass;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setTagging(@Nullable String tagging) {
-        this.tagging = tagging;
-        return this;
-    }
-
-    public CreateMultipartUploadArgs setWebsiteRedirectLocation(@Nullable String websiteRedirectLocation) {
-        this.websiteRedirectLocation = websiteRedirectLocation;
-        return this;
-    }
+*/
 }

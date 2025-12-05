@@ -1,14 +1,16 @@
-package ru.tinkoff.kora.aws.s3.model.rq;
+package ru.tinkoff.kora.aws.s3.model.request;
 
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 
 import java.util.Map;
+import java.util.SortedMap;
+import java.util.TreeMap;
 
 /**
- * @see <a href="UploadPart">https://docs.aws.amazon.com/AmazonS3/latest/API/API_UploadPart.html</a>
+ * @see <a href="ListParts">https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListParts.html</a>
  */
-public class UploadPartArgs {
+public class ListPartsArgs {
     /**
      * Specifies the algorithm to use when encrypting the object (for example, AES256).
      */
@@ -44,6 +46,18 @@ public class UploadPartArgs {
      */
     @Nullable
     public String expectedBucketOwner;
+
+    /**
+     * Sets the maximum number of parts to return.
+     */
+    @Nullable
+    public Integer maxParts;
+
+    /**
+     * Specifies the part after which listing should begin. Only parts with higher part numbers will be listed.
+     */
+    @Nullable
+    public Integer partNumberMarker;
 
     public void writeHeaders(MutableHttpHeaders headers) {
         if (this.sseCustomerAlgorithm != null) {
@@ -81,27 +95,66 @@ public class UploadPartArgs {
         }
     }
 
-    public UploadPartArgs setExpectedBucketOwner(@Nullable String expectedBucketOwner) {
+
+    public StringBuilder toQueryString() {
+        var sb = new StringBuilder();
+        if (this.maxParts != null) {
+            if (!sb.isEmpty()) {
+                sb.append('&');
+            }
+            sb.append("max-parts=").append(this.maxParts);
+        }
+        if (this.partNumberMarker != null) {
+            if (!sb.isEmpty()) {
+                sb.append('&');
+            }
+            sb.append("part-number-marker=").append(this.partNumberMarker);
+        }
+        return sb;
+    }
+
+    public SortedMap<String, String> toQueryMap() {
+        var map = new TreeMap<String, String>();
+        if (this.maxParts != null) {
+            map.put("max-parts", this.maxParts.toString());
+        }
+        if (this.partNumberMarker != null) {
+            map.put("part-number-marker", this.partNumberMarker.toString());
+        }
+        return map;
+    }
+
+    public ListPartsArgs setExpectedBucketOwner(@Nullable String expectedBucketOwner) {
         this.expectedBucketOwner = expectedBucketOwner;
         return this;
     }
 
-    public UploadPartArgs setRequestPayer(@Nullable String requestPayer) {
+    public ListPartsArgs setMaxParts(@Nullable Integer maxParts) {
+        this.maxParts = maxParts;
+        return this;
+    }
+
+    public ListPartsArgs setPartNumberMarker(@Nullable Integer partNumberMarker) {
+        this.partNumberMarker = partNumberMarker;
+        return this;
+    }
+
+    public ListPartsArgs setRequestPayer(@Nullable String requestPayer) {
         this.requestPayer = requestPayer;
         return this;
     }
 
-    public UploadPartArgs setSseCustomerAlgorithm(@Nullable String sseCustomerAlgorithm) {
+    public ListPartsArgs setSseCustomerAlgorithm(@Nullable String sseCustomerAlgorithm) {
         this.sseCustomerAlgorithm = sseCustomerAlgorithm;
         return this;
     }
 
-    public UploadPartArgs setSseCustomerKey(@Nullable String sseCustomerKey) {
+    public ListPartsArgs setSseCustomerKey(@Nullable String sseCustomerKey) {
         this.sseCustomerKey = sseCustomerKey;
         return this;
     }
 
-    public UploadPartArgs setSseCustomerKeyMD5(@Nullable String sseCustomerKeyMD5) {
+    public ListPartsArgs setSseCustomerKeyMD5(@Nullable String sseCustomerKeyMD5) {
         this.sseCustomerKeyMD5 = sseCustomerKeyMD5;
         return this;
     }
