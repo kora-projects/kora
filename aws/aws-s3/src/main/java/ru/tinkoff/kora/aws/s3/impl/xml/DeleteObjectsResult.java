@@ -11,7 +11,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-public record DeleteObjectsResult(List<Deleted> deleted, Error error) {
+public record DeleteObjectsResult(List<Deleted> deleted, List<Error> errors) {
     public record Deleted(@Nullable Boolean deleteMarker, @Nullable String deleteMarkerVersionId, String key, @Nullable String versionId) {}
 
     public record Error(

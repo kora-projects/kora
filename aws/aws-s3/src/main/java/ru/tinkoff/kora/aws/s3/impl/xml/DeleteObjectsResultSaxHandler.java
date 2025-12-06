@@ -11,7 +11,7 @@ public class DeleteObjectsResultSaxHandler extends DefaultHandler {
     private int level = 0;
     private final StringBuilder buf = new StringBuilder();
     private final List<DeleteObjectsResult.Deleted> deleted = new ArrayList<>();
-    private DeleteObjectsResult.Error error;
+    private final List<DeleteObjectsResult.Error> errors = new ArrayList<>();
 
     private DefaultHandler delegate = null;
 
@@ -53,9 +53,8 @@ public class DeleteObjectsResultSaxHandler extends DefaultHandler {
                 }
                 case "Error" -> {
                     assert delegate instanceof DeleteObjectResultErrorSaxHandler;
-                    error = ((DeleteObjectResultErrorSaxHandler) delegate).toResult();
+                    errors.add(((DeleteObjectResultErrorSaxHandler) delegate).toResult());
                     delegate = null;
-                    break;
                 }
                 default -> {
                 }
@@ -76,7 +75,7 @@ public class DeleteObjectsResultSaxHandler extends DefaultHandler {
     }
 
     public DeleteObjectsResult toResult() {
-        return new DeleteObjectsResult(deleted, error);
+        return new DeleteObjectsResult(deleted, errors);
     }
 
     public static class DeleteObjectResultDeletedSaxHandler extends DefaultHandler {

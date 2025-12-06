@@ -252,7 +252,10 @@ public class S3ClientImpl implements S3Client {
                     observation.observeAwsRequestId(rs.headers().getFirst("X-Amz-Request-Id"));
                     observation.observeAwsExtendedId(rs.headers().getFirst("x-amz-id-2"));
                     if (rs.code() == HttpURLConnection.HTTP_OK) {
-                        var ignore = DeleteObjectsResult.fromXml(body.asInputStream());
+                        var result = DeleteObjectsResult.fromXml(body.asInputStream());
+                        if (!result.errors().isEmpty()) {
+                            throw new S3ClientDeleteException(result.errors());
+                        }
                         return;
                     }
                     if (rs.code() == HttpURLConnection.HTTP_NOT_FOUND) { // no such bucket
