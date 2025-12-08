@@ -77,15 +77,11 @@ public class S3ClientImpl implements S3Client {
                     observation.observeAwsRequestId(amxRequestId);
                     observation.observeAwsExtendedId(rs.headers().getFirst("x-amz-id-2"));
                     if (rs.code() == HttpURLConnection.HTTP_OK) {
-                        var accessor = DateTimeFormatter.RFC_1123_DATE_TIME.parse(rs.headers().getFirst("Last-Modified"));
-                        var modified = Instant.from(accessor);
                         var contentLength = rs.headers().getFirst("content-length");
                         var contentLengthLong = contentLength == null
                             ? 0L
                             : Long.parseLong(contentLength);
-                        var etag = rs.headers().getFirst("ETag");
-                        var versionId = rs.headers().getFirst("x-amz-version-id");
-                        return new HeadObjectResult(bucket, key, etag, contentLengthLong, versionId, modified);
+                        return new HeadObjectResult(bucket, key, contentLengthLong, headers);
                     }
                     if (rs.code() == HttpURLConnection.HTTP_NOT_FOUND) {
                         if (required) {

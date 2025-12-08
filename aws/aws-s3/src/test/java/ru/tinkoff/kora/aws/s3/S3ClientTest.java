@@ -23,6 +23,8 @@ import ru.tinkoff.kora.aws.s3.model.response.ListBucketResult;
 import ru.tinkoff.kora.http.client.ok.OkHttpClient;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Arrays;
@@ -48,7 +50,7 @@ class S3ClientTest {
 
     AwsCredentials credentials = AwsCredentials.of("minioadmin", "minioadmin");
     AwsCredentials invalidCredentials = AwsCredentials.of("test", "test");
-    S3Config config;
+    S3ClientConfig config;
 
     @BeforeAll
     static void beforeAll() throws Exception {
@@ -70,9 +72,9 @@ class S3ClientTest {
 
     @BeforeEach
     void setUp() {
-        this.config = mock(S3Config.class);
+        this.config = mock(S3ClientConfig.class);
         when(config.endpoint()).thenReturn("http://" + minio.getHost() + ":" + minio.getMappedPort(9000));
-        when(config.addressStyle()).thenReturn(S3Config.AddressStyle.PATH);
+        when(config.addressStyle()).thenReturn(S3ClientConfig.AddressStyle.PATH);
         when(config.region()).thenReturn("us-east-1");
         when(config.upload()).thenReturn(Mockito.mock());
         when(config.upload().singlePartUploadLimit()).thenCallRealMethod();
@@ -438,8 +440,19 @@ class S3ClientTest {
         void testPutObject() throws Exception {
             var key = UUID.randomUUID().toString();
             var content = randomBytes(1024 * 1024 * 8);
+            var writer = new S3Client.ContentWriter() {
+                @Override
+                public void write(OutputStream os) throws IOException {
+                    os.write(content);
+                }
+
+                @Override
+                public long length() {
+                    return content.length;
+                }
+            };
             try {
-                var etag = s3Client().putObject(credentials, "test", key, os -> os.write(content), content.length);
+                var etag = s3Client().putObject(credentials, "test", key, writer);
                 assertThat(etag)
                     .isNotNull()
                     .isNotEmpty();
@@ -517,7 +530,18 @@ class S3ClientTest {
 
             var uploadId = s3Client().createMultipartUpload(credentials, "test", key);
             try {
-                var etag1 = s3Client().uploadPart(credentials, "test", key, uploadId, 1, os -> os.write(content1), content1.length);
+                var writer = new S3Client.ContentWriter() {
+                    @Override
+                    public void write(OutputStream os) throws IOException {
+                        os.write(content1);
+                    }
+
+                    @Override
+                    public long length() {
+                        return content1.length;
+                    }
+                };
+                var etag1 = s3Client().uploadPart(credentials, "test", key, uploadId, 1, writer);
                 assertThat(etag1).isNotNull();
                 var etag2 = s3Client().uploadPart(credentials, "test", key, uploadId, 2, content2, 0, content2.length);
                 assertThat(etag2).isNotNull();
@@ -542,7 +566,18 @@ class S3ClientTest {
 
             var uploadId = s3Client().createMultipartUpload(credentials, "test", key);
             try {
-                var part1 = s3Client().uploadPart(credentials, "test", key, uploadId, 1, os -> os.write(content1), content1.length);
+                var writer = new S3Client.ContentWriter() {
+                    @Override
+                    public void write(OutputStream os) throws IOException {
+                        os.write(content1);
+                    }
+
+                    @Override
+                    public long length() {
+                        return content1.length;
+                    }
+                };
+                var part1 = s3Client().uploadPart(credentials, "test", key, uploadId, 1, writer);
                 var part2 = s3Client().uploadPart(credentials, "test", key, uploadId, 2, content2, 0, content2.length);
 
                 var etag = s3Client().completeMultipartUpload(
