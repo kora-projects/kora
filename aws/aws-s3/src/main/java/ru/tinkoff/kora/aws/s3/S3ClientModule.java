@@ -16,8 +16,11 @@ public interface S3ClientModule {
         return new DefaultS3ClientTelemetryFactory(tracer, meterRegistry);
     }
 
-    default S3ClientFactory defaultS3ClientFactory(HttpClient client) {
-        return config -> new S3ClientImpl(client, config);
+    default S3ClientFactory defaultS3ClientFactory(HttpClient client, S3ClientTelemetryFactory telemetryFactory) {
+        return config -> {
+            var telemetry = telemetryFactory.get(config);
+            return new S3ClientImpl(client, config, telemetry);
+        };
     }
 
     default ConfigValueExtractor<AwsCredentials> awsCredentialsConfigValueExtractor() {

@@ -12,7 +12,6 @@ import ru.tinkoff.kora.aws.s3.model.response.ListBucketResult;
 import ru.tinkoff.kora.aws.s3.model.response.ListMultipartUploadsResult;
 import ru.tinkoff.kora.aws.s3.model.response.ListMultipartUploadsResult.Upload;
 import ru.tinkoff.kora.aws.s3.model.response.ListPartsResult;
-import ru.tinkoff.kora.aws.s3.telemetry.NoopS3ClientTelemetry;
 import ru.tinkoff.kora.aws.s3.telemetry.S3ClientTelemetry;
 import ru.tinkoff.kora.common.telemetry.Observation;
 import ru.tinkoff.kora.http.client.common.HttpClient;
@@ -32,15 +31,16 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 public class S3ClientImpl implements S3Client {
-    private final S3ClientTelemetry telemetry = NoopS3ClientTelemetry.INSTANCE;
+    private final S3ClientTelemetry telemetry;
     private final HttpClient httpClient;
     private final S3ClientConfig config;
     private final UriHelper uriHelper;
 
-    public S3ClientImpl(HttpClient httpClient, S3ClientConfig config) {
+    public S3ClientImpl(HttpClient httpClient, S3ClientConfig config, S3ClientTelemetry telemetry) {
         this.httpClient = httpClient;
         this.config = config;
         this.uriHelper = new UriHelper(config);
+        this.telemetry = telemetry;
     }
 
     @Nullable
