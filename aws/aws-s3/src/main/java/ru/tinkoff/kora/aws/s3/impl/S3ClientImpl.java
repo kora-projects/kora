@@ -429,7 +429,10 @@ public class S3ClientImpl implements S3Client {
 
             @Override
             public ListBucketResult.ListBucketItem next() {
-                return currentIterator.next();
+                if (hasNext()) {
+                    return currentIterator.next();
+                }
+                throw new NoSuchElementException();
             }
         };
     }

@@ -3,9 +3,7 @@ dependencies {
     implementation project(":kora-app-annotation-processor")
 
     testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation project(":database:database-common")
-    testImplementation project(":database:database-jdbc")
-    testImplementation project(":database:database-cassandra")
+    testImplementation project(":aws:aws-s3")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
