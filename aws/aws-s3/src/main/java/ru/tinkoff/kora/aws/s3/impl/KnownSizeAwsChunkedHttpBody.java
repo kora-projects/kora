@@ -45,14 +45,14 @@ class KnownSizeAwsChunkedHttpBody implements HttpBodyOutput {
             + AWS_CHUNK_ZERO_HEADER_SIZE;
     }
 
-    public KnownSizeAwsChunkedHttpBody(AwsRequestSigner signer, String region, int uploadChunkSize, String contentType, String rqSignature, S3Client.ContentWriter contentWriter, long streamLength, @Nullable String sha256Base64) {
+    public KnownSizeAwsChunkedHttpBody(AwsRequestSigner signer, String region, int uploadChunkSize, String contentType, String rqSignature, S3Client.ContentWriter contentWriter, @Nullable String sha256Base64) {
         this.region = region;
         this.signer = signer;
         this.contentWriter = contentWriter;
         this.date = ZonedDateTime.now(ZoneOffset.UTC);
         this.contentType = contentType;
         this.uploadChunkSize = uploadChunkSize;
-        this.contentLength = calculateFullBodyLength(uploadChunkSize, Integer.toHexString(uploadChunkSize), streamLength, sha256Base64);
+        this.contentLength = calculateFullBodyLength(uploadChunkSize, Integer.toHexString(uploadChunkSize), contentWriter.length(), sha256Base64);
         this.shaBase64 = sha256Base64;
         this.rqSignature = rqSignature;
     }

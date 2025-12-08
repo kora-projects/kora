@@ -8,18 +8,18 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.incubating.AwsIncubatingAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
-import ru.tinkoff.kora.aws.s3.S3Config;
+import ru.tinkoff.kora.aws.s3.S3ClientConfig;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 public class DefaultS3ClientTelemetry implements S3ClientTelemetry {
-    protected final S3Config config;
+    protected final S3ClientConfig config;
     protected final Tracer tracer;
     protected final MeterRegistry meterRegistry;
     protected final ConcurrentMap<Tags, Timer> durationCache = new ConcurrentHashMap<>();
 
-    public DefaultS3ClientTelemetry(S3Config config, Tracer tracer, MeterRegistry meterRegistry) {
+    public DefaultS3ClientTelemetry(S3ClientConfig config, Tracer tracer, MeterRegistry meterRegistry) {
         this.config = config;
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;

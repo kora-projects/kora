@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.aws.s3.S3Config;
+import ru.tinkoff.kora.aws.s3.S3ClientConfig;
 
 public class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryFactory {
     @Nullable
@@ -19,7 +19,7 @@ public class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryFactory
     }
 
     @Override
-    public S3ClientTelemetry get(S3Config s3Config) {
+    public S3ClientTelemetry get(S3ClientConfig s3Config) {
         var telemetryConfig = s3Config.telemetry();
         if (!telemetryConfig.logging().enabled() && !telemetryConfig.metrics().enabled() && !telemetryConfig.tracing().enabled()) {
             return NoopS3ClientTelemetry.INSTANCE;

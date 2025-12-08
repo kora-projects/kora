@@ -3,7 +3,7 @@ package ru.tinkoff.kora.aws.s3.impl;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.aws.s3.AwsCredentials;
 import ru.tinkoff.kora.aws.s3.S3Client;
-import ru.tinkoff.kora.aws.s3.S3Config;
+import ru.tinkoff.kora.aws.s3.S3ClientConfig;
 import ru.tinkoff.kora.aws.s3.exception.*;
 import ru.tinkoff.kora.aws.s3.impl.xml.*;
 import ru.tinkoff.kora.aws.s3.model.request.*;
@@ -34,10 +34,10 @@ import java.util.*;
 public class S3ClientImpl implements S3Client {
     private final S3ClientTelemetry telemetry = NoopS3ClientTelemetry.INSTANCE;
     private final HttpClient httpClient;
-    private final S3Config config;
+    private final S3ClientConfig config;
     private final UriHelper uriHelper;
 
-    public S3ClientImpl(HttpClient httpClient, S3Config config) {
+    public S3ClientImpl(HttpClient httpClient, S3ClientConfig config) {
         this.httpClient = httpClient;
         this.config = config;
         this.uriHelper = new UriHelper(config);
@@ -329,21 +329,22 @@ public class S3ClientImpl implements S3Client {
     }
 
     @Override
-    public String putObject(AwsCredentials credentials, String bucket, String key, @Nullable PutObjectArgs args, ContentWriter contentWriter, long len) throws S3ClientException {
+    public String putObject(AwsCredentials credentials, String bucket, String key, @Nullable PutObjectArgs args, ContentWriter contentWriter) throws S3ClientException {
         var observation = this.telemetry.observe("PutObject", bucket);
         observation.observeKey(key);
         return Observation.scoped(observation)
             .call(() -> {
+                var length = contentWriter.length();
                 var payloadSha256Hex = "STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER";
                 var headersMap = Map.of(
                     "x-amz-trailer", "x-amz-checksum-sha256",
-                    "x-amz-decoded-content-length", Long.toString(len),
+                    "x-amz-decoded-content-length", Long.toString(length),
                     "expect", "100-continue",
                     "content-encoding", "aws-chunked"
                 );
                 var headers = HttpHeaders.of();
                 headers.set("x-amz-trailer", "x-amz-checksum-sha256");
-                headers.set("x-amz-decoded-content-length", Long.toString(len));
+                headers.set("x-amz-decoded-content-length", Long.toString(length));
                 headers.set("expect", "100-continue");
                 headers.set("content-encoding", "aws-chunked");
                 if (args != null) {
@@ -369,7 +370,6 @@ public class S3ClientImpl implements S3Client {
                     "application/octet-stream",
                     signature.signature(),
                     contentWriter,
-                    len,
                     null
                 );
                 var request = HttpClientRequest.of("PUT", uri, "/{bucket}/{key}", headers, httpBody, this.config.requestTimeout());
@@ -805,18 +805,27 @@ public class S3ClientImpl implements S3Client {
     }
 
     @Override
-    public UploadedPart uploadPart(AwsCredentials credentials, String bucket, String key, String uploadId, int partNumber, UploadPartArgs args, ContentWriter contentWriter, long len) throws S3ClientException {
+    public UploadedPart uploadPart(AwsCredentials credentials, String bucket, String key, String uploadId, int partNumber, UploadPartArgs args, ContentWriter contentWriter) throws S3ClientException {
         var observation = this.telemetry.observe("UploadPart", bucket);
         observation.observeKey(key);
         return Observation.scoped(observation)
             .call(() -> {
+                var len = contentWriter.length();
                 var payloadSha256Hex = "STREAMING-AWS4-HMAC-SHA256-PAYLOAD-TRAILER";
-                var headersMap = Map.of(
-                    "x-amz-trailer", "x-amz-checksum-sha256",
-                    "x-amz-decoded-content-length", Long.toString(len),
-                    "expect", "100-continue",
-                    "content-encoding", "aws-chunked"
-                );
+                var headersMap = new HashMap<String, String>();
+                headersMap.put("x-amz-trailer", "x-amz-checksum-sha256");
+                headersMap.put("x-amz-decoded-content-length", Long.toString(len));
+                headersMap.put("expect", "100-continue");
+                headersMap.put("content-encoding", "aws-chunked");
+                var headers = HttpHeaders.of();
+                headers.set("x-amz-trailer", "x-amz-checksum-sha256");
+                headers.set("x-amz-decoded-content-length", Long.toString(len));
+                headers.set("expect", "100-continue");
+                headers.set("content-encoding", "aws-chunked");
+                if (args != null) {
+                    args.writeHeadersMap(headersMap);
+                    args.writeHeaders(headers);
+                }
                 var queryParams = new TreeMap<String, String>();
                 queryParams.put("partNumber", Integer.toString(partNumber));
                 queryParams.put("uploadId", uploadId);
@@ -827,15 +836,10 @@ public class S3ClientImpl implements S3Client {
 
                 var signature = signer.processRequest(this.config.region(), "s3", "PUT", uri, queryParams, headersMap, payloadSha256Hex);
 
-                var headers = HttpHeaders.of();
                 headers.set("x-amz-date", signature.amzDate());
                 headers.set("authorization", signature.authorization());
                 headers.set("host", uri.getAuthority());
                 headers.set("x-amz-content-sha256", payloadSha256Hex);
-                headers.set("x-amz-trailer", "x-amz-checksum-sha256");
-                headers.set("x-amz-decoded-content-length", Long.toString(len));
-                headers.set("expect", "100-continue");
-                headers.set("content-encoding", "aws-chunked");
 
                 var httpBody = new KnownSizeAwsChunkedHttpBody(
                     signer,
@@ -844,7 +848,6 @@ public class S3ClientImpl implements S3Client {
                     "application/octet-stream",
                     signature.signature(),
                     contentWriter,
-                    len,
                     null
                 );
                 var request = HttpClientRequest.of("PUT", uri, "/{bucket}/{key}?partNumber={partNumber}&uploadId={uploadId}", headers, httpBody, this.config.requestTimeout());

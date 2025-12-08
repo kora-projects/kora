@@ -7,7 +7,7 @@ import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import java.time.Duration;
 
 @ConfigValueExtractor
-public interface S3Config {
+public interface S3ClientConfig {
 
     String endpoint();
 

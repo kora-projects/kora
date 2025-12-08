@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.aws.s3.impl;
 
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.aws.s3.S3Config;
+import ru.tinkoff.kora.aws.s3.S3ClientConfig;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -9,11 +9,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 
 public class UriHelper {
-    private final S3Config.AddressStyle addressStyle;
+    private final S3ClientConfig.AddressStyle addressStyle;
     private final String scheme;
     private final String endpoint;
 
-    public UriHelper(S3Config config) {
+    public UriHelper(S3ClientConfig config) {
         var addressStyle = config.addressStyle();
         if (addressStyle == null) {
             throw new NullPointerException("addressStyle is null");
@@ -37,10 +37,10 @@ public class UriHelper {
     public URI uri(String bucket, String key, @Nullable CharSequence query) {
         key = encodePath(key);
         var path = "/" + key + (query == null || query.isEmpty() ? "" : "?" + query);
-        if (this.addressStyle == S3Config.AddressStyle.PATH) {
+        if (this.addressStyle == S3ClientConfig.AddressStyle.PATH) {
             return URI.create(this.scheme + "://" + this.endpoint + "/" + bucket + path);
         }
-        if (this.addressStyle == S3Config.AddressStyle.VIRTUAL_HOSTED) {
+        if (this.addressStyle == S3ClientConfig.AddressStyle.VIRTUAL_HOSTED) {
             return URI.create(this.scheme + "://" + bucket + "." + this.endpoint + path);
         }
         throw new IllegalStateException("AddressStyle is not supported: " + this.addressStyle);

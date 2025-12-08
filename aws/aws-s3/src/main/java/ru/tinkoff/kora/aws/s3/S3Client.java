@@ -126,17 +126,16 @@ public interface S3Client {
      * @param bucket        The bucket name to which the PUT action was initiated.
      * @param key           Object key for which the PUT action was initiated.
      * @param contentWriter Callback for writing data to object.
-     * @param len           The number of bytes to write.
      * @return the ETag of the uploaded object
      * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html">PutObject</a>
      */
-    String putObject(AwsCredentials credentials, String bucket, String key, @Nullable PutObjectArgs args, ContentWriter contentWriter, long len) throws S3ClientException;
+    String putObject(AwsCredentials credentials, String bucket, String key, @Nullable PutObjectArgs args, ContentWriter contentWriter) throws S3ClientException;
 
     /**
-     * @see #putObject(AwsCredentials, String, String, PutObjectArgs, ContentWriter, long)
+     * @see #putObject(AwsCredentials, String, String, PutObjectArgs, ContentWriter)
      */
-    default String putObject(AwsCredentials credentials, String bucket, String key, ContentWriter contentWriter, long len) throws S3ClientException {
-        return this.putObject(credentials, bucket, key, null, contentWriter, len);
+    default String putObject(AwsCredentials credentials, String bucket, String key, ContentWriter contentWriter) throws S3ClientException {
+        return this.putObject(credentials, bucket, key, null, contentWriter);
     }
 
     /**
@@ -218,17 +217,16 @@ public interface S3Client {
      * @param partNumber    Part number of part being uploaded. This is a positive integer between 1 and 10,000.
      * @param uploadId      Upload ID identifying the multipart upload whose part is being uploaded.
      * @param contentWriter Callback for writing data to object.
-     * @param len           The number of bytes to write.
      * @return Entity tag for the uploaded object.
      * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/API_UploadPart.html">UploadPart</a>
      */
-    UploadedPart uploadPart(AwsCredentials credentials, String bucket, String key, String uploadId, int partNumber, @Nullable UploadPartArgs args, ContentWriter contentWriter, long len) throws S3ClientException;
+    UploadedPart uploadPart(AwsCredentials credentials, String bucket, String key, String uploadId, int partNumber, @Nullable UploadPartArgs args, ContentWriter contentWriter) throws S3ClientException;
 
     /**
-     * @see #uploadPart(AwsCredentials, String, String, String, int, UploadPartArgs, ContentWriter, long)
+     * @see #uploadPart(AwsCredentials, String, String, String, int, UploadPartArgs, ContentWriter)
      */
-    default UploadedPart uploadPart(AwsCredentials credentials, String bucket, String key, String uploadId, int partNumber, ContentWriter contentWriter, long len) throws S3ClientException {
-        return this.uploadPart(credentials, bucket, key, uploadId, partNumber, null, contentWriter, len);
+    default UploadedPart uploadPart(AwsCredentials credentials, String bucket, String key, String uploadId, int partNumber, ContentWriter contentWriter) throws S3ClientException {
+        return this.uploadPart(credentials, bucket, key, uploadId, partNumber, null, contentWriter);
     }
 
     /**
@@ -294,6 +292,8 @@ public interface S3Client {
 
     interface ContentWriter extends Closeable {
         void write(OutputStream os) throws IOException;
+
+        long length();
 
         @Override
         default void close() throws IOException {}
