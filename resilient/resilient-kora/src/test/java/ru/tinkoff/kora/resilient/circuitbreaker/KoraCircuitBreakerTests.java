@@ -231,12 +231,12 @@ class KoraCircuitBreakerTests extends Assertions {
             true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final KoraCircuitBreaker circuitBreaker = new KoraCircuitBreaker("default", config, new CircuitBreakerPredicate() {
             @Override
-            public @Nonnull String name() {
+            public String name() {
                 return "kora";
             }
 
             @Override
-            public boolean test(@Nonnull Throwable throwable) {
+            public boolean test(Throwable throwable) {
                 return !(throwable instanceof UncheckedIOException);
             }
         }, new NoopCircuitBreakerMetrics());
