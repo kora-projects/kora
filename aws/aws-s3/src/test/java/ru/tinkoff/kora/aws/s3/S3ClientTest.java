@@ -20,6 +20,7 @@ import ru.tinkoff.kora.aws.s3.impl.xml.DeleteObjectsResult;
 import ru.tinkoff.kora.aws.s3.model.Range;
 import ru.tinkoff.kora.aws.s3.model.request.ListObjectsArgs;
 import ru.tinkoff.kora.aws.s3.model.response.ListBucketResult;
+import ru.tinkoff.kora.aws.s3.telemetry.NoopS3ClientTelemetry;
 import ru.tinkoff.kora.http.client.ok.OkHttpClient;
 
 import java.io.ByteArrayInputStream;
@@ -84,7 +85,7 @@ class S3ClientTest {
 
     S3Client s3Client() {
         var httpClient = new OkHttpClient(ok);
-        return new S3ClientImpl(httpClient, config);
+        return new S3ClientImpl(httpClient, config, NoopS3ClientTelemetry.INSTANCE);
     }
 
     @Nested
