@@ -9,11 +9,14 @@ import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.*;
 import org.mockito.Mockito;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
+import ru.tinkoff.kora.aws.s3.exception.S3ClientDeleteException;
 import ru.tinkoff.kora.aws.s3.exception.S3ClientErrorException;
 import ru.tinkoff.kora.aws.s3.exception.S3ClientNoSuchKeyException;
 import ru.tinkoff.kora.aws.s3.exception.S3ClientResponseException;
 import ru.tinkoff.kora.aws.s3.impl.S3ClientImpl;
+import ru.tinkoff.kora.aws.s3.impl.xml.DeleteObjectsResult;
 import ru.tinkoff.kora.aws.s3.model.Range;
 import ru.tinkoff.kora.aws.s3.model.request.ListObjectsArgs;
 import ru.tinkoff.kora.aws.s3.model.response.ListBucketResult;
@@ -371,6 +374,61 @@ class S3ClientTest {
                 .isInstanceOf(ErrorResponseException.class)
                 .extracting("errorResponse")
                 .hasFieldOrPropertyWithValue("code", "NoSuchKey");
+        }
+
+        @Test
+        void testDeleteObjectsWithError() throws Exception {
+            var policy = """
+                {
+                  "Version": "2012-10-17",
+                  "Statement": [
+                    {
+                      "Action": [
+                        "s3:GetObject"
+                      ],
+                      "Effect": "Allow",
+                      "Resource": [
+                        "arn:aws:s3:::testdeleteobjectswitherror/*"
+                      ],
+                      "Sid": ""
+                    }
+                  ]
+                }
+                """;
+            minio.copyFileToContainer(Transferable.of(policy), "/tmp/getonly.json");
+            minio.execInContainer("mc", "alias", "set", "minioadmin", "http://localhost:9000", "minioadmin", "minioadmin");
+            minio.execInContainer("mc", "admin", "policy", "create", "minioadmin", "getonly", "/tmp/getonly.json");
+            minio.execInContainer("mc", "admin", "user", "add", "minioadmin", "testDeleteObjectsWithError", "testDeleteObjectsWithError");
+            minio.execInContainer("mc", "admin", "policy", "attach", "minioadmin", "getonly", "--user=testDeleteObjectsWithError");
+
+            var key1 = UUID.randomUUID().toString();
+            var key2 = UUID.randomUUID().toString();
+            var content = UUID.randomUUID().toString().getBytes(StandardCharsets.UTF_8);
+            minioClient.putObject(PutObjectArgs.builder()
+                .bucket("test")
+                .object(key1)
+                .contentType("text/plain")
+                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .build());
+            minioClient.putObject(PutObjectArgs.builder()
+                .bucket("test")
+                .object(key2)
+                .contentType("text/plain")
+                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .build());
+            try {
+                assertThatThrownBy(() -> s3Client().deleteObjects(AwsCredentials.of("testDeleteObjectsWithError", "testDeleteObjectsWithError"), "test", List.of(key1, key2)))
+                    .isInstanceOf(S3ClientDeleteException.class)
+                    .asInstanceOf(InstanceOfAssertFactories.throwable(S3ClientDeleteException.class))
+                    .extracting(S3ClientDeleteException::getErrors, InstanceOfAssertFactories.list(DeleteObjectsResult.Error.class))
+                    .containsExactly(
+                        new DeleteObjectsResult.Error("AccessDenied", key1, "Access Denied.", null),
+                        new DeleteObjectsResult.Error("AccessDenied", key2, "Access Denied.", null)
+                    )
+                ;
+            } finally {
+                minio.execInContainer("mc", "admin", "user", "remove", "testDeleteObjectsWithError");
+            }
         }
     }
 

@@ -89,7 +89,7 @@ public class S3ClientImpl implements S3Client {
                     }
                     if (rs.code() == HttpURLConnection.HTTP_NOT_FOUND) {
                         if (required) {
-                            throw new S3ClientErrorException(rs.code(), "NoSuchKey", "Object does not exist", amxRequestId);
+                            throw new S3ClientNoSuchKeyException(rs.code(), "NoSuchKey", "Object does not exist", amxRequestId);
                         } else {
                             return null;
                         }
