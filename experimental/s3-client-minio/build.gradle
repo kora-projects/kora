@@ -11,5 +11,4 @@ dependencies {
     implementation project(":config:config-common")
 
     testImplementation project(":internal:test-logging")
-    testImplementation libs.testcontainers.junit.jupiter
 }
