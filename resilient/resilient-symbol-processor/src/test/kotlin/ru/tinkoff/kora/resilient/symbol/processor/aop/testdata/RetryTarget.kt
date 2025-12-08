@@ -50,15 +50,6 @@ open class RetryTarget {
         return arg
     }
 
-    @Retry("customZeroAttempts")
-    open fun retryFlowZeroAttempt(arg: String): Flow<String> {
-        return flow {
-            logger.info("Retry Flow executed for: {}", arg)
-            check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
-            emit(arg)
-        }
-    }
-
     @Retry("customDisabled")
     open fun retrySyncDisabled(arg: String): String {
         logger.info("Retry Sync executed for: {}", arg)
@@ -71,15 +62,6 @@ open class RetryTarget {
         logger.info("Retry Suspend executed for: {}", arg)
         check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
         return arg
-    }
-
-    @Retry("customDisabled")
-    open fun retryFlowDisabled(arg: String): Flow<String> {
-        return flow {
-            logger.info("Retry Flow executed for: {}", arg)
-            check(retryAttempts.incrementAndGet() >= stopFailAfterAttempts.get()) { "Ops" }
-            emit(arg)
-        }
     }
 
     open fun setFailAttempts(attempts: Int) {
