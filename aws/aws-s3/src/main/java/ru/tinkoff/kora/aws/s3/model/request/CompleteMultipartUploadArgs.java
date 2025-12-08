@@ -61,6 +61,21 @@ public class CompleteMultipartUploadArgs {
     @Nullable
     public String sseCustomerKeyMD5;
 
+    @Nullable
+    public static CompleteMultipartUploadArgs from(@Nullable PutObjectArgs args) {
+        if (args == null) {
+            return null;
+        }
+        var r = new CompleteMultipartUploadArgs();
+        r.requestPayer = args.requestPayer;
+        r.expectedBucketOwner = args.expectedBucketOwner;
+        r.ifMatch = args.ifMatch;
+        r.sseCustomerAlgorithm = args.sseCustomerAlgorithm;
+        r.sseCustomerKey = args.sseCustomerKey;
+        r.sseCustomerKeyMD5 = args.sseCustomerKeyMD5;
+        return r;
+    }
+
 
     public void writeHeaders(MutableHttpHeaders headers) {
         if (this.requestPayer != null) {

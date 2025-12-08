@@ -75,12 +75,12 @@ class KnownSizeAwsChunkedHttpBody implements HttpBodyOutput {
 
     @Override
     public void write(OutputStream os) throws IOException {
-        try (var wrappedOs = new BlaBlaOutputStream(os, new byte[uploadChunkSize], this.shaBase64 == null ? DigestUtils.sha256() : null)) {
+        try (var wrappedOs = new AwsChunkedOutputStream(os, new byte[uploadChunkSize], this.shaBase64 == null ? DigestUtils.sha256() : null)) {
             this.contentWriter.write(wrappedOs);
         }
     }
 
-    private class BlaBlaOutputStream extends OutputStream {
+    private class AwsChunkedOutputStream extends OutputStream {
         private final OutputStream os;
         private final byte[] buf;
         private int pos = 0;
@@ -89,7 +89,7 @@ class KnownSizeAwsChunkedHttpBody implements HttpBodyOutput {
         @Nullable
         private final MessageDigest sha256;
 
-        private BlaBlaOutputStream(OutputStream os, byte[] buf, @Nullable MessageDigest sha256) {
+        private AwsChunkedOutputStream(OutputStream os, byte[] buf, @Nullable MessageDigest sha256) {
             this.os = os;
             this.buf = buf;
             this.sha256 = sha256;

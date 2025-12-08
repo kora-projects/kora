@@ -176,6 +176,41 @@ public class CreateMultipartUploadArgs {
     @Nullable
     public String expectedBucketOwner;
 
+    @Nullable
+    public static CreateMultipartUploadArgs from(@Nullable PutObjectArgs args) {
+        if (args == null) {
+            return null;
+        }
+        var r = new CreateMultipartUploadArgs();
+        r.acl = args.acl;
+        r.cacheControl = args.cacheControl;
+        r.contentDisposition = args.contentDisposition;
+        r.contentEncoding = args.contentEncoding;
+        r.contentLanguage = args.contentLanguage;
+        r.contentType = args.contentType;
+        r.expires = args.expires;
+        r.grantFullControl = args.grantFullControl;
+        r.grantRead = args.grantRead;
+        r.grantReadAcp = args.grantReadAcp;
+        r.grantWriteAcp = args.grantWriteAcp;
+        r.serverSideEncryption = args.serverSideEncryption;
+        r.storageClass = args.storageClass;
+        r.websiteRedirectLocation = args.websiteRedirectLocation;
+        r.sseCustomerAlgorithm = args.sseCustomerAlgorithm;
+        r.sseCustomerKey = args.sseCustomerKey;
+        r.sseCustomerKeyMD5 = args.sseCustomerKeyMD5;
+        r.sseKmsKeyId = args.sseKmsKeyId;
+        r.sseKmsEncryptionContext = args.sseKmsEncryptionContext;
+        r.bucketKeyEnabled = args.bucketKeyEnabled;
+        r.requestPayer = args.requestPayer;
+        r.tagging = args.tagging;
+        r.objectLockMode = args.objectLockMode;
+        r.objectLockRetainUntilDate = args.objectLockRetainUntilDate;
+        r.objectLockLegalHoldStatus = args.objectLockLegalHoldStatus;
+        r.expectedBucketOwner = args.expectedBucketOwner;
+        return r;
+    }
+
 
     public void writeHeaders(MutableHttpHeaders headers) {
         if (this.acl != null) {

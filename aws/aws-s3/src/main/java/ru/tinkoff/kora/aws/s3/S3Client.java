@@ -121,7 +121,7 @@ public interface S3Client {
     }
 
     /**
-     * Adds an object to a bucket.
+     * Adds an object to a bucket using aws-chunked encoding with config defined buffer size {@link S3ClientConfig.UploadConfig#chunkSize()}
      *
      * @param bucket        The bucket name to which the PUT action was initiated.
      * @param key           Object key for which the PUT action was initiated.
