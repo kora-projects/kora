@@ -12,7 +12,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateComponent
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateModule
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
@@ -344,7 +343,7 @@ class KoraAppProcessor(
         val initBlock = CodeBlock.builder()
             .addStatement("val self = %T", graphTypeName)
             .addStatement("val impl = %T()", implClass)
-            .addStatement("graphDraw =  %T(%T::class.java)", ApplicationGraphDraw::class, declaration.toClassName())
+            .addStatement("graphDraw =  %T(%T::class.java)", CommonClassNames.applicationGraphDraw, declaration.toClassName())
         for (i in 0 until holders) {
             initBlock.add("%N = %T(graphDraw, impl", "holder$i", graphTypeName.nestedClass("ComponentHolder$i"))
             for (j in 0 until i) {
@@ -354,7 +353,7 @@ class KoraAppProcessor(
         }
 
         val supplierMethodBuilder = FunSpec.builder("graph")
-            .returns(ApplicationGraphDraw::class)
+            .returns(CommonClassNames.applicationGraphDraw)
             .addCode("\nreturn graphDraw\n", declaration.simpleName.asString() + "Graph")
         return fileSpec.addType(
             classBuilder
@@ -375,11 +374,11 @@ class KoraAppProcessor(
         val declaration = component.declaration
         statement.add("%N = graphDraw.addNode0(map[%S], ", component.fieldName, component.fieldName)
         statement.indent().add("\n")
-        statement.add("arrayOf(")
-        for (tag in component.tags) {
-            statement.add("%L::class.java, ", tag)
+        if (component.tag == null) {
+            statement.add("null,\n")
+        } else {
+            statement.add("%L::class.java,\n", component.tag)
         }
-        statement.add("),\n")
         statement.add("{ ")
         val dependenciesCode = this.getDependenciesCode(ctx, component, components)
 

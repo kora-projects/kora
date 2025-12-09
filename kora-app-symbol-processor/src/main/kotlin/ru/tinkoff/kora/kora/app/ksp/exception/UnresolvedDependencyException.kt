@@ -10,6 +10,6 @@ data class UnresolvedDependencyException(
     override val message: String,
     val forElement: KSDeclaration,
     val missingType: KSType,
-    val missingTag: Set<String>,
+    val missingTag: String?,
     override val errors: List<ProcessingError> = listOf(ProcessingError(message.trimIndent(), forElement, Diagnostic.Kind.ERROR)),
 ) : ProcessingErrorException(errors)

@@ -20,9 +20,9 @@ import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -54,12 +54,12 @@ class KoraAppProcessorTest {
 
         Assertions.assertThat(graphDraw.getNodes()).hasSize(9);
 
-        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.NotEmptyOptionalParameter.class)).value()).isNotNull();
-        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.EmptyOptionalParameter.class)).value()).isNull();
-        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.NotEmptyValueOfOptional.class)).value()).isNotNull();
-        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.EmptyValueOfOptional.class)).value()).isNull();
-        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.NotEmptyNullable.class)).value()).isNotNull();
-        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.EmptyNullable.class)).value()).isNull();
+        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.NotEmptyOptionalParameter.class, null)).value()).isNotNull();
+        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.EmptyOptionalParameter.class, null)).value()).isNull();
+        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.NotEmptyValueOfOptional.class, null)).value()).isNotNull();
+        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.EmptyValueOfOptional.class, null)).value()).isNull();
+        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.NotEmptyNullable.class, null)).value()).isNotNull();
+        Assertions.assertThat(graph.get(findNodeOf(graphDraw, AppWithOptionalComponents.EmptyNullable.class, null)).value()).isNull();
     }
 
     @Test
@@ -125,30 +125,30 @@ class KoraAppProcessorTest {
         var l1 = graph.get(classWithNonTaggedAllOf.get(0));
         Assertions.assertThat(l1.allOfSuperclass()).hasSize(1);
 
-        var classWithTaggedAllOf = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithAllOf.class, AppWithAllOfComponents.Superclass.class, AppWithAllOfComponents.Superclass.class);
+        var classWithTaggedAllOf = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithAllOf.class, AppWithAllOfComponents.Superclass.class);
         Assertions.assertThat(classWithTaggedAllOf).hasSize(1);
         var l2 = graph.get(classWithTaggedAllOf.get(0));
         Assertions.assertThat(l2.allOfSuperclass()).hasSize(1);
 
 
-        var classWithAllOfNodesProxies = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithAllValueOf.class);
+        var classWithAllOfNodesProxies = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithAllValueOf.class, null);
         Assertions.assertThat(classWithAllOfNodesProxies).hasSize(1);
         var lp = graph.get(classWithAllOfNodesProxies.get(0));
         Assertions.assertThat(lp.allOfSuperclass()).hasSize(5);
 
 
-        var classWithInterfaces = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithInterfaces.class);
+        var classWithInterfaces = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithInterfaces.class, null);
         Assertions.assertThat(classWithInterfaces).hasSize(1);
         var li = graph.get(classWithInterfaces.get(0));
         Assertions.assertThat(li.allSomeInterfaces()).hasSize(2);
 
-        var classWithInterfacesValueOf = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithInterfacesValueOf.class);
+        var classWithInterfacesValueOf = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithInterfacesValueOf.class, null);
         Assertions.assertThat(classWithInterfacesValueOf).hasSize(1);
         var lpi = graph.get(classWithInterfacesValueOf.get(0));
         Assertions.assertThat(lpi.allSomeInterfaces()).hasSize(2);
 
 
-        var classWithAllOfAnyTag = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithAllOfAnyTag.class);
+        var classWithAllOfAnyTag = this.findNodesOf(graphDraw, AppWithAllOfComponents.ClassWithAllOfAnyTag.class, null);
         Assertions.assertThat(classWithAllOfAnyTag).hasSize(1);
         var aoat = graph.get(classWithAllOfAnyTag.get(0));
         Assertions.assertThat(aoat.class5All()).hasSize(2);
@@ -267,34 +267,6 @@ class KoraAppProcessorTest {
                 s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], method=c2()");
                 s.assertThat(error.getMessage(Locale.US)).contains("FromModuleComponent[type=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1, module=MixedInModule[element=ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect], method=c3()");
             }));
-    }
-
-    @Test
-    void appWithMultipleTags() throws Throwable {
-        var graphDraw = testClass(AppWithMultipleTags.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(12);
-        var graph = graphDraw.init();
-        Assertions.assertThat(graph).isNotNull();
-
-        var nonTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3.class);
-        Assertions.assertThat(nonTaggedClass3).hasSize(1);
-
-        var anyTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3.class, AppWithMultipleTags.class);
-        Assertions.assertThat(anyTaggedClass3).hasSize(1);
-        Assertions.assertThat(graph.get(anyTaggedClass3.get(0)).class1s()).hasSize(4);
-
-        var tag1TaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3.class, AppWithMultipleTags.Tag1.class);
-        Assertions.assertThat(tag1TaggedClass3).hasSize(1);
-        Assertions.assertThat(graph.get(tag1TaggedClass3.get(0)).class1s()).hasSize(1);
-
-        var tag2Tag3Taggedlass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3.class, AppWithMultipleTags.Tag2.class, AppWithMultipleTags.Tag3.class);
-        Assertions.assertThat(tag2Tag3Taggedlass3).hasSize(1);
-        Assertions.assertThat(graph.get(tag2Tag3Taggedlass3.get(0)).class1s()).hasSize(2);
-
-
-        var tag4TaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3.class, AppWithMultipleTags.Tag4.class);
-        Assertions.assertThat(tag4TaggedClass3).hasSize(1);
-        Assertions.assertThat(graph.get(tag4TaggedClass3.get(0)).class1s()).hasSize(1);
     }
 
     @Test
@@ -453,14 +425,14 @@ class KoraAppProcessorTest {
         var graph = graphDraw.init();
         Assertions.assertThat(graph).isNotNull();
 
-        var class1Nodes = findNodesOf(graphDraw, AppWithDefaultComponent.Class1.class);
+        var class1Nodes = findNodesOf(graphDraw, AppWithDefaultComponent.Class1.class, null);
         Assertions.assertThat(class1Nodes).hasSize(1);
         var class1Node = class1Nodes.get(0);
         assertThat(graph.get(class1Node).value()).isEqualTo(2);
     }
 
     @SuppressWarnings("unchecked")
-    <T> Node<T> findNodeOf(ApplicationGraphDraw graphDraw, Class<T> type, Class<?>... tags) {
+    <T> Node<T> findNodeOf(ApplicationGraphDraw graphDraw, Class<T> type, Class<?> tags) {
         var nodes = findNodesOf(graphDraw, type, tags);
 
         if (nodes.size() != 1) {
@@ -470,10 +442,10 @@ class KoraAppProcessorTest {
     }
 
     @SuppressWarnings("unchecked")
-    <T> List<Node<? extends T>> findNodesOf(ApplicationGraphDraw graphDraw, Class<T> type, Class<?>... tags) {
+    <T> List<Node<? extends T>> findNodesOf(ApplicationGraphDraw graphDraw, Class<T> type, Class<?> tag) {
         var graph = graphDraw.init();
-        var anyTag = Arrays.asList(tags).contains(Tag.Any.class);
-        var nonTagged = tags.length == 0;
+        var anyTag = Objects.equals(tag, Tag.Any.class);
+        var nonTagged = tag == null;
         return graphDraw.getNodes().stream()
             .filter(node -> type.isInstance(graph.get(node)))
             .map(node -> (Node<? extends T>) node)
@@ -482,9 +454,9 @@ class KoraAppProcessorTest {
                     return true;
                 }
                 if (nonTagged) {
-                    return node.tags().length == 0;
+                    return node.tag() == null;
                 }
-                return Arrays.stream(tags).allMatch(tag -> Arrays.asList(node.tags()).contains(tag));
+                return Objects.equals(node.tag(), tag);
             })
             .collect(Collectors.toList());
     }

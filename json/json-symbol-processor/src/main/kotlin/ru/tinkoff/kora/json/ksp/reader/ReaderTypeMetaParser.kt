@@ -8,14 +8,14 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
-import ru.tinkoff.kora.common.naming.NameConverter
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType
 import ru.tinkoff.kora.json.ksp.findJsonField
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.KspCommonUtils
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.getNameConverter
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 
 class ReaderTypeMetaParser(
@@ -98,7 +98,7 @@ class ReaderTypeMetaParser(
         )
     }
 
-    private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, jsonField: KSAnnotation?, nameConverter: NameConverter?): JsonClassReaderMeta.FieldMeta {
+    private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, jsonField: KSAnnotation?, nameConverter: KspCommonUtils.NameConverter?): JsonClassReaderMeta.FieldMeta {
         val jsonName = parseJsonName(parameter, jsonField, nameConverter)
         val reader = jsonField?.findValueNoDefault<KSType>("reader")
         val typeMeta = this.parseReaderFieldType(jsonClass, parameter)
@@ -130,7 +130,7 @@ class ReaderTypeMetaParser(
     private fun isJsonNullable(type: KSType) = type.declaration is KSClassDeclaration
         && JsonTypes.jsonNullable == (type.declaration as KSClassDeclaration).toClassName()
 
-    private fun parseJsonName(param: KSValueParameter, jsonField: KSAnnotation?, nameConverter: NameConverter?): String {
+    private fun parseJsonName(param: KSValueParameter, jsonField: KSAnnotation?, nameConverter: KspCommonUtils.NameConverter?): String {
         if (jsonField == null) {
             return if (nameConverter != null) {
                 nameConverter.convert(param.name!!.asString())

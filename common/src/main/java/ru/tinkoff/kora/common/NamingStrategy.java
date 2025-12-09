@@ -18,5 +18,5 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.CLASS)
 public @interface NamingStrategy {
 
-    Class<? extends NameConverter>[] value();
+    Class<? extends NameConverter> value();
 }

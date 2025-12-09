@@ -10,7 +10,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ServiceLoader;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public record Extensions(List<KoraExtension> extensions) {
@@ -23,7 +22,7 @@ public record Extensions(List<KoraExtension> extensions) {
             .flatMap(f -> f.create(processingEnvironment).stream())
             .toList();
 
-        if(!extensions.isEmpty() && log.isInfoEnabled()) {
+        if (!extensions.isEmpty() && log.isInfoEnabled()) {
             String out = extensions.stream()
                 .map(e -> e.getClass().getCanonicalName())
                 .collect(Collectors.joining("\n"))
@@ -37,7 +36,7 @@ public record Extensions(List<KoraExtension> extensions) {
 
 
     @Nullable
-    public KoraExtension.KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tag) {
+    public KoraExtension.KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror, @Nullable String tag) {
         var extensions = new ArrayList<KoraExtension.KoraExtensionDependencyGenerator>();
         for (var extension : this.extensions) {
             var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror, tag);

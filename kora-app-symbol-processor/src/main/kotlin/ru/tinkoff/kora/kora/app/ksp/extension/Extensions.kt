@@ -14,10 +14,10 @@ data class Extensions(val extensions: List<KoraExtension>) {
         }
     }
 
-    fun findExtension(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+    fun findExtension(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
         val extensions = ArrayList<() -> ExtensionResult>()
         for (extension in this.extensions) {
-            val generator = extension.getDependencyGenerator(resolver, type, tags)
+            val generator = extension.getDependencyGenerator(resolver, type, tag)
             if (generator != null) {
                 extensions.add(generator)
             }

@@ -128,21 +128,21 @@ public class CommonUtils {
         return result;
     }
 
-    public record MappersData(@Nullable List<TypeMirror> mapperClasses, Set<String> mapperTags) {
+    public record MappersData(@Nullable List<TypeMirror> mapperClasses, @Nullable String tag) {
         @Nullable
         public MappingData getMapping(Types types, TypeMirror type) {
-            if (this.mapperClasses == null && this.mapperTags.isEmpty()) {
+            if (this.mapperClasses == null && this.tag == null) {
                 return null;
             }
             for (var mapperClass : Objects.requireNonNullElse(mapperClasses, List.<TypeMirror>of())) {
                 if (types.isAssignable(mapperClass, type)) {
-                    return new MappingData(mapperClass, this.mapperTags);
+                    return new MappingData(mapperClass, this.tag);
                 }
             }
-            if (this.mapperTags.isEmpty()) {
+            if (this.tag.isEmpty()) {
                 return null;
             }
-            return new MappingData(null, this.mapperTags);
+            return new MappingData(null, this.tag);
         }
 
         @Nullable
@@ -152,17 +152,17 @@ public class CommonUtils {
             }
             for (var mapperClass : mapperClasses) {
                 if (doesImplement(mapperClass, type)) {
-                    return new MappingData(mapperClass, this.mapperTags);
+                    return new MappingData(mapperClass, this.tag);
                 }
             }
-            if (this.mapperTags.isEmpty()) {
+            if (this.tag == null) {
                 return null;
             }
-            return new MappingData(null, this.mapperTags);
+            return new MappingData(null, this.tag);
         }
 
         public boolean isEmpty() {
-            return this.mapperTags == null && (this.mapperClasses == null || this.mapperClasses.isEmpty());
+            return this.tag == null && (this.mapperClasses == null || this.mapperClasses.isEmpty());
         }
 
         @Nullable
@@ -171,9 +171,9 @@ public class CommonUtils {
                 return null;
             }
             if (this.mapperClasses == null || this.mapperClasses.isEmpty()) {
-                return new MappingData(null, this.mapperTags);
+                return new MappingData(null, this.tag);
             }
-            return new MappingData(this.mapperClasses.get(0), this.mapperTags);
+            return new MappingData(this.mapperClasses.get(0), this.tag);
         }
     }
 
@@ -194,10 +194,10 @@ public class CommonUtils {
         return false;
     }
 
-    public record MappingData(@Nullable TypeMirror mapperClass, Set<String> mapperTags) {
+    public record MappingData(@Nullable TypeMirror mapperClass, @Nullable String mapperTag) {
         @Nullable
         public AnnotationSpec toTagAnnotation() {
-            return CommonUtils.toTagAnnotation(mapperTags);
+            return CommonUtils.toTagAnnotation(mapperTag);
         }
 
         public boolean isGeneric() {
@@ -216,29 +216,19 @@ public class CommonUtils {
     }
 
     @Nullable
-    public static AnnotationSpec toTagAnnotation(Set<String> t) {
+    public static AnnotationSpec toTagAnnotation(String t) {
         if (t == null || t.isEmpty()) {
             return null;
         }
-
-        var tags = CodeBlock.builder().add("{");
-        for (var i = t.iterator(); i.hasNext(); ) {
-            var tag = i.next();
-            tags.add("$L.class", tag);
-            if (i.hasNext()) {
-                tags.add(", ");
-            }
-        }
-        tags.add("}");
-        return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", tags.build()).build();
+        return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", CodeBlock.of("$L.class", t)).build();
     }
 
     public static MappersData parseMapping(Element element) {
         var tag = TagUtils.parseTagValue(element);
         var mappings = AnnotationUtils.findAnnotations(element, CommonClassNames.mapping, CommonClassNames.mappings);
 
-        if (mappings.isEmpty() && tag.isEmpty()) {
-            return new MappersData(null, tag);
+        if (mappings.isEmpty() && tag == null) {
+            return new MappersData(null, null);
         }
         var mapping = mappings.stream()
             .map(m -> AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(m, "value"))
@@ -253,10 +243,9 @@ public class CommonUtils {
         if (annotation == null) {
             return null;
         }
-        var typeMirrors = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotation, "value");
-        if (typeMirrors == null || typeMirrors.isEmpty()) return null;
-        var mirror = typeMirrors.get(0);
-        if (mirror instanceof DeclaredType dt) {
+        var typeMirror = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "value");
+        if (typeMirror == null) return null;
+        if (typeMirror instanceof DeclaredType dt) {
             if (dt.asElement() instanceof TypeElement te) {
                 var className = te.getQualifiedName().toString();
                 try {

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.exception;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
@@ -8,27 +9,27 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Stream;
 
 public class UnresolvedDependencyException extends ProcessingErrorException {
     private final Element forElement;
     private final TypeMirror missingType;
-    private final Set<String> missingTag;
+    @Nullable
+    private final String missingTag;
 
-    public UnresolvedDependencyException(String message, Element forElement, TypeMirror missingType, Set<String> tag) {
+    public UnresolvedDependencyException(String message, Element forElement, TypeMirror missingType, @Nullable String tag) {
         this(message + "\n" + evaluateMessage(forElement), forElement, missingType, tag, List.of());
     }
 
-    public UnresolvedDependencyException(ProcessingError error, TypeMirror missingType, Set<String> tag) {
+    public UnresolvedDependencyException(ProcessingError error, TypeMirror missingType, @Nullable String tag) {
         this(error.message(), error.element(), missingType, tag, List.of());
     }
 
-    public UnresolvedDependencyException(String message, Element forElement, TypeMirror missingType, Set<String> missingTag, List<ProcessingError> errors) {
+    public UnresolvedDependencyException(String message, Element forElement, TypeMirror missingType, @Nullable String missingTag, List<ProcessingError> errors) {
         this(forElement, missingType, missingTag, Stream.concat(Stream.of(new ProcessingError(message, forElement)), errors.stream()).toList());
     }
 
-    public UnresolvedDependencyException(Element forElement, TypeMirror missingType, Set<String> missingTag, List<ProcessingError> errors) {
+    public UnresolvedDependencyException(Element forElement, TypeMirror missingType, @Nullable String missingTag, List<ProcessingError> errors) {
         super(errors);
         this.forElement = forElement;
         this.missingType = missingType;
@@ -60,7 +61,8 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
         return missingType;
     }
 
-    public Set<String> getMissingTag() {
+    @Nullable
+    public String getMissingTag() {
         return missingTag;
     }
 }

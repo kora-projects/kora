@@ -1,12 +1,10 @@
 package ru.tinkoff.kora.kora.app.ksp.component
 
 import com.google.devtools.ksp.symbol.KSType
-import ru.tinkoff.kora.ksp.common.TagUtils.tagsMatch
+import ru.tinkoff.kora.ksp.common.TagUtils.tagMatches
 
-data class DependencyClaim(val type: KSType, val tags: Set<String>, val claimType: DependencyClaimType) {
-    fun tagsMatches(other: Collection<String>): Boolean {
-        return tags.tagsMatch(other)
-    }
+data class DependencyClaim(val type: KSType, val tag: String?, val claimType: DependencyClaimType) {
+    fun tagMatches(other: String?) = tag.tagMatches(other)
 
     enum class DependencyClaimType {
         ONE_REQUIRED,

@@ -14,18 +14,17 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.util.Elements;
 import java.util.Objects;
-import java.util.Set;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.*;
 
 public class KafkaConsumerConfigGenerator {
 
     public KafkaConfigData generate(Elements elements, ExecutableElement method, AnnotationMirror listenerAnnotation) {
-        var targetTags = findConsumerUserTags(method);
+        var targetTag = findConsumerUserTag(method);
         TypeSpec tagBuilded;
-        if (targetTags == null) {
+        if (targetTag == null) {
             var tag = prepareConsumerTag(elements, method);
-            targetTags = Set.of(tag);
+            targetTag = tag;
             tagBuilded = TypeSpec.classBuilder(tag.simpleName())
                 .addAnnotation(AnnotationUtils.generated(KafkaConsumerConfigGenerator.class))
                 .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
@@ -42,7 +41,7 @@ public class KafkaConsumerConfigGenerator {
             .addStatement("var configValue = config.get($S)", configPath)
             .addStatement("return extractor.extract(configValue)")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-            .addAnnotation(TagUtils.makeAnnotationSpecForTypes(targetTags));
+            .addAnnotation(TagUtils.makeAnnotationSpecForTypes(targetTag));
 
         return new KafkaConfigData(tagBuilded, methodBuilder.build());
     }

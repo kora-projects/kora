@@ -76,7 +76,7 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         val m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory::class.java, KafkaPublisherConfig::class.java, Serializer::class.java, Serializer::class.java)
         assertThat(m).isNotNull()
         assertThat(m.parameters[2].getAnnotationsByType(Tag::class.java)).isNotEmpty()
-        assertThat(m.parameters[2].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(arrayOf(String::class))
+        assertThat(m.parameters[2].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(String::class)
         assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)).isEmpty()
     }
 
@@ -97,7 +97,7 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         assertThat(m).isNotNull()
         assertThat(m.parameters[2].getAnnotationsByType(Tag::class.java)).isEmpty()
         assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)).isNotEmpty()
-        assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(arrayOf(String::class))
+        assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(String::class)
     }
 
     @Test
@@ -191,7 +191,7 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         )
         assertThat(m).isNotNull()
         assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)).isNotEmpty()
-        assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(arrayOf(String::class))
+        assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(String::class)
     }
 
     @Test
@@ -266,7 +266,7 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         assertThat(m).isNotNull()
         assertThat(m.parameters[3].getAnnotationsByType(Tag::class.java)).isEmpty()
         assertThat(m.parameters[4].getAnnotationsByType(Tag::class.java)).isNotEmpty()
-        assertThat(m.parameters[4].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(arrayOf(String::class))
+        assertThat(m.parameters[4].getAnnotationsByType(Tag::class.java)[0].value).isEqualTo(String::class)
     }
 
     @Test

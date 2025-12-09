@@ -67,7 +67,7 @@ object ComponentDependencyHelper {
     }
 
 
-    fun parseClaim(parameterType: KSType, tags: Set<String>, element: KSAnnotated): DependencyClaim {
+    fun parseClaim(parameterType: KSType, tag: String?, element: KSAnnotated): DependencyClaim {
         if (parameterType.isError) {
             throw ProcessingErrorException(ProcessingError("Dependency type parameter is not resolvable in the current round of processing: $element\nTry disabling Kora KSP processor dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", element, Diagnostic.Kind.WARNING))
         }
@@ -79,39 +79,39 @@ object ComponentDependencyHelper {
         if (typeName is ParameterizedTypeName) {
             val firstTypeParam = parameterType.arguments[0].type!!.resolve()
             if (typeName.rawType == CommonClassNames.typeRef) {
-                return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.TYPE_REF)
+                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.TYPE_REF)
             }
             if (typeName.rawType == CommonClassNames.all) {
                 val allOf = typeName.typeArguments[0]
                 if (allOf is ParameterizedTypeName) {
                     if (allOf.rawType == CommonClassNames.valueOf) {
-                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tags, DependencyClaim.DependencyClaimType.ALL_OF_VALUE)
+                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tag, DependencyClaim.DependencyClaimType.ALL_OF_VALUE)
                     }
                     if (allOf.rawType == CommonClassNames.promiseOf) {
-                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tags, DependencyClaim.DependencyClaimType.ALL_OF_PROMISE)
+                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tag, DependencyClaim.DependencyClaimType.ALL_OF_PROMISE)
                     }
                 }
-                return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.ALL)
+                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.ALL)
             }
             if (typeName.rawType == CommonClassNames.valueOf) {
                 if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
-                    return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF)
                 } else {
-                    return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.VALUE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.VALUE_OF)
                 }
             }
             if (typeName.rawType == CommonClassNames.promiseOf) {
                 if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
-                    return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF)
                 } else {
-                    return DependencyClaim(firstTypeParam, tags, DependencyClaim.DependencyClaimType.PROMISE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.PROMISE_OF)
                 }
             }
         }
         if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
-            return DependencyClaim(parameterType, tags, DependencyClaim.DependencyClaimType.NULLABLE_ONE)
+            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.NULLABLE_ONE)
         } else {
-            return DependencyClaim(parameterType, tags, DependencyClaim.DependencyClaimType.ONE_REQUIRED)
+            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.ONE_REQUIRED)
         }
     }
 }

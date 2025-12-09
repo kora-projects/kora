@@ -28,7 +28,7 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isSet
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
-import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 
@@ -394,18 +394,10 @@ class RouteProcessor {
     private fun KSAnnotation.parseInterceptor(): Interceptor {
         val interceptorType = this.findValueNoDefault<KSType>("value")!!.toTypeName()
         val interceptorTag = findValueNoDefault<KSAnnotation>("tag")
-        val interceptorTagAnnotationSpec = if (interceptorTag == null) {
-            null
-        } else {
-            @Suppress("UNCHECKED_CAST")
-            val tags = interceptorTag.arguments[0].value!! as List<KSType>
-            if (tags.isNotEmpty()) {
-                tags.makeTagAnnotationSpec()
-            } else {
-                null
-            }
-        }
-        return Interceptor(interceptorType, interceptorTagAnnotationSpec)
+            ?.findValueNoDefault<KSType>("value")
+            ?.toClassName()
+            ?.toTagAnnotation()
+        return Interceptor(interceptorType, interceptorTag)
     }
 
 

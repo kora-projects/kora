@@ -17,40 +17,35 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
     private val log = LoggerFactory.getLogger(this::class.java)
 
     init {
-        try {
-            DependencyModuleHintProvider::class.java.getResourceAsStream("/kora-modules.json").use { r ->
-                JsonFactoryBuilder().build().createParser(ObjectReadContext.empty(), r).use { parser -> hints = ModuleHint.parseList(parser) }
-            }
-        } catch (e: IOException) {
-            throw RuntimeException(e)
+        DependencyModuleHintProvider::class.java.getResourceAsStream("/kora-modules.json").use { r ->
+            JsonFactoryBuilder().build().createParser(ObjectReadContext.empty(), r).use { parser -> hints = ModuleHint.parseList(parser) }
         }
     }
 
     inner class Hint(
-        val type: KSType, val artifact: String, val module: String, val tags: Set<String>
+        val type: KSType, val artifact: String, val module: String, val tag: String?
     ) {
         fun message(): String {
-            if (tags.isEmpty()) {
+            if (tag == null) {
                 return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module \nArtifact dependency: $artifact\n"
             } else {
-                val tagsAsStr = tags.joinToString(", ", "{", "}") { "$it.class" }
-                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module (required tags: `@Tag($tagsAsStr)`)\nArtifact dependency: $artifact\n"
+                return "Missing component of type $type which can be provided by kora module, you may forgot to plug it\nModule class: $module (required tags: `@Tag($tag::class)`)\nArtifact dependency: $artifact\n"
             }
         }
     }
 
-    fun findHints(missingType: KSType, missingTag: Set<String>): List<Hint> {
+    fun findHints(missingType: KSType, missingTag: String?): List<Hint> {
         log.trace("Checking hints for {}/{}", missingTag, missingType)
         val result = mutableListOf<Hint>()
         for (hint in hints) {
             val matcher = hint.typeRegex.matcher(missingType.toTypeName().toString())
             if (matcher.matches()) {
-                if (this.tagMatches(missingTag, hint.tags)) {
+                if (this.tagMatches(missingTag, hint.tag)) {
                     log.trace("Hint {} matched!", hint)
-                    if (hint.tags.isEmpty()) {
-                        result.add(Hint(missingType, hint.artifact, hint.moduleName, setOf()))
+                    if (hint.tag == null) {
+                        result.add(Hint(missingType, hint.artifact, hint.moduleName, null))
                     } else {
-                        result.add(Hint(missingType, hint.artifact, hint.moduleName, hint.tags))
+                        result.add(Hint(missingType, hint.artifact, hint.moduleName, hint.tag))
                     }
                 } else {
                     log.trace("Hint {} doesn't match because of tag", hint)
@@ -62,25 +57,18 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
         return result
     }
 
-    private fun tagMatches(missingTags: Set<String>, hintTags: Set<String>): Boolean {
-        if (missingTags.isEmpty() && hintTags.isEmpty()) {
+    private fun tagMatches(missingTags: String?, hintTags: String?): Boolean {
+        if (missingTags == null && hintTags == null) {
             return true
         }
-
-        if (missingTags.size != hintTags.size) {
+        if (missingTags == null) {
             return false
         }
-
-        for (missingTag in missingTags) {
-            if (!hintTags.contains(missingTag)) {
-                return false
-            }
-        }
-        return true
+        return missingTags == hintTags
     }
 
     internal data class ModuleHint(
-        val tags: Set<String>,
+        val tag: String?,
         val typeRegex: Pattern,
         val moduleName: String,
         val artifact: String
@@ -112,6 +100,7 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                 var next = p.nextToken()
                 var typeRegex: String? = null
                 val tags: MutableSet<String> = HashSet()
+                var tag: String? = null
                 var moduleName: String? = null
                 var artifact: String? = null
                 while (next != JsonToken.END_OBJECT) {
@@ -132,6 +121,13 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                                 tags.add(p.valueAsString)
                                 next = p.nextToken()
                             }
+                        }
+
+                        "tag" -> {
+                            if (p.nextToken() != JsonToken.VALUE_STRING) {
+                                throw StreamReadException(p, "expected VALUE_STRING, got $next")
+                            }
+                            tag = p.valueAsString
                         }
 
                         "typeRegex" -> {
@@ -165,7 +161,13 @@ class DependencyModuleHintProvider(private val resolver: Resolver) {
                 if (typeRegex == null || moduleName == null || artifact == null) {
                     throw StreamReadException(p, "Some required fields missing")
                 }
-                return ModuleHint(tags, Pattern.compile(typeRegex.trim()), moduleName, artifact)
+                val finalTag = when {
+                    tag != null -> tag
+                    tags.size == 1 -> tags.first()
+                    tags.isNotEmpty() -> throw RuntimeException("Tags size should be 0 or 1")
+                    else -> null
+                }
+                return ModuleHint(finalTag, Pattern.compile(typeRegex.trim()), moduleName, artifact)
             }
 
             private val log = LoggerFactory.getLogger(DependencyModuleHintProvider::class.java)

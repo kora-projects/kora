@@ -89,7 +89,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class, Serializer.class);
         assertThat(m).isNotNull();
         assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(String.class);
         assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isEmpty();
     }
 
@@ -108,7 +108,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         assertThat(m).isNotNull();
         assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isEmpty();
         assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(String.class);
     }
 
     @Test
@@ -170,7 +170,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         var m = clazz.getMethod("testProducer_PublisherFactory", KafkaPublisherTelemetryFactory.class, KafkaPublisherConfig.class, compileResult.loadClass("$TestProducer_TopicConfig"), Serializer.class);
         assertThat(m).isNotNull();
         assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(String.class);
     }
 
     @Test
@@ -218,7 +218,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
         assertThat(m).isNotNull();
         assertThat(m.getParameters()[3].getAnnotationsByType(Tag.class)).isEmpty();
         assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)).isNotEmpty();
-        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(new Class<?>[]{String.class});
+        assertThat(m.getParameters()[4].getAnnotationsByType(Tag.class)[0].value()).isEqualTo(String.class);
     }
 
     @Test

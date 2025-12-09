@@ -16,8 +16,8 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 import java.util.concurrent.CompletionStage
 
 class HttpServerRequestMapperKoraExtension : KoraExtension {
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) {
             return null
         }
         if (type.toClassName() != httpServerRequestMapper) {
@@ -32,9 +32,11 @@ class HttpServerRequestMapperKoraExtension : KoraExtension {
         val requestMapperDecl = resolver.getClassDeclarationByName(httpServerRequestMapper.canonicalName)!!
         val completionStageDecl = resolver.getClassDeclarationByName(CompletionStage::class.qualifiedName!!)!!
 
-        val completionStageType = completionStageDecl.asType(listOf(
-            resolver.getTypeArgument(argType, Variance.INVARIANT)
-        ))
+        val completionStageType = completionStageDecl.asType(
+            listOf(
+                resolver.getTypeArgument(argType, Variance.INVARIANT)
+            )
+        )
         val asyncMapperType = requestMapperDecl.asType(
             listOf(
                 resolver.getTypeArgument(resolver.createKSTypeReferenceFromKSType(completionStageType), Variance.INVARIANT)

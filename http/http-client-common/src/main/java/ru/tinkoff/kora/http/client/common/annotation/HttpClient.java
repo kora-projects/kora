@@ -39,7 +39,7 @@ public @interface HttpClient {
      * <hr>
      * <b>English</b>: Tags {@link Tag} for your own telemetry
      */
-    Class<?>[] telemetryTag() default {};
+    Class<?> telemetryTag() default Tag.class;
 
-    Class<?>[] httpClientTag() default {};
+    Class<?> httpClientTag() default Tag.class;
 }

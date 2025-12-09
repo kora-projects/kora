@@ -243,7 +243,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     public void testEntityFieldMapping() {
         var repository = compileCassandra(List.of(), """
             public final class StringToJsonbParameterMapper implements CassandraParameterColumnMapper<String> {
-                
+            
                 @Override
                 public void apply(SettableByName<?> stmt, int index, String value) {
                     stmt.set(index, java.util.Map.of("test", value), java.util.Map.class);
@@ -251,7 +251,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
             }
             """, """
             public record SomeEntity(long id, @Mapping(StringToJsonbParameterMapper.class) String value) {}
-                
+            
             """, """
             @Repository
             public interface TestRepository extends CassandraRepository {
@@ -270,7 +270,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     public void testNativeParameterWithMapping() {
         var repository = compileCassandra(List.of(), """
             public final class StringToJsonbParameterMapper implements CassandraParameterColumnMapper<String> {
-                
+            
                 @Override
                 public void apply(SettableByName<?> stmt, int index, String value) {
                     stmt.set(index, java.util.Map.of("test", value), java.util.Map.class);
@@ -403,7 +403,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
         var repository = compileCassandra(List.of(mapper), """
             public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
-                
+            
             """, """
             @Repository
             public interface TestRepository extends CassandraRepository {
@@ -421,7 +421,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("SomeEntity")});
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("SomeEntity"));
     }
 
     @Test
@@ -443,7 +443,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
     }
 
     @Test
@@ -463,6 +463,6 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
     }
 }

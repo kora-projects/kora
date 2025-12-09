@@ -21,11 +21,11 @@ public class ApplicationGraphDraw {
         return root;
     }
 
-    public <T> Node<T> addNode0(Type type, Class<?>[] tags, Graph.Factory<? extends T> factory, Node<?>... dependencies) {
-        return this.addNode0(type, tags, factory, List.of(), dependencies);
+    public <T> Node<T> addNode0(Type type, Class<?> tag, Graph.Factory<? extends T> factory, Node<?>... dependencies) {
+        return this.addNode0(type, tag, factory, List.of(), dependencies);
     }
 
-    public <T> Node<T> addNode0(Type type, Class<?>[] tags, Graph.Factory<? extends T> factory, List<? extends Node<? extends GraphInterceptor<T>>> interceptors, Node<?>... dependencies) {
+    public <T> Node<T> addNode0(Type type, Class<?> tag, Graph.Factory<? extends T> factory, List<? extends Node<? extends GraphInterceptor<T>>> interceptors, Node<?>... dependencies) {
         var dependenciesList = new ArrayList<NodeImpl<?>>();
         for (var dependency : dependencies) {
             dependenciesList.add((NodeImpl<?>) dependency);
@@ -41,7 +41,7 @@ public class ApplicationGraphDraw {
             }
         }
 
-        var node = new NodeImpl<>(this, this.graphNodes.size(), factory, type, dependenciesList, interceptorsList, tags);
+        var node = new NodeImpl<>(this, this.graphNodes.size(), factory, type, dependenciesList, interceptorsList, tag);
         this.graphNodes.add(node);
         for (var dependency : dependenciesList) {
             if (dependency.isValueOf()) {
@@ -75,22 +75,18 @@ public class ApplicationGraphDraw {
     @Nullable
     public Node<?> findNodeByType(Type type) {
         for (var graphNode : this.graphNodes) {
-            if (graphNode.type().equals(type) && graphNode.tags().length == 0) {
+            if (graphNode.type().equals(type) && graphNode.tag() == null) {
                 return graphNode;
             }
         }
         return null;
     }
 
-    public List<Node<?>> findNodesByType(Type type, Class<?>[] tags) {
+    public List<Node<?>> findNodesByType(Type type, Class<?> tag) {
         var result = new ArrayList<Node<?>>();
         for (var graphNode : this.graphNodes) {
             if (graphNode.type().equals(type)) {
-                if (tags.length == 0 && graphNode.tags().length == 0) {
-                    result.add(graphNode);
-                } else if (tags.length == 1 && tags[0].getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
-                    result.add(graphNode);
-                } else if (Arrays.equals(tags, graphNode.tags()) && graphNode.type().equals(type)) {
+                if (Objects.equals(tag, graphNode.tag()) || tag != null && tag.getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
                     result.add(graphNode);
                 }
             }
@@ -101,7 +97,7 @@ public class ApplicationGraphDraw {
     public <T> void replaceNode(Node<T> node, Graph.Factory<? extends T> factory) {
         var casted = (NodeImpl<T>) node;
         this.graphNodes.set(casted.index, new NodeImpl<T>(
-            this, casted.index, factory, node.type(), List.of(), List.of(), node.tags()
+            this, casted.index, factory, node.type(), List.of(), List.of(), node.tag()
         ));
         for (var graphNode : graphNodes) {
             graphNode.deleteDependentNode(casted);
@@ -111,7 +107,7 @@ public class ApplicationGraphDraw {
     public <T> void replaceNodeKeepDependencies(Node<T> node, Graph.Factory<? extends T> factory) {
         var casted = (NodeImpl<T>) node;
         this.graphNodes.set(casted.index, new NodeImpl<T>(
-            this, casted.index, factory, node.type(), casted.getDependencyNodes(), List.of(), node.tags()
+            this, casted.index, factory, node.type(), casted.getDependencyNodes(), List.of(), node.tag()
         ));
     }
 
@@ -125,7 +121,7 @@ public class ApplicationGraphDraw {
                         var dependency = node.getDependencyNodes().get(i);
                         dependencies[i] = draw.graphNodes.get(dependency.index);
                     }
-                    draw.addNode0(node.type(), node.tags(), node.factory, node.getInterceptors(), dependencies);
+                    draw.addNode0(node.type(), node.tag(), node.factory, node.getInterceptors(), dependencies);
                 }
             }
             T.addNode(draw, node);
@@ -181,7 +177,7 @@ public class ApplicationGraphDraw {
                             return graph.promiseOf(realNode);
                         }
                     });
-                    var newNode = (NodeImpl<T>) subgraph.addNode0(node.type(), node.tags(), factory, interceptors, dependencies.toArray(new Node<?>[0]));
+                    var newNode = (NodeImpl<T>) subgraph.addNode0(node.type(), node.tag(), factory, interceptors, dependencies.toArray(new Node<?>[0]));
                     seen.put(node.index, newNode.index);
                     return newNode;
                 }

@@ -19,7 +19,7 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Set;
+import java.util.Objects;
 
 public final class MapstructKoraExtension implements KoraExtension {
     static final ClassName MAPPER_ANNOTATION = ClassName.get("org.mapstruct", "Mapper");
@@ -32,7 +32,7 @@ public final class MapstructKoraExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, @Nullable String tag) {
         if (typeMirror.getKind() != TypeKind.DECLARED) {
             return null;
         }
@@ -45,8 +45,8 @@ public final class MapstructKoraExtension implements KoraExtension {
         if (annotation == null) {
             return null;
         }
-        var tag = TagUtils.parseTagValue(dtm);
-        if (!tag.equals(tags)) {
+        var elementTag = TagUtils.parseTagValue(dtm);
+        if (!Objects.equals(tag, elementTag)) {
             return null;
         }
         return () -> {

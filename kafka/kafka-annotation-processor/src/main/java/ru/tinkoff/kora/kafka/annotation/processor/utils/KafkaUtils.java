@@ -6,17 +6,11 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.capitalize;
 import static ru.tinkoff.kora.annotation.processor.common.CommonUtils.decapitalize;
@@ -37,22 +31,23 @@ public final class KafkaUtils {
     }
 
     @Nullable
-    public static Set<TypeName> findConsumerUserTags(ExecutableElement method) {
-        AnnotationMirror annotation = AnnotationUtils.findAnnotation(method, KafkaClassNames.kafkaListener);
-        return Optional.ofNullable(AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotation, "tag"))
-            .filter(t -> !t.isEmpty())
-            .map(t -> t.stream()
-                .map(TypeName::get)
-                .collect(Collectors.toSet()))
-            .orElse(null);
+    public static TypeName findConsumerUserTag(ExecutableElement method) {
+        var annotation = AnnotationUtils.findAnnotation(method, KafkaClassNames.kafkaListener);
+        var tag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "tag");
+        if (tag == null) {
+            return null;
+        } else {
+            return TypeName.get(tag);
+        }
     }
 
-    public static Set<TypeName> getConsumerTags(Elements elements, ExecutableElement method) {
-        var tags = findConsumerUserTags(method);
+    @Nullable
+    public static TypeName getConsumerTag(Elements elements, ExecutableElement method) {
+        var tags = findConsumerUserTag(method);
         if (tags == null) {
-            return Set.of(prepareConsumerTag(elements, method));
+            return prepareConsumerTag(elements, method);
         } else {
-            return new HashSet<>(tags);
+            return tags;
         }
     }
 

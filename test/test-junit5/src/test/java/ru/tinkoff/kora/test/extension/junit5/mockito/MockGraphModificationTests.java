@@ -10,8 +10,6 @@ import ru.tinkoff.kora.test.extension.junit5.KoraGraphModification;
 import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.*;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -29,7 +27,7 @@ public class MockGraphModificationTests implements KoraAppTestGraphModifier {
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
             .replaceComponent(TestComponent1.class, () -> Mockito.mock(TestComponent1.class))
-            .replaceComponent(TestComponent2.class, List.of(LifecycleComponent.class), () -> Mockito.mock(TestComponent2.class));
+            .replaceComponent(TestComponent2.class, LifecycleComponent.class, () -> Mockito.mock(TestComponent2.class));
     }
 
     @Test

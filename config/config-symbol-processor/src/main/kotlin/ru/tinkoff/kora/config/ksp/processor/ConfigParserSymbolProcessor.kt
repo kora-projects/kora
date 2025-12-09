@@ -10,6 +10,7 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import ru.tinkoff.kora.config.ksp.ConfigClassNames
 import ru.tinkoff.kora.config.ksp.ConfigParserGenerator
+import ru.tinkoff.kora.ksp.common.Either
 
 class ConfigParserSymbolProcessor(val environment: SymbolProcessorEnvironment) : SymbolProcessor {
 
@@ -27,16 +28,16 @@ class ConfigParserSymbolProcessor(val environment: SymbolProcessorEnvironment) :
             }
             if (element.classKind == ClassKind.INTERFACE) {
                 val result = configParserGenerator.generateForInterface(environment.codeGenerator, element.asType(listOf()), false)
-                if (result.isRight) {
-                    for (processingError in result.right()!!) {
+                if (result is Either.Right) {
+                    for (processingError in result.value) {
                         processingError.print(environment.logger)
                     }
                 }
 
             } else if (element.classKind == ClassKind.CLASS && element.modifiers.contains(Modifier.DATA)){
                 val result = configParserGenerator.generateForDataClass(environment.codeGenerator, element.asType(listOf()), false)
-                if (result.isRight) {
-                    for (processingError in result.right()!!) {
+                if (result is Either.Right) {
+                    for (processingError in result.value) {
                         processingError.print(environment.logger)
                     }
                 }

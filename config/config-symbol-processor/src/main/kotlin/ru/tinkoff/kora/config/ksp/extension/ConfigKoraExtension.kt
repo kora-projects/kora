@@ -13,8 +13,8 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 
 class ConfigKoraExtension() : KoraExtension {
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) return null
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) return null
         val actualType = if (type.nullability == Nullability.PLATFORM) type.makeNotNullable() else type
         actualType.toTypeName().let {
             if (it is ParameterizedTypeName && it.rawType == CommonClassNames.configValueExtractor) {

@@ -5,7 +5,6 @@ import org.mockito.Mockito;
 import ru.tinkoff.kora.annotation.processor.common.TestContext;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import ru.tinkoff.kora.database.common.annotation.processor.DbTestUtils;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityJavaBean;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
@@ -105,7 +104,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         var repository = compileJdbc(List.of(), """
             @Repository
             public interface TestRepository extends JdbcRepository {
-
+            
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 void testConnection(Connection connection);
             }
@@ -143,13 +142,13 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
             import ru.tinkoff.kora.database.jdbc.JdbcDatabaseConfig;
             @Repository
             public abstract class TestRepository implements JdbcRepository {
-
+            
                 private final JdbcDatabaseConfig config;
-
+            
                 public TestRepository(JdbcDatabaseConfig config) {
                     this.config = config;
                 }
-
+            
                 @Query("INSERT INTO test(test) VALUES ('test')")
                 abstract void testConnection(Connection connection);
             }
@@ -251,7 +250,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{Json.class});
+        assertThat(tag.value()).isEqualTo(Json.class);
     }
 
     @Test
@@ -403,7 +402,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
     }
 
     @Test
@@ -423,7 +422,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
     }
 
 }

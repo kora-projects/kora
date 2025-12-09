@@ -33,7 +33,7 @@ public class RepositoryBuilder {
             .addAnnotation(AnnotationUtils.generated(RepositoryAnnotationProcessor.class));
 
         var tags = parseTagValue(repositoryElement);
-        if (!tags.isEmpty()) {
+        if (tags != null) {
             builder.addAnnotation(makeAnnotationSpec(tags));
         }
 

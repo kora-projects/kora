@@ -18,28 +18,28 @@ public interface KoraAppGraph {
     Object getFirst(@Nonnull Type type);
 
     /**
-     * Try to find implementation in Graph by type and tags
+     * Try to find implementation in Graph by type and tag
      *
      * @param type of component to search
-     * @param tags associated with component
+     * @param tag  associated with component
      * @return type instance from Graph
      */
     @Nullable
-    Object getFirst(@Nonnull Type type, Class<?>... tags);
+    Object getFirst(@Nonnull Type type, @Nullable Class<?> tag);
 
     @Nullable
     <T> T getFirst(@Nonnull Class<T> type);
 
     /**
-     * Try to find implementation in Graph by type and tags
+     * Try to find implementation in Graph by type and tag
      *
      * @param type of component to search
-     * @param tags associated with component
+     * @param tag  associated with component
      * @param <T>  type parameter
      * @return type instance from Graph
      */
     @Nullable
-    <T> T getFirst(@Nonnull Class<T> type, Class<?>... tags);
+    <T> T getFirst(@Nonnull Class<T> type, @Nullable Class<?> tag);
 
     @Nonnull
     default Optional<Object> findFirst(@Nonnull Type type) {
@@ -47,15 +47,15 @@ public interface KoraAppGraph {
     }
 
     /**
-     * Try to find implementation in Graph by type and tags
+     * Try to find implementation in Graph by type and tag
      *
      * @param type of component to search
-     * @param tags associated with component
+     * @param tag  associated with component
      * @return type instance from Graph
      */
     @Nonnull
-    default Optional<Object> findFirst(@Nonnull Type type, Class<?>... tags) {
-        return Optional.ofNullable(getFirst(type, tags));
+    default Optional<Object> findFirst(@Nonnull Type type, Class<?> tag) {
+        return Optional.ofNullable(getFirst(type, tag));
     }
 
     @Nonnull
@@ -64,16 +64,16 @@ public interface KoraAppGraph {
     }
 
     /**
-     * Try to find implementation in Graph by type and tags
+     * Try to find implementation in Graph by type and tag
      *
      * @param type of component to search
-     * @param tags associated with component
+     * @param tag  associated with component
      * @param <T>  type parameter
      * @return type instance from Graph
      */
     @Nonnull
-    default <T> Optional<T> findFirst(@Nonnull Class<T> type, Class<?>... tags) {
-        return Optional.ofNullable(getFirst(type, tags));
+    default <T> Optional<T> findFirst(@Nonnull Class<T> type, @Nullable Class<?> tag) {
+        return Optional.ofNullable(getFirst(type, tag));
     }
 
     @Nonnull
@@ -83,11 +83,11 @@ public interface KoraAppGraph {
      * Try to find implementation in Graph by type using {@link Tag.Any}
      *
      * @param type of component to search
-     * @param tags associated with component
+     * @param tag  associated with component
      * @return component instance from Graph
      */
     @Nonnull
-    List<Object> getAll(@Nonnull Type type, Class<?>... tags);
+    List<Object> getAll(@Nonnull Type type, @Nullable Class<?> tag);
 
     @Nonnull
     <T> List<T> getAll(@Nonnull Class<T> type);
@@ -96,10 +96,10 @@ public interface KoraAppGraph {
      * Try to find implementation in Graph by type using {@link Tag.Any}
      *
      * @param type of component to search
-     * @param tags associated with component
+     * @param tag  associated with component
      * @param <T>  type parameter
      * @return type instance from Graph
      */
     @Nonnull
-    <T> List<T> getAll(@Nonnull Class<T> type, Class<?>... tags);
+    <T> List<T> getAll(@Nonnull Class<T> type, @Nullable Class<?> tag);
 }

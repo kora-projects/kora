@@ -132,7 +132,7 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                     var parameter = constructor.getParameters().get(i);
                     var pb = ParameterSpec.get(parameter).toBuilder();
                     var tag = TagUtils.parseTagValue(parameter);
-                    if (!tag.isEmpty()) {
+                    if (tag != null) {
                         pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                     }
                     if (CommonUtils.isNullable(parameter)) {
@@ -145,7 +145,7 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                     mb.addCode("$L", parameter);
                 }
                 var tag = TagUtils.parseTagValue(component);
-                if (!tag.isEmpty()) {
+                if (tag != null) {
                     mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                 }
                 var root = AnnotationUtils.isAnnotationPresent(component, CommonClassNames.root);
@@ -181,7 +181,7 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                         var parameter = method.getParameters().get(i);
                         var pb = ParameterSpec.get(parameter).toBuilder();
                         var tag = TagUtils.parseTagValue(parameter);
-                        if (!tag.isEmpty()) {
+                        if (tag != null) {
                             pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                         }
                         if (CommonUtils.isNullable(parameter)) {
@@ -194,7 +194,7 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                         mb.addCode("$L", parameter);
                     }
                     var tag = TagUtils.parseTagValue(method);
-                    if (!tag.isEmpty()) {
+                    if (tag != null) {
                         mb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
                     }
                     if (AnnotationUtils.findAnnotation(method, CommonClassNames.defaultComponent) != null) {

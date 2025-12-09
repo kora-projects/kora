@@ -95,20 +95,20 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var mapperType = ParameterizedTypeName.get(JdbcTypes.RESULT_SET_MAPPER, TypeName.get(returnType).box());
         var resultSetMapper = mappings.getMapping(JdbcTypes.RESULT_SET_MAPPER);
         if (resultSetMapper != null) {
-            return Optional.of(new Mapper(resultSetMapper.mapperClass(), mapperType, mappings.mapperTags()));
+            return Optional.of(new Mapper(resultSetMapper.mapperClass(), mapperType, mappings.tag()));
         }
 
         var rowMapper = mappings.getMapping(JdbcTypes.ROW_MAPPER);
         if (rowMapper != null) {
             if (CommonUtils.isList(returnType)) {
-                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.mapperTags(), c -> CodeBlock.of("$T.listResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.tag(), c -> CodeBlock.of("$T.listResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
             } else if (CommonUtils.isOptional(returnType)) {
-                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.mapperTags(), c -> CodeBlock.of("$T.optionalResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.tag(), c -> CodeBlock.of("$T.optionalResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
             } else {
-                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.mapperTags(), c -> CodeBlock.of("$T.singleResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new Mapper(rowMapper.mapperClass(), mapperType, mappings.tag(), c -> CodeBlock.of("$T.singleResultSetMapper($L)", JdbcTypes.RESULT_SET_MAPPER, c)));
             }
         }
-        return Optional.of(new Mapper(mapperType, mappings.mapperTags()));
+        return Optional.of(new Mapper(mapperType, mappings.tag()));
     }
 
     @Override

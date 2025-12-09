@@ -134,7 +134,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
 
     private fun tagAnnotation(authMethod: CodegenSecurity) = AnnotationSpec.builder(Classes.tag.asKt())
-        .addMember("value = [%T::class]", ClassName(apiPackage, "ApiSecurity", camelize(toVarName(authMethod.name))))
+        .addMember("value = %T::class", ClassName(apiPackage, "ApiSecurity", camelize(toVarName(authMethod.name))))
         .build()
 
     private fun buildTag(authMethod: CodegenSecurity) = TypeSpec.classBuilder(camelize(toVarName(authMethod.name)))

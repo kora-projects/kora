@@ -173,11 +173,10 @@ public class GraphBuilder {
                     }
                     if (results.size() > 1) {
                         var deps = templates.stream().map(Objects::toString).collect(Collectors.joining("\n")).indent(2);
-                        if (dependencyClaim.tags().isEmpty()) {
+                        if (dependencyClaim.tag() == null) {
                             throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + ":\n" + deps, declaration.source());
                         } else {
-                            var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
-                            throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + " with tag " + tagMsg + " :\n" + deps, declaration.source());
+                            throw new ProcessingErrorException("More than one component matches dependency claim " + dependencyClaim.type() + " with @Tag(" + dependencyClaim.tag() + ") :\n" + deps, declaration.source());
                         }
                     }
                     throw exception;
@@ -187,11 +186,11 @@ public class GraphBuilder {
                     continue dependency;
                 }
                 if (dependencyClaim.type().toString().startsWith("java.util.Optional<")) {
-                    var optionalDeclaration = new ComponentDeclaration.OptionalComponent(dependencyClaim.type(), dependencyClaim.tags());
+                    var optionalDeclaration = new ComponentDeclaration.OptionalComponent(dependencyClaim.type(), dependencyClaim.tag());
                     sourceDeclarations.add(optionalDeclaration);
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
                     stack.addLast(new ResolutionFrame.Component(
-                        optionalDeclaration, List.of(ComponentDependencyHelper.parseClaim(componentFrame.declaration().source(), ((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tags(), true))
+                        optionalDeclaration, List.of(ComponentDependencyHelper.parseClaim(componentFrame.declaration().source(), ((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tag(), true))
                     ));
                     continue frame;
                 }
@@ -201,7 +200,7 @@ public class GraphBuilder {
                     this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), finalClassComponent);
                     continue frame;
                 }
-                var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type(), dependencyClaim.tags());
+                var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type(), dependencyClaim.tag());
                 if (extension != null) {
                     ExtensionResult extensionResult;
                     try {
@@ -233,14 +232,14 @@ public class GraphBuilder {
                 }
 
                 var claimTypeName = TypeName.get(dependencyClaim.type()).annotated(List.of());
-                var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
+                var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tag());
                 var msg = new StringBuilder();
-                if (dependencyClaim.tags().isEmpty()) {
+                if (dependencyClaim.tag() == null) {
                     msg.append(String.format("Required dependency type wasn't found and can't be auto created: %s.\n" +
                             "Please check class for @%s annotation or that required module with component is plugged in.",
                         claimTypeName, CommonClassNames.component.simpleName()));
                 } else {
-                    var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
+                    var tagMsg ="@Tag(" + dependencyClaim.tag() + ".class)";
                     msg.append(String.format("Required dependency type wasn't found and can't be auto created: %s with tag %s.\n" +
                             "Please check class for @%s annotation or that required module with component is plugged in.",
                         claimTypeName, tagMsg, CommonClassNames.component.simpleName()));
@@ -253,8 +252,8 @@ public class GraphBuilder {
                 var i = stack.descendingIterator();
                 while (i.hasNext()) {
                     var iFrame = i.next();
-                    if (iFrame instanceof ResolutionFrame.Root root) {
-                        msg.append("\n  ").append(rootSet.get(root.rootIndex()).declarationString());
+                    if (iFrame instanceof ResolutionFrame.Root(var rootIndex)) {
+                        msg.append("\n  ").append(rootSet.get(rootIndex).declarationString());
                         break;
                     }
                     var c = (ResolutionFrame.Component) iFrame;
@@ -265,11 +264,11 @@ public class GraphBuilder {
                     msg.toString(),
                     declaration.source(),
                     dependencyClaim.type(),
-                    dependencyClaim.tags()
+                    dependencyClaim.tag()
                 );
             }
             resolvedComponents.add(new ResolvedComponent(
-                resolvedComponents.size(), declaration, declaration.type(), declaration.tags(),
+                resolvedComponents.size(), declaration, declaration.type(), declaration.tag(),
                 List.of(), // TODO,
                 resolvedDependencies
             ));
@@ -432,7 +431,7 @@ public class GraphBuilder {
                 throw new CircularDependencyException(List.of(prevComponent.declaration().toString(), declaration.toString()), componentFrame.declaration());
             }
             var proxyDependencyClaim = new DependencyClaim(
-                dependencyClaimType, Set.of(CommonClassNames.promisedProxy.canonicalName()), dependencyClaim.claimType()
+                dependencyClaimType, CommonClassNames.promisedProxy.canonicalName(), dependencyClaim.claimType()
             );
             var alreadyGenerated = GraphResolutionHelper.findDependency(ctx, prevComponent.declaration(), resolvedComponents, proxyDependencyClaim);
             if (alreadyGenerated != null) {
@@ -456,11 +455,11 @@ public class GraphBuilder {
                 resolvedComponents.size(),
                 proxyComponentDeclaration,
                 dependencyClaimType,
-                Set.of(CommonClassNames.promisedProxy.canonicalName()),
+                CommonClassNames.promisedProxy.canonicalName(),
                 List.of(),
                 List.of(new ComponentDependency.PromisedProxyParameterDependency(declaration, new DependencyClaim(
                     declaration.type(),
-                    declaration.tags(),
+                    declaration.tag(),
                     ONE_REQUIRED
                 )))
             );

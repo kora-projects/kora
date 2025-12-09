@@ -11,10 +11,9 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.*;
 import javax.lang.model.util.Elements;
 import java.util.List;
-import java.util.Set;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTags;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTag;
 import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
 
 public class KafkaConsumerHandlerGenerator {
@@ -22,7 +21,7 @@ public class KafkaConsumerHandlerGenerator {
     public HandlerMethod generate(Elements elements, ExecutableElement executableElement, List<ConsumerParameter> parameters) {
         var controller = (TypeElement) executableElement.getEnclosingElement();
         var methodName = prepareMethodName(executableElement, "Handler");
-        var consumerTags = getConsumerTags(elements, executableElement);
+        var consumerTags = getConsumerTag(elements, executableElement);
         var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
         var methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
@@ -42,7 +41,7 @@ public class KafkaConsumerHandlerGenerator {
         }
     }
 
-    public record HandlerMethod(MethodSpec method, TypeName keyType, Set<String> keyTag, TypeName valueType, Set<String> valueTag) {}
+    public record HandlerMethod(MethodSpec method, TypeName keyType, String keyTag, TypeName valueType, String valueTag) {}
 
     private HandlerMethod generateRecord(ExecutableElement executableElement, List<ConsumerParameter> parameters, MethodSpec.Builder methodBuilder) {
         var b = CodeBlock.builder();
@@ -237,7 +236,7 @@ public class KafkaConsumerHandlerGenerator {
         }
         b.add(");");
         b.add("$<\n};\n");
-        var keyTag = keyParameter == null ? Set.<String>of() : TagUtils.parseTagValue(keyParameter.element());
+        var keyTag = keyParameter == null ? null : TagUtils.parseTagValue(keyParameter.element());
         var valueTag = TagUtils.parseTagValue(valueParameter.element());
 
         methodBuilder.addCode(b.build());

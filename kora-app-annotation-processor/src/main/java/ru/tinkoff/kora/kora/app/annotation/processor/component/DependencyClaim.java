@@ -1,25 +1,23 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.annotation.processor.common.TypeParameterUtils;
 
 import javax.lang.model.type.TypeMirror;
-import java.util.Collection;
 import java.util.Objects;
-import java.util.Set;
 
-public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaimType claimType) {
+public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyClaimType claimType) {
     public DependencyClaim {
         Objects.requireNonNull(type);
-        Objects.requireNonNull(tags);
         Objects.requireNonNull(claimType);
         if (TypeParameterUtils.hasTypeParameter(type)) {
             throw new IllegalStateException("Component can't have generic dependencies: " + type);
         }
     }
 
-    public boolean tagsMatches(Collection<String> other) {
-        return TagUtils.tagsMatch(this.tags, other);
+    public boolean tagsMatches(String other) {
+        return TagUtils.tagsMatch(this.tag, other);
     }
 
     public enum DependencyClaimType {
@@ -44,8 +42,8 @@ public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaim
         final StringBuilder sb = new StringBuilder("DependencyClaim[");
         sb.append("type=").append(type);
         sb.append(", claimType=").append(claimType);
-        if (tags != null && !tags.isEmpty()) {
-            sb.append(", tags=").append(tags);
+        if (tag != null && !tag.isEmpty()) {
+            sb.append(", tag=").append(tag);
         }
         sb.append(']');
         return sb.toString();

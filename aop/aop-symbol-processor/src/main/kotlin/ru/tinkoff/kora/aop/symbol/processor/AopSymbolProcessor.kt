@@ -9,10 +9,10 @@ import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.util.Either
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.Either
 import ru.tinkoff.kora.ksp.common.KoraSymbolProcessingEnv
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
@@ -46,7 +46,7 @@ class AopSymbolProcessor(
             val symbols = resolver.getSymbolsWithAnnotation(annotation.qualifiedName!!.asString())
             for (symbol in symbols) {
                 when (val classDeclaration = symbol.findKsClassDeclaration()) {
-                    is Either.Left -> classDeclaration.left().let {
+                    is Either.Left -> classDeclaration.value.let {
                         when {
                             it == null -> {}
                             it.validate() -> symbolsToProcess[it.qualifiedName!!.asString()] = it
@@ -54,9 +54,8 @@ class AopSymbolProcessor(
                         }
                     }
 
-                    is Either.Right -> errors.add(classDeclaration.right())
+                    is Either.Right -> errors.add(classDeclaration.value)
                 }
-
             }
         }
 

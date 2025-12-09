@@ -2,12 +2,7 @@ package ru.tinkoff.kora.kora.app.ksp.declaration
 
 import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.isConstructor
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.KSDeclaration
-import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.google.devtools.ksp.symbol.KSType
-import com.google.devtools.ksp.symbol.KSTypeArgument
-import com.google.devtools.ksp.symbol.KSTypeParameter
+import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
@@ -18,13 +13,13 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
 import ru.tinkoff.kora.ksp.common.TagUtils
-import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 sealed interface ComponentDeclaration {
     val type: KSType
     val source: KSDeclaration
-    val tags: Set<String>
+    val tag: String?
 
     fun declarationString(): String
 
@@ -44,7 +39,7 @@ sealed interface ComponentDeclaration {
     data class FromModuleComponent(
         override val type: KSType,
         val module: ModuleDeclaration,
-        override val tags: Set<String>,
+        override val tag: String?,
         val method: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
         val typeVariables: List<KSTypeArgument>
@@ -60,7 +55,7 @@ sealed interface ComponentDeclaration {
     data class AnnotatedComponent(
         override val type: KSType,
         val classDeclaration: KSClassDeclaration,
-        override val tags: Set<String>,
+        override val tag: String?,
         val constructor: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
         val typeVariables: List<KSTypeArgument>
@@ -73,7 +68,7 @@ sealed interface ComponentDeclaration {
         override val type: KSType,
         val classDeclaration: KSClassDeclaration,
         val constructor: KSFunctionDeclaration,
-        override val tags: Set<String>
+        override val tag: String?
     ) : ComponentDeclaration {
         override val source get() = this.constructor
         override fun declarationString() = classDeclaration.qualifiedName?.asString().toString()
@@ -83,8 +78,8 @@ sealed interface ComponentDeclaration {
         override val type: KSType,
         override val source: KSDeclaration,
         val methodParameterTypes: List<KSType>,
-        val methodParameterTags: List<Set<String>>,
-        override val tags: Set<String>,
+        val methodParameterTags: List<String?>,
+        override val tag: String?,
         val generator: (CodeBlock) -> CodeBlock
     ) : ComponentDeclaration {
         override fun declarationString(): String {
@@ -100,14 +95,14 @@ sealed interface ComponentDeclaration {
 
     ) : ComponentDeclaration {
         override val source get() = this.classDeclaration
-        override val tags get() = setOf(CommonClassNames.promisedProxy.canonicalName)
+        override val tag get() = CommonClassNames.promisedProxy.canonicalName
         override fun declarationString() = "<Proxy>"
     }
 
 
     data class OptionalComponent(
         override val type: KSType,
-        override val tags: Set<String>
+        override val tag: String?
     ) : ComponentDeclaration {
         override val source get() = type.declaration
         override fun declarationString() = "Optional.empty"
@@ -171,15 +166,15 @@ sealed interface ComponentDeclaration {
             val sourceMethod = extensionResult.constructor
             val sourceType = extensionResult.type
             val parameterTypes = sourceType.parameterTypes.map { it!!.fixPlatformType(ctx.resolver) }
-            val parameterTags = sourceMethod.parameters.map { it.parseTags() }
+            val parameterTags = sourceMethod.parameters.map { it.parseTag() }
             val type = sourceType.returnType!!
             if (type.isError) {
                 throw ProcessingErrorException("Component type is not resolvable in the current round of processing: func $sourceType()\nTry disabling Kora KSP processor dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)", sourceMethod)
             }
             val tag = if (sourceMethod.isConstructor()) {
-                sourceMethod.closestClassDeclaration()!!.parseTags()
+                sourceMethod.closestClassDeclaration()!!.parseTag()
             } else {
-                sourceMethod.parseTags()
+                sourceMethod.parseTag()
             }
 
             return FromExtensionComponent(type, sourceMethod, parameterTypes, parameterTags, tag) {

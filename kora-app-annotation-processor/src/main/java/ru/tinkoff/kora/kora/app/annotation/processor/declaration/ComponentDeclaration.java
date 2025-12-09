@@ -2,6 +2,7 @@ package ru.tinkoff.kora.kora.app.annotation.processor.declaration;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
@@ -12,7 +13,7 @@ import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Objects;
 import java.util.function.Function;
 
 public sealed interface ComponentDeclaration {
@@ -20,7 +21,8 @@ public sealed interface ComponentDeclaration {
 
     Element source();
 
-    Set<String> tags();
+    @Nullable
+    String tag();
 
     default boolean isTemplate() {
         return TypeParameterUtils.hasTypeParameter(this.type());
@@ -34,7 +36,7 @@ public sealed interface ComponentDeclaration {
 
     String declarationString();
 
-    record FromModuleComponent(TypeMirror type, ModuleDeclaration module, Set<String> tags, ExecutableElement method, List<TypeMirror> methodParameterTypes,
+    record FromModuleComponent(TypeMirror type, ModuleDeclaration module, @Nullable String tag, ExecutableElement method, List<TypeMirror> methodParameterTypes,
                                List<TypeMirror> typeVariables, boolean isInterceptor) implements ComponentDeclaration {
         @Override
         public Element source() {
@@ -57,8 +59,8 @@ public sealed interface ComponentDeclaration {
             sb.append("type=").append(type);
             sb.append(", module=").append(module);
             sb.append(", method=").append(method);
-            if (tags != null && !tags.isEmpty()) {
-                sb.append(", tags=").append(tags);
+            if (tag != null) {
+                sb.append(", tag=").append(tag);
             }
             if (methodParameterTypes != null && !methodParameterTypes.isEmpty()) {
                 sb.append(", methodParameterTypes=").append(methodParameterTypes);
@@ -74,7 +76,7 @@ public sealed interface ComponentDeclaration {
         }
     }
 
-    record AnnotatedComponent(TypeMirror type, TypeElement typeElement, Set<String> tags, ExecutableElement constructor, List<TypeMirror> methodParameterTypes,
+    record AnnotatedComponent(TypeMirror type, TypeElement typeElement, @Nullable String tag, ExecutableElement constructor, List<TypeMirror> methodParameterTypes,
                               List<TypeMirror> typeVariables, boolean isInterceptor) implements ComponentDeclaration {
         @Override
         public Element source() {
@@ -92,8 +94,8 @@ public sealed interface ComponentDeclaration {
             sb.append("type=").append(type);
             sb.append(", typeElement=").append(typeElement);
             sb.append(", constructor=").append(constructor);
-            if (tags != null && !tags.isEmpty()) {
-                sb.append(", tags=").append(tags);
+            if (tag != null) {
+                sb.append(", tag=").append(tag);
             }
             if (methodParameterTypes != null && !methodParameterTypes.isEmpty()) {
                 sb.append(", methodParameterTypes=").append(methodParameterTypes);
@@ -109,7 +111,7 @@ public sealed interface ComponentDeclaration {
         }
     }
 
-    record DiscoveredAsDependencyComponent(DeclaredType type, TypeElement typeElement, ExecutableElement constructor, Set<String> tags) implements ComponentDeclaration {
+    record DiscoveredAsDependencyComponent(DeclaredType type, TypeElement typeElement, ExecutableElement constructor, @Nullable String tag) implements ComponentDeclaration {
 
         @Override
         public Element source() {
@@ -137,8 +139,8 @@ public sealed interface ComponentDeclaration {
             sb.append("type=").append(type);
             sb.append(", typeElement=").append(typeElement);
             sb.append(", constructor=").append(constructor);
-            if (tags != null && !tags.isEmpty()) {
-                sb.append(", tags=").append(tags);
+            if (tag != null) {
+                sb.append(", tag=").append(tag);
             }
             sb.append(']');
             return sb.toString();
@@ -149,8 +151,8 @@ public sealed interface ComponentDeclaration {
         TypeMirror type,
         Element source,
         List<TypeMirror> dependencyTypes,
-        List<Set<String>> dependencyTags,
-        Set<String> tags,
+        List<String> dependencyTags,
+        @Nullable String tag,
         Function<CodeBlock, CodeBlock> generator
     ) implements ComponentDeclaration {
         @Override
@@ -168,13 +170,13 @@ public sealed interface ComponentDeclaration {
             final StringBuilder sb = new StringBuilder("FromExtensionComponent[");
             sb.append("type=").append(type);
             sb.append(", source=").append(source);
-            if (tags != null && !tags.isEmpty()) {
-                sb.append(", tags=").append(tags);
+            if (tag != null) {
+                sb.append(", tag=").append(tag);
             }
             if (dependencyTypes != null && !dependencyTypes.isEmpty()) {
                 sb.append(", dependencyTypes=").append(dependencyTypes);
             }
-            if (dependencyTags != null && dependencyTags.stream().anyMatch(t -> !t.isEmpty())) {
+            if (dependencyTags != null && dependencyTags.stream().anyMatch(Objects::nonNull)) {
                 sb.append(", dependencyTags=").append(dependencyTags);
             }
             sb.append(']');
@@ -198,8 +200,8 @@ public sealed interface ComponentDeclaration {
         }
 
         @Override
-        public Set<String> tags() {
-            return Set.of(CommonClassNames.promisedProxy.canonicalName());
+        public String tag() {
+            return CommonClassNames.promisedProxy.canonicalName();
         }
 
         @Override
@@ -213,7 +215,7 @@ public sealed interface ComponentDeclaration {
         }
     }
 
-    record OptionalComponent(TypeMirror type, Set<String> tags) implements ComponentDeclaration {
+    record OptionalComponent(TypeMirror type, @Nullable String tag) implements ComponentDeclaration {
         @Override
         public Element source() {
             return null;
@@ -233,8 +235,8 @@ public sealed interface ComponentDeclaration {
         public String toString() {
             final StringBuilder sb = new StringBuilder("OptionalComponent[");
             sb.append("type=").append(type);
-            if (tags != null && !tags.isEmpty()) {
-                sb.append(", tags=").append(tags);
+            if (tag != null) {
+                sb.append(", tag=").append(tag);
             }
             sb.append(']');
             return sb.toString();
@@ -290,7 +292,7 @@ public sealed interface ComponentDeclaration {
             var parameterTags = sourceMethod.getParameters().stream().map(TagUtils::parseTagValue).toList();
             var typeElement = (TypeElement) sourceMethod.getEnclosingElement();
             var tag = TagUtils.parseTagValue(sourceMethod);
-            if (tag.isEmpty()) {
+            if (tag == null) {
                 tag = TagUtils.parseTagValue(typeElement);
             }
             var type = typeElement.asType();

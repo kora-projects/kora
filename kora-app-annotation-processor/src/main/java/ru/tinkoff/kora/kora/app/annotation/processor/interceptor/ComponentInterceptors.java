@@ -42,7 +42,7 @@ public class ComponentInterceptors {
         var type = component.type();
         return this.interceptors.stream()
             .filter(interceptor -> this.ctx.serviceTypeHelper.isInterceptable(interceptor.interceptType(), type))
-            .filter(interceptor -> TagUtils.tagsMatch(interceptor.component().tags(), component.tags()))
+            .filter(interceptor -> TagUtils.tagsMatch(interceptor.component().tag(), component.tag()))
             .toList();
     }
 }

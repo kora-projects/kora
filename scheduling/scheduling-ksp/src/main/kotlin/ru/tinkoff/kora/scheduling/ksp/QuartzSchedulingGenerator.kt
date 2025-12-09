@@ -9,13 +9,13 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
-import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import java.util.*
 
@@ -40,12 +40,11 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
         when (trigger.annotation.shortName.getShortName()) {
             "ScheduleWithTrigger" -> {
                 val tag = trigger.annotation.findValue<KSAnnotation>("value")!!
-                val tagAnnotationSpec = AnnotationSpec.builder(Tag::class)
-                    .addMember(tag.findValue<List<KSType>>("value")!!.writeTagValue("value"))
-                    .build()
+                    .findValueNoDefault<KSType>("value")!!
+                    .toClassName()
 
                 val triggerParameter = ParameterSpec.builder("trigger", triggerClassName)
-                    .addAnnotation(tagAnnotationSpec)
+                    .addTag(tag)
                     .build()
                 component.addParameter(triggerParameter)
                 component.addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())

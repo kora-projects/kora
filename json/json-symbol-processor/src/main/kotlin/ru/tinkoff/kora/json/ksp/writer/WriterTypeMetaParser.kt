@@ -8,7 +8,6 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
-import ru.tinkoff.kora.common.naming.NameConverter
 import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType
 import ru.tinkoff.kora.json.ksp.findJsonField
@@ -16,8 +15,9 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.JavaUtils.recordComponents
+import ru.tinkoff.kora.ksp.common.KspCommonUtils
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.getNameConverter
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.isJavaRecord
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 
@@ -137,7 +137,7 @@ class WriterTypeMetaParser(resolver: Resolver) {
     private fun isJsonNullable(type: KSType) = type.declaration is KSClassDeclaration
         && JsonTypes.jsonNullable == (type.declaration as KSClassDeclaration).toClassName()
 
-    private fun parseJsonName(param: KSDeclaration, jsonField: KSAnnotation?, nameConverter: NameConverter?): String {
+    private fun parseJsonName(param: KSDeclaration, jsonField: KSAnnotation?, nameConverter: KspCommonUtils.NameConverter?): String {
         if (jsonField == null) {
             return if (nameConverter != null) {
                 nameConverter.convert(param.simpleName.asString())

@@ -8,7 +8,7 @@ data class ResolvedComponent(
     val index: Int,
     val declaration: ComponentDeclaration,
     val type: KSType,
-    val tags: Set<String>,
+    val tag: String?,
     val templateParams: List<KSType>,
     val dependencies: List<ComponentDependency>
 ) {

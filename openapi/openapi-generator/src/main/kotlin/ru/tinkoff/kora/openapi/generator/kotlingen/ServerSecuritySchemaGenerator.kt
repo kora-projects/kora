@@ -136,7 +136,7 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
 
     private fun tagAnnotation(securityTagName: String): AnnotationSpec {
         return AnnotationSpec.builder(Classes.tag.asKt())
-            .addMember("value = [%T::class]", ClassName(apiPackage, "ApiSecurity", securityTagName))
+            .addMember("value = %T::class", ClassName(apiPackage, "ApiSecurity", securityTagName))
             .build()
     }
 

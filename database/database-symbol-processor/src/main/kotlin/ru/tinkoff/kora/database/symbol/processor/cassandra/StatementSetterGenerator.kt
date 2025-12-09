@@ -48,7 +48,7 @@ object StatementSetterGenerator {
                         addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("%N", parameterName), CodeBlock.of("%L", idx)));
                     }
                 } else if (mapping?.mapper != null) {
-                    val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                    val mapper = parameterMappers.get(mapping.mapper!!, mapping.tag)
                     for (idx in sqlParameter.sqlIndexes) {
                         addStatement("%N.apply(_stmt, %L, %N)", mapper, idx, parameter.variable.name!!.asString())
                     }
@@ -88,7 +88,7 @@ object StatementSetterGenerator {
                                 addStatement("%L", nativeType.bind("_stmt", CodeBlock.of("it"), CodeBlock.of("%L", idx)))
                             }
                         } else if (mapping?.mapper != null) {
-                            val mapper = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                            val mapper = parameterMappers.get(mapping.mapper!!, mapping.tag)
                             for (idx in sqlParameter.sqlIndexes) {
                                 addStatement("%N.apply(_stmt, %L, it)", mapper, idx)
                             }
@@ -125,7 +125,7 @@ object StatementSetterGenerator {
                     val mappersData = parameter.entity.classDeclaration.parseMappingData()
                     val mapping = mappersData.getMapping(parameter.entity.type)
                     if (mapping?.mapper != null) {
-                        val mapper = parameterMappers[mapping.mapper!!, mappersData.tags]
+                        val mapper = parameterMappers[mapping.mapper!!, mappersData.tag]
                         for (idx in sqlParameter.sqlIndexes) {
                             addStatement("%N.apply(_stmt, %L, it)", mapper, idx)
                         }

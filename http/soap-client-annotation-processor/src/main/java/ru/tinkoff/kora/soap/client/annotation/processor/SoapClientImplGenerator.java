@@ -12,7 +12,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.function.Function;
 
 public class SoapClientImplGenerator {
@@ -56,7 +55,7 @@ public class SoapClientImplGenerator {
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.module)
             .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapConfig")
-                .addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString())))
+                .addAnnotation(TagUtils.makeAnnotationSpec(elementType.toString()))
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT).returns(SOAP_CONFIG)
                 .addAnnotation(CommonClassNames.defaultComponent)
                 .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
@@ -74,9 +73,9 @@ public class SoapClientImplGenerator {
                 .addAnnotation(CommonClassNames.defaultComponent)
                 .addParameter(ParameterSpec.builder(HTTP_CLIENT, "httpClient").build())
                 .addParameter(ParameterSpec.builder(SOAP_TELEMETRY, "telemetry").build())
-                .addParameter(ParameterSpec.builder(SOAP_CONFIG, "config").addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString()))).build())
+                .addParameter(ParameterSpec.builder(SOAP_CONFIG, "config").addAnnotation(TagUtils.makeAnnotationSpec(elementType.toString())).build())
                 .addParameter(ParameterSpec.builder(ParameterizedTypeName.get(ClassName.get(Function.class), SOAP_ENVELOPE, SOAP_ENVELOPE), "envelopeProcessor")
-                    .addAnnotation(TagUtils.makeAnnotationSpec(Set.of(elementType.toString())))
+                    .addAnnotation(TagUtils.makeAnnotationSpec(elementType.toString()))
                     .addAnnotation(CommonClassNames.nullable)
                     .build())
                 .beginControlFlow("try")

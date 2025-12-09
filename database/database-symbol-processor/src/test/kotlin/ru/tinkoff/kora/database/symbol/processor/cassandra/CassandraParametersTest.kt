@@ -365,7 +365,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
-        assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
+        assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
     }
 
     @Test
@@ -387,7 +387,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
-        assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
+        assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
     }
 
     @Test
@@ -413,6 +413,6 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
-        assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
+        assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
     }
 }

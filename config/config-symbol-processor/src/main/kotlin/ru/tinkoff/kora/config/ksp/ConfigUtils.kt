@@ -6,8 +6,8 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import ru.tinkoff.kora.common.util.Either
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.Either
 import ru.tinkoff.kora.ksp.common.JavaUtils.isRecord
 import ru.tinkoff.kora.ksp.common.JavaUtils.recordComponents
 import ru.tinkoff.kora.ksp.common.MappingData

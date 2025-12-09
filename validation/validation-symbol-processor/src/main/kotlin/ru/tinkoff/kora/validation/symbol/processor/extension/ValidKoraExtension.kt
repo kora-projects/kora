@@ -13,8 +13,8 @@ import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.VALID_TYPE
 
 class ValidKoraExtension() : KoraExtension {
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) return null
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) return null
         type.toTypeName().let {
             if (it is ParameterizedTypeName && it.rawType == VALIDATOR_TYPE) {
                 val validTypeDecl = type.arguments.first().type?.resolve()?.declaration

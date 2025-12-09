@@ -10,9 +10,10 @@ sealed interface ExtensionResult {
         val source: KSDeclaration,
         val codeBlock: (CodeBlock) -> CodeBlock,
         val componentType: KSType,
-        val componentTag: Set<String>,
+        val componentTag: String?,
         val dependencyTypes: List<KSType>,
-        val dependencyTags: List<Set<String>>) : ExtensionResult {
+        val dependencyTags: List<String?>
+    ) : ExtensionResult {
     }
 
     companion object {
