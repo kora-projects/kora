@@ -19,7 +19,10 @@ import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.*;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 
 public class CassandraRepositoryGenerator implements RepositoryGenerator {
@@ -191,30 +194,30 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             var mapperType = ParameterizedTypeName.get(CassandraTypes.ASYNC_RESULT_SET_MAPPER, TypeName.get(futureParam));
             if (rowMapper != null) {
                 if (CommonUtils.isList(futureParam)) {
-                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.list($L)", CassandraTypes.ASYNC_RESULT_SET_MAPPER, c)));
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTag(), c -> CodeBlock.of("$T.list($L)", CassandraTypes.ASYNC_RESULT_SET_MAPPER, c)));
                 } else {
-                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.one($L)", CassandraTypes.ASYNC_RESULT_SET_MAPPER, c)));
+                    return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTag(), c -> CodeBlock.of("$T.one($L)", CassandraTypes.ASYNC_RESULT_SET_MAPPER, c)));
                 }
             }
-            return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
+            return Optional.of(new DbUtils.Mapper(mapperType, null));
         }
         if (returnType.getKind() == TypeKind.VOID) {
             return Optional.empty();
         }
         var mapperType = ParameterizedTypeName.get(CassandraTypes.RESULT_SET_MAPPER, TypeName.get(returnType).box());
         if (resultSetMapper != null) {
-            return Optional.of(new DbUtils.Mapper(resultSetMapper.mapperClass(), mapperType, resultSetMapper.mapperTags()));
+            return Optional.of(new DbUtils.Mapper(resultSetMapper.mapperClass(), mapperType, resultSetMapper.mapperTag()));
         }
         if (rowMapper != null) {
             if (CommonUtils.isList(returnType)) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.listResultSetMapper($L)", CassandraTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTag(), c -> CodeBlock.of("$T.listResultSetMapper($L)", CassandraTypes.RESULT_SET_MAPPER, c)));
             } else if (CommonUtils.isOptional(returnType)) {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.optionalResultSetMapper($L)", CassandraTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTag(), c -> CodeBlock.of("$T.optionalResultSetMapper($L)", CassandraTypes.RESULT_SET_MAPPER, c)));
             } else {
-                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTags(), c -> CodeBlock.of("$T.singleResultSetMapper($L)", CassandraTypes.RESULT_SET_MAPPER, c)));
+                return Optional.of(new DbUtils.Mapper(rowMapper.mapperClass(), mapperType, rowMapper.mapperTag(), c -> CodeBlock.of("$T.singleResultSetMapper($L)", CassandraTypes.RESULT_SET_MAPPER, c)));
             }
         }
-        return Optional.of(new DbUtils.Mapper(mapperType, Set.of()));
+        return Optional.of(new DbUtils.Mapper(mapperType, null));
     }
 
     public void enrichWithExecutor(TypeElement repositoryElement, TypeSpec.Builder builder, MethodSpec.Builder constructorBuilder) {

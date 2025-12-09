@@ -16,13 +16,13 @@ import javax.lang.model.util.Elements;
 import java.util.List;
 
 import static ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames.*;
-import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTags;
+import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.getConsumerTag;
 import static ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaUtils.prepareMethodName;
 
 public class KafkaConsumerContainerGenerator {
 
     public MethodSpec generate(Elements elements, ExecutableElement executableElement, AnnotationMirror listenerAnnotation, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
-        var consumerTags = getConsumerTags(elements, executableElement);
+        var consumerTags = getConsumerTag(elements, executableElement);
         var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
 
         var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(executableElement, "Container"))
@@ -45,13 +45,13 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.addParameter(handlerParameter);
 
         var keyDeserializer = ParameterSpec.builder(ParameterizedTypeName.get(deserializer, handlerMethod.keyType()), "keyDeserializer");
-        if (!handlerMethod.keyTag().isEmpty()) {
+        if (handlerMethod.keyTag() != null) {
             var keyTag = TagUtils.makeAnnotationSpec(handlerMethod.keyTag());
             keyDeserializer.addAnnotation(keyTag);
         }
 
         var valueDeserializer = ParameterSpec.builder(ParameterizedTypeName.get(deserializer, handlerMethod.valueType()), "valueDeserializer");
-        if (!handlerMethod.valueTag().isEmpty()) {
+        if (handlerMethod.valueTag() != null) {
             var valueTag = TagUtils.makeAnnotationSpec(handlerMethod.valueTag());
             valueDeserializer.addAnnotation(valueTag);
         }
@@ -64,7 +64,7 @@ public class KafkaConsumerContainerGenerator {
             .addAnnotation(Nullable.class)
             .build());
 
-        var consumerName = ((TypeElement)executableElement.getEnclosingElement()).getQualifiedName() + "#" + executableElement.getSimpleName();
+        var consumerName = ((TypeElement) executableElement.getEnclosingElement()).getQualifiedName() + "#" + executableElement.getSimpleName();
         methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, config.driverProperties(), config.telemetry())", consumerName);
 
         var consumerParameter = parameters.stream().filter(r -> r instanceof ConsumerParameter.Consumer).map(ConsumerParameter.Consumer.class::cast).findFirst();

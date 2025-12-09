@@ -111,7 +111,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         val typeFieldFactory = TypeFieldFactory(resolver)
         val aopContext: KoraAspect.AspectContext = KoraAspect.AspectContext(typeBuilder, typeFieldFactory)
 
-        classDeclaration.parseTags().let { tags ->
+        classDeclaration.parseTag().let { tags ->
             if (tags.isNotEmpty()) {
                 typeBuilder.addAnnotation(tags.makeTagAnnotationSpec())
             }
@@ -260,7 +260,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             typeBuilder.addSuperclassConstructorParameter("%L", parameter.name!!.asString())
             val parameterSpec = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.resolve().toTypeName())
 
-            parameter.parseTags().let { tags ->
+            parameter.parseTag().let { tags ->
                 if (tags.isNotEmpty()) {
                     parameterSpec.addAnnotation(tags.makeTagAnnotationSpec())
                 }

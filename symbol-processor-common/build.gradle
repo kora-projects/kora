@@ -4,13 +4,13 @@ plugins {
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':common') // todo delete
-
+    api libs.slf4j.api
     api libs.kotlinpoet
     api libs.kotlinpoet.ksp
     api libs.ksp.api
     api libs.kotlin.reflect
 
+    testFixturesApi project(':common')
     testFixturesApi project(':aop:aop-symbol-processor')
     testFixturesApi libs.kotlin.reflect
 

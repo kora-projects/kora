@@ -9,10 +9,10 @@ import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
-import ru.tinkoff.kora.common.util.Either
 import ru.tinkoff.kora.config.ksp.ConfigUtils.ConfigField
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.Either
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.JavaUtils.isRecord
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
@@ -27,9 +27,10 @@ class ConfigParserGenerator(private val resolver: Resolver) {
     fun generateForInterface(codeGenerator: CodeGenerator, targetType: KSType, aggregating: Boolean = false): Either<Unit, List<ProcessingError>> {
         val element = targetType.declaration as KSClassDeclaration
         val f = ConfigUtils.parseFields(resolver, element)
-        if (f.isRight) {
-            return Either.right(f.right())
+        if (f is Either.Right) {
+            return Either.right(f.value)
         }
+        f as Either.Left
 
         val typeName = element.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
@@ -37,7 +38,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(element)
 
-        val fields = f.left()!!
+        val fields = f.value
         val defaultsType = buildDefaultsType(targetType, element, fields)
         val packageName = element.packageName.asString()
         val hasRequiredFields = fields.any { !it.hasDefault && !it.isNullable }
@@ -115,15 +116,16 @@ class ConfigParserGenerator(private val resolver: Resolver) {
     fun generateForDataClass(codeGenerator: CodeGenerator, targetType: KSType, aggregating: Boolean = false): Either<Unit, List<ProcessingError>> {
         val element = targetType.declaration as KSClassDeclaration
         val f = ConfigUtils.parseFields(resolver, element)
-        if (f.isRight) {
-            return Either.right(f.right())
+        if (f is Either.Right) {
+            return Either.right(f.value)
         }
+        f as Either.Left
         val typeName: String = element.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(element)
-        val fields = f.left()!!
+        val fields = f.value
         val hasRequiredFields = fields.stream()
             .anyMatch { !it.hasDefault && !it.isNullable }
         val implClassName = element.toClassName()
@@ -167,16 +169,17 @@ class ConfigParserGenerator(private val resolver: Resolver) {
     fun generateForRecord(codeGenerator: CodeGenerator, targetType: KSType): Either<Unit, List<ProcessingError>> {
         val decl = targetType.declaration as KSClassDeclaration
         val f = ConfigUtils.parseFields(resolver, decl)
-        if (f.isRight) {
-            return Either.right(f.right())
+        if (f is Either.Right) {
+            return Either.right(f.value)
         }
+        f as Either.Left
 
         val typeName = decl.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(decl)
-        val fields = f.left()!!
+        val fields = f.value
 
         val hasRequiredFields = fields.any { !it.hasDefault && !it.isNullable }
         val implClassName = decl.toClassName()
@@ -220,16 +223,17 @@ class ConfigParserGenerator(private val resolver: Resolver) {
     fun generateForPojo(codeGenerator: CodeGenerator, targetType: KSType): Either<Unit, List<ProcessingError>> {
         val decl = targetType.declaration as KSClassDeclaration
         val f = ConfigUtils.parseFields(resolver, decl)
-        if (f.isRight) {
-            return Either.right(f.right())
+        if (f is Either.Right) {
+            return Either.right(f.value)
         }
+        f as Either.Left
 
         val typeName = decl.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
             .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(targetType.declaration)
-        val fields = f.left()!!
+        val fields = f.value
 
         val implClassName = decl.toClassName()
         val defaults = PropertySpec.builder("DEFAULTS", implClassName, KModifier.PRIVATE, KModifier.FINAL)

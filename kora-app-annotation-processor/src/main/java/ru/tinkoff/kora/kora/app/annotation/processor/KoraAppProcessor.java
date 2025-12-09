@@ -276,11 +276,12 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var statement = CodeBlock.builder();
         var declaration = component.declaration();
         statement.add("$L = graphDraw.addNode0(_type_of_$L, ", component.fieldName(), component.fieldName());
-        statement.add("new Class<?>[]{");
-        for (var tag : component.tags()) {
-            statement.add("$L.class, ", tag);
+        if (component.tag() == null) {
+            statement.add("null, ");
+        } else {
+            statement.add("$L.class, ", component.tag());
         }
-        statement.add("}, g -> ");
+        statement.add("g -> ");
         var dependenciesCode = this.generateDependenciesCode(component, graphTypeName, components);
 
         if (declaration instanceof ComponentDeclaration.AnnotatedComponent annotatedComponent) {

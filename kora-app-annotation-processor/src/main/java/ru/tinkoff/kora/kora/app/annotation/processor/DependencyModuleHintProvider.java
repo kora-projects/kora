@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.palantir.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JsonParser;
@@ -16,7 +17,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class DependencyModuleHintProvider {
 
@@ -38,9 +38,9 @@ public class DependencyModuleHintProvider {
 
         String message();
 
-        record ModuleHint(TypeName type, Set<String> tags, String artifact, String module) implements DependencyModuleHintProvider.Hint {
+        record ModuleHint(TypeName type, @Nullable String tag, String artifact, String module) implements DependencyModuleHintProvider.Hint {
             public String message() {
-                if (tags.isEmpty()) {
+                if (tag == null) {
                     return """
                         Missing component: %s
                             Component is provided by standard Kora module you may forgot to plug it:
@@ -49,13 +49,10 @@ public class DependencyModuleHintProvider {
                         """.formatted(type, artifact, module);
                 } else {
                     String tagForMsg;
-                    if (this.tags.equals(Set.of("ru.tinkoff.kora.json.common.annotation.Json"))) {
+                    if (tag.equals("ru.tinkoff.kora.json.common.annotation.Json")) {
                         tagForMsg = "@ru.tinkoff.kora.json.common.annotation.Json";
-                    } else if (this.tags.size() == 1) {
-                        tagForMsg = "@Tag(" + this.tags.iterator().next() + ".class)";
-                    } else {
-                        tagForMsg = this.tags.stream().map(s -> s + ".class")
-                            .collect(Collectors.joining(", ", "@Tag({", "})"));
+                    } else  {
+                        tagForMsg = "@Tag(" + tag + ".class)";
                     }
 
                     return """
@@ -68,7 +65,7 @@ public class DependencyModuleHintProvider {
             }
         }
 
-        record TipHint(TypeName type, Set<String> tags, String tip) implements Hint {
+        record TipHint(TypeName type, @Nullable String tag, String tip) implements Hint {
             public String message() {
                 return """
                     %s
@@ -77,7 +74,7 @@ public class DependencyModuleHintProvider {
         }
     }
 
-    List<Hint> findHints(TypeMirror missingType, Set<String> missingTag) {
+    List<Hint> findHints(TypeMirror missingType, @Nullable String missingTag) {
         var typeName = TypeName.get(missingType);
         log.trace("Checking hints for {}/{}", missingTag, typeName);
         var result = new ArrayList<Hint>();
@@ -85,11 +82,11 @@ public class DependencyModuleHintProvider {
             var matcher = hint.typeRegex().matcher(typeName.toString());
             if (matcher.matches()) {
                 log.trace("Hint {} matched!", hint);
-                if (this.tagMatches(missingTag, hint.tags())) {
+                if (this.tagMatches(missingTag, hint.tag())) {
                     if (hint instanceof KoraHint.KoraModuleHint h) {
-                        result.add(new Hint.ModuleHint(typeName, h.tags(), h.artifact(), h.module()));
+                        result.add(new Hint.ModuleHint(typeName, h.tag(), h.artifact(), h.module()));
                     } else if (hint instanceof KoraHint.KoraTipHint t) {
-                        result.add(new Hint.TipHint(typeName, t.tags(), t.tip()));
+                        result.add(new Hint.TipHint(typeName, t.tag(), t.tip()));
                     } else {
                         throw new UnsupportedOperationException("Unknown hint type: " + hint);
                     }
@@ -101,32 +98,26 @@ public class DependencyModuleHintProvider {
         return result;
     }
 
-    private boolean tagMatches(Set<String> missingTags, Set<String> hintTags) {
-        if (missingTags.isEmpty() && hintTags.isEmpty()) {
+    private boolean tagMatches(@Nullable String missingTags, @Nullable String hintTags) {
+        if (missingTags == null && hintTags == null) {
             return true;
         }
-
-        if (missingTags.size() != hintTags.size()) {
+        if (missingTags == null) {
             return false;
         }
-
-        for (var missingTag : missingTags) {
-            if (!hintTags.contains(missingTag)) {
-                return false;
-            }
-        }
-        return true;
+        return missingTags.equals(hintTags);
     }
 
     sealed interface KoraHint {
 
         Pattern typeRegex();
 
-        Set<String> tags();
+        @Nullable
+        String tag();
 
-        record KoraModuleHint(Pattern typeRegex, Set<String> tags, String artifact, String module) implements KoraHint {}
+        record KoraModuleHint(Pattern typeRegex, @Nullable String tag, String artifact, String module) implements KoraHint {}
 
-        record KoraTipHint(Pattern typeRegex, Set<String> tags, String tip) implements KoraHint {}
+        record KoraTipHint(Pattern typeRegex, @Nullable String tag, String tip) implements KoraHint {}
 
         static List<KoraHint> parseList(JsonParser p) throws IOException {
             var token = p.nextToken();
@@ -154,6 +145,7 @@ public class DependencyModuleHintProvider {
             String moduleName = null;
             String artifact = null;
             String tip = null;
+            String tag = null;
             while (next != JsonToken.END_OBJECT) {
                 if (next != JsonToken.PROPERTY_NAME) {
                     throw new StreamReadException(p, "expected PROPERTY_NAME, got " + next);
@@ -172,6 +164,15 @@ public class DependencyModuleHintProvider {
                             tags.add(p.getValueAsString());
                             next = p.nextToken();
                         }
+                        if (!tags.isEmpty() && tags.size() != 1) {
+                            throw new IllegalArgumentException("More than one tag found in hint: " + tags);
+                        }
+                    }
+                    case "tag" -> {
+                        if (p.nextToken() != JsonToken.VALUE_STRING) {
+                            throw new StreamReadException(p, "expected VALUE_STRING, got " + next, p.currentLocation());
+                        }
+                        tag = p.getValueAsString();
                     }
                     case "typeRegex" -> {
                         if (p.nextToken() != JsonToken.VALUE_STRING) {
@@ -211,11 +212,15 @@ public class DependencyModuleHintProvider {
                 throw new StreamReadException(p, "Some required fields missing: module=%s, artifact=%s, tip=%s".formatted(
                     moduleName, artifact, tip));
             }
+            var finalTag = tag;
+            if (finalTag == null && !tags.isEmpty()) {
+                finalTag = tags.iterator().next();
+            }
 
             if (tip != null) {
-                return new KoraHint.KoraTipHint(Pattern.compile(typeRegex), tags, tip);
+                return new KoraHint.KoraTipHint(Pattern.compile(typeRegex), finalTag, tip);
             } else {
-                return new KoraHint.KoraModuleHint(Pattern.compile(typeRegex), tags, moduleName, artifact);
+                return new KoraHint.KoraModuleHint(Pattern.compile(typeRegex), finalTag, moduleName, artifact);
             }
         }
     }

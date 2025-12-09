@@ -39,7 +39,7 @@ class DbEntityReader(
                     this.fieldMapperName.parameterizedBy(mapperTypeParameter)
                 }
 
-                if (mapper.mapper != null && mapper.tags.isEmpty()) {
+                if (mapper.mapper != null && mapper.tag == null) {
                     mappers.add(Mapper(mapper, mapperType, mapperFieldName))
                 } else {
                     val tag = mapper.toTagAnnotation()
@@ -47,7 +47,7 @@ class DbEntityReader(
                     if (tag != null) {
                         param.addAnnotation(tag)
                     }
-                    mappers.add(Mapper(mapperType, mapperFieldName).copy(tags = mapper.tags))
+                    mappers.add(Mapper(mapperType, mapperFieldName).copy(tag = mapper.tag))
                 }
                 b.add("var %N: %T = %L", fieldName, fieldType, mapperCallGenerator(fieldData))
             } else {

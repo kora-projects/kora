@@ -40,7 +40,7 @@ public class RepositoryBuilder {
         }
 
         var tags = parseTagValue(repositoryElement);
-        if (!tags.isEmpty()) {
+        if (tags != null) {
             builder.addAnnotation(makeAnnotationSpec(tags));
         }
 

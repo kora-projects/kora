@@ -42,7 +42,7 @@ public final class GraphResolutionHelper {
     public static List<ComponentDependency.SingleDependency> findDependencies(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
         var result = new ArrayList<ComponentDependency.SingleDependency>(4);
         for (var resolvedComponent : resolvedComponents) {
-            if (!dependencyClaim.tagsMatches(resolvedComponent.tags())) {
+            if (!dependencyClaim.tagsMatches(resolvedComponent.tag())) {
                 continue;
             }
 
@@ -97,7 +97,7 @@ public final class GraphResolutionHelper {
         var result = new ArrayList<ComponentDependency.SingleDependency>();
         components:
         for (var component : resolvedComponents) {
-            if (!dependencyClaim.tagsMatches(component.tags())) {
+            if (!dependencyClaim.tagsMatches(component.tag())) {
                 continue components;
             }
             if (ctx.types.isAssignable(component.type(), dependencyClaim.type())) {
@@ -172,7 +172,7 @@ public final class GraphResolutionHelper {
             if (!sourceDeclaration.isTemplate()) {
                 continue;
             }
-            if (!dependencyClaim.tagsMatches(sourceDeclaration.tags())) {
+            if (!dependencyClaim.tagsMatches(sourceDeclaration.tag())) {
                 continue sources;
             }
             var requiredDeclaredType = (DeclaredType) dependencyClaim.type();
@@ -200,7 +200,7 @@ public final class GraphResolutionHelper {
                 declarations.add(new ComponentDeclaration.FromModuleComponent(
                     realReturnType,
                     declaredComponent.module(),
-                    declaredComponent.tags(),
+                    declaredComponent.tag(),
                     declaredComponent.method(),
                     realParams,
                     typeParameters,
@@ -218,7 +218,7 @@ public final class GraphResolutionHelper {
                 declarations.add(new ComponentDeclaration.AnnotatedComponent(
                     realReturnType,
                     annotatedComponent.typeElement(),
-                    annotatedComponent.tags(),
+                    annotatedComponent.tag(),
                     annotatedComponent.constructor(),
                     realParams,
                     typeParameters,
@@ -248,7 +248,7 @@ public final class GraphResolutionHelper {
                     extensionComponent.source(),
                     realParams,
                     extensionComponent.dependencyTags(),
-                    extensionComponent.tags(),
+                    extensionComponent.tag(),
                     extensionComponent.generator()
                 ));
             } else if (sourceDeclaration instanceof ComponentDeclaration.PromisedProxyComponent promisedProxyComponent) {
@@ -290,7 +290,7 @@ public final class GraphResolutionHelper {
         }
         var declarations = new ArrayList<ComponentDeclaration>();
         for (var sourceDeclaration : sourceDeclarations) {
-            if (!dependencyClaim.tagsMatches(sourceDeclaration.tags())) {
+            if (!dependencyClaim.tagsMatches(sourceDeclaration.tag())) {
                 continue;
             }
             var isDirectAssignable = ctx.types.isAssignable(sourceDeclaration.type(), dependencyClaim.type());
@@ -328,7 +328,7 @@ public final class GraphResolutionHelper {
             if (sourceDeclaration.isTemplate()) {
                 continue;
             }
-            if (!dependencyClaim.tagsMatches(sourceDeclaration.tags())) {
+            if (!dependencyClaim.tagsMatches(sourceDeclaration.tag())) {
                 continue;
             }
             if (ctx.types.isAssignable(sourceDeclaration.type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isAssignableToUnwrapped(sourceDeclaration.type(), dependencyClaim.type())) {

@@ -530,7 +530,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcResultSetMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
     }
 
 }

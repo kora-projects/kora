@@ -181,11 +181,11 @@ public class GraphBuilder {
                     continue dependency;
                 }
                 if (dependencyClaim.type().toString().startsWith("java.util.Optional<")) {
-                    var optionalDeclaration = new ComponentDeclaration.OptionalComponent(dependencyClaim.type(), dependencyClaim.tags());
+                    var optionalDeclaration = new ComponentDeclaration.OptionalComponent(dependencyClaim.type(), dependencyClaim.tag());
                     sourceDeclarations.add(optionalDeclaration);
                     stack.addLast(componentFrame.withCurrentDependency(currentDependency));
                     stack.addLast(new ResolutionFrame.Component(
-                        optionalDeclaration, List.of(ComponentDependencyHelper.parseClaim(componentFrame.declaration().source(), ((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tags(), true))
+                        optionalDeclaration, List.of(ComponentDependencyHelper.parseClaim(componentFrame.declaration().source(), ((DeclaredType) dependencyClaim.type()).getTypeArguments().get(0), dependencyClaim.tag(), true))
                     ));
                     continue frame;
                 }
@@ -195,7 +195,7 @@ public class GraphBuilder {
                     this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), finalClassComponent);
                     continue frame;
                 }
-                var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type(), dependencyClaim.tags());
+                var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type(), dependencyClaim.tag());
                 if (extension != null) {
                     ExtensionResult extensionResult;
                     try {
@@ -225,7 +225,7 @@ public class GraphBuilder {
                         continue frame;
                     }
                 }
-                var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tags());
+                var hints = ctx.dependencyModuleHintProvider.findHints(dependencyClaim.type(), dependencyClaim.tag());
 
                 throw new UnresolvedDependencyException(
                     root,
@@ -236,7 +236,7 @@ public class GraphBuilder {
                 );
             }
             resolvedComponents.add(new ResolvedComponent(
-                resolvedComponents.size(), declaration, declaration.type(), declaration.tags(),
+                resolvedComponents.size(), declaration, declaration.type(), declaration.tag(),
                 List.of(), // TODO,
                 resolvedDependencies
             ));
@@ -399,7 +399,7 @@ public class GraphBuilder {
                 throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), componentFrame.declaration());
             }
             var proxyDependencyClaim = new DependencyClaim(
-                dependencyClaimType, Set.of(CommonClassNames.promisedProxy.canonicalName()), dependencyClaim.claimType()
+                dependencyClaimType, CommonClassNames.promisedProxy.canonicalName(), dependencyClaim.claimType()
             );
             var alreadyGenerated = GraphResolutionHelper.findDependency(ctx, prevComponent.declaration(), resolvedComponents, proxyDependencyClaim);
             if (alreadyGenerated != null) {
@@ -423,11 +423,11 @@ public class GraphBuilder {
                 resolvedComponents.size(),
                 proxyComponentDeclaration,
                 dependencyClaimType,
-                Set.of(CommonClassNames.promisedProxy.canonicalName()),
+                CommonClassNames.promisedProxy.canonicalName(),
                 List.of(),
                 List.of(new ComponentDependency.PromisedProxyParameterDependency(declaration, new DependencyClaim(
                     declaration.type(),
-                    declaration.tags(),
+                    declaration.tag(),
                     ONE_REQUIRED
                 )))
             );

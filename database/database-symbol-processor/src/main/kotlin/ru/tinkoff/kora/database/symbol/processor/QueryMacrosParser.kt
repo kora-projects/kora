@@ -6,7 +6,6 @@ import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter
 import ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcNativeTypes
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
@@ -16,8 +15,8 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.getNameConverter
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.isJavaRecord
 
 class QueryMacrosParser {
@@ -49,7 +48,7 @@ class QueryMacrosParser {
 
     private fun getPathField(method: KSFunctionDeclaration, target: KSClassDeclaration, rootPath: String, columnPrefix: String): Sequence<Field> {
         val nativeType = JdbcNativeTypes.findNativeType(target.toClassName())
-        if(nativeType != null) {
+        if (nativeType != null) {
             throw ProcessingErrorException("Can't process argument '$rootPath' as macros cause it is Native Type: $target", method)
         }
 
@@ -81,7 +80,7 @@ class QueryMacrosParser {
     }
 
     private fun getColumnName(target: KSClassDeclaration, field: KSPropertyDeclaration, columnPrefix: String): String {
-        val nameConverter = target.getNameConverter(SnakeCaseNameConverter.INSTANCE)
+        val nameConverter = target.getNameConverter(snakeCaseNameConverter)
         val columnAnnotation = field.findAnnotation(DbUtils.columnAnnotation)?.findValueNoDefault<String>("value")
         if (columnAnnotation != null) {
             return columnPrefix + columnAnnotation
@@ -164,7 +163,7 @@ class QueryMacrosParser {
                 getPathField(method, target.type, target.name, "").filter { include == paths.contains(it.path) }.toList()
             }
 
-            val nameConverter = target.type.getNameConverter(SnakeCaseNameConverter.INSTANCE)
+            val nameConverter = target.type.getNameConverter(snakeCaseNameConverter)
 
             val tableName = target.type.findAnnotation(DbUtils.tableAnnotation)?.findValueNoDefault("value")
                 ?: nameConverter.convert(target.type.simpleName.asString())
@@ -200,7 +199,7 @@ class QueryMacrosParser {
                     "Macros command specified 'return' target, but return value is type Void",
                     method
                 )
-            } else if(method.returnType?.toTypeName() == DbUtils.updateCount) {
+            } else if (method.returnType?.toTypeName() == DbUtils.updateCount) {
                 throw ProcessingErrorException(
                     "Macros command specified 'return' target, but return value is type UpdateCount",
                     method

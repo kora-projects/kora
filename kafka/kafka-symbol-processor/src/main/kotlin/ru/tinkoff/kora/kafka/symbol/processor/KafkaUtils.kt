@@ -25,19 +25,19 @@ object KafkaUtils {
         return "${prefix}${function}${suffix}"
     }
 
-    fun KSFunctionDeclaration.findConsumerUserTags(): List<TypeName>? {
+    fun KSFunctionDeclaration.findConsumerUserTag(): TypeName? {
         val listener = findAnnotation(KafkaClassNames.kafkaListener) ?: return null
-        val tags = listener.findValueNoDefault<List<KSType>>("tag")
-        if (tags.isNullOrEmpty()) {
+        val tag = listener.findValueNoDefault<KSType>("tag")
+        if (tag == null) {
             return null
         }
 
-        return tags.map { t -> t.toTypeName() }
+        return tag.toTypeName()
     }
 
-    fun KSFunctionDeclaration.getConsumerTags(): List<TypeName> {
-        val userTags = findConsumerUserTags()
-        return userTags ?: listOf(tagType())
+    fun KSFunctionDeclaration.consumerTag(): TypeName {
+        val userTags = findConsumerUserTag()
+        return userTags ?: tagType()
     }
 
     fun KSFunctionDeclaration.tagType() = ClassName(packageName.asString(), parentDeclaration!!.simpleName.asString() + "Module", tagTypeName())

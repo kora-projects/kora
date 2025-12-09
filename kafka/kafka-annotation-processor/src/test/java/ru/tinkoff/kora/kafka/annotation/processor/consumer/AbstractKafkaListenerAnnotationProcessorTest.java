@@ -180,20 +180,20 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
         private final CompileResult compileResult;
         private final Class<?> controllerClass;
         private final Class<?> moduleClass;
-        private final Class<?>[] tagValue;
+        private final Class<?> tagValue;
 
         protected ListenerModule(CompileResult compileResult) {
             this.compileResult = compileResult;
             this.controllerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClass"));
             this.moduleClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClassModule"));
-            this.tagValue = new Class<?>[]{compileResult.loadClass("KafkaListenerClassModule$KafkaListenerClassProcessTag")};
+            this.tagValue = compileResult.loadClass("KafkaListenerClassModule$KafkaListenerClassProcessTag");
         }
 
         protected ListenerModule(CompileResult compileResult, Class<?> tag) {
             this.compileResult = compileResult;
             this.controllerClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClass"));
             this.moduleClass = Objects.requireNonNull(compileResult.loadClass("KafkaListenerClassModule"));
-            this.tagValue = new Class[]{tag};
+            this.tagValue = tag;
         }
 
         protected <K, V> ListenerModuleAssertions<K, V>.RecordHandlerAssertions handler(Class<? extends K> keyType, Class<? extends V> valueType) {

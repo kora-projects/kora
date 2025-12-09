@@ -9,14 +9,14 @@ import com.squareup.kotlinpoet.ClassName
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
 
 object MapstructKoraExtension : KoraExtension {
 
     val mapperAnnotation = ClassName("org.mapstruct", "Mapper")
     private const val implementationSuffix = "Impl"
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: String?): (() -> ExtensionResult)? {
         val declaration = type.declaration
         if (declaration !is KSClassDeclaration) {
             return null
@@ -28,7 +28,7 @@ object MapstructKoraExtension : KoraExtension {
         if (annotation == null) {
             return null
         }
-        val tag = declaration.parseTags()
+        val tag = declaration.parseTag()
         if (tag != tags) {
             return null
         }

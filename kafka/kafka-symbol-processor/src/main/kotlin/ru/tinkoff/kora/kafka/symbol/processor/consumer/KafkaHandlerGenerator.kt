@@ -13,12 +13,11 @@ import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordHandler
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordKeyDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordValueDeserializationException
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.recordsHandler
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.consumerTag
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.handlerFunName
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
-import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
@@ -26,10 +25,10 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
 
     fun generate(functionDeclaration: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         val controller = functionDeclaration.parentDeclaration as KSClassDeclaration
-        val tag = functionDeclaration.getConsumerTags().toTagSpecTypes()
+        val tag = functionDeclaration.consumerTag().toTagAnnotation()
 
         val delegateParamBuilder = ParameterSpec.builder("controller", controller.toClassName())
-        val delegateTags = functionDeclaration.parentDeclaration?.parseTags()
+        val delegateTags = functionDeclaration.parentDeclaration?.parseTag()
         if (!delegateTags.isNullOrEmpty()) {
             delegateParamBuilder.addAnnotation(delegateTags.toTagAnnotation())
         }
@@ -48,7 +47,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         }
     }
 
-    data class HandlerFunction(val funSpec: FunSpec, val keyType: TypeName, val keyTag: Set<String>, val valueType: TypeName, val valueTag: Set<String>)
+    data class HandlerFunction(val funSpec: FunSpec, val keyType: TypeName, val keyTag: String?, val valueType: TypeName, val valueTag: String?)
 
     fun generateRecord(b: FunSpec.Builder, function: KSFunctionDeclaration, parameters: List<ConsumerParameter>): HandlerFunction {
         val recordParameter = parameters.first { it is ConsumerParameter.Record } as ConsumerParameter.Record
@@ -110,8 +109,8 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             }
             addCode(")\n")
         }
-        val keyTag = recordParameter.key?.parseTags() ?: setOf()
-        val valueTag = recordParameter.value?.parseTags() ?: setOf()
+        val keyTag = recordParameter.key?.parseTag()
+        val valueTag = recordParameter.value?.parseTag()
 
         return HandlerFunction(b.build(), keyType, keyTag, valueType, valueTag)
     }
@@ -159,8 +158,8 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             }
         }
 
-        val keyTag = recordsParameter.key?.parseTags() ?: setOf()
-        val valueTag = recordsParameter.value.parseTags()
+        val keyTag = recordsParameter.key?.parseTag()
+        val valueTag = recordsParameter.value.parseTag()
 
         return HandlerFunction(b.build(), keyTypeName, keyTag, valueTypeName, valueTag)
     }
@@ -282,8 +281,8 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
             }
         }.build())
 
-        val keyTag = keyParameter?.parameter?.parseTags() ?: setOf()
-        val valueTag = valueParameter.parameter.parseTags()
+        val keyTag = keyParameter?.parameter?.parseTag()
+        val valueTag = valueParameter.parameter.parseTag()
 
         return HandlerFunction(b.build(), keyType, keyTag, valueType, valueTag)
     }

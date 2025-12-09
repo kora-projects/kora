@@ -7,21 +7,21 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeSpec
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames.kafkaConsumerConfig
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.configFunName
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.findConsumerUserTags
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.findConsumerUserTag
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.tagType
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 
 class KafkaConsumerConfigGenerator {
 
     fun generate(functionDeclaration: KSFunctionDeclaration, listenerAnnotation: KSAnnotation): KafkaConfigData {
-        var targetTags = functionDeclaration.findConsumerUserTags()
+        var targetTags = functionDeclaration.findConsumerUserTag()
         val tagBuilder: TypeSpec?
         if(targetTags == null) {
             val tag = functionDeclaration.tagType()
-            targetTags = listOf(tag)
+            targetTags = tag
             tagBuilder = TypeSpec.classBuilder(tag.simpleName)
                 .generated(KafkaConsumerConfigGenerator::class)
                 .build()
@@ -39,7 +39,7 @@ class KafkaConsumerConfigGenerator {
             )
             .addStatement("val configValue = config.get(%S)", configPath)
             .addStatement("return extractor.extract(configValue)!!")
-            .addAnnotation(targetTags.toTagSpecTypes())
+            .addTag(targetTags)
             .build()
         return KafkaConfigData(tagBuilder, funBuilder)
     }

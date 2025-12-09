@@ -28,9 +28,9 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isSet
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
-import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.parseMappingData
-import ru.tinkoff.kora.ksp.common.parseTags
 
 
 class RouteProcessor {
@@ -52,17 +52,17 @@ class RouteProcessor {
             .distinct()
             .toList()
 
-        val tags = declaration.parseTags()
+        val tags = declaration.parseTag()
         val paramSpecBuilder = ParameterSpec.builder("_controller", parent.toClassName())
-        if (tags.isNotEmpty()) {
-            paramSpecBuilder.addAnnotation(tags.makeTagAnnotationSpec())
+        if (tags != null) {
+            paramSpecBuilder.addAnnotation(tags.toTagAnnotation())
         }
 
         val funBuilder = FunSpec.builder(funName)
             .returns(httpServerRequestHandler)
             .addParameter(paramSpecBuilder.build())
-        if (tags.isNotEmpty()) {
-            funBuilder.addAnnotation(tags.makeTagAnnotationSpec())
+        if (tags != null) {
+            funBuilder.addAnnotation(tags.toTagAnnotation())
         }
 
         val isSuspend = function.modifiers.contains(Modifier.SUSPEND)
@@ -405,18 +405,10 @@ class RouteProcessor {
     private fun KSAnnotation.parseInterceptor(): Interceptor {
         val interceptorType = this.findValueNoDefault<KSType>("value")!!.toTypeName()
         val interceptorTag = findValueNoDefault<KSAnnotation>("tag")
-        val interceptorTagAnnotationSpec = if (interceptorTag == null) {
-            null
-        } else {
-            @Suppress("UNCHECKED_CAST")
-            val tags = interceptorTag.arguments[0].value!! as List<KSType>
-            if (tags.isNotEmpty()) {
-                tags.makeTagAnnotationSpec()
-            } else {
-                null
-            }
-        }
-        return Interceptor(interceptorType, interceptorTagAnnotationSpec)
+            ?.findValueNoDefault<KSType>("value")
+            ?.toClassName()
+            ?.toTagAnnotation()
+        return Interceptor(interceptorType, interceptorTag)
     }
 
 

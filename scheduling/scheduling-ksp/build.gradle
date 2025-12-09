@@ -3,7 +3,6 @@ plugins {
 }
 
 dependencies {
-    api project(':common')
     api project(':symbol-processor-common')
 
     implementation libs.ksp.api

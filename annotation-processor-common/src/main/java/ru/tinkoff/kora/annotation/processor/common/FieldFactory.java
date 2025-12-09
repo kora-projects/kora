@@ -11,7 +11,6 @@ import javax.lang.model.util.Types;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class FieldFactory {
     private final Types types;
@@ -33,13 +32,13 @@ public class FieldFactory {
         var mapperClass = mappingData.mapperClass();
         if (mapperClass == null) {
             var mapperTypeName = ParameterizedTypeName.get(mapperType, TypeName.get(type).box());
-            return this.fields.get(new FieldKey(mapperTypeName, mappingData.mapperTags()));
+            return this.fields.get(new FieldKey(mapperTypeName, mappingData.mapperTag()));
         }
         var mapperTypeName = TypeName.get(mapperClass);
-        return this.fields.get(new FieldKey(mapperTypeName, mappingData.mapperTags()));
+        return this.fields.get(new FieldKey(mapperTypeName, mappingData.mapperTag()));
     }
 
-    record FieldKey(TypeName typeName, Set<String> tags) {}
+    record FieldKey(TypeName typeName, @Nullable String tag) {}
 
     public FieldFactory(Types types, Elements elements, @Nullable TypeSpec.Builder builder, MethodSpec.Builder constructor, String prefix) {
         this.types = types;
@@ -49,8 +48,8 @@ public class FieldFactory {
         this.prefix = prefix;
     }
 
-    public String add(TypeName typeName, Set<String> tags) {
-        var key = new FieldKey(typeName, tags);
+    public String add(TypeName typeName, @Nullable String tag) {
+        var key = new FieldKey(typeName, tag);
         var existed = this.fields.get(key);
         if (existed != null) {
             return existed;
@@ -62,16 +61,16 @@ public class FieldFactory {
             this.constructor.addStatement("this.$N = $N", name, name);
         }
         var parameter = ParameterSpec.builder(typeName, name);
-        var tag = CommonUtils.toTagAnnotation(tags);
-        if (tag != null) {
-            parameter.addAnnotation(tag);
+        var tagAnnotation = CommonUtils.toTagAnnotation(tag);
+        if (tagAnnotation != null) {
+            parameter.addAnnotation(tagAnnotation);
         }
         this.constructor.addParameter(parameter.build());
         return name;
     }
 
     public String add(TypeName typeName, CodeBlock initializer) {
-        var key = new FieldKey(typeName, Set.of());
+        var key = new FieldKey(typeName, null);
         var existed = this.fields.get(key);
         if (existed != null) {
             return existed;
@@ -87,16 +86,16 @@ public class FieldFactory {
         return name;
     }
 
-    public String add(TypeMirror typeMirror, Set<String> tags) {
+    public String add(TypeMirror typeMirror, @Nullable String tag) {
         var typeName = TypeName.get(typeMirror);
-        var key = new FieldKey(typeName, tags);
+        var key = new FieldKey(typeName, tag);
         var existed = this.fields.get(key);
         if (existed != null) {
             return existed;
         }
         var name = this.prefix + (this.fields.size() + 1);
         this.fields.put(key, name);
-        if (tags.isEmpty() && CommonUtils.hasDefaultConstructorAndFinal(this.types, typeMirror)) {
+        if (tag == null && CommonUtils.hasDefaultConstructorAndFinal(this.types, typeMirror)) {
             if (this.builder != null) {
                 this.builder.addField(typeName, name, Modifier.PRIVATE, Modifier.FINAL);
                 this.constructor.addStatement("this.$N = new $T()", name, typeName);
@@ -115,8 +114,8 @@ public class FieldFactory {
 
     public String add(@Nullable CommonUtils.MappingData mapping, TypeName defaultType) {
         var tags = mapping == null
-            ? Set.<String>of()
-            : mapping.mapperTags();
+            ? null
+            : mapping.mapperTag();
         var typeName = mapping == null
             ? defaultType
             : TypeName.get(Objects.requireNonNull(mapping.mapperClass()));
@@ -131,7 +130,7 @@ public class FieldFactory {
         }
         var name = this.prefix + (this.fields.size() + 1);
         this.fields.put(key, name);
-        if (tags.isEmpty() && CommonUtils.hasDefaultConstructorAndFinal(typeElement)) {
+        if (tags == null && CommonUtils.hasDefaultConstructorAndFinal(typeElement)) {
             if (this.builder != null) {
                 this.builder.addField(typeName, name, Modifier.PRIVATE, Modifier.FINAL);
                 this.constructor.addStatement("this.$N = new $T()", name, typeName);

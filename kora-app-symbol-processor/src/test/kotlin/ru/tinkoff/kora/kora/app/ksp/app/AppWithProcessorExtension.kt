@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.kora.app.ksp.app
 
 import com.google.devtools.ksp.getClassDeclarationByName
-import com.google.devtools.ksp.getConstructors
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
@@ -69,7 +68,7 @@ interface AppWithProcessorExtension {
     class TestExtension(val resolver: Resolver, val codeGenerator: CodeGenerator) : KoraExtension {
         private val interfaceDeclaration = resolver.getClassDeclarationByName(Interface1::class.qualifiedName!!)!!
         private val interfaceType = interfaceDeclaration.asStarProjectedType()
-        override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+        override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
             if (type != interfaceType) {
                 return null
             }

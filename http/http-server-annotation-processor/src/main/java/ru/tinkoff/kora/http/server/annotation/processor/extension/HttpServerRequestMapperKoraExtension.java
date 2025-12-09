@@ -20,7 +20,6 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletionStage;
 
 public final class HttpServerRequestMapperKoraExtension implements KoraExtension {
@@ -34,8 +33,8 @@ public final class HttpServerRequestMapperKoraExtension implements KoraExtension
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
-        if (!tags.isEmpty()) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, String tag) {
+        if (tag != null) {
             return null;
         }
         var typeName = TypeName.get(typeMirror);

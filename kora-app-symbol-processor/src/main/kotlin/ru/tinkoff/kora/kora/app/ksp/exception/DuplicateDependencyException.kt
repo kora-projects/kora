@@ -6,7 +6,6 @@ import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import java.util.stream.Collectors
 
 data class DuplicateDependencyException(
     val claim: DependencyClaim,
@@ -55,7 +54,7 @@ data class DuplicateDependencyException(
             declaration: ComponentDeclaration,
             deps: String
         ): ProcessingError {
-            if (claim.tags.isEmpty()) {
+            if (claim.tag == null) {
                 return ProcessingError(
                     """More than one component matches dependency type: ${claim.type.toClassName()} (no tags)
                     $deps
@@ -63,10 +62,8 @@ data class DuplicateDependencyException(
                     declaration.source
                 )
             } else {
-                val tagMsg: String = claim.tags.stream()
-                    .collect(Collectors.joining(", ", "@Tag(", ")"))
                 return ProcessingError(
-                    """More than one component matches dependency type: ${claim.type.toClassName()} with $tagMsg
+                    """More than one component matches dependency type: ${claim.type.toClassName()} with @Tag(${claim.tag}::class)
                     $deps
                     Please check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.""".trimIndent(),
                     declaration.source

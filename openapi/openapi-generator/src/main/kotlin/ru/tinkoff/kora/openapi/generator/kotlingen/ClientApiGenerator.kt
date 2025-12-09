@@ -144,14 +144,14 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         val clientTag = params.clientTags[tag]
         val defaultTag = params.clientTags["*"]
         if (clientTag != null && clientTag.httpClientTag() != null) {
-            httpClientAnnotation.addMember("httpClientTag = [%L::class]", clientTag.httpClientTag())
+            httpClientAnnotation.addMember("httpClientTag = %L::class", clientTag.httpClientTag())
         } else if (defaultTag != null && defaultTag.httpClientTag() != null) {
-            httpClientAnnotation.addMember("httpClientTag = [%L::class]", defaultTag.httpClientTag())
+            httpClientAnnotation.addMember("httpClientTag = %L::class", defaultTag.httpClientTag())
         }
         if (clientTag != null && clientTag.telemetryTag() != null) {
-            httpClientAnnotation.addMember("telemetryTag = [%L::class]", clientTag.telemetryTag())
+            httpClientAnnotation.addMember("telemetryTag = %L::class", clientTag.telemetryTag())
         } else if (defaultTag != null && defaultTag.httpClientTag() != null) {
-            httpClientAnnotation.addMember("telemetryTag = [%L::class]", defaultTag.telemetryTag())
+            httpClientAnnotation.addMember("telemetryTag = %L::class", defaultTag.telemetryTag())
         }
         return httpClientAnnotation.build()
     }

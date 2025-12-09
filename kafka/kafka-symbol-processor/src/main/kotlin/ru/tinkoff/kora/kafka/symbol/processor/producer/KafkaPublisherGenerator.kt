@@ -34,7 +34,7 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.observe
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.util.*
@@ -137,7 +137,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
             .returns(returnType)
 
-        data class TypeWithTag(val typeName: TypeName, val tag: Set<String>)
+        data class TypeWithTag(val typeName: TypeName, val tag: String?)
 
         val builder = CodeBlock.builder()
 
@@ -157,10 +157,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     if (keyParserName == null) {
                         keyParserName = "serializer" + counter.incrementAndGet()
                         val parameter = ParameterSpec.builder(keyParserName, serializer.parameterizedBy(keyType.typeName))
-                        val tags = keyType.tag
-                        if (tags.isNotEmpty()) {
-                            parameter.addAnnotation(tags.toTagAnnotation())
-                        }
+                            .addTag(keyType.tag)
                         funBuilder.addParameter(parameter.build())
                         parameters[keyType] = keyParserName
                         add(", %N", keyParserName)
@@ -171,10 +168,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 if (valueParserName == null) {
                     valueParserName = "serializer" + counter.incrementAndGet()
                     val parameter = ParameterSpec.builder(valueParserName, serializer.parameterizedBy(valueType.typeName))
-                    val tags = valueType.tag
-                    if (tags.isNotEmpty()) {
-                        parameter.addAnnotation(tags.toTagAnnotation())
-                    }
+                        .addTag(valueType.tag)
                     funBuilder.addParameter(parameter.build())
                     parameters[valueType] = valueParserName
                     add(", %N", valueParserName)
@@ -219,7 +213,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .addParameter("driverProperties", Properties::class)
             .apply { topicConfig?.let { addParameter("topicConfig", it) } }
 
-        data class TypeWithTag(val type: TypeName, val tag: Set<String>)
+        data class TypeWithTag(val type: TypeName, val tag: String?)
 
         val parameters = mutableMapOf<TypeWithTag, String>()
         val counter = AtomicInteger(0)
@@ -235,10 +229,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     val type = serializer.parameterizedBy(keyType.type)
                     b.addProperty(PropertySpec.builder(keyParserName, type, KModifier.PRIVATE, KModifier.FINAL).initializer(keyParserName).build())
                     val parameter = ParameterSpec.builder(keyParserName, type)
-                    val tags = keyType.tag
-                    if (tags.isNotEmpty()) {
-                        parameter.addAnnotation(tags.toTagAnnotation())
-                    }
+                        .addTag(keyType.tag)
                     constructorBuilder.addParameter(parameter.build())
                     parameters[keyType] = keyParserName
                 }
@@ -250,10 +241,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 val type = serializer.parameterizedBy(valueType.type)
                 b.addProperty(PropertySpec.builder(valueParserName, type, KModifier.PRIVATE, KModifier.FINAL).initializer(valueParserName).build())
                 val parameter = ParameterSpec.builder(valueParserName, type)
-                val tags = valueType.tag
-                if (tags.isNotEmpty()) {
-                    parameter.addAnnotation(tags.toTagAnnotation())
-                }
+                    .addTag(valueType.tag)
                 constructorBuilder.addParameter(parameter.build())
                 parameters[valueType] = valueParserName
             }

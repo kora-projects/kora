@@ -7,13 +7,12 @@ import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
+import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.consumerTag
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.containerFunName
-import ru.tinkoff.kora.kafka.symbol.processor.KafkaUtils.getConsumerTags
 import ru.tinkoff.kora.kafka.symbol.processor.consumer.KafkaHandlerGenerator.HandlerFunction
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagSpecTypes
 
 class KafkaContainerGenerator {
     fun generate(functionDeclaration: KSFunctionDeclaration, listenerAnnotation: KSAnnotation, handler: HandlerFunction, parameters: List<ConsumerParameter>): FunSpec {
@@ -22,19 +21,19 @@ class KafkaContainerGenerator {
         val handlerType = handler.funSpec.returnType as ParameterizedTypeName
 
         val consumerParameter = parameters.firstOrNull { it is ConsumerParameter.Consumer } as ConsumerParameter.Consumer?
-        val tagAnnotation = functionDeclaration.getConsumerTags().toTagSpecTypes()
+        val consumerTag = functionDeclaration.consumerTag()
 
         val funBuilder = FunSpec.builder(functionDeclaration.containerFunName())
-            .addParameter(ParameterSpec.builder("config", KafkaClassNames.kafkaConsumerConfig).addAnnotation(tagAnnotation).build())
-            .addParameter(ParameterSpec.builder("handler", CommonClassNames.valueOf.parameterizedBy(handlerType)).addAnnotation(tagAnnotation).build())
+            .addParameter(ParameterSpec.builder("config", KafkaClassNames.kafkaConsumerConfig).addTag(consumerTag).build())
+            .addParameter(ParameterSpec.builder("handler", CommonClassNames.valueOf.parameterizedBy(handlerType)).addTag(consumerTag).build())
             .addParameter(ParameterSpec.builder("keyDeserializer", KafkaClassNames.deserializer.parameterizedBy(keyType)).addTag(handler.keyTag).build())
             .addParameter(ParameterSpec.builder("valueDeserializer", KafkaClassNames.deserializer.parameterizedBy(valueType)).addTag(handler.valueTag).build())
             .addParameter("telemetryFactory", KafkaClassNames.kafkaConsumerTelemetryFactory)
             .addParameter(ParameterSpec.builder("rebalanceListener", KafkaClassNames.consumerRebalanceListener.copy(true))
-                .addAnnotations(listOf(tagAnnotation))
+                .addTag(consumerTag)
                 .build())
             .addAnnotation(CommonClassNames.root)
-            .addAnnotation(tagAnnotation)
+            .addTag(consumerTag)
             .returns(CommonClassNames.lifecycle)
 
         val consumerName = functionDeclaration.parentDeclaration?.qualifiedName?.asString() + "." + functionDeclaration.simpleName.asString()

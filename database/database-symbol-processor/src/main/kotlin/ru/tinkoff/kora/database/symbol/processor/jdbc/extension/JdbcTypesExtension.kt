@@ -2,8 +2,6 @@ package ru.tinkoff.kora.database.symbol.processor.jdbc.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getFunctionDeclarationsByName
-import com.google.devtools.ksp.processing.CodeGenerator
-import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -19,8 +17,8 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 // JdbcResultSetMapper<T>
 // JdbcResultSetMapper<List<T>>
 class JdbcTypesExtension() : KoraExtension {
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) return null
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) return null
         if (type.declaration.qualifiedName == null) {
             return null
         }

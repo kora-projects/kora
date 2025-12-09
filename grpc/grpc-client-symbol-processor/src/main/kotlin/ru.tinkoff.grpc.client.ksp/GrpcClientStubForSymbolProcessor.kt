@@ -37,10 +37,9 @@ class GrpcClientStubForSymbolProcessor(val env: SymbolProcessorEnvironment) : Ba
         if (parent !is KSClassDeclaration) {
             return
         }
-        val tag = setOf(symbol.findAnnotation(GrpcClassNames.stubFor)!!.findValueNoDefault<KSType>("value")!!
+        val tag = symbol.findAnnotation(GrpcClassNames.stubFor)!!.findValueNoDefault<KSType>("value")!!
             .toClassName()
             .canonicalName
-        )
 
         val type = symbol.toClassName()
 

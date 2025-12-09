@@ -9,13 +9,12 @@ import ru.tinkoff.kora.application.graph.ApplicationGraphDraw
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.symbol.processor.app.TestKoraApp
 import ru.tinkoff.kora.database.symbol.processor.app.TestKoraAppTagged
+import ru.tinkoff.kora.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
+import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 import ru.tinkoff.kora.ksp.common.symbolProcess
 import java.lang.reflect.Constructor
 import java.util.function.Supplier
-import kotlin.reflect.full.isSubclassOf
-import ru.tinkoff.kora.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
-import ru.tinkoff.kora.ksp.common.GraphUtil.toGraph
 
 class ExtensionTest : AbstractJdbcRepositoryTest() {
 
@@ -37,8 +36,7 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
         constructor.parameters.forEach { p ->
             Assertions.assertThat(p.isAnnotationPresent(Tag::class.java)).isTrue
             val annotation = p.getAnnotation(Tag::class.java)
-            Assertions.assertThat(annotation.value).hasSize(1)
-            Assertions.assertThat(annotation.value[0].isSubclassOf(TestKoraAppTagged.ExampleTag::class)).isTrue()
+            Assertions.assertThat(annotation.value).isEqualTo(TestKoraAppTagged.ExampleTag::class)
         }
     }
 
@@ -53,7 +51,7 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
             interface Application {
                 @Root
                 fun testRoot(
-                    @Tag(value = [TestRepository::class, JdbcRepository::class, Int::class])
+                    @Tag(value = TestRepository::class)
                     repo: TestRepository
                 ) = repo.test()
         
@@ -64,7 +62,7 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
             """.trimIndent(),
             """
             @Repository
-            @Tag(value = [TestRepository::class, JdbcRepository::class, Int::class])
+            @Tag(value = TestRepository::class)
             interface TestRepository : JdbcRepository {
                 @Query("SELECT 1;")
                 fun select1()

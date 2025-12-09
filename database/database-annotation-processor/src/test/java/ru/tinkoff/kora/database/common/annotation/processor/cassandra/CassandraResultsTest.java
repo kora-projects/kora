@@ -188,6 +188,6 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
         assertThat(mapperConstructorParameter.getType()).isEqualTo(CassandraResultSetMapper.class);
         var tag = mapperConstructorParameter.getAnnotation(Tag.class);
         assertThat(tag).isNotNull();
-        assertThat(tag.value()).isEqualTo(new Class<?>[]{compileResult.loadClass("TestRepository")});
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
     }
 }

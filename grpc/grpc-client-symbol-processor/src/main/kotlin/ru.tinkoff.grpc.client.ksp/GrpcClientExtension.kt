@@ -32,31 +32,30 @@ class GrpcClientExtension(
     val abstractStub: KSClassDeclaration?,
     val abstractCoroutineStub: KSClassDeclaration?) : KoraExtension {
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
         if (abstractStub != null && abstractStub.asStarProjectedType().isAssignableFrom(type)) {
-            return this.generateJavaStub(type, tags)
+            return this.generateJavaStub(type, tag)
         }
         if (abstractCoroutineStub != null && abstractCoroutineStub.asStarProjectedType().isAssignableFrom(type)) {
-            return this.generateCoroutineStub(type, tags)
+            return this.generateCoroutineStub(type, tag)
         }
         val typeName = type.toTypeName()
-        if (typeName == channel && tags.size == 1) {
-            return this.generateChannel(tags)
+        if (typeName == channel && tag != null) {
+            return this.generateChannel(tag)
         }
-        if (typeName == grpcClientConfig && tags.size == 1) {
-            return this.generateConfig(type, tags)
+        if (typeName == grpcClientConfig && tag != null) {
+            return this.generateConfig(type, tag)
         }
         return null
     }
 
-    private fun generateConfig(type: KSType, tag: Set<String>): (() -> ExtensionResult) {
-        val grpcServiceTypeName = tag.first()
-        val grpcServiceClassName = ClassName.bestGuess(grpcServiceTypeName)
+    private fun generateConfig(type: KSType, tag: String): (() -> ExtensionResult) {
+        val grpcServiceClassName = ClassName.bestGuess(tag)
 
 
         val configClassDecl = resolver.getClassDeclarationByName(grpcClientConfig)!!
         val factoryMethod = findMethod(configClassDecl, "defaultConfig")
-        val parameterTags = factoryMethod.parameters.map { setOf<String>() }.dropLast(1)
+        val parameterTags = factoryMethod.parameters.map { null as String? }.dropLast(1)
         val parameterTypes = factoryMethod.parameters.map { it.type.resolve() }.dropLast(1)
 
         return {
@@ -76,20 +75,19 @@ class GrpcClientExtension(
         .filter { it.simpleName.asString() == name }
         .first()
 
-    private fun generateChannel(tag: Set<String>): (() -> ExtensionResult) {
-        val grpcServiceTypeName = tag.first()
-        val grpcServiceClassName = ClassName.bestGuess(grpcServiceTypeName)
+    private fun generateChannel(tag: String): (() -> ExtensionResult) {
+        val grpcServiceClassName = ClassName.bestGuess(tag)
 
         val managedChannelDecl = resolver.getClassDeclarationByName(managedChannelLifecycle.canonicalName)!!
         val managedChannelType = managedChannelDecl.asStarProjectedType()
         val managedChannelConstructor = managedChannelDecl.getConstructors().first()
-        val parameterTags = arrayListOf<Set<String>>()
+        val parameterTags = arrayListOf<String?>()
         val parameterTypes = arrayListOf<KSType>()
         for ((i, parameter) in managedChannelConstructor.parameters.dropLast(1).withIndex()) {
             if (i < 4) {
                 parameterTags.add(tag)
             } else {
-                parameterTags.add(setOf())
+                parameterTags.add(null)
             }
             if (i == 1 || i == 3) {
                 parameterTypes.add(parameter.type.resolve().makeNullable())
@@ -109,8 +107,8 @@ class GrpcClientExtension(
         }
     }
 
-    private fun generateCoroutineStub(type: KSType, tag: Set<String>): (() -> ExtensionResult)? {
-        if (tag.isNotEmpty()) {
+    private fun generateCoroutineStub(type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) {
             return null
         }
         val classDecl = type.declaration
@@ -125,9 +123,7 @@ class GrpcClientExtension(
         if (stubForAnnotation == null) {
             return null
         }
-        val apiTag = stubForAnnotation.findValueNoDefault<List<KSType>>("value")!!
-            .map { it.toClassName().canonicalName }
-            .toSet()
+        val apiTag = stubForAnnotation.findValueNoDefault<KSType>("value")!!.toClassName().canonicalName
         val implClassName = classDecl.toClassName()
         val constructor = classDecl.primaryConstructor!!
         val channelType = constructor.parameters[0].type.resolve()
@@ -143,8 +139,8 @@ class GrpcClientExtension(
         }
     }
 
-    private fun generateJavaStub(type: KSType, tag: Set<String>): (() -> ExtensionResult)? {
-        if (tag.isNotEmpty()) {
+    private fun generateJavaStub(type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) {
             return null
         }
         val classDecl = type.declaration
@@ -173,7 +169,7 @@ class GrpcClientExtension(
                 type,
                 tag,
                 listOf(channelType),
-                listOf(setOf(apiClassName.canonicalName))
+                listOf(apiClassName.canonicalName)
             )
         }
     }

@@ -12,13 +12,14 @@ import com.squareup.kotlinpoet.ksp.addOriginatingKSFile
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
-import ru.tinkoff.kora.common.Mapping
-import ru.tinkoff.kora.common.naming.NameConverter
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import kotlin.reflect.KClass
+
 
 object KspCommonUtils {
 
@@ -147,28 +148,59 @@ object KspCommonUtils {
         }
         return candidate
     }
+
+
+    fun KSDeclaration.getNamingStrategyConverterClass() = this.findAnnotation(CommonClassNames.namingStrategy)
+        ?.findValueNoDefault<KSType>("value")
+        ?.declaration
+        ?.qualifiedName
+        ?.asString()
+        ?.let { Class.forName(it) }
+
+    fun interface NameConverter {
+        fun convert(originalName: String): String
+    }
+
+    fun <T: NameConverter> KSDeclaration.getNameConverter(defaultValue: T) = getNameConverter() ?: defaultValue
+
+    fun KSDeclaration.getNameConverter(): NameConverter? {
+        val namingStrategyClass = getNamingStrategyConverterClass()
+        if (namingStrategyClass == null) {
+            return null
+        }
+        try {
+            val instance = namingStrategyClass.getConstructor().newInstance()
+            val method = instance.javaClass.getMethod("convert", String::class.java)
+            return object : NameConverter {
+                override fun convert(originalName: String) = method.invoke(instance, originalName) as String
+            }
+        } catch (e: Exception) {
+            throw ProcessingErrorException("Error on calling name converter constructor " + this + ": " + e.message, this)
+        }
+    }
+
 }
 
 
-data class MappersData(val mapperClasses: List<KSType>, val tags: Set<String>) {
+data class MappersData(val mapperClasses: List<KSType>, val tag: String?) {
     fun getMapping(type: KSType): MappingData? {
-        if (mapperClasses.isEmpty() && tags.isEmpty()) {
+        if (mapperClasses.isEmpty() && tag == null) {
             return null
         }
         for (mapperClass in mapperClasses) {
             if (type.isAssignableFrom(mapperClass)) {
-                return MappingData(mapperClass, tags)
+                return MappingData(mapperClass, tag)
             }
         }
-        if (tags.isEmpty()) {
+        if (tag == null) {
             return null
         } else {
-            return MappingData(null, tags)
+            return MappingData(null, tag)
         }
     }
 
     fun getMapping(type: ClassName): MappingData? {
-        if (mapperClasses.isEmpty() && tags.isEmpty()) {
+        if (mapperClasses.isEmpty() && tag == null) {
             return null
         }
         for (mapperClass in mapperClasses) {
@@ -177,13 +209,13 @@ data class MappersData(val mapperClasses: List<KSType>, val tags: Set<String>) {
                 continue
             }
             if (declaration.doesImplement(type)) {
-                return MappingData(mapperClass, tags)
+                return MappingData(mapperClass, tag)
             }
         }
-        if (tags.isEmpty()) {
+        if (tag == null) {
             return null
         } else {
-            return MappingData(null, tags)
+            return MappingData(null, tag)
         }
     }
 
@@ -193,25 +225,10 @@ fun KSClassDeclaration.doesImplement(type: ClassName) = this.toClassName() == ty
     .any { (it.declaration as KSClassDeclaration).toClassName() == type }
 
 
-data class MappingData(val mapper: KSType?, val tags: Set<String>) {
-    fun toTagAnnotation(): AnnotationSpec? {
-        if (this.tags.isEmpty()) {
-            return null
-        }
-        val tags = CodeBlock.builder()
+data class MappingData(val mapper: KSType?, val tag: String?) {
+    fun toTagAnnotation() = this.tag?.toTagAnnotation()
 
-        for ((i, tag) in this.tags.iterator().withIndex()) {
-            if (i > 0) {
-                tags.add(", ")
-            }
-            tags.add("%L::class", tag)
-        }
-        return AnnotationSpec.builder(CommonClassNames.tag).addMember(tags.build()).build()
-    }
-
-    fun isGeneric(): Boolean {
-        return mapper != null && mapper.declaration.typeParameters.isNotEmpty()
-    }
+    fun isGeneric() = mapper != null && mapper.declaration.typeParameters.isNotEmpty()
 
     fun parameterized(tn: TypeName): TypeName {
         assert(isGeneric())
@@ -221,13 +238,13 @@ data class MappingData(val mapper: KSType?, val tags: Set<String>) {
 
 fun KSAnnotated.parseMappingData(): MappersData {
     val tags = TagUtils.parseTagValue(this)
-    val mappingsAnnotation = this.findAnnotation(Mapping.Mappings::class)
+    val mappingsAnnotation = this.findAnnotation(CommonClassNames.mappings)
     if (mappingsAnnotation != null) {
         val mappings = mappingsAnnotation.findValue<List<KSAnnotation>>("value")!!
         val mappers = mappings.map { it.findValue<KSType>("value")!! }
         return MappersData(mappers, tags)
     }
-    val mappers = parseAnnotationClassValue(this, Mapping::class.qualifiedName!!)
+    val mappers = parseAnnotationClassValue(this, CommonClassNames.mapping.canonicalName)
     return MappersData(mappers, tags)
 }
 
@@ -274,7 +291,7 @@ fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List
 
 inline fun <reified T> parseAnnotationValue(target: KSAnnotation, name: String) = target.findValue<T>(name)
 
-fun parseTags(target: KSAnnotated): List<KSType> {
+fun parseTag(target: KSAnnotated): List<KSType> {
     return parseAnnotationClassValue(target, CommonClassNames.tag.canonicalName)
 }
 
@@ -290,40 +307,6 @@ fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration
         result.add(function)
     }
     return result
-}
-
-fun KSClassDeclaration.getNameConverter(default: NameConverter): NameConverter {
-    return getNameConverter() ?: default
-}
-
-fun KSClassDeclaration.getNameConverter(): NameConverter? {
-    val namingStrategy = this.findAnnotation(CommonClassNames.namingStrategy)
-    return if (namingStrategy != null) {
-        val namingStrategyClass = getNamingStrategyConverterClass(this)
-        return if (namingStrategyClass != null) {
-            try {
-                val inst = namingStrategyClass.constructors.firstOrNull()?.call() as NameConverter?
-                inst
-            } catch (e: Exception) {
-                throw ProcessingErrorException("Error on calling name converter constructor $this", this)
-            }
-        } else null
-    } else null
-}
-
-fun getNamingStrategyConverterClass(declaration: KSClassDeclaration): KClass<*>? {
-    val annotationValues = parseAnnotationClassValue(declaration, CommonClassNames.namingStrategy.canonicalName)
-    if (annotationValues.isEmpty()) return null
-    val type = annotationValues[0]
-    if (type.declaration is KSClassDeclaration) {
-        val className = (type.declaration as KSClassDeclaration).qualifiedName!!.asString()
-        return try {
-            Class.forName(className).kotlin
-        } catch (e: ClassNotFoundException) {
-            throw ProcessingErrorException("Class $className not found in classpath", declaration)
-        }
-    }
-    return null
 }
 
 fun KSAnnotated.getOuterClassesAsPrefix(): String {

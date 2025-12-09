@@ -12,7 +12,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kafka.symbol.processor.KafkaClassNames
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.TagUtils
-import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 import java.util.*
@@ -23,9 +23,9 @@ object KafkaPublisherUtils {
 
     data class PublisherData(
         val keyType: TypeName?,
-        val keyTag: Set<String>,
+        val keyTag: String?,
         val valueType: TypeName,
-        val valueTag: Set<String>,
+        val valueTag: String?,
         val keyVar: KSValueParameter?,
         val valueVar: KSValueParameter?,
         val headersVar: KSValueParameter?,
@@ -94,12 +94,12 @@ object KafkaPublisherUtils {
         }
         requireNotNull(value)
         val valueType = value.type.resolve().toTypeName().copy(false, listOf())
-        val valueTag = value.parseTags()
+        val valueTag = value.parseTag()
         if (key == null) {
-            return PublisherData(null, setOf(), valueType, valueTag, key, value, headers, record, producerCallback);
+            return PublisherData(null, null, valueType, valueTag, key, value, headers, record, producerCallback);
         }
         val keyType = key.type.resolve().toTypeName().copy(false, listOf())
-        val keyTag = key.parseTags()
+        val keyTag = key.parseTag()
         return PublisherData(keyType, keyTag, valueType, valueTag, key, value, headers, record, producerCallback)
     }
 
@@ -148,42 +148,42 @@ class Delegate(val type: TypeName, val serializer: Serializer) {
 
 interface RecordParameter {
     fun type(): TypeName
-    fun tags(): Set<String>
+    fun tag(): String?
     fun serializer(): Serializer
 }
 
-data class RecordType(val type: TypeName, val tags: Set<String>) : RecordParameter {
+data class RecordType(val type: TypeName, val tag: String?) : RecordParameter {
     constructor(value: KSTypeArgument) : this(value.toTypeName(), TagUtils.parseTagValue(value))
 
     override fun type(): TypeName = type
 
-    override fun tags(): Set<String> = tags
+    override fun tag() = tag
 
     override fun serializer(): Serializer {
-        return Serializer(type(), tags())
+        return Serializer(type(), tag())
     }
 }
 
-data class Serializer(val type: TypeName, val argument: TypeName, val tags: Set<String>) {
+data class Serializer(val type: TypeName, val argument: TypeName, val tag: String?) {
 
-    constructor(argument: TypeName) : this(KafkaClassNames.serializer.parameterizedBy(argument), argument, emptySet<String>())
+    constructor(argument: TypeName) : this(KafkaClassNames.serializer.parameterizedBy(argument), argument, null)
 
     constructor(
         argument: TypeName,
-        tags: Set<String>
+        tags: String?
     ) : this(KafkaClassNames.serializer.parameterizedBy(argument), argument, tags)
 }
 
-data class RecordElement(val element: KSValueParameter, val type: TypeName, val tags: Set<String>) : RecordParameter {
+data class RecordElement(val element: KSValueParameter, val type: TypeName, val tag: String?) : RecordParameter {
 
-    constructor(element: KSValueParameter) : this(element, element.type.toTypeName(), element.parseTags().ifEmpty { element.type.parseTags() })
+    constructor(element: KSValueParameter) : this(element, element.type.toTypeName(), element.parseTag() ?: element.type.parseTag())
 
     override fun type(): TypeName = type
 
-    override fun tags(): Set<String> = tags
+    override fun tag() = tag
 
     override fun serializer(): Serializer {
-        return Serializer(type, tags)
+        return Serializer(type, tag)
     }
 }
 

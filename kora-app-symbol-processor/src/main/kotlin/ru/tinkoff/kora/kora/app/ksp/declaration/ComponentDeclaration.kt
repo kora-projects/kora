@@ -15,13 +15,13 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
 import ru.tinkoff.kora.ksp.common.TagUtils
-import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 sealed interface ComponentDeclaration {
     val type: KSType
     val source: KSDeclaration
-    val tags: Set<String>
+    val tag: String?
 
     fun declarationString(): String
 
@@ -41,7 +41,7 @@ sealed interface ComponentDeclaration {
     data class FromModuleComponent(
         override val type: KSType,
         val module: ModuleDeclaration,
-        override val tags: Set<String>,
+        override val tag: String?,
         val method: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
         val typeVariables: List<KSTypeArgument>
@@ -76,7 +76,7 @@ sealed interface ComponentDeclaration {
     data class AnnotatedComponent(
         override val type: KSType,
         val classDeclaration: KSClassDeclaration,
-        override val tags: Set<String>,
+        override val tag: String?,
         val constructor: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
         val typeVariables: List<KSTypeArgument>
@@ -89,7 +89,7 @@ sealed interface ComponentDeclaration {
         override val type: KSType,
         val classDeclaration: KSClassDeclaration,
         val constructor: KSFunctionDeclaration,
-        override val tags: Set<String>
+        override val tag: String?
     ) : ComponentDeclaration {
         override val source get() = this.constructor
         override fun declarationString() = classDeclaration.qualifiedName?.asString().toString()
@@ -99,8 +99,8 @@ sealed interface ComponentDeclaration {
         override val type: KSType,
         override val source: KSDeclaration,
         val methodParameterTypes: List<KSType>,
-        val methodParameterTags: List<Set<String>>,
-        override val tags: Set<String>,
+        val methodParameterTags: List<String?>,
+        override val tag: String?,
         val generator: (CodeBlock) -> CodeBlock
     ) : ComponentDeclaration {
         override fun declarationString(): String {
@@ -114,14 +114,14 @@ sealed interface ComponentDeclaration {
         val className: TypeName
     ) : ComponentDeclaration {
         override val source get() = this.classDeclaration
-        override val tags get() = setOf(CommonClassNames.promisedProxy.canonicalName)
+        override val tag get() = CommonClassNames.promisedProxy.canonicalName
         override fun declarationString() = "<Proxy>"
     }
 
 
     data class OptionalComponent(
         override val type: KSType,
-        override val tags: Set<String>
+        override val tag: String?
     ) : ComponentDeclaration {
         override val source get() = type.declaration
         override fun declarationString() = "Optional.empty"
@@ -191,7 +191,7 @@ sealed interface ComponentDeclaration {
             val sourceMethod = extensionResult.constructor
             val sourceType = extensionResult.type
             val parameterTypes = sourceType.parameterTypes.map { it!!.fixPlatformType(ctx.resolver) }
-            val parameterTags = sourceMethod.parameters.map { it.parseTags() }
+            val parameterTags = sourceMethod.parameters.map { it.parseTag() }
             val type = sourceType.returnType!!
             if (type.isError) {
                 throw ProcessingErrorException(
@@ -200,9 +200,9 @@ sealed interface ComponentDeclaration {
                 )
             }
             val tag = if (sourceMethod.isConstructor()) {
-                sourceMethod.closestClassDeclaration()!!.parseTags()
+                sourceMethod.closestClassDeclaration()!!.parseTag()
             } else {
-                sourceMethod.parseTags()
+                sourceMethod.parseTag()
             }
 
             return FromExtensionComponent(type, sourceMethod, parameterTypes, parameterTags, tag) {

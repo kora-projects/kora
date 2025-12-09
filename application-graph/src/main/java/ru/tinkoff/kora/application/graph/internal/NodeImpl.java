@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.application.graph.internal;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Graph;
 import ru.tinkoff.kora.application.graph.GraphInterceptor;
@@ -16,14 +17,14 @@ public final class NodeImpl<T> implements Node<T> {
     public final Graph.Factory<? extends T> factory;
     // leaks for the test purposes
     private final Type type;
-    private final Class<?>[] tags;
+    private final Class<?> tag;
     private final List<NodeImpl<?>> dependencyNodes;
     private final List<NodeImpl<? extends GraphInterceptor<T>>> interceptors;
     private final List<NodeImpl<?>> intercepts;
     private final List<NodeImpl<?>> dependentNodes;
     private final boolean isValueOf;
 
-    public NodeImpl(ApplicationGraphDraw graphDraw, int index, Graph.Factory<? extends T> factory, Type type, List<NodeImpl<?>> dependencyNodes, List<NodeImpl<? extends GraphInterceptor<T>>> interceptors, Class<?>[] tags) {
+    public NodeImpl(ApplicationGraphDraw graphDraw, int index, Graph.Factory<? extends T> factory, Type type, List<NodeImpl<?>> dependencyNodes, List<NodeImpl<? extends GraphInterceptor<T>>> interceptors, @Nullable Class<?> tag) {
         this.graphDraw = graphDraw;
         this.index = index;
         this.factory = factory;
@@ -33,10 +34,10 @@ public final class NodeImpl<T> implements Node<T> {
         this.interceptors = List.copyOf(interceptors);
         this.intercepts = new ArrayList<>();
         this.isValueOf = false;
-        this.tags = tags;
+        this.tag = tag;
     }
 
-    private NodeImpl(ApplicationGraphDraw graphDraw, int index, Graph.Factory<? extends T> factory, Type type, List<NodeImpl<?>> dependencyNodes, List<NodeImpl<? extends GraphInterceptor<T>>> interceptors, List<NodeImpl<?>> dependentNodes, List<NodeImpl<?>> intercepts, boolean isValueOf, Class<?>[] tags) {
+    private NodeImpl(ApplicationGraphDraw graphDraw, int index, Graph.Factory<? extends T> factory, Type type, List<NodeImpl<?>> dependencyNodes, List<NodeImpl<? extends GraphInterceptor<T>>> interceptors, List<NodeImpl<?>> dependentNodes, List<NodeImpl<?>> intercepts, boolean isValueOf, @Nullable Class<?> tag) {
         this.graphDraw = graphDraw;
         this.index = index;
         this.factory = factory;
@@ -46,12 +47,12 @@ public final class NodeImpl<T> implements Node<T> {
         this.dependentNodes = dependentNodes;
         this.intercepts = intercepts;
         this.isValueOf = isValueOf;
-        this.tags = tags;
+        this.tag = tag;
     }
 
     @Override
     public Node<T> valueOf() {
-        return new NodeImpl<>(this.graphDraw, this.index, this.factory, this.type, this.dependencyNodes, this.interceptors, this.dependentNodes, this.intercepts, true, this.tags);
+        return new NodeImpl<>(this.graphDraw, this.index, this.factory, this.type, this.dependencyNodes, this.interceptors, this.dependentNodes, this.intercepts, true, this.tag);
     }
 
     public void addDependentNode(NodeImpl<?> node) {
@@ -93,7 +94,7 @@ public final class NodeImpl<T> implements Node<T> {
     }
 
     @Override
-    public Class<?>[] tags() {
-        return tags;
+    public Class<?> tag() {
+        return tag;
     }
 }

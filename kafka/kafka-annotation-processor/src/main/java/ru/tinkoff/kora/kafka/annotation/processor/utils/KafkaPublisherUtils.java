@@ -11,13 +11,13 @@ import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.DeclaredType;
-import java.util.Set;
 
 public final class KafkaPublisherUtils {
 
     private KafkaPublisherUtils() {}
 
-    public record PublisherData(@Nullable TypeName keyType, Set<String> keyTag, TypeName valueType, Set<String> valueTag, VariableElement keyVar, VariableElement valueVar, VariableElement headersVar, VariableElement recordVar, VariableElement callback) {}
+    public record PublisherData(@Nullable TypeName keyType, String keyTag, TypeName valueType, String valueTag, VariableElement keyVar, VariableElement valueVar, VariableElement headersVar,
+                                VariableElement recordVar, VariableElement callback) {}
 
     public static PublisherData parsePublisherType(ExecutableElement method) {
         var key = (VariableElement) null;
@@ -80,7 +80,7 @@ public final class KafkaPublisherUtils {
         var valueType = TypeName.get(value.asType()).withoutAnnotations();
         var valueTag = TagUtils.parseTagValue(value);
         if (key == null) {
-            return new PublisherData(null, Set.of(), valueType, valueTag, key, value, headers, record, producerCallback);
+            return new PublisherData(null, null, valueType, valueTag, key, value, headers, record, producerCallback);
         }
         var keyType = TypeName.get(key.asType()).withoutAnnotations();
         var keyTag = TagUtils.parseTagValue(key);

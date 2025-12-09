@@ -8,7 +8,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
-import ru.tinkoff.kora.application.graph.TypeRef
 import ru.tinkoff.kora.kora.app.ksp.GraphResolutionHelper
 import ru.tinkoff.kora.kora.app.ksp.ProcessingContext
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
@@ -97,9 +96,9 @@ sealed interface ComponentDependency {
                 val typeArguments = typeRef.arguments
 
                 if (typeArguments.isEmpty()) {
-                    b.add("%T.of(%T::class.java)", TypeRef::class, declaration.toClassName())
+                    b.add("%T.of(%T::class.java)", CommonClassNames.typeRef, declaration.toClassName())
                 } else {
-                    b.add("%T.of(%T::class.java", TypeRef::class, declaration.toClassName())
+                    b.add("%T.of(%T::class.java", CommonClassNames.typeRef, declaration.toClassName())
                     for (typeArgument in typeArguments) {
                         b.add(",\n%L", buildTypeRef(typeArgument.type!!.resolve()))
                     }
@@ -107,7 +106,7 @@ sealed interface ComponentDependency {
                 }
                 return b.build()
             } else {
-                return CodeBlock.of("%T.of(%T::class.java)", TypeRef::class, typeRef.toTypeName(typeParameterResolver))
+                return CodeBlock.of("%T.of(%T::class.java)", CommonClassNames.typeRef, typeRef.toTypeName(typeParameterResolver))
             }
         }
     }
