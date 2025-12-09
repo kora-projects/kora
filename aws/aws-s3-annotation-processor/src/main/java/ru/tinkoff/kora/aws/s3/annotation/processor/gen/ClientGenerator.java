@@ -86,7 +86,7 @@ public class ClientGenerator {
         var b = CommonUtils.overridingKeepAop(method);
         generateCreds(method, b);
         generateBucket(method, b);
-        b.addStatement("var _key = $L", generateKey(method, operation, true));
+        b.addStatement("var _key = $L", generateKey(method, operation));
         var args = method.getParameters().stream().filter(p -> TypeName.get(p.asType()).equals(S3ClassNames.DELETE_OBJECT_ARGS)).findFirst().orElse(null);
         if (args == null) {
             b.addStatement("var _args = ($T) null", S3ClassNames.DELETE_OBJECT_ARGS);
@@ -104,7 +104,7 @@ public class ClientGenerator {
         var b = CommonUtils.overridingKeepAop(method);
         generateCreds(method, b);
         generateBucket(method, b);
-        b.addStatement("var _key = $L", generateKey(method, operation, true));
+        b.addStatement("var _key = $L", generateKey(method, operation));
         var args = method.getParameters().stream().filter(p -> TypeName.get(p.asType()).equals(S3ClassNames.PUT_OBJECT_ARGS)).findFirst().orElse(null);
         if (args == null) {
             b.addStatement("var _args = ($T) null", S3ClassNames.PUT_OBJECT_ARGS);
@@ -216,7 +216,7 @@ public class ClientGenerator {
         var b = CommonUtils.overridingKeepAop(method);
         generateCreds(method, b);
         generateBucket(method, b);
-        b.addStatement("var _key = $L", generateKey(method, operation, true));
+        b.addStatement("var _key = $L", generateKey(method, operation));
         var args = method.getParameters().stream().filter(p -> TypeName.get(p.asType()).equals(S3ClassNames.HEAD_OBJECT_ARGS)).findFirst().orElse(null);
         if (args == null) {
             b.addStatement("var _args = ($T) null", S3ClassNames.HEAD_OBJECT_ARGS);
@@ -246,7 +246,7 @@ public class ClientGenerator {
         var args = method.getParameters().stream().filter(p -> TypeName.get(p.asType()).equals(S3ClassNames.LIST_OBJECTS_ARGS)).findFirst().orElse(null);
         if (args == null) {
             b.addStatement("var _args = new $T()", S3ClassNames.LIST_OBJECTS_ARGS);
-            b.addStatement("_args.prefix = $L", generateKey(method, operation, true));
+            b.addStatement("_args.prefix = $L", generateKey(method, operation));
         } else {
             b.addStatement("var _args = $N", args.getSimpleName());
         }
@@ -283,8 +283,6 @@ public class ClientGenerator {
             b.endControlFlow("");
             return b.build();
         }
-
-
         throw new ProcessingErrorException("Unexpected return type: " + returnType, method);
     }
 
@@ -292,7 +290,7 @@ public class ClientGenerator {
         var b = CommonUtils.overridingKeepAop(method);
         generateCreds(method, b);
         generateBucket(method, b);
-        b.addStatement("var _key = $L", generateKey(method, operation, true));
+        b.addStatement("var _key = $L", generateKey(method, operation));
         var args = method.getParameters().stream().filter(p -> TypeName.get(p.asType()).equals(S3ClassNames.GET_OBJECT_ARGS)).findFirst();
         if (args.isEmpty()) {
             b.addStatement("var _args = ($T) null", S3ClassNames.GET_OBJECT_ARGS);
@@ -353,7 +351,7 @@ public class ClientGenerator {
         }
     }
 
-    private static CodeBlock generateKey(ExecutableElement method, AnnotationMirror annotation, boolean required) {
+    private static CodeBlock generateKey(ExecutableElement method, AnnotationMirror annotation) {
         var keyMapping = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(annotation, "value");
         var parameters = method.getParameters()
             .stream()
@@ -377,11 +375,7 @@ public class ClientGenerator {
             throw new ProcessingErrorException("@S3 operation can't have multiple method parameters for keys without key template", method);
         }
         if (parameters.isEmpty()) {
-            if (required) {
-                throw new ProcessingErrorException("@S3 operation must have at least one method parameter for keys", method);
-            } else {
-                return CodeBlock.of("(String) null");
-            }
+            throw new ProcessingErrorException("@S3 operation must have at least one method parameter for keys", method);
         }
 
         var firstParameter = parameters.get(0);

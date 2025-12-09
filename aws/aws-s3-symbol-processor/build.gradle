@@ -1,0 +1,15 @@
+apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    implementation project(":symbol-processor-common")
+
+    implementation libs.ksp.api
+    implementation libs.kotlinpoet
+    implementation libs.kotlinpoet.ksp
+
+    testImplementation project(":aws:aws-s3")
+    testImplementation project(":internal:test-logging")
+    testImplementation testFixtures(project(":symbol-processor-common"))
+    testImplementation(libs.kotlin.stdlib.lib)
+}
