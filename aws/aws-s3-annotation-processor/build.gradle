@@ -1,9 +1,0 @@
-dependencies {
-    api project(":annotation-processor-common")
-    implementation project(":kora-app-annotation-processor")
-
-    testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation project(":aws:aws-s3")
-}
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
