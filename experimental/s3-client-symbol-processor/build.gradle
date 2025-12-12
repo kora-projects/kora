@@ -1,7 +1,3 @@
-plugins {
-    id "java-test-fixtures"
-}
-
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
@@ -9,13 +5,11 @@ dependencies {
     implementation project(":symbol-processor-common")
 
     implementation libs.ksp.api
-    implementation libs.kotlin.reflect
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
 
-    testImplementation project(":experimental:s3-client-aws")
+    testImplementation project(":experimental:s3-client")
     testImplementation project(":internal:test-logging")
-    testImplementation project(":config:config-common")
     testImplementation testFixtures(project(":symbol-processor-common"))
     testImplementation(libs.kotlin.stdlib.lib)
 }

@@ -1,13 +1,9 @@
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
-
 dependencies {
-    implementation project(":annotation-processor-common")
+    api project(":annotation-processor-common")
+    implementation project(":kora-app-annotation-processor")
 
-    implementation libs.javapoet
-
-    testImplementation project(":experimental:s3-client-aws")
-    testImplementation project(":experimental:s3-client-minio")
-    testImplementation project(":internal:test-logging")
-    testImplementation project(":config:config-common")
     testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation project(":experimental:s3-client")
 }
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

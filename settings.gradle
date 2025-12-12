@@ -99,13 +99,10 @@ include(
     'mapstruct:mapstruct-ksp-extension',
     'experimental:s3-client-annotation-processor',
     'experimental:s3-client-symbol-processor',
-    'experimental:s3-client-common',
-    'experimental:s3-client-minio',
-    'experimental:s3-client-aws',
+    'experimental:s3-client',
     'experimental:camunda-engine-bpmn',
     'experimental:camunda-rest-undertow',
     'experimental:camunda-zeebe-worker',
     'experimental:camunda-zeebe-worker-annotation-processor',
     'experimental:camunda-zeebe-worker-symbol-processor',
-    'aws:aws-s3'
 )
