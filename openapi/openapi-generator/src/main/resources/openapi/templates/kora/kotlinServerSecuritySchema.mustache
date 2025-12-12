@@ -73,7 +73,7 @@ public interface ApiSecurity {
                     future.complete({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal)
                 } else {
             {{#vendorExtensions.isLast}}
-                    future.completeExceptionally(HttpServerResponseException.of(403, "Forbidden"))
+                    future.completeExceptionally(HttpServerResponseException.of(401, "Unauthorized"))
             {{/vendorExtensions.isLast}}
             {{/vendorExtensions.isFirst}}{{/methods}}{{#methods}}{{^vendorExtensions.isFirst}}{{#lambda.indented}}{{#isApiKey}}{{#isKeyInHeader}}
                     val {{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_token = request.headers().getFirst("{{keyParamName}}"){{/isKeyInHeader}}{{#isKeyInQuery}}
@@ -99,7 +99,7 @@ public interface ApiSecurity {
                         future.complete({{#lambda.camelcase}}{{name}}{{/lambda.camelcase}}_principal)
                     } else {
                 {{#vendorExtensions.isLast}}
-                        future.completeExceptionally(HttpServerResponseException.of(403, "Forbidden"))
+                        future.completeExceptionally(HttpServerResponseException.of(401, "Unauthorized"))
                 {{/vendorExtensions.isLast}}
                 {{/lambda.indented}}{{/vendorExtensions.isFirst}}{{/methods}}
                 {{#methods}}
@@ -109,7 +109,7 @@ public interface ApiSecurity {
 
             return future.thenCompose { principal ->
                 if (principal == null) {
-                    CompletableFuture.failedFuture(HttpServerResponseException.of(403, "Forbidden"));
+                    CompletableFuture.failedFuture(HttpServerResponseException.of(401, "Unauthorized"));
                 } else {
                     Principal.set(ctx, principal)
                     try {
