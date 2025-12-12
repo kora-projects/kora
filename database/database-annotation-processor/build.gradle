@@ -1,5 +1,3 @@
-apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
-
 dependencies {
     api project(":annotation-processor-common")
     implementation project(":kora-app-annotation-processor")
