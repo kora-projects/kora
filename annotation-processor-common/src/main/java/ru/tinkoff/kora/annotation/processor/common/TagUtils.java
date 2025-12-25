@@ -1,19 +1,14 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.palantir.javapoet.AnnotationSpec;
+import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 
 import javax.lang.model.AnnotatedConstruct;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.RecordComponentElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.TypeMirror;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Objects;
 
 public final class TagUtils {
@@ -101,57 +96,43 @@ public final class TagUtils {
         return null;
     }
 
-    public static AnnotationSpec makeAnnotationSpecForTypes(Collection<TypeName> tags) {
-        var annotation = AnnotationSpec.builder(CommonClassNames.tag);
-        var value = CodeBlock.builder();
-        if (tags.size() == 1) {
-            value.add("$T.class", tags.iterator().next());
-        } else {
-            value.add("{");
-            var tagsList = tags.stream().toList();
-            for (int i = 0; i < tagsList.size(); i++) {
-                if (i > 0) {
-                    value.add(", ");
-                }
-                value.add("$T.class", tagsList.get(i));
-            }
-            value.add("}");
+    @Nullable
+    public static AnnotationSpec makeAnnotationSpec(@Nullable String tag) {
+        if (tag == null) {
+            return null;
         }
-        return annotation.addMember("value", value.build()).build();
-    }
-
-    public static AnnotationSpec makeAnnotationSpecForTypes(TypeName... tags) {
-        return makeAnnotationSpecForTypes(Arrays.stream(tags).toList());
-    }
-
-    public static AnnotationSpec makeAnnotationSpecForClasses(Class<?>... tags) {
-        return makeAnnotationSpecForClasses(Arrays.stream(tags).toList());
-    }
-
-    public static AnnotationSpec makeAnnotationSpecForClasses(Collection<Class<?>> tags) {
-        var annotation = AnnotationSpec.builder(CommonClassNames.tag);
-        var value = CodeBlock.builder();
-        if (tags.size() == 1) {
-            value.add("$T.class", tags.iterator().next());
-        } else {
-            value.add("{");
-            var tagsList = tags.stream().toList();
-            for (int i = 0; i < tagsList.size(); i++) {
-                if (i > 0) {
-                    value.add(", ");
-                }
-                value.add("$T.class", tagsList.get(i));
-            }
-            value.add("}");
-        }
-        return annotation.addMember("value", value.build()).build();
-    }
-
-    public static AnnotationSpec makeAnnotationSpec(String tag) {
         return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", CodeBlock.of("$L.class", tag)).build();
     }
 
-    public static CodeBlock writeTagAnnotationValue(TypeMirror tag) {
+    @Nullable
+    public static AnnotationSpec makeAnnotationSpec(@Nullable TypeMirror tag) {
+        if (tag == null) {
+            return null;
+        }
+        return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", CodeBlock.of("$T.class", tag)).build();
+    }
+
+    @Nullable
+    public static AnnotationSpec makeAnnotationSpec(@Nullable ClassName tag) {
+        if (tag == null) {
+            return null;
+        }
+        return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", CodeBlock.of("$T.class", tag)).build();
+    }
+
+    @Nullable
+    public static AnnotationSpec makeAnnotationSpec(@Nullable TypeElement tag) {
+        if (tag == null) {
+            return null;
+        }
+        return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", CodeBlock.of("$T.class", ClassName.get(tag))).build();
+    }
+
+    @Nullable
+    public static CodeBlock writeTagAnnotationValue(@Nullable TypeMirror tag) {
+        if (tag == null) {
+            return null;
+        }
         return CodeBlock.of("$T.class", tag);
     }
 
@@ -167,4 +148,5 @@ public final class TagUtils {
         }
         return requiredTag.equals(providedTag);
     }
+
 }

@@ -236,7 +236,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 var interceptorTag = this.security.interceptorTagBySecurityRequirement.get(requirement);
                 var annotation = AnnotationSpec.builder(Classes.interceptWith)
                     .addMember("value", "$T.class", Classes.httpClientInterceptor)
-                    .addMember("tag", "@$T($T.class)", Classes.tag, ClassName.get(apiPackage, "ApiSecurity", interceptorTag))
+                    .addMember("tag", "$T.class", ClassName.get(apiPackage, "ApiSecurity", interceptorTag))
                     .build();
                 b.addAnnotation(annotation);
             }

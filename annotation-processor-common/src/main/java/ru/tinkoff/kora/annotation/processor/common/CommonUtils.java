@@ -200,7 +200,7 @@ public class CommonUtils {
     public record MappingData(@Nullable TypeMirror mapperClass, @Nullable String mapperTag) {
         @Nullable
         public AnnotationSpec toTagAnnotation() {
-            return CommonUtils.toTagAnnotation(mapperTag);
+            return TagUtils.makeAnnotationSpec(mapperTag);
         }
 
         public boolean isGeneric() {
@@ -218,13 +218,6 @@ public class CommonUtils {
         }
     }
 
-    @Nullable
-    public static AnnotationSpec toTagAnnotation(String t) {
-        if (t == null || t.isEmpty()) {
-            return null;
-        }
-        return AnnotationSpec.builder(CommonClassNames.tag).addMember("value", CodeBlock.of("$L.class", t)).build();
-    }
 
     public static MappersData parseMapping(Element element) {
         var tag = TagUtils.parseTagValue(element);

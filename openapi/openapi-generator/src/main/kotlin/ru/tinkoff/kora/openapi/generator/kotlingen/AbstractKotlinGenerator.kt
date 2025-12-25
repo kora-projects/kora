@@ -14,7 +14,7 @@ import ru.tinkoff.kora.openapi.generator.AbstractGenerator
 import ru.tinkoff.kora.openapi.generator.KoraCodegen
 
 
-abstract class AbstractKotlinGenerator<C: Any> : AbstractGenerator<C, FileSpec>() {
+abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>() {
     protected fun buildAdditionalAnnotations(tag: String): List<AnnotationSpec> {
 
 
@@ -85,7 +85,7 @@ abstract class AbstractKotlinGenerator<C: Any> : AbstractGenerator<C, FileSpec>(
 
     protected fun securityTagAnnotation(securityTagName: String): AnnotationSpec {
         return AnnotationSpec.builder(Classes.tag.asKt())
-            .addMember("value = [%T.%N::class]", ClassName(apiPackage, "ApiSecurity"), securityTagName)
+            .addMember("value = %T.%N::class", ClassName(apiPackage, "ApiSecurity"), securityTagName)
             .build()
     }
 
@@ -104,7 +104,7 @@ abstract class AbstractKotlinGenerator<C: Any> : AbstractGenerator<C, FileSpec>(
                 .builder(Classes.interceptWith.asKt())
                 .addMember("value = %T::class", type)
             if (interceptorTag != null) {
-                ann.addMember("tag = %T(%T::class)", Classes.tag.asKt(), com.palantir.javapoet.ClassName.bestGuess(interceptor.tag as String).asKt())
+                ann.addMember("tag = %T::class", com.palantir.javapoet.ClassName.bestGuess(interceptor.tag as String).asKt())
             }
             result.add(ann.build())
         }

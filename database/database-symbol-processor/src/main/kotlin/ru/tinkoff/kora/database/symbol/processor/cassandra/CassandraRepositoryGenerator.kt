@@ -23,7 +23,6 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
-import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isFlow
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
@@ -252,9 +251,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val executorTag = repositoryElement.parseExecutorTag()
         if (executorTag != null) {
             constructorBuilder.addParameter(
-                ParameterSpec.builder("_cassandraConnectionFactory", CassandraTypes.connectionFactory).addAnnotation(
-                    AnnotationSpec.builder(CommonClassNames.tag).addMember("value = %L", executorTag).build()
-                ).build()
+                ParameterSpec.builder("_cassandraConnectionFactory", CassandraTypes.connectionFactory).addAnnotation(executorTag).build()
             )
         } else {
             constructorBuilder.addParameter("_cassandraConnectionFactory", CassandraTypes.connectionFactory)

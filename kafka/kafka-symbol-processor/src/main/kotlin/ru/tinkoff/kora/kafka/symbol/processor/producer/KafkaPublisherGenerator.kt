@@ -35,6 +35,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.util.*
@@ -97,7 +98,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
 
     private fun buildPublisherConfig(publisher: KSClassDeclaration, annotation: KSAnnotation): FunSpec {
         val configPath = annotation.findValueNoDefault<String>("value")!!
-        val propertiesTag = AnnotationSpec.builder(CommonClassNames.tag).addMember("%T::class", publisher.toClassName()).build()
+        val propertiesTag = publisher.toClassName().toTagAnnotation()
         return FunSpec.builder(publisher.simpleName.asString() + "_PublisherConfig")
             .returns(KafkaClassNames.publisherConfig)
             .addAnnotation(propertiesTag)
@@ -124,7 +125,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
     }
 
     private fun buildPublisherFactoryFunction(publisher: KSClassDeclaration, publishMethods: List<KSFunctionDeclaration>, topicConfig: ClassName?, aopProxy: KSClassDeclaration?): FunSpec {
-        val propertiesTag = AnnotationSpec.builder(CommonClassNames.tag).addMember("%T::class", publisher.toClassName()).build()
+        val propertiesTag = publisher.toClassName().toTagAnnotation()
         val config = ParameterSpec.builder("config", KafkaClassNames.publisherConfig).addAnnotation(propertiesTag).build()
         val packageName = publisher.packageName.asString()
         val implementationName = publisher.generatedClassName("Impl")

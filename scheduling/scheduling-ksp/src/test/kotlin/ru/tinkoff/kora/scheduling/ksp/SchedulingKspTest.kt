@@ -49,7 +49,7 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
             listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
             @org.quartz.DisallowConcurrentExecution
             class TestClass {
-                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(Tag(TestClass::class))
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(TestClass::class)
                 fun job() {}
             }
             
@@ -65,7 +65,7 @@ internal class SchedulingKspTest : AbstractSymbolProcessorTest() {
         val cr = compile0(
             listOf<SymbolProcessorProvider>(SchedulingKspProvider()), """
             class TestClass {
-                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(Tag(TestClass::class))
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(TestClass::class)
                 @ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
                 fun job() {}
             }

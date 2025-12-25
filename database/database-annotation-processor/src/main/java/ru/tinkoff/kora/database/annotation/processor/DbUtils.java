@@ -5,7 +5,10 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
-import javax.lang.model.element.*;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -58,14 +61,14 @@ public class DbUtils {
         return b;
     }
 
-    public static CodeBlock getTag(TypeElement repositoryElement) {
+    @Nullable
+    public static AnnotationSpec getTag(TypeElement repositoryElement) {
         var repositoryAnnotation = AnnotationUtils.findAnnotation(repositoryElement, DbUtils.REPOSITORY_ANNOTATION);
-        var executorTagAnnotation = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(repositoryAnnotation, "executorTag");
-        if (executorTagAnnotation == null) {
+        var executorTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(repositoryAnnotation, "executorTag");
+        if (executorTag == null) {
             return null;
         }
-        var tagValue = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(executorTagAnnotation, "value");
-        return TagUtils.writeTagAnnotationValue(tagValue);
+        return TagUtils.makeAnnotationSpec(executorTag);
     }
 
     static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {

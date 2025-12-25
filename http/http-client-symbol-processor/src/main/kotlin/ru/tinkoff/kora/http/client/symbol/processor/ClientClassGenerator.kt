@@ -829,8 +829,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
     private fun parseInterceptor(it: KSAnnotation): Interceptor {
         val interceptorType = it.findValue<KSType>("value")!!.toTypeName()
-        val interceptorTag = it.findValueNoDefault<KSAnnotation>("tag")
-            ?.findValueNoDefault<KSType>("value")
+        val interceptorTag = it.findValueNoDefault<KSType>("tag")
             ?.toClassName()
             ?.toTagAnnotation()
         return Interceptor(interceptorType, interceptorTag)

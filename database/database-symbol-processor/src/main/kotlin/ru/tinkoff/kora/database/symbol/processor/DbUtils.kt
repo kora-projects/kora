@@ -2,7 +2,10 @@ package ru.tinkoff.kora.database.symbol.processor
 
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -15,6 +18,7 @@ import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object DbUtils {
@@ -89,14 +93,13 @@ object DbUtils {
         }
     }
 
-    fun KSClassDeclaration.parseExecutorTag(): CodeBlock? {
+    fun KSClassDeclaration.parseExecutorTag(): AnnotationSpec? {
         val repository = this.findAnnotation(repositoryAnnotation)!!
-        val executorTag = repository.findValueNoDefault<KSAnnotation>("executorTag")
+        val executorTag = repository.findValueNoDefault<KSType>("executorTag")
         if (executorTag == null) {
             return null
         }
-        val value = executorTag.findValueNoDefault<KSType>("value")!!
-        return CodeBlock.of("%T::class", value.toClassName())
+        return executorTag.toClassName().toTagAnnotation()
     }
 
     fun KSClassDeclaration.findQueryMethods() = this.getAllFunctions()

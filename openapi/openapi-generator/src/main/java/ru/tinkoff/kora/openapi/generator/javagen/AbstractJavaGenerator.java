@@ -76,7 +76,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 .builder(Classes.interceptWith)
                 .addMember("value", "$T.class", type);
             if (interceptorTag != null) {
-                ann.addMember("tag", "@$T($T.class)", Classes.tag, ClassName.bestGuess(interceptorTag));
+                ann.addMember("tag", "$T.class", ClassName.bestGuess(interceptorTag));
             }
             result.add(ann.build());
         }

@@ -27,6 +27,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 
 class CacheSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -158,11 +159,7 @@ class CacheSymbolProcessor(
         val extractorType = configValueExtractor.parameterizedBy(returnType.asType(listOf()).toTypeName())
 
         return FunSpec.builder(methodName)
-            .addAnnotation(
-                AnnotationSpec.builder(CommonClassNames.tag)
-                    .addMember("%T::class", cacheContractName)
-                    .build()
-            )
+            .addAnnotation(cacheContractName.toTagAnnotation())
             .addModifiers(KModifier.PUBLIC)
             .addParameter("config", CommonClassNames.config)
             .addParameter("extractor", extractorType)
@@ -186,11 +183,7 @@ class CacheSymbolProcessor(
                     .addModifiers(KModifier.PUBLIC)
                     .addParameter(
                         ParameterSpec.builder("config", CAFFEINE_CACHE_CONFIG)
-                            .addAnnotation(
-                                AnnotationSpec.builder(CommonClassNames.tag)
-                                    .addMember("%T::class", cacheTypeName)
-                                    .build()
-                            )
+                            .addAnnotation(cacheTypeName.toTagAnnotation())
                             .build()
                     )
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
@@ -221,11 +214,7 @@ class CacheSymbolProcessor(
                     .addModifiers(KModifier.PUBLIC)
                     .addParameter(
                         ParameterSpec.builder("config", REDIS_CACHE_CONFIG)
-                            .addAnnotation(
-                                AnnotationSpec.builder(CommonClassNames.tag)
-                                    .addMember("%T::class", cacheTypeName)
-                                    .build()
-                            )
+                            .addAnnotation(cacheTypeName.toTagAnnotation())
                             .build()
                     )
                     .addParameter("redisClient", REDIS_CACHE_CLIENT)

@@ -2,7 +2,10 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.palantir.javapoet.*;
 import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.*;
+import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.FieldFactory;
+import ru.tinkoff.kora.annotation.processor.common.Visitors;
 import ru.tinkoff.kora.database.annotation.processor.DbUtils;
 import ru.tinkoff.kora.database.annotation.processor.QueryWithParameters;
 import ru.tinkoff.kora.database.annotation.processor.RepositoryGenerator;
@@ -232,7 +235,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build()).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(executorTag).build());
         } else {
             constructorBuilder.addParameter(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory");
         }

@@ -23,7 +23,7 @@ public class KafkaConsumerContainerGenerator {
 
     public MethodSpec generate(Elements elements, ExecutableElement executableElement, AnnotationMirror listenerAnnotation, HandlerMethod handlerMethod, List<ConsumerParameter> parameters) {
         var consumerTags = getConsumerTag(elements, executableElement);
-        var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
+        var tagAnnotation = TagUtils.makeAnnotationSpec(consumerTags);
 
         var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(executableElement, "Container"))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)

@@ -41,7 +41,7 @@ public class KafkaConsumerConfigGenerator {
             .addStatement("var configValue = config.get($S)", configPath)
             .addStatement("return extractor.extract(configValue)")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-            .addAnnotation(TagUtils.makeAnnotationSpecForTypes(targetTag));
+            .addAnnotation(TagUtils.makeAnnotationSpec(targetTag));
 
         return new KafkaConfigData(tagBuilded, methodBuilder.build());
     }

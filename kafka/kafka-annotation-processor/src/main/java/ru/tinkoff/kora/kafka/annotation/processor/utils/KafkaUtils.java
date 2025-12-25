@@ -31,18 +31,18 @@ public final class KafkaUtils {
     }
 
     @Nullable
-    public static TypeName findConsumerUserTag(ExecutableElement method) {
+    public static ClassName findConsumerUserTag(ExecutableElement method) {
         var annotation = AnnotationUtils.findAnnotation(method, KafkaClassNames.kafkaListener);
         var tag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "tag");
         if (tag == null) {
             return null;
         } else {
-            return TypeName.get(tag);
+            return (ClassName) TypeName.get(tag);
         }
     }
 
     @Nullable
-    public static TypeName getConsumerTag(Elements elements, ExecutableElement method) {
+    public static ClassName getConsumerTag(Elements elements, ExecutableElement method) {
         var tags = findConsumerUserTag(method);
         if (tags == null) {
             return prepareConsumerTag(elements, method);

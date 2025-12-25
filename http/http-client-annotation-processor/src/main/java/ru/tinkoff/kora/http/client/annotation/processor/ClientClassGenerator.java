@@ -485,19 +485,19 @@ public class ClientClassGenerator {
         var httpClientTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "httpClientTag");
         var clientParameter = ParameterSpec.builder(httpClient, "httpClient");
         if (httpClientTag != null) {
-            clientParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", TagUtils.writeTagAnnotationValue(httpClientTag)).build());
+            clientParameter.addAnnotation(TagUtils.makeAnnotationSpec(httpClientTag));
         }
         var telemetryParameter = ParameterSpec.builder(httpClientTelemetryFactory, "telemetryFactory");
         if (telemetryTag != null) {
-            telemetryParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", TagUtils.writeTagAnnotationValue(telemetryTag)).build());
+            telemetryParameter.addAnnotation(TagUtils.makeAnnotationSpec(telemetryTag));
         }
         record Interceptor(TypeName type, @Nullable AnnotationSpec tag) {}
         var interceptorParser = (Function<AnnotationMirror, Interceptor>) a -> {
             var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");
             var interceptorTypeName = ClassName.get(Objects.requireNonNull(interceptorType));
             @Nullable
-            var interceptorTag = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(a, "tag");
-            var interceptorTagAnnotationSpec = interceptorTag == null ? null : AnnotationSpec.get(interceptorTag);
+            var interceptorTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "tag");
+            var interceptorTagAnnotationSpec = interceptorTag == null ? null : TagUtils.makeAnnotationSpec(interceptorTag);
             return new Interceptor(interceptorTypeName, interceptorTagAnnotationSpec);
         };
 

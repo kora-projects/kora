@@ -404,8 +404,7 @@ class RouteProcessor {
 
     private fun KSAnnotation.parseInterceptor(): Interceptor {
         val interceptorType = this.findValueNoDefault<KSType>("value")!!.toTypeName()
-        val interceptorTag = findValueNoDefault<KSAnnotation>("tag")
-            ?.findValueNoDefault<KSType>("value")
+        val interceptorTag = findValueNoDefault<KSType>("tag")
             ?.toClassName()
             ?.toTagAnnotation()
         return Interceptor(interceptorType, interceptorTag)

@@ -118,7 +118,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         return AnnotationSpec
             .builder(Classes.interceptWith.asKt())
             .addMember("value = %T::class", Classes.httpServerInterceptor.asKt())
-            .addMember("tag = %T(%T::class)", Classes.tag.asKt(), ClassName(apiPackage, "ApiSecurity", authTag))
+            .addMember("tag = %T::class", ClassName(apiPackage, "ApiSecurity", authTag))
             .build();
 
     }

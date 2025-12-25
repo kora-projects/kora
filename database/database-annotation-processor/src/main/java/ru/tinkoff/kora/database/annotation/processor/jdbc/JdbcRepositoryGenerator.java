@@ -253,7 +253,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", executorTag).build()).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(executorTag).build());
         } else {
             constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory");
         }

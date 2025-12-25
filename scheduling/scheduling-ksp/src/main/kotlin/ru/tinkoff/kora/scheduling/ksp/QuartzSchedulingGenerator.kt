@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.scheduling.ksp
 
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
-import com.google.devtools.ksp.symbol.KSAnnotation
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
@@ -10,7 +9,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
@@ -38,8 +36,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
 
         when (trigger.annotation.shortName.getShortName()) {
             "ScheduleWithTrigger" -> {
-                val tag = trigger.annotation.findValue<KSAnnotation>("value")!!
-                    .findValueNoDefault<KSType>("value")!!
+                val tag = trigger.annotation.findValue<KSType>("value")!!
                     .toClassName()
 
                 val triggerParameter = ParameterSpec.builder("trigger", triggerClassName)

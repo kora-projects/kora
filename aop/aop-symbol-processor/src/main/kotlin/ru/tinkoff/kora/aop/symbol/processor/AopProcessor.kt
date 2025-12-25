@@ -10,12 +10,16 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
-import ru.tinkoff.kora.ksp.common.*
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
+import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KoraSymbolProcessingEnv
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import ru.tinkoff.kora.ksp.common.findMethods
 import kotlin.reflect.KClass
 
 class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: Resolver) {
@@ -112,8 +116,8 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
         val aopContext: KoraAspect.AspectContext = KoraAspect.AspectContext(typeBuilder, typeFieldFactory)
 
         classDeclaration.parseTag().let { tags ->
-            if (tags.isNotEmpty()) {
-                typeBuilder.addAnnotation(tags.makeTagAnnotationSpec())
+            if (tags != null) {
+                typeBuilder.addAnnotation(tags.toTagAnnotation())
             }
         }
         if (classDeclaration.isAnnotationPresent(CommonClassNames.root)) {
@@ -260,10 +264,8 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
             typeBuilder.addSuperclassConstructorParameter("%L", parameter.name!!.asString())
             val parameterSpec = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.resolve().toTypeName())
 
-            parameter.parseTag().let { tags ->
-                if (tags.isNotEmpty()) {
-                    parameterSpec.addAnnotation(tags.makeTagAnnotationSpec())
-                }
+            parameter.parseTag()?.let { tags ->
+                parameterSpec.addAnnotation(tags.toTagAnnotation())
             }
 
             constructorBuilder.addParameter(parameterSpec.build())

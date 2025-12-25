@@ -62,7 +62,7 @@ final class KafkaPublisherGenerator {
         return MethodSpec.methodBuilder(CommonUtils.decapitalize(className.simpleName()) + "_PublisherConfig")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .returns(KafkaClassNames.publisherConfig)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", "$T.class", className).build())
+            .addAnnotation(TagUtils.makeAnnotationSpec(className))
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.publisherConfig), "extractor")
             .addStatement("var configValue = config.get($S)", configPath)
@@ -83,7 +83,7 @@ final class KafkaPublisherGenerator {
     }
 
     private MethodSpec buildPublisherFactoryFunction(TypeElement publisher, List<ExecutableElement> publishMethods, @Nullable TypeElement aopProxy) {
-        var propertiesTag = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", "$T.class", publisher).build();
+        var propertiesTag = TagUtils.makeAnnotationSpec(publisher);
         var config = ParameterSpec.builder(KafkaClassNames.publisherConfig, "config").addAnnotation(propertiesTag).build();
         var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
         var implementationName = ClassName.get(packageName, NameUtils.generatedType(publisher, "Impl"));

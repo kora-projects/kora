@@ -61,7 +61,7 @@ public class FieldFactory {
             this.constructor.addStatement("this.$N = $N", name, name);
         }
         var parameter = ParameterSpec.builder(typeName, name);
-        var tagAnnotation = CommonUtils.toTagAnnotation(tag);
+        var tagAnnotation = TagUtils.makeAnnotationSpec(tag);
         if (tagAnnotation != null) {
             parameter.addAnnotation(tagAnnotation);
         }
@@ -139,7 +139,7 @@ public class FieldFactory {
             }
         } else {
             var parameter = ParameterSpec.builder(typeName, name);
-            var tag = CommonUtils.toTagAnnotation(tags);
+            var tag = TagUtils.makeAnnotationSpec(tags);
             if (tag != null) {
                 parameter.addAnnotation(tag);
             }

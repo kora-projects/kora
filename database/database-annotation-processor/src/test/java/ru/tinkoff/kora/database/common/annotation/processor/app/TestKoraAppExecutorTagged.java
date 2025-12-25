@@ -14,7 +14,7 @@ public interface TestKoraAppExecutorTagged {
 
     class ExampleTag {}
 
-    @Repository(executorTag = @Tag(ExampleTag.class))
+    @Repository(executorTag = ExampleTag.class)
     interface TestRepository extends JdbcRepository {
         @Query("INSERT INTO table(value) VALUES (:value)")
         void abstractMethod(String value);

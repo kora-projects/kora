@@ -22,7 +22,7 @@ public class KafkaConsumerHandlerGenerator {
         var controller = (TypeElement) executableElement.getEnclosingElement();
         var methodName = prepareMethodName(executableElement, "Handler");
         var consumerTags = getConsumerTag(elements, executableElement);
-        var tagAnnotation = TagUtils.makeAnnotationSpecForTypes(consumerTags);
+        var tagAnnotation = TagUtils.makeAnnotationSpec(consumerTags);
 
         var delegateParamBuilder = ParameterSpec.builder(TypeName.get(controller.asType()), "controller");
         var delegateTag = TagUtils.parseTagValue(executableElement.getEnclosingElement());

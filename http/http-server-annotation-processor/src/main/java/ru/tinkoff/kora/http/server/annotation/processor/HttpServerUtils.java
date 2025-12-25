@@ -6,6 +6,7 @@ import com.palantir.javapoet.TypeName;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
+import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
@@ -29,8 +30,8 @@ public class HttpServerUtils {
         var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");
         var interceptorTypeName = ClassName.get(Objects.requireNonNull(interceptorType));
         @Nullable
-        var interceptorTag = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(a, "tag");
-        var interceptorTagAnnotationSpec = interceptorTag == null ? null : AnnotationSpec.get(interceptorTag);
+        var interceptorTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "tag");
+        var interceptorTagAnnotationSpec = interceptorTag == null ? null : TagUtils.makeAnnotationSpec(interceptorTag);
         return new Interceptor(interceptorTypeName, interceptorTagAnnotationSpec);
     }
 

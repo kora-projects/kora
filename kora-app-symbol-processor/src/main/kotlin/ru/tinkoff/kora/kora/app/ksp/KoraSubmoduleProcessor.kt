@@ -20,8 +20,8 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
-import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
-import ru.tinkoff.kora.ksp.common.parseTag
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 
 class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : SymbolProcessor {
     companion object {
@@ -129,8 +129,8 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
                 val parameter = constructor.parameters[i]
                 val tag = parameter.parseTag()
                 val ps = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.toTypeName())
-                if (tag.isNotEmpty()) {
-                    ps.addAnnotation(tag.makeTagAnnotationSpec())
+                if (tag != null) {
+                    ps.addAnnotation(tag.toTagAnnotation())
                 }
                 mb.addParameter(ps.build())
                 if (i > 0) {
@@ -139,8 +139,8 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
                 mb.addCode("%N", parameter.name?.asString())
             }
             val tag = component.parseTag()
-            if (tag.isNotEmpty()) {
-                mb.addAnnotation(tag.makeTagAnnotationSpec())
+            if (tag != null) {
+                mb.addAnnotation(tag.toTagAnnotation())
             }
             if (component.findAnnotation(CommonClassNames.root) != null) {
                 mb.addAnnotation(CommonClassNames.root)
@@ -164,8 +164,8 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
                     val parameter = component.parameters[i]
                     val tag = parameter.parseTag()
                     val ps = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.toTypeName())
-                    if (tag.isNotEmpty()) {
-                        ps.addAnnotation(tag.makeTagAnnotationSpec())
+                    if (tag != null) {
+                        ps.addAnnotation(tag.toTagAnnotation())
                     }
                     mb.addParameter(ps.build())
                     if (i > 0) {
@@ -174,8 +174,8 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
                     mb.addCode("%N", parameter.name?.asString())
                 }
                 val tag = component.parseTag()
-                if (tag.isNotEmpty()) {
-                    mb.addAnnotation(tag.makeTagAnnotationSpec())
+                if (tag != null) {
+                    mb.addAnnotation(tag.toTagAnnotation())
                 }
                 if (component.findAnnotation(CommonClassNames.defaultComponent) != null) {
                     mb.addAnnotation(CommonClassNames.defaultComponent)
