@@ -2,7 +2,7 @@ name: Publish Release
 
 on:
   release:
-    branches: [ "master" ]
+    branches: [ "master", "1.0" ]
     types: [ published ]
 
 jobs:
