@@ -122,7 +122,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         return AnnotationSpec
             .builder(Classes.interceptWith)
             .addMember("value", "$T.class", Classes.httpServerInterceptor)
-            .addMember("tag", "@$T($T.class)", Classes.tag, ClassName.get(apiPackage, "ApiSecurity", authTag))
+            .addMember("tag", "$T.class", ClassName.get(apiPackage, "ApiSecurity", authTag))
             .build();
     }
 

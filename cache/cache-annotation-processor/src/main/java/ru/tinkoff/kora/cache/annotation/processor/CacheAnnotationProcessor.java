@@ -160,9 +160,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         var extractorType = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, returnType);
 
         return MethodSpec.methodBuilder(methodName)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
-                .addMember("value", "$T.class", cacheContractName)
-                .build())
+            .addAnnotation(TagUtils.makeAnnotationSpec(cacheContractName))
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(extractorType, "extractor")
@@ -256,9 +254,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             return MethodSpec.methodBuilder(methodName)
                 .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(CAFFEINE_CACHE_CONFIG, "config")
-                    .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
-                        .addMember("value", "$T.class", cacheContract)
-                        .build())
+                    .addAnnotation(TagUtils.makeAnnotationSpec(ClassName.get(cacheContract)))
                     .build())
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
                 .addStatement("return new $T(config, factory)", cacheImplName)
@@ -278,23 +274,21 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .orElseThrow();
 
             var valueParamBuilder = ParameterSpec.builder(valueMapperType, "valueMapper");
-            final Set<String> valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));
-            if (!valueTags.isEmpty()) {
+            var valueTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(1));
+            if (valueTags != null) {
                 valueParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(valueTags));
             }
 
             var keyParamBuilder = ParameterSpec.builder(keyMapperType, "keyMapper");
-            final Set<String> keyTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(0));
-            if (!keyTags.isEmpty()) {
+            var keyTags = TagUtils.parseTagValue(cacheDeclaredType.getTypeArguments().get(0));
+            if (keyTags != null) {
                 keyParamBuilder.addAnnotation(TagUtils.makeAnnotationSpec(keyTags));
             }
 
             return MethodSpec.methodBuilder(methodName)
                 .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(REDIS_CACHE_CONFIG, "config")
-                    .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag)
-                        .addMember("value", "$T.class", cacheContract)
-                        .build())
+                    .addAnnotation(TagUtils.makeAnnotationSpec(cacheContract))
                     .build())
                 .addParameter(REDIS_CACHE_CLIENT, "redisClient")
                 .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")

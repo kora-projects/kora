@@ -39,7 +39,7 @@ data class ComponentInterceptors(
         return this.interceptors.filter { interceptor ->
             val realInterceptorType = interceptor.interceptType.makeNotNullable()
             serviceTypesHelper.isInterceptable(realInterceptorType, type)
-                && descriptor.tags.containsAll(interceptor.declaration.tags)
+                && descriptor.tag == interceptor.declaration.tag
         }
     }
 }

@@ -33,7 +33,7 @@ class MockkGraphModificationTests : KoraAppTestGraphModifier {
                 TestComponent1::class.java,
                 Supplier { mockkClass(TestComponent1::class) })
             .replaceComponent(
-                TestComponent2::class.java, listOf<Class<*>>(LifecycleComponent::class.java),
+                TestComponent2::class.java, LifecycleComponent::class.java,
                 Supplier { mockkClass(TestComponent2::class) })
     }
 

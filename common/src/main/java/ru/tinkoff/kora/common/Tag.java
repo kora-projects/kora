@@ -42,5 +42,5 @@ public @interface Tag {
      */
     final class Any {}
 
-    Class<?>[] value();
+    Class<?> value();
 }

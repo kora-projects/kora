@@ -14,6 +14,7 @@ import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import java.util.*
 import java.util.function.Function
@@ -37,7 +38,7 @@ class KafkaPublisherTransactionalGenerator(
             .generated(KafkaPublisherGenerator::class)
 
         val configPath = annotation.findValueNoDefault<String>("value")!!
-        val tag = AnnotationSpec.builder(CommonClassNames.tag).addMember("%T::class", txPublisher.toClassName()).build()
+        val tag = txPublisher.toClassName().toTagAnnotation()
         val config = FunSpec.builder(txPublisher.simpleName.asString().replaceFirstChar { it.lowercaseChar() } + "_PublisherTransactionalConfig")
             .returns(KafkaClassNames.publisherTransactionalConfig)
             .addAnnotation(tag)
@@ -50,13 +51,18 @@ class KafkaPublisherTransactionalGenerator(
             .addParameter("factory", Function::class.asClassName().parameterizedBy(Properties::class.asClassName(), publisherImplementationTypeName))
             .addParameter(ParameterSpec.builder("config", KafkaClassNames.publisherTransactionalConfig).addAnnotation(tag).build())
             .returns(txPublisher.toClassName())
-            .addCode(CodeBlock.builder()
-                .add("return %T(config) {", implementationTypeName).indent().add("\n")
-                .addStatement("val properties = %T()", Properties::class.asClassName())
-                .addStatement("properties[%T.TRANSACTIONAL_ID_CONFIG] = config.idPrefix() + \"-\" + %T.randomUUID()", ClassName("org.apache.kafka.clients.producer", "ProducerConfig"), UUID::class.java)
-                .addStatement("factory.apply(properties)")
-                .unindent().add("\n}\n")
-                .build()
+            .addCode(
+                CodeBlock.builder()
+                    .add("return %T(config) {", implementationTypeName).indent().add("\n")
+                    .addStatement("val properties = %T()", Properties::class.asClassName())
+                    .addStatement(
+                        "properties[%T.TRANSACTIONAL_ID_CONFIG] = config.idPrefix() + \"-\" + %T.randomUUID()",
+                        ClassName("org.apache.kafka.clients.producer", "ProducerConfig"),
+                        UUID::class.java
+                    )
+                    .addStatement("factory.apply(properties)")
+                    .unindent().add("\n}\n")
+                    .build()
             )
             .build()
         module.addFunction(config)
@@ -75,29 +81,35 @@ class KafkaPublisherTransactionalGenerator(
             .addSuperinterface(CommonClassNames.lifecycle)
             .addOriginatingKSFile(typeElement)
             .generated(KafkaPublisherTransactionalGenerator::class)
-            .addProperty(PropertySpec.builder("delegate", KafkaClassNames.transactionalPublisherImpl.parameterizedBy(publisherImplementationTypeName), KModifier.PRIVATE, KModifier.FINAL)
-                .initializer("%T(config, factory)", KafkaClassNames.transactionalPublisherImpl)
-                .build())
-            .primaryConstructor(FunSpec.constructorBuilder()
-                .addParameter("config", KafkaClassNames.publisherTransactionalConfig)
-                .addParameter("factory", Supplier::class.asClassName().parameterizedBy(publisherImplementationTypeName))
-                .build()
+            .addProperty(
+                PropertySpec.builder("delegate", KafkaClassNames.transactionalPublisherImpl.parameterizedBy(publisherImplementationTypeName), KModifier.PRIVATE, KModifier.FINAL)
+                    .initializer("%T(config, factory)", KafkaClassNames.transactionalPublisherImpl)
+                    .build()
             )
-            .addFunction(FunSpec.builder("init")
-                .addModifiers(KModifier.OVERRIDE)
-                .addStatement("this.delegate.init()")
-                .build()
+            .primaryConstructor(
+                FunSpec.constructorBuilder()
+                    .addParameter("config", KafkaClassNames.publisherTransactionalConfig)
+                    .addParameter("factory", Supplier::class.asClassName().parameterizedBy(publisherImplementationTypeName))
+                    .build()
             )
-            .addFunction(FunSpec.builder("release")
-                .addModifiers(KModifier.OVERRIDE)
-                .addStatement("this.delegate.release()")
-                .build()
+            .addFunction(
+                FunSpec.builder("init")
+                    .addModifiers(KModifier.OVERRIDE)
+                    .addStatement("this.delegate.init()")
+                    .build()
             )
-            .addFunction(FunSpec.builder("begin")
-                .addModifiers(KModifier.OVERRIDE)
-                .returns(KafkaClassNames.transaction.parameterizedBy(WildcardTypeName.producerOf(publisherType)))
-                .addStatement("return this.delegate.begin()")
-                .build()
+            .addFunction(
+                FunSpec.builder("release")
+                    .addModifiers(KModifier.OVERRIDE)
+                    .addStatement("this.delegate.release()")
+                    .build()
+            )
+            .addFunction(
+                FunSpec.builder("begin")
+                    .addModifiers(KModifier.OVERRIDE)
+                    .returns(KafkaClassNames.transaction.parameterizedBy(WildcardTypeName.producerOf(publisherType)))
+                    .addStatement("return this.delegate.begin()")
+                    .build()
             )
             .build()
         FileSpec.builder(packageName, b.name!!).addType(b)

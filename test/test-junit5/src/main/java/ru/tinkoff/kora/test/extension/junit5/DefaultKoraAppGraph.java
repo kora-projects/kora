@@ -13,8 +13,6 @@ import java.util.Objects;
 @SuppressWarnings("unchecked")
 final class DefaultKoraAppGraph implements KoraAppGraph {
 
-    private static final Class<?>[] TAG_ANY = new Class<?>[]{Tag.Any.class};
-
     private final ApplicationGraphDraw graphDraw;
     private final Graph graph;
 
@@ -40,8 +38,8 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
 
     @Nullable
     @Override
-    public Object getFirst(@Nonnull Type type, Class<?>... tags) {
-        var nodes = GraphUtils.findNodeByType(graphDraw, new GraphCandidate(type, tags));
+    public Object getFirst(@Nonnull Type type, @Nullable Class<?> tag) {
+        var nodes = GraphUtils.findNodeByType(graphDraw, new GraphCandidate(type, tag));
         return nodes.stream()
             .map(graph::get)
             .findFirst()
@@ -50,20 +48,20 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
 
     @Nullable
     @Override
-    public <T> T getFirst(@Nonnull Class<T> type, Class<?>... tags) {
-        return (T) getFirst((Type) type, tags);
+    public <T> T getFirst(@Nonnull Class<T> type, @Nullable Class<?> tag) {
+        return (T) getFirst((Type) type, tag);
     }
 
     @Nonnull
     @Override
     public List<Object> getAll(@Nonnull Type type) {
-        return getAll(type, TAG_ANY);
+        return getAll(type, Tag.Any.class);
     }
 
     @Nonnull
     @Override
-    public List<Object> getAll(@Nonnull Type type, Class<?>... tags) {
-        var nodes = GraphUtils.findNodeByType(graphDraw, new GraphCandidate(type, tags));
+    public List<Object> getAll(@Nonnull Type type, @Nullable Class<?> tag) {
+        var nodes = GraphUtils.findNodeByType(graphDraw, new GraphCandidate(type, tag));
         return nodes.stream()
             .map(graph::get)
             .toList();
@@ -72,13 +70,13 @@ final class DefaultKoraAppGraph implements KoraAppGraph {
     @Nonnull
     @Override
     public <T> List<T> getAll(@Nonnull Class<T> type) {
-        return getAll(type, TAG_ANY);
+        return getAll(type, Tag.Any.class);
     }
 
     @Nonnull
     @Override
-    public <T> List<T> getAll(@Nonnull Class<T> type, Class<?>... tags) {
-        return (List<T>) getAll(((Type) type), tags);
+    public <T> List<T> getAll(@Nonnull Class<T> type, @Nullable Class<?> tag) {
+        return (List<T>) getAll(((Type) type), tag);
     }
 
     @Override

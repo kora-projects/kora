@@ -1,27 +1,25 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
 import com.palantir.javapoet.TypeName;
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.annotation.processor.common.TypeParameterUtils;
 
 import javax.lang.model.type.TypeMirror;
-import java.util.Collection;
 import java.util.Objects;
-import java.util.Set;
 
-public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaimType claimType) {
+public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyClaimType claimType) {
 
     public DependencyClaim {
         Objects.requireNonNull(type);
-        Objects.requireNonNull(tags);
         Objects.requireNonNull(claimType);
         if (TypeParameterUtils.hasTypeParameter(type)) {
             throw new IllegalStateException("Component can't have generic dependencies: " + type);
         }
     }
 
-    public boolean tagsMatches(Collection<String> other) {
-        return TagUtils.tagsMatch(this.tags, other);
+    public boolean tagsMatches(String other) {
+        return TagUtils.tagsMatch(this.tag, other);
     }
 
     public enum DependencyClaimType {
@@ -44,7 +42,7 @@ public record DependencyClaim(TypeMirror type, Set<String> tags, DependencyClaim
     @Override
     public String toString() {
         return "DependencyClaim{type=" + TypeName.get(type)
-            + ", tags=" + tags
+            + ", tag=" + tag
             + ", claimType=" + claimType + '}';
     }
 }

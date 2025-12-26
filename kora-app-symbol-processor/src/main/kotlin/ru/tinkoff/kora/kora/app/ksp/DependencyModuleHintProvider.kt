@@ -32,12 +32,12 @@ class DependencyModuleHintProvider {
 
         data class ModuleHint(
             val type: KSType,
-            val tags: Set<String>,
+            val tag: String?,
             val module: String,
             val artifact: String
         ) : Hint {
             override fun message(): String {
-                if (tags.isEmpty()) {
+                if (tag == null) {
                     return """
                         Missing component: ${type.toTypeName()}
                             Component is provided by standard Kora module you may forgot to plug it:
@@ -45,12 +45,10 @@ class DependencyModuleHintProvider {
                                 Module interface:  $module
                                 """.trimIndent()
                 } else {
-                    val tagForMsg = if (this.tags == setOf("ru.tinkoff.kora.json.common.annotation.Json")) {
+                    val tagForMsg = if (this.tag == "ru.tinkoff.kora.json.common.annotation.Json") {
                         "@ru.tinkoff.kora.json.common.annotation.Json"
-                    } else if (this.tags.size == 1) {
-                        "@Tag(${this.tags.iterator().next() + ".class"})"
                     } else {
-                        tags.joinToString(", ", "@Tag({", "})") { "$it.class" }
+                        "@Tag({$tag}::class)"
                     }
 
                     return """
@@ -65,24 +63,24 @@ class DependencyModuleHintProvider {
 
         data class TipHint(
             val type: KSType,
-            val tags: Set<String>,
+            val tag: String?,
             val tip: String
         ) : Hint {
             override fun message(): String = tip
         }
     }
 
-    fun findHints(missingType: KSType, missingTag: Set<String>): List<Hint> {
+    fun findHints(missingType: KSType, missingTag: String?): List<Hint> {
         log.trace("Checking hints for {}/{}", missingTag, missingType)
         val result = mutableListOf<Hint>()
         for (hint in hints) {
             val matcher = hint.typeRegex.matcher(missingType.toTypeName().toString())
             if (matcher.matches()) {
-                if (tagMatches(missingTag, hint.tags)) {
+                if (tagMatches(missingTag, hint.tag)) {
                     log.trace("Hint {} matched!", hint)
                     when (hint) {
-                        is KoraHint.KoraModuleHint -> result.add(Hint.ModuleHint(missingType, hint.tags, hint.artifact, hint.moduleName))
-                        is KoraHint.KoraTipHint -> result.add(Hint.TipHint(missingType, hint.tags, hint.tip))
+                        is KoraHint.KoraModuleHint -> result.add(Hint.ModuleHint(missingType, hint.tag, hint.artifact, hint.moduleName))
+                        is KoraHint.KoraTipHint -> result.add(Hint.TipHint(missingType, hint.tag, hint.tip))
                         else -> throw UnsupportedOperationException("Unknown hint type: $hint")
                     }
                 } else {
@@ -95,39 +93,32 @@ class DependencyModuleHintProvider {
         return result
     }
 
-    private fun tagMatches(missingTags: Set<String>, hintTags: Set<String>): Boolean {
-        if (missingTags.isEmpty() && hintTags.isEmpty()) {
+    private fun tagMatches(missingTags: String?, hintTags: String?): Boolean {
+        if (missingTags == null && hintTags == null) {
             return true
         }
-
-        if (missingTags.size != hintTags.size) {
+        if (missingTags == null) {
             return false
         }
-
-        for (missingTag in missingTags) {
-            if (!hintTags.contains(missingTag)) {
-                return false
-            }
-        }
-        return true
+        return missingTags == hintTags
     }
 
     interface KoraHint {
 
         val typeRegex: Pattern
 
-        val tags: Set<String>
+        val tag: String?
 
         data class KoraModuleHint(
             override val typeRegex: Pattern,
-            override val tags: Set<String>,
+            override val tag: String?,
             val moduleName: String,
             val artifact: String
         ) : KoraHint
 
         data class KoraTipHint(
             override val typeRegex: Pattern,
-            override val tags: Set<String>,
+            override val tag: String?,
             val tip: String
         ) : KoraHint
 
@@ -158,6 +149,7 @@ class DependencyModuleHintProvider {
                 var next = p.nextToken()
                 var typeRegex: String? = null
                 val tags: MutableSet<String> = HashSet()
+                var tag: String? = null
                 var moduleName: String? = null
                 var artifact: String? = null
                 var tip: String? = null
@@ -179,6 +171,13 @@ class DependencyModuleHintProvider {
                                 tags.add(p.valueAsString)
                                 next = p.nextToken()
                             }
+                        }
+
+                        "tag" -> {
+                            if (p.nextToken() != JsonToken.VALUE_STRING) {
+                                throw StreamReadException(p, "expected VALUE_STRING, got $next")
+                            }
+                            tag = p.valueAsString
                         }
 
                         "typeRegex" -> {
@@ -222,11 +221,16 @@ class DependencyModuleHintProvider {
                 } else if (!(moduleName != null && artifact != null || tip != null)) {
                     throw StreamReadException(p, "Some required fields missing: moduleName=$moduleName, artifact=$artifact, tip=$tip")
                 }
-
+                val finalTag = when {
+                    tag != null -> tag
+                    tags.size == 1 -> tags.first()
+                    tags.isNotEmpty() -> throw RuntimeException("Tags size should be 0 or 1")
+                    else -> null
+                }
                 return if (tip != null) {
-                    KoraTipHint(Pattern.compile(typeRegex.trim()), tags, tip)
+                    KoraTipHint(Pattern.compile(typeRegex.trim()), finalTag, tip)
                 } else {
-                    KoraModuleHint(Pattern.compile(typeRegex.trim()), tags, moduleName!!, artifact!!)
+                    KoraModuleHint(Pattern.compile(typeRegex.trim()), finalTag, moduleName!!, artifact!!)
                 }
             }
         }

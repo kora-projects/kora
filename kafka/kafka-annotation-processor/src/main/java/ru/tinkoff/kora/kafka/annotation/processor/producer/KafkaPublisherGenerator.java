@@ -14,7 +14,10 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Objects;
+import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -59,7 +62,7 @@ final class KafkaPublisherGenerator {
         return MethodSpec.methodBuilder(CommonUtils.decapitalize(className.simpleName()) + "_PublisherConfig")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .returns(KafkaClassNames.publisherConfig)
-            .addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", "$T.class", className).build())
+            .addAnnotation(TagUtils.makeAnnotationSpec(className))
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.publisherConfig), "extractor")
             .addStatement("var configValue = config.get($S)", configPath)
@@ -80,7 +83,7 @@ final class KafkaPublisherGenerator {
     }
 
     private MethodSpec buildPublisherFactoryFunction(TypeElement publisher, List<ExecutableElement> publishMethods, @Nullable TypeElement aopProxy) {
-        var propertiesTag = AnnotationSpec.builder(CommonClassNames.tag).addMember("value", "$T.class", publisher).build();
+        var propertiesTag = TagUtils.makeAnnotationSpec(publisher);
         var config = ParameterSpec.builder(KafkaClassNames.publisherConfig, "config").addAnnotation(propertiesTag).build();
         var packageName = this.elements.getPackageOf(publisher).getQualifiedName().toString();
         var implementationName = ClassName.get(packageName, NameUtils.generatedType(publisher, "Impl"));
@@ -100,7 +103,7 @@ final class KafkaPublisherGenerator {
         builder.addStatement("properties.putAll(additionalProperties)");
         builder.addCode("return new $T(telemetryFactory, config.telemetry(), properties, topicConfig$>", aopProxy == null ? implementationName : ClassName.get(aopProxy));
 
-        record TypeWithTag(TypeName typeName, Set<String> tag) {}
+        record TypeWithTag(TypeName typeName, @Nullable String tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
         var counter = new AtomicInteger(0);
         for (var publishMethod : publishMethods) {
@@ -112,7 +115,7 @@ final class KafkaPublisherGenerator {
                     keyParserName = "serializer" + counter.incrementAndGet();
                     var parameter = ParameterSpec.builder(ParameterizedTypeName.get(serializer, keyType.typeName()), keyParserName);
                     var tags = keyType.tag();
-                    if (!tags.isEmpty()) {
+                    if (tags != null) {
                         parameter.addAnnotation(TagUtils.makeAnnotationSpec(tags));
                     }
                     builder.addParameter(parameter.build());
@@ -126,7 +129,7 @@ final class KafkaPublisherGenerator {
                 valueParserName = "serializer" + counter.incrementAndGet();
                 var parameter = ParameterSpec.builder(ParameterizedTypeName.get(serializer, valueType.typeName()), valueParserName);
                 var tags = valueType.tag();
-                if (!tags.isEmpty()) {
+                if (tags != null) {
                     parameter.addAnnotation(TagUtils.makeAnnotationSpec(tags));
                 }
                 builder.addParameter(parameter.build());
@@ -177,7 +180,7 @@ final class KafkaPublisherGenerator {
             .addStatement("var telemetry = telemetryFactory.get($S, telemetryConfig, driverProperties);", configPath)
             .addStatement("super(driverProperties, telemetryConfig, telemetry)")
             .addStatement("this.topicConfig = topicConfig");
-        record TypeWithTag(TypeName typeName, Set<String> tag) {}
+        record TypeWithTag(TypeName typeName, String tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
         var counter = new AtomicInteger(0);
         for (int i = 0; i < publishMethods.size(); i++) {
@@ -193,7 +196,7 @@ final class KafkaPublisherGenerator {
                     b.addField(type, keyParserName, Modifier.PRIVATE, Modifier.FINAL);
                     var parameter = ParameterSpec.builder(type, keyParserName);
                     var tags = keyType.tag();
-                    if (!tags.isEmpty()) {
+                    if (tags != null) {
                         parameter.addAnnotation(TagUtils.makeAnnotationSpec(tags));
                     }
                     constructorBuilder.addParameter(parameter.build());
@@ -210,7 +213,7 @@ final class KafkaPublisherGenerator {
                 b.addField(type, valueParserName, Modifier.PRIVATE, Modifier.FINAL);
                 var parameter = ParameterSpec.builder(type, valueParserName);
                 var tags = valueType.tag();
-                if (!tags.isEmpty()) {
+                if (tags != null) {
                     parameter.addAnnotation(TagUtils.makeAnnotationSpec(tags));
                 }
                 constructorBuilder.addParameter(parameter.build());

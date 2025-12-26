@@ -28,7 +28,7 @@ object GraphResolutionHelper {
     fun findDependencies(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): List<SingleDependency> {
         val result = ArrayList<SingleDependency>(4)
         for (resolvedComponent in resolvedComponents) {
-            if (!dependencyClaim.tagsMatches(resolvedComponent.tags)) {
+            if (!dependencyClaim.tagMatches(resolvedComponent.tag)) {
                 continue
             }
             val isDirectAssignable = dependencyClaim.type.isAssignableFrom(resolvedComponent.type)
@@ -65,7 +65,7 @@ object GraphResolutionHelper {
             return null
         }
         val tags = TagUtils.parseTagValue(declaration)
-        if (dependencyClaim.tagsMatches(tags)) {
+        if (dependencyClaim.tagMatches(tags)) {
             return ComponentDeclaration.fromDependency(ctx, declaration, dependencyClaim.type)
         }
         return null
@@ -74,7 +74,7 @@ object GraphResolutionHelper {
     fun findDependenciesForAllOf(ctx: ProcessingContext, dependencyClaim: DependencyClaim, resolvedComponents: List<ResolvedComponent>): List<SingleDependency> {
         val result = mutableListOf<SingleDependency>()
         for (component in resolvedComponents) {
-            if (!dependencyClaim.tagsMatches(component.tags)) {
+            if (!dependencyClaim.tagMatches(component.tag)) {
                 continue
             }
             if (dependencyClaim.type.isAssignableFrom(component.type)) {
@@ -130,7 +130,7 @@ object GraphResolutionHelper {
     ): List<ComponentDeclaration> {
         val result = arrayListOf<ComponentDeclaration>()
         for (template in templateDeclarations) {
-            if (!dependencyClaim.tagsMatches(template.tags)) {
+            if (!dependencyClaim.tagMatches(template.tag)) {
                 continue
             }
             when (template) {
@@ -157,7 +157,7 @@ object GraphResolutionHelper {
                         ComponentDeclaration.FromModuleComponent(
                             realReturnType,
                             template.module,
-                            template.tags,
+                            template.tag,
                             template.method,
                             realParams,
                             realTypeParameters
@@ -188,7 +188,7 @@ object GraphResolutionHelper {
                         ComponentDeclaration.AnnotatedComponent(
                             realReturnType,
                             template.classDeclaration,
-                            template.tags,
+                            template.tag,
                             template.constructor,
                             realParams,
                             realTypeParameters
@@ -237,7 +237,7 @@ object GraphResolutionHelper {
                             sourceMethod,
                             realParams,
                             template.methodParameterTags,
-                            template.tags,
+                            template.tag,
                             template.generator
                         )
                     )
@@ -298,7 +298,7 @@ object GraphResolutionHelper {
     fun findDependencyDeclarations(ctx: ProcessingContext, sourceDeclarations: List<ComponentDeclaration>, dependencyClaim: DependencyClaim): List<ComponentDeclaration> {
         val result = mutableListOf<ComponentDeclaration>()
         for (sourceDeclaration in sourceDeclarations) {
-            if (!dependencyClaim.tagsMatches(sourceDeclaration.tags)) {
+            if (!dependencyClaim.tagMatches(sourceDeclaration.tag)) {
                 continue
             }
             if (dependencyClaim.type.isAssignableFrom(sourceDeclaration.type) || ctx.serviceTypesHelper.isAssignableToUnwrapped(sourceDeclaration.type, dependencyClaim.type)) {

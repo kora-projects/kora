@@ -48,7 +48,7 @@ object StatementSetterGenerator {
                     }
                 } else if (mapping?.mapper != null) {
                     for (idx in sqlParameter.sqlIndexes) {
-                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tag)
                         addStatement("%N.set(_stmt, %L, %N)", mapperName, idx + 1, parameterName)
                     }
                 } else {
@@ -87,7 +87,7 @@ object StatementSetterGenerator {
                             }
                         }
                     } else if (mapping?.mapper != null) {
-                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tag)
                         for (idx in sqlParameter.sqlIndexes) {
                             addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, fieldName)
                         }
@@ -104,7 +104,7 @@ object StatementSetterGenerator {
                     val mappersData = parameter.entity.classDeclaration.parseMappingData()
                     val mapping = mappersData.getMapping(parameter.entity.type)
                     if (mapping?.mapper != null) {
-                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tags)
+                        val mapperName = parameterMappers.get(mapping.mapper!!, mapping.tag)
                         for (idx in sqlParameter.sqlIndexes) {
                             addStatement("%N.set(_stmt, %L, %L)", mapperName, idx + 1, parameter.name)
                         }

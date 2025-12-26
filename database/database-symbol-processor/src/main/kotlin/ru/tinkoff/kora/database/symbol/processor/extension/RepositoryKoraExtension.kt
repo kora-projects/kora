@@ -11,13 +11,13 @@ import ru.tinkoff.kora.database.symbol.processor.DbUtils
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
-import ru.tinkoff.kora.ksp.common.TagUtils.tagsMatch
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
+import ru.tinkoff.kora.ksp.common.TagUtils.tagMatches
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
 
 @KspExperimental
 class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension {
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
         if (type.declaration !is KSClassDeclaration) {
             return null
         }
@@ -28,7 +28,7 @@ class RepositoryKoraExtension(private val kspLogger: KSPLogger) : KoraExtension 
         if (declaration.findAnnotation(DbUtils.repositoryAnnotation) == null) {
             return null
         }
-        if (!tags.tagsMatch(declaration.parseTags())) {
+        if (!tag.tagMatches(declaration.parseTag())) {
             return null
         }
         val repositoryName: String = declaration.getOuterClassesAsPrefix() + declaration.simpleName.asString() + "_Impl"

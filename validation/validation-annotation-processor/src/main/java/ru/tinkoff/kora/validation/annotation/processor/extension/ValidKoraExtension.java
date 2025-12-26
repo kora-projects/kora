@@ -13,7 +13,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.Set;
 
 import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.VALIDATOR_TYPE;
 import static ru.tinkoff.kora.validation.annotation.processor.ValidTypes.VALID_TYPE;
@@ -30,8 +29,8 @@ public final class ValidKoraExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
-        if (!tags.isEmpty()) return null;
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, String tag) {
+        if (tag != null) return null;
         if (!(TypeName.get(typeMirror) instanceof ParameterizedTypeName ptn)) {
             return null;
         }

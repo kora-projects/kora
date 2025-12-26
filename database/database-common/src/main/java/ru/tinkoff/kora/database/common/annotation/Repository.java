@@ -34,5 +34,5 @@ public @interface Repository {
      * <hr>
      * <b>English</b>: The annotation indicates that the interface is a repository and is responsible for interacting with the database.
      */
-    Tag executorTag() default @Tag({});
+    Class<?> executorTag() default Tag.class;
 }

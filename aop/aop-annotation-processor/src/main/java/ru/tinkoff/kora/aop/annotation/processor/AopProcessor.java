@@ -279,7 +279,7 @@ public class AopProcessor {
             var parameterSpec = ParameterSpec.get(parameter);
             var tags = TagUtils.parseTagValue(parameter);
 
-            if (!tags.isEmpty()) {
+            if (tags != null) {
                 parameterSpec = parameterSpec.toBuilder().addAnnotation(TagUtils.makeAnnotationSpec(tags)).build();
             }
             if (CommonUtils.isNullable(parameter)) {

@@ -52,11 +52,11 @@ public class KafkaListenerRecordTest extends AbstractKafkaListenerAnnotationProc
         var valueTag = valueDeserializer.getAnnotation(Tag.class);
 
         assertThat(keyTag).isNotNull()
-            .extracting(Tag::value, InstanceOfAssertFactories.array(Class[].class))
-            .isEqualTo(new Class<?>[]{compileResult.loadClass("KafkaListenerClass")});
+            .extracting(Tag::value, InstanceOfAssertFactories.type(Class.class))
+            .isEqualTo(compileResult.loadClass("KafkaListenerClass"));
         assertThat(valueTag).isNotNull()
-            .extracting(Tag::value, InstanceOfAssertFactories.array(Class[].class))
-            .isEqualTo(new Class<?>[]{String.class});
+            .extracting(Tag::value, InstanceOfAssertFactories.type(Class.class))
+            .isEqualTo(String.class);
     }
 
     @Test

@@ -11,5 +11,5 @@ public sealed interface Node<T> permits NodeImpl {
 
     Type type();
 
-    Class<?>[] tags();
+    Class<?> tag();
 }

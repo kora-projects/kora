@@ -25,7 +25,6 @@ import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.util.Map;
-import java.util.Set;
 
 public class CassandraTypesExtension implements KoraExtension {
 
@@ -40,8 +39,8 @@ public class CassandraTypesExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tag) {
-        if (!tag.isEmpty()) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, @Nullable String tag) {
+        if (tag != null) {
             return null;
         }
         var typeName = TypeName.get(typeMirror).withoutAnnotations();

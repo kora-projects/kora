@@ -26,7 +26,6 @@ import javax.lang.model.util.Types;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 // JdbcRowMapper<T>
 // JdbcResultSetMapper<T>
@@ -44,8 +43,8 @@ public class JdbcTypesExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
-        if (!tags.isEmpty()) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, @Nullable String tag) {
+        if (tag != null) {
             return null;
         }
         if (!(typeMirror instanceof DeclaredType declaredType)) {

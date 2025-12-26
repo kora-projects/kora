@@ -29,7 +29,7 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
         compile(
             """
             class KafkaListenerClass {
-                @KafkaListener(value = "test.config.path", tag = [String::class])
+                @KafkaListener(value = "test.config.path", tag = String::class)
                 fun process(value: String) {
                 }
             }
@@ -80,7 +80,7 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
         val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
 
         assertThat(valueTag).isNotNull()
-        assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListenerClass")))
+        assertThat(valueTag.value.java).isEqualTo(loadClass("KafkaListenerClass"))
     }
 
     @Test
@@ -126,9 +126,9 @@ class KafkaListenerKeyAndValueTest : AbstractKafkaListenerAnnotationProcessorTes
         val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
 
         assertThat(keyTag).isNotNull()
-        assertThat(keyTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListenerClass")))
+        assertThat(keyTag.value.java).isEqualTo(loadClass("KafkaListenerClass"))
         assertThat(valueTag).isNotNull()
-        assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(String::class.java))
+        assertThat(valueTag.value.java).isEqualTo(String::class.java)
     }
 
     @Test

@@ -9,9 +9,9 @@ import ru.tinkoff.kora.database.symbol.processor.parseColumnName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.getNameConverter
 import ru.tinkoff.kora.ksp.common.MappersData
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.getNameConverter
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, val fields: List<EntityField>) {
@@ -25,12 +25,30 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
             is EmbeddedEntityField -> it.fields.asSequence().map { f ->
                 val parentPropertyName = f.parent.property.simpleName.asString()
                 val propertyName = f.property.simpleName.asString()
-                Column(f.property, f.type, "$parentPropertyName.$propertyName", f.variableName, f.columnName, listOf(parentPropertyName, propertyName), f.type.isMarkedNullable || f.parent.type.isMarkedNullable, f.mapping)
+                Column(
+                    f.property,
+                    f.type,
+                    "$parentPropertyName.$propertyName",
+                    f.variableName,
+                    f.columnName,
+                    listOf(parentPropertyName, propertyName),
+                    f.type.isMarkedNullable || f.parent.type.isMarkedNullable,
+                    f.mapping
+                )
             }
         }
     }.toList()
 
-    data class Column(val property: KSPropertyDeclaration, val type: KSType, val sqlParameterName: String, val variableName: String, val columnName: String, val names: List<String>, val isNullable: Boolean, val mapping: MappersData) {
+    data class Column(
+        val property: KSPropertyDeclaration,
+        val type: KSType,
+        val sqlParameterName: String,
+        val variableName: String,
+        val columnName: String,
+        val names: List<String>,
+        val isNullable: Boolean,
+        val mapping: MappersData
+    ) {
         fun queryParameterName(variableName: String): String {
             return "$variableName.$sqlParameterName"
         }
@@ -58,7 +76,12 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 b.add(field.fields.map { CodeBlock.of("%N == null", it.variableName) }.joinToCode(" && ", "", " -> null\n"))
                 for (column in field.fields) {
                     if (!column.type.isMarkedNullable) {
-                        b.add("%N == null -> throw %T(%S)\n", column.variableName, NullPointerException::class.java, "Field ${column.property.simpleName.asString()} is not nullable, but column ${column.columnName} is null")
+                        b.add(
+                            "%N == null -> throw %T(%S)\n",
+                            column.variableName,
+                            NullPointerException::class.java,
+                            "Field ${column.property.simpleName.asString()} is not nullable, but column ${column.columnName} is null"
+                        )
                     }
                 }
                 b.add("else -> %L", field.buildInstance())
@@ -122,7 +145,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     val propertyType = it.type.resolve()
                     val columnName = parseColumnName(it, property, nameConverter)
                     var mapping = property.parseMappingData()
-                    if (mapping.tags.isEmpty() && mapping.mapperClasses.isEmpty()) {
+                    if (mapping.tag == null && mapping.mapperClasses.isEmpty()) {
                         mapping = it.parseMappingData()
                     }
                     val field = SimpleEntityField(property, propertyType, columnName, mapping)

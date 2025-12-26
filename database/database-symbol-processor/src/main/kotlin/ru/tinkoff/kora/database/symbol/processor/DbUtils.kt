@@ -2,19 +2,23 @@ package ru.tinkoff.kora.database.symbol.processor
 
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.database.symbol.processor.model.QueryParameter
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.parseMappingData
 
 object DbUtils {
@@ -38,9 +42,9 @@ object DbUtils {
 
     fun FieldFactory.addMapper(mapper: Mapper): String {
         if (mapper.mapperType == null) {
-            return add(mapper.fieldTypeName, mapper.tags)
+            return add(mapper.fieldTypeName, mapper.tag)
         } else {
-            val name = add(mapper.mapperType, mapper.tags)
+            val name = add(mapper.mapperType, mapper.tag)
             if (mapper.wrapper == null) {
                 return name
             }
@@ -55,7 +59,7 @@ object DbUtils {
                 type.addProperty(mapper.fieldName, mapper.fieldTypeName, KModifier.PRIVATE)
                 constructor.addParameter(
                     ParameterSpec.builder(mapper.fieldName, mapper.fieldTypeName)
-                        .addTag(mapper.tags)
+                        .addTag(mapper.tag)
                         .build()
                 )
                 constructor.addCode("this.`%L` = `%L`;\n", mapper.fieldName, mapper.fieldName)
@@ -89,24 +93,13 @@ object DbUtils {
         }
     }
 
-    fun KSClassDeclaration.parseExecutorTag(): CodeBlock? {
+    fun KSClassDeclaration.parseExecutorTag(): AnnotationSpec? {
         val repository = this.findAnnotation(repositoryAnnotation)!!
-        val executorTag = repository.findValue<KSAnnotation>("executorTag")
+        val executorTag = repository.findValueNoDefault<KSType>("executorTag")
         if (executorTag == null) {
             return null
         }
-        val value = executorTag.findValue<List<KSType>>("value")!!
-        if (value.isEmpty()) {
-            return null
-        }
-        val codeBlock = CodeBlock.builder().add("[")
-        value.forEachIndexed { i, type ->
-            if (i > 0) {
-                codeBlock.add(", ")
-            }
-            codeBlock.add("%T::class", (type.declaration as KSClassDeclaration).toClassName())
-        }
-        return codeBlock.add("]").build()
+        return executorTag.toClassName().toTagAnnotation()
     }
 
     fun KSClassDeclaration.findQueryMethods() = this.getAllFunctions()
@@ -208,10 +201,10 @@ object DbUtils {
 
 
 // todo tags
-data class Mapper(val mapperType: KSType?, val tags: Set<String>, val fieldTypeName: TypeName, val fieldName: String, val wrapper: ((CodeBlock) -> CodeBlock)?) {
-    constructor(typeName: TypeName, name: String) : this(null, setOf(), typeName, name, null)
-    constructor(mapping: MappingData, typeName: TypeName, name: String) : this(mapping.mapper, mapping.tags, typeName, name, null)
-    constructor(mapping: MappingData, typeName: TypeName, name: String, wrapper: ((CodeBlock) -> CodeBlock)?) : this(mapping.mapper, mapping.tags, typeName, name, wrapper)
+data class Mapper(val mapperType: KSType?, val tag: String?, val fieldTypeName: TypeName, val fieldName: String, val wrapper: ((CodeBlock) -> CodeBlock)?) {
+    constructor(typeName: TypeName, name: String) : this(null, null, typeName, name, null)
+    constructor(mapping: MappingData, typeName: TypeName, name: String) : this(mapping.mapper, mapping.tag, typeName, name, null)
+    constructor(mapping: MappingData, typeName: TypeName, name: String, wrapper: ((CodeBlock) -> CodeBlock)?) : this(mapping.mapper, mapping.tag, typeName, name, wrapper)
 }
 
 

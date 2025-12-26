@@ -12,8 +12,6 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent2;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent23;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @KoraAppTest(TestApplication.class)
@@ -27,7 +25,7 @@ public class AddComponentWithGraphTests implements KoraAppTestGraphModifier {
     public @Nonnull KoraGraphModification graph() {
         return KoraGraphModification.create()
             .addComponent(
-                LifecycleComponent.class, List.of(TestComponent23.class),
+                LifecycleComponent.class, TestComponent23.class,
                 g -> {
                     final TestComponent2 simpleComponent2 = g.getFirst(TestComponent2.class, LifecycleComponent.class);
                     return (LifecycleComponent) () -> "?" + simpleComponent2.get();

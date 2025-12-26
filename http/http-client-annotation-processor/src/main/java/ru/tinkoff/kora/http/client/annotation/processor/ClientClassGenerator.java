@@ -481,23 +481,23 @@ public class ClientClassGenerator {
         var packageName = this.processingEnv.getElementUtils().getPackageOf(element).getQualifiedName().toString();
         var configClassName = HttpClientUtils.configName(element);
         var annotation = Objects.requireNonNull(AnnotationUtils.findAnnotation(element, httpClientAnnotation));
-        var telemetryTag = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotation, "telemetryTag");
-        var httpClientTag = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(annotation, "httpClientTag");
+        var telemetryTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "telemetryTag");
+        var httpClientTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "httpClientTag");
         var clientParameter = ParameterSpec.builder(httpClient, "httpClient");
-        if (httpClientTag != null && !httpClientTag.isEmpty()) {
-            clientParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", TagUtils.writeTagAnnotationValue(httpClientTag)).build());
+        if (httpClientTag != null) {
+            clientParameter.addAnnotation(TagUtils.makeAnnotationSpec(httpClientTag));
         }
         var telemetryParameter = ParameterSpec.builder(httpClientTelemetryFactory, "telemetryFactory");
-        if (telemetryTag != null && !telemetryTag.isEmpty()) {
-            telemetryParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value", TagUtils.writeTagAnnotationValue(telemetryTag)).build());
+        if (telemetryTag != null) {
+            telemetryParameter.addAnnotation(TagUtils.makeAnnotationSpec(telemetryTag));
         }
         record Interceptor(TypeName type, @Nullable AnnotationSpec tag) {}
         var interceptorParser = (Function<AnnotationMirror, Interceptor>) a -> {
             var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");
             var interceptorTypeName = ClassName.get(Objects.requireNonNull(interceptorType));
             @Nullable
-            var interceptorTag = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(a, "tag");
-            var interceptorTagAnnotationSpec = interceptorTag == null ? null : AnnotationSpec.get(interceptorTag);
+            var interceptorTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "tag");
+            var interceptorTagAnnotationSpec = interceptorTag == null ? null : TagUtils.makeAnnotationSpec(interceptorTag);
             return new Interceptor(interceptorTypeName, interceptorTagAnnotationSpec);
         };
 

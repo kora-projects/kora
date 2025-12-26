@@ -42,7 +42,7 @@ class KoraSchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorT
         var cr = compile(List.of(new KoraSchedulingAnnotationProcessor()), """
             @org.quartz.DisallowConcurrentExecution
             public class TestClass {
-                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(@Tag(TestClass.class))
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(TestClass.class)
                 public void job() {}
             }
             """);
@@ -55,7 +55,7 @@ class KoraSchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorT
     public void testDisallowConcurrentExecutionOnMethod() {
         var cr = compile(List.of(new KoraSchedulingAnnotationProcessor()), """
             public class TestClass {
-                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(@Tag(TestClass.class))
+                @ru.tinkoff.kora.scheduling.quartz.ScheduleWithTrigger(TestClass.class)
                 @ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
                 public void job() {}
             }

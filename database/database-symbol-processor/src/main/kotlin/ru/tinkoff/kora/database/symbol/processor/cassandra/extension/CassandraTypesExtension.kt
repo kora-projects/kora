@@ -2,27 +2,19 @@ package ru.tinkoff.kora.database.symbol.processor.cassandra.extension
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getFunctionDeclarationsByName
-import com.google.devtools.ksp.isAnnotationPresent
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Variance
-import com.squareup.kotlinpoet.ClassName
-import com.squareup.kotlinpoet.CodeBlock
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator
-import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator.Companion.listResultSetMapperClassName
-import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator.Companion.resultSetMapperClassName
-import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntityGenerator.Companion.rowMapperClassName
 import ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraTypes
-import ru.tinkoff.kora.database.symbol.processor.model.DbEntity
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
-import ru.tinkoff.kora.ksp.common.KspCommonUtils.getClassDeclarationByName
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 
 //CassandraRowMapper<T>
@@ -30,8 +22,8 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.parametrized
 class CassandraTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val codeGenerator: CodeGenerator) : KoraExtension {
     private val entityGenerator = CassandraEntityGenerator(codeGenerator)
 
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) return null
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) return null
         if (type.declaration.qualifiedName?.asString()?.equals(CassandraTypes.resultSetMapper.canonicalName) == true) {
             return this.generateResultSetMapper(resolver, type)
         }

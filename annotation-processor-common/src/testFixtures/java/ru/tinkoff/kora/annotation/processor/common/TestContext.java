@@ -8,8 +8,8 @@ import ru.tinkoff.kora.common.Tag;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public class TestContext {
     private final List<ContextElement<?>> elements = new ArrayList<>();
@@ -23,7 +23,7 @@ public class TestContext {
         elements.add(new ContextElement<>(type, null, o));
     }
 
-    public <T> void addContextElement(TypeRef<T> typeRef, Class<?>[] tag, T o) {
+    public <T> void addContextElement(TypeRef<T> typeRef, Class<?> tag, T o) {
         elements.add(new ContextElement<>(typeRef, tag, o));
     }
 
@@ -46,7 +46,7 @@ public class TestContext {
         }
     }
 
-    record ContextElement<T>(TypeRef<T> typeRef, Class<?>[] tag, T o) {}
+    record ContextElement<T>(TypeRef<T> typeRef, Class<?> tag, T o) {}
 
     public <T> T newInstance(Class<T> type) {
         @SuppressWarnings("unchecked")
@@ -59,12 +59,12 @@ public class TestContext {
             var tag = param.getAnnotation(Tag.class);
             var tags = tag != null ? tag.value() : null;
             for (var element : elements) {
-                if (element.typeRef.equals(paramType) && Arrays.equals(tags, element.tag)) {
+                if (element.typeRef.equals(paramType) && Objects.equals(tags, element.tag)) {
                     params[i] = element.o;
                     continue param;
                 }
             }
-            throw new RuntimeException("Constructor param of type %s with tags %s wasn't found".formatted(paramType, Arrays.toString(tags)));
+            throw new RuntimeException("Constructor param of type %s with tag %s wasn't found".formatted(paramType, tags));
         }
         try {
             return constructor.newInstance(params);

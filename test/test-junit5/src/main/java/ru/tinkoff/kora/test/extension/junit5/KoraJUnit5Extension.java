@@ -272,8 +272,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                                                TestGraphContext graphInitialized,
                                                ExtensionContext context) {
         for (var field : fieldsForInjection) {
-            final Class<?>[] tags = parseTags(field);
-            final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tags);
+            final Class<?> tag = parseTag(field);
+            final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tag);
             logger.debug("Looking for test method '{}' field '{}' inject candidate: {}",
                 getTestMethodName(context), field.getName(), candidate);
 
@@ -391,7 +391,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
                 if (!fieldsForInjection.isEmpty()) {
                     throw new ExtensionConfigurationException("@KoraAppTest can't use @Nested class field injection when outer class lifecycle is 'PER_CLASS', " +
-                                                              "cause graph is already initialized on the top level");
+                        "cause graph is already initialized on the top level");
                 }
             }
         }
@@ -500,8 +500,8 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     @Override
     public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext context) throws ParameterResolutionException {
         return isCandidate(parameterContext.getParameter())
-               || parameterContext.getParameter().getType().equals(KoraAppGraph.class)
-               || parameterContext.getParameter().getType().equals(Graph.class);
+            || parameterContext.getParameter().getType().equals(KoraAppGraph.class)
+            || parameterContext.getParameter().getType().equals(Graph.class);
     }
 
     @Override
@@ -584,7 +584,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             if (classMetadata.initializeOrigin == InitializeOrigin.METHOD) {
                 for (var parameter : context.getRequiredTestMethod().getParameters()) {
                     if (isComponent(parameter)) {
-                        var tag = parseTags(parameter);
+                        var tag = parseTag(parameter);
                         var type = parameter.getParameterizedType();
                         parameterComponents.add(new GraphCandidate(type, tag));
                     }
@@ -594,7 +594,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             for (var method : context.getRequiredTestClass().getDeclaredMethods()) {
                 for (var parameter : method.getParameters()) {
                     if (isComponent(parameter)) {
-                        var tag = parseTags(parameter);
+                        var tag = parseTag(parameter);
                         var type = parameter.getParameterizedType();
                         parameterComponents.add(new GraphCandidate(type, tag));
                     }
@@ -667,7 +667,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         final Set<GraphCandidate> fieldComponents = Stream.concat(fieldsForInjection.stream(), outerFieldsForInjection.stream())
             .filter(KoraJUnit5Extension::isComponent)
             .map(field -> {
-                final Class<?>[] tags = parseTags(field);
+                final Class<?> tags = parseTag(field);
                 return new GraphCandidate(field.getGenericType(), tags);
             })
             .collect(Collectors.toSet());
@@ -684,7 +684,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                                 f.setAccessible(true);
                                 return f.get(inst);
                             } catch (IllegalAccessException e) {
-                                final Class<?>[] tags = parseTags(f);
+                                final Class<?> tags = parseTag(f);
                                 final GraphCandidate candidate = new GraphCandidate(f.getGenericType(), tags);
                                 throw new IllegalArgumentException("Can't extract @Spy component '%s' for field: %s".formatted(candidate.type(), f.getName()));
                             }
@@ -703,7 +703,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             constructor.setAccessible(true);
             for (Parameter parameter : constructor.getParameters()) {
                 if (isComponent(parameter)) {
-                    var tag = parseTags(parameter);
+                    var tag = parseTag(parameter);
                     var type = parameter.getParameterizedType();
                     constructorComponents.add(new GraphCandidate(type, tag));
                 } else if (isMock(parameter)) {
@@ -759,11 +759,12 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     private static GraphCandidate getGraphCandidate(ParameterContext parameterContext) {
         final Type parameterType = parameterContext.getParameter().getParameterizedType();
-        final Class<?>[] tags = parseTags(parameterContext.getParameter());
-        return new GraphCandidate(parameterType, tags);
+        final Class<?> tag = parseTag(parameterContext.getParameter());
+        return new GraphCandidate(parameterType, tag);
     }
 
-    private static Class<?>[] parseTags(AnnotatedElement object) {
+    @Nullable
+    private static Class<?> parseTag(AnnotatedElement object) {
         return Arrays.stream(object.getDeclaredAnnotations())
             .filter(a -> a.annotationType().equals(Tag.class))
             .map(a -> ((Tag) a).value())
@@ -860,7 +861,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             throw new ExtensionConfigurationException("Graph can't be target of @Mock");
         }
 
-        final Class<?>[] tags = parseTags(field);
+        final Class<?> tags = parseTag(field);
         final GraphCandidate candidate = new GraphCandidate(field.getGenericType(), tags);
 
         if (isMockitoMock(field)) {
@@ -884,7 +885,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             throw new ExtensionConfigurationException("Graph can't be target of @Mock");
         }
 
-        final Class<?>[] tag = parseTags(parameter);
+        final Class<?> tag = parseTag(parameter);
         final GraphCandidate candidate = new GraphCandidate(parameter.getParameterizedType(), tag);
 
         if (isMockitoMock(parameter)) {
@@ -927,7 +928,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .filter(m -> {
                 if (components.isEmpty() || components.stream().allMatch(KoraJUnit5Extension::isGraph)) {
                     return m instanceof GraphMockitoSpy spy && spy.isSpyGraph()
-                           || m instanceof GraphMockkSpyk spyk && spyk.isSpyGraph();
+                        || m instanceof GraphMockkSpyk spyk && spyk.isSpyGraph();
                 }
 
                 return true;
@@ -942,7 +943,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     private static boolean isGraph(GraphCandidate candidate) {
         return candidate.type() instanceof Class<?> cl
-               && (KoraAppGraph.class.isAssignableFrom(cl) || Graph.class.isAssignableFrom(cl));
+            && (KoraAppGraph.class.isAssignableFrom(cl) || Graph.class.isAssignableFrom(cl));
     }
 
     @SuppressWarnings("unchecked")
@@ -972,9 +973,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             .collect(Collectors.toSet());
 
         var mockCandidates = methodMetadata.getGraphMockCandidates(m -> m instanceof GraphMockitoMock
-                                                                        || m instanceof GraphMockkMock
-                                                                        || m instanceof GraphMockitoSpy spy && !spy.isSpyGraph()
-                                                                        || m instanceof GraphMockkSpyk spyk && !spyk.isSpyGraph());
+            || m instanceof GraphMockkMock
+            || m instanceof GraphMockitoSpy spy && !spy.isSpyGraph()
+            || m instanceof GraphMockkSpyk spyk && !spyk.isSpyGraph());
 
         var mocks = new ArrayList<Node<?>>();
         for (GraphCandidate mockCandidate : mockCandidates) {

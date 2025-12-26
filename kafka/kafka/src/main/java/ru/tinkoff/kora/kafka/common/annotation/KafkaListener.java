@@ -26,5 +26,5 @@ public @interface KafkaListener {
      * <hr>
      * <b>English</b>: Tags {@link Tag} for marking kafka listener with custom tag and not generated
      */
-    Class<?>[] tag() default {};
+    Class<?> tag() default Tag.class;
 }

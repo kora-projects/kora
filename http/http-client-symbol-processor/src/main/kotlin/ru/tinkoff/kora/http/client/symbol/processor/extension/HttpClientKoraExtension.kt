@@ -11,8 +11,8 @@ import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 
 class HttpClientKoraExtension : KoraExtension {
-    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
-        if (tags.isNotEmpty()) return null
+    override fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)? {
+        if (tag != null) return null
         val declaration = type.declaration
         if (declaration !is KSClassDeclaration || declaration.classKind != ClassKind.INTERFACE) {
             return null

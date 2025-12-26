@@ -17,7 +17,6 @@ import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import static ru.tinkoff.grpc.client.annotation.processor.GrpcClassNames.*;
 
@@ -32,7 +31,7 @@ public final class GrpcClientExtension implements KoraExtension {
 
     @Nullable
     @Override
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tag) {
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, @Nullable String tag) {
         if (typeMirror.getKind() != TypeKind.DECLARED) {
             return null;
         }
@@ -42,28 +41,27 @@ public final class GrpcClientExtension implements KoraExtension {
         if (env.getTypeUtils().isAssignable(typeMirror, stubErasure)) {
             return getStubGenerator(typeMirror, tag);
         }
-        if (className.equals(channel) && tag.size() == 1) {
+        if (className.equals(channel) && tag != null) {
             return getChannel(typeMirror, tag);
         }
-        if (className.equals(grpcClientConfig) && tag.size() == 1) {
+        if (className.equals(grpcClientConfig) && tag != null) {
             return getConfig(typeMirror, tag);
         }
 
         return null;
     }
 
-    private KoraExtensionDependencyGenerator getConfig(TypeMirror typeMirror, Set<String> tag) {
-        var grpcServiceTypeName = tag.iterator().next();
-        var grpcServiceClassName = ClassName.bestGuess(grpcServiceTypeName);
+    private KoraExtensionDependencyGenerator getConfig(TypeMirror typeMirror, String tag) {
+        var grpcServiceClassName = ClassName.bestGuess(tag);
 
         var clientConfigTypeElement = env.getElementUtils().getTypeElement(grpcClientConfig.canonicalName());
         var factoryMethod = findStaticMethod(clientConfigTypeElement, "defaultConfig");
-        var parameterTags = new ArrayList<Set<String>>(factoryMethod.getParameters().size() - 1);
+        var parameterTags = new ArrayList<String>(factoryMethod.getParameters().size() - 1);
         var parameterTypes = new ArrayList<TypeMirror>(factoryMethod.getParameters().size() - 1);
         for (int i = 0; i < factoryMethod.getParameters().size() - 1; i++) {
             var parameter = factoryMethod.getParameters().get(i);
             parameterTypes.add(parameter.asType());
-            parameterTags.add(Set.of());
+            parameterTags.add(null);
         }
 
         return () -> new ExtensionResult.CodeBlockResult(
@@ -76,17 +74,17 @@ public final class GrpcClientExtension implements KoraExtension {
         );
     }
 
-    private KoraExtensionDependencyGenerator getChannel(TypeMirror typeMirror, Set<String> tag) {
-        var grpcServiceTypeElement = env.getElementUtils().getTypeElement(tag.iterator().next());
+    private KoraExtensionDependencyGenerator getChannel(TypeMirror typeMirror, String tag) {
+        var grpcServiceTypeElement = env.getElementUtils().getTypeElement(tag);
         var grpcServiceClassName = ClassName.get(grpcServiceTypeElement);
         var managedChannelTypeElement = env.getElementUtils().getTypeElement(managedChannelLifecycle.canonicalName());
         var managedChannelTypeMirror = managedChannelTypeElement.asType();
         var managedChannelConstructor = CommonUtils.findConstructors(managedChannelTypeElement, m -> m.contains(Modifier.PUBLIC)).get(0);
-        var parameterTags = new ArrayList<Set<String>>(managedChannelConstructor.getParameters().size() - 1);
+        var parameterTags = new ArrayList<String>(managedChannelConstructor.getParameters().size() - 1);
         var parameterTypes = new ArrayList<TypeMirror>(managedChannelConstructor.getParameters().size() - 1);
         for (int i = 0; i < managedChannelConstructor.getParameters().size() - 1; i++) {
             var parameter = managedChannelConstructor.getParameters().get(i);
-            parameterTags.add(i < 4 ? tag : Set.of());
+            parameterTags.add(i < 4 ? tag : null);
             parameterTypes.add(parameter.asType());
         }
         return () -> new ExtensionResult.CodeBlockResult(
@@ -100,8 +98,8 @@ public final class GrpcClientExtension implements KoraExtension {
     }
 
     @Nullable
-    private KoraExtensionDependencyGenerator getStubGenerator(TypeMirror typeMirror, Set<String> tag) {
-        if (!tag.isEmpty()) {
+    private KoraExtensionDependencyGenerator getStubGenerator(TypeMirror typeMirror, String tag) {
+        if (tag != null) {
             return null;
         }
         if (typeMirror.getKind() != TypeKind.DECLARED) {
@@ -134,7 +132,7 @@ public final class GrpcClientExtension implements KoraExtension {
             typeMirror,
             tag,
             List.of(channelType),
-            List.of(Set.of(apiClassName.canonicalName()))
+            List.of(apiClassName.canonicalName())
         );
     }
 

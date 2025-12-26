@@ -14,7 +14,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
-import ru.tinkoff.kora.common.DefaultComponent
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
@@ -26,7 +25,8 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.configValueExtractor
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
-import ru.tinkoff.kora.ksp.common.TagUtils.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 
 class CacheSymbolProcessor(
@@ -159,11 +159,7 @@ class CacheSymbolProcessor(
         val extractorType = configValueExtractor.parameterizedBy(returnType.asType(listOf()).toTypeName())
 
         return FunSpec.builder(methodName)
-            .addAnnotation(
-                AnnotationSpec.builder(CommonClassNames.tag)
-                    .addMember("%T::class", cacheContractName)
-                    .build()
-            )
+            .addAnnotation(cacheContractName.toTagAnnotation())
             .addModifiers(KModifier.PUBLIC)
             .addParameter("config", CommonClassNames.config)
             .addParameter("extractor", extractorType)
@@ -187,11 +183,7 @@ class CacheSymbolProcessor(
                     .addModifiers(KModifier.PUBLIC)
                     .addParameter(
                         ParameterSpec.builder("config", CAFFEINE_CACHE_CONFIG)
-                            .addAnnotation(
-                                AnnotationSpec.builder(CommonClassNames.tag)
-                                    .addMember("%T::class", cacheTypeName)
-                                    .build()
-                            )
+                            .addAnnotation(cacheTypeName.toTagAnnotation())
                             .build()
                     )
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
@@ -211,26 +203,18 @@ class CacheSymbolProcessor(
                     .first()
 
                 val keyMapperBuilder = ParameterSpec.builder("keyMapper", keyMapperType)
-                val keyTags = cacheContractType.arguments[0].parseTags()
-                if (keyTags.isNotEmpty()) {
-                    keyMapperBuilder.addAnnotation(keyTags.toTagAnnotation())
-                }
+                val keyTag = cacheContractType.arguments[0].parseTag()
+                keyMapperBuilder.addTag(keyTag)
 
                 val valueMapperBuilder = ParameterSpec.builder("valueMapper", valueMapperType)
-                val valueTags = cacheContractType.arguments[1].parseTags()
-                if (valueTags.isNotEmpty()) {
-                    valueMapperBuilder.addAnnotation(valueTags.toTagAnnotation())
-                }
+                val valueTags = cacheContractType.arguments[1].parseTag()
+                valueMapperBuilder.addTag(valueTags)
 
                 FunSpec.builder(methodName)
                     .addModifiers(KModifier.PUBLIC)
                     .addParameter(
                         ParameterSpec.builder("config", REDIS_CACHE_CONFIG)
-                            .addAnnotation(
-                                AnnotationSpec.builder(CommonClassNames.tag)
-                                    .addMember("%T::class", cacheTypeName)
-                                    .build()
-                            )
+                            .addAnnotation(cacheTypeName.toTagAnnotation())
                             .build()
                     )
                     .addParameter("redisClient", REDIS_CACHE_CLIENT)
@@ -282,7 +266,7 @@ class CacheSymbolProcessor(
         val methodName = "${prefix}_RedisKeyMapper"
         val methodBuilder = FunSpec.builder(methodName)
             .addModifiers(KModifier.PUBLIC)
-            .addAnnotation(DefaultComponent::class)
+            .addAnnotation(CommonClassNames.defaultComponent)
 
         val recordFields = keyType.getAllProperties().toList()
         val keyBuilder = CodeBlock.builder()

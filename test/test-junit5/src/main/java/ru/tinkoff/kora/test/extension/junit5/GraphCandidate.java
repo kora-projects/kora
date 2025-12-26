@@ -1,30 +1,20 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 
 import java.lang.reflect.Type;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
 
-record GraphCandidate(@Nonnull Type type, @Nonnull List<Class<?>> tags) {
+record GraphCandidate(@Nonnull Type type, @Nullable Class<?> tag) {
 
     GraphCandidate(Type type) {
-        this(type, Collections.emptyList());
-    }
-
-    GraphCandidate(Type type, Class<?>[] tags) {
-        this(type, (tags == null) ? Collections.emptyList() : Arrays.asList(tags));
-    }
-
-    public Class<?>[] tagsAsArray() {
-        return tags.toArray(Class[]::new);
+        this(type, null);
     }
 
     @Override
     public String toString() {
-        return tags.isEmpty()
+        return tag == null
             ? type.toString()
-            : "[type=" + type + ", tags=" + tags + ']';
+            : "[type=" + type + ", tag=" + tag + ']';
     }
 }

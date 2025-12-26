@@ -175,11 +175,9 @@ class CacheOperationUtils {
 
                 val mapper = getSuitableMapper(method.parseMappingData())
                 if (mapper?.mapper != null) {
-                    val tags = if (mapper.tags.isEmpty())
-                        listOf()
-                    else
-                        listOf(mapper.tags.toTagAnnotation())
-
+                    val tags = mapper.tag?.toTagAnnotation()
+                        ?.let { listOf(it) }
+                        ?: listOf()
                     val fieldMapper = aspectContext.fieldFactory.constructorParam(mapper.mapper!!, tags)
                     cacheKey = CacheOperation.CacheKey(
                         cacheKeyMirror,

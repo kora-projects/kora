@@ -25,7 +25,6 @@ import ru.tinkoff.kora.database.symbol.processor.model.QueryParameterParser
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
-import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isList
 import ru.tinkoff.kora.ksp.common.FieldFactory
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
@@ -243,9 +242,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val executorTag = repositoryElement.parseExecutorTag()
         if (executorTag != null) {
             constructorBuilder.addParameter(
-                ParameterSpec.builder("_jdbcConnectionFactory", JdbcTypes.connectionFactory).addAnnotation(
-                    AnnotationSpec.builder(CommonClassNames.tag).addMember("value = %L", executorTag).build()
-                ).build()
+                ParameterSpec.builder("_jdbcConnectionFactory", JdbcTypes.connectionFactory).addAnnotation(executorTag).build()
             )
         } else {
             constructorBuilder.addParameter("_jdbcConnectionFactory", JdbcTypes.connectionFactory)

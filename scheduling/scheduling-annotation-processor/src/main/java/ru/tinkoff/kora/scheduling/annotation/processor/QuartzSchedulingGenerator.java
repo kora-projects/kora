@@ -4,12 +4,11 @@ import com.palantir.javapoet.*;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
-import java.util.Date;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -46,8 +45,8 @@ public class QuartzSchedulingGenerator {
 
         var annotationType = ClassName.get((TypeElement) trigger.triggerAnnotation().getAnnotationType().asElement());
         if (annotationType.equals(scheduleWithTrigger)) {
-            var tag = AnnotationUtils.<AnnotationMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
-            var triggerParameter = ParameterSpec.builder(triggerClassName, "trigger").addAnnotation(AnnotationSpec.get(tag)).build();
+            var tag = AnnotationUtils.<TypeMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
+            var triggerParameter = ParameterSpec.builder(triggerClassName, "trigger").addAnnotation(TagUtils.makeAnnotationSpec(tag)).build();
             component.addParameter(triggerParameter);
             component.addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
         } else if (annotationType.equals(scheduleWithCron)) {

@@ -35,7 +35,7 @@ public @interface InterceptWith {
      */
     Class<?> value();
 
-    Tag tag() default @Tag({});
+    Class<?> tag() default Tag.class;
 
     @Retention(RetentionPolicy.RUNTIME)
     @Target({ElementType.METHOD, ElementType.TYPE})

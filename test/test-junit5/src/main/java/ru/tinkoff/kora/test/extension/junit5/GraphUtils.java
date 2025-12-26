@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.Wrapped;
@@ -12,20 +13,18 @@ import java.util.*;
 
 final class GraphUtils {
 
-    private static final Class<?>[] TAG_ANY = new Class<?>[]{Tag.Any.class};
-
     private GraphUtils() {}
 
     static <T> Set<Node<T>> findNodeByType(ApplicationGraphDraw graph, GraphCandidate candidate) {
-        return findNodeByType(graph, candidate.type(), candidate.tagsAsArray());
+        return findNodeByType(graph, candidate.type(), candidate.tag());
     }
 
     @SuppressWarnings("unchecked")
-    static <T> Set<Node<T>> findNodeByType(ApplicationGraphDraw graph, Type type, Class<?>[] tags) {
-        if (tags == null || tags.length == 0 || Arrays.equals(TAG_ANY, tags)) {
+    static <T> Set<Node<T>> findNodeByType(ApplicationGraphDraw graph, Type type, @Nullable Class<?> tag) {
+        if (tag == null || Objects.equals(Tag.Any.class, tag)) {
             final Set<Node<T>> nodes = new HashSet<>();
             for (var graphNode : graph.getNodes()) {
-                if (graphNode.tags().length == 0) {
+                if (graphNode.tag() == null) {
                     if (graphNode.type().equals(type)) {
                         nodes.add((Node<T>) graphNode);
                     } else {
@@ -40,7 +39,7 @@ final class GraphUtils {
             return nodes;
         } else {
             for (var graphNode : graph.getNodes()) {
-                if (Arrays.equals(tags, graphNode.tags())) {
+                if (Objects.equals(tag, graphNode.tag())) {
                     if (graphNode.type().equals(type)) {
                         return Set.of((Node<T>) graphNode);
                     } else {
@@ -57,14 +56,14 @@ final class GraphUtils {
     }
 
     static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, GraphCandidate candidate) {
-        return findNodeByTypeOrAssignable(graph, candidate.type(), candidate.tagsAsArray());
+        return findNodeByTypeOrAssignable(graph, candidate.type(), candidate.tag());
     }
 
-    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, Class<?>[] tags) {
-        if (tags == null || tags.length == 0 || Arrays.equals(TAG_ANY, tags)) {
+    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, Class<?> tag) {
+        if (tag == null || Objects.equals(Tag.Any.class, tag)) {
             final Set<Node<?>> nodes = new HashSet<>();
             for (var graphNode : graph.getNodes()) {
-                if (graphNode.tags().length == 0 || Arrays.equals(TAG_ANY, graphNode.tags())) {
+                if (graphNode.tag() == null || Objects.equals(Tag.Any.class, graphNode.tag())) {
                     Type graphType = graphNode.type();
                     if (isTypeAssignable(graphType, type)) {
                         nodes.add(graphNode);
@@ -80,7 +79,7 @@ final class GraphUtils {
             return nodes;
         } else {
             for (var graphNode : graph.getNodes()) {
-                if (Arrays.equals(tags, graphNode.tags())) {
+                if (Objects.equals(tag, graphNode.tag())) {
                     Type graphType = graphNode.type();
                     if (isTypeAssignable(graphType, type)) {
                         return Set.of(graphNode);
@@ -200,8 +199,8 @@ final class GraphUtils {
                 .filter(arg -> arg instanceof Class<?>)
                 .orElse(type);
         } else if (type instanceof ParameterizedType pt
-                   && pt.getRawType() instanceof Class<?> pct
-                   && Wrapped.class.isAssignableFrom(pct)) {
+            && pt.getRawType() instanceof Class<?> pct
+            && Wrapped.class.isAssignableFrom(pct)) {
             return pt.getActualTypeArguments()[0];
         } else {
             return type;
@@ -212,22 +211,22 @@ final class GraphUtils {
         if (nodeType instanceof Class<?> tc && Wrapped.class.isAssignableFrom(tc)) {
             return Arrays.stream(tc.getGenericInterfaces())
                 .filter(i -> i instanceof ParameterizedType pt
-                             && pt.getRawType() instanceof Class<?> ptc
-                             && ptc.equals(Wrapped.class))
+                    && pt.getRawType() instanceof Class<?> ptc
+                    && ptc.equals(Wrapped.class))
                 .map(i -> ((ParameterizedType) i).getActualTypeArguments()[0])
                 .<Class<?>>map(t -> tryCastType(t).orElse(null))
                 .filter(Objects::nonNull)
                 .findFirst();
         } else if (nodeType instanceof ParameterizedType pt
-                   && pt.getRawType() instanceof Class<?> ptc
-                   && Wrapped.class.isAssignableFrom(ptc)) {
+            && pt.getRawType() instanceof Class<?> ptc
+            && Wrapped.class.isAssignableFrom(ptc)) {
             if (Wrapped.class.equals(ptc)) {
                 return tryCastType(pt.getActualTypeArguments()[0]);
             } else {
                 return Arrays.stream(ptc.getGenericInterfaces())
                     .filter(i -> i instanceof ParameterizedType ppt
-                                 && ppt.getRawType() instanceof Class<?> pptc
-                                 && pptc.equals(Wrapped.class))
+                        && ppt.getRawType() instanceof Class<?> pptc
+                        && pptc.equals(Wrapped.class))
                     .map(i -> ((ParameterizedType) i).getActualTypeArguments()[0])
                     .<Class<?>>map(t -> tryCastType(t).orElse(null))
                     .filter(Objects::nonNull)

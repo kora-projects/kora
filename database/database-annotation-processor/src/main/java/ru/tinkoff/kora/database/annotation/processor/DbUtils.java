@@ -5,7 +5,10 @@ import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.database.annotation.processor.model.QueryParameter;
 
-import javax.lang.model.element.*;
+import javax.lang.model.element.ElementKind;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
@@ -58,14 +61,14 @@ public class DbUtils {
         return b;
     }
 
-    public static CodeBlock getTag(TypeElement repositoryElement) {
+    @Nullable
+    public static AnnotationSpec getTag(TypeElement repositoryElement) {
         var repositoryAnnotation = AnnotationUtils.findAnnotation(repositoryElement, DbUtils.REPOSITORY_ANNOTATION);
-        var executorTagAnnotation = AnnotationUtils.<AnnotationMirror>parseAnnotationValueWithoutDefault(repositoryAnnotation, "executorTag");
-        if (executorTagAnnotation == null) {
+        var executorTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(repositoryAnnotation, "executorTag");
+        if (executorTag == null) {
             return null;
         }
-        var tagValue = AnnotationUtils.<List<TypeMirror>>parseAnnotationValueWithoutDefault(executorTagAnnotation, "value");
-        return TagUtils.writeTagAnnotationValue(tagValue);
+        return TagUtils.makeAnnotationSpec(executorTag);
     }
 
     static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {
@@ -90,12 +93,12 @@ public class DbUtils {
         return method.getEnclosingElement().getSimpleName().toString() + "." + method.getSimpleName().toString();
     }
 
-    public record Mapper(@Nullable TypeMirror typeMirror, TypeName typeName, Set<String> tag, @Nullable Function<CodeBlock, CodeBlock> wrapper) {
-        public Mapper(TypeName typeName, Set<String> tag) {
+    public record Mapper(@Nullable TypeMirror typeMirror, TypeName typeName, @Nullable String tag, @Nullable Function<CodeBlock, CodeBlock> wrapper) {
+        public Mapper(TypeName typeName, @Nullable String tag) {
             this(null, typeName, tag, null);
         }
 
-        public Mapper(TypeMirror typeMirror, TypeName typeName, Set<String> tag) {
+        public Mapper(TypeMirror typeMirror, TypeName typeName, @Nullable String tag) {
             this(typeMirror, typeName, tag, null);
         }
     }
@@ -140,13 +143,13 @@ public class DbUtils {
             var mapping = mappings.getMapping(parameterColumnMapper);
             if (mapping != null) {
                 var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType));
-                mappers.add(new DbUtils.Mapper(mapping.mapperClass(), mapperType, mapping.mapperTags(), c -> c));
+                mappers.add(new DbUtils.Mapper(mapping.mapperClass(), mapperType, mapping.mapperTag(), c -> c));
                 continue;
             }
             if (parameter instanceof QueryParameter.SimpleParameter sp) {
                 if (!nativeTypePredicate.test(TypeName.get(parameter.type()))) {
                     var mapperType = ParameterizedTypeName.get(parameterColumnMapper, TypeName.get(parameterType));
-                    mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
+                    mappers.add(new DbUtils.Mapper(mapperType, null));
                 }
                 continue;
             }
@@ -161,11 +164,11 @@ public class DbUtils {
                     var fieldMappings = CommonUtils.parseMapping(entityField.element());
                     var fieldMapping = fieldMappings.getMapping(parameterColumnMapper);
                     if (fieldMapping != null) {
-                        mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, fieldMapping.mapperTags()));
+                        mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, fieldMapping.mapperTag()));
                         continue;
                     }
                     if (!nativeTypePredicate.test(entityTypeName)) {
-                        mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
+                        mappers.add(new DbUtils.Mapper(mapperType, null));
                     }
                 }
 
@@ -177,9 +180,9 @@ public class DbUtils {
                 var fieldMappings = CommonUtils.parseMapping(ep.entity().typeElement());
                 var fieldMapping = fieldMappings.getMapping(parameterColumnMapper);
                 if (fieldMapping != null) {
-                    mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, fieldMapping.mapperTags()));
+                    mappers.add(new DbUtils.Mapper(fieldMapping.mapperClass(), mapperType, fieldMapping.mapperTag()));
                 } else {
-                    mappers.add(new DbUtils.Mapper(mapperType, Set.of()));
+                    mappers.add(new DbUtils.Mapper(mapperType, null));
                 }
             }
         }

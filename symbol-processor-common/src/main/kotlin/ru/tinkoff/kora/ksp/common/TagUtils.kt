@@ -6,52 +6,53 @@ import com.squareup.kotlinpoet.*
 object TagUtils {
     val ignoreList = setOf("Component", "DefaultComponent")
 
-    fun KSAnnotated.parseTags(): Set<String> {
+    fun KSAnnotated.parseTag(): String? {
         return parseTagValue(this)
     }
 
-    fun KSType.parseTags(): Set<String> {
+    fun KSType.parseTag(): String? {
         return parseTagValue(this)
     }
 
-    fun FunSpec.Builder.addTag(tag: Set<String>): FunSpec.Builder {
-        if (tag.isEmpty()) {
+    fun FunSpec.Builder.addTag(tag: String?): FunSpec.Builder {
+        if (tag == null) {
             return this
         }
         return this.addAnnotation(tag.toTagAnnotation())
     }
 
-    fun ParameterSpec.Builder.addTag(tag: Set<String>): ParameterSpec.Builder {
-        if (tag.isEmpty()) {
+    fun FunSpec.Builder.addTag(tag: TypeName?): FunSpec.Builder {
+        if (tag == null) {
             return this
         }
         return this.addAnnotation(tag.toTagAnnotation())
     }
 
-    fun ParameterSpec.Builder.addTag(vararg tags: TypeName): ParameterSpec.Builder {
-        if (tags.isEmpty()) {
-            return this
-        }
-        return this.addAnnotation(tags.toList().toTagTypesAnnotation())
-    }
-
-    fun ParameterSpec.Builder.addTag(tag: Collection<TypeName>): ParameterSpec.Builder {
-        if (tag.isEmpty()) {
-            return this
-        }
-        return this.addAnnotation(tag.toTagSpecTypes())
-    }
-
-    fun TypeSpec.Builder.addTag(tag: Set<String>): TypeSpec.Builder {
-        if (tag.isEmpty()) {
+    fun ParameterSpec.Builder.addTag(tag: String?): ParameterSpec.Builder {
+        if (tag == null) {
             return this
         }
         return this.addAnnotation(tag.toTagAnnotation())
     }
 
-    fun parseTagValue(target: KSAnnotated): Set<String> {
+
+    fun ParameterSpec.Builder.addTag(tag: TypeName?): ParameterSpec.Builder {
+        if (tag == null) {
+            return this
+        }
+        return this.addAnnotation(tag.toTagAnnotation())
+    }
+
+    fun TypeSpec.Builder.addTag(tag: String?): TypeSpec.Builder {
+        if (tag == null) {
+            return this
+        }
+        return this.addAnnotation(tag.toTagAnnotation())
+    }
+
+    fun parseTagValue(target: KSAnnotated): String? {
         val tag = parseTagValue(target.annotations)
-        if (tag.isNotEmpty()) {
+        if (tag != null) {
             return tag
         }
         if (target is KSPropertyDeclaration) {
@@ -66,62 +67,30 @@ object TagUtils {
                 }
             }
         }
-        return setOf()
+        return null
     }
 
-    fun parseTagValue(target: KSType): Set<String> {
+    fun parseTagValue(target: KSType): String? {
         return parseTagValue(target.annotations)
     }
 
-    fun parseTagValue(annotations: Sequence<KSAnnotation>): Set<String> {
+    fun parseTagValue(annotations: Sequence<KSAnnotation>): String? {
         for (annotation in annotations.filter { !ignoreList.contains(it.shortName.asString()) }) {
             val type = annotation.annotationType.resolve()
             if (type.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
-                return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotation, "value")!!
-                    .asSequence()
-                    .map { it.declaration.qualifiedName!!.asString() }
-                    .toSet()
+                return AnnotationUtils.parseAnnotationValueWithoutDefaults<KSType>(annotation, "value")!!
+                    .declaration.qualifiedName!!.asString()
             }
             for (annotatedWith in type.declaration.annotations) {
                 val annotatedWithType = annotatedWith.annotationType.resolve()
                 if (annotatedWithType.declaration.qualifiedName?.asString() == CommonClassNames.tag.canonicalName) {
-                    return AnnotationUtils.parseAnnotationValueWithoutDefaults<List<KSType>>(annotatedWith, "value")!!
-                        .asSequence()
-                        .map { it.declaration.qualifiedName!!.asString() }
-                        .toSet()
+                    return AnnotationUtils.parseAnnotationValueWithoutDefaults<KSType>(annotatedWith, "value")!!
+                        .declaration.qualifiedName!!.asString()
                 }
 
             }
         }
-        return setOf()
-    }
-
-    fun Collection<TypeName>.toTagSpecTypes(): AnnotationSpec {
-        val codeBlock = CodeBlock.builder().add("value = [")
-        forEachIndexed { i, type ->
-            if (i > 0) {
-                codeBlock.add(", ")
-            }
-            codeBlock.add("%T::class", type)
-        }
-        val value = codeBlock.add("]").build()
-        return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
-    }
-
-    fun Collection<String>.toTagAnnotation(): AnnotationSpec {
-        return if (size == 1) {
-            first().toTagAnnotation()
-        } else {
-            val codeBlock = CodeBlock.builder().add("value = [")
-            forEachIndexed { i, type ->
-                if (i > 0) {
-                    codeBlock.add(", ")
-                }
-                codeBlock.add("%L::class", type)
-            }
-            val value = codeBlock.add("]").build()
-            return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
-        }
+        return null
     }
 
     fun String.toTagAnnotation(): AnnotationSpec {
@@ -131,44 +100,22 @@ object TagUtils {
         return AnnotationSpec.builder(CommonClassNames.tag).addMember(codeBlock).build()
     }
 
-    fun Collection<TypeName>.toTagTypesAnnotation(): AnnotationSpec {
-        return if (size == 1) {
-            first().toTagTypeAnnotation()
-        } else {
-            val codeBlock = CodeBlock.builder().add("value = [")
-            forEachIndexed { i, type ->
-                if (i > 0) {
-                    codeBlock.add(", ")
-                }
-                codeBlock.add("%T::class", type)
-            }
-            val value = codeBlock.add("]").build()
-            AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
-        }
-    }
-
-    fun TypeName.toTagTypeAnnotation(): AnnotationSpec {
+    fun TypeName.toTagAnnotation(): AnnotationSpec {
         return AnnotationSpec.builder(CommonClassNames.tag)
             .addMember("%T::class", this)
             .build()
     }
 
-    fun Collection<String>.tagsMatch(other: Collection<String>): Boolean {
-        if (this.isEmpty() && other.isEmpty()) {
+    fun String?.tagMatches(other: String?): Boolean {
+        if (this == null && other == null) {
             return true
         }
-        if (this.isEmpty()) {
+        if (this == null) {
             return false
         }
-        if (this.contains(CommonClassNames.tagAny.canonicalName)) {
+        if (this == CommonClassNames.tagAny.canonicalName) {
             return true
         }
-
-        for (tag in this) {
-            if (tag !in other) {
-                return false
-            }
-        }
-        return true
+        return this == other
     }
 }

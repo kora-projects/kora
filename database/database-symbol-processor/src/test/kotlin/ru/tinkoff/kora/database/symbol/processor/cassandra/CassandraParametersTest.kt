@@ -15,7 +15,6 @@ import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
@@ -366,7 +365,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
-        assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
+        assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
     }
 
     @Test
@@ -388,7 +387,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
-        assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
+        assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
     }
 
     @Test
@@ -414,7 +413,7 @@ class CassandraParametersTest : AbstractCassandraRepositoryTest() {
         assertThat(mapperConstructorParameter.type.jvmErasure).isEqualTo(CassandraParameterColumnMapper::class)
         val tag = mapperConstructorParameter.findAnnotations(Tag::class).first()
         assertThat(tag).isNotNull()
-        assertThat(tag.value.map { it.java }).isEqualTo(listOf(loadClass("TestRepository")))
+        assertThat(tag.value.java).isEqualTo(loadClass("TestRepository"))
     }
 
     @Test

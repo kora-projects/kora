@@ -174,7 +174,6 @@ class KoraAppKspTest {
         val classWithTaggedAllOf = findNodesOf(
             graphDraw,
             AppWithAllOfComponents.ClassWithAllOf::class.java,
-            AppWithAllOfComponents.Superclass::class.java,
             AppWithAllOfComponents.Superclass::class.java
         )
         assertThat(classWithTaggedAllOf).hasSize(1)
@@ -305,34 +304,6 @@ class KoraAppKspTest {
     }
 
     @Test
-    fun appWithMultipleTags() {
-        val graphDraw = testClass(AppWithMultipleTags::class)
-        assertThat(graphDraw.nodes).hasSize(12)
-        val graph = graphDraw.init()
-        assertThat(graph).isNotNull
-        val nonTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3::class.java)
-        assertThat(nonTaggedClass3).hasSize(1)
-        val anyTaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3::class.java, AppWithMultipleTags::class.java) as List<NodeImpl<AppWithMultipleTags.Class3>>
-        assertThat(anyTaggedClass3).hasSize(1)
-        assertThat(graph[anyTaggedClass3[0]].class1s).hasSize(4)
-        val tag1TaggedClass3 =
-            findNodesOf(graphDraw, AppWithMultipleTags.Class3::class.java, AppWithMultipleTags.Tag1::class.java)
-        assertThat(tag1TaggedClass3).hasSize(1)
-        assertThat(graph[tag1TaggedClass3[0]].class1s).hasSize(1)
-        val tag2Tag3Taggedlass3 = findNodesOf(
-            graphDraw,
-            AppWithMultipleTags.Class3::class.java,
-            AppWithMultipleTags.Tag2::class.java,
-            AppWithMultipleTags.Tag3::class.java
-        )
-        assertThat(tag2Tag3Taggedlass3).hasSize(1)
-        assertThat(graph[tag2Tag3Taggedlass3[0]].class1s).hasSize(2)
-        val tag4TaggedClass3 = findNodesOf(graphDraw, AppWithMultipleTags.Class3::class.java, AppWithMultipleTags.Tag4::class.java)
-        assertThat(tag4TaggedClass3).hasSize(1)
-        assertThat(graph[tag4TaggedClass3[0]].class1s).hasSize(1)
-    }
-
-    @Test
     fun appWithNestedClasses() {
         val graphDraw = testClass(AppWithNestedClasses::class)
         assertThat(graphDraw.nodes).hasSize(2)
@@ -450,16 +421,16 @@ class KoraAppKspTest {
         assertThat(appClazzSubmodule).isNotNull
     }
 
-    private fun <T> findNodeOf(graphDraw: ApplicationGraphDraw, type: Class<T>, vararg tags: Class<*>): NodeImpl<T> {
-        val nodes = findNodesOf(graphDraw, type, *tags)
+    private fun <T> findNodeOf(graphDraw: ApplicationGraphDraw, type: Class<T>, tags: Class<*>? = null): NodeImpl<T> {
+        val nodes = findNodesOf(graphDraw, type, tags)
         check(nodes.size == 1)
         return nodes[0]
     }
 
-    private fun <T> findNodesOf(graphDraw: ApplicationGraphDraw, type: Class<T>, vararg tags: Class<*>): List<NodeImpl<T>> {
+    private fun <T> findNodesOf(graphDraw: ApplicationGraphDraw, type: Class<T>, tag: Class<*>? = null): List<NodeImpl<T>> {
         val graph = graphDraw.init()
-        val anyTag = listOf(*tags).contains(Tag.Any::class.java)
-        val nonTagged = tags.isEmpty()
+        val anyTag = tag == Tag.Any::class.java
+        val nonTagged = tag == null
         return graphDraw.nodes
             .filter { type.isInstance(graph[it]) }
             .filter { node ->
@@ -467,9 +438,9 @@ class KoraAppKspTest {
                     return@filter true
                 }
                 if (nonTagged) {
-                    return@filter node.tags().isEmpty()
+                    return@filter node.tag() == null
                 }
-                return@filter tags.all { listOf(*node.tags()).contains(it) }
+                return@filter node.tag() == tag
             }.map { it as NodeImpl<T> }
             .toList()
     }

@@ -15,7 +15,6 @@ import javax.lang.model.element.TypeElement;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public class UnresolvedDependencyException extends ProcessingErrorException {
     private final ComponentDeclaration component;
@@ -56,13 +55,13 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
 
     private static String constructErrorMessage(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints) {
         var msg = new StringBuilder();
-        if (dependencyClaim.tags().isEmpty()) {
+        if (dependencyClaim.tag() == null) {
             var format = """
                 Required dependency type wasn't found in graph and can't be auto created: %s (no tags)
                 Please check class for @%s annotation or that required module with component factory is plugged in.""";
             msg.append(String.format(format, TypeName.get(dependencyClaim.type()), CommonClassNames.component.simpleName()));
         } else {
-            var tagMsg = dependencyClaim.tags().stream().collect(Collectors.joining(", ", "@Tag(", ")"));
+            var tagMsg = "@Tag(" + dependencyClaim.tag() + ".class)";
             var format = """
                 Required dependency type wasn't found in graph and can't be auto created: %s with tag %s.
                 Please check class for @%s annotation or that required module with component factory is plugged in.""";
@@ -149,7 +148,7 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
         msg.append(delimiter).append(declaration.declarationString());
 
         var errorMissing = " [ ERROR: MISSING COMPONENT ]";
-        if (dependencyClaim.tags().isEmpty()) {
+        if (dependencyClaim.tag() == null) {
             msg.append(delimiter)
                 .append(dependencyClaim.type()).append("   ")
                 .append(errorMissing)
@@ -157,7 +156,7 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
         } else {
             msg.append(delimiter)
                 .append(dependencyClaim.type())
-                .append("  @Tag").append(dependencyClaim.tags().stream().collect(Collectors.joining(", ", "(", ")"))).append("   ")
+                .append("  @Tag(").append(dependencyClaim.tag()).append(".class)   ")
                 .append(errorMissing)
                 .append("\n");
         }

@@ -15,7 +15,9 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletionException;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -41,18 +43,18 @@ public class RequestHandlerGenerator {
             return null;
         }
 
-        var tags = TagUtils.parseTagValue(controller);
+        var tag = TagUtils.parseTagValue(controller);
         var paramBuilder = ParameterSpec.builder(TypeName.get(controller.asType()), "_controller");
-        if (!tags.isEmpty()) {
-            paramBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tags));
+        if (tag != null) {
+            paramBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tag));
         }
 
         var methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(httpServerRequestHandler)
             .addParameter(paramBuilder.build());
-        if (!tags.isEmpty()) {
-           methodBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tags));
+        if (tag != null) {
+           methodBuilder.addAnnotation(TagUtils.makeAnnotationSpec(tag));
         }
 
         this.addParameterMappers(methodBuilder, requestMappingData, parameters);

@@ -18,7 +18,7 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
-import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.doesImplement
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.ksp.common.getOuterClassesAsPrefix
@@ -65,7 +65,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                 FunSpec.builder(methodPrefix + "_SoapConfig")
                     .returns(soapConfig)
                     .addAnnotation(CommonClassNames.defaultComponent)
-                    .addAnnotation(listOf(elementType.canonicalName).toTagAnnotation())
+                    .addTag(elementType.canonicalName)
                     .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
                     .addParameter(ParameterSpec.builder("extractor", extractorClass).build())
                     .addStatement("val value = config.get(%S)", configPath)
@@ -84,12 +84,12 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     .addParameter(ParameterSpec.builder("telemetry", soapTelemetry).build())
                     .addParameter(
                         ParameterSpec.builder("config", soapConfig)
-                            .addAnnotation(listOf(elementType.canonicalName).toTagAnnotation())
+                            .addTag(elementType.canonicalName)
                             .build()
                     )
                     .addParameter(
                         ParameterSpec.builder("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope).copy(true))
-                            .addAnnotation(listOf(elementType.canonicalName).toTagAnnotation())
+                            .addTag(elementType.canonicalName)
                             .build()
                     )
                     .addStatement(

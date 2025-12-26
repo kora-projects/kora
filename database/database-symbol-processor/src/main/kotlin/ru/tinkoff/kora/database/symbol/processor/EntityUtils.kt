@@ -2,14 +2,18 @@ package ru.tinkoff.kora.database.symbol.processor
 
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
-import ru.tinkoff.kora.common.naming.NameConverter
-import ru.tinkoff.kora.common.naming.SnakeCaseNameConverter
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.KspCommonUtils
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 
-private val defaultColumnNameConverter = SnakeCaseNameConverter()
 
-fun parseColumnName(valueParameter: KSValueParameter, propertyParameter: KSPropertyDeclaration, columnsNameConverter: NameConverter?): String {
+val snakeCaseNameConverter = KspCommonUtils.NameConverter { originalName ->
+    originalName.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)")
+        .map { it.lowercase() }
+        .joinToString("_")
+}
+
+fun parseColumnName(valueParameter: KSValueParameter, propertyParameter: KSPropertyDeclaration, columnsNameConverter: KspCommonUtils.NameConverter?): String {
     val column = valueParameter.findAnnotation(DbUtils.columnAnnotation)
         ?: propertyParameter.findAnnotation(DbUtils.columnAnnotation)
     if (column != null) {
@@ -21,5 +25,5 @@ fun parseColumnName(valueParameter: KSValueParameter, propertyParameter: KSPrope
         return columnsNameConverter.convert(fieldName)
     }
 
-    return defaultColumnNameConverter.convert(fieldName)
+    return snakeCaseNameConverter.convert(fieldName)
 }

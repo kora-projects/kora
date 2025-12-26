@@ -69,9 +69,9 @@ class KafkaListenerRecordsTest : AbstractKafkaListenerAnnotationProcessorTest() 
         val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
 
         Assertions.assertThat(keyTag).isNotNull()
-        Assertions.assertThat(keyTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListener")))
+        Assertions.assertThat(keyTag.value.java).isEqualTo(loadClass("KafkaListener"))
         Assertions.assertThat(valueTag).isNotNull()
-        Assertions.assertThat(valueTag.value.map { it.java }).isEqualTo(listOf(loadClass("KafkaListener")))
+        Assertions.assertThat(valueTag.value.java).isEqualTo(loadClass("KafkaListener"))
     }
 
     @Test

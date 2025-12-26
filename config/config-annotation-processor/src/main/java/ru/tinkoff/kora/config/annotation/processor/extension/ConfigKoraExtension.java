@@ -14,7 +14,6 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.Set;
 
 public final class ConfigKoraExtension implements KoraExtension {
     private final Elements elements;
@@ -29,8 +28,8 @@ public final class ConfigKoraExtension implements KoraExtension {
 
     @Override
     @Nullable
-    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, Set<String> tags) {
-        if (!tags.isEmpty()) return null;
+    public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, String tag) {
+        if (tag != null) return null;
         if (!types.isSameType(types.erasure(typeMirror), configValueExtractorTypeErasure)) {
             return null;
         }

@@ -10,10 +10,9 @@ import com.squareup.kotlinpoet.ClassName
 import ru.tinkoff.kora.ksp.common.CommonAopUtils
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClass
-import ru.tinkoff.kora.ksp.common.generatedClassName
 
 interface KoraExtension {
-    fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)?
+    fun getDependencyGenerator(resolver: Resolver, type: KSType, tag: String?): (() -> ExtensionResult)?
 
     fun generatedByProcessor(resolver: Resolver, source: KSClassDeclaration, postfix: String): (() -> ExtensionResult)? {
         val generatedTypeName = source.generatedClass(postfix)

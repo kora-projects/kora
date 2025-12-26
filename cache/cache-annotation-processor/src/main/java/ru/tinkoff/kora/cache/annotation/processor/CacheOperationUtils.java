@@ -152,9 +152,9 @@ public final class CacheOperationUtils {
 
             var mapper = getSuitableMapper(CommonUtils.parseMapping(method));
             if (mapper != null) {
-                final List<AnnotationSpec> tags = mapper.mapperTags().isEmpty()
+                final List<AnnotationSpec> tags = mapper.mapperTag() == null
                     ? List.of()
-                    : List.of(TagUtils.makeAnnotationSpec(mapper.mapperTags()));
+                    : List.of(TagUtils.makeAnnotationSpec(mapper.mapperTag()));
 
                 var fieldMapper = aspectContext.fieldFactory().constructorParam(mapper.mapperClass(), tags);
                 cacheKey = new CacheOperation.CacheKey(cacheKeyMirror, CodeBlock.of("$L.map($L)", fieldMapper, String.join(", ", parameters)));

@@ -30,14 +30,14 @@ class UnresolvedDependencyException(
             dependencyClaim: DependencyClaim,
             hints: List<DependencyModuleHintProvider.Hint>,
         ): String {
-            val msg = if (dependencyClaim.tags.isEmpty()) {
+            val msg = if (dependencyClaim.tag == null) {
                 StringBuilder(
                     "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} (no tags)\n" +
                         "Keep in mind that nullable & non nullable types are different in Kotlin.\n" +
                         "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
                 )
             } else {
-                val tagMsg = dependencyClaim.tags.joinToString(", ", "@Tag(", ")")
+                val tagMsg = "@Tag(${dependencyClaim.tag}::class)"
                 StringBuilder(
                     "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} with tag ${tagMsg}.\n" +
                         "Keep in mind that nullable & non nullable types are different in Kotlin).\n" +
@@ -153,14 +153,14 @@ class UnresolvedDependencyException(
             msg.append(delimiter).append(declaration.declarationString())
 
             val errorMissing = " [ ERROR: MISSING COMPONENT ]"
-            if (dependencyClaim.tags.isEmpty()) {
+            if (dependencyClaim.tag == null) {
                 msg.append(delimiter)
                     .append(dependencyClaim.type.toTypeName()).append("   ")
                     .append(errorMissing)
             } else {
                 msg.append(delimiter)
                     .append(dependencyClaim.type.toTypeName())
-                    .append("  @Tag").append(dependencyClaim.tags.joinToString(", ", "(", ")")).append("   ")
+                    .append("  @Tag(").append(dependencyClaim.tag).append("::class)   ")
                     .append(errorMissing)
             }
 

@@ -201,11 +201,11 @@ class GraphBuilder {
                 }
                 if (dependencyClaim.type.declaration.qualifiedName!!.asString() == "java.util.Optional") {
                     // todo just add predefined template
-                    val optionalDeclaration = ComponentDeclaration.OptionalComponent(dependencyClaim.type, dependencyClaim.tags)
+                    val optionalDeclaration = ComponentDeclaration.OptionalComponent(dependencyClaim.type, dependencyClaim.tag)
                     sourceDeclarations.add(optionalDeclaration)
                     stack.addLast(frame.copy(currentDependency = currentDependency))
                     val type = dependencyClaim.type.arguments[0].type!!.resolve().makeNullable()
-                    val claim = ComponentDependencyHelper.parseClaim(type, dependencyClaim.tags, declaration.source)
+                    val claim = ComponentDependencyHelper.parseClaim(type, dependencyClaim.tag, declaration.source)
                     stack.addLast(
                         ResolutionFrame.Component(
                             optionalDeclaration, listOf(
@@ -223,7 +223,7 @@ class GraphBuilder {
                     stack.addAll(findInterceptors(finalClassComponent))
                     continue@frame
                 }
-                val extension = ctx.extensions.findExtension(ctx.resolver, dependencyClaim.type, dependencyClaim.tags)
+                val extension = ctx.extensions.findExtension(ctx.resolver, dependencyClaim.type, dependencyClaim.tag)
                 if (extension != null) {
                     val extensionResult = extension()
                     if (extensionResult is ExtensionResult.CodeBlockResult) {
@@ -247,7 +247,7 @@ class GraphBuilder {
                         continue@frame
                     }
                 }
-                val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tags)
+                val hints = ctx.dependencyHintProvider.findHints(dependencyClaim.type, dependencyClaim.tag)
                 throw UnresolvedDependencyException(stack, declaration, dependencyClaim, hints)
             }
             resolvedComponents.add(
@@ -255,7 +255,7 @@ class GraphBuilder {
                     resolvedComponents.size,
                     declaration,
                     declaration.type,
-                    declaration.tags,
+                    declaration.tag,
                     listOf(),
                     resolvedDependencies
                 )
@@ -433,7 +433,7 @@ class GraphBuilder {
             if (claimTypeDeclaration !is KSClassDeclaration) throw circularDependencyException
             if (claimTypeDeclaration.classKind != ClassKind.INTERFACE && !(claimTypeDeclaration.classKind == ClassKind.CLASS && claimTypeDeclaration.isOpen())) throw circularDependencyException
             val proxyDependencyClaim = DependencyClaim(
-                dependencyClaim.type, setOf(CommonClassNames.promisedProxy.canonicalName), dependencyClaim.claimType
+                dependencyClaim.type, CommonClassNames.promisedProxy.canonicalName, dependencyClaim.claimType
             )
             val alreadyGenerated = GraphResolutionHelper.findDependency(ctx, prevFrame.declaration, resolvedComponents, proxyDependencyClaim)
             if (alreadyGenerated != null) {
@@ -455,13 +455,13 @@ class GraphBuilder {
                 resolvedComponents.size,
                 proxyComponentDeclaration,
                 dependencyClaim.type,
-                setOf(CommonClassNames.promisedProxy.canonicalName),
+                CommonClassNames.promisedProxy.canonicalName,
                 emptyList(),
                 listOf(
                     ComponentDependency.PromisedProxyParameterDependency(
                         declaration, DependencyClaim(
                             declaration.type,
-                            declaration.tags,
+                            declaration.tag,
                             ONE_REQUIRED
                         )
                     )

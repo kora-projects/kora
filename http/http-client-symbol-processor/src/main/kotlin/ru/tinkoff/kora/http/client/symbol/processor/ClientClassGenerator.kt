@@ -42,12 +42,12 @@ import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isMap
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
-import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.writeTagValue
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.MappingData
+import ru.tinkoff.kora.ksp.common.TagUtils.addTag
+import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
-import ru.tinkoff.kora.ksp.common.parseAnnotationValue
 import ru.tinkoff.kora.ksp.common.parseMappingData
 import java.net.URI
 import java.net.URLEncoder
@@ -612,16 +612,12 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val packageName = declaration.packageName.asString()
         val configClassName = declaration.configName()
         val annotation = declaration.findAnnotation(httpClientAnnotation)!!
-        val telemetryTag = annotation.findValue<List<KSType>>("telemetryTag")
-        val httpClientTag = annotation.findValue<List<KSType>>("httpClientTag")
+        val telemetryTag = annotation.findValueNoDefault<KSType>("telemetryTag")
+        val httpClientTag = annotation.findValueNoDefault<KSType>("httpClientTag")
         val clientParameter = ParameterSpec.builder("httpClient", httpClient)
-        if (!httpClientTag.isNullOrEmpty()) {
-            clientParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value = %L", httpClientTag.writeTagValue()).build())
-        }
+            .addTag(httpClientTag?.toClassName())
         val telemetryParameter = ParameterSpec.builder("telemetryFactory", httpClientTelemetryFactory)
-        if (!telemetryTag.isNullOrEmpty()) {
-            telemetryParameter.addAnnotation(AnnotationSpec.builder(CommonClassNames.tag).addMember("value = %L", telemetryTag.writeTagValue()).build())
-        }
+            .addTag(telemetryTag?.toClassName())
         val classInterceptors = declaration.findRepeatableAnnotation(interceptWithClassName, interceptWithContainerClassName)
             .map { parseInterceptor(it) }
         var interceptorsCount = 0
@@ -832,27 +828,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
     data class Interceptor(val type: TypeName, val tag: AnnotationSpec?)
 
     private fun parseInterceptor(it: KSAnnotation): Interceptor {
-        val interceptorType = parseAnnotationValue<KSType>(it, "value")!!.toTypeName()
-        val interceptorTag = parseAnnotationValue<KSAnnotation>(it, "tag")
-        val interceptorTagAnnotationSpec = if (interceptorTag == null) {
-            null
-        } else {
-            val tag = AnnotationSpec.builder(CommonClassNames.tag)
-            val builder = CodeBlock.builder().add("value = [")
-
-            @Suppress("UNCHECKED_CAST")
-            val tags = interceptorTag.arguments[0].value!! as List<KSType>
-            if (tags.isNotEmpty()) {
-                for (t in tags) {
-                    builder.add("%T::class, ", t.toTypeName())
-                }
-                builder.add("]")
-                tag.addMember(builder.build()).build()
-            } else {
-                null
-            }
-        }
-        return Interceptor(interceptorType, interceptorTagAnnotationSpec)
+        val interceptorType = it.findValue<KSType>("value")!!.toTypeName()
+        val interceptorTag = it.findValueNoDefault<KSType>("tag")
+            ?.toClassName()
+            ?.toTagAnnotation()
+        return Interceptor(interceptorType, interceptorTag)
     }
 }
 
