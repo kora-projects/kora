@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.common;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.exc.StreamReadException;
 

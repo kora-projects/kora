@@ -2,7 +2,7 @@ package ru.tinkoff.kora.config.annotation.processor;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.TypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils.MappingData;
 import ru.tinkoff.kora.annotation.processor.common.Either;

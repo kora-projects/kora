@@ -3,6 +3,7 @@ package ru.tinkoff.kora.common.telemetry;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.ContextStorage;
 import io.opentelemetry.context.Scope;
+import org.jspecify.annotations.Nullable;
 
 public class OpentelemetryContextStorage implements ContextStorage {
 
@@ -12,6 +13,7 @@ public class OpentelemetryContextStorage implements ContextStorage {
     }
 
     @Override
+    @Nullable
     public Context current() {
         if (OpentelemetryContext.VALUE.isBound()) {
             return OpentelemetryContext.VALUE.get();

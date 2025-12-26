@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
+import ru.tinkoff.kora.config.common.ConfigValueOrigin;
 import ru.tinkoff.kora.config.common.ConfigValuePath;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
 import java.util.List;
@@ -28,7 +28,7 @@ class KoraQuartzConfigTests {
 
         var mockExtractor = Mockito.mock(ConfigValueExtractor.class);
         var mockConfig = Mockito.mock(Config.class);
-        ConfigValue stringValue = new ConfigValue.StringValue(new SimpleConfigValueOrigin(new SimpleConfigOrigin(""), ConfigValuePath.ROOT), "some");
+        ConfigValue stringValue = new ConfigValue.StringValue(ConfigValueOrigin.of(new SimpleConfigOrigin(""), ConfigValuePath.ROOT), "some");
 
         when(mockExtractor.extract(any())).thenReturn(null);
         when(mockConfig.get(anyString())).thenReturn(stringValue);
@@ -42,7 +42,7 @@ class KoraQuartzConfigTests {
     void quartzNameChanged() throws Exception {
         var mockExtractor = Mockito.mock(ConfigValueExtractor.class);
         var mockConfig = Mockito.mock(Config.class);
-        ConfigValue stringValue = new ConfigValue.StringValue(new SimpleConfigValueOrigin(new SimpleConfigOrigin(""), ConfigValuePath.ROOT), "some");
+        ConfigValue stringValue = new ConfigValue.StringValue(ConfigValueOrigin.of(new SimpleConfigOrigin(""), ConfigValuePath.ROOT), "some");
 
         when(mockExtractor.extract(any())).thenReturn(null);
         when(mockConfig.get(anyString())).thenReturn(stringValue);

@@ -4,7 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;

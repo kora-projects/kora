@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.Filer;

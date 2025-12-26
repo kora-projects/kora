@@ -1,24 +1,25 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
-import jakarta.annotation.Nonnull;
-import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.record.TimestampType;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordKeyDeserializationException;
 import ru.tinkoff.kora.kafka.common.exceptions.RecordValueDeserializationException;
 
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
+@NullMarked
 public final class ConsumerRecordWrapper<K, V> extends ConsumerRecord<K, V> {
     private final ConsumerRecord<byte[], byte[]> realRecord;
     private final Deserializer<K> keyDeserializer;
     private final Deserializer<V> valueDeserializer;
 
-    private final AtomicReference<K> deserializedKey = new AtomicReference<>(null);
-    private final AtomicReference<V> deserializedValue = new AtomicReference<>(null);
+    private final AtomicReference<@Nullable K> deserializedKey = new AtomicReference<>(null);
+    private final AtomicReference<@Nullable V> deserializedValue = new AtomicReference<>(null);
 
     public ConsumerRecordWrapper(ConsumerRecord<byte[], byte[]> realRecord, Deserializer<K> keyDeserializer, Deserializer<V> valueDeserializer) {
         super(realRecord.topic(), realRecord.partition(), realRecord.offset(), null, null);
@@ -44,7 +45,7 @@ public final class ConsumerRecordWrapper<K, V> extends ConsumerRecord<K, V> {
 
     @Override
     public K key() {
-        var value = deserializedKey.get();
+        K value = deserializedKey.get();
         if (value == null) {
             try {
                 value = keyDeserializer.deserialize(realRecord.topic(), realRecord.headers(), realRecord.key());
@@ -58,7 +59,7 @@ public final class ConsumerRecordWrapper<K, V> extends ConsumerRecord<K, V> {
 
     @Override
     public V value() {
-        var value = deserializedValue.get();
+        V value = deserializedValue.get();
         if (value == null) {
             try {
                 value = valueDeserializer.deserialize(realRecord.topic(), realRecord.headers(), realRecord.value());
@@ -100,7 +101,6 @@ public final class ConsumerRecordWrapper<K, V> extends ConsumerRecord<K, V> {
         return realRecord.leaderEpoch();
     }
 
-    @Nonnull
     public ConsumerRecord<byte[], byte[]> unwrap() {
         return realRecord;
     }

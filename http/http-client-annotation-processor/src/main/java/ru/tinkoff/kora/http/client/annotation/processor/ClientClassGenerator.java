@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -398,7 +398,7 @@ public class ClientClassGenerator {
         return parts;
     }
 
-    private record RoutePart(@Nullable Parameter.PathParameter parameter, @Nullable String string) {
+    private record RoutePart(Parameter.@Nullable PathParameter parameter, @Nullable String string) {
         RoutePart {
             if (parameter != null && string != null) throw new IllegalStateException();
         }
@@ -495,9 +495,8 @@ public class ClientClassGenerator {
         var interceptorParser = (Function<AnnotationMirror, Interceptor>) a -> {
             var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");
             var interceptorTypeName = ClassName.get(Objects.requireNonNull(interceptorType));
-            @Nullable
             var interceptorTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "tag");
-            var interceptorTagAnnotationSpec = interceptorTag == null ? null : TagUtils.makeAnnotationSpec(interceptorTag);
+            var interceptorTagAnnotationSpec = TagUtils.makeAnnotationSpec(interceptorTag);
             return new Interceptor(interceptorTypeName, interceptorTagAnnotationSpec);
         };
 
@@ -756,7 +755,7 @@ public class ClientClassGenerator {
     record MethodData(
         ExecutableElement element,
         TypeName returnType,
-        @Nullable CommonUtils.MappingData responseMapper,
+        CommonUtils.@Nullable MappingData responseMapper,
         List<ResponseCodeMapperData> codeMappers,
         List<Parameter> parameters) {
     }

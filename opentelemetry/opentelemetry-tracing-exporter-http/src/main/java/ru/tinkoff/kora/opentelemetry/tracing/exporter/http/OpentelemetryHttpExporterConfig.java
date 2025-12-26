@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.opentelemetry.tracing.exporter.http;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;

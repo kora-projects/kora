@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.DefaultComponent;
 
 public interface CaffeineCacheModule {

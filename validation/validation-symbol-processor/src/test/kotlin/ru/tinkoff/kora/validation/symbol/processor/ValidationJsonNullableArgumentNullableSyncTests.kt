@@ -85,7 +85,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@Nonnull arg: JsonNullable<String>?) { }
+                    open fun test(arg: @NonNull JsonNullable<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -109,7 +109,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@Nonnull arg: JsonNullable<String>?) { }
+                    open fun test(arg: @NonNull JsonNullable<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -133,7 +133,7 @@ class ValidationJsonNullableArgumentNullableSyncTests : AbstractValidationSymbol
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@Nonnull arg: JsonNullable<String>?) { }
+                    open fun test(arg: @NonNull JsonNullable<String>?) { }
                 }
                 
                 """.trimIndent()

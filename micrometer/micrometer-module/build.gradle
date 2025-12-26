@@ -1,8 +1,6 @@
 dependencies {
     api libs.micrometer.core
     api libs.micrometer.registry.prometheus
-    api libs.opentelemetry.semconv
-    api libs.opentelemetry.semconv.incubating
     api libs.opentelemetry.api
     api libs.opentelemetry.micrometer.meter.provider
     api project(":telemetry:telemetry-common")
@@ -10,4 +8,10 @@ dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
     compileOnly project(':resilient:resilient-kora')
+}
+
+compileJava {
+    options.compilerArgs = [
+        '--add-reads', 'kora.micrometer.module=ALL-UNNAMED', // opentelemetry micrometer meter provider
+    ]
 }

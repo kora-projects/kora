@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.timeout;
 
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,9 +19,8 @@ final class KoraTimeoutManager implements TimeoutManager {
         this.config = config;
     }
 
-    @Nonnull
     @Override
-    public Timeout get(@Nonnull String name) {
+    public Timeout get(String name) {
         return timeouterMap.computeIfAbsent(name, (k) -> {
             var config = this.config.getNamedConfig(name);
             logger.debug("Creating Timeout named '{}' and config {}", name, config);

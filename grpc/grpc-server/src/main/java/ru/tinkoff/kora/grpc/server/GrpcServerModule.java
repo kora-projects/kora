@@ -9,7 +9,7 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.netty.channel.EventLoopGroup;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.WrappedRefreshListener;

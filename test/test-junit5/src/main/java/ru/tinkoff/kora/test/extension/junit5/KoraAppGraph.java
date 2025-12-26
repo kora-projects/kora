@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.common.Tag;
 
@@ -15,7 +14,7 @@ import java.util.Optional;
 public interface KoraAppGraph {
 
     @Nullable
-    Object getFirst(@Nonnull Type type);
+    Object getFirst(Type type);
 
     /**
      * Try to find implementation in Graph by type and tag
@@ -25,10 +24,10 @@ public interface KoraAppGraph {
      * @return type instance from Graph
      */
     @Nullable
-    Object getFirst(@Nonnull Type type, @Nullable Class<?> tag);
+    Object getFirst(Type type, @Nullable Class<?> tag);
 
     @Nullable
-    <T> T getFirst(@Nonnull Class<T> type);
+    <T> T getFirst(Class<T> type);
 
     /**
      * Try to find implementation in Graph by type and tag
@@ -39,10 +38,9 @@ public interface KoraAppGraph {
      * @return type instance from Graph
      */
     @Nullable
-    <T> T getFirst(@Nonnull Class<T> type, @Nullable Class<?> tag);
+    <T> T getFirst(Class<T> type, @Nullable Class<?> tag);
 
-    @Nonnull
-    default Optional<Object> findFirst(@Nonnull Type type) {
+    default Optional<@Nullable Object> findFirst(Type type) {
         return Optional.ofNullable(getFirst(type));
     }
 
@@ -53,13 +51,11 @@ public interface KoraAppGraph {
      * @param tag  associated with component
      * @return type instance from Graph
      */
-    @Nonnull
-    default Optional<Object> findFirst(@Nonnull Type type, Class<?> tag) {
+    default Optional<@Nullable Object> findFirst(Type type, Class<?> tag) {
         return Optional.ofNullable(getFirst(type, tag));
     }
 
-    @Nonnull
-    default <T> Optional<T> findFirst(@Nonnull Class<T> type) {
+    default <T> Optional<@Nullable T> findFirst(Class<T> type) {
         return Optional.ofNullable(getFirst(type));
     }
 
@@ -71,13 +67,11 @@ public interface KoraAppGraph {
      * @param <T>  type parameter
      * @return type instance from Graph
      */
-    @Nonnull
-    default <T> Optional<T> findFirst(@Nonnull Class<T> type, @Nullable Class<?> tag) {
+    default <T> Optional<T> findFirst(Class<T> type, @Nullable Class<?> tag) {
         return Optional.ofNullable(getFirst(type, tag));
     }
 
-    @Nonnull
-    List<Object> getAll(@Nonnull Type type);
+    List<Object> getAll(Type type);
 
     /**
      * Try to find implementation in Graph by type using {@link Tag.Any}
@@ -86,11 +80,9 @@ public interface KoraAppGraph {
      * @param tag  associated with component
      * @return component instance from Graph
      */
-    @Nonnull
-    List<Object> getAll(@Nonnull Type type, @Nullable Class<?> tag);
+    List<Object> getAll(Type type, @Nullable Class<?> tag);
 
-    @Nonnull
-    <T> List<T> getAll(@Nonnull Class<T> type);
+    <T> List<T> getAll(Class<T> type);
 
     /**
      * Try to find implementation in Graph by type using {@link Tag.Any}
@@ -100,6 +92,5 @@ public interface KoraAppGraph {
      * @param <T>  type parameter
      * @return type instance from Graph
      */
-    @Nonnull
-    <T> List<T> getAll(@Nonnull Class<T> type, @Nullable Class<?> tag);
+    <T> List<T> getAll(Class<T> type, @Nullable Class<?> tag);
 }

@@ -11,7 +11,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             .addAnnotation(generated())
             .addAnnotation(Classes.component.asKt())
         if (params.prefixPath != null) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).addMember("%S", params.prefixPath).build())
+            b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).addMember("%S", params.prefixPath!!).build())
         } else {
             b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).build())
         }

@@ -4,7 +4,7 @@ import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.HeaderValues;
 import io.undertow.util.HttpString;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 
 public class UndertowCorsFilter implements HttpHandler {

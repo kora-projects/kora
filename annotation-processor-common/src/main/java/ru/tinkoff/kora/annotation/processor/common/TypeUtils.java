@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.palantir.javapoet.ClassName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.TypeElement;

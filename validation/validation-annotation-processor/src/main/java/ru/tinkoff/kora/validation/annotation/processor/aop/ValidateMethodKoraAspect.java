@@ -2,7 +2,7 @@ package ru.tinkoff.kora.validation.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.MethodUtils;

@@ -76,7 +76,7 @@ class ValidationJsonNullableFieldRequiredTests : AbstractValidationSymbolProcess
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:Nonnull val field: JsonNullable<String>)
+                    data class TestRecord(@field:NotNull val field: JsonNullable<String>)
                     
                     """.trimIndent()
         )
@@ -96,7 +96,7 @@ class ValidationJsonNullableFieldRequiredTests : AbstractValidationSymbolProcess
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:Nonnull val field: JsonNullable<String>)
+                    data class TestRecord(@field:NotNull val field: JsonNullable<String>)
                     
                     """.trimIndent()
         )
@@ -116,7 +116,7 @@ class ValidationJsonNullableFieldRequiredTests : AbstractValidationSymbolProcess
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:Nonnull val field: JsonNullable<String>)
+                    data class TestRecord(@field:NotNull val field: JsonNullable<String>)
                     
                     """.trimIndent()
         )

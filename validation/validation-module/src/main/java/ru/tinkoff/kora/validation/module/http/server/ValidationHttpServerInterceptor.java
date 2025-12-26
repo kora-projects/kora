@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.validation.module.http.server;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;

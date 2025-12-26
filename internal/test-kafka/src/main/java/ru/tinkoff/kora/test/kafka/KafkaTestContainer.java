@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.test.kafka;
 
-import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.admin.DeleteTopicsOptions;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;

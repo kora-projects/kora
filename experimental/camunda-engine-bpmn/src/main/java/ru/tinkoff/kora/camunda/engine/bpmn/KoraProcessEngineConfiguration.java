@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.camunda.engine.bpmn;
 
-import jakarta.annotation.Nullable;
 import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.camunda.bpm.engine.ArtifactFactory;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
@@ -23,6 +22,7 @@ import org.camunda.bpm.engine.runtime.CaseExecution;
 import org.camunda.bpm.engine.runtime.CaseExecutionQuery;
 import org.camunda.bpm.engine.runtime.CaseInstance;
 import org.camunda.bpm.engine.runtime.CaseInstanceQuery;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.bpmn.transaction.KoraTransactionContextFactory;

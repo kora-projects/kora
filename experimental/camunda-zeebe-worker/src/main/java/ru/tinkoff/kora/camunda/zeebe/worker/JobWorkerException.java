@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.camunda.zeebe.worker;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
 

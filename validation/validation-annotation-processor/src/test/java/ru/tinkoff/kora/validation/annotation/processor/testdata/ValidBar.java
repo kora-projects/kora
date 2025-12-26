@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.validation.annotation.processor.testdata;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.validation.common.annotation.NotBlank;
 import ru.tinkoff.kora.validation.common.annotation.Size;
 import ru.tinkoff.kora.validation.common.annotation.Valid;
 
-import jakarta.annotation.Nullable;
 import java.util.List;
 
 @Valid

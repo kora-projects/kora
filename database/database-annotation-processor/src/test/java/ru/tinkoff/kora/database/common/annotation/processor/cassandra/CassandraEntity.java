@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.common.annotation.processor.cassandra;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.data.GettableByName;
 import com.datastax.oss.driver.api.core.data.SettableByName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowColumnMapper;
 import ru.tinkoff.kora.database.cassandra.mapper.result.CassandraRowMapper;

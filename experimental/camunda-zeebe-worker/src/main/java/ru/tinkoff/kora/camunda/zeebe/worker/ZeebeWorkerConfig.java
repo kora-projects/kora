@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.camunda.zeebe.worker;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 @ConfigValueExtractor
+@NullMarked
 public interface ZeebeWorkerConfig {
 
     String DEFAULT = "default";
@@ -76,7 +77,7 @@ public interface ZeebeWorkerConfig {
         "default", DEFAULT_BACKOFF_CONFIG, List.of(), Duration.ofMinutes(15), 32, Duration.ofSeconds(15), Duration.ofMillis(100), true, false, Duration.ofSeconds(15)
     );
 
-    default JobConfig getJobConfig(@Nonnull String jobType) {
+    default JobConfig getJobConfig(String jobType) {
         JobConfig defaultConfig = job().get(DEFAULT);
         if (defaultConfig == null) {
             defaultConfig = DEFAULT_JOB_CONFIG;

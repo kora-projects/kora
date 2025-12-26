@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.server.common.auth;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Principal;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 

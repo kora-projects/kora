@@ -13,7 +13,7 @@ import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.concurrent.TimeUnit;
 

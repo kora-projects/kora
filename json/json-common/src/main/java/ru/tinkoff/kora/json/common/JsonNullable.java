@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.json.common;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -38,7 +37,7 @@ import java.util.Objects;
  * <pre>{@code
  * { "definedNonNull": "Interstellar", "definedNull": null }
  * }</pre>
- *
+ * <p>
  * Sa
  */
 public sealed interface JsonNullable<T> {
@@ -62,7 +61,7 @@ public sealed interface JsonNullable<T> {
         return JsonNullableUtil.NULL;
     }
 
-    static <T> JsonNullable<T> of(@Nonnull T value) {
+    static <T> JsonNullable<T> of(T value) {
         Objects.requireNonNull(value, "JsonNullable#of require non-null, but got null");
         return new Defined<>(value);
     }

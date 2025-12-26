@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.model.response;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Instant;
 import java.util.List;

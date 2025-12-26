@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.cassandra.repository;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.cassandra.CassandraRepository;
 import ru.tinkoff.kora.database.common.annotation.Query;

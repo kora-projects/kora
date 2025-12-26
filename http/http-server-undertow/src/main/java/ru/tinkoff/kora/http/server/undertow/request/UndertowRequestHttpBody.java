@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.server.undertow.request;
 
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;

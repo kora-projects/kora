@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.database.jdbc.mapper.result;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.common.RowMapper;
-
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.database.jdbc.JdbcRepository;
 
 import java.sql.ResultSet;

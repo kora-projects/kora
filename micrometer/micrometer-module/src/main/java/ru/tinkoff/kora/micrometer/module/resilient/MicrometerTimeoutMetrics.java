@@ -5,7 +5,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
 import ru.tinkoff.kora.resilient.timeout.TimeoutMetrics;
 
-import jakarta.annotation.Nonnull;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MicrometerTimeoutMetrics implements TimeoutMetrics {
@@ -20,7 +19,7 @@ public final class MicrometerTimeoutMetrics implements TimeoutMetrics {
     }
 
     @Override
-    public void recordTimeout(@Nonnull String name, long timeoutInNanos) {
+    public void recordTimeout(String name, long timeoutInNanos) {
         var metrics = this.metrics.computeIfAbsent(name, k -> build(name));
         metrics.exhausted().increment();
     }

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kafka.annotation.processor.producer;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.kafka.annotation.processor.KafkaClassNames;
 import ru.tinkoff.kora.kafka.annotation.processor.utils.KafkaPublisherUtils;

@@ -345,7 +345,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
     public void testNullableUuid() throws IOException {
         compile("""
             @Json
-            public record TestRecord(@Nullable java.util.UUID value) {
+            public record TestRecord(java.util.@Nullable UUID value) {
             }
             """);
 
@@ -377,7 +377,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
     public void testNullableBigInteger() throws IOException {
         compile("""
             @Json
-            public record TestRecord(@Nullable java.math.BigInteger value) {
+            public record TestRecord(java.math.@Nullable BigInteger value) {
             }
             """);
 
@@ -413,7 +413,7 @@ public class SupportedTypesTest extends AbstractJsonAnnotationProcessorTest {
     public void testNullableBinary() throws IOException {
         compile("""
             @Json
-            public record TestRecord(@Nullable byte[] value) {
+            public record TestRecord(byte @Nullable [] value) {
               @Override
               public boolean equals(Object o) {
                 return o instanceof TestRecord that && java.util.Arrays.equals(this.value, that.value);

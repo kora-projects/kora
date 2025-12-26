@@ -1,6 +1,6 @@
 package ru.tinkoff.grpc.client.config;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;

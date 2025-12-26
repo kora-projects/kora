@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
-import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -11,6 +10,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;

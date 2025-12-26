@@ -9,8 +9,7 @@ import io.lettuce.core.protocol.ProtocolVersion;
 import io.lettuce.core.resource.DefaultClientResources;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.netty.channel.EventLoopGroup;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.cache.redis.lettuce.telemetry.OpentelemetryLettuceCommandLatencyRecorder;
 
 import java.net.URI;
@@ -19,12 +18,10 @@ import java.util.List;
 
 public class LettuceClientFactory {
 
-    @Nonnull
     public AbstractRedisClient build(LettuceClientConfig config) {
         return build(config, null, null, null);
     }
 
-    @Nonnull
     public AbstractRedisClient build(LettuceClientConfig config,
                                      @Nullable MeterRegistry meterRegistry,
                                      @Nullable LettuceConfigurator lettuceConfigurator,
@@ -36,12 +33,10 @@ public class LettuceClientFactory {
             : buildRedisClusterClientInternal(config, mappedRedisUris, meterRegistry, lettuceConfigurator, eventLoopGroup);
     }
 
-    @Nonnull
     public RedisClusterClient buildRedisClusterClient(LettuceClientConfig config) {
         return buildRedisClusterClient(config, null, null, null);
     }
 
-    @Nonnull
     public RedisClusterClient buildRedisClusterClient(LettuceClientConfig config,
                                                       @Nullable MeterRegistry meterRegistry,
                                                       @Nullable LettuceConfigurator lettuceConfigurator,
@@ -50,12 +45,10 @@ public class LettuceClientFactory {
         return buildRedisClusterClientInternal(config, mappedRedisUris, meterRegistry, lettuceConfigurator, eventLoopGroup);
     }
 
-    @Nonnull
     public RedisClient buildRedisClient(LettuceClientConfig config) {
         return buildRedisClient(config, null, null, null);
     }
 
-    @Nonnull
     public RedisClient buildRedisClient(LettuceClientConfig config,
                                         @Nullable MeterRegistry meterRegistry,
                                         @Nullable LettuceConfigurator lettuceConfigurator,
@@ -93,7 +86,6 @@ public class LettuceClientFactory {
                 .build());
     }
 
-    @Nonnull
     private RedisClusterClient buildRedisClusterClientInternal(LettuceClientConfig config,
                                                                List<RedisURI> redisURIs,
                                                                @Nullable MeterRegistry meterRegistry,
@@ -153,7 +145,6 @@ public class LettuceClientFactory {
                 .build());
     }
 
-    @Nonnull
     private RedisClient buildRedisClientInternal(LettuceClientConfig config,
                                                  RedisURI redisURI,
                                                  @Nullable MeterRegistry meterRegistry,

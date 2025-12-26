@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.kafka.common;
 
-import jakarta.annotation.Nonnull;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.jspecify.annotations.NullMarked;
 import ru.tinkoff.kora.kafka.common.consumer.KafkaListenerConfig;
 
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
+@NullMarked
 public final class KafkaUtils {
 
     private KafkaUtils() {}
@@ -38,7 +39,7 @@ public final class KafkaUtils {
             namePrefix = prefix;
         }
 
-        public Thread newThread(@Nonnull Runnable runnable) {
+        public Thread newThread(Runnable runnable) {
             var thread = new Thread(runnable, CONSUMER_PREFIX + namePrefix + threadNumber.getAndIncrement());
             thread.setDaemon(false);
             thread.setPriority(Thread.NORM_PRIORITY);

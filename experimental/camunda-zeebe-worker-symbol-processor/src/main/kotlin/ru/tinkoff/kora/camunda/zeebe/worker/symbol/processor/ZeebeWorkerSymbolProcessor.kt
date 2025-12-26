@@ -21,6 +21,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
@@ -56,7 +57,7 @@ class ZeebeWorkerSymbolProcessor(
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(ANNOTATION_WORKER.canonicalName).toList()
-        val symbolsToProcess = symbols.filter { it.validate() }.filterIsInstance<KSFunctionDeclaration>()
+        val symbolsToProcess = symbols.filter { it.validateAll() }.filterIsInstance<KSFunctionDeclaration>()
         for (method in symbolsToProcess) {
             if (method.modifiers.any { m -> m == Modifier.PRIVATE }) {
                 throw ProcessingErrorException("@JobWorker method can't be private", method)
@@ -116,24 +117,28 @@ class ZeebeWorkerSymbolProcessor(
         val codeBuilder = CodeBlock.builder()
 
         codeBuilder.beginControlFlow("try")
-        val vars: MutableList<String> = ArrayList()
+        val vars = mutableListOf<CodeBlock>()
 
         var varCounter = 1
         for (variable in variables) {
             val varName = "var" + vars.size + 1
-            vars.add(varName)
+            if (variable.parameter.type.resolveToUnderlying().isMarkedNullable) {
+                vars.add(CodeBlock.of("%N", varName))
+            } else {
+                vars.add(CodeBlock.of("%N!!", varName))
+            }
             if (variable.isVars) {
-                codeBuilder.addStatement("val %L = varsReader.read(job.getVariables())", varName)
+                codeBuilder.addStatement("val %N = varsReader.read(job.getVariables())", varName)
             } else if (variable.isContext) {
-                codeBuilder.addStatement("val %L = %T(jobName, job)", varName, CLASS_ACTIVE_CONTEXT)
+                codeBuilder.addStatement("val %N = %T(jobName, job)", varName, CLASS_ACTIVE_CONTEXT)
             } else if (variable.isVar) {
                 val varReaderName = "var" + varCounter++ + "Reader"
-                codeBuilder.addStatement("val %L = %L.read(job.getVariables())", varName, varReaderName)
+                codeBuilder.addStatement("val %N = %L.read(job.getVariables())", varName, varReaderName)
             }
         }
 
         val methodName = method.simpleName.asString()
-        val varsArg = java.lang.String.join(", ", vars)
+        val varsArg = vars.joinToCode(", ")
         if (method.isVoid()) {
             codeBuilder.addStatement("this.handler.%L(%L)", methodName, varsArg)
             codeBuilder.addStatement("return client.newCompleteCommand(job)")

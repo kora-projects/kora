@@ -143,7 +143,8 @@ public final class ValidUtils {
     public static boolean isNotNull(AnnotatedConstruct element) {
         var isNotNull = element.getAnnotationMirrors()
             .stream()
-            .anyMatch(a -> a.getAnnotationType().toString().endsWith(".Nonnull") || a.getAnnotationType().toString().endsWith(".NotNull"));
+            .map(a -> a.getAnnotationType().toString())
+            .anyMatch(a -> a.endsWith(".Nonnull") || a.endsWith(".NotNull") || a.endsWith(".NonNull"));
 
         if (isNotNull) {
             return true;

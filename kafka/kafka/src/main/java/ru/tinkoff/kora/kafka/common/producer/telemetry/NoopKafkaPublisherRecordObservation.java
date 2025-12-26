@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
 import io.opentelemetry.api.trace.Span;
-import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.jspecify.annotations.Nullable;
 
 public class NoopKafkaPublisherRecordObservation implements KafkaPublisherTelemetry.KafkaPublisherRecordObservation {
     public static final NoopKafkaPublisherRecordObservation INSTANCE = new NoopKafkaPublisherRecordObservation();

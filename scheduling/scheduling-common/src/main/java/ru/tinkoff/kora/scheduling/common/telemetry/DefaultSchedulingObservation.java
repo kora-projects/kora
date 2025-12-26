@@ -5,7 +5,7 @@ import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.event.Level;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;

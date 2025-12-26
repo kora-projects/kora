@@ -51,7 +51,7 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             }
         }
         if (response.dataType != null) {
-            apply.addStatement("val content = this.delegate.apply(response)")
+            apply.addStatement("val content = this.delegate.apply(response)!!")
         }
 
         val responseWithCodeType = if (operation.responses.size == 1)

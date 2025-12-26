@@ -157,8 +157,10 @@ class JsonWriterGenerator(private val resolver: Resolver) {
             val letAccessor = if (field.type.isMarkedNullable) "?.let" else ".let"
             function.controlFlow("_object.%N%L {", field.accessor, letAccessor) {
                 if (field.typeMeta.isJsonNullable) {
-                    controlFlow("if (!it.isNull && it.value().%M())", CommonClassNames.isNotEmpty) {
-                        add(read.build())
+                    controlFlow("it.value()?.let { _jsonNullableValue ->") {
+                        controlFlow("if (_jsonNullableValue.%M())", CommonClassNames.isNotEmpty) {
+                            add(read.build())
+                        }
                     }
                 } else {
                     controlFlow("if (it.%M())", CommonClassNames.isNotEmpty) {
@@ -201,12 +203,22 @@ class JsonWriterGenerator(private val resolver: Resolver) {
         return when (knownType) {
             KnownTypesEnum.STRING -> CodeBlock.of("_gen.writeString($param)\n")
             KnownTypesEnum.BOOLEAN -> CodeBlock.of("_gen.writeBoolean($param)\n")
-            INTEGER, BIG_INTEGER, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> CodeBlock.of(
-                "_gen.writeNumber($param)\n"
-            )
+            INTEGER, BIG_INTEGER, KnownTypesEnum.DOUBLE, KnownTypesEnum.FLOAT, KnownTypesEnum.LONG, KnownTypesEnum.SHORT -> {
+                if (fieldMeta.isJsonNullable) {
+                    CodeBlock.of("_gen.writeNumber(it.value()!!)\n") // null checked before
+                } else {
+                    CodeBlock.of("_gen.writeNumber(it)\n")
+                }
+            }
 
             BINARY -> CodeBlock.of("_gen.writeBinary($param)\n")
-            UUID -> CodeBlock.of("_gen.writeString($param.toString())\n")
+            UUID -> {
+                if (fieldMeta.isJsonNullable) {
+                    CodeBlock.of("_gen.writeString(it.value()!!.toString()\n") // null checked before
+                } else {
+                    CodeBlock.of("_gen.writeString(it.toString())\n")
+                }
+            }
         }
     }
 }

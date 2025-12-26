@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.client.common.request;
 
-import jakarta.annotation.Nullable;
-import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;

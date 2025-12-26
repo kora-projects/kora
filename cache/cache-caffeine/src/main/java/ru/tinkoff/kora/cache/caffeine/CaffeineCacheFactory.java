@@ -1,10 +1,8 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import jakarta.annotation.Nonnull;
 
 public interface CaffeineCacheFactory {
 
-    @Nonnull
-    <K, V> Cache<K, V> build(@Nonnull String name, @Nonnull CaffeineCacheConfig config);
+    <K, V> Cache<K, V> build(String name, CaffeineCacheConfig config);
 }

@@ -3,7 +3,7 @@ package ru.tinkoff.kora.cache.annotation.processor;
 import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
@@ -195,8 +195,7 @@ public final class CacheOperationUtils {
         return new CacheOperation(type, cacheExecutions, origin);
     }
 
-    @Nullable
-    private static CommonUtils.MappingData getSuitableMapper(CommonUtils.MappersData mappers) {
+    private static CommonUtils.@Nullable MappingData getSuitableMapper(CommonUtils.MappersData mappers) {
         if (mappers.isEmpty() || mappers.mapperClasses() == null) {
             return null;
         }

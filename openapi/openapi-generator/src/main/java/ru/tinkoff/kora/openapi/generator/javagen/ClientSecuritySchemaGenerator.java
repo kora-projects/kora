@@ -102,7 +102,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 builder.addType(basicAuthConfig(authMethod));
             }
             if (authMethod.type.equals("apiKey")) {
-                b.addParameter(ParameterSpec.builder(String.class, authMethod.name).addAnnotation(Classes.nullable).build());
+                b.addParameter(ParameterSpec.builder(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), authMethod.name).build());
             }
         }
         return builder.recordConstructor(b.build()).build();

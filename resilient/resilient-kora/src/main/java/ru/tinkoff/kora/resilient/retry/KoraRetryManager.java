@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,9 +22,8 @@ final class KoraRetryManager implements RetryManager {
         this.metrics = metrics;
     }
 
-    @Nonnull
     @Override
-    public Retry get(@Nonnull String name) {
+    public Retry get(String name) {
         return retryableByName.computeIfAbsent(name, (k) -> {
             final RetryConfig.NamedConfig config = this.config.getNamedConfig(name);
             final RetryPredicate failurePredicate = getFailurePredicate(config);

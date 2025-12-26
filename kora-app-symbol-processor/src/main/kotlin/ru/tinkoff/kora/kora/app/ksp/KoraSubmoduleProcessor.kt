@@ -3,7 +3,6 @@ package ru.tinkoff.kora.kora.app.ksp
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Dependencies
 import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
@@ -15,15 +14,15 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.findSinglePublicConstructor
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateComponent
-import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateModule
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.hasAopAnnotations
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.TagUtils.parseTag
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
 
-class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : SymbolProcessor {
+class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : BaseSymbolProcessor(environment) {
     companion object {
         const val OPTION_SUBMODULE_GENERATION = "kora.app.submodule.enabled"
     }
@@ -34,7 +33,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
     private val annotatedModules = mutableListOf<KSClassDeclaration>()
     private val components = mutableSetOf<KSClassDeclaration>()
 
-    override fun process(resolver: Resolver): List<KSAnnotated> {
+    override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val deferred = mutableListOf<KSAnnotated>()
 
         processModules(resolver).let { deferred.addAll(it) }
@@ -55,7 +54,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
         val moduleOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.module.canonicalName).toList()
         for (moduleSymbol in moduleOfSymbols) {
             if (moduleSymbol is KSClassDeclaration && moduleSymbol.classKind == ClassKind.INTERFACE) {
-                if (moduleSymbol.validateModule()) {
+                if (moduleSymbol.validateAll()) {
                     annotatedModules.add(moduleSymbol)
                 } else {
                     deferred.add(moduleSymbol)
@@ -71,7 +70,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
         for (componentSymbol in componentSymbols) {
             if (componentSymbol is KSClassDeclaration && componentSymbol.classKind == ClassKind.CLASS) {
                 if (!componentSymbol.modifiers.contains(Modifier.ABSTRACT) && !hasAopAnnotations(componentSymbol)) {
-                    if (componentSymbol.validateComponent()) {
+                    if (componentSymbol.validateAll() && componentSymbol.validateComponent()) {
                         components.add(componentSymbol)
                     } else {
                         deferred.add(componentSymbol)
@@ -90,7 +89,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
             .filter { it.classKind == ClassKind.INTERFACE }
             .forEach {
                 if (submodules.none { a -> a.toClassName() == it.toClassName() }) {
-                    if (it.validateModule()) {
+                    if (it.validateAll()) {
                         submodules.add(it)
                     } else {
                         deferred.add(it)
@@ -104,7 +103,7 @@ class KoraSubmoduleProcessor(val environment: SymbolProcessorEnvironment) : Symb
                 .filter { it.classKind == ClassKind.INTERFACE }
                 .forEach {
                     if (submodules.none { a -> a.toClassName() == it.toClassName() }) {
-                        if (it.validateModule()) {
+                        if (it.validateAll()) {
                             submodules.add(it)
                         } else {
                             deferred.add(it)

@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
 import org.openapitools.codegen.IJsonSchemaValidationProperties;
@@ -28,12 +28,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
                 ? Classes.formPart
                 : asType(ctx, operation, formParam);
             if (!formParam.required) {
-                type = type.box();
+                type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
             }
             var p = ParameterSpec.builder(type, formParam.paramName);
-            if (!formParam.required) {
-                p.addAnnotation(Classes.nullable);
-            }
             if (formParam.description != null) {
                 p.addJavadoc(formParam.description).addJavadoc(" ");
             }
@@ -86,7 +83,7 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
     protected ParameterSpec buildParameter(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
         var type = asType(ctx, operation, param);
         if (!param.required) {
-            type = type.box();
+            type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
         }
         if (param.isFormParam) {
             throw new IllegalArgumentException("Form parameters should be handled separately");
@@ -114,9 +111,6 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         }
         if (param.isBodyParam && KoraCodegen.isContentJson(param)) {
             b.addAnnotation(jsonAnnotation());
-        }
-        if (!param.required) {
-            b.addAnnotation(Classes.nullable);
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
             var validation = getValidation(param);

@@ -9,6 +9,7 @@ import com.squareup.kotlinpoet.TypeSpec.Companion.interfaceBuilder
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.CommonClassNames
+import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.generatedClassName
 import ru.tinkoff.kora.s3.client.symbol.processor.S3ClassNames
@@ -53,7 +54,12 @@ object ModuleGenerator {
                 .returns(configType)
                 .addParameter("config", CommonClassNames.config)
                 .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(configType))
-                .addStatement("return extractor.extract(config.get(%S))", s3ClientConfigPath)
+                .addStatement("val configValue = config.get(%S)", s3ClientConfigPath)
+                .addStatement("val parsed = extractor.extract(configValue)", s3ClientConfigPath)
+                .controlFlow("if (parsed == null)") {
+                    addStatement("throw %T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
+                }
+                .addStatement("return parsed")
                 .build()
         )
         val clientImpl = FunSpec.builder("clientImpl")

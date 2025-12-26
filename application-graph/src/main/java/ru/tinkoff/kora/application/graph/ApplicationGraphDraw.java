@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.application.graph;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.internal.GraphImpl;
 import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 

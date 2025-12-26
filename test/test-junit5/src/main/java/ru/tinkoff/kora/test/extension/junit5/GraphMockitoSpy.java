@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.mockito.Mockito;
-import org.mockito.internal.creation.MockSettingsImpl;
 import org.mockito.internal.util.MockUtil;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
@@ -12,7 +11,6 @@ import ru.tinkoff.kora.application.graph.internal.NodeImpl;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
-import java.util.Map;
 import java.util.Optional;
 
 record GraphMockitoSpy(GraphCandidate candidate,

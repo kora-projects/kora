@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.validation.common;
 
-import jakarta.annotation.Nonnull;
 
 /**
  * Context of current validation progress and validation options
@@ -10,7 +9,6 @@ public interface ValidationContext {
     /**
      * @return path where violation occurred
      */
-    @Nonnull
     Path path();
 
     /**
@@ -18,12 +16,10 @@ public interface ValidationContext {
      */
     boolean isFailFast();
 
-    @Nonnull
-    default ValidationContext addPath(@Nonnull String path) {
+    default ValidationContext addPath(String path) {
         return new SimpleValidationContext(path().add(path), isFailFast());
     }
 
-    @Nonnull
     default ValidationContext addPath(int pathIndex) {
         return new SimpleValidationContext(path().add(pathIndex), isFailFast());
     }
@@ -32,8 +28,7 @@ public interface ValidationContext {
      * @param message of violation
      * @return violation for current context
      */
-    @Nonnull
-    default Violation violates(@Nonnull String message) {
+    default Violation violates(String message) {
         SimpleViolation.logger.debug("Validation violation on path '{}' with error: {}", path(), message);
         return new SimpleViolation(message, path());
     }
@@ -67,7 +62,7 @@ public interface ValidationContext {
          */
         Path root();
 
-        default Path add(@Nonnull String field) {
+        default Path add(String field) {
             return new SimpleValidationContext.SimpleFieldPath(this, field);
         }
 
@@ -75,15 +70,14 @@ public interface ValidationContext {
             return new SimpleValidationContext.SimpleIndexPath(this, index);
         }
 
-        static Path of(@Nonnull String path) {
+        static Path of(String path) {
             return new SimpleValidationContext.SimpleFieldPath(null, path);
         }
 
         /**
          * @return full path concatenated to string
          */
-        @Nonnull
-        default String full() {
+            default String full() {
             return toString();
         }
     }
@@ -97,10 +91,8 @@ public interface ValidationContext {
          * @param isFailFast {@link Boolean#TRUE} when should fail on first occurred violation
          * @return self
          */
-        @Nonnull
-        Builder failFast(boolean isFailFast);
+            Builder failFast(boolean isFailFast);
 
-        @Nonnull
-        ValidationContext build();
+            ValidationContext build();
     }
 }

@@ -6,12 +6,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.binder.cache.CaffeineCacheMetrics;
 import io.micrometer.core.instrument.binder.cache.CaffeineStatsCounter;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 
-@NullMarked
 public class DefaultCaffeineCacheFactory implements CaffeineCacheFactory {
     @Nullable
     private final MeterRegistry meterRegistry;

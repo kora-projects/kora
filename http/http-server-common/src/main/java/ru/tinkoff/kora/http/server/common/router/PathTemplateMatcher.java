@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.server.common.router;
 
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -69,8 +69,7 @@ public class PathTemplateMatcher<T> {
     /**
      * @return the previous value associated with path template, or null if there was none
      */
-    @Nullable
-    public Map.Entry<PathTemplate, T> add(final PathTemplate template, final T value) {
+    public Map.@Nullable Entry<PathTemplate, T> add(final PathTemplate template, final T value) {
         var values = pathTemplateMap.get(trimBase(template));
         Set<PathTemplateHolder> newValues;
         if (values == null) {

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.camunda.rest.telemetry;
 
 import io.undertow.server.HttpServerExchange;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public interface CamundaRestTelemetry {
 

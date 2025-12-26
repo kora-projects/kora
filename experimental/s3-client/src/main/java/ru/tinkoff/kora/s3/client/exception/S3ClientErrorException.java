@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.exception;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public class S3ClientErrorException extends S3ClientResponseException {
     private final String errorCode;

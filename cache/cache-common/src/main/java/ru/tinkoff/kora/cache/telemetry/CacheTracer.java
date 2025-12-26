@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache.telemetry;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public interface CacheTracer {
 
@@ -12,5 +11,5 @@ public interface CacheTracer {
         void recordFailure(@Nullable Throwable throwable);
     }
 
-    CacheSpan trace(@Nonnull CacheTelemetryOperation operation);
+    CacheSpan trace(CacheTelemetryOperation operation);
 }

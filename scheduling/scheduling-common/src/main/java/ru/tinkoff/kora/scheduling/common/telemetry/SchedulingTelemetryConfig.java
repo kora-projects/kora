@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.scheduling.common.telemetry;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.time.Duration;
@@ -34,10 +34,9 @@ public final class SchedulingTelemetryConfig implements TelemetryConfig {
 
     private static class OperationLogConfig implements LogConfig {
         private final LogConfig client;
-        @Nullable
-        private final JobTelemetryConfig.JobLogConfig job;
+        private final JobTelemetryConfig.@Nullable JobLogConfig job;
 
-        private OperationLogConfig(LogConfig client, @Nullable JobTelemetryConfig.JobLogConfig job) {
+        private OperationLogConfig(LogConfig client, JobTelemetryConfig.@Nullable JobLogConfig job) {
             this.client = Objects.requireNonNull(client);
             this.job = job;
         }
@@ -53,10 +52,9 @@ public final class SchedulingTelemetryConfig implements TelemetryConfig {
 
     private static class OperationMetricConfig implements MetricsConfig {
         private final MetricsConfig client;
-        @Nullable
-        private final JobTelemetryConfig.JobMetricsConfig job;
+        private final JobTelemetryConfig.@Nullable JobMetricsConfig job;
 
-        private OperationMetricConfig(MetricsConfig client, @Nullable JobTelemetryConfig.JobMetricsConfig job) {
+        private OperationMetricConfig(MetricsConfig client, JobTelemetryConfig.@Nullable JobMetricsConfig job) {
             this.client = Objects.requireNonNull(client);
             this.job = job;
         }
@@ -80,10 +78,9 @@ public final class SchedulingTelemetryConfig implements TelemetryConfig {
 
     private static class OperationTracingConfig implements TracingConfig {
         private final TracingConfig client;
-        @Nullable
-        private final JobTelemetryConfig.JobTracingConfig job;
+        private final JobTelemetryConfig.@Nullable JobTracingConfig job;
 
-        private OperationTracingConfig(TracingConfig client, @Nullable JobTelemetryConfig.JobTracingConfig job) {
+        private OperationTracingConfig(TracingConfig client, JobTelemetryConfig.@Nullable JobTracingConfig job) {
             this.client = Objects.requireNonNull(client);
             this.job = job;
         }

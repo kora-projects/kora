@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.common.body;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.util.ByteBufferInputStream;
 
 import java.io.IOException;

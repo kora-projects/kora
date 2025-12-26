@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.common;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.common.header.MutableHttpHeaders;
 

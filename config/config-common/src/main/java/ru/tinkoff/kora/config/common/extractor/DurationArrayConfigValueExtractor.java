@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.time.Duration;

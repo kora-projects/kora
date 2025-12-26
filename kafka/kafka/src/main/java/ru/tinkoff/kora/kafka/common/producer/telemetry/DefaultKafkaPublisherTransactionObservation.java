@@ -2,10 +2,10 @@ package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
-import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.HashMap;

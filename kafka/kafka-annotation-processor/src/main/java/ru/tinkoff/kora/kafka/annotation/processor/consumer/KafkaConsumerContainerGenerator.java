@@ -3,7 +3,7 @@ package ru.tinkoff.kora.kafka.annotation.processor.consumer;
 import com.palantir.javapoet.MethodSpec;
 import com.palantir.javapoet.ParameterSpec;
 import com.palantir.javapoet.ParameterizedTypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kafka.annotation.processor.consumer.KafkaConsumerHandlerGenerator.HandlerMethod;

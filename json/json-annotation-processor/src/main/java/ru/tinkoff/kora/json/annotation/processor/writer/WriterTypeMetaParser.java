@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
@@ -92,7 +92,7 @@ public class WriterTypeMetaParser {
         }
     }
 
-    private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, @Nullable CommonUtils.NameConverter nameConverter) {
+    private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, CommonUtils.@Nullable NameConverter nameConverter) {
         if (jsonField == null) {
             if (nameConverter != null) {
                 return nameConverter.convert(param.getSimpleName().toString());

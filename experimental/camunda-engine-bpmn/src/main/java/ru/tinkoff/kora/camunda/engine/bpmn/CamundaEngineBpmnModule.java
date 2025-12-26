@@ -2,7 +2,6 @@ package ru.tinkoff.kora.camunda.engine.bpmn;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.*;
 import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.impl.cfg.IdGenerator;
@@ -13,9 +12,9 @@ import org.camunda.bpm.engine.impl.persistence.StrongUuidGenerator;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
 import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
 import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.AdminUserProcessEngineConfigurator;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.DeploymentProcessEngineConfigurator;

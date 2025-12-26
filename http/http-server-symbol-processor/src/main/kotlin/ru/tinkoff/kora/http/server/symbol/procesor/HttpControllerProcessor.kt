@@ -5,7 +5,6 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -28,8 +27,8 @@ class HttpControllerProcessor(
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(HttpServerClassNames.httpController.canonicalName)
-        val unableToProcess = symbols.filterNot { it.validate() }.toList()
-        for (symbol in symbols.filter { it.validate() }) {
+        val unableToProcess = symbols.filterNot { it.validateAll() }.toList()
+        for (symbol in symbols.filter { it.validateAll() }) {
             symbol.visitClass { declaration ->
                 try {
                     processController(declaration)

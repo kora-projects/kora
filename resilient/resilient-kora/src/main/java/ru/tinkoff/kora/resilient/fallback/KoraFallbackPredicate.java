@@ -1,18 +1,15 @@
 package ru.tinkoff.kora.resilient.fallback;
 
 
-import jakarta.annotation.Nonnull;
-
 final class KoraFallbackPredicate implements FallbackPredicate {
 
-    @Nonnull
     @Override
     public String name() {
         return KoraFallbackPredicate.class.getCanonicalName();
     }
 
     @Override
-    public boolean test(@Nonnull Throwable throwable) {
+    public boolean test(Throwable throwable) {
         return true;
     }
 }

@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
-import jakarta.annotation.Nonnull;
-
 /**
  * Records circuit breaker metrics
  */
@@ -13,9 +11,9 @@ public interface CircuitBreakerMetrics {
         DISABLED
     }
 
-    default void recordCallAcquire(@Nonnull String name, @Nonnull CallAcquireStatus callStatus) {
+    default void recordCallAcquire(String name, CallAcquireStatus callStatus) {
 
     }
 
-    void recordState(@Nonnull String name, @Nonnull CircuitBreaker.State state);
+    void recordState(String name, CircuitBreaker.State state);
 }

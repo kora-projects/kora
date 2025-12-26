@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.telemetry;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.telemetry.Observation;
 
 public interface S3ClientObservation extends Observation {
