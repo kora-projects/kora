@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.cache.redis;
 
 import io.opentelemetry.context.Context;
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.cache.Cache;
 import ru.tinkoff.kora.cache.redis.telemetry.RedisCacheTelemetry;
 import ru.tinkoff.kora.cache.redis.telemetry.RedisCacheTelemetryFactory;
@@ -22,7 +22,9 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     private final RedisCacheKeyMapper<K> keyMapper;
     private final RedisCacheValueMapper<V> valueMapper;
 
+    @Nullable
     private final Long expireAfterAccessMillis;
+    @Nullable
     private final Long expireAfterWriteMillis;
 
     protected AbstractRedisCache(String name,
@@ -53,7 +55,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public V get(@Nonnull K key) {
+    public V get(K key) {
         if (key == null) {
             return null;
         }
@@ -85,9 +87,8 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
             });
     }
 
-    @Nonnull
     @Override
-    public Map<K, V> get(@Nonnull Collection<K> keys) {
+    public Map<K, V> get(Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -129,9 +130,8 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
             });
     }
 
-    @Nonnull
     @Override
-    public V put(@Nonnull K key, @Nonnull V value) {
+    public V put(K key, V value) {
         if (key == null || value == null) {
             return null;
         }
@@ -163,9 +163,8 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
             });
     }
 
-    @Nonnull
     @Override
-    public Map<K, V> put(@Nonnull Map<K, V> keyAndValues) {
+    public Map<K, V> put(Map<K, V> keyAndValues) {
         if (keyAndValues == null || keyAndValues.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -204,7 +203,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public V computeIfAbsent(@Nonnull K key, @Nonnull Function<K, V> mappingFunction) {
+    public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
         if (key == null) {
             return null;
         }
@@ -229,7 +228,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
                     } catch (Exception e) {
                         observation.observeError(e);
                     }
-                    var value = mappingFunction.apply(key);
+                    V value = mappingFunction.apply(key);
                     if (value == null) {
                         return null;
                     }
@@ -257,9 +256,8 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
             });
     }
 
-    @Nonnull
     @Override
-    public Map<K, V> computeIfAbsent(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Map<K, V>> mappingFunction) {
+    public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -332,7 +330,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public void invalidate(@Nonnull K key) {
+    public void invalidate(K key) {
         if (key == null) {
             return;
         }
@@ -356,7 +354,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     }
 
     @Override
-    public void invalidate(@Nonnull Collection<K> keys) {
+    public void invalidate(Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
             return;
         }

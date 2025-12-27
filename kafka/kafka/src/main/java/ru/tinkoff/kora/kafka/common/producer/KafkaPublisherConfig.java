@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.common.producer;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig;
 

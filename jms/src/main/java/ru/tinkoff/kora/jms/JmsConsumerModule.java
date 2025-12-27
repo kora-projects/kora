@@ -2,7 +2,7 @@ package ru.tinkoff.kora.jms;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.jms.telemetry.DefaultJmsConsumerTelemetryFactory;
 

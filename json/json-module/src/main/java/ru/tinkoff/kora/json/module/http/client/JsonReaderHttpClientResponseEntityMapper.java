@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.json.module.http.client;
 
-import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.http.client.common.HttpClientDecoderException;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
@@ -17,7 +16,7 @@ public final class JsonReaderHttpClientResponseEntityMapper<T> implements HttpCl
     }
 
     @Override
-    public HttpResponseEntity<T> apply(@Nonnull HttpClientResponse response) throws IOException, HttpClientDecoderException {
+    public HttpResponseEntity<T> apply(HttpClientResponse response) throws IOException, HttpClientDecoderException {
         try (var body = response.body();
              var is = body.asInputStream()) {
             var value = jsonReader.read(is);

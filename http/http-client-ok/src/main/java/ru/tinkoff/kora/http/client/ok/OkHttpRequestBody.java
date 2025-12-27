@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.http.client.ok;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import okhttp3.MediaType;
 import okhttp3.RequestBody;
 import okio.BufferedSink;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.client.common.HttpClientConnectionException;
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
@@ -12,6 +12,7 @@ import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import java.io.IOException;
 import java.util.Objects;
 
+@NullMarked
 public final class OkHttpRequestBody extends RequestBody {
     private final HttpBodyOutput bodyOutput;
 
@@ -35,7 +36,7 @@ public final class OkHttpRequestBody extends RequestBody {
     }
 
     @Override
-    public void writeTo(@Nonnull BufferedSink bufferedSink) {
+    public void writeTo(BufferedSink bufferedSink) {
         try {
             bodyOutput.write(bufferedSink.outputStream());
         } catch (IOException e) {

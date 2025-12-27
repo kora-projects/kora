@@ -160,8 +160,7 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             public interface TestConfig {
               java.time.Duration value();
 
-              @Nullable
-              java.time.Duration value2();
+              java.time.@Nullable Duration value2();
             }
             """);
 
@@ -180,9 +179,8 @@ public class AnnotationConfigTest extends AbstractConfigTest {
               @Tag(TestExtractor.class)
               java.time.Duration value1();
 
-              @Nullable
               @Mapping(TestFinalExtractor.class)
-              java.time.Duration value2();
+              java.time.@Nullable Duration value2();
             }
             """, """
             import ru.tinkoff.kora.config.common.ConfigValue;

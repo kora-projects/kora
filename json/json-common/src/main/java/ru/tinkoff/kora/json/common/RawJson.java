@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.common;
 
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.core.SerializableString;
 
 import java.io.IOException;
@@ -11,13 +11,13 @@ import java.nio.charset.StandardCharsets;
 
 public class RawJson implements SerializableString {
     public final byte[] value;
-    private char[] valueChars;
+    private char @Nullable [] valueChars;
 
-    public RawJson(@Nonnull String value) {
+    public RawJson(String value) {
         this.value = value.getBytes(StandardCharsets.UTF_8);
     }
 
-    public RawJson(@Nonnull byte[] value) {
+    public RawJson(byte[] value) {
         this.value = value;
     }
 

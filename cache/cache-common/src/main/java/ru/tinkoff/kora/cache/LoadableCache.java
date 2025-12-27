@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
@@ -18,8 +17,7 @@ public interface LoadableCache<K, V> {
      * @return value associated with the key
      */
     @Nullable
-    V get(@Nonnull K key);
+    V get(K key);
 
-    @Nonnull
-    Map<K, V> get(@Nonnull Collection<K> keys);
+    Map<K, V> get(Collection<K> keys);
 }

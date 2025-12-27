@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
 import com.palantir.javapoet.TypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.annotation.processor.common.TypeParameterUtils;
 

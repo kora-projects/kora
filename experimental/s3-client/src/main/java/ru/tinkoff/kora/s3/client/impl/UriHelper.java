@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.impl;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.s3.client.S3ClientConfig;
 
 import java.net.URI;

@@ -63,7 +63,6 @@ class JdbcResultsTest : AbstractJdbcRepositoryTest() {
             listOf(mapper), """
             @Repository
             interface TestRepository : JdbcRepository {
-                @Nullable
                 @Query("SELECT count(*) FROM test")
                 fun test(): Int?
             }

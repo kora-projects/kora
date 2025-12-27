@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
@@ -25,7 +24,7 @@ final class KoraRetry implements Retry {
     private static class KoraEmptyRetryState implements RetryState {
 
         @Override
-        public @Nonnull RetryStatus onException(@Nonnull Throwable throwable) {
+        public RetryStatus onException(Throwable throwable) {
             return RetryStatus.REJECTED;
         }
 
@@ -83,7 +82,6 @@ final class KoraRetry implements Retry {
         this(name, config.delay().toNanos(), config.delayStep().toNanos(), config.attempts(), failurePredicate, metric, config);
     }
 
-    @Nonnull
     @Override
     public RetryState asState() {
         if (Boolean.FALSE.equals(config.enabled())) {
@@ -95,7 +93,7 @@ final class KoraRetry implements Retry {
     }
 
     @Override
-    public <E extends Throwable> void retry(@Nonnull RetryRunnable<E> runnable) throws RetryExhaustedException, E {
+    public <E extends Throwable> void retry(RetryRunnable<E> runnable) throws RetryExhaustedException, E {
         internalRetry(() -> {
             runnable.run();
             return null;
@@ -103,17 +101,17 @@ final class KoraRetry implements Retry {
     }
 
     @Override
-    public <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier) throws E {
+    public <T, E extends Throwable> T retry(RetrySupplier<T, E> supplier) throws E {
         return internalRetry(supplier, null);
     }
 
     @Override
-    public <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier, @Nonnull RetrySupplier<T, E> fallback) throws E {
+    public <T, E extends Throwable> T retry(RetrySupplier<T, E> supplier, RetrySupplier<T, E> fallback) throws E {
         return internalRetry(supplier, fallback);
     }
 
     @Override
-    public <T> CompletionStage<T> retry(@Nonnull Supplier<CompletionStage<T>> supplier) {
+    public <T> CompletionStage<T> retry(Supplier<CompletionStage<T>> supplier) {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Retry '{}' is disabled", name);
             return supplier.get();

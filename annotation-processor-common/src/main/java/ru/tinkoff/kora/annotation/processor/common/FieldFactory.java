@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
@@ -15,8 +15,7 @@ import java.util.Objects;
 public class FieldFactory {
     private final Types types;
     private final Elements elements;
-    @Nullable
-    private final TypeSpec.Builder builder;
+    private final TypeSpec.@Nullable Builder builder;
     private final MethodSpec.Builder constructor;
     private final Map<FieldKey, String> fields = new HashMap<>();
     private final String prefix;
@@ -40,7 +39,7 @@ public class FieldFactory {
 
     record FieldKey(TypeName typeName, @Nullable String tag) {}
 
-    public FieldFactory(Types types, Elements elements, @Nullable TypeSpec.Builder builder, MethodSpec.Builder constructor, String prefix) {
+    public FieldFactory(Types types, Elements elements, TypeSpec.@Nullable Builder builder, MethodSpec.Builder constructor, String prefix) {
         this.types = types;
         this.elements = elements;
         this.builder = builder;
@@ -112,7 +111,7 @@ public class FieldFactory {
         return name;
     }
 
-    public String add(@Nullable CommonUtils.MappingData mapping, TypeName defaultType) {
+    public String add(CommonUtils.@Nullable MappingData mapping, TypeName defaultType) {
         var tags = mapping == null
             ? null
             : mapping.mapperTag();

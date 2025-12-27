@@ -5,7 +5,6 @@ import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -18,9 +17,8 @@ final class PatternValidator<T extends CharSequence> implements Validator<T> {
         this.pattern = Pattern.compile(pattern, flags);
     }
 
-    @Nonnull
     @Override
-    public List<Violation> validate(T value, @Nonnull ValidationContext context) {
+    public List<Violation> validate(T value, ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should match RegEx " + pattern + " but was null"));
         } else if (!pattern.matcher(value).matches()) {

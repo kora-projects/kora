@@ -145,9 +145,8 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addAnnotation(Deprecated.class);
         }
         for (var optionalParam : optionalParams) {
-            var type = asType(ctx, operation, optionalParam).box();
+            var type = asType(ctx, operation, optionalParam).box().annotated(AnnotationSpec.builder(Classes.nullable).build());
             b.addParameter(ParameterSpec.builder(type, optionalParam.paramName)
-                .addAnnotation(Classes.nullable)
                 .build()
             );
         }
@@ -285,8 +284,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
     protected ParameterSpec buildAuthParameter(CodegenSecurity authMethod, CodegenOperation op) {
         var authName = getAuthName(authMethod.name, op.allParams);
-        var p = ParameterSpec.builder(String.class, authName)
-            .addAnnotation(Classes.nullable);
+        var p = ParameterSpec.builder(ClassName.get(String.class).annotated(AnnotationSpec.builder(Classes.nullable).build()), authName);
         if (authMethod.isKeyInQuery) {
             return p.addAnnotation(AnnotationSpec.builder(Classes.query)
                     .addMember("value", "$S", authMethod.keyParamName)

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.common.util;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
 import tools.jackson.core.*;
 import tools.jackson.core.io.ContentReference;

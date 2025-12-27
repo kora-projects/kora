@@ -5,7 +5,6 @@ import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 import ru.tinkoff.kora.validation.common.annotation.Range;
 
-import jakarta.annotation.Nonnull;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.util.Collections;
@@ -39,9 +38,8 @@ final class RangeBigIntegerValidator implements Validator<BigInteger> {
         };
     }
 
-    @Nonnull
     @Override
-    public List<Violation> validate(BigInteger value, @Nonnull ValidationContext context) {
+    public List<Violation> validate(BigInteger value, ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should be in range from '" + from + "' to '" + to + "', but was null"));
         }

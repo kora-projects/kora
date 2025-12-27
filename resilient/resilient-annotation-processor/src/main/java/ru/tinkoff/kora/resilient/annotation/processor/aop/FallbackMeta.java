@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.annotation.processor.aop;
 
-import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
@@ -13,7 +12,7 @@ import java.util.stream.Collectors;
 
 record FallbackMeta(String method, List<String> arguments) {
 
-    static FallbackMeta ofFallbackMethod(@Nonnull String fallbackSignature, @Nonnull ExecutableElement sourceMethod) {
+    static FallbackMeta ofFallbackMethod(String fallbackSignature, ExecutableElement sourceMethod) {
         final int argStarted = fallbackSignature.indexOf('(');
         final int argEnd = fallbackSignature.indexOf(')');
         if (argStarted == -1 || argEnd == -1) {

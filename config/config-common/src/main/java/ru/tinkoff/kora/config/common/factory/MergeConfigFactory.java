@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.config.common.factory;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.ConfigValuePath;
@@ -8,7 +9,6 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
 
-import jakarta.annotation.Nullable;
 import java.util.LinkedHashMap;
 
 public class MergeConfigFactory {

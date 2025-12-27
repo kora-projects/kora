@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.common.consumer;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.util.Either;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.kafka.common.consumer.telemetry.KafkaConsumerTelemetryConfig;

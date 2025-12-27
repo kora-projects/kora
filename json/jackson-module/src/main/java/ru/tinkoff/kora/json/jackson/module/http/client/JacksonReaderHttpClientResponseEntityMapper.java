@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.jackson.module.http.client;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.http.client.common.HttpClientDecoderException;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
@@ -14,6 +14,7 @@ import tools.jackson.databind.ObjectReader;
 
 import java.io.IOException;
 
+@NullMarked
 public class JacksonReaderHttpClientResponseEntityMapper<T> implements HttpClientResponseMapper<HttpResponseEntity<T>> {
     private final ObjectReader objectReader;
 
@@ -31,7 +32,7 @@ public class JacksonReaderHttpClientResponseEntityMapper<T> implements HttpClien
 
     @Nullable
     @Override
-    public HttpResponseEntity<T> apply(@Nonnull HttpClientResponse response) throws IOException, HttpClientDecoderException {
+    public HttpResponseEntity<T> apply(HttpClientResponse response) throws IOException, HttpClientDecoderException {
         try (var body = response.body();
              var is = body.asInputStream()) {
             return this.objectReader.readValue(is);

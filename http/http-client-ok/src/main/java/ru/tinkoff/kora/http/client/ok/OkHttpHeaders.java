@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.http.client.ok;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import okhttp3.Headers;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.Iterator;
@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@NullMarked
 public final class OkHttpHeaders implements HttpHeaders {
     private final Headers headers;
 
@@ -43,7 +44,6 @@ public final class OkHttpHeaders implements HttpHeaders {
         return this.headers.names();
     }
 
-    @Nonnull
     @Override
     public Iterator<Map.Entry<String, List<String>>> iterator() {
         var i = this.headers.names().iterator();

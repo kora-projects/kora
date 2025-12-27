@@ -7,7 +7,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import io.netty.channel.local.LocalAddress;
 import io.opentelemetry.semconv.ErrorAttributes;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.cache.redis.lettuce.LettuceClientConfig;
 
 import java.net.SocketAddress;

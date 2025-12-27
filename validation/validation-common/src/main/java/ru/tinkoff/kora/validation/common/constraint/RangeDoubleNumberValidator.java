@@ -5,7 +5,6 @@ import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 import ru.tinkoff.kora.validation.common.annotation.Range;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
@@ -37,9 +36,8 @@ final class RangeDoubleNumberValidator<T extends Number> implements Validator<T>
         };
     }
 
-    @Nonnull
     @Override
-    public List<Violation> validate(T value, @Nonnull ValidationContext context) {
+    public List<Violation> validate(T value, ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Should be in range from '" + from + "' to '" + to + "', but was null"));
         }

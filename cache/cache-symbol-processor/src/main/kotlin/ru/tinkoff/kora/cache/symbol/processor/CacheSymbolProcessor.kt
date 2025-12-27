@@ -52,7 +52,7 @@ class CacheSymbolProcessor(
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(ANNOTATION_CACHE.canonicalName).toList()
-        val symbolsToProcess = symbols.filter { it.validate() }.filterIsInstance<KSClassDeclaration>()
+        val symbolsToProcess = symbols.filter { it.validateAll() }.filterIsInstance<KSClassDeclaration>()
         for (cacheContract in symbolsToProcess) {
             if (cacheContract.classKind != ClassKind.INTERFACE) {
                 environment.logger.error(

@@ -2,7 +2,7 @@ package ru.tinkoff.kora.s3.client;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;

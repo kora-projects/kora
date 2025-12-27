@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
 import org.apache.commons.lang3.StringUtils;
+import org.jspecify.annotations.Nullable;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.model.OperationsMap;
 

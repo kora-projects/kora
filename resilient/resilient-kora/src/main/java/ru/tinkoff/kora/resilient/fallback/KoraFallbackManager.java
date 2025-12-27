@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.fallback;
 
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,9 +23,8 @@ final class KoraFallbackManager implements FallbackManager {
         this.failurePredicates = failurePredicates;
     }
 
-    @Nonnull
     @Override
-    public Fallback get(@Nonnull String name) {
+    public Fallback get(String name) {
         return fallbackerMap.computeIfAbsent(name, k -> {
             final FallbackConfig.NamedConfig config = configs.getNamedConfig(name);
             final FallbackPredicate failurePredicate = getFailurePredicate(config);

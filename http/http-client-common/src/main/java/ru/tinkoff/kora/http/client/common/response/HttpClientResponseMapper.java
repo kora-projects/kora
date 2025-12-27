@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.common.response;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.http.client.common.HttpClientDecoderException;
 

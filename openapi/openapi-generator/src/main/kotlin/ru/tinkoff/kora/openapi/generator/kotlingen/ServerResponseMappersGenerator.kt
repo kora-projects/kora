@@ -45,8 +45,9 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
         val m = FunSpec.builder("apply")
             .addModifiers(KModifier.OVERRIDE)
             .addParameter("request", Classes.httpServerRequest.asKt())
-            .addParameter("rs", responseClassName)
+            .addParameter("rs", responseClassName.copy(true))
             .returns(Classes.httpServerResponse.asKt())
+            .addStatement("require(rs != null)")
         if (operation.responses.size == 1) {
             m.addCode(buildMapResponse(ctx, operation, operation.responses.single()))
         } else {

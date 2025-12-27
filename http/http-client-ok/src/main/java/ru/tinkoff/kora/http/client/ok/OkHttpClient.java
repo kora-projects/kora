@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.http.client.ok;
 
-import jakarta.annotation.Nullable;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.internal.http.HttpMethod;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.client.common.*;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;

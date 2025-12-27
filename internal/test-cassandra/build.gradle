@@ -3,5 +3,5 @@ dependencies {
         exclude group: 'com.datastax.cassandra', module: 'cassandra-driver-core'
     }
     api libs.cassandra.driver
-    implementation libs.jakarta.annotations
+    implementation libs.jspecify
 }

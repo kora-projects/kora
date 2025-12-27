@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.validation.common;
 
-import jakarta.annotation.Nonnull;
 import java.util.List;
 
 public final class ViolationException extends RuntimeException {
@@ -8,17 +7,16 @@ public final class ViolationException extends RuntimeException {
     private String _message;
     private final List<Violation> violations;
 
-    public ViolationException(@Nonnull Violation violation) {
+    public ViolationException(Violation violation) {
         super();
         this.violations = List.of(violation);
     }
 
-    public ViolationException(@Nonnull List<Violation> violations) {
+    public ViolationException(List<Violation> violations) {
         super();
         this.violations = violations;
     }
 
-    @Nonnull
     public List<Violation> getViolations() {
         return violations;
     }

@@ -5,7 +5,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
 import ru.tinkoff.kora.resilient.fallback.FallbackMetrics;
 
-import jakarta.annotation.Nonnull;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MicrometerFallbackMetrics implements FallbackMetrics {
@@ -20,7 +19,7 @@ public final class MicrometerFallbackMetrics implements FallbackMetrics {
     }
 
     @Override
-    public void recordExecute(@Nonnull String name, @Nonnull Throwable throwable) {
+    public void recordExecute(String name, Throwable throwable) {
         var metrics = this.metrics.computeIfAbsent(name, k -> build(name));
         metrics.attempts().increment();
     }

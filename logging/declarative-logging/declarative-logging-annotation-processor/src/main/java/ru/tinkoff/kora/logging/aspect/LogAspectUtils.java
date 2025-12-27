@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.logging.aspect;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 
-import jakarta.annotation.Nullable;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
@@ -10,11 +10,7 @@ import javax.lang.model.element.VariableElement;
 import java.util.List;
 import java.util.Optional;
 
-import static ru.tinkoff.kora.logging.aspect.LogAspectClassNames.log;
-import static ru.tinkoff.kora.logging.aspect.LogAspectClassNames.logIn;
-import static ru.tinkoff.kora.logging.aspect.LogAspectClassNames.logOff;
-import static ru.tinkoff.kora.logging.aspect.LogAspectClassNames.logOut;
-import static ru.tinkoff.kora.logging.aspect.LogAspectClassNames.logResult;
+import static ru.tinkoff.kora.logging.aspect.LogAspectClassNames.*;
 
 public class LogAspectUtils {
     public static final List<String> LEVELS = List.of("ERROR", "WARN", "INFO", "DEBUG", "TRACE");

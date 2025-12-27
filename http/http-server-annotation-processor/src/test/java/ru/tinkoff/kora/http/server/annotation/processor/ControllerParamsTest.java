@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.server.annotation.processor;
 
-import jakarta.annotation.Nullable;
 import org.assertj.core.api.Assertions;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.Tag;
@@ -515,7 +515,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     @Test
     void testCookies() {
         compile("""
-            import jakarta.annotation.Nullable;@HttpController
+            import org.jspecify.annotations.Nullable;@HttpController
             public class Controller {
                 @HttpRoute(method = GET, path = "/cookieString")
                 void cookieString(@Cookie(value = "someCookie") String string) {}
@@ -530,7 +530,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 void cookieCookie(@Cookie ru.tinkoff.kora.http.common.cookie.Cookie string) {}
             
                 @HttpRoute(method = GET, path = "/cookieNullableCookie")
-                void cookieNullableCookie(@Cookie @Nullable ru.tinkoff.kora.http.common.cookie.Cookie string) {}
+                void cookieNullableCookie(@Cookie ru.tinkoff.kora.http.common.cookie.@Nullable Cookie string) {}
             
                 @HttpRoute(method = GET, path = "/cookieOptionalCookie")
                 void cookieNullableCookie(@Cookie Optional<ru.tinkoff.kora.http.common.cookie.Cookie> string) {}

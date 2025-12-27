@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.common;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <b>Русский</b>: Является интерфейсом контекста авторизации.

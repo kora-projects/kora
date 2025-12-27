@@ -4,7 +4,6 @@ import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.errors.TimeoutException;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 
-import jakarta.annotation.Nonnull;
 import java.util.Objects;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -26,7 +25,6 @@ public final class TransactionalPublisherImpl<P extends GeneratedPublisher> impl
         this.factory = factory;
     }
 
-    @Nonnull
     @Override
     public final Transaction<P> begin() {
         if (this.isClosed.get()) {

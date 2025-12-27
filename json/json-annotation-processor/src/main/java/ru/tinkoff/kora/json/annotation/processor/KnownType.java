@@ -3,7 +3,7 @@ package ru.tinkoff.kora.json.annotation.processor;
 import com.palantir.javapoet.ArrayTypeName;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.TypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;

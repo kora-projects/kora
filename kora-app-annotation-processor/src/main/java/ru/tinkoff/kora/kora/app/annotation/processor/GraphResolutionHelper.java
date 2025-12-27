@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
@@ -20,10 +20,9 @@ import static ru.tinkoff.kora.kora.app.annotation.processor.component.Dependency
 
 public final class GraphResolutionHelper {
 
-    private GraphResolutionHelper() { }
+    private GraphResolutionHelper() {}
 
-    @Nullable
-    public static ComponentDependency.SingleDependency findDependency(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
+    public static ComponentDependency.@Nullable SingleDependency findDependency(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
         if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
             throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
         }

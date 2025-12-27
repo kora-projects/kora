@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.common.naming;
 
-import jakarta.annotation.Nonnull;
-
 /**
  * Пример / Example:
  * <br>
@@ -11,9 +9,8 @@ import jakarta.annotation.Nonnull;
  */
 public final class NoopNameConverter implements NameConverter {
 
-    @Nonnull
     @Override
-    public String convert(@Nonnull String originalName) {
+    public String convert(String originalName) {
         return originalName;
     }
 }

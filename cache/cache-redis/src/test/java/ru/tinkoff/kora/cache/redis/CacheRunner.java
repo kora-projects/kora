@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache.redis;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.cache.redis.lettuce.$LettuceClientConfig_LettuceTelemetryConfig_ConfigValueExtractor;

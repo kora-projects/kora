@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.common.naming;
 
-import jakarta.annotation.Nonnull;
-
 /**
  * <b>Русский</b>: Контракт который позволяет применять конвенцию именования строк, такие как CamelCase, snake_case, и т.д.
  * <hr>
@@ -11,6 +9,5 @@ import jakarta.annotation.Nonnull;
  */
 public interface NameConverter {
 
-    @Nonnull
-    String convert(@Nonnull String originalName);
+    String convert(String originalName);
 }

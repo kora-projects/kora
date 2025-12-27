@@ -5,7 +5,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
 import ru.tinkoff.kora.resilient.retry.RetryMetrics;
 
-import jakarta.annotation.Nonnull;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class MicrometerRetryMetrics implements RetryMetrics {
@@ -20,13 +19,13 @@ public final class MicrometerRetryMetrics implements RetryMetrics {
     }
 
     @Override
-    public void recordAttempt(@Nonnull String name, long delayInNanos) {
+    public void recordAttempt(String name, long delayInNanos) {
         final Metrics metrics = this.metrics.computeIfAbsent(name, k -> build(name));
         metrics.attempts().increment();
     }
 
     @Override
-    public void recordExhaustedAttempts(@Nonnull String name, int totalAttempts) {
+    public void recordExhaustedAttempts(String name, int totalAttempts) {
         var metrics = this.metrics.computeIfAbsent(name, k -> build(name));
         metrics.exhausted().increment();
     }

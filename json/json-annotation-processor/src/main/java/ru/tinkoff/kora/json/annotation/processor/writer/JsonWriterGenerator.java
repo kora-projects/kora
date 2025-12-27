@@ -1,8 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
@@ -44,7 +45,7 @@ public class JsonWriterGenerator {
         var method = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonGenerator, "_gen")
-            .addParameter(ParameterSpec.builder(TypeName.get(meta.typeMirror()), "_object").addAnnotation(Nullable.class).build())
+            .addParameter(ParameterSpec.builder(TypeName.get(meta.typeMirror()).annotated(CommonClassNames.nullableAnnotation), "_object").build())
             .addAnnotation(Override.class);
         method.addCode("if (_object == null) {$>\n_gen.writeNull();\nreturn;$<\n}\n");
         method.addStatement("_gen.writeStartObject(_object)");

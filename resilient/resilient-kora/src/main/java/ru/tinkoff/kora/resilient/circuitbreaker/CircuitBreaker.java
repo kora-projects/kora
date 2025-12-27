@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
 
-import jakarta.annotation.Nonnull;
-
 import java.util.function.Supplier;
 
 /**
@@ -38,7 +36,7 @@ public interface CircuitBreaker {
      * @return result after {@link #tryAcquire()} was successful or throws {@link CallNotPermittedException}
      * @throws CallNotPermittedException when can't acquire
      */
-    <T> T accept(@Nonnull Supplier<T> callable) throws CallNotPermittedException;
+    <T> T accept(Supplier<T> callable) throws CallNotPermittedException;
 
     /**
      * Try to acquire {@link CircuitBreaker} and return result from {@link Supplier} or result from {@link Supplier} fallback
@@ -50,7 +48,7 @@ public interface CircuitBreaker {
      * @return result after {@link #tryAcquire()} was successful or return fallback result
      * @throws CallNotPermittedException when can't acquire
      */
-    <T> T accept(@Nonnull Supplier<T> callable, @Nonnull Supplier<T> fallback) throws CallNotPermittedException;
+    <T> T accept(Supplier<T> callable, Supplier<T> fallback) throws CallNotPermittedException;
 
     /**
      * Try to obtain a permission to execute a call. If a call is not permitted, the number of not
@@ -93,5 +91,5 @@ public interface CircuitBreaker {
      *
      * @param throwable The throwable which must be recorded
      */
-    void releaseOnError(@Nonnull Throwable throwable);
+    void releaseOnError(Throwable throwable);
 }

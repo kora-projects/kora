@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
@@ -43,7 +42,7 @@ public interface RetryConfig {
         }
     }
 
-    default NamedConfig getNamedConfig(@Nonnull String name) {
+    default NamedConfig getNamedConfig(String name) {
         if (retry() == null)
             throw new IllegalStateException("Retry no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
 

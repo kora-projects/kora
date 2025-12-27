@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.common.exceptions;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Wraps exception that will be reported to telemetry and skipped
@@ -18,7 +18,7 @@ public class KafkaSkipRecordException extends RuntimeException {
     /**
      * @param cause will be reported to telemetry and skipped
      */
-    public KafkaSkipRecordException(@Nonnull Throwable cause) {
+    public KafkaSkipRecordException(@NonNull Throwable cause) {
         super(cause);
     }
 }

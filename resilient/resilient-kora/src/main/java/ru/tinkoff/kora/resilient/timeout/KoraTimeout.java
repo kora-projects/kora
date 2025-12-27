@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.timeout;
 
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +32,6 @@ final class KoraTimeout implements Timeout {
         this.executor = e -> threadFactory.newThread(e).start();
     }
 
-    @Nonnull
     @Override
     public Duration timeout() {
         if (Boolean.FALSE.equals(config.enabled())) {
@@ -45,7 +43,7 @@ final class KoraTimeout implements Timeout {
     }
 
     @Override
-    public void execute(@Nonnull Runnable runnable) throws TimeoutExhaustedException {
+    public void execute(Runnable runnable) throws TimeoutExhaustedException {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Timeout '{}' is disabled", name);
             runnable.run();
@@ -66,7 +64,7 @@ final class KoraTimeout implements Timeout {
     }
 
     @Override
-    public <T> T execute(@Nonnull Callable<T> callable) throws TimeoutExhaustedException {
+    public <T> T execute(Callable<T> callable) throws TimeoutExhaustedException {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Timeout '{}' is disabled", name);
 

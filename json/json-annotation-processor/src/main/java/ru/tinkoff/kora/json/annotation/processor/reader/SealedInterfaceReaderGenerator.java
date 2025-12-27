@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;
@@ -49,9 +48,8 @@ public class SealedInterfaceReaderGenerator {
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonParser, "__parser")
-            .returns(ClassName.get(jsonElement))
-            .addAnnotation(Override.class)
-            .addAnnotation(CommonClassNames.nullable);
+            .returns(ClassName.get(jsonElement).annotated(CommonClassNames.nullableAnnotation))
+            .addAnnotation(Override.class);
         method.beginControlFlow("if (__parser.currentToken() == $T.VALUE_NULL)", JsonTypes.jsonToken)
             .addStatement("return null")
             .endControlFlow();
@@ -88,7 +86,6 @@ public class SealedInterfaceReaderGenerator {
         typeBuilder.addMethod(constructor.build());
     }
 
-    @Nonnull
     private String getReaderFieldName(Element elem) {
         return decapitalize(elem.getSimpleName().toString() + "Reader");
     }

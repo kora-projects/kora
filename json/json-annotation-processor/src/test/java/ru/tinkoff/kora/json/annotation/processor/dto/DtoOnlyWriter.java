@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor.dto;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.json.common.annotation.JsonField;
 import ru.tinkoff.kora.json.common.annotation.JsonSkip;
 import ru.tinkoff.kora.json.common.annotation.JsonWriter;

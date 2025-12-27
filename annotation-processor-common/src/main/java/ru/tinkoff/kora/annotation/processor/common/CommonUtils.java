@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.AnnotatedConstruct;
@@ -55,6 +54,10 @@ public class CommonUtils {
             return isNullable(type);
         }
         if (element instanceof RecordComponentElement rce) {
+            var typeNullable = isNullable(rce.asType());
+            if (typeNullable) {
+                return true;
+            }
             return rce.getEnclosingElement().getEnclosedElements()
                 .stream()
                 .filter(e -> e.getKind() == ElementKind.FIELD)
@@ -139,7 +142,7 @@ public class CommonUtils {
                     return new MappingData(mapperClass, this.tag);
                 }
             }
-            if (this.tag.isEmpty()) {
+            if (this.tag == null) {
                 return null;
             }
             return new MappingData(null, this.tag);
@@ -255,8 +258,7 @@ public class CommonUtils {
     }
 
     public interface NameConverter {
-        @Nonnull
-        String convert(@Nonnull String originalName);
+        String convert(String originalName);
     }
 
     public static NameConverter getNameConverter(NameConverter defaultValue, TypeElement typeElement) {

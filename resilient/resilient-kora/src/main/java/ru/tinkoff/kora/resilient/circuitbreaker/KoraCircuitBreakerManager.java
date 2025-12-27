@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -23,9 +22,8 @@ final class KoraCircuitBreakerManager implements CircuitBreakerManager {
         this.metrics = metrics;
     }
 
-    @Nonnull
     @Override
-    public CircuitBreaker get(@Nonnull String name) {
+    public CircuitBreaker get(String name) {
         return circuitBreakerMap.computeIfAbsent(name, (k) -> {
             var config = this.config.getNamedConfig(name);
             final CircuitBreakerPredicate failurePredicate = getFailurePredicate(config);

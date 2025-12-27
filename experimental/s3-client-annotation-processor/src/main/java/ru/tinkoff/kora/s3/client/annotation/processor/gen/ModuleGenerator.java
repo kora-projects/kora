@@ -58,7 +58,10 @@ public class ModuleGenerator {
             .returns(configType)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configType), "extractor")
-            .addStatement("return extractor.extract(config.get($S))", s3ClientConfigPath)
+            .addStatement("var configValue = config.get($S)", s3ClientConfigPath)
+            .addStatement("var parsed = extractor.extract(configValue)")
+            .addCode("if (parsed == null) $T.missingValueAfterParse(configValue);\n", CommonClassNames.configValueExtractionException)
+            .addStatement("return parsed")
             .build());
         var clientImpl = MethodSpec.methodBuilder("clientImpl")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)

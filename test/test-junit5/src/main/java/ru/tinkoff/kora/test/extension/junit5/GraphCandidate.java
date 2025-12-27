@@ -1,11 +1,10 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Type;
 
-record GraphCandidate(@Nonnull Type type, @Nullable Class<?> tag) {
+record GraphCandidate(Type type, @Nullable Class<?> tag) {
 
     GraphCandidate(Type type) {
         this(type, null);

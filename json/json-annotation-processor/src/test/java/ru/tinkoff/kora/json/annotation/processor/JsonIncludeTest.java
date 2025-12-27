@@ -52,7 +52,7 @@ public class JsonIncludeTest extends AbstractJsonAnnotationProcessorTest {
 
             @JsonInclude(JsonInclude.IncludeType.NON_EMPTY)
             @Json
-            public record TestRecord(@Nullable java.util.List<Integer> value) { }
+            public record TestRecord(java.util.@Nullable List<Integer> value) { }
             """
         );
 
@@ -87,7 +87,7 @@ public class JsonIncludeTest extends AbstractJsonAnnotationProcessorTest {
             import ru.tinkoff.kora.json.common.annotation.JsonInclude;
 
             @Json
-            public record TestRecord(@JsonInclude(JsonInclude.IncludeType.NON_EMPTY) @Nullable java.util.List<Integer> value) { }
+            public record TestRecord(@JsonInclude(JsonInclude.IncludeType.NON_EMPTY) java.util.@Nullable List<Integer> value) { }
             """
         );
 

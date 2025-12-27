@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.annotation.processor.extension;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.http.client.annotation.processor.HttpClientAnnotationProcessor;
 import ru.tinkoff.kora.http.client.annotation.processor.HttpClientClassNames;

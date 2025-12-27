@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
@@ -20,10 +19,10 @@ final class LoadableCacheImpl<K, V> implements LoadableCache<K, V> {
 
     @Nullable
     @Override
-    public V get(@Nonnull K key) {
+    public V get(K key) {
         return cache.computeIfAbsent(key, k -> {
             final Map<K, V> result = cacheLoader.apply(Set.of(k));
-            if(result.isEmpty()) {
+            if (result.isEmpty()) {
                 return null;
             } else {
                 return result.values().iterator().next();
@@ -31,9 +30,8 @@ final class LoadableCacheImpl<K, V> implements LoadableCache<K, V> {
         });
     }
 
-    @Nonnull
     @Override
-    public Map<K, V> get(@Nonnull Collection<K> keys) {
+    public Map<K, V> get(Collection<K> keys) {
         return cache.computeIfAbsent(keys, cacheLoader::apply);
     }
 }

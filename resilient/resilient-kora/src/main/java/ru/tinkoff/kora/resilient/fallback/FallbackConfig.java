@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.resilient.fallback;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.util.Map;
@@ -31,7 +30,7 @@ public interface FallbackConfig {
         }
     }
 
-    default NamedConfig getNamedConfig(@Nonnull String name) {
+    default NamedConfig getNamedConfig(String name) {
         final NamedConfig defaultConfig = fallback().getOrDefault(DEFAULT, DEFAULT_CONFIG);
         final NamedConfig namedConfig = fallback().getOrDefault(name, defaultConfig);
         return merge(namedConfig, defaultConfig);

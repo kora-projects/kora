@@ -1,15 +1,13 @@
 package ru.tinkoff.kora.resilient.fallback;
 
 
-import jakarta.annotation.Nonnull;
-
 import java.util.function.Supplier;
 
 public interface Fallback {
 
-    boolean canFallback(@Nonnull Throwable throwable);
+    boolean canFallback(Throwable throwable);
 
-    void fallback(@Nonnull Runnable runnable, @Nonnull Runnable fallback);
+    void fallback(Runnable runnable, Runnable fallback);
 
-    <T> T fallback(@Nonnull Supplier<T> supplier, @Nonnull Supplier<T> fallback);
+    <T> T fallback(Supplier<T> supplier, Supplier<T> fallback);
 }

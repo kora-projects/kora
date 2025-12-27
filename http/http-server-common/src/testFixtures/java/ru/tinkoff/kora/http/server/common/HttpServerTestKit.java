@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.http.server.common;
 
 import io.opentelemetry.api.trace.Span;
-import jakarta.annotation.Nullable;
 import okhttp3.*;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.*;
 import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentMatchers;

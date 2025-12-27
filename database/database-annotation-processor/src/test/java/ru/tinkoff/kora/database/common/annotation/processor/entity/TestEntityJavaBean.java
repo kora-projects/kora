@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.database.common.annotation.processor.entity;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.common.annotation.processor.cassandra.CassandraEntity;
 import ru.tinkoff.kora.database.common.annotation.processor.jdbc.JdbcEntity;
 
-import jakarta.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.impl.xml;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.ParserConfigurationException;

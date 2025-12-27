@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.annotation.processor;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
@@ -19,7 +19,7 @@ public interface Parameter {
 
     record CookieParameter(VariableElement parameter, String cookieName) implements Parameter {}
 
-    record BodyParameter(VariableElement parameter, @Nullable CommonUtils.MappingData mapper) implements Parameter {}
+    record BodyParameter(VariableElement parameter, CommonUtils.@Nullable MappingData mapper) implements Parameter {}
 
     record ContinuationParameter(VariableElement parameter) implements Parameter {}
 

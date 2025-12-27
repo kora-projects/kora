@@ -8,12 +8,12 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import com.squareup.kotlinpoet.ksp.writeTo
-import jakarta.annotation.Nonnull
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.collectFinalSealedSubtypes
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.generatedClassName
@@ -231,7 +231,9 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             val validateds = getValid(fieldProperty)
             val resolvedType = fieldProperty.type.resolve()
             val isNullable = resolvedType.isMarkedNullable
-            val isNotNull = fieldProperty.isAnnotationPresent(Nonnull::class.asClassName())
+            val isNotNull = (fieldProperty.annotations + fieldProperty.type.annotations)
+                .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+                .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
             val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
 
             if (constraints.isNotEmpty() || validateds.isNotEmpty() || (isJsonNullable && isNotNull)) {

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.server.common.form;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;

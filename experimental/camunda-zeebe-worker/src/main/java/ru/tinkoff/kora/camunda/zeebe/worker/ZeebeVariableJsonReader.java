@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.camunda.zeebe.worker;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.json.common.JsonReader;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.config.annotation.processor.extension;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.config.annotation.processor.ConfigClassNames;

@@ -5,10 +5,12 @@ import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
-import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ClassName
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import jakarta.annotation.Nonnull
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
@@ -21,6 +23,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.validation.symbol.processor.ValidTypes
 import ru.tinkoff.kora.validation.symbol.processor.ValidTypes.CONTEXT_TYPE
@@ -93,7 +96,9 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
         val resolvedType = returnTypeReference.resolve()
         val isNullable = resolvedType.isMarkedNullable
-        val isNotNull = method.isAnnotationPresent(Nonnull::class.asClassName())
+        val isNotNull = (method.annotations + (method.returnType?.annotations ?: emptySequence()))
+            .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+            .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
         val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
 
         if (constraints.isEmpty() && validates.isEmpty() && !(isJsonNullable && isNotNull)) {
@@ -243,7 +248,9 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         for (parameter in method.parameters.filter { it.isValidatable() }) {
             val resolvedType = parameter.type.resolve()
             val isNullable = resolvedType.isMarkedNullable
-            val isNotNull = parameter.isAnnotationPresent(Nonnull::class.asClassName())
+            val isNotNull = (parameter.annotations + parameter.type.annotations)
+                .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+                .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
             val isJsonNullable = resolvedType.toTypeName().let { it is ParameterizedTypeName && it.rawType == ValidTypes.jsonNullable }
 
             val constraints = parameter.getConstraints()
@@ -357,19 +364,21 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
     private fun KSValueParameter.isValidatable(): Boolean {
         for (annotation in this.annotations) {
             val annotationType = annotation.annotationType.resolve()
-            if (annotationType.declaration.qualifiedName!!.asString() == VALID_TYPE.canonicalName) {
+            if (annotationType.declaration.qualifiedName?.asString() == VALID_TYPE.canonicalName) {
                 return true
             }
 
             for (innerAnnotation in annotationType.declaration.annotations) {
-                if (innerAnnotation.annotationType.resolve().declaration.qualifiedName!!.asString() == VALIDATED_BY_TYPE.canonicalName) {
+                if (innerAnnotation.annotationType.resolve().declaration.qualifiedName?.asString() == VALIDATED_BY_TYPE.canonicalName) {
                     return true
                 }
             }
         }
 
         val resolvedType = type.resolve()
-        val isNotNull = isAnnotationPresent(Nonnull::class.asClassName())
+        val isNotNull = (annotations + type.annotations)
+            .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+            .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
         val isJsonNullable = resolvedType.declaration.let { it is KSClassDeclaration && it.toClassName() == ValidTypes.jsonNullable }
         return isJsonNullable && isNotNull
     }

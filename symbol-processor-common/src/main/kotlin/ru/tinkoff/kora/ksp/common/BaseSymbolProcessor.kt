@@ -4,10 +4,9 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessor
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
-import com.google.devtools.ksp.symbol.FileLocation
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSNode
-import com.google.devtools.ksp.symbol.NonExistLocation
+import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.validate
+import com.google.devtools.ksp.visitor.KSValidateVisitor
 import java.io.OutputStreamWriter
 import java.io.PrintWriter
 import java.io.StringWriter
@@ -91,4 +90,17 @@ abstract class BaseSymbolProcessor(environment: SymbolProcessorEnvironment) : Sy
     }
 
     abstract fun processRound(resolver: Resolver): List<KSAnnotated>
+
+    fun KSNode.validateAll(predicate: (KSNode?, KSNode) -> Boolean = { _, _ -> true }): Boolean {
+        return this.accept(object : KSValidateVisitor(predicate) {
+            override fun visitValueParameter(valueParameter: KSValueParameter, data: KSNode?): Boolean {
+                val annotationsValid = valueParameter.annotations.all { it.validate() }
+                if (!annotationsValid) {
+                    return false
+                }
+                return super.visitValueParameter(valueParameter, data)
+            }
+        }, null)
+    }
+
 }

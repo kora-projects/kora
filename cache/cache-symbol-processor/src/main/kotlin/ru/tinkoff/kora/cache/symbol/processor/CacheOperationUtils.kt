@@ -11,7 +11,6 @@ import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import jakarta.annotation.Nullable
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
@@ -258,7 +257,6 @@ class CacheOperationUtils {
             return method.findAnnotations(ANNOTATION_CACHE_INVALIDATE).toList()
         }
 
-        @Nullable
         private fun getSuitableMapper(mappers: MappersData): MappingData? {
             return if (mappers.mapperClasses.isEmpty()) {
                 null

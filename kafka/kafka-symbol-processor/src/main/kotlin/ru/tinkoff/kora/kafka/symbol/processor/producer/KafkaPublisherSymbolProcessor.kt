@@ -5,7 +5,6 @@ import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.ANY
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName
@@ -29,7 +28,7 @@ class KafkaPublisherSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseS
         val producers = mutableListOf<KSAnnotated>()
         val deferred = mutableListOf<KSAnnotated>()
         for (it in resolver.getSymbolsWithAnnotation(KafkaClassNames.kafkaPublisherAnnotation.canonicalName)) {
-            if (it.validate()) {
+            if (it.validateAll()) {
                 producers.add(it)
             } else {
                 deferred.add(it)

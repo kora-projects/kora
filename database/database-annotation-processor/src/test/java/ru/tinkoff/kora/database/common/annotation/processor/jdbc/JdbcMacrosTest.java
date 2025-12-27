@@ -378,7 +378,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
                 @Table("entities")
                 record Entity(@Id @Embedded EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
             """, """
-                record EntityId(String id1, @Nullable java.time.OffsetDateTime id2) {}
+                record EntityId(String id1, java.time.@Nullable OffsetDateTime id2) {}
             """);
 
         repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", OffsetDateTime.MIN).get(), 1, "1", "1").get());
@@ -397,7 +397,7 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
                 @Table("entities")
                 record Entity(@Id @Embedded @Nullable EntityId id, @Column("value1") int field1, String value2, @Nullable String value3) {}
             """, """
-                record EntityId(String id1, @Nullable java.time.OffsetDateTime id2) {}
+                record EntityId(String id1, java.time.@Nullable OffsetDateTime id2) {}
             """);
 
         repository.invoke("insert", newGeneratedObject("Entity", newGeneratedObject("EntityId", "1", OffsetDateTime.MIN).get(), 1, "1", "1").get());

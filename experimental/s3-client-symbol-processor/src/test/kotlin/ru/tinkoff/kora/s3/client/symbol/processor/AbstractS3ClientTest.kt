@@ -2,6 +2,7 @@ package ru.tinkoff.kora.s3.client.symbol.processor
 
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import org.intellij.lang.annotations.Language
+import org.mockito.Answers
 import org.mockito.Mockito
 import ru.tinkoff.kora.ksp.common.AbstractSymbolProcessorTest
 import ru.tinkoff.kora.s3.client.S3Client
@@ -23,7 +24,7 @@ abstract class AbstractS3ClientTest : AbstractSymbolProcessorTest() {
             """.trimIndent()
     }
 
-    protected var s3Client = Mockito.mock(S3Client::class.java)
+    protected var s3Client = Mockito.mock(S3Client::class.java, Answers.CALLS_REAL_METHODS)
     protected var config = Mockito.mock(S3ClientConfigWithCredentials::class.java)
 
     protected fun compile(@Language("kotlin") source: String, vararg addArgs: Any?): TestObject {

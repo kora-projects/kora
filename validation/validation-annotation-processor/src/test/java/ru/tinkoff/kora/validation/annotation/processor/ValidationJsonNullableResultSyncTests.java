@@ -83,7 +83,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
                 @Component
                 public class TestComponent {
                     @Validate
-                    @Nonnull
+                    @NonNull
                     public JsonNullable<String> test() {
                         return JsonNullable.undefined();
                     }
@@ -105,7 +105,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
                 @Component
                 public class TestComponent {
                     @Validate
-                    @Nonnull
+                    @NonNull
                     public JsonNullable<String> test() {
                         return JsonNullable.nullValue();
                     }
@@ -127,7 +127,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
                 @Component
                 public class TestComponent {
                     @Validate
-                    @Nonnull
+                    @NonNull
                     public JsonNullable<String> test() {
                         return JsonNullable.of("1");
                     }

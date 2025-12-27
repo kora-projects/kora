@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.module.http;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.module.JsonModule;

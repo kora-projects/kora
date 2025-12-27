@@ -5,7 +5,6 @@ import com.google.devtools.ksp.isAbstract
 import com.google.devtools.ksp.isOpen
 import com.google.devtools.ksp.processing.*
 import com.google.devtools.ksp.symbol.*
-import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.writeTo
@@ -49,7 +48,7 @@ class AopSymbolProcessor(
                     is Either.Left -> classDeclaration.value.let {
                         when {
                             it == null -> {}
-                            it.validate() -> symbolsToProcess[it.qualifiedName!!.asString()] = it
+                            it.validateAll() -> symbolsToProcess[it.qualifiedName!!.asString()] = it
                             else -> deferred.add(symbol)
                         }
                     }

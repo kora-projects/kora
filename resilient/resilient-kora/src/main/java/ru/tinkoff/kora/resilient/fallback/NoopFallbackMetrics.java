@@ -1,13 +1,11 @@
 package ru.tinkoff.kora.resilient.fallback;
 
-import jakarta.annotation.Nonnull;
-
 final class NoopFallbackMetrics implements FallbackMetrics {
 
     static final NoopFallbackMetrics INSTANCE = new NoopFallbackMetrics();
 
     @Override
-    public void recordExecute(@Nonnull String name, @Nonnull Throwable throwable) {
+    public void recordExecute(String name, Throwable throwable) {
         // do nothing
     }
 }

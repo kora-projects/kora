@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 
@@ -32,7 +32,7 @@ public class EnumWriterGenerator {
         typeBuilder.addMethod(MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonGenerator, "_gen")
-            .addParameter(ParameterSpec.builder(typeName, "_object").addAnnotation(Nullable.class).build())
+            .addParameter(ParameterSpec.builder(typeName.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation), "_object").build())
             .addAnnotation(Override.class)
             .addCode("this.delegate.write(_gen, _object);\n")
             .build()

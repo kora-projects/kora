@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.camunda.engine.bpmn.configurator;
 
-import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.RepositoryService;
 import org.camunda.bpm.engine.repository.Deployment;
 import org.camunda.bpm.engine.repository.DeploymentBuilder;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.camunda.engine.bpmn.CamundaEngineBpmnConfig;

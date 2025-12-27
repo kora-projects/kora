@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache.annotation.processor;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NullMarked;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor;
@@ -8,7 +8,6 @@ import ru.tinkoff.kora.cache.caffeine.CaffeineCacheConfig;
 import ru.tinkoff.kora.cache.redis.*;
 
 import java.nio.ByteBuffer;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -42,6 +41,7 @@ final class CacheRunner {
         return config;
     }
 
+    @NullMarked
     public static RedisCacheClient lettuceClient(final Map<ByteBuffer, ByteBuffer> cache) {
         return new RedisCacheClient() {
             @Override
@@ -68,7 +68,6 @@ final class CacheRunner {
                     : CompletableFuture.completedFuture(r.array());
             }
 
-            @Nonnull
             @Override
             public CompletionStage<Map<byte[], byte[]>> mget(byte[][] keys) {
                 final Map<byte[], byte[]> result = new HashMap<>();
@@ -83,7 +82,6 @@ final class CacheRunner {
                 return get(key);
             }
 
-            @Nonnull
             @Override
             public CompletionStage<Map<byte[], byte[]>> getex(byte[][] keys, long expireAfterMillis) {
                 return mget(keys);

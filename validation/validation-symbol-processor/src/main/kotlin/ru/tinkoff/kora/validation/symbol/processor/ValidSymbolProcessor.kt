@@ -18,7 +18,7 @@ class ValidSymbolProcessor(environment: SymbolProcessorEnvironment) : BaseSymbol
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(VALID_TYPE.canonicalName).toList()
         for (symbol in symbols) {
-            if (symbol.validate()) {
+            if (symbol.validateAll()) {
                 gen.generate(symbol)
             }
         }

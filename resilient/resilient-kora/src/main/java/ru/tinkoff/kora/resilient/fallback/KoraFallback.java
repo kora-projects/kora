@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.fallback;
 
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +45,7 @@ final class KoraFallback implements Fallback {
     }
 
     @Override
-    public void fallback(@Nonnull Runnable runnable, @Nonnull Runnable fallback) {
+    public void fallback(Runnable runnable, Runnable fallback) {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Fallback '{}' is disabled", name);
             runnable.run();
@@ -65,7 +64,7 @@ final class KoraFallback implements Fallback {
     }
 
     @Override
-    public <T> T fallback(@Nonnull Supplier<T> supplier, @Nonnull Supplier<T> fallback) {
+    public <T> T fallback(Supplier<T> supplier, Supplier<T> fallback) {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Fallback '{}' is disabled", name);
             return supplier.get();

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.camunda.engine.bpmn;
 
-import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 

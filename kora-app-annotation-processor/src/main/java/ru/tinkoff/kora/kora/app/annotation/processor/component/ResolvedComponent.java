@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.component;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
 import javax.lang.model.type.TypeMirror;

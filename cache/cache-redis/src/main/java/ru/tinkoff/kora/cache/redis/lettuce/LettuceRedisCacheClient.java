@@ -7,7 +7,6 @@ import io.lettuce.core.codec.ByteArrayCodec;
 import io.lettuce.core.support.AsyncConnectionPoolSupport;
 import io.lettuce.core.support.BoundedAsyncPool;
 import io.lettuce.core.support.BoundedPoolConfig;
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -47,7 +46,6 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
         return this.config;
     }
 
-    @Nonnull
     @Override
     public CompletionStage<List<byte[]>> scan(byte[] prefix) {
         byte[] asterix = "*".getBytes();
@@ -59,13 +57,11 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
             .thenApply(KeyScanCursor::getKeys);
     }
 
-    @Nonnull
     @Override
     public CompletionStage<byte[]> get(byte[] key) {
         return commands.get(key);
     }
 
-    @Nonnull
     @Override
     public CompletionStage<Map<byte[], byte[]>> mget(byte[][] keys) {
         return commands.mget(keys)
@@ -77,14 +73,12 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
                     LinkedHashMap::new)));
     }
 
-    @Nonnull
     @Override
     public CompletionStage<byte[]> getex(byte[] key, long expireAfterMillis) {
         return commands.getex(key, GetExArgs.Builder.px(expireAfterMillis));
     }
 
     @SuppressWarnings("unchecked")
-    @Nonnull
     @Override
     public CompletionStage<Map<byte[], byte[]>> getex(Collection<byte[]> keys, long expireAfterMillis) {
         return pool.acquire().thenCompose(connection -> {
@@ -118,7 +112,6 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
     }
 
     @SuppressWarnings("unchecked")
-    @Nonnull
     @Override
     public CompletionStage<Map<byte[], byte[]>> getex(byte[][] keys, long expireAfterMillis) {
         return pool.acquire().thenCompose(connection -> {
@@ -151,7 +144,6 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
         });
     }
 
-    @Nonnull
     @Override
     public CompletionStage<Boolean> set(byte[] key, byte[] value) {
         return commands.set(key, value).thenApply(r -> true);
@@ -162,13 +154,11 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
         return commands.mset(keyAndValue).thenApply(r -> true);
     }
 
-    @Nonnull
     @Override
     public CompletionStage<Boolean> psetex(byte[] key, byte[] value, long expireAfterMillis) {
         return commands.psetex(key, expireAfterMillis, value).thenApply(r -> true);
     }
 
-    @Nonnull
     @Override
     public CompletionStage<Boolean> psetex(Map<byte[], byte[]> keyAndValue, long expireAfterMillis) {
         return pool.acquire().thenCompose(connection -> {
@@ -194,19 +184,16 @@ public class LettuceRedisCacheClient implements RedisCacheClient, Lifecycle {
         });
     }
 
-    @Nonnull
     @Override
     public CompletionStage<Long> del(byte[] key) {
         return commands.del(key);
     }
 
-    @Nonnull
     @Override
     public CompletionStage<Long> del(byte[][] keys) {
         return commands.del(keys);
     }
 
-    @Nonnull
     @Override
     public CompletionStage<Boolean> flushAll() {
         return commands.flushall(FlushMode.SYNC).thenApply(r -> true);

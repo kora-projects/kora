@@ -1,8 +1,6 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
 
-import jakarta.annotation.Nonnull;
-
 import java.util.function.Predicate;
 
 /**
@@ -13,7 +11,6 @@ public interface CircuitBreakerPredicate extends Predicate<Throwable> {
     /**
      * @return name of the predicate
      */
-    @Nonnull
     String name();
 
     /**
@@ -21,5 +18,5 @@ public interface CircuitBreakerPredicate extends Predicate<Throwable> {
      * @return when True than throwable is registered as failure
      */
     @Override
-    boolean test(@Nonnull Throwable throwable);
+    boolean test(Throwable throwable);
 }

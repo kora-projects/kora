@@ -3,7 +3,7 @@ package ru.tinkoff.kora.database.annotation.processor.cassandra;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.TypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;

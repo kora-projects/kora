@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kafka.common.producer.telemetry;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Properties;
 

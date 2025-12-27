@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.server.common.telemetry.impl;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;

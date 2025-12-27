@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -23,9 +22,8 @@ public final class KoraGraphModification {
     /**
      * Component that should be added to Graph Context
      */
-    @Nonnull
-    public <T> KoraGraphModification addComponent(@Nonnull Type typeToAdd,
-                                                  @Nonnull Supplier<T> instanceSupplier) {
+    public <T> KoraGraphModification addComponent(Type typeToAdd,
+                                                  Supplier<T> instanceSupplier) {
         modifications.add(new GraphAddition(s -> instanceSupplier.get(), new GraphCandidate(typeToAdd)));
         return this;
     }
@@ -33,10 +31,9 @@ public final class KoraGraphModification {
     /**
      * Component that should be added to Graph Context
      */
-    @Nonnull
-    public <T> KoraGraphModification addComponent(@Nonnull Type typeToAdd,
+    public <T> KoraGraphModification addComponent(Type typeToAdd,
                                                   @Nullable Class<?> tag,
-                                                  @Nonnull Supplier<T> instanceSupplier) {
+                                                  Supplier<T> instanceSupplier) {
         if (tag == null) {
             return addComponent(typeToAdd, instanceSupplier);
         } else {
@@ -48,9 +45,8 @@ public final class KoraGraphModification {
     /**
      * Component that should be added to Graph Context
      */
-    @Nonnull
-    public <T> KoraGraphModification addComponent(@Nonnull Type typeToAdd,
-                                                  @Nonnull Function<KoraAppGraph, T> instanceSupplier) {
+    public <T> KoraGraphModification addComponent(Type typeToAdd,
+                                                  Function<KoraAppGraph, T> instanceSupplier) {
         modifications.add(new GraphAddition(instanceSupplier, new GraphCandidate(typeToAdd)));
         return this;
     }
@@ -58,10 +54,9 @@ public final class KoraGraphModification {
     /**
      * Component that should be added to Graph Context
      */
-    @Nonnull
-    public <T> KoraGraphModification addComponent(@Nonnull Type typeToAdd,
+    public <T> KoraGraphModification addComponent(Type typeToAdd,
                                                   @Nullable Class<?> tag,
-                                                  @Nonnull Function<KoraAppGraph, T> instanceSupplier) {
+                                                  Function<KoraAppGraph, T> instanceSupplier) {
         if (tag == null) {
             return addComponent(typeToAdd, instanceSupplier);
         } else {
@@ -73,9 +68,8 @@ public final class KoraGraphModification {
     /**
      * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
-    @Nonnull
-    public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
-                                                      @Nonnull Supplier<? extends T> replacementSupplier) {
+    public <T> KoraGraphModification replaceComponent(Type typeToReplace,
+                                                      Supplier<? extends T> replacementSupplier) {
         modifications.add(new GraphReplacementNoDeps<>(g -> replacementSupplier.get(), new GraphCandidate(typeToReplace)));
         return this;
     }
@@ -83,10 +77,9 @@ public final class KoraGraphModification {
     /**
      * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
-    @Nonnull
-    public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
+    public <T> KoraGraphModification replaceComponent(Type typeToReplace,
                                                       @Nullable Class<?> tag,
-                                                      @Nonnull Supplier<? extends T> replacementSupplier) {
+                                                      Supplier<? extends T> replacementSupplier) {
         if (tag == null) {
             return replaceComponent(typeToReplace, replacementSupplier);
         } else {
@@ -98,9 +91,8 @@ public final class KoraGraphModification {
     /**
      * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
-    @Nonnull
-    public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
-                                                      @Nonnull Function<KoraAppGraph, ? extends T> replacementSupplier) {
+    public <T> KoraGraphModification replaceComponent(Type typeToReplace,
+                                                      Function<KoraAppGraph, ? extends T> replacementSupplier) {
         modifications.add(new GraphReplacementWithDeps<T>(replacementSupplier, new GraphCandidate(typeToReplace)));
         return this;
     }
@@ -108,10 +100,9 @@ public final class KoraGraphModification {
     /**
      * Component that should replace existing one with new one AND keeps its dependencies in graph
      */
-    @Nonnull
-    public <T> KoraGraphModification replaceComponent(@Nonnull Type typeToReplace,
+    public <T> KoraGraphModification replaceComponent(Type typeToReplace,
                                                       @Nullable Class<?> tag,
-                                                      @Nonnull Function<KoraAppGraph, ? extends T> replacementSupplier) {
+                                                      Function<KoraAppGraph, ? extends T> replacementSupplier) {
         if (tag == null) {
             return replaceComponent(typeToReplace, replacementSupplier);
         } else {
@@ -123,9 +114,8 @@ public final class KoraGraphModification {
     /**
      * Component that should replace existing one with Mock AND all real component dependencies removed for graph
      */
-    @Nonnull
-    public <T> KoraGraphModification mockComponent(@Nonnull Type typeToMock,
-                                                   @Nonnull Supplier<? extends T> replacementSupplier) {
+    public <T> KoraGraphModification mockComponent(Type typeToMock,
+                                                   Supplier<? extends T> replacementSupplier) {
         modifications.add(new GraphReplacementNoDeps<T>(g -> replacementSupplier.get(), new GraphCandidate(typeToMock)));
         return this;
     }
@@ -133,10 +123,9 @@ public final class KoraGraphModification {
     /**
      * Component that should replace existing one with Mock AND all real component dependencies removed for graph
      */
-    @Nonnull
-    public <T> KoraGraphModification mockComponent(@Nonnull Type typeToMock,
+    public <T> KoraGraphModification mockComponent(Type typeToMock,
                                                    @Nullable Class<?> tag,
-                                                   @Nonnull Supplier<? extends T> replacementSupplier) {
+                                                   Supplier<? extends T> replacementSupplier) {
         if (tag == null) {
             return mockComponent(typeToMock, replacementSupplier);
         } else {
@@ -145,7 +134,6 @@ public final class KoraGraphModification {
         }
     }
 
-    @Nonnull
     List<GraphModification> getModifications() {
         return modifications;
     }

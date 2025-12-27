@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.validation.annotation.processor.testdata;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.validation.common.annotation.NotEmpty;
 import ru.tinkoff.kora.validation.common.annotation.Pattern;
 import ru.tinkoff.kora.validation.common.annotation.Range;
 import ru.tinkoff.kora.validation.common.annotation.Valid;
 
-import jakarta.annotation.Nullable;
 import java.time.OffsetDateTime;
 
 @Valid

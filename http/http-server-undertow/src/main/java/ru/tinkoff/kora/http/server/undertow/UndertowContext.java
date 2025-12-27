@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.server.HttpServerExchange;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 public final class UndertowContext {
 

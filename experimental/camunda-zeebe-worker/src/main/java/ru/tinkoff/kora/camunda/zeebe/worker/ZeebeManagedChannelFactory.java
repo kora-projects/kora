@@ -3,7 +3,7 @@ package ru.tinkoff.kora.camunda.zeebe.worker;
 import io.camunda.zeebe.client.ZeebeClient;
 import io.camunda.zeebe.client.impl.util.VersionUtil;
 import io.grpc.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
 import ru.tinkoff.grpc.client.config.DefaultServiceConfig;
 import ru.tinkoff.grpc.client.config.GrpcClientConfig;

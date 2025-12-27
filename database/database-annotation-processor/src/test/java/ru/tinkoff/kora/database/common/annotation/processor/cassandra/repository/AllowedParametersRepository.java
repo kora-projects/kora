@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.common.annotation.processor.cassandra.repository;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.database.cassandra.CassandraRepository;
 import ru.tinkoff.kora.database.common.annotation.Batch;
 import ru.tinkoff.kora.database.common.annotation.Query;

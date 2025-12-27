@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.*;
@@ -184,21 +183,19 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         }
     }
 
-    @Nonnull
     private static GraphMockitoContext getMockitoContext(ExtensionContext context) {
         return context.getStore(MOCKITO).getOrComputeIfAbsent(GraphMockitoContext.class, (k) -> new GraphMockitoContext(), GraphMockitoContext.class);
     }
 
     @Nullable
     private static GraphMockitoContext removeMockitoContext(ExtensionContext context) {
-        final GraphMockitoContext mockitoContext = context.getStore(MOCKITO).get(GraphMockitoContext.class, GraphMockitoContext.class);
+        var mockitoContext = context.getStore(MOCKITO).get(GraphMockitoContext.class, GraphMockitoContext.class);
         if (mockitoContext != null) {
             context.getStore(MOCKITO).remove(GraphMockitoContext.class, GraphMockitoContext.class);
         }
         return mockitoContext;
     }
 
-    @Nonnull
     private static KoraTestContext getKoraTestContext(ExtensionContext context) {
         var storage = context.getStore(NAMESPACE);
         return storage.getOrComputeIfAbsent(KoraAppTest.class, (k -> {

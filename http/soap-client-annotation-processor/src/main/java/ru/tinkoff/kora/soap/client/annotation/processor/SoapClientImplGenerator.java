@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.soap.client.annotation.processor;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.w3c.dom.Node;
 import ru.tinkoff.kora.annotation.processor.common.*;
 

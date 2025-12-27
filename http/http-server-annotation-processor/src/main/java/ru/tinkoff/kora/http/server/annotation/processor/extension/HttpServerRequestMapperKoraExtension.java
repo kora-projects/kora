@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.server.annotation.processor.extension;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.http.server.annotation.processor.HttpServerClassNames;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;

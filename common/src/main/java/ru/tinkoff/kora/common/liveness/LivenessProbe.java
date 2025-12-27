@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.common.liveness;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <b>Русский</b>: Проверяет жизнеспособность сервиса

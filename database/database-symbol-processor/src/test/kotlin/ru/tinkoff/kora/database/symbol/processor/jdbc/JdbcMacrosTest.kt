@@ -24,7 +24,6 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
                                   val value3: String?)
                         
                 @Query("SELECT * FROM %{return#table} WHERE id = :id")
-                @Nullable
                 fun findById(id: String): Entity?
             }
             
@@ -431,7 +430,7 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
     }
 
     class TimeJdbcParameterColumnMapper : JdbcParameterColumnMapper<OffsetDateTime> {
-        override fun set(stmt: PreparedStatement, index: Int, value: OffsetDateTime) = stmt.setObject(index, value)
+        override fun set(stmt: PreparedStatement, index: Int, value: OffsetDateTime?) = stmt.setObject(index, value)
     }
 
     @Test

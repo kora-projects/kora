@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 
@@ -33,9 +33,8 @@ public class EnumReaderGenerator {
         typeBuilder.addMethod(MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonParser, "__parser")
-            .returns(typeName)
+            .returns(typeName.withoutAnnotations().annotated(CommonClassNames.nullableAnnotation))
             .addAnnotation(Override.class)
-            .addAnnotation(Nullable.class)
             .addCode("return this.delegate.read(__parser);\n")
             .build()
         );

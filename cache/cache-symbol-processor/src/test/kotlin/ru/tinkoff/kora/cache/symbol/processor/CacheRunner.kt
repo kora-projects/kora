@@ -61,11 +61,11 @@ class CacheRunner {
                     return CompletableFuture.completedFuture(keys)
                 }
 
-                override fun config(): RedisCacheClientConfig? {
+                override fun config(): RedisCacheClientConfig {
                     return Mockito.mock(RedisCacheClientConfig::class.java)
                 }
 
-                override fun get(key: ByteArray): CompletionStage<ByteArray?> {
+                override fun get(key: ByteArray): CompletionStage<ByteArray> {
                     val r = cache[ByteBuffer.wrap(key)]
                     return CompletableFuture.completedFuture(r?.array())
                 }
@@ -80,7 +80,7 @@ class CacheRunner {
                     return CompletableFuture.completedFuture(result)
                 }
 
-                override fun getex(key: ByteArray, expireAfterMillis: Long): CompletionStage<ByteArray?> {
+                override fun getex(key: ByteArray, expireAfterMillis: Long): CompletionStage<ByteArray> {
                     return get(key)
                 }
 

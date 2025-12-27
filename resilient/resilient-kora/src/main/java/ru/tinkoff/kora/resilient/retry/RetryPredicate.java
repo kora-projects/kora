@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import jakarta.annotation.Nonnull;
-
 import java.util.function.Predicate;
 
 /**
@@ -12,7 +10,6 @@ public interface RetryPredicate extends Predicate<Throwable> {
     /**
      * @return name of the predicate
      */
-    @Nonnull
     String name();
 
     /**
@@ -20,5 +17,5 @@ public interface RetryPredicate extends Predicate<Throwable> {
      * @return when True than throwable is registered as failure
      */
     @Override
-    boolean test(@Nonnull Throwable throwable);
+    boolean test(Throwable throwable);
 }

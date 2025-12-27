@@ -220,14 +220,15 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
     }
 
     private fun basicAuthConfig(authMethod: CodegenSecurity): TypeSpec {
+        val nullableString = String::class.asClassName().copy(true)
         return TypeSpec.classBuilder(authMethod.name + "Config")
             .addAnnotation(generated())
-            .addProperty(PropertySpec.builder("username", String::class.asClassName()).initializer("username").build())
-            .addProperty(PropertySpec.builder("password", String::class.asClassName()).initializer("password").build())
+            .addProperty(PropertySpec.builder("username", nullableString).initializer("username").build())
+            .addProperty(PropertySpec.builder("password", nullableString).initializer("password").build())
             .primaryConstructor(
                 FunSpec.constructorBuilder()
-                    .addParameter("username", String::class.asClassName())
-                    .addParameter("password", String::class.asClassName())
+                    .addParameter("username", nullableString)
+                    .addParameter("password", nullableString)
                     .build()
             )
             .addAnnotation(

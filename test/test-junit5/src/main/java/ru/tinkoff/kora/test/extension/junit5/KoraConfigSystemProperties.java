@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nonnull;
-
 import java.util.HashMap;
 import java.util.Map;
 
@@ -14,14 +12,12 @@ final class KoraConfigSystemProperties implements KoraConfigModification {
 
     private final Map<String, String> systemProperties = new HashMap<>();
 
-    @Nonnull
     @Override
     public Map<String, String> systemProperties() {
         return Map.copyOf(systemProperties);
     }
 
-    @Nonnull
-    public KoraConfigSystemProperties withSystemProperty(@Nonnull String key, @Nonnull String value) {
+    public KoraConfigSystemProperties withSystemProperty(String key, String value) {
         this.systemProperties.put(key, value);
         return this;
     }

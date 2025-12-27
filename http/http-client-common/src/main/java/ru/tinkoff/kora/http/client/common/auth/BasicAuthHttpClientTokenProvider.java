@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.common.auth;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
 
 import java.nio.charset.StandardCharsets;
@@ -11,7 +11,7 @@ public class BasicAuthHttpClientTokenProvider implements HttpClientTokenProvider
     @Nullable
     private final String token;
 
-    public BasicAuthHttpClientTokenProvider(String username, String password) {
+    public BasicAuthHttpClientTokenProvider(@Nullable String username, @Nullable String password) {
         if (username == null || password == null) {
             this.token = null;
         } else {

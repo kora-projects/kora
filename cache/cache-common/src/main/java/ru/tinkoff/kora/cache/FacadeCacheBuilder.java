@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Function;
@@ -10,18 +9,16 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
 
     private final List<Cache<K, V>> facades = new ArrayList<>();
 
-    FacadeCacheBuilder(@Nonnull Cache<K, V> cache) {
+    FacadeCacheBuilder(Cache<K, V> cache) {
         facades.add(cache);
     }
 
-    @Nonnull
     @Override
-    public Cache.Builder<K, V> addCache(@Nonnull Cache<K, V> cache) {
+    public Cache.Builder<K, V> addCache(Cache<K, V> cache) {
         facades.add(cache);
         return this;
     }
 
-    @Nonnull
     @Override
     public Cache<K, V> build() {
         if (facades.isEmpty()) {
@@ -45,7 +42,7 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
 
         @Nullable
         @Override
-        public V get(@Nonnull K key) {
+        public V get(K key) {
             for (var facade : facades) {
                 final V v = facade.get(key);
                 if (v != null) {
@@ -56,15 +53,13 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
             return null;
         }
 
-        @Nonnull
         @Override
-        public Map<K, V> get(@Nonnull Collection<K> keys) {
+        public Map<K, V> get(Collection<K> keys) {
             throw new UnsupportedOperationException();
         }
 
-        @Nonnull
         @Override
-        public V put(@Nonnull K key, @Nonnull V value) {
+        public V put(K key, V value) {
             for (var facade : facades) {
                 facade.put(key, value);
             }
@@ -72,9 +67,8 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
             return value;
         }
 
-        @Nonnull
         @Override
-        public Map<K, V> put(@Nonnull Map<K, V> keyAndValues) {
+        public Map<K, V> put(Map<K, V> keyAndValues) {
             for (var facade : facades) {
                 facade.put(keyAndValues);
             }
@@ -83,7 +77,7 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
         }
 
         @Override
-        public V computeIfAbsent(@Nonnull K key, @Nonnull Function<K, V> mappingFunction) {
+        public V computeIfAbsent(K key, Function<K, V> mappingFunction) {
             for (int i = 0; i < facades.size(); i++) {
                 var facade = facades.get(i);
                 final V v = facade.get(key);
@@ -105,9 +99,8 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
             return computed;
         }
 
-        @Nonnull
         @Override
-        public Map<K, V> computeIfAbsent(@Nonnull Collection<K> keys, @Nonnull Function<Set<K>, Map<K, V>> mappingFunction) {
+        public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
             final Map<Integer, Map<K, V>> cacheToValues = new LinkedHashMap<>();
             final Map<K, V> resultValues = new HashMap<>();
             final Set<K> keysLeft = new HashSet<>(keys);
@@ -145,14 +138,14 @@ final class FacadeCacheBuilder<K, V> implements Cache.Builder<K, V> {
         }
 
         @Override
-        public void invalidate(@Nonnull K key) {
+        public void invalidate(K key) {
             for (var facade : facades) {
                 facade.invalidate(key);
             }
         }
 
         @Override
-        public void invalidate(@Nonnull Collection<K> keys) {
+        public void invalidate(Collection<K> keys) {
             for (var facade : facades) {
                 facade.invalidate(keys);
             }

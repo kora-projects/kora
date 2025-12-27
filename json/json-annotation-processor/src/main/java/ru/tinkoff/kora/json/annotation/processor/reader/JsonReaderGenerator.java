@@ -1,8 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
@@ -64,9 +65,7 @@ public class JsonReaderGenerator {
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonParser, "__parser")
-            .returns(TypeName.get(meta.typeElement().asType()))
-            .addAnnotation(Override.class)
-            .addAnnotation(Nullable.class);
+            .returns(TypeName.get(meta.typeElement().asType()).withoutAnnotations().annotated(CommonClassNames.nullableAnnotation));
         method.addStatement("var __token = __parser.currentToken()");
         method.addCode("if (__token == $T.VALUE_NULL) $>\nreturn null;$<\n", JsonTypes.jsonToken);
         assertTokenType(method, "START_OBJECT");

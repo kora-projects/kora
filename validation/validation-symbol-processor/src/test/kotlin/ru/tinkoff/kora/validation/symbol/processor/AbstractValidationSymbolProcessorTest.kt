@@ -10,7 +10,8 @@ abstract class AbstractValidationSymbolProcessorTest : AbstractSymbolProcessorTe
            import java.util.concurrent.CompletableFuture
            import java.util.concurrent.CompletionStage
            import ru.tinkoff.kora.json.common.JsonNullable
-           import jakarta.annotation.Nonnull
+           import org.jspecify.annotations.NonNull
+           import org.jetbrains.annotations.NotNull
            import ru.tinkoff.kora.common.KoraApp
            import ru.tinkoff.kora.common.Component
            import ru.tinkoff.kora.common.annotation.Root

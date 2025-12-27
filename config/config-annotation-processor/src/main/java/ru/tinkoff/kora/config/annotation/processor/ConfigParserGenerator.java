@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.config.annotation.processor;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
@@ -107,7 +107,7 @@ public class ConfigParserGenerator {
         var rootParse = MethodSpec.methodBuilder("extract")
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class)
-            .returns(typeName);
+            .returns(typeName.withoutAnnotations());
         rootParse.addParameter(ParameterizedTypeName.get(ConfigClassNames.configValue, WildcardTypeName.subtypeOf(ClassName.OBJECT)), "_sourceValue");
         rootParse.beginControlFlow("if (_sourceValue instanceof $T.NullValue _nullValue)", ConfigClassNames.configValue);
 
@@ -240,7 +240,7 @@ public class ConfigParserGenerator {
             .addModifiers(Modifier.PRIVATE)
             .returns(field.typeName());
         if (field.isNullable()) {
-            parse.addAnnotation(Nullable.class);
+            parse.returns(field.typeName().withoutAnnotations().annotated(CommonClassNames.nullableAnnotation));
         }
         parse.addParameter(ConfigClassNames.objectValue, "config");
         var supportedType = field.mapping() == null && ConfigUtils.isSupportedType(field.typeName());

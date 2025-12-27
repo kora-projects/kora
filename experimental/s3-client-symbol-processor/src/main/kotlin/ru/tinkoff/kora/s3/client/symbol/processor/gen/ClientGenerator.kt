@@ -220,6 +220,7 @@ object ClientGenerator {
                 }
                 b.build()
             }
+
             else -> throw ProcessingErrorException("Unexpected content type $contentType", function)
         }
     }
@@ -237,9 +238,11 @@ object ClientGenerator {
             b.addStatement("val _args = %N", args.name!!.asString())
         }
         val returnType = function.returnType!!.resolveToUnderlying().toTypeName()
-        b.addStatement("val _rs = this.client.headObject(_creds, _bucket, _key, _args, %L)", !returnType.isNullable)
         if (returnType.isNullable) {
-            b.addStatement("if (_rs == null) return null");
+            b.addStatement("val _rs = this.client.headObject(_creds, _bucket, _key, _args, false)")
+            b.addStatement("if (_rs == null) return null")
+        } else {
+            b.addStatement("val _rs = this.client.headObject(_creds, _bucket, _key, _args)")
         }
         if (returnType == S3ClassNames.headObjectResult) {
             b.addStatement("return _rs")
@@ -313,9 +316,11 @@ object ClientGenerator {
         }
         val returnType = function.returnType!!.resolve().toTypeName()
 
-        b.addStatement("val _rs = this.client.getObject(_creds, _bucket, _key, _args, %L)", !returnType.isNullable)
         if (returnType.isNullable) {
+            b.addStatement("val _rs = this.client.getObject(_creds, _bucket, _key, _args, false)")
             b.addStatement("if (_rs == null) return null")
+        } else {
+            b.addStatement("val _rs = this.client.getObject(_creds, _bucket, _key, _args)")
         }
         when (returnType.copy(false)) {
             S3ClassNames.getObjectResult -> b.addStatement("return _rs!!")

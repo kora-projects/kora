@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.common.form;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
@@ -48,7 +47,6 @@ public class FormUrlEncoded implements Iterable<FormUrlEncoded.FormPart> {
         return map;
     }
 
-    @Nonnull
     @Override
     public Iterator<FormPart> iterator() {
         return this.parts.values().iterator();

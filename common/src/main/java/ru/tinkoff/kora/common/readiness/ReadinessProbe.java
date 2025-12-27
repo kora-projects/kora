@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.common.readiness;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <b>Русский</b>: Проверяет готовность сервиса к работе

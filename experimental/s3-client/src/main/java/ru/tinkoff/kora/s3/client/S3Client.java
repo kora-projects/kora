@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.s3.client.exception.S3ClientException;
 import ru.tinkoff.kora.s3.client.model.request.*;
 import ru.tinkoff.kora.s3.client.model.response.*;
@@ -36,6 +36,13 @@ public interface S3Client {
     /**
      * @see #headObject
      */
+    default HeadObjectResult headObject(AwsCredentials credentials, String bucket, String key, @Nullable HeadObjectArgs args) throws S3ClientException {
+        return Objects.requireNonNull(this.headObject(credentials, bucket, key, null, true));
+    }
+
+    /**
+     * @see #headObject
+     */
     @Nullable
     default HeadObjectResult headObjectOptional(AwsCredentials credentials, String bucket, String key) throws S3ClientException {
         return this.headObject(credentials, bucket, key, null, false);
@@ -55,8 +62,15 @@ public interface S3Client {
     /**
      * @see #getObject
      */
+    default GetObjectResult getObject(AwsCredentials credentials, String bucket, String key, @Nullable GetObjectArgs args) {
+        return Objects.requireNonNull(this.getObject(credentials, bucket, key, args, true));
+    }
+
+    /**
+     * @see #getObject
+     */
     default GetObjectResult getObject(AwsCredentials credentials, String bucket, String key) {
-        return this.getObject(credentials, bucket, key, null, true);
+        return Objects.requireNonNull(this.getObject(credentials, bucket, key, null, true));
     }
 
     /**

@@ -2,7 +2,7 @@ package ru.tinkoff.kora.cache.redis;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.cache.redis.lettuce.LettuceModule;
 import ru.tinkoff.kora.cache.redis.telemetry.DefaultRedisCacheTelemetryFactory;
 import ru.tinkoff.kora.cache.redis.telemetry.RedisCacheTelemetryFactory;

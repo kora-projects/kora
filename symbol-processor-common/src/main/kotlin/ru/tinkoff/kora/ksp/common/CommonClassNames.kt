@@ -11,7 +11,7 @@ import java.util.*
 import java.util.concurrent.*
 
 object CommonClassNames {
-    val nullable = ClassName("jakarta.annotation", "Nullable")
+    val nullable = ClassName("org.jspecify", "Nullable")
     val publisher = ClassName("org.reactivestreams", "Publisher")
     val mono = ClassName("reactor.core.publisher", "Mono")
     val deferred = ClassName("kotlinx.coroutines", "Deferred")

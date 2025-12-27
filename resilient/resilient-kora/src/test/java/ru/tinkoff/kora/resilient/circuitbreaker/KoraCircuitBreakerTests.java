@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
-import jakarta.annotation.Nonnull;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
+import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker.State;
@@ -17,16 +17,16 @@ class KoraCircuitBreakerTests extends Assertions {
 
     private static final Duration WAIT_IN_OPEN = Duration.ofMillis(50);
 
+    @NullMarked
     static class CustomPredicate implements CircuitBreakerPredicate {
 
-        @Nonnull
         @Override
         public String name() {
             return "custom";
         }
 
         @Override
-        public boolean test(@Nonnull Throwable throwable) {
+        public boolean test(Throwable throwable) {
             return throwable instanceof IllegalStateException;
         }
     }

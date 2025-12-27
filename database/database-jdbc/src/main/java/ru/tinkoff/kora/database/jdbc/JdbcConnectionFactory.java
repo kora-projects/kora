@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.jdbc;
 
 import io.opentelemetry.context.Context;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.telemetry.Observation;
 import ru.tinkoff.kora.common.telemetry.OpentelemetryContext;
 import ru.tinkoff.kora.database.common.QueryContext;

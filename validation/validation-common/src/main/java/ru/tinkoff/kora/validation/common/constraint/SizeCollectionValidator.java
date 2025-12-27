@@ -4,7 +4,6 @@ import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
 import ru.tinkoff.kora.validation.common.Violation;
 
-import jakarta.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
@@ -24,9 +23,8 @@ final class SizeCollectionValidator<V, T extends Collection<V>> implements Valid
         this.to = to;
     }
 
-    @Nonnull
     @Override
-    public List<Violation> validate(T value, @Nonnull ValidationContext context) {
+    public List<Violation> validate(T value, ValidationContext context) {
         if (value == null) {
             return List.of(context.violates("Size should be in range from '" + from + "' to '" + to + "', but value was null"));
         } else if (value.size() < from) {

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache.annotation.processor.testdata.sync;
 
-import jakarta.annotation.Nonnull;
+import org.jetbrains.annotations.NotNull;
 import ru.tinkoff.kora.cache.CacheKeyMapper;
 import ru.tinkoff.kora.cache.annotation.CachePut;
 import ru.tinkoff.kora.cache.annotation.Cacheable;
@@ -14,7 +14,7 @@ public class CacheableSyncMapper {
 
     public static final class CacheMapper implements CacheKeyMapper.CacheKeyMapper2<String, String, BigDecimal> {
 
-        @Nonnull
+        @NotNull
         @Override
         public String map(String arg1, BigDecimal arg2) {
             return arg1 + arg2.toString();

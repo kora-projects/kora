@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
+import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 
@@ -43,7 +42,7 @@ public class SealedInterfaceWriterGenerator {
         var method = MethodSpec.methodBuilder("write")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonGenerator, "_gen")
-            .addParameter(ParameterSpec.builder(TypeName.get(jsonElement.asType()), "_object").addAnnotation(Nullable.class).build())
+            .addParameter(ParameterSpec.builder(TypeName.get(jsonElement.asType()).annotated(CommonClassNames.nullableAnnotation), "_object").build())
             .addAnnotation(Override.class);
         method.beginControlFlow("if (_object == null)")
             .addStatement("_gen.writeNull()");
@@ -74,7 +73,6 @@ public class SealedInterfaceWriterGenerator {
         typeBuilder.addMethod(constructor.build());
     }
 
-    @Nonnull
     private String getWriterFieldName(Element elem) {
         return decapitalize(elem.getSimpleName().toString() + "Writer");
     }

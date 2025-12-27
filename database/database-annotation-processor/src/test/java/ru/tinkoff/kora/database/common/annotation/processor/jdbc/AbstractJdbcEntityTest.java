@@ -5,7 +5,6 @@ import ru.tinkoff.kora.database.common.annotation.processor.AbstractExtensionTes
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.ZonedDateTime;
 import java.util.Arrays;
 
 import static org.mockito.Mockito.doAnswer;
@@ -16,7 +15,7 @@ abstract class AbstractJdbcEntityTest extends AbstractExtensionTest {
     @Override
     protected String commonImports() {
         return super.commonImports() + """
-            import jakarta.annotation.Nullable;
+            import org.jspecify.annotations.Nullable;
             import ru.tinkoff.kora.database.common.annotation.Embedded;
             import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcRowMapper;
             """;

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.common.annotation.processor.jdbc;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.database.common.annotation.processor.entity.TestEntityRecord;
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;

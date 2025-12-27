@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.cache.caffeine;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import jakarta.annotation.Nonnull;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -31,12 +30,12 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
 
     @Override
     @Nullable
-    public V get(@Nonnull K key) {
+    public V get(K key) {
         if (key == null) {
             return null;
         }
         log.trace("Operation 'GET' started");
-        var value = caffeine.getIfPresent(key);
+        V value = caffeine.getIfPresent(key);
         if (value == null) {
             log.trace("Operation 'GET' didn't return a value");
         } else {
@@ -66,7 +65,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     }
 
     @Override
-    public V computeIfAbsent(@Nonnull K key, @Nonnull Function<K, V> mappingFunction) {
+    public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
         if (key == null) {
             return mappingFunction.apply(key);
         }
@@ -90,8 +89,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         return value;
     }
 
-    @Nonnull
-    public V put(@Nonnull K key, @Nonnull V value) {
+    public V put(K key, V value) {
         if (key == null || value == null) {
             return value;
         }
@@ -102,9 +100,8 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         return value;
     }
 
-    @Nonnull
     @Override
-    public Map<K, V> put(@Nonnull Map<K, V> keyAndValues) {
+    public Map<K, V> put(Map<K, V> keyAndValues) {
         if (keyAndValues == null || keyAndValues.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -116,7 +113,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     }
 
     @Override
-    public void invalidate(@Nonnull K key) {
+    public void invalidate(K key) {
         if (key == null) {
             return;
         }
@@ -126,7 +123,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     }
 
     @Override
-    public void invalidate(@Nonnull Collection<K> keys) {
+    public void invalidate(Collection<K> keys) {
         if (keys == null || keys.isEmpty()) {
             return;
         }

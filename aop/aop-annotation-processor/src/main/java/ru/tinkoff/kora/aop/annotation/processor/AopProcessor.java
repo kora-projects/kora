@@ -81,7 +81,7 @@ public class AopProcessor {
         }
 
         private String computeFieldName(ConstructorParamKey key) {
-            var qualifiedType = key.type().toString();
+            var qualifiedType = key.type().withoutAnnotations().toString();
             if (qualifiedType.indexOf('<') > 0) {
                 qualifiedType = qualifiedType.substring(0, qualifiedType.indexOf('<'));
             }
@@ -283,7 +283,11 @@ public class AopProcessor {
                 parameterSpec = parameterSpec.toBuilder().addAnnotation(TagUtils.makeAnnotationSpec(tags)).build();
             }
             if (CommonUtils.isNullable(parameter)) {
-                parameterSpec = parameterSpec.toBuilder().addAnnotation(CommonClassNames.nullable).build();
+                parameterSpec = ParameterSpec.builder(
+                    parameterSpec.type().annotated(CommonClassNames.nullableAnnotation),
+                    parameterSpec.name(),
+                    parameterSpec.modifiers().toArray(new Modifier[0])
+                ).build();
             }
 
             constructorBuilder.addParameter(parameterSpec);

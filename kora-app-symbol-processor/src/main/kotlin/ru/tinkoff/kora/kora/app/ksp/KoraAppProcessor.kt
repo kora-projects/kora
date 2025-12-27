@@ -13,7 +13,6 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateComponent
-import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateModule
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
@@ -90,7 +89,7 @@ class KoraAppProcessor(
 
         for (declaration in koraAppElements) {
             if (declaration is KSClassDeclaration && declaration.classKind == ClassKind.INTERFACE) {
-                if (declaration.validateModule()) {
+                if (declaration.validateAll()) {
                     kspLogger.info("@KoraApp found: ${declaration.qualifiedName!!.asString()}", declaration)
                     koraApps.add(declaration.qualifiedName!!.asString())
                 } else {
@@ -199,7 +198,7 @@ class KoraAppProcessor(
         val moduleOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.module.canonicalName)
         for (module in moduleOfSymbols) {
             if (module is KSClassDeclaration && module.classKind == ClassKind.INTERFACE) {
-                if (module.validateModule()) {
+                if (module.validateAll()) {
                     annotatedModules.add(module.qualifiedName!!.asString())
                 } else {
                     deferred.add(module)
@@ -216,7 +215,7 @@ class KoraAppProcessor(
         for (componentSymbol in componentOfSymbols) {
             if (componentSymbol is KSClassDeclaration && componentSymbol.classKind == ClassKind.CLASS && !componentSymbol.modifiers.contains(Modifier.ABSTRACT)) {
                 if (!hasAopAnnotations(componentSymbol)) {
-                    if (componentSymbol.validateComponent()) {
+                    if (componentSymbol.validateAll() && componentSymbol.validateComponent()) {
                         components.add(componentSymbol.qualifiedName!!.asString())
                     } else {
                         deferred.add(componentSymbol)

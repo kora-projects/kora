@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nonnull;
-
 import java.util.Map;
 
 /**
@@ -9,7 +7,6 @@ import java.util.Map;
  */
 public interface KoraConfigModification {
 
-    @Nonnull
     Map<String, String> systemProperties();
 
     /**
@@ -44,8 +41,7 @@ public interface KoraConfigModification {
      * @param value system property value
      * @return self
      */
-    @Nonnull
-    KoraConfigModification withSystemProperty(@Nonnull String key, @Nonnull String value);
+    KoraConfigModification withSystemProperty(String key, String value);
 
     /**
      * Example: Given config below
@@ -78,7 +74,6 @@ public interface KoraConfigModification {
      * @param systemProperties map of properties to add, must not contain nulls in keys or values
      * @return self
      */
-    @Nonnull
     default KoraConfigModification withSystemProperties(Map<String, String> systemProperties) {
         systemProperties.forEach(this::withSystemProperty);
         return this;
@@ -101,8 +96,7 @@ public interface KoraConfigModification {
      * @param config application configuration with config as string
      * @return self
      */
-    @Nonnull
-    static KoraConfigModification ofString(@Nonnull String config) {
+    static KoraConfigModification ofString(String config) {
         return new KoraConfigString(config);
     }
 
@@ -117,8 +111,7 @@ public interface KoraConfigModification {
      * @param configFile application configuration with config file from "resources" directory
      * @return self
      */
-    @Nonnull
-    static KoraConfigModification ofResourceFile(@Nonnull String configFile) {
+    static KoraConfigModification ofResourceFile(String configFile) {
         return new KoraConfigFile(configFile);
     }
 
@@ -135,8 +128,7 @@ public interface KoraConfigModification {
      * @param value system property value
      * @return self
      */
-    @Nonnull
-    static KoraConfigModification ofSystemProperty(@Nonnull String key, @Nonnull String value) {
+    static KoraConfigModification ofSystemProperty(String key, String value) {
         return new KoraConfigSystemProperties().withSystemProperty(key, value);
     }
 }

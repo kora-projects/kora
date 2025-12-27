@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.http.client.ok;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import okhttp3.*;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.net.Proxy;
 
+@NullMarked
 final class ProxyAuthenticator implements Authenticator {
     private final String proxyUser;
     private final String proxyPassword;
@@ -18,7 +19,7 @@ final class ProxyAuthenticator implements Authenticator {
 
     @Nullable
     @Override
-    public Request authenticate(@Nullable Route route, @Nonnull Response response) throws IOException {
+    public Request authenticate(@Nullable Route route, Response response) throws IOException {
 
         var challenges = response.challenges();
         var request = response.request();

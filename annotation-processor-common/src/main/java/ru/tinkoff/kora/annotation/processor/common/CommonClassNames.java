@@ -1,12 +1,16 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
+import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
 
 import java.util.List;
 
 
 public class CommonClassNames {
-    public static final ClassName nullable = ClassName.get("jakarta.annotation", "Nullable");
+    public static final ClassName nullable = ClassName.get("org.jspecify.annotations", "Nullable");
+    public static final AnnotationSpec nullableAnnotation = AnnotationSpec.builder(nullable).build();
+    public static final ClassName nonnull = ClassName.get("org.jspecify.annotations", "NonNull");
+    public static final AnnotationSpec nonNullAnnotation = AnnotationSpec.builder(nonnull).build();
     public static final ClassName observation = ClassName.get("ru.tinkoff.kora.common.telemetry", "Observation");
     public static final ClassName opentelemetryContext = ClassName.get("ru.tinkoff.kora.common.telemetry", "OpentelemetryContext");
     public static final ClassName contextOpentelemetry = ClassName.get("io.opentelemetry.context", "Context");

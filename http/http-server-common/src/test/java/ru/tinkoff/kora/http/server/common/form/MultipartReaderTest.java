@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.http.server.common.form;
 
-import jakarta.annotation.Nullable;
 import org.assertj.core.data.Index;
 import org.assertj.core.presentation.Representation;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;

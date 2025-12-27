@@ -4,7 +4,6 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.ksp.common.BaseSymbolProcessor
@@ -18,7 +17,7 @@ class S3ClientSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbolP
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val toDefer = mutableListOf<KSAnnotated>()
         for (symbol in resolver.getSymbolsWithAnnotation(S3ClassNames.Annotation.client.canonicalName)) {
-            if (symbol.validate()) {
+            if (symbol.validateAll()) {
                 process(resolver, symbol)
             } else {
                 toDefer.add(symbol)

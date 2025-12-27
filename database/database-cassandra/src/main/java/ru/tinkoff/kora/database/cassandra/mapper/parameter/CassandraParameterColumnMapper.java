@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.cassandra.mapper.parameter;
 
 import com.datastax.oss.driver.api.core.data.SettableByName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.database.cassandra.CassandraRepository;
 
