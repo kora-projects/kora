@@ -15,3 +15,9 @@ compileJava {
         '--add-reads', 'kora.micrometer.module=ALL-UNNAMED', // opentelemetry micrometer meter provider
     ]
 }
+
+javadoc {
+    options {
+        optionFiles file('javadoc.options')
+    }
+}
