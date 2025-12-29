@@ -97,6 +97,7 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName jsonReaderAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonReader");
         public static final ClassName json = ClassName.get("ru.tinkoff.kora.json.common.annotation", "Json");
         public static final ClassName jsonField = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonField");
+        public static final ClassName jsonInclude = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonInclude");
         public static final ClassName jsonNullable = ClassName.get("ru.tinkoff.kora.json.common", "JsonNullable");
         public static final ClassName jsonDiscriminatorField = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorField");
         public static final ClassName jsonDiscriminatorValue = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonDiscriminatorValue");

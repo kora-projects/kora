@@ -264,6 +264,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
 
     protected fun com.palantir.javapoet.ClassName.asKt() = when (this) {
         com.palantir.javapoet.ClassName.get("java.util", "List") -> List::class.asClassName()
+        com.palantir.javapoet.ClassName.get("java.util", "Map") -> Map::class.asClassName()
         com.palantir.javapoet.ClassName.get("java.util", "Set") -> Set::class.asClassName()
         com.palantir.javapoet.ClassName.get("java.lang", "String") -> String::class.asClassName()
         com.palantir.javapoet.TypeName.INT.box() -> INT

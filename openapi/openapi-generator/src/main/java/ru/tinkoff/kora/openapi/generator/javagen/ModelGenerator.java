@@ -45,9 +45,6 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         b.addPermittedSubclasses(permittedSubclasses);
         for (var field : model.allVars) {
             var type = fieldType(field);
-            if (!field.isNullable && !field.required) {
-                type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
-            }
             var m = MethodSpec.methodBuilder(field.name)
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(type);
@@ -142,6 +139,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         b.addSuperinterfaces(superinterfaces);
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
+        record Field(String name, String jsonName, TypeName type, boolean required, boolean nullable) {}
+        var fields = new ArrayList<Field>();
         for (var field : model.allVars) {
             if (parentFields.containsKey(field.name)) {
                 var parentField = parentFields.get(field.name);
@@ -156,30 +155,36 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 }
             }
             var type = fieldType(field);
-            if (!field.isNullable && !field.required) {
-                type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
-            }
             var p = ParameterSpec.builder(type, field.name);
-            p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
+            if (!field.name.equals(field.baseName)) {
+                p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
+            }
             var validation = getValidation(field);
             if (validation != null) {
                 p.addAnnotation(validation);
             }
-
+            fields.add(new Field(field.name, field.baseName, type, field.required, field.isNullable));
+            if (field.required && field.isNullable) {
+                p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude).addMember("value", "$T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType")).build());
+            }
             constructor.addParameter(p.build());
         }
-        b.addMethod(MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC).addAnnotation(Classes.jsonReaderAnnotation).build());
-        if (model.allVars.size() != model.requiredVars.size()) {
+        if (fields.stream().anyMatch(f -> f.required && f.nullable)) {
+            b.addMethod(MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC).build());
+        } else {
+            b.addMethod(MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC).addAnnotation(Classes.jsonReaderAnnotation).build());
+        }
+        if (fields.stream().anyMatch(f -> !f.required)) {
             var c = MethodSpec.constructorBuilder()
                 .addModifiers(Modifier.PUBLIC)
                 .addCode("this(");
-            for (var i = 0; i < model.allVars.size(); i++) {
+            for (var i = 0; i < fields.size(); i++) {
                 if (i > 0) {
                     c.addCode(", ");
                 }
-                var f = model.allVars.get(i);
+                var f = fields.get(i);
                 if (f.required) {
-                    c.addParameter(fieldType(f), f.name);
+                    c.addParameter(f.type, f.name);
                     c.addCode("$N", f.name);
                 } else {
                     c.addCode("null");
@@ -188,15 +193,48 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             c.addCode(");\n");
             b.addMethod(c.build());
         }
+        if (fields.stream().anyMatch(f -> f.required && f.nullable)) {
+            var c = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+                .addAnnotation(Classes.jsonReaderAnnotation);
+            for (var f : fields) {
+                if (f.required && f.nullable) {
+                    c.beginControlFlow("if (!$N.isDefined())", f.name)
+                        .addStatement("throw new IllegalArgumentException($S)", "Field '%s' was not found in parsed json".formatted(f.name))
+                        .endControlFlow();
+                }
+            }
+            c.addCode("this(");
+            for (var i = 0; i < fields.size(); i++) {
+                if (i > 0) {
+                    c.addCode(", ");
+                }
+                var f = fields.get(i);
+                var jsonField = AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", f.jsonName).build();
+                var annotations = !f.jsonName.equals(f.name) ? List.of(jsonField) : List.<AnnotationSpec>of();
+                if (f.required && f.nullable) {
+                    c.addParameter(ParameterSpec.builder(ParameterizedTypeName.get(Classes.jsonNullable, f.type.withoutAnnotations()), f.name)
+                        .addAnnotations(annotations)
+                        .build());
+                    c.addCode("$N.value()", f.name);
+                } else {
+                    c.addParameter(ParameterSpec.builder(f.type, f.name).addAnnotations(annotations).build());
+                    c.addCode("$N", f.name);
+                }
+            }
+            c.addCode(");\n");
+            b.addMethod(c.build());
+        }
+
         return b.recordConstructor(constructor.build()).build();
     }
 
     private TypeName fieldType(CodegenProperty field) {
         var type = asType(field);
-        if (field.isNullable) {
+        if (field.isNullable && !field.required) {
             return ParameterizedTypeName.get(Classes.jsonNullable, type.box());
-        } else if (!field.required) {
-            return type.box();
+        } else if (!field.required || field.isNullable) {
+            return type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
         } else {
             return type;
         }
