@@ -83,7 +83,7 @@ class KoraAppProcessor(
                             chain += separatorVertical
                             chain += processingResult.exception.component.declarationString() + separatorHorizontal + processingResult.exception.dependencyClaim
                             chain += separatorVertical
-                            chain += processingResult.exception.dependencyClaim.type.toClassName()
+                            chain += processingResult.exception.dependencyClaim.type.toTypeName()
                             chain += "\n\nRequired DependencyClaim wasn't found in graph:  ${processingResult.exception.dependencyClaim}\n"
                         }
                         kspLogger.info("Dependency detailed resolution tree:\n\n$chain")

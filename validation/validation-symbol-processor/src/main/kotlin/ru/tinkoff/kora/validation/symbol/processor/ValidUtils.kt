@@ -41,13 +41,13 @@ object ValidUtils {
     }
 
     private fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {
-        val isJsonNullable = type.toClassName() == ValidTypes.jsonNullable
+        val isJsonNullable = type.declaration.let { it as KSClassDeclaration }.toClassName() == ValidTypes.jsonNullable
         val realType = if (isJsonNullable) type.arguments[0].type!!.resolve() else type
 
         return annotation
             .mapNotNull { origin ->
                 origin.annotationType.resolve().declaration.annotations
-                    .filter { a -> a.annotationType.resolve().toClassName() == VALIDATED_BY_TYPE }
+                    .filter { a -> a.annotationType.resolve().declaration.let { it as KSClassDeclaration }.toClassName() == VALIDATED_BY_TYPE }
                     .map { validatedBy ->
                         val parameters = origin.arguments.associate { a -> Pair(a.name!!.asString(), a.value!!) }
                         val factory = validatedBy.arguments

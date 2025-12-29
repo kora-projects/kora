@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.ksp.exception
 
-import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
@@ -57,7 +57,7 @@ data class DuplicateDependencyException(
         ): ProcessingError {
             if (claim.tags.isEmpty()) {
                 return ProcessingError(
-                    """More than one component matches dependency type: ${claim.type.toClassName()} (no tags)
+                    """More than one component matches dependency type: ${claim.type.toTypeName()} (no tags)
                     $deps
                     Please check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.""".trimIndent(),
                     declaration.source
@@ -66,7 +66,7 @@ data class DuplicateDependencyException(
                 val tagMsg: String = claim.tags.stream()
                     .collect(Collectors.joining(", ", "@Tag(", ")"))
                 return ProcessingError(
-                    """More than one component matches dependency type: ${claim.type.toClassName()} with $tagMsg
+                    """More than one component matches dependency type: ${claim.type.toTypeName()} with $tagMsg
                     $deps
                     Please check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.""".trimIndent(),
                     declaration.source

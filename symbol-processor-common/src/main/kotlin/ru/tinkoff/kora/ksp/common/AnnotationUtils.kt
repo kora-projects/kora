@@ -2,6 +2,7 @@ package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSAnnotation
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.asClassName
@@ -38,7 +39,7 @@ object AnnotationUtils {
     fun KSAnnotated.isAnnotationPresent(type: ClassName) = this.findAnnotations(type).firstOrNull() != null
 
     fun KSAnnotated.isAnnotationPresent(predicate: (ClassName) -> Boolean): Boolean {
-        return this.annotations.any { predicate(it.annotationType.resolveToUnderlying().toClassName()) }
+        return this.annotations.any { predicate(it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName()) }
     }
 
     fun KSAnnotated.findAnnotation(type: ClassName) = this.annotations

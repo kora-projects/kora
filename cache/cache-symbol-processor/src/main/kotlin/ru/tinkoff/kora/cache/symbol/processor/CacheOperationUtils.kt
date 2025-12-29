@@ -15,9 +15,9 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import jakarta.annotation.Nullable
 import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotations
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isPublisher
@@ -229,7 +229,7 @@ class CacheOperationUtils {
                 }
 
                 var contractType = CacheOperation.CacheExecution.Contract.SYNC
-                if (superTypes.any { t -> t.resolve().toClassName() == CACHE_ASYNC }) {
+                if (superTypes.any { t -> t.resolve().declaration.let { it as KSClassDeclaration }.toClassName() == CACHE_ASYNC }) {
                     contractType = CacheOperation.CacheExecution.Contract.ASYNC
                 }
 

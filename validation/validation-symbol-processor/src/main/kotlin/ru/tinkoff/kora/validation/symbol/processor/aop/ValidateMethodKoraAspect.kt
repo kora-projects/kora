@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.validation.symbol.processor.aop
 
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
@@ -94,7 +95,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         val resolvedType = returnTypeReference.resolve()
         val isNullable = resolvedType.isMarkedNullable
         val isNotNull = method.isAnnotationPresent(Nonnull::class.asClassName())
-        val isJsonNullable = resolvedType.toClassName() == ValidTypes.jsonNullable
+        val isJsonNullable = resolvedType.declaration.let { it as KSClassDeclaration }.toClassName() == ValidTypes.jsonNullable
 
         if (constraints.isEmpty() && validates.isEmpty() && !(isJsonNullable && isNotNull)) {
             return null
@@ -243,7 +244,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val resolvedType = parameter.type.resolve()
             val isNullable = resolvedType.isMarkedNullable
             val isNotNull = parameter.isAnnotationPresent(Nonnull::class.asClassName())
-            val isJsonNullable = resolvedType.toClassName() == ValidTypes.jsonNullable
+            val isJsonNullable = resolvedType.declaration.let { it as KSClassDeclaration }.toClassName() == ValidTypes.jsonNullable
 
             val constraints = parameter.getConstraints()
             val validates = getValidForArguments(parameter)
@@ -363,7 +364,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
         val resolvedType = type.resolve()
         val isNotNull = isAnnotationPresent(Nonnull::class.asClassName())
-        val isJsonNullable = resolvedType.toClassName() == ValidTypes.jsonNullable
+        val isJsonNullable = resolvedType.declaration.let { it as KSClassDeclaration }.toClassName() == ValidTypes.jsonNullable
         return isJsonNullable && isNotNull
     }
 

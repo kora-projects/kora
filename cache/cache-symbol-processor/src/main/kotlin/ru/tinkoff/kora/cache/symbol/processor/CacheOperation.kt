@@ -1,11 +1,10 @@
 package ru.tinkoff.kora.cache.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
-import com.google.devtools.ksp.symbol.*
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeArgument
+import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.CodeBlock
-import ru.tinkoff.kora.cache.symbol.processor.MethodUtils.Companion.getParameters
-import javax.lang.model.element.TypeElement
-import javax.lang.model.type.DeclaredType
 
 @KspExperimental
 data class CacheOperation(

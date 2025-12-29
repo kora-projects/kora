@@ -179,7 +179,7 @@ class KafkaHandlerGenerator(private val kspLogger: KSPLogger) {
         var headerParameter: ConsumerParameter.Unknown? = null
         for (parameter in parameters) {
             if (parameter is ConsumerParameter.Unknown) {
-                if (parameter.parameter.type.resolve().toClassName().canonicalName == KafkaClassNames.headers.canonicalName) {
+                if (parameter.parameter.type.resolve().declaration.let { it as KSClassDeclaration }.toClassName().canonicalName == KafkaClassNames.headers.canonicalName) {
                     headerParameter = parameter
                 } else if (valueParameter == null) {
                     valueParameter = parameter
