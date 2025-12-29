@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.database.symbol.processor
 
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -34,7 +35,7 @@ class DbEntityReader(
             val fieldType = mapperTypeParameter.copy(true)
             if (mapper != null) {
                 val mapperType = if (mapper.mapper != null) {
-                    mapper.mapper!!.toClassName()
+                    mapper.mapper!!.toTypeName()
                 } else {
                     this.fieldMapperName.parameterizedBy(mapperTypeParameter)
                 }
@@ -64,7 +65,7 @@ class DbEntityReader(
             b.add(this.nullCheckGenerator(fieldData))
         }
         b.add(entity.buildEmbeddedFields())
-        b.add("val %N = %T(", variableName, entity.type.toClassName())
+        b.add("val %N = %T(", variableName, entity.type.declaration.let { it as KSClassDeclaration }.toClassName())
         entity.fields.forEachIndexed { i, field ->
             if (i > 0) {
                 b.add(", ")

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.ksp.exception
 
-import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
@@ -36,19 +36,6 @@ data class DuplicateDependencyException(
             return getError(claim, declaration, deps)
         }
 
-        private fun getErrorForDependencies(
-            claim: DependencyClaim,
-            declaration: ComponentDeclaration,
-            foundDeclarations: List<ComponentDependency.SingleDependency>
-        ): ProcessingError {
-            val deps: String = foundDeclarations
-                .map { it.component!!.declaration }
-                .map { String.format("- %s", it.declarationString()) }
-                .joinToString("\n", "Candidates for injection:\n", "").prependIndent("  ")
-
-            return getError(claim, declaration, deps)
-        }
-
         private fun getError(
             claim: DependencyClaim,
             declaration: ComponentDeclaration,
@@ -56,14 +43,14 @@ data class DuplicateDependencyException(
         ): ProcessingError {
             if (claim.tag == null) {
                 return ProcessingError(
-                    """More than one component matches dependency type: ${claim.type.toClassName()} (no tags)
+                    """More than one component matches dependency type: ${claim.type.toTypeName()} (no tags)
                     $deps
                     Please check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.""".trimIndent(),
                     declaration.source
                 )
             } else {
                 return ProcessingError(
-                    """More than one component matches dependency type: ${claim.type.toClassName()} with @Tag(${claim.tag}::class)
+                    """More than one component matches dependency type: ${claim.type.toTypeName()} with @Tag(${claim.tag}::class)
                     $deps
                     Please check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.""".trimIndent(),
                     declaration.source

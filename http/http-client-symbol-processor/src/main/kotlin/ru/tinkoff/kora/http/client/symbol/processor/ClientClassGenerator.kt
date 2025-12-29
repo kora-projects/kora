@@ -127,7 +127,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
-                        if (requiresConverter(parameterType) && httpHeaders != parameterType.toClassName()) {
+                        if (requiresConverter(parameterType) && httpHeaders != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
@@ -140,7 +140,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
-                        if (requiresConverter(parameterType) && httpCookie != parameterType.toClassName()) {
+                        if (requiresConverter(parameterType) && httpCookie != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
@@ -265,7 +265,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                     if (parameterType.isMap()) {
                         val keyType = parameterType.arguments[0].type?.resolve()
-                        if (keyType!!.toClassName() != String::class.asClassName()) {
+                        if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
                             throw ProcessingErrorException("@Query map key type must be String, but was: $keyType", method)
                         }
 
@@ -361,7 +361,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.endControlFlow()
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
-                if (keyType!!.toClassName() != String::class.asClassName()) {
+                if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
                     throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
                 }
 
@@ -429,7 +429,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.addStatement("_headers.add(\"Cookie\", %L.toValue())", literalName)
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
-                if (keyType!!.toClassName() != String::class.asClassName()) {
+                if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
                     throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
                 }
 
@@ -633,9 +633,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val telemetryTag = annotation.findValueNoDefault<KSType>("telemetryTag")
         val httpClientTag = annotation.findValueNoDefault<KSType>("httpClientTag")
         val clientParameter = ParameterSpec.builder("httpClient", httpClient)
-            .addTag(httpClientTag?.toClassName())
+            .addTag(httpClientTag?.declaration?.let { it as KSClassDeclaration }?.toClassName())
         val telemetryParameter = ParameterSpec.builder("telemetryFactory", httpClientTelemetryFactory)
-            .addTag(telemetryTag?.toClassName())
+            .addTag(telemetryTag?.declaration?.let { it as KSClassDeclaration }?.toClassName())
         val classInterceptors = declaration.findRepeatableAnnotation(interceptWithClassName, interceptWithContainerClassName)
             .map { parseInterceptor(it) }
         var interceptorsCount = 0
@@ -848,6 +848,8 @@ class ClientClassGenerator(private val resolver: Resolver) {
     private fun parseInterceptor(it: KSAnnotation): Interceptor {
         val interceptorType = it.findValue<KSType>("value")!!.toTypeName()
         val interceptorTag = it.findValueNoDefault<KSType>("tag")
+            ?.declaration
+            ?.let { it as KSClassDeclaration }
             ?.toClassName()
             ?.toTagAnnotation()
         return Interceptor(interceptorType, interceptorTag)

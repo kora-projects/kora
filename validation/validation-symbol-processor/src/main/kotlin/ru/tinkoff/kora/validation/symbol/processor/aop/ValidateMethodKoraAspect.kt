@@ -97,7 +97,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
         val resolvedType = returnTypeReference.resolve()
         val isNullable = resolvedType.isMarkedNullable
         val isNotNull = (method.annotations + (method.returnType?.annotations ?: emptySequence()))
-            .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+            .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
             .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
         val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
 
@@ -249,7 +249,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val resolvedType = parameter.type.resolve()
             val isNullable = resolvedType.isMarkedNullable
             val isNotNull = (parameter.annotations + parameter.type.annotations)
-                .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+                .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
                 .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
             val isJsonNullable = resolvedType.toTypeName().let { it is ParameterizedTypeName && it.rawType == ValidTypes.jsonNullable }
 
@@ -377,7 +377,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
         val resolvedType = type.resolve()
         val isNotNull = (annotations + type.annotations)
-            .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+            .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
             .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
         val isJsonNullable = resolvedType.declaration.let { it is KSClassDeclaration && it.toClassName() == ValidTypes.jsonNullable }
         return isJsonNullable && isNotNull

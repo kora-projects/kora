@@ -47,7 +47,7 @@ object ValidUtils {
         return annotation
             .mapNotNull { origin ->
                 origin.annotationType.resolve().declaration.annotations
-                    .filter { a -> a.annotationType.resolve().toClassName() == VALIDATED_BY_TYPE }
+                    .filter { a -> a.annotationType.resolve().declaration.let { it as KSClassDeclaration }.toClassName() == VALIDATED_BY_TYPE }
                     .map { validatedBy ->
                         val parameters = origin.arguments.associate { a -> Pair(a.name!!.asString(), a.value!!) }
                         val factory = validatedBy.arguments

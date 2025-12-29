@@ -132,7 +132,7 @@ data class Publisher(
     }
 
     fun config(): String = declaration.annotations
-        .filter { a -> a.annotationType.resolve().toClassName() == KafkaClassNames.kafkaPublisherAnnotation }
+        .filter { a -> a.annotationType.resolve().declaration.let { it as KSClassDeclaration }.toClassName() == KafkaClassNames.kafkaPublisherAnnotation }
         .flatMap { a -> a.arguments }
         .filter { a -> a.name!!.getShortName() == "value" }
         .map { a -> a.value.toString() }
@@ -223,7 +223,7 @@ fun parsePublisher(type: KSClassDeclaration): Publisher {
 private fun parseMethods(type: KSClassDeclaration): List<PublisherMethod> {
     val methods = ArrayList<PublisherMethod>()
     for (element in type.getDeclaredFunctions()) {
-        val topicAnnotation = element.annotations.firstOrNull { it.annotationType.resolve().toClassName() == KafkaClassNames.kafkaTopicAnnotation }
+        val topicAnnotation = element.annotations.firstOrNull { it.annotationType.resolve().declaration.let { it as KSClassDeclaration }.toClassName() == KafkaClassNames.kafkaTopicAnnotation }
         if (topicAnnotation != null) {
             val pathToTopicConfig = topicAnnotation.arguments
                 .filter { it.name!!.getShortName() == "value" }
@@ -242,7 +242,7 @@ private fun parseParameters(method: KSFunctionDeclaration): PublisherMethod.Para
     var valueParameter: RecordElement? = null
     var headersParameter: KSValueParameter? = null
     for (parameter in method.parameters) {
-        if (parameter.type.resolve().toClassName() == KafkaClassNames.headers) {
+        if (parameter.type.resolve().declaration.let { it as KSClassDeclaration }.toClassName() == KafkaClassNames.headers) {
             headersParameter = parameter
         } else if (valueParameter == null) {
             valueParameter = RecordElement(parameter)

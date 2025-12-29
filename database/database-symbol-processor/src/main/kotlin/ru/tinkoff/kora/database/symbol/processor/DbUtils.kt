@@ -99,7 +99,7 @@ object DbUtils {
         if (executorTag == null) {
             return null
         }
-        return executorTag.toClassName().toTagAnnotation()
+        return executorTag.toTypeName().toTagAnnotation()
     }
 
     fun KSClassDeclaration.findQueryMethods() = this.getAllFunctions()

@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.ksp.common
 
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toClassName
@@ -33,7 +34,7 @@ object KotlinPoetUtils {
             if (i > 0) {
                 c.add(", ")
             }
-            c.add("%T::class", ksType.toClassName())
+            c.add("%T::class", ksType.declaration.let { it as KSClassDeclaration }.toClassName())
         }
         return c.add("]").build()
     }

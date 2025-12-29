@@ -232,7 +232,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             val resolvedType = fieldProperty.type.resolve()
             val isNullable = resolvedType.isMarkedNullable
             val isNotNull = (fieldProperty.annotations + fieldProperty.type.annotations)
-                .map { it.annotationType.resolveToUnderlying().toClassName().simpleName }
+                .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
                 .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
             val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
 
