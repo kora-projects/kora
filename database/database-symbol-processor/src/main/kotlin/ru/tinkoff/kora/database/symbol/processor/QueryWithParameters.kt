@@ -105,7 +105,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
 
         private fun parseSimpleParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
             val result = ArrayList<QueryIndex>()
-            val pattern = Pattern.compile("[\\s\\n,(](?<param>:$sqlParameterName)(?=[\\s\\n,:)]|$)")
+            val pattern = sqlParameterPattern(sqlParameterName)
             val matcher = pattern.matcher(rawSql)
             while (matcher.find()) {
                 val mr = matcher.toMatchResult()
@@ -119,7 +119,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
 
         private fun parseEntityDirectParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
             val result = ArrayList<QueryIndex>()
-            val pattern = Pattern.compile("[\\s\\n,(](?<param>:$sqlParameterName)(?=[\\s\\n,:)]|$)")
+            val pattern = sqlParameterPattern(sqlParameterName)
             val matcher = pattern.matcher(rawSql)
             while (matcher.find()) {
                 val mr = matcher.toMatchResult()
@@ -129,6 +129,10 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
             }
 
             return QueryParameter(sqlParameterName, methodParameterNumber, result.map { it.start }, result)
+        }
+
+        private fun sqlParameterPattern(sqlParameterName: String): Pattern {
+            return Pattern.compile("[\\s\\n,(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)\\];]|$)")
         }
     }
 }
