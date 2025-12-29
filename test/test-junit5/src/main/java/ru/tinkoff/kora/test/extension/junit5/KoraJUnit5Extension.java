@@ -40,7 +40,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     static class KoraTestContext {
 
+        @Nullable
         volatile TestGraph graph;
+        @Nullable
         volatile TestClassMetadata metadata;
         final KoraAppTest annotation;
         final TestInstance.Lifecycle lifecycle;
@@ -140,6 +142,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             private final KoraConfigModification config;
             private final Map<String, String> systemProperties;
 
+            @Nullable
             private Properties prevProperties;
 
             public FileConfig(KoraConfigModification config) {
@@ -184,7 +187,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private static GraphMockitoContext getMockitoContext(ExtensionContext context) {
-        return context.getStore(MOCKITO).getOrComputeIfAbsent(GraphMockitoContext.class, (k) -> new GraphMockitoContext(), GraphMockitoContext.class);
+        return context.getStore(MOCKITO).computeIfAbsent(GraphMockitoContext.class, (k) -> new GraphMockitoContext(), GraphMockitoContext.class);
     }
 
     @Nullable
@@ -198,7 +201,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     private static KoraTestContext getKoraTestContext(ExtensionContext context) {
         var storage = context.getStore(NAMESPACE);
-        return storage.getOrComputeIfAbsent(KoraAppTest.class, (k -> {
+        return storage.computeIfAbsent(KoraAppTest.class, (k -> {
             final KoraAppTest koraAppTest = findKoraAppTest(context)
                 .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest not found for: " + context.getRequiredTestClass()));
 
@@ -258,9 +261,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 .map(KoraJUnit5Extension::getOuterClassFromNested)
                 .orElseThrow(() -> new ExtensionConfigurationException("@KoraAppTest can't get TestInstance for @TestComponent field injection"));
 
-            if (outerTestInstance != null) {
-                injectToInstanceFields(outerTestInstance, metadata.outerFieldsForInjection, graph, context);
-            }
+            injectToInstanceFields(outerTestInstance, metadata.outerFieldsForInjection, graph, context);
         }
     }
 
@@ -330,24 +331,24 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 if (koraTestContext.graph == null) {
                     logger.debug("@KoraAppTest test {} graph generation started...", testTarget);
 
-                    koraTestContext.graph = generateTestGraph(koraTestContext.metadata, context);
-
-                    boolean isSubNodeGraph = !koraTestContext.graph.getNodes().isEmpty();
-                    boolean isSubMockGraph = !koraTestContext.graph.getMocks().isEmpty();
+                    var graph = generateTestGraph(Objects.requireNonNull(koraTestContext.metadata), context);
+                    koraTestContext.graph = graph;
+                    boolean isSubNodeGraph = !graph.getNodes().isEmpty();
+                    boolean isSubMockGraph = !graph.getMocks().isEmpty();
                     if (isSubNodeGraph && isSubMockGraph) {
                         logger.debug("@KoraAppTest test {} graph initialization started in 'subgraph' mode...\nSubgraph consist of @Root nodes: {}\nSubgraph consist of mocks: {}",
-                            testTarget, koraTestContext.graph.getNodes(), koraTestContext.graph.getMocks());
+                            testTarget, graph.getNodes(), graph.getMocks());
                     } else if (isSubNodeGraph) {
                         logger.debug("@KoraAppTest test {} graph initialization started in 'subgraph' mode...\nSubgraph consist of @Root nodes: {}",
-                            testTarget, koraTestContext.graph.getNodes());
+                            testTarget, graph.getNodes());
                     } else if (isSubMockGraph) {
                         logger.debug("@KoraAppTest test {} graph initialization started in 'subgraph' mode...\nSubgraph consist of mocks: {}",
-                            testTarget, koraTestContext.graph.getMocks());
+                            testTarget, graph.getMocks());
                     } else {
                         logger.debug("@KoraAppTest test {} graph initialization started in 'full graph' mode with all @Root nodes...", testTarget);
                     }
 
-                    koraTestContext.graph.initialize();
+                    graph.initialize();
 
                     final String mode = isSubNodeGraph || isSubMockGraph
                         ? "subgraph"
@@ -358,10 +359,11 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
                 }
             }
         }
+        var graph = Objects.requireNonNull(koraTestContext.graph);
 
         if (!isReady) {
-            List<Node<?>> nodes = koraTestContext.graph.initialized().graphDraw().getNodes();
-            if (!koraTestContext.graph.getMocks().isEmpty() || !koraTestContext.graph.getNodes().isEmpty()) {
+            List<Node<?>> nodes = graph.initialized().graphDraw().getNodes();
+            if (!graph.getMocks().isEmpty() || !graph.getNodes().isEmpty()) {
                 logger.info("@KoraAppTest test {} context setup in '{}' mode for '{}' nodes took: {}",
                     testTarget, "subgraph", nodes.size(), TimeUtils.tookForLogging(started));
             } else {

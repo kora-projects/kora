@@ -4,7 +4,6 @@ import com.google.devtools.ksp.KspExperimental
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.function.ThrowingSupplier
 import ru.tinkoff.kora.validation.common.ViolationException
 import ru.tinkoff.kora.validation.symbol.processor.testdata.ValidTaz
 
@@ -58,7 +57,7 @@ class ValidateMethodAspectTests : ValidateRunner() {
         val service = getValidateSync()
 
         // then
-        assertDoesNotThrow<List<ValidTaz>> {
+        assertDoesNotThrow {
             service.validatedOutput(
                 ValidTaz("1"), null
             )
@@ -89,11 +88,11 @@ class ValidateMethodAspectTests : ValidateRunner() {
         val service = getValidateSync()
 
         // then
-        assertDoesNotThrow(ThrowingSupplier<List<ValidTaz>> {
+        assertDoesNotThrow {
             service.validatedInputAndOutput(
                 1, "1", ValidTaz("1"), null
             )
-        })
+        }
     }
 
     @Test
