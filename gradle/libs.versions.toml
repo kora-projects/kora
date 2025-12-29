@@ -19,8 +19,7 @@ undertow = "2.3.18.Final"
 resteasy = "6.2.12.Final"
 camunda7 = "7.21.0"
 zeebe = "8.7.10"
-junit-jupiter = "5.12.2"
-junit-platform = "1.12.2"
+junit = "6.0.1"
 guava = "33.3.1-jre"
 
 ["libraries"]
@@ -102,8 +101,8 @@ quartz = { module = "org.quartz-scheduler:quartz", version = "2.4.0" }
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
 
 awaitility = { module = "org.awaitility:awaitility", version = "4.2.2" }
-junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
-junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit-platform" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
 mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "5.4.0" }
 mockk = { module = "io.mockk:mockk", version = "1.13.11" }

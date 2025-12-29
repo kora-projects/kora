@@ -120,8 +120,8 @@ subprojects {
                 force "org.jetbrains.kotlin:kotlin-stdlib-jdk8:${versions.kotlin.stdlib.get()}"
                 force "com.squareup:kotlinpoet:${versions.kotlinpoet.get()}"
                 force "com.squareup:kotlinpoet-ksp:${versions.kotlinpoet.get()}"
-                force "org.junit.jupiter:junit-jupiter:${versions.junit.jupiter.get()}"
-                force "org.junit.jupiter:junit-platform-launcher:${versions.junit.platform.get()}"
+                force "org.junit.jupiter:junit-jupiter:${versions.junit.get()}"
+                force "org.junit.jupiter:junit-platform-launcher:${versions.junit.get()}"
                 force "org.slf4j:slf4j-api:${versions.slf4j.get()}"
                 force "com.google.guava:guava:${versions.guava.get()}"
             }

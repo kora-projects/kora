@@ -1,7 +1,10 @@
 package ru.tinkoff.kora.http.server.common;
 
 import io.opentelemetry.api.trace.Span;
-import okhttp3.*;
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
@@ -429,9 +432,8 @@ public abstract class HttpServerTestKit {
         var request = request("/")
             .post(RequestBody.create(data))
             .post(new RequestBody() {
-                @Nullable
                 @Override
-                public MediaType contentType() {
+                public okhttp3.@Nullable MediaType contentType() {
                     return null;
                 }
 
