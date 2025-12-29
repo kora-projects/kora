@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.client.symbol.processor.extension
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.getFunctionDeclarationsByName
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.ParameterizedTypeName
@@ -20,7 +21,7 @@ class HttpClientResponseMapperKoraExtension : KoraExtension {
         if (tags.isNotEmpty()) {
             return null
         }
-        if (type.toClassName() != httpClientResponseMapper) {
+        if (type.declaration.let { it as KSClassDeclaration }.toClassName() != httpClientResponseMapper) {
             return null
         }
         val argType = type.arguments[0].type!!

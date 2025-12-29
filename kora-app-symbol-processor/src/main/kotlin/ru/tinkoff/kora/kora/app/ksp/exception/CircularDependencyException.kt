@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.ksp.exception
 
-import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.exception.ProcessingError
@@ -25,7 +25,7 @@ data class CircularDependencyException(
 
             if (declaration.tags.isEmpty()) {
                 return ProcessingError(
-                    """Encountered circular dependency in graph for source type: ${declaration.type.toClassName()} (no tags)
+                    """Encountered circular dependency in graph for source type: ${declaration.type.toTypeName()} (no tags)
                     $deps
                     Please check that you are not using cycle dependency in ${CommonClassNames.lifecycle}, this is forbidden.""".trimIndent(),
                     declaration.source
@@ -34,7 +34,7 @@ data class CircularDependencyException(
                 val tagMsg: String = declaration.tags.stream()
                     .collect(Collectors.joining(", ", "@Tag(", ")"))
                 return ProcessingError(
-                    """Encountered circular dependency in graph for source type: ${declaration.type.toClassName()} with $tagMsg
+                    """Encountered circular dependency in graph for source type: ${declaration.type.toTypeName()} with $tagMsg
                     $deps
                     Please check that you are not using cycle dependency in ${CommonClassNames.lifecycle}, this is forbidden.""".trimIndent(),
                     declaration.source

@@ -5,6 +5,7 @@ import com.google.devtools.ksp.getFunctionDeclarationsByName
 import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.Variance
 import com.squareup.kotlinpoet.*
@@ -119,7 +120,7 @@ class R2dbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
         if (entity == null) {
             return null
         }
-        val typeName = rowType.type!!.resolve().toClassName().simpleName
+        val typeName = rowType.type!!.resolve().declaration.let { it as KSClassDeclaration }.toClassName().simpleName
         val mapperName = rowKSType.declaration.getOuterClassesAsPrefix() + "${typeName}_R2dbcRowMapper"
         val packageName = rowKSType.declaration.packageName.asString()
 

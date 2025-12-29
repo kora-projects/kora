@@ -80,7 +80,7 @@ class RepositoryBuilder(
             val parameter = parameters[i]
             val constructorParameter = ParameterSpec.builder(parameter.name!!.asString(), parameter.type.toTypeName())
             for (annotation in parameter.annotations) {
-                val annotationSpec = AnnotationSpec.builder(annotation.annotationType.resolve().toClassName())
+                val annotationSpec = AnnotationSpec.builder(annotation.annotationType.resolve().declaration.let { it as KSClassDeclaration }.toClassName())
                 annotation.arguments.forEach { annotationArg ->
                     annotationSpec.addMember(annotationArg.name!!.asString(), annotationArg.value!!)
                 }

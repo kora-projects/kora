@@ -279,13 +279,13 @@ object GraphBuilder {
         return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
             "Dependency requested at: ${module.qualifiedName!!.asString()}#${factoryMethod}(${
                 factoryMethod.parameters.joinToString(", ") {
-                    it.type.resolve().toClassName().toString()
+                    it.type.resolve().declaration.let { it as KSClassDeclaration }.toClassName().toString()
                 }
             })"
         } else {
             "Dependency requested at: ${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
                 factoryMethod.parameters.joinToString(", ") {
-                    it.type.resolve().toClassName().toString()
+                    it.type.resolve().declaration.let { it as KSClassDeclaration }.toClassName().toString()
                 }
             })"
         }

@@ -126,7 +126,7 @@ class GrpcClientExtension(
             return null
         }
         val apiTag = stubForAnnotation.findValueNoDefault<List<KSType>>("value")!!
-            .map { it.toClassName().canonicalName }
+            .map { it.declaration.let { it as KSClassDeclaration }.qualifiedName!!.asString() }
             .toSet()
         val implClassName = classDecl.toClassName()
         val constructor = classDecl.primaryConstructor!!

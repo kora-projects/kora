@@ -124,7 +124,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
-                        if (requiresConverter(parameterType) && httpHeaders != parameterType.toClassName()) {
+                        if (requiresConverter(parameterType) && httpHeaders != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
@@ -137,7 +137,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
-                        if (requiresConverter(parameterType) && httpCookie != parameterType.toClassName()) {
+                        if (requiresConverter(parameterType) && httpCookie != parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
                             result[getConverterName(method, parameter.parameter)] = getConverterTypeName(parameterType)
                         }
                     }
@@ -262,7 +262,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                     if (parameterType.isMap()) {
                         val keyType = parameterType.arguments[0].type?.resolve()
-                        if (keyType!!.toClassName() != String::class.asClassName()) {
+                        if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
                             throw ProcessingErrorException("@Query map key type must be String, but was: $keyType", method)
                         }
 
@@ -352,13 +352,13 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if (httpHeaders == parameterType.toClassName()) {
+            if (httpHeaders == parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
                 b.beginControlFlow("%L.forEach { _e -> ", literalName)
                 b.addStatement("_headers.add(_e.key, _e.value)", getConverterName(methodData, it.parameter))
                 b.endControlFlow()
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
-                if (keyType!!.toClassName() != String::class.asClassName()) {
+                if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
                     throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
                 }
 
@@ -422,11 +422,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 b.beginControlFlow("if (%N != null)", it.parameter.name?.asString().toString())
             }
 
-            if (httpCookie == parameterType.toClassName()) {
+            if (httpCookie == parameterType.declaration.let { it as KSClassDeclaration }.toClassName()) {
                 b.addStatement("_headers.add(\"Cookie\", %L.toValue())", literalName)
             } else if (parameterType.isMap()) {
                 val keyType = parameterType.arguments[0].type?.resolve()
-                if (keyType!!.toClassName() != String::class.asClassName()) {
+                if (keyType!!.declaration.let { it as KSClassDeclaration }.toClassName() != String::class.asClassName()) {
                     throw ProcessingErrorException("@Header map key type must be String, but was: $keyType", method)
                 }
 
@@ -851,7 +851,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
             } else if (mapper != null) {
                 if (mapper.declaration is KSClassDeclaration && mapper.declaration.typeParameters.isNotEmpty()) {
                     val typeArg = returnType.toTypeName().copy(false)
-                    return mapper.toClassName().parameterizedBy(mapper.declaration.typeParameters.map { typeArg })
+                    return mapper.declaration.let { it as KSClassDeclaration }.toClassName().parameterizedBy(mapper.declaration.typeParameters.map { typeArg })
                 }
                 return mapper.toTypeName()
             } else {

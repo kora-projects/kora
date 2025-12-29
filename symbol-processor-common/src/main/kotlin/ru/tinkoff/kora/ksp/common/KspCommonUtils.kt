@@ -215,7 +215,7 @@ data class MappingData(val mapper: KSType?, val tags: Set<String>) {
 
     fun parameterized(tn: TypeName): TypeName {
         assert(isGeneric())
-        return mapper!!.toClassName().parameterizedBy(tn)
+        return mapper!!.declaration.let { it as KSClassDeclaration }.toClassName().parameterizedBy(tn)
     }
 }
 
