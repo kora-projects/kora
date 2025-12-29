@@ -1,10 +1,10 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
-import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.*;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.*;

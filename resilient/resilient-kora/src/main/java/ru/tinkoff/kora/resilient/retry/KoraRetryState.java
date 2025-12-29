@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import jakarta.annotation.Nonnull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,9 +36,8 @@ record KoraRetryState(
         return delayNanos + delayStepNanos * (attempts.get() - 1);
     }
 
-    @Nonnull
     @Override
-    public RetryStatus onException(@Nonnull Throwable throwable) {
+    public RetryStatus onException(Throwable throwable) {
         if (!failurePredicate.test(throwable)) {
             if (logger.isTraceEnabled()) {
                 logger.trace("RetryState '{}' predicate rejected exception", name, throwable);

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.logging.common.arg;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Marker;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import tools.jackson.core.JsonGenerator;

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingError;
@@ -20,7 +20,7 @@ public class EntityUtils {
             .collect(Collectors.joining("_"));
     };
 
-    public static String parseColumnName(VariableElement element, @Nullable CommonUtils.NameConverter columnsNameConverter) {
+    public static String parseColumnName(VariableElement element, CommonUtils.@Nullable NameConverter columnsNameConverter) {
         var column = AnnotationUtils.findAnnotation(element, DbUtils.COLUMN_ANNOTATION);
         var fieldName = element.getSimpleName().toString();
         if (column != null) {

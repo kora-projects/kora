@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;

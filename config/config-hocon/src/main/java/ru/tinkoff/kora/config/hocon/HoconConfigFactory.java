@@ -4,6 +4,7 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
 import com.typesafe.config.ConfigRenderOptions;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.ConfigValuePath;
@@ -11,7 +12,6 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfig;
 import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
-import jakarta.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;

@@ -1,19 +1,20 @@
 package ru.tinkoff.kora.openapi.management;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 
+@NullMarked
 final class ResourceUtils {
 
     private ResourceUtils() {}
 
     @Nullable
-    public static InputStream getFileAsStream(@Nonnull String path) {
+    public static InputStream getFileAsStream(String path) {
         var resourceAsStream = ResourceUtils.class.getResourceAsStream(path);
         if (resourceAsStream != null) {
             return new BufferedInputStream(resourceAsStream);
@@ -26,7 +27,7 @@ final class ResourceUtils {
     }
 
     @Nullable
-    public static String getFileAsString(@Nonnull String path) {
+    public static String getFileAsString(String path) {
         var is = ResourceUtils.getFileAsStream(path);
         if (is == null) {
             return null;

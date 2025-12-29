@@ -43,7 +43,7 @@ class SyncCacheAopTests : CaffeineCacheModule {
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
             val inst = serviceClass.constructors[0].newInstance(
                 cache,
-                CacheKeyMapper.CacheKeyMapper2<DummyCache21.Key, String?, BigDecimal?> { k1, k2 -> DummyCache21.Key(k1 ?: "", k2) }
+                CacheKeyMapper.CacheKeyMapper2<DummyCache21.Key, String, BigDecimal> { k1, k2 -> DummyCache21.Key(k1 ?: "", k2!!) }
             ) as CacheableSync
             inst
         } catch (e: Exception) {

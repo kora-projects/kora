@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.common.form;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
 
 import java.util.List;

@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.config;
 
-import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
@@ -19,7 +18,7 @@ public class ConfigWithFileWithPropertyTests implements KoraAppTestConfigModifie
     Config config;
 
     @Override
-    public @Nonnull KoraConfigModification config() {
+    public KoraConfigModification config() {
         return KoraConfigModification.ofResourceFile("config/application-env.conf")
             .withSystemProperty("ENV_SECOND", "value");
     }

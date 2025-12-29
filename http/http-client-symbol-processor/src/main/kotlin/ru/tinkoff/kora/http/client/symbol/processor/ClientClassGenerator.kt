@@ -44,6 +44,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
+import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 import ru.tinkoff.kora.ksp.common.MappingData
 import ru.tinkoff.kora.ksp.common.TagUtils.addTag
 import ru.tinkoff.kora.ksp.common.TagUtils.toTagAnnotation
@@ -501,17 +502,26 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
         b.add("try {").indent().add("\n")
         b.add("_client.execute(_request).%M { _response ->", MemberName("kotlin.io", "use")).indent().add("\n")
+        val isNullableResult = method.returnType?.resolveToUnderlying()?.isMarkedNullable == true
         if (methodData.responseMapper?.mapper != null) {
             val responseMapperName = method.simpleName.asString() + "ResponseMapper"
-            b.add("return %N.apply(_response)", responseMapperName)
+            if (isNullableResult) {
+                b.add("return %N.apply(_response)", responseMapperName)
+            } else {
+                b.add("return %N.apply(_response)!!", responseMapperName)
+            }
         } else if (methodData.codeMappers.isEmpty()) {
             b.addStatement("val _code = _response.code()")
             b.controlFlow("if (_code in 200..299)") {
                 if (methodData.returnType.declaration.qualifiedName?.asString() == "kotlin.Unit") {
-                    b.add("return\n")
+                    add("return\n")
                 } else {
                     val responseMapperName = method.simpleName.asString() + "ResponseMapper"
-                    addStatement("return %N.apply(_response)", responseMapperName)
+                    if (isNullableResult) {
+                        addStatement("return %N.apply(_response)", responseMapperName)
+                    } else {
+                        addStatement("return %N.apply(_response)!!", responseMapperName)
+                    }
                 }
                 nextControlFlow("else")
                 add("throw %T.fromResponse(_response)", httpClientResponseException)
@@ -526,9 +536,13 @@ class ClientClassGenerator(private val resolver: Resolver) {
                     } else {
                         val responseMapperName = method.simpleName.asString() + codeMapper.code.toString() + "ResponseMapper"
                         if (codeMapper.assignable) {
-                            add("%L -> %L.apply(_response)", codeMapper.code, responseMapperName)
+                            if (isNullableResult) {
+                                add("%L -> %L.apply(_response)", codeMapper.code, responseMapperName)
+                            } else {
+                                add("%L -> %L.apply(_response)!!", codeMapper.code, responseMapperName)
+                            }
                         } else {
-                            add("%L -> throw %L.apply(_response)", codeMapper.code, responseMapperName)
+                            add("%L -> throw %L.apply(_response)!!", codeMapper.code, responseMapperName)
                         }
                         b.add("\n")
                     }
@@ -536,10 +550,14 @@ class ClientClassGenerator(private val resolver: Resolver) {
                 if (defaultMapper == null) {
                     add("else -> throw %T.fromResponse(_response)", httpClientResponseException)
                 } else {
-                    if (defaultMapper!!.assignable) {
-                        add("else -> %L.apply(_response)", method.simpleName.asString() + "DefaultResponseMapper")
+                    if (defaultMapper.assignable) {
+                        if (isNullableResult) {
+                            add("else -> %L.apply(_response)", method.simpleName.asString() + "DefaultResponseMapper")
+                        } else {
+                            add("else -> %L.apply(_response)!!", method.simpleName.asString() + "DefaultResponseMapper")
+                        }
                     } else {
-                        add("else -> throw %L.apply(_response)", method.simpleName.asString() + "DefaultResponseMapper")
+                        add("else -> throw %L.apply(_response)!!", method.simpleName.asString() + "DefaultResponseMapper")
                     }
                     b.add("\n")
                 }

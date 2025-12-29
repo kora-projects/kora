@@ -9,7 +9,7 @@ import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
 import io.undertow.server.HttpServerExchange;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryConfig;
 import ru.tinkoff.kora.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 

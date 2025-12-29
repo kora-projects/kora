@@ -11,8 +11,8 @@ public class AbstractCacheAnnotationProcessorTests extends AbstractAnnotationPro
                    import java.util.concurrent.CompletableFuture;
                    import java.util.concurrent.CompletionStage;
                    import ru.tinkoff.kora.json.common.JsonNullable;
-                   import jakarta.annotation.Nonnull;
-                   import jakarta.annotation.Nullable;
+                   import org.jspecify.annotations.NonNull;
+                   import org.jspecify.annotations.Nullable;
                    import ru.tinkoff.kora.common.KoraApp;
                    import ru.tinkoff.kora.common.Component;
                    import ru.tinkoff.kora.common.annotation.Root;

@@ -90,8 +90,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 @Component
                 open class TestComponent {
                     @Validate
-                    @Nonnull
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): @NonNull JsonNullable<String>? {
                         return JsonNullable.undefined()
                     }
                 }
@@ -115,8 +114,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 @Component
                 open class TestComponent {
                     @Validate
-                    @Nonnull
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): @NonNull JsonNullable<String>? {
                         return JsonNullable.nullValue()
                     }
                 }
@@ -140,8 +138,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
                 @Component
                 open class TestComponent {
                     @Validate
-                    @Nonnull
-                    open fun test(): JsonNullable<String>? {
+                    open fun test(): @NonNull JsonNullable<String>? {
                         return JsonNullable.of("1")
                     }
                 }

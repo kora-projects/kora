@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
-import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,7 +85,6 @@ final class TestGraph implements AutoCloseable {
         }
     }
 
-    @Nonnull
     TestGraphContext initialized() {
         if (graphInitialized == null) {
             throw new ExtensionConfigurationException("Dependency container is not initialized, initialization probably failed on previous steps!");

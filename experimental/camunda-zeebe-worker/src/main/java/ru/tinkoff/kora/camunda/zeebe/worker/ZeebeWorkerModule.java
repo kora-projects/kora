@@ -10,7 +10,7 @@ import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.grpc.client.GrpcClientChannelFactory;
 import ru.tinkoff.grpc.client.GrpcClientModule;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;

@@ -21,7 +21,7 @@ public abstract class AbstractJdbcRepositoryTest extends AbstractRepositoryTest 
             import java.util.concurrent.CompletionStage;
 
             import java.sql.*;
-            import jakarta.annotation.Nullable;
+            import org.jspecify.annotations.Nullable;
             """;
     }
 

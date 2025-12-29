@@ -2,7 +2,7 @@ package ru.tinkoff.kora.test.extension.junit5.kotlin.mockk
 
 import io.mockk.every
 import io.mockk.mockkClass
-import jakarta.annotation.Nonnull
+import org.jspecify.annotations.NullMarked
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.common.Tag
@@ -14,6 +14,7 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.*
 import java.util.function.Supplier
 
 @KoraAppTest(TestApplication::class)
+@NullMarked
 class MockkGraphModificationTests : KoraAppTestGraphModifier {
 
     @TestComponent
@@ -26,7 +27,6 @@ class MockkGraphModificationTests : KoraAppTestGraphModifier {
     @TestComponent
     lateinit var component23: TestComponent23
 
-    @Nonnull
     override fun graph(): KoraGraphModification {
         return KoraGraphModification.create()
             .replaceComponent(

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.common;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import tools.jackson.core.Base64Variants;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;

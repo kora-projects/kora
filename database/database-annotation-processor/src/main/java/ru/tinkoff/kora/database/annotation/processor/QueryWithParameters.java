@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.annotation.processor;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
 import javax.annotation.processing.Filer;

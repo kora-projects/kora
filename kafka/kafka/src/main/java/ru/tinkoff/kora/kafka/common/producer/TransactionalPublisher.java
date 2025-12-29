@@ -5,9 +5,9 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher;
 
-import jakarta.annotation.Nullable;
 import java.util.Map;
 
 /**

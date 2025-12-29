@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.config;
 
-import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
@@ -17,7 +16,7 @@ public class ConfigWithSystemPropertyTests implements KoraAppTestConfigModifier 
     Config config;
 
     @Override
-    public @Nonnull KoraConfigModification config() {
+    public KoraConfigModification config() {
         return KoraConfigModification.ofSystemProperty("one", "1")
             .withSystemProperty("two", "2");
     }

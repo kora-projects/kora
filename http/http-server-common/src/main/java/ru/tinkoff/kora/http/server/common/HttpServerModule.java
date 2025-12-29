@@ -2,7 +2,7 @@ package ru.tinkoff.kora.http.server.common;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
 import ru.tinkoff.kora.application.graph.ValueOf;

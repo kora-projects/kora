@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.http.server.common.handler;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.cookie.Cookie;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
@@ -10,12 +9,11 @@ import java.util.*;
 
 public final class RequestHandlerUtils {
 
-    private RequestHandlerUtils() { }
+    private RequestHandlerUtils() {}
 
     /*
      * Path: String, UUID, Integer, Long, Double
      */
-    @Nonnull
     public static String parseStringPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
@@ -49,7 +47,6 @@ public final class RequestHandlerUtils {
         return builder.toString();
     }
 
-    @Nonnull
     public static UUID parseUUIDPathParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var param = request.pathParams().get(name);
         if (param == null) {
@@ -120,7 +117,6 @@ public final class RequestHandlerUtils {
     /*
      * Headers: String, Integer, Long, Double, BigInteger, BigDecimal, UUID
      */
-    @Nonnull
     public static String parseStringHeaderParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = request.headers().getAll(name);
         if (result == null) {
@@ -152,7 +148,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return List.of();
         }
 
@@ -184,7 +180,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return Set.of();
         }
 
@@ -252,7 +248,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return List.of();
         }
 
@@ -292,7 +288,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return Set.of();
         }
 
@@ -369,7 +365,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return List.of();
         }
 
@@ -409,7 +405,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return Set.of();
         }
 
@@ -486,7 +482,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return List.of();
         }
 
@@ -526,7 +522,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return Set.of();
         }
 
@@ -594,7 +590,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return List.of();
         }
 
@@ -634,7 +630,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return Set.of();
         }
 
@@ -674,7 +670,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return List.of();
         }
 
@@ -712,7 +708,7 @@ public final class RequestHandlerUtils {
         var headers = request.headers().getAll(name);
         if (headers == null) {
             return null;
-        } else if(headers.isEmpty()) {
+        } else if (headers.isEmpty()) {
             return Set.of();
         }
 
@@ -740,7 +736,6 @@ public final class RequestHandlerUtils {
     /*
      * Query: String, Integer, Long, Double, Boolean, UUID
      */
-    @Nonnull
     public static UUID parseUuidQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalUuidQueryParameter(request, name);
         if (result == null) {
@@ -769,7 +764,6 @@ public final class RequestHandlerUtils {
         }
     }
 
-    @Nonnull
     public static String parseStringQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalStringQueryParameter(request, name);
         if (result == null) {
@@ -902,7 +896,6 @@ public final class RequestHandlerUtils {
     /*
      * Query: List<String>, List<Integer>, List<Long>, List<Double>, List<Boolean>, List<UUID>
      */
-    @Nonnull
     public static List<Integer> parseIntegerListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalIntegerListQueryParameter(request, name);
         if (result == null) {
@@ -916,7 +909,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return List.of();
         }
 
@@ -937,7 +930,6 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    @Nonnull
     public static List<UUID> parseUuidListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalUuidListQueryParameter(request, name);
         if (result == null) {
@@ -951,7 +943,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return List.of();
         }
 
@@ -972,7 +964,6 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    @Nonnull
     public static List<String> parseStringListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalStringListQueryParameter(request, name);
         if (result == null) {
@@ -986,14 +977,13 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return List.of();
         }
 
         return params.stream().toList();
     }
 
-    @Nonnull
     public static List<Long> parseLongListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalLongListQueryParameter(request, name);
         if (result == null) {
@@ -1007,7 +997,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return List.of();
         }
 
@@ -1028,7 +1018,6 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    @Nonnull
     public static List<Double> parseDoubleListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalDoubleListQueryParameter(request, name);
         if (result == null) {
@@ -1042,7 +1031,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return List.of();
         }
 
@@ -1063,7 +1052,6 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    @Nonnull
     public static List<Boolean> parseBooleanListQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalBooleanListQueryParameter(request, name);
         if (result == null) {
@@ -1077,7 +1065,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return List.of();
         }
 
@@ -1100,7 +1088,6 @@ public final class RequestHandlerUtils {
         return result;
     }
 
-    @Nonnull
     public static Set<Integer> parseIntegerSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalIntegerSetQueryParameter(request, name);
         if (result == null) {
@@ -1114,7 +1101,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return Set.of();
         }
 
@@ -1135,7 +1122,6 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    @Nonnull
     public static Set<UUID> parseUuidSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalUuidSetQueryParameter(request, name);
         if (result == null) {
@@ -1149,7 +1135,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return Set.of();
         }
 
@@ -1170,7 +1156,6 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    @Nonnull
     public static Set<String> parseStringSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalStringSetQueryParameter(request, name);
         if (result == null) {
@@ -1184,7 +1169,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return Set.of();
         }
 
@@ -1198,7 +1183,6 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    @Nonnull
     public static Set<Long> parseLongSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalLongSetQueryParameter(request, name);
         if (result == null) {
@@ -1212,7 +1196,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return Set.of();
         }
 
@@ -1233,7 +1217,6 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    @Nonnull
     public static Set<Double> parseDoubleSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalDoubleSetQueryParameter(request, name);
         if (result == null) {
@@ -1247,7 +1230,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return Set.of();
         }
 
@@ -1268,7 +1251,6 @@ public final class RequestHandlerUtils {
         return Collections.unmodifiableSet(result);
     }
 
-    @Nonnull
     public static Set<Boolean> parseBooleanSetQueryParameter(HttpServerRequest request, String name) throws HttpServerResponseException {
         var result = parseOptionalBooleanSetQueryParameter(request, name);
         if (result == null) {
@@ -1282,7 +1264,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return Set.of();
         }
 
@@ -1319,7 +1301,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return List.of();
         }
 
@@ -1353,7 +1335,7 @@ public final class RequestHandlerUtils {
         var params = request.queryParams().get(name);
         if (params == null) {
             return null;
-        } else if(params.isEmpty()) {
+        } else if (params.isEmpty()) {
             return Set.of();
         }
 

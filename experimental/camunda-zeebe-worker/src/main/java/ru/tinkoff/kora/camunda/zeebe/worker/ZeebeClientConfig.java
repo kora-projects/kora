@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.camunda.zeebe.worker;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;

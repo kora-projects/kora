@@ -1,13 +1,14 @@
 package ru.tinkoff.kora.kafka.common.consumer.containers;
 
-import jakarta.annotation.Nonnull;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.Deserializer;
+import org.jspecify.annotations.NullMarked;
 
 import java.util.*;
 
+@NullMarked
 final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
 
     private final ConsumerRecords<byte[], byte[]> realRecords;
@@ -37,7 +38,6 @@ final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
         return realRecords.partitions();
     }
 
-    @Nonnull
     @Override
     public Iterator<ConsumerRecord<K, V>> iterator() {
         var real = realRecords.iterator();
@@ -64,7 +64,6 @@ final class ConsumerRecordsWrapper<K, V> extends ConsumerRecords<K, V> {
         return realRecords.isEmpty();
     }
 
-    @Nonnull
     public ConsumerRecords<byte[], byte[]> unwrap() {
         return realRecords;
     }

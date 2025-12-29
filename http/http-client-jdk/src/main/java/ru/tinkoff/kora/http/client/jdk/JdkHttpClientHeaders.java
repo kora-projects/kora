@@ -1,12 +1,13 @@
 package ru.tinkoff.kora.http.client.jdk;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.header.AbstractHttpHeaders;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.*;
 
+@NullMarked
 public class JdkHttpClientHeaders extends AbstractHttpHeaders implements HttpHeaders {
     private final Map<String, List<String>> headers;
 
@@ -50,7 +51,6 @@ public class JdkHttpClientHeaders extends AbstractHttpHeaders implements HttpHea
         return Collections.unmodifiableSet(this.headers.keySet());
     }
 
-    @Nonnull
     @Override
     public Iterator<Map.Entry<String, List<String>>> iterator() {
         return this.headers.entrySet().iterator();

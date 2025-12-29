@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.database.jdbc.mapper.parameter;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Mapping;
-
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.database.jdbc.JdbcRepository;
 
 import java.sql.PreparedStatement;

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.extension;
 
 import com.palantir.javapoet.ClassName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;

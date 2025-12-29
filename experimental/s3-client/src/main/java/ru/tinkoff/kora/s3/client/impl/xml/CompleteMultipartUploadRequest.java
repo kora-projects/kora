@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.s3.client.impl.xml;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamException;

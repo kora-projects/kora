@@ -2,7 +2,7 @@ package ru.tinkoff.kora.cache.redis.lettuce;
 
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.SocketOptions;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.cache.redis.RedisCacheClientConfig;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;

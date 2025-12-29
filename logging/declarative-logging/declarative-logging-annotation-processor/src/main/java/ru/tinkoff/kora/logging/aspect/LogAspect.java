@@ -1,7 +1,10 @@
 package ru.tinkoff.kora.logging.aspect;
 
-import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeName;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.*;
 import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
@@ -88,8 +91,8 @@ public class LogAspect implements KoraAspect {
                     ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(executableElement.getReturnType())) : TypeName.get(mapping.mapperClass())
                     : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(executableElement.getReturnType()).box());
                 var mapper = aspectContext.fieldFactory().constructorParam(
-                    mapperType,
-                    List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
+                    mapperType.annotated(CommonClassNames.nullableAnnotation),
+                    List.of()
                 );
                 var resultWriterBuilder = CodeBlock.builder().beginControlFlow("gen ->")
                     .addStatement("gen.writeStartObject()")
@@ -176,8 +179,8 @@ public class LogAspect implements KoraAspect {
                     ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(methodGeneric)) : TypeName.get(mapping.mapperClass())
                     : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(methodGeneric));
                 var mapper = aspectContext.fieldFactory().constructorParam(
-                    mapperType,
-                    List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
+                    mapperType.annotated(CommonClassNames.nullableAnnotation),
+                    List.of()
                 );
                 var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
                     .add("gen.writeStartObject();\n")
@@ -313,8 +316,8 @@ public class LogAspect implements KoraAspect {
                     ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(param.asType())) : TypeName.get(mapping.mapperClass())
                     : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(param.asType()).box());
                 var mapper = aspectContext.fieldFactory().constructorParam(
-                    mapperType,
-                    List.of(AnnotationSpec.builder(CommonClassNames.nullable).build())
+                    mapperType.annotated(CommonClassNames.nullableAnnotation),
+                    List.of()
                 );
                 b.beginControlFlow("if (this.$N != null)", mapper);
                 b.addStatement("gen.writeName($S)", param.getSimpleName());

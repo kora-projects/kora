@@ -79,7 +79,7 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun strResponseMapper(): HttpServerResponseMapper<String> {
-        return HttpServerResponseMapper { request: HttpServerRequest, result: String -> HttpServerResponse.of(200, HttpBody.plaintext(result)) }
+        return HttpServerResponseMapper { request: HttpServerRequest, result: String? -> HttpServerResponse.of(200, HttpBody.plaintext(result)) }
     }
 
     protected fun stringRequestMapper(): HttpServerRequestMapper<String> {

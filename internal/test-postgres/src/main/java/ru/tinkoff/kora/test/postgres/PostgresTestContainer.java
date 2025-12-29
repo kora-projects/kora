@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.test.postgres;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.*;
 import org.junit.platform.launcher.TestExecutionListener;
 import org.junit.platform.launcher.TestPlan;
 import org.testcontainers.containers.PostgreSQLContainer;
 
-import jakarta.annotation.Nullable;
 import java.lang.reflect.Method;
 import java.sql.SQLException;
 import java.util.Objects;

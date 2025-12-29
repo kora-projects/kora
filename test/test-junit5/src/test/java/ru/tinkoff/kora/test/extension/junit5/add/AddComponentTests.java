@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.test.extension.junit5.add;
 
-import jakarta.annotation.Nonnull;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
@@ -25,7 +24,7 @@ public class AddComponentTests implements KoraAppTestGraphModifier {
     private LifecycleComponent added;
 
     @Override
-    public @Nonnull KoraGraphModification graph() {
+    public KoraGraphModification graph() {
         return KoraGraphModification.create()
             .addComponent(LifecycleComponent.class, TestComponent23.class, () -> (LifecycleComponent) () -> "?");
     }

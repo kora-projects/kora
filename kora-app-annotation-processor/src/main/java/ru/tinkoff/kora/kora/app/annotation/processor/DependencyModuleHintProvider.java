@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import com.palantir.javapoet.TypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import tools.jackson.core.JsonParser;

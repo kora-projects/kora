@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
@@ -52,7 +51,7 @@ public interface CircuitBreakerConfig {
         }
     }
 
-    default NamedConfig getNamedConfig(@Nonnull String name) {
+    default NamedConfig getNamedConfig(String name) {
         final NamedConfig defaultConfig = circuitbreaker().get(DEFAULT);
         final NamedConfig namedConfig = circuitbreaker().getOrDefault(name, defaultConfig);
         if (namedConfig == null)

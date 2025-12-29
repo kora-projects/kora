@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.resilient.ResilientException;
 
 /**
@@ -8,7 +7,7 @@ import ru.tinkoff.kora.resilient.ResilientException;
  */
 public final class RetryExhaustedException extends ResilientException {
 
-    public RetryExhaustedException(String name, int attempts, @Nonnull Throwable cause) {
+    public RetryExhaustedException(String name, int attempts, Throwable cause) {
         super(name, "All '" + attempts + "' retry attempts exhausted: " + cause.getMessage(), cause);
     }
 }

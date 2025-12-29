@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.annotation.Root;

@@ -8,7 +8,7 @@ import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderMap;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.xnio.IoUtils;
 import ru.tinkoff.kora.camunda.rest.CamundaRestConfig;
 import ru.tinkoff.kora.http.common.HttpMethod;

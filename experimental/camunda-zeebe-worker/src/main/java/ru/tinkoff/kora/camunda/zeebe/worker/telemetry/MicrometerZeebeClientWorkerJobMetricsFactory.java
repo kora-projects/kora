@@ -3,7 +3,7 @@ package ru.tinkoff.kora.camunda.zeebe.worker.telemetry;
 import io.camunda.zeebe.client.api.worker.JobWorkerMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.ArrayList;

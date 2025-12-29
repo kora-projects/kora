@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.netty.common;
 
 import io.netty.util.NettyRuntime;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 @ConfigValueExtractor

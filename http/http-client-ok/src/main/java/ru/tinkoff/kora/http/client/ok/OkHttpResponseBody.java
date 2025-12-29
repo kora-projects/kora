@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.client.ok;
 
-import jakarta.annotation.Nullable;
 import okhttp3.ResponseBody;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
 import java.io.IOException;

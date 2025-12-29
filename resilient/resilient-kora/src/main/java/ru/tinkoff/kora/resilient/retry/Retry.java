@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.resilient.retry;
 
-import jakarta.annotation.Nonnull;
-
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
@@ -33,8 +31,7 @@ public interface Retry {
             EXHAUSTED
         }
 
-        @Nonnull
-        RetryStatus onException(@Nonnull Throwable throwable);
+            RetryStatus onException(Throwable throwable);
 
         int getAttempts();
 
@@ -51,14 +48,13 @@ public interface Retry {
     /**
      * @return new {@link RetryState}
      */
-    @Nonnull
     RetryState asState();
 
     /**
      * @param runnable to execute for successful completion
      * @throws RetryExhaustedException if exhausted all attempts
      */
-    <E extends Throwable> void retry(@Nonnull RetryRunnable<E> runnable) throws RetryExhaustedException, E;
+    <E extends Throwable> void retry(RetryRunnable<E> runnable) throws RetryExhaustedException, E;
 
     /**
      * @param supplier to use for value extraction
@@ -66,7 +62,7 @@ public interface Retry {
      * @return value is succeeded
      * @throws RetryExhaustedException if exhausted all attempts
      */
-    <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier) throws RetryExhaustedException, E;
+    <T, E extends Throwable> T retry(RetrySupplier<T, E> supplier) throws RetryExhaustedException, E;
 
     /**
      * @param supplier to use for value extraction
@@ -74,12 +70,12 @@ public interface Retry {
      * @param <T>      type of value
      * @return value is succeeded
      */
-    <T, E extends Throwable> T retry(@Nonnull RetrySupplier<T, E> supplier, RetrySupplier<T, E> fallback) throws E;
+    <T, E extends Throwable> T retry(RetrySupplier<T, E> supplier, RetrySupplier<T, E> fallback) throws E;
 
     /**
      * @param supplier to use for value extraction
      * @param <T>      type of value
      * @return value is succeeded
      */
-    <T> CompletionStage<T> retry(@Nonnull Supplier<CompletionStage<T>> supplier);
+    <T> CompletionStage<T> retry(Supplier<CompletionStage<T>> supplier);
 }

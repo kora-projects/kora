@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.common.declarative;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.client.common.HttpClient;
 import ru.tinkoff.kora.http.client.common.interceptor.TelemetryInterceptor;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;

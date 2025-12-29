@@ -2,7 +2,7 @@ package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.metrics.DefaultNodeMetric;
 import com.datastax.oss.driver.api.core.metrics.DefaultSessionMetric;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DatabaseTelemetryConfig;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;

@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.kafka.common.producer;
 
-import jakarta.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
 
 import java.util.Map;

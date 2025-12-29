@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.database.cassandra;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;

@@ -6,7 +6,6 @@ import org.openapitools.codegen.CodegenProperty;
 import org.openapitools.codegen.model.ModelsMap;
 
 import javax.lang.model.element.Modifier;
-import java.io.IOException;
 import java.util.*;
 
 public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
@@ -46,12 +45,12 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         b.addPermittedSubclasses(permittedSubclasses);
         for (var field : model.allVars) {
             var type = fieldType(field);
+            if (!field.isNullable && !field.required) {
+                type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
+            }
             var m = MethodSpec.methodBuilder(field.name)
                 .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                 .returns(type);
-            if (!field.isNullable && !field.required) {
-                m.addAnnotation(Classes.nullable);
-            }
             if (field.description != null) {
                 m.addJavadoc(field.description);
             }
@@ -157,10 +156,10 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 }
             }
             var type = fieldType(field);
-            var p = ParameterSpec.builder(type, field.name);
             if (!field.isNullable && !field.required) {
-                p.addAnnotation(AnnotationSpec.builder(Classes.nullable).build());
+                type = type.box().annotated(AnnotationSpec.builder(Classes.nullable).build());
             }
+            var p = ParameterSpec.builder(type, field.name);
             p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
             var validation = getValidation(field);
             if (validation != null) {
@@ -275,10 +274,9 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .addMethod(MethodSpec.methodBuilder("read")
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
-                .addAnnotation(Classes.nullable)
                 .addParameter(Classes.jsonParser, "parser")
                 .addStatement("return this.delegate.read(parser)")
-                .returns(enumClassName)
+                .returns(enumClassName.annotated(AnnotationSpec.builder(Classes.nullable).build()))
                 .build())
             .build()
         );

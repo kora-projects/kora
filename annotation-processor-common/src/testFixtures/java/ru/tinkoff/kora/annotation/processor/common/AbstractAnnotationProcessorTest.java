@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.annotation.processor.common;
 
 
-import jakarta.annotation.Nullable;
 import org.intellij.lang.annotations.Language;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
@@ -65,7 +65,7 @@ public abstract class AbstractAnnotationProcessorTest {
         return """
             import ru.tinkoff.kora.common.annotation.*;
             import ru.tinkoff.kora.common.*;
-            import jakarta.annotation.Nullable;
+            import org.jspecify.annotations.Nullable;
             import java.util.Optional;
             """;
     }

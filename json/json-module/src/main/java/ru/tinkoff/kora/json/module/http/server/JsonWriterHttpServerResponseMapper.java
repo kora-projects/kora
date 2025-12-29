@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.json.module.http.server;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
@@ -14,7 +15,7 @@ public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponse
     }
 
     @Override
-    public HttpServerResponse apply(HttpServerRequest request, T value) {
+    public HttpServerResponse apply(HttpServerRequest request, @Nullable T value) {
         return HttpServerResponse.of(200, new JsonHttpBodyOutput<>(this.writer, value));
     }
 }

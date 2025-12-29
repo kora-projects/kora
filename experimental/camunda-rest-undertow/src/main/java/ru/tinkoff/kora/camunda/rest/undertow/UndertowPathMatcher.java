@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.camunda.rest.undertow;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.server.common.router.PathTemplateMatcher;
 
 import java.util.*;

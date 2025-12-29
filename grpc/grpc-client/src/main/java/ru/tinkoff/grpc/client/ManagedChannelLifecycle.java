@@ -4,7 +4,7 @@ import io.grpc.ChannelCredentials;
 import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ServiceDescriptor;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.grpc.client.config.GrpcClientConfig;

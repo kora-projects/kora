@@ -1,8 +1,8 @@
 package ru.tinkoff.kora.camunda.engine.bpmn.telemetry;
 
-import jakarta.annotation.Nullable;
 import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
 import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

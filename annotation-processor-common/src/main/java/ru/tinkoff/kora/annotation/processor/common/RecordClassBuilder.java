@@ -4,6 +4,7 @@ import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ArrayTypeName;
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.TypeName;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.Element;
@@ -11,6 +12,7 @@ import javax.lang.model.element.Modifier;
 import java.io.IOException;
 import java.util.*;
 
+@Deprecated
 public class RecordClassBuilder {
 
     private final Class<?> origin;
@@ -20,9 +22,10 @@ public class RecordClassBuilder {
     public final List<TypeName> interfaces = new ArrayList<>();
     public final List<Element> originatingElements = new ArrayList<>();
     private boolean enforceEquals = false;
+    @Nullable
     private CodeBlock defaultConstructorBody;
 
-    public record RecordComponent(String name, TypeName type, List<AnnotationSpec> annotations, CodeBlock defaultValue, boolean notNullCheck) {}
+    public record RecordComponent(String name, TypeName type, List<AnnotationSpec> annotations, @Nullable CodeBlock defaultValue, boolean notNullCheck) {}
 
     public RecordClassBuilder(String name, Class<?> origin) {
         this.name = name;
@@ -88,18 +91,19 @@ public class RecordClassBuilder {
                 sb.append("  ").append(annotation.toString()).append("\n");
             }
 
+            var type = component.type;
             if (component.defaultValue != null) {
                 var hasNullable = component.annotations.stream().anyMatch(a -> a.type().toString().endsWith(".Nullable"));
                 if (!hasNullable) {
-                    sb.append("  @jakarta.annotation.Nullable ");
+                    type = type.annotated(CommonClassNames.nullableAnnotation);
                 }
-            } else if(component.notNullCheck && !component.type.isPrimitive()) {
-                sb.append("  @jakarta.annotation.Nonnull ");
+            } else if (component.notNullCheck && !component.type.isPrimitive()) {
+                type = type.annotated(CommonClassNames.nonNullAnnotation);
             } else {
                 sb.append("  ");
             }
 
-            sb.append(component.type.toString()).append(" ").append(component.name);
+            sb.append(type).append(" ").append(component.name);
             if (i < this.components.size() - 1) {
                 sb.append(',');
             }
@@ -121,19 +125,19 @@ public class RecordClassBuilder {
         for (var component : components) {
             if (component.defaultValue != null) {
                 sb.append("    if (").append(component.name).append(" == null) ").append(component.name).append(" = ").append(component.defaultValue.toString()).append(";\n");
-            } else if(component.notNullCheck && !component.type.isPrimitive()) {
+            } else if (component.notNullCheck && !component.type.isPrimitive()) {
                 sb.append("    ").append(Objects.class.getCanonicalName()).append(".requireNonNull(").append(component.name).append(");\n");
             }
         }
 
-        if(this.defaultConstructorBody != null) {
+        if (this.defaultConstructorBody != null) {
             sb.append(this.defaultConstructorBody.toString().indent(4));
             sb.append("\n  }\n");
         } else {
             sb.append("  }\n");
         }
 
-        if(enforceEquals) {
+        if (enforceEquals) {
             if (components.stream().anyMatch(f -> f.type() instanceof ArrayTypeName)) {
                 sb.append("    @Override\n");
                 sb.append("    public boolean equals(Object o) {\n");

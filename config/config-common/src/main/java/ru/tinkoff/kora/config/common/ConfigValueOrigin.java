@@ -9,6 +9,10 @@ public interface ConfigValueOrigin {
 
     ConfigOrigin config();
 
+    static ConfigValueOrigin of(ConfigOrigin config, ConfigValuePath path) {
+        return new SimpleConfigValueOrigin(config, path);
+    }
+
     default ConfigValueOrigin child(PathElement path) {
         return new SimpleConfigValueOrigin(this.config(), this.path().child(path));
     }

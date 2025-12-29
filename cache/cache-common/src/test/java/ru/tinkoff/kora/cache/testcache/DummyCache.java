@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.cache.testcache;
 
-import jakarta.annotation.Nonnull;
+import org.jspecify.annotations.NullMarked;
 import ru.tinkoff.kora.cache.Cache;
 
 import java.util.Collection;
@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@NullMarked
 public class DummyCache implements Cache<String, String> {
 
     private final Map<String, String> cache = new HashMap<>();
@@ -19,25 +20,23 @@ public class DummyCache implements Cache<String, String> {
     }
 
     @Override
-    public String get(@Nonnull String key) {
+    public String get(String key) {
         return cache.get(key);
     }
 
-    @Nonnull
     @Override
-    public String put(@Nonnull String key, @Nonnull String value) {
+    public String put(String key, String value) {
         cache.put(key, value);
         return value;
     }
 
     @Override
-    public String computeIfAbsent(@Nonnull String key, @Nonnull Function<String, String> mappingFunction) {
+    public String computeIfAbsent(String key, Function<String, String> mappingFunction) {
         return cache.computeIfAbsent(key, mappingFunction);
     }
 
-    @Nonnull
     @Override
-    public Map<String, String> computeIfAbsent(@Nonnull Collection<String> keys, @Nonnull Function<Set<String>, Map<String, String>> mappingFunction) {
+    public Map<String, String> computeIfAbsent(Collection<String> keys, Function<Set<String>, Map<String, String>> mappingFunction) {
         return keys.stream()
             .map(k -> Map.of(k, cache.computeIfAbsent(k, key -> mappingFunction.apply(Set.of(key)).get(key))))
             .flatMap(m -> m.entrySet().stream())
@@ -45,7 +44,7 @@ public class DummyCache implements Cache<String, String> {
     }
 
     @Override
-    public void invalidate(@Nonnull String key) {
+    public void invalidate(String key) {
         cache.remove(key);
     }
 
@@ -55,22 +54,20 @@ public class DummyCache implements Cache<String, String> {
     }
 
     @Override
-    public void invalidate(@Nonnull Collection<String> keys) {
+    public void invalidate(Collection<String> keys) {
         for (String key : keys) {
             invalidate(key);
         }
     }
 
-    @Nonnull
     @Override
-    public Map<String, String> get(@Nonnull Collection<String> keys) {
+    public Map<String, String> get(Collection<String> keys) {
         return keys.stream()
             .collect(Collectors.toMap(k -> k, cache::get));
     }
 
-    @Nonnull
     @Override
-    public Map<String, String> put(@Nonnull Map<String, String> keyAndValues) {
+    public Map<String, String> put(Map<String, String> keyAndValues) {
         cache.putAll(keyAndValues);
         return keyAndValues;
     }

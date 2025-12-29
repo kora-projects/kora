@@ -26,7 +26,7 @@ public class AbstractExtensionTest extends AbstractAnnotationProcessorTest {
         return """
             import ru.tinkoff.kora.common.KoraApp;
             import ru.tinkoff.kora.common.annotation.Root;
-            import jakarta.annotation.Nullable;
+            import org.jspecify.annotations.Nullable;
 
             """;
     }

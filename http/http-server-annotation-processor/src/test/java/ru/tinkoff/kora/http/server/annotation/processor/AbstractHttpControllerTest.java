@@ -41,7 +41,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
             import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
             import java.util.concurrent.CompletionStage;
             import java.util.concurrent.CompletableFuture;
-            import jakarta.annotation.Nullable;
+            import org.jspecify.annotations.Nullable;
             import java.util.Optional;
             import static ru.tinkoff.kora.http.common.HttpMethod.GET;
             import java.util.List;

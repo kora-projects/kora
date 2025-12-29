@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.database.annotation.processor.cassandra;
 
 import com.palantir.javapoet.*;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.FieldFactory;

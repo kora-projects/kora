@@ -3,7 +3,7 @@ package ru.tinkoff.kora.http.server.annotation.processor;
 import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.TypeName;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.TagUtils;
@@ -29,9 +29,8 @@ public class HttpServerUtils {
     public static Interceptor parseInterceptor(AnnotationMirror a) {
         var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");
         var interceptorTypeName = ClassName.get(Objects.requireNonNull(interceptorType));
-        @Nullable
         var interceptorTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "tag");
-        var interceptorTagAnnotationSpec = interceptorTag == null ? null : TagUtils.makeAnnotationSpec(interceptorTag);
+        var interceptorTagAnnotationSpec = TagUtils.makeAnnotationSpec(interceptorTag);
         return new Interceptor(interceptorTypeName, interceptorTagAnnotationSpec);
     }
 

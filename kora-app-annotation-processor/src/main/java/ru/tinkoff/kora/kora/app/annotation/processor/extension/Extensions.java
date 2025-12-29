@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor.extension;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,8 +35,7 @@ public record Extensions(List<KoraExtension> extensions) {
     }
 
 
-    @Nullable
-    public KoraExtension.KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror, @Nullable String tag) {
+    public KoraExtension.@Nullable KoraExtensionDependencyGenerator findExtension(RoundEnvironment roundEnvironment, TypeMirror typeMirror, @Nullable String tag) {
         var extensions = new ArrayList<KoraExtension.KoraExtensionDependencyGenerator>();
         for (var extension : this.extensions) {
             var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror, tag);

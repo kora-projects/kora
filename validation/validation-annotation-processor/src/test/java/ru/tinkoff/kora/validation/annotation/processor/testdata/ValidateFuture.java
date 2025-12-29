@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.validation.annotation.processor.testdata;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.validation.common.annotation.*;
 

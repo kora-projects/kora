@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.resilient.circuitbreaker;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.common.util.TimeUtils;
@@ -67,7 +66,6 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         this.metrics.recordState(name, State.CLOSED);
     }
 
-    @Nonnull
     State getState() {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
@@ -78,16 +76,16 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public <T> T accept(@Nonnull Supplier<T> callable) {
+    public <T> T accept(Supplier<T> callable) {
         return internalAccept(callable, null);
     }
 
     @Override
-    public <T> T accept(@Nonnull Supplier<T> callable, @Nonnull Supplier<T> fallback) {
+    public <T> T accept(Supplier<T> callable, Supplier<T> fallback) {
         return internalAccept(callable, fallback);
     }
 
-    private <T> T internalAccept(@Nonnull Supplier<T> supplier, @Nullable Supplier<T> fallback) {
+    private <T> T internalAccept(Supplier<T> supplier, @Nullable Supplier<T> fallback) {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             metrics.recordCallAcquire(name, CallAcquireStatus.DISABLED);
@@ -143,8 +141,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         return clock.millis();
     }
 
-    private void onStateChange(@Nonnull State prevState,
-                               @Nonnull State newState,
+    private void onStateChange(State prevState,
+                               State newState,
                                String action,
                                @Nullable Throwable throwable) {
         if (throwable != null) {
@@ -292,7 +290,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     }
 
     @Override
-    public void releaseOnError(@Nonnull Throwable throwable) {
+    public void releaseOnError(Throwable throwable) {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("CircuitBreaker '{}' is disabled", name);
             return;

@@ -24,7 +24,7 @@ abstract class AbstractKotlinGenerator<C : Any> : AbstractGenerator<C, FileSpec>
         }
         val result = mutableListOf<AnnotationSpec>()
         for (additionalAnnotation in additionalAnnotations.orEmpty()) {
-            if (additionalAnnotation.annotation != null && !additionalAnnotation.annotation.isBlank()) {
+            if (additionalAnnotation.annotation?.isBlank() == true) {
                 TODO("parse text to to annotation spec")
             }
         }

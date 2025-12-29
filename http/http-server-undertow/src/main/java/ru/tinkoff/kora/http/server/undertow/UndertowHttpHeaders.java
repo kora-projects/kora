@@ -1,13 +1,14 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.util.HeaderMap;
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.header.AbstractHttpHeaders;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 
 import java.util.*;
 
+@NullMarked
 public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHeaders {
     private final HeaderMap headerMap;
 
@@ -22,6 +23,7 @@ public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHead
     }
 
     @Override
+    @Nullable
     public List<String> getAll(String headerName) {
         var headers = this.headerMap.get(headerName);
         if (headers == null) {
@@ -54,8 +56,8 @@ public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHead
         return names;
     }
 
-    @Nonnull
     @Override
+    @Nullable
     public Iterator<Map.Entry<String, List<String>>> iterator() {
         var i = this.headerMap.iterator();
         return new Iterator<>() {

@@ -70,7 +70,7 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName path = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Path");
         public static final ClassName header = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Header");
         public static final ClassName cookie = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Cookie");
-        public static final ClassName nullable = ClassName.get("jakarta.annotation", "Nullable");
+        public static final ClassName nullable = ClassName.get("org.jspecify.annotations", "Nullable");
         public static final ClassName multipartWriter = ClassName.get("ru.tinkoff.kora.http.client.common.form", "MultipartWriter");
         public static final ClassName formMultipart = ClassName.get("ru.tinkoff.kora.http.common.form", "FormMultipart");
         public static final ClassName formPart = formMultipart.nestedClass("FormPart");

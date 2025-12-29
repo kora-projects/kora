@@ -2,10 +2,10 @@ package ru.tinkoff.kora.camunda.rest;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import jakarta.annotation.Nullable;
 import jakarta.ws.rs.core.Application;
 import org.camunda.bpm.engine.rest.impl.CamundaRestResources;
 import org.jboss.resteasy.plugins.providers.jackson.ResteasyJackson2Provider;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.camunda.rest.telemetry.CamundaRestTelemetryFactory;
 import ru.tinkoff.kora.camunda.rest.telemetry.DefaultCamundaRestTelemetryFactory;
 import ru.tinkoff.kora.common.DefaultComponent;

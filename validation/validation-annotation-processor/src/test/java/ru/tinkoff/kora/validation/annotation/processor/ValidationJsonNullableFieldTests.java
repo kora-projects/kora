@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-
 import ru.tinkoff.kora.json.common.JsonNullable;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 import ru.tinkoff.kora.validation.common.ValidationContext;
@@ -130,7 +129,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@Nonnull JsonNullable<String> field) {}
+                    record TestRecord(@NonNull JsonNullable<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -148,7 +147,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@Nonnull JsonNullable<String> field) {}
+                    record TestRecord(@NonNull JsonNullable<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -166,7 +165,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@Nonnull JsonNullable<String> field) {}
+                    record TestRecord(@NonNull JsonNullable<String> field) {}
                     """);
         compileResult.assertSuccess();
 

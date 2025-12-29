@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.http.client.common.declarative;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
@@ -54,8 +54,7 @@ public interface HttpClientOperationConfig {
             @Nullable
             Boolean enabled();
 
-            @Nullable
-            Duration[] slo();
+            Duration @Nullable [] slo();
 
             @Nullable
             Map<String, String> tags();

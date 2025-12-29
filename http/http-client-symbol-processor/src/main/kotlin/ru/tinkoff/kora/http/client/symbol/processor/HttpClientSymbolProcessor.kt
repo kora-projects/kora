@@ -7,7 +7,6 @@ import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
 import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.httpClientAnnotation
@@ -27,7 +26,7 @@ class HttpClientSymbolProcessor(val environment: SymbolProcessorEnvironment) : B
         val symbols = resolver.getSymbolsWithAnnotation(httpClientAnnotation.canonicalName).toList()
         val deferred = mutableListOf<KSAnnotated>()
         for (annotated in symbols) {
-            if (annotated.validate()) {
+            if (annotated.validateAll()) {
                 if (annotated is KSClassDeclaration && annotated.classKind == ClassKind.INTERFACE) {
                     try {
                         generateClient(annotated, resolver)

@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
-import io.undertow.connector.ByteBufferPool;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.XnioWorker;

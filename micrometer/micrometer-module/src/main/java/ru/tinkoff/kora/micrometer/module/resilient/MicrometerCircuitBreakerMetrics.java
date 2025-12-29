@@ -4,7 +4,6 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.BaseUnits;
-import jakarta.annotation.Nonnull;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreaker;
 import ru.tinkoff.kora.resilient.circuitbreaker.CircuitBreakerMetrics;
 
@@ -30,7 +29,7 @@ public final class MicrometerCircuitBreakerMetrics implements CircuitBreakerMetr
     }
 
     @Override
-    public void recordCallAcquire(@Nonnull String name, @Nonnull CallAcquireStatus callStatus) {
+    public void recordCallAcquire(String name, CallAcquireStatus callStatus) {
         final StateMetrics stateMetrics = getCircuitBreakerMetrics(name, CircuitBreaker.State.CLOSED);
         switch (stateMetrics.stateValue.get()) {
             case 1: // HALF_OPEN
@@ -49,7 +48,7 @@ public final class MicrometerCircuitBreakerMetrics implements CircuitBreakerMetr
     }
 
     @Override
-    public void recordState(@Nonnull String name, @Nonnull CircuitBreaker.State newState) {
+    public void recordState(String name, CircuitBreaker.State newState) {
         final StateMetrics stateMetrics = getCircuitBreakerMetrics(name, newState);
 
         stateMetrics.stateValue().set(asIntState(newState));
@@ -61,7 +60,7 @@ public final class MicrometerCircuitBreakerMetrics implements CircuitBreakerMetr
         }
     }
 
-    private StateMetrics getCircuitBreakerMetrics(@Nonnull String name, @Nonnull CircuitBreaker.State initiaState) {
+    private StateMetrics getCircuitBreakerMetrics(String name, CircuitBreaker.State initiaState) {
         return metrics.computeIfAbsent(name, k -> {
             final AtomicInteger gaugeState = new AtomicInteger(asIntState(initiaState));
             final Gauge state = Gauge.builder("resilient.circuitbreaker.state", gaugeState::get)

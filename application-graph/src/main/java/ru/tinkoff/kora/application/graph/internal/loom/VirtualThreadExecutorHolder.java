@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.application.graph.internal.loom;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -49,7 +48,6 @@ public final class VirtualThreadExecutorHolder {
         }
     }
 
-    @Nonnull
     public static VirtualThreadStatus status() {
         return status;
     }
