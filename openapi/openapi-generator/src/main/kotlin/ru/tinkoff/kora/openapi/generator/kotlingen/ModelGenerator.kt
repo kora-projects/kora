@@ -104,10 +104,15 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         b.addSuperinterfaces(superinterfaces)
         val constructor = FunSpec.constructorBuilder()
 
+        data class Field(val name: String, val jsonName: String, val type: TypeName, val required: Boolean, val nullable: Boolean)
+
+        val fields = mutableListOf<Field>()
         for (f in model.allVars) {
             var field = f
             superInterfaceFields[field.name]?.let {
-                field.required = true
+                if (it.required) {
+                    field.required = true
+                }
             }
             if (field.isAnyType) {
                 var parentFieldMaybe = superModelFields[field.name]
@@ -120,13 +125,16 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             }
             val type = fieldType(field)
             val p = ParameterSpec.builder(field.name, type)
-                .addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PROPERTY).addMember("value = %S", field.baseName).build())
+            if (field.name != field.baseName) {
+                p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PROPERTY).addMember("value = %S", field.baseName).build())
+                p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PARAM).addMember("value = %S", field.baseName).build())
+            }
             if (params.enableValidation) {
                 getValidation(field)?.let { p.addAnnotation(it) }
             }
             if (field.isNullable) {
                 if (field.required) {
-                    p.defaultValue("%T.undefined()", Classes.jsonNullable.asKt())
+                    p.defaultValue("null")
                 } else {
                     p.defaultValue("%T.nullValue()", Classes.jsonNullable.asKt())
                 }
@@ -135,7 +143,11 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             } else if (field.defaultValue != null) {
                 p.defaultValue(field.defaultValue)
             }
+            fields.add(Field(field.name, field.baseName, type, field.required, type.isNullable))
             constructor.addParameter(p.build())
+            if (field.required && field.isNullable) {
+                p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude.asKt()).addMember("value = %T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType").asKt()).build())
+            }
             val prop = PropertySpec.builder(field.name, type).initializer(field.name)
             if (superInterfaceFields.contains(field.name)) {
                 prop.addModifiers(KModifier.OVERRIDE)
@@ -143,6 +155,27 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             b.addProperty(prop.build())
         }
         b.primaryConstructor(constructor.build())
+        if (fields.any { it.required && it.nullable }) {
+            val c = FunSpec.constructorBuilder()
+                .addAnnotation(Classes.jsonReaderAnnotation.asKt())
+            val args = mutableListOf<CodeBlock>()
+            for (f in fields) {
+                val jsonField = if (f.jsonName != f.name) AnnotationSpec.builder(Classes.jsonField.asKt()).addMember("value = %S", f.jsonName).build() else null
+                if (f.required && f.nullable) {
+                    c.addParameter(
+                        ParameterSpec.builder(f.name, Classes.jsonNullable.asKt().parameterizedBy(f.type))
+                            .addAnnotations(listOfNotNull(jsonField))
+                            .build()
+                    )
+                    args.add(CodeBlock.of("\n  %N. let { if (it.isDefined) it.value() else throw IllegalArgumentException(%S) }", f.name, "Field '${f.name}' was not found in parsed json"))
+                } else {
+                    c.addParameter(ParameterSpec.builder(f.name, f.type).addAnnotations(listOfNotNull(jsonField)).build())
+                    args.add(CodeBlock.of("\n  %N", f.name))
+                }
+            }
+            c.callThisConstructor(args)
+            b.addFunction(c.build())
+        }
         return b.build()
     }
 
@@ -308,8 +341,8 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     private fun fieldType(field: CodegenProperty): TypeName {
         val type = asType(field).asKt()
         return when {
-            field.isNullable -> Classes.jsonNullable.asKt().parameterizedBy(type)
-            !field.required -> type.copy(true)
+            field.isNullable && !field.required -> Classes.jsonNullable.asKt().parameterizedBy(type)
+            !field.required || field.isNullable -> type.copy(true)
             else -> type
         }
     }
