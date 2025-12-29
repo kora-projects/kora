@@ -60,7 +60,7 @@ class QueryMacrosParser {
 
             val isId = field.isAnnotationPresent(DbUtils.idAnnotation)
             val isEmbedded = field.annotations
-                .filter { a -> DbUtils.embeddedAnnotation == a.annotationType.resolve().toClassName() }
+                .filter { a -> DbUtils.embeddedAnnotation == a.annotationType.resolve().declaration.let { it as KSClassDeclaration }.toClassName() }
                 .firstOrNull()
 
             if (isEmbedded != null) {

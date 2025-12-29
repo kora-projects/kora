@@ -37,6 +37,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
         when (trigger.annotation.shortName.getShortName()) {
             "ScheduleWithTrigger" -> {
                 val tag = trigger.annotation.findValue<KSType>("value")!!
+                    .declaration.let { it as KSClassDeclaration }
                     .toClassName()
 
                 val triggerParameter = ParameterSpec.builder("trigger", triggerClassName)

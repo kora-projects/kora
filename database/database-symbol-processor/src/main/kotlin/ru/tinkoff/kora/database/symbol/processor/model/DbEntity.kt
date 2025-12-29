@@ -100,7 +100,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
     private class EmbeddedEntityField(val parent: SimpleEntityField, override val property: KSPropertyDeclaration, override val type: KSType, val fields: List<Field>) : EntityField {
         fun buildInstance(): CodeBlock {
             val b = CodeBlock.builder()
-            b.add("%T(", type.toClassName()).indent().add("\n")
+            b.add("%T(", type.declaration.let { it as KSClassDeclaration }.toClassName()).indent().add("\n")
             for (i in fields.indices) {
                 val field = fields[i]
                 if (i > 0) {

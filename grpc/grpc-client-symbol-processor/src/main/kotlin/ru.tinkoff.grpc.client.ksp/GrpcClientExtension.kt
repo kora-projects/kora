@@ -123,7 +123,7 @@ class GrpcClientExtension(
         if (stubForAnnotation == null) {
             return null
         }
-        val apiTag = stubForAnnotation.findValueNoDefault<KSType>("value")!!.toClassName().canonicalName
+        val apiTag = stubForAnnotation.findValueNoDefault<KSType>("value")!!.declaration.let { it as KSClassDeclaration }.qualifiedName!!.asString()
         val implClassName = classDecl.toClassName()
         val constructor = classDecl.primaryConstructor!!
         val channelType = constructor.parameters[0].type.resolve()
