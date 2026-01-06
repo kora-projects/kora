@@ -161,7 +161,7 @@ object KspCommonUtils {
         fun convert(originalName: String): String
     }
 
-    fun <T: NameConverter> KSDeclaration.getNameConverter(defaultValue: T) = getNameConverter() ?: defaultValue
+    fun <T : NameConverter> KSDeclaration.getNameConverter(defaultValue: T) = getNameConverter() ?: defaultValue
 
     fun KSDeclaration.getNameConverter(): NameConverter? {
         val namingStrategyClass = getNamingStrategyConverterClass()
@@ -244,7 +244,37 @@ fun KSAnnotated.parseMappingData(): MappersData {
         val mappers = mappings.map { it.findValue<KSType>("value")!! }
         return MappersData(mappers, tags)
     }
-    val mappers = parseAnnotationClassValue(this, CommonClassNames.mapping.canonicalName)
+    val mappers = this.findAnnotations(CommonClassNames.mapping)
+        .map { it.findValueNoDefault<KSType>("value")!! }
+        .toList()
+    if (mappers.isEmpty() && this is KSValueParameter) {
+        val classDecl = this.parent?.parent
+        if (classDecl is KSClassDeclaration) {
+            classDecl.getAllProperties().firstOrNull { it.simpleName.asString() == this.name?.asString() && this.type.resolve() == it.type.resolve() }?.let { property ->
+                val mappers = property.findAnnotations(CommonClassNames.mapping)
+                    .map { it.findValueNoDefault<KSType>("value")!! }
+                    .toList()
+                if (!mappers.isEmpty()) {
+                    return MappersData(mappers, tags)
+                }
+            }
+        }
+    }
+    if (mappers.isEmpty() && this is KSPropertyDeclaration) {
+        val classDecl = this.parent
+        if (classDecl is KSClassDeclaration) {
+            classDecl.primaryConstructor?.let { constructor ->
+                constructor.parameters.firstOrNull { it.name?.asString() == this.simpleName.asString() && this.type.resolve() == it.type.resolve() }?.let { parameter ->
+                    val mappers = parameter.findAnnotations(CommonClassNames.mapping)
+                        .map { it.findValueNoDefault<KSType>("value")!! }
+                        .toList()
+                    if (!mappers.isEmpty()) {
+                        return MappersData(mappers, tags)
+                    }
+                }
+            }
+        }
+    }
     return MappersData(mappers, tags)
 }
 

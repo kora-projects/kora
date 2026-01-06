@@ -156,7 +156,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
                 type == resolver.builtIns.floatType -> functionBody.add("%N", paramName)
                 type == resolver.builtIns.doubleType -> functionBody.add("%N", paramName)
                 else -> {
-                    if(field.typeMeta.isJsonNullable) {
+                    if (field.typeMeta.isJsonNullable) {
                         functionBody.add("%N", paramName)
                     } else {
                         functionBody.add("%N!!", paramName)
@@ -216,24 +216,31 @@ class JsonReaderGenerator(val resolver: Resolver) {
             if (field.reader == null && field.typeMeta is ReaderFieldType.KnownTypeReaderMeta) {
                 continue
             }
+            val fieldName = this.readerFieldName(field)
             if (field.reader != null) {
-                val fieldName = this.readerFieldName(field)
-                val fieldType = field.reader
-                val readerProperty = PropertySpec.builder(fieldName, fieldType.toTypeName(typeParameterResolver), KModifier.PRIVATE)
-                val readerDeclaration = fieldType.declaration as KSClassDeclaration
-                if (!readerDeclaration.modifiers.contains(Modifier.OPEN)) {
-                    val constructors = readerDeclaration.getConstructors().toList()
-                    if (constructors.size == 1) {
-                        readerProperty.initializer("%T()", fieldType.toTypeName(typeParameterResolver))
-                        typeBuilder.addProperty(readerProperty.build())
-                        continue
+                val mapperType = field.reader.mapper
+                val fieldType: TypeName
+                if (mapperType != null) {
+                    fieldType = mapperType.toTypeName(typeParameterResolver)
+                    val readerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
+                    val readerDecl = mapperType.declaration as KSClassDeclaration
+                    if (!readerDecl.modifiers.contains(Modifier.OPEN)) {
+                        val constructors = readerDecl.getConstructors().toList()
+                        if (constructors.size == 1) {
+                            readerProp.initializer("%T()", mapperType.toTypeName(typeParameterResolver))
+                            typeBuilder.addProperty(readerProp.build())
+                            continue
+                        }
                     }
+                } else {
+                    fieldType = JsonTypes.jsonWriter.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver))
                 }
-                typeBuilder.addProperty(readerProperty.build())
-                constructor.addParameter(fieldName, fieldType.toTypeName(typeParameterResolver))
+                val readerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
+                    .tag(field.reader.tag)
+                typeBuilder.addProperty(readerProp.build())
+                constructor.addParameter(fieldName, fieldType)
                 constructor.addStatement("this.%L = %L", fieldName, fieldName)
             } else if (field.typeMeta is ReaderFieldType.UnknownTypeReaderMeta) {
-                val fieldName: String = this.readerFieldName(field)
                 val fieldType = JsonTypes.jsonReader.parameterizedBy(field.typeMeta.typeName.copy(nullable = false))
                 val readerField = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
                 constructor.addParameter(fieldName, fieldType)
@@ -367,7 +374,7 @@ class JsonReaderGenerator(val resolver: Resolver) {
             }
         }
 
-        if(field.typeMeta.isJsonNullable) {
+        if (field.typeMeta.isJsonNullable) {
             functionBody.addStatement("return %T.ofNullable(%L.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field))
         } else {
             val exceptionBlock = if (isMarkedNullable) CodeBlock.of("") else CodeBlock.of(

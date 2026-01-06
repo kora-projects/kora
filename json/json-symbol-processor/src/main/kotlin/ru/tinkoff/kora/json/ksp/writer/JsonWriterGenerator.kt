@@ -83,24 +83,31 @@ class JsonWriterGenerator(private val resolver: Resolver) {
     private fun addWriters(typeBuilder: TypeSpec.Builder, classMeta: JsonClassWriterMeta, typeParameterResolver: TypeParameterResolver) {
         val constructor = FunSpec.constructorBuilder()
         for (field in classMeta.fields) {
+            val fieldName = this.writerFieldName(field)
             if (field.writer != null) {
-                val fieldName: String = this.writerFieldName(field)
-                val fieldType = field.writer.toTypeName(typeParameterResolver)
-                val writerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
-                val writerDeclaration = field.writer.declaration as KSClassDeclaration
-                if (!writerDeclaration.modifiers.contains(com.google.devtools.ksp.symbol.Modifier.OPEN)) {
-                    val constructors = writerDeclaration.getConstructors().toList()
-                    if (constructors.size == 1) {
-                        writerProp.initializer("%T()", field.writer.toTypeName(typeParameterResolver))
-                        typeBuilder.addProperty(writerProp.build())
-                        continue
+                val mapperType = field.writer.mapper
+                val fieldType: TypeName
+                if (mapperType != null) {
+                    fieldType = mapperType.toTypeName(typeParameterResolver)
+                    val writerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
+                    val writerDeclaration = mapperType.declaration as KSClassDeclaration
+                    if (!writerDeclaration.modifiers.contains(com.google.devtools.ksp.symbol.Modifier.OPEN)) {
+                        val constructors = writerDeclaration.getConstructors().toList()
+                        if (constructors.size == 1) {
+                            writerProp.initializer("%T()", mapperType.toTypeName(typeParameterResolver))
+                            typeBuilder.addProperty(writerProp.build())
+                            continue
+                        }
                     }
+                } else {
+                    fieldType = JsonTypes.jsonWriter.parameterizedBy(field.typeMeta.type.toTypeName(typeParameterResolver))
                 }
+                val writerProp = PropertySpec.builder(fieldName, fieldType, KModifier.PRIVATE)
+                    .tag(field.writer.tag)
                 typeBuilder.addProperty(writerProp.build())
                 constructor.addParameter(fieldName, fieldType)
                 constructor.addStatement("this.%L = %L", fieldName, fieldName)
             } else if (field.typeMeta is WriterFieldType.UnknownWriterFieldType) {
-                val fieldName: String = this.writerFieldName(field)
                 val fieldType = JsonTypes.jsonWriter.parameterizedBy(
                     field.typeMeta.type.toTypeName(typeParameterResolver).copy(nullable = false)
                 )
