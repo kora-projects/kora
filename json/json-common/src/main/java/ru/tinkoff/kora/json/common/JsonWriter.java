@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.common;
 
 import org.jspecify.annotations.Nullable;
+import ru.tinkoff.kora.common.Mapping;
 import tools.jackson.core.JsonEncoding;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.ObjectWriteContext;
@@ -14,7 +15,7 @@ import tools.jackson.core.util.DefaultPrettyPrinter;
  * <hr>
  * <b>English</b>: JSON writer contract with all write methods
  */
-public interface JsonWriter<T> {
+public interface JsonWriter<T> extends Mapping.MappingFunction {
 
     /**
      * @param generator jackson generator that will be used for writing object to JSON

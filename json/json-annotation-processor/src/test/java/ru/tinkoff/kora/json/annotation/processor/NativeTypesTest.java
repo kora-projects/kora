@@ -10,7 +10,7 @@ import java.util.List;
 
 public class NativeTypesTest extends AbstractJsonAnnotationProcessorTest {
 
-    private final JsonReader<URI> uriReader = parser -> URI.create(parser.getText());
+    private final JsonReader<URI> uriReader = parser -> URI.create(parser.getString());
     private final JsonWriter<URI> uriWriter = (generator, object) -> generator.writeString(object.toString());
 
     @Test

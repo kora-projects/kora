@@ -6,6 +6,7 @@ import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
+import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonClassReaderMeta.FieldMeta;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderFieldType.KnownTypeReaderMeta;
@@ -50,8 +51,8 @@ public class ReaderTypeMetaParser {
 
     @Nullable
     public ReaderFieldType parseReaderFieldType(TypeMirror jsonClass) {
-        boolean isJsonNullable = false;
-        TypeMirror realType = jsonClass;
+        var isJsonNullable = false;
+        var realType = jsonClass;
         if (jsonClass instanceof DeclaredType dt && JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
             realType = dt.getTypeArguments().get(0);
             isJsonNullable = true;
@@ -124,7 +125,13 @@ public class ReaderTypeMetaParser {
     private FieldMeta parseField(TypeElement jsonClass, VariableElement parameter, CommonUtils.NameConverter nameConverter) {
         var jsonField = this.findJsonField(jsonClass, parameter);
         var jsonName = this.parseJsonName(parameter, jsonField, nameConverter);
-        var reader = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "reader");
+        var reader = CommonUtils.parseMapping(parameter).getMapping(JsonTypes.jsonReader);
+        if (reader == null) {
+            var field = JsonUtils.fieldByParameter(jsonClass, parameter);
+            if (field != null) {
+                reader = CommonUtils.parseMapping(field).getMapping(JsonTypes.jsonReader);
+            }
+        }
         var typeMeta = this.parseReaderFieldType(parameter.asType());
         return new FieldMeta(parameter, jsonName, TypeName.get(parameter.asType()), typeMeta, reader);
     }
@@ -135,17 +142,11 @@ public class ReaderTypeMetaParser {
         if (paramJsonField != null) {
             return paramJsonField;
         }
-
-        for (var e : jsonClass.getEnclosedElements()) {
-            if (e.getKind() != ElementKind.FIELD) {
-                continue;
-            }
-            if (!e.getSimpleName().toString().equals(param.getSimpleName().toString())) {
-                continue;
-            }
-            return AnnotationUtils.findAnnotation(e, JsonTypes.jsonFieldAnnotation);
+        var field = JsonUtils.fieldByParameter(jsonClass, param);
+        if (field == null) {
+            return null;
         }
-        return null;
+        return AnnotationUtils.findAnnotation(field, JsonTypes.jsonFieldAnnotation);
     }
 
     private String parseJsonName(VariableElement param, @Nullable AnnotationMirror jsonField, CommonUtils.@Nullable NameConverter nameConverter) {

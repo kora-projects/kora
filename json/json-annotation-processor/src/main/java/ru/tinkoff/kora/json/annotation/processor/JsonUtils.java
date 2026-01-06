@@ -5,10 +5,7 @@ import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 
-import javax.lang.model.element.Element;
-import javax.lang.model.element.Modifier;
-import javax.lang.model.element.PackageElement;
-import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
@@ -48,6 +45,25 @@ public final class JsonUtils {
         var typeElement = types.asElement(typeMirror);
 
         return jsonReaderName((TypeElement) typeElement);
+    }
+
+    @Nullable
+    public static VariableElement fieldByParameter(TypeElement jsonClass, VariableElement param) {
+        for (var e : jsonClass.getEnclosedElements()) {
+            if (e.getKind() != ElementKind.FIELD) {
+                continue;
+            }
+            if (!e.getSimpleName().toString().equals(param.getSimpleName().toString())) {
+                continue;
+            }
+            var element = (VariableElement) e;
+            if (element.asType().toString().equals(param.asType().toString())) {
+                return element;
+            } else {
+                return null;
+            }
+        }
+        return null;
     }
 
 

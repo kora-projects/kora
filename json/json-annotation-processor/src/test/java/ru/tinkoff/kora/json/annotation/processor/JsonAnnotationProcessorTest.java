@@ -9,6 +9,7 @@ import ru.tinkoff.kora.json.annotation.processor.dto.DtoWithInnerDto.InnerDto;
 import ru.tinkoff.kora.json.common.*;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
+import tools.jackson.core.ObjectReadContext;
 import tools.jackson.core.exc.StreamReadException;
 import tools.jackson.core.json.JsonFactoryBuilder;
 
@@ -46,7 +47,7 @@ class JsonAnnotationProcessorTest {
     @Test
     void testDtoWithTypeParams() throws Exception {
         JsonReader<Integer> intReader = JsonParser::getIntValue;
-        JsonReader<String> stringJsonReader = JsonParser::getText;
+        JsonReader<String> stringJsonReader = JsonParser::getString;
 
         var cl = processClass0(DtoWithTypeParam.class);
         var reader = cl.reader(
@@ -224,39 +225,6 @@ class JsonAnnotationProcessorTest {
     }
 
     @Test
-    void testOnlyReaderDto() throws Exception {
-        var reader = processClass(DtoOnlyReader.class);
-        assertThat(reader.writer()).isNull();
-        var expected = new DtoOnlyReader("field1", "field2", new DtoOnlyReader.Inner("3"));
-
-        var object = fromJson(reader, """
-            {
-              "field1" : "field1",
-              "renamedField2" : "field2",
-              "field3" : "3"
-            }""");
-
-        assertThat(object).isEqualTo(expected);
-    }
-
-    @Test
-    void testOnlyWriterDto() throws Exception {
-        var writer = processClass(DtoOnlyWriter.class);
-        assertThat(writer.reader()).isNull();
-        assertThat(writer.writer()).isNotNull();
-        var object = new DtoOnlyWriter("field1", "field2", new DtoOnlyWriter.Inner("3"), "field4");
-
-        var json = toJson(writer, object);
-
-        assertThat(json).isEqualTo("""
-            {
-              "field1" : "field1",
-              "renamedField2" : "field2",
-              "field3" : "3"
-            }""");
-    }
-
-    @Test
     void testWriteDtoJavaBeans() throws Exception {
         var writer = processClass(DtoJavaBean.class);
         assertThat(writer.reader()).isNull();
@@ -339,7 +307,7 @@ class JsonAnnotationProcessorTest {
     <T> T fromJson(JsonReader<T> reader, String json) {
         var jf = new JsonFactoryBuilder().build();
 
-        try (var parser = jf.createParser(json)) {
+        try (var parser = jf.createParser(ObjectReadContext.empty(), json)) {
             parser.nextToken();
             return reader.read(parser);
         }

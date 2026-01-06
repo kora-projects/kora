@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.common;
 
 import org.jspecify.annotations.Nullable;
+import ru.tinkoff.kora.common.Mapping;
 import tools.jackson.core.ObjectReadContext;
 
 import java.io.InputStream;
@@ -10,7 +11,7 @@ import java.io.InputStream;
  * <hr>
  * <b>English</b>: JSON reader contract with all read methods
  */
-public interface JsonReader<T> {
+public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
     T read(tools.jackson.core.JsonParser parser);

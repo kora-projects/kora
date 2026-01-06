@@ -64,7 +64,7 @@ public class WriterTypeMetaParser {
         var fieldTypeMirror = field.asType();
         var jsonName = this.parseJsonName(field, jsonField, fieldNameConverter);
         var accessorMethod = this.getAccessorMethod(jsonClass, field);
-        var writer = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(jsonField, "writer");
+        var writer = CommonUtils.parseMapping(field).getMapping(JsonTypes.jsonWriter);
 
         var typeMeta = this.parseWriterFieldType(fieldTypeMirror);
         var includeType = Optional.ofNullable(AnnotationUtils.findAnnotation(field, JsonTypes.jsonInclude))

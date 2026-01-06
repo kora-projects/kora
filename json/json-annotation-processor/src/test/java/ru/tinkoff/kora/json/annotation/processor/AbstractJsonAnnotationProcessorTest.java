@@ -22,6 +22,9 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
             import ru.tinkoff.kora.json.common.JsonNullable;
             import ru.tinkoff.kora.json.common.annotation.JsonInclude.IncludeType;
             import java.util.Optional;
+            import tools.jackson.core.JsonParser;
+            import tools.jackson.core.JsonToken;
+            import tools.jackson.core.JsonGenerator;
             """;
     }
 

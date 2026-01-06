@@ -2,6 +2,7 @@ package ru.tinkoff.kora.json.annotation.processor.reader;
 
 import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -14,5 +15,5 @@ public record JsonClassReaderMeta(TypeMirror typeMirror, TypeElement typeElement
                             String jsonName,
                             TypeName typeName,
                             @Nullable ReaderFieldType typeMeta,
-                            @Nullable TypeMirror reader) {}
+                            CommonUtils.@Nullable MappingData reader) {}
 }

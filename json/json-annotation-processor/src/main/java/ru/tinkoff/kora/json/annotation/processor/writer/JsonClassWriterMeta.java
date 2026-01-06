@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
 import org.jspecify.annotations.Nullable;
+import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
@@ -19,8 +20,8 @@ public record JsonClassWriterMeta(TypeMirror typeMirror, TypeElement typeElement
         private static final IncludeType[] types = values();
 
         public static Optional<IncludeType> tryParse(String name) {
-            for (IncludeType includeType : types) {
-                if(includeType.name().equals(name)) {
+            for (var includeType : types) {
+                if (includeType.name().equals(name)) {
                     return Optional.of(includeType);
                 }
             }
@@ -36,6 +37,6 @@ public record JsonClassWriterMeta(TypeMirror typeMirror, TypeElement typeElement
         String jsonName,
         IncludeType includeType,
         ExecutableElement accessor,
-        @Nullable TypeMirror writer
+        CommonUtils.@Nullable MappingData writer
     ) {}
 }

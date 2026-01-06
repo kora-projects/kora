@@ -11,7 +11,6 @@ import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.writer.JsonClassWriterMeta.FieldMeta;
 
 import javax.annotation.processing.ProcessingEnvironment;
-import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Types;
@@ -74,21 +73,26 @@ public class JsonWriterGenerator {
         for (var field : classMeta.fields()) {
             if (field.writer() != null) {
                 var fieldName = this.writerFieldName(field);
-                var fieldType = TypeName.get(field.writer());
-                var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
-                var writerElement = (TypeElement) this.types.asElement(field.writer());
-                if (writerElement.getModifiers().contains(Modifier.FINAL)) {
-                    var constructors = writerElement.getEnclosedElements().stream()
-                        .filter(e -> e.getKind() == ElementKind.CONSTRUCTOR)
-                        .toList();
-                    if (constructors.size() == 1) {
+                final TypeName fieldType;
+                if (field.writer().mapperClass() != null) {
+                    fieldType = TypeName.get(field.writer().mapperClass());
+                    var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                    var writerElement = (TypeElement) this.types.asElement(field.writer().mapperClass());
+                    if (CommonUtils.hasDefaultConstructorAndFinal(writerElement)) {
                         writerField.addModifiers(Modifier.STATIC);
-                        writerField.initializer("new $T()", field.writer());
+                        writerField.initializer("new $T()", fieldType);
                         typeBuilder.addField(writerField.build());
                         continue;
                     }
-                }
+                } else {
 
+                    fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, TypeName.get(field.writerTypeMeta().typeMirror()));
+                }
+                var writerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                var fieldTag = field.writer().toTagAnnotation();
+                if (fieldTag != null) {
+                    writerField.addAnnotation(fieldTag);
+                }
                 typeBuilder.addField(writerField.build());
                 constructor.addParameter(fieldType, fieldName);
                 constructor.addStatement("this.$L = $L", fieldName, fieldName);
