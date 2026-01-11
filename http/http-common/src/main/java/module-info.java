@@ -4,6 +4,8 @@ import org.jspecify.annotations.NullMarked;
 module kora.http.common {
     requires transitive kora.common;
 
+    requires static transitive kora.json.common;
+
     exports ru.tinkoff.kora.http.common;
     exports ru.tinkoff.kora.http.common.annotation;
     exports ru.tinkoff.kora.http.common.auth;

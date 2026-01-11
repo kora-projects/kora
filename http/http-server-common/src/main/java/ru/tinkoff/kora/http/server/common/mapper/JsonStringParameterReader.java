@@ -1,9 +1,11 @@
-package ru.tinkoff.kora.json.module.http.server;
+package ru.tinkoff.kora.http.server.common.mapper;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
 import ru.tinkoff.kora.http.server.common.handler.StringParameterReader;
 import ru.tinkoff.kora.json.common.JsonCommonModule;
 import ru.tinkoff.kora.json.common.JsonReader;
+import tools.jackson.core.ObjectReadContext;
 
 public class JsonStringParameterReader<T> implements StringParameterReader<T> {
     private final JsonReader<T> reader;
@@ -13,9 +15,10 @@ public class JsonStringParameterReader<T> implements StringParameterReader<T> {
     }
 
     @Override
+    @Nullable
     public T read(String string) {
         try {
-            return this.reader.read(JsonCommonModule.JSON_FACTORY.createParser(string));
+            return this.reader.read(JsonCommonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), string));
         } catch (Exception e) {
             throw HttpServerResponseException.of(400, e.getMessage());
         }

@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.json.module.http.server;
+package ru.tinkoff.kora.http.server.common.mapper;
 
 import ru.tinkoff.kora.common.util.ByteBufferInputStream;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;

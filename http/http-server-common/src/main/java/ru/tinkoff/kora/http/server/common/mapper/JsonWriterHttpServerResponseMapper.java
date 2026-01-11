@@ -1,11 +1,11 @@
-package ru.tinkoff.kora.json.module.http.server;
+package ru.tinkoff.kora.http.server.common.mapper;
 
 import org.jspecify.annotations.Nullable;
+import ru.tinkoff.kora.http.common.body.JsonHttpBodyOutput;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
 import ru.tinkoff.kora.json.common.JsonWriter;
-import ru.tinkoff.kora.json.module.http.JsonHttpBodyOutput;
 
 public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
     private final JsonWriter<T> writer;

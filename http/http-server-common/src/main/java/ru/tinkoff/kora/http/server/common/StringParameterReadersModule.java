@@ -2,13 +2,16 @@ package ru.tinkoff.kora.http.server.common;
 
 import ru.tinkoff.kora.application.graph.TypeRef;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.http.server.common.handler.EnumStringParameterReader;
 import ru.tinkoff.kora.http.server.common.handler.StringParameterReader;
+import ru.tinkoff.kora.http.server.common.mapper.JsonStringParameterReader;
+import ru.tinkoff.kora.json.common.JsonReader;
+import ru.tinkoff.kora.json.common.annotation.Json;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.Duration;
-import java.util.List;
 import java.util.UUID;
 
 public interface StringParameterReadersModule {
@@ -91,5 +94,11 @@ public interface StringParameterReadersModule {
     @DefaultComponent
     default StringParameterReader<Duration> javaDurationStringParameterReader() {
         return StringParameterReader.of(Duration::parse, "Parameter has incorrect value '%s' for 'Duration' type"::formatted);
+    }
+
+    @DefaultComponent
+    @Tag(Json.class)
+    default <T> JsonStringParameterReader<T> jsonStringParameterReader(JsonReader<T> reader) {
+        return new JsonStringParameterReader<>(reader);
     }
 }

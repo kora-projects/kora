@@ -11,6 +11,7 @@ module kora.http.server.common {
     exports ru.tinkoff.kora.http.server.common.auth;
     exports ru.tinkoff.kora.http.server.common.form;
     exports ru.tinkoff.kora.http.server.common.handler;
+    exports ru.tinkoff.kora.http.server.common.mapper;
     exports ru.tinkoff.kora.http.server.common.router;
     exports ru.tinkoff.kora.http.server.common.telemetry;
 }
