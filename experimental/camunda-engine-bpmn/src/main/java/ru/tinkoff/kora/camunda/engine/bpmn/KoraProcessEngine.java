@@ -3,6 +3,7 @@ package ru.tinkoff.kora.camunda.engine.bpmn;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.ProcessEngines;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -12,7 +13,6 @@ import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executor;
 
 public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine> {
 
@@ -21,18 +21,15 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
     private final ProcessEngineConfiguration engineConfiguration;
     private final CamundaEngineBpmnConfig engineConfig;
     private final List<ProcessEngineConfigurator> camundaConfigurators;
-    private final Executor executor;
 
     private volatile ProcessEngine processEngine;
 
     public KoraProcessEngine(ProcessEngineConfiguration engineConfiguration,
                              CamundaEngineBpmnConfig engineConfig,
-                             List<ProcessEngineConfigurator> camundaConfigurators,
-                             Executor executor) {
+                             List<ProcessEngineConfigurator> camundaConfigurators) {
         this.engineConfig = engineConfig;
         this.engineConfiguration = engineConfiguration;
         this.camundaConfigurators = camundaConfigurators;
-        this.executor = executor;
     }
 
     @Override
@@ -62,16 +59,20 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
                 logger.debug("Camunda BPMN Engine configuring...");
                 final long startedConfiguring = TimeUtils.started();
 
-                var setups = camundaConfigurators.stream()
-                    .map(c -> CompletableFuture.runAsync(() -> {
+                var setups = new CompletableFuture<?>[camundaConfigurators.size()];
+                for (var i = 0; i < camundaConfigurators.size(); i++) {
+                    var camundaConfigurator = camundaConfigurators.get(i);
+                    var future = new CompletableFuture<@Nullable Void>();
+                    Thread.ofVirtual().name("camunda-process-engine-config-" + i).start(() -> {
                         try {
-                            c.setup(processEngine);
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
+                            camundaConfigurator.setup(processEngine);
+                            future.complete(null);
+                        } catch (Throwable t) {
+                            future.completeExceptionally(t);
                         }
-                    }, executor))
-                    .toArray(CompletableFuture[]::new);
-
+                    });
+                    setups[i] = future;
+                }
                 CompletableFuture.allOf(setups).join();
                 logger.info("Camunda BPMN Engine configured in {}", TimeUtils.tookForLogging(startedConfiguring));
             }

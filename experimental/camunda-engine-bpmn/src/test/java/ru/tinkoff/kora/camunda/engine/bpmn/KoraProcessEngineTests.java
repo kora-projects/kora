@@ -22,7 +22,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 @ExtendWith({PostgresTestContainer.class})
@@ -79,8 +78,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                     camundaEngineBpmnKoraProcessEngineTwoStageCamundaConfigurator(koraProcessEngineConfiguration, config, jobExecutor),
                     camundaEngineBpmnKoraAdminUserConfigurator(config, camundaEngineDataSource),
                     camundaEngineBpmnKoraResourceDeploymentConfigurator(config)
-                ),
-                Executors.newCachedThreadPool());
+                ));
             try {
                 koraProcessEngine.init();
             } catch (Exception e) {
@@ -146,8 +144,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 All.of(
                     camundaEngineBpmnKoraAdminUserConfigurator(config, camundaEngineDataSource),
                     camundaEngineBpmnKoraResourceDeploymentConfigurator(config)
-                ),
-                Executors.newCachedThreadPool());
+                ));
             try {
                 koraProcessEngine.init();
             } catch (Exception e) {

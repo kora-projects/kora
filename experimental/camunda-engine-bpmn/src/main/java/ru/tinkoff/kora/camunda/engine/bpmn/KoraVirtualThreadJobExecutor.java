@@ -2,7 +2,6 @@ package ru.tinkoff.kora.camunda.engine.bpmn;
 
 import org.camunda.bpm.engine.impl.ProcessEngineImpl;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
-import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -14,11 +13,8 @@ public final class KoraVirtualThreadJobExecutor extends JobExecutor {
     private final CamundaEngineBpmnConfig engineConfig;
 
     public KoraVirtualThreadJobExecutor(CamundaEngineBpmnConfig engineConfig) {
-        if (VirtualThreadExecutorHolder.status() != VirtualThreadExecutorHolder.VirtualThreadStatus.ENABLED) {
-            throw new IllegalStateException("Camunda BPMN Engine starting failed cause Virtual Threads are not available but enabled in configuration, please check that you are using Java 21+ or disable Virtual Threads for Camunda BPMN Engine in configuration.");
-        }
-
-        this.executor = VirtualThreadExecutorHolder.executor();
+        var factory = Thread.ofVirtual().name("camunda-job-executor-", 1).factory();
+        this.executor = r -> factory.newThread(r).start();
         this.engineConfig = engineConfig;
     }
 

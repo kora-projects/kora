@@ -15,7 +15,6 @@ import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
 import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
-import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.AdminUserProcessEngineConfigurator;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.DeploymentProcessEngineConfigurator;
 import ru.tinkoff.kora.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
@@ -36,8 +35,6 @@ import ru.tinkoff.kora.logging.common.MDC;
 
 import javax.sql.DataSource;
 import java.util.Optional;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
 
 public interface CamundaEngineBpmnModule {
 
@@ -165,20 +162,12 @@ public interface CamundaEngineBpmnModule {
         return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaEngineDataSource, camundaEngineBpmnConfig, componentResolverFactory, camundaVersion);
     }
 
-    @Tag(CamundaBpmn.class)
-    default Executor camundaEngineInitializeExecutor() {
-        return VirtualThreadExecutorHolder.status() == VirtualThreadExecutorHolder.VirtualThreadStatus.ENABLED
-            ? VirtualThreadExecutorHolder.executor()
-            : Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() * 2);
-    }
-
     @Root
     @DefaultComponent
     default KoraProcessEngine camundaEngineBpmnKoraProcessEngine(ProcessEngineConfiguration processEngineConfiguration,
-                                                                      CamundaEngineBpmnConfig camundaEngineBpmnConfig,
-                                                                      All<ProcessEngineConfigurator> camundaConfigurators,
-                                                                      @Tag(CamundaBpmn.class) Executor executor) {
-        return new KoraProcessEngine(processEngineConfiguration, camundaEngineBpmnConfig, camundaConfigurators, executor);
+                                                                 CamundaEngineBpmnConfig camundaEngineBpmnConfig,
+                                                                 All<ProcessEngineConfigurator> camundaConfigurators) {
+        return new KoraProcessEngine(processEngineConfiguration, camundaEngineBpmnConfig, camundaConfigurators);
     }
 
     default ProcessEngineConfigurator camundaEngineBpmnKoraAdminUserConfigurator(CamundaEngineBpmnConfig camundaEngineBpmnConfig, CamundaEngineDataSource camundaEngineDataSource) {
@@ -199,9 +188,8 @@ public interface CamundaEngineBpmnModule {
     default Lifecycle camundaKoraProcessEngineParallelInitializer(ProcessEngine processEngine,
                                                                   CamundaEngineBpmnConfig camundaEngineBpmnConfig,
                                                                   ProcessEngineConfiguration processEngineConfiguration,
-                                                                  All<ProcessEngineConfigurator> camundaConfigurators,
-                                                                  @Tag(CamundaBpmn.class) Executor executor) {
-        return new KoraProcessEngineParallelInitializer(processEngine, camundaEngineBpmnConfig, processEngineConfiguration, camundaConfigurators, executor);
+                                                                  All<ProcessEngineConfigurator> camundaConfigurators) {
+        return new KoraProcessEngineParallelInitializer(processEngine, camundaEngineBpmnConfig, processEngineConfiguration, camundaConfigurators);
     }
 
     default RuntimeService camundaEngineBpmnRuntimeService(ProcessEngine processEngine) {

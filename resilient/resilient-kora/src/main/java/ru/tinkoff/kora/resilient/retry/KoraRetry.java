@@ -3,14 +3,10 @@ package ru.tinkoff.kora.resilient.retry;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.application.graph.internal.loom.VirtualThreadExecutorHolder;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -20,6 +16,7 @@ final class KoraRetry implements Retry {
     private static final Logger logger = LoggerFactory.getLogger(KoraRetry.class);
 
     private static final RetryState EMPTY_STATE = new KoraEmptyRetryState();
+    private final Executor executor;
 
     private static class KoraEmptyRetryState implements RetryState {
 
@@ -76,6 +73,8 @@ final class KoraRetry implements Retry {
         this.failurePredicate = failurePredicate;
         this.metrics = metrics;
         this.config = config;
+        var threadFactory = Thread.ofVirtual().name("retry-", 1).factory();
+        this.executor = r -> threadFactory.newThread(r).start();
     }
 
     KoraRetry(String name, RetryConfig.NamedConfig config, RetryPredicate failurePredicate, RetryMetrics metric) {
@@ -123,7 +122,6 @@ final class KoraRetry implements Retry {
 
         var result = new CompletableFuture<T>();
         var retryState = asState();
-        var virtualExecutor = VirtualThreadExecutorHolder.executor();
         var retryCallback = new BiConsumer<T, Throwable>() {
             @Override
             public void accept(T r, Throwable e) {
@@ -135,9 +133,7 @@ final class KoraRetry implements Retry {
 
                 var state = retryState.onException(ex);
                 if (state == Retry.RetryState.RetryStatus.ACCEPTED) {
-                    var delayedExecutor = virtualExecutor != null
-                        ? CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, virtualExecutor)
-                        : CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS);
+                    var delayedExecutor = CompletableFuture.delayedExecutor(retryState.getDelayNanos(), TimeUnit.NANOSECONDS, executor);
 
                     delayedExecutor.execute(() -> {
                         try {
