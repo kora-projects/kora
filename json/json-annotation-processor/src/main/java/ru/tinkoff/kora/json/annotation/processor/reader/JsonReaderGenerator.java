@@ -271,14 +271,24 @@ public class JsonReaderGenerator {
             }
             if (field.reader() != null) {
                 var fieldName = this.readerFieldName(field);
-                var fieldType = TypeName.get(field.reader());
+                final TypeName fieldType;
+                if (field.reader().mapperClass() != null) {
+                    fieldType = TypeName.get(field.reader().mapperClass());
+                    var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
+                    var readerElement = (TypeElement) this.types.asElement(field.reader().mapperClass());
+                    if (CommonUtils.hasDefaultConstructorAndFinal(readerElement)) {
+                        readerField.addModifiers(Modifier.STATIC);
+                        readerField.initializer("new $T()", fieldType);
+                        typeBuilder.addField(readerField.build());
+                        continue;
+                    }
+                } else {
+                    fieldType = ParameterizedTypeName.get(JsonTypes.jsonReader, field.typeName());
+                }
                 var readerField = FieldSpec.builder(fieldType, fieldName, Modifier.PRIVATE, Modifier.FINAL);
-                var readerElement = (TypeElement) this.types.asElement(field.reader());
-                if (CommonUtils.hasDefaultConstructorAndFinal(readerElement)) {
-                    readerField.addModifiers(Modifier.STATIC);
-                    readerField.initializer("new $T()", field.reader());
-                    typeBuilder.addField(readerField.build());
-                    continue;
+                var fieldTag = field.reader().toTagAnnotation();
+                if (fieldTag != null) {
+                    readerField.addAnnotation(fieldTag);
                 }
                 typeBuilder.addField(readerField.build());
                 constructor.addParameter(fieldType, fieldName);

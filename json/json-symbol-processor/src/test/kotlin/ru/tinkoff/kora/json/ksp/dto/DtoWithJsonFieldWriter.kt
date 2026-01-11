@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.json.ksp.dto
 
+import ru.tinkoff.kora.common.Mapping
 import ru.tinkoff.kora.json.common.JsonReader
 import ru.tinkoff.kora.json.common.JsonWriter
 import ru.tinkoff.kora.json.common.annotation.Json
@@ -14,14 +15,12 @@ import java.io.IOException
 data class DtoWithJsonFieldWriter(
     @JsonField("renamedField1") val field1: String,
     @JsonField("renamedField2") val field2: String,
-    @JsonField(
-        writer = CustomWriter::class,
-        reader = CustomReader::class
-    ) val field3: String?,
-    @JsonField(
-        writer = CustomWriter::class,
-        reader = CustomReader::class
-    ) val field4: String?
+    @Mapping(CustomWriter::class)
+    @Mapping(CustomReader::class)
+    val field3: String?,
+    @Mapping(CustomWriter::class)
+    @Mapping(CustomReader::class)
+    val field4: String?
 ) {
     class CustomWriter : JsonWriter<String?> {
         @Throws(IOException::class)

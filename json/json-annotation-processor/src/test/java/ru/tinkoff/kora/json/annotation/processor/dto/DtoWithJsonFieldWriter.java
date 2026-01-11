@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor.dto;
 
+import ru.tinkoff.kora.common.Mapping;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.annotation.Json;
@@ -13,8 +14,12 @@ import tools.jackson.core.exc.StreamReadException;
 public record DtoWithJsonFieldWriter(
     @JsonField("renamedField1") String field1,
     @JsonField("renamedField2") String field2,
-    @JsonField(writer = CustomWriter.class, reader = CustomReader.class) String field3,
-    @JsonField(writer = CustomWriter.class, reader = CustomReader.class) String field4) {
+    @Mapping(CustomWriter.class)
+    @Mapping(CustomReader.class)
+    String field3,
+    @Mapping(CustomWriter.class)
+    @Mapping(CustomReader.class)
+    @JsonField String field4) {
 
     public static final class CustomWriter implements JsonWriter<String> {
 

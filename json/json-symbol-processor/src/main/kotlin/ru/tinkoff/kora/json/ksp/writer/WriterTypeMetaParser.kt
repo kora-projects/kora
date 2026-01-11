@@ -3,7 +3,6 @@ package ru.tinkoff.kora.json.ksp.writer
 import com.google.devtools.ksp.isPrivate
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -20,6 +19,7 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.getNameConverter
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.isJavaRecord
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
+import ru.tinkoff.kora.ksp.common.parseMappingData
 
 class WriterTypeMetaParser(resolver: Resolver) {
 
@@ -73,14 +73,14 @@ class WriterTypeMetaParser(resolver: Resolver) {
         }
         val jsonName = parseJsonName(field, jsonField, fieldNameConverter)
         val accessor = getAccessorMethod(jsonClassDeclaration, field, resolvedType)
-        val writer = jsonField?.findValueNoDefault<KSType>("writer")
+
+        val writer = field.parseMappingData().getMapping(JsonTypes.jsonWriter)
         val typeMeta = parseWriterFieldType(jsonClassDeclaration, resolvedType)
 
-        val includeType = ((field.findAnnotation(JsonTypes.jsonInclude)
-            ?: jsonClassDeclaration.findAnnotation(JsonTypes.jsonInclude))
-            ?.arguments?.filter { a -> (a.name?.getShortName() ?: "") == "value" }
-            ?.firstNotNullOfOrNull { arg -> JsonClassWriterMeta.IncludeType.tryParse(ClassName.bestGuess(arg.value.toString()).simpleName) }
-            ?: JsonClassWriterMeta.IncludeType.NON_NULL)
+        val includeType = (field.findAnnotation(JsonTypes.jsonInclude) ?: jsonClassDeclaration.findAnnotation(JsonTypes.jsonInclude))
+            ?.findValueNoDefault<KSClassDeclaration>("value")
+            ?.let { JsonClassWriterMeta.IncludeType.tryParse(it.simpleName.asString()) }
+            ?: JsonClassWriterMeta.IncludeType.NON_NULL
 
         return JsonClassWriterMeta.FieldMeta(field.simpleName, jsonName, type.resolve(), typeMeta, writer, accessor, includeType)
     }

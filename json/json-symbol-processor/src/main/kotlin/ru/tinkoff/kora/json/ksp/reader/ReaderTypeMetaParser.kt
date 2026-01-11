@@ -12,11 +12,11 @@ import ru.tinkoff.kora.json.ksp.JsonTypes
 import ru.tinkoff.kora.json.ksp.KnownType
 import ru.tinkoff.kora.json.ksp.findJsonField
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
 import ru.tinkoff.kora.ksp.common.KspCommonUtils
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.getNameConverter
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import ru.tinkoff.kora.ksp.common.parseAnnotationValue
+import ru.tinkoff.kora.ksp.common.parseMappingData
 
 class ReaderTypeMetaParser(
     private val knownType: KnownType,
@@ -100,7 +100,7 @@ class ReaderTypeMetaParser(
 
     private fun parseField(jsonClass: KSClassDeclaration, parameter: KSValueParameter, jsonField: KSAnnotation?, nameConverter: KspCommonUtils.NameConverter?): JsonClassReaderMeta.FieldMeta {
         val jsonName = parseJsonName(parameter, jsonField, nameConverter)
-        val reader = jsonField?.findValueNoDefault<KSType>("reader")
+        val reader = parameter.parseMappingData().getMapping(JsonTypes.jsonReader)
         val typeMeta = this.parseReaderFieldType(jsonClass, parameter)
         val fieldTypeName = parameter.type.toTypeName(jsonClass.typeParameters.toTypeParameterResolver())
         return JsonClassReaderMeta.FieldMeta(parameter, jsonName, fieldTypeName, typeMeta, reader)
