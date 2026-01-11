@@ -121,7 +121,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
 
     private static Optional<QueryParameter> parseSimpleParameter(String rawSql, int methodParameterNumber, String sqlParameterName) {
         var result = new ArrayList<QueryParameter.QueryIndex>();
-        var pattern = Pattern.compile("[\\s\\n,(](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)]|$)");
+        var pattern = sqlParameterPattern(sqlParameterName);
         var matcher = pattern.matcher(rawSql);
         while (matcher.find()) {
             var mr = matcher.toMatchResult();
@@ -139,7 +139,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
 
     private static Optional<QueryParameter> parseEntityDirectParameter(String rawSql, int methodParameterNumber, String sqlParameterName) {
         var result = new ArrayList<QueryParameter.QueryIndex>();
-        var pattern = Pattern.compile("[\\s\\n,(](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)]|$)");
+        var pattern = sqlParameterPattern(sqlParameterName);
         var matcher = pattern.matcher(rawSql);
         while (matcher.find()) {
             var mr = matcher.toMatchResult();
@@ -153,5 +153,9 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             : Optional.of(new QueryParameter(sqlParameterName, methodParameterNumber, result, result.stream()
             .map(QueryParameter.QueryIndex::start)
             .toList()));
+    }
+
+    private static Pattern sqlParameterPattern(String sqlParameterName) {
+        return Pattern.compile("[\\s\\n,(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)\\];]|$)");
     }
 }
