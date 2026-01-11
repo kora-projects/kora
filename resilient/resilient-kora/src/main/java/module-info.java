@@ -3,7 +3,7 @@ import org.jspecify.annotations.NullMarked;
 @NullMarked
 module kora.resilent.kora {
     requires transitive kora.common;
-    requires kora.config.common;
+    requires transitive kora.config.common;
     requires static org.jetbrains.annotations;
 
     exports ru.tinkoff.kora.resilient;
