@@ -3093,7 +3093,6 @@
             ui = SwaggerUIBundle({
                 ${swaggerUrls},
                 dom_id: "#swagger-ui",
-                defaultModelsExpandDepth: 0,
                 presets: [
                     SwaggerUIBundle.presets.apis,
                     SwaggerUIStandalonePreset
@@ -3103,8 +3102,17 @@
                     f
                 ],
                 layout: "StandaloneLayout",
+                requestInterceptor: (request) => {
+                    request.credentials = "include"
+                    return request;
+                },
                 validatorUrl: null,
-                deepLinking: true
+                defaultModelsExpandDepth: 0,
+                deepLinking: true,
+                persistAuthorization: true,
+                withCredentials: true,
+                displayOperationId: true,
+                filter: true
             });
         window.ui = ui;
     };
