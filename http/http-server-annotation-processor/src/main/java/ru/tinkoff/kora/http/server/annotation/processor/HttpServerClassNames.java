@@ -10,6 +10,8 @@ public class HttpServerClassNames {
     public static final ClassName cookie = ClassName.get("ru.tinkoff.kora.http.common.annotation", "Cookie");
 
     public static final ClassName httpServerResponse = ClassName.get("ru.tinkoff.kora.http.server.common", "HttpServerResponse");
+    public static final ClassName httpResponseEntity = ClassName.get("ru.tinkoff.kora.http.common", "HttpResponseEntity");
+    public static final ClassName httpServerResponseEntityMapper = ClassName.get("ru.tinkoff.kora.http.server.common.handler", "HttpServerResponseEntityMapper");
     public static final ClassName httpServerResponseException = ClassName.get("ru.tinkoff.kora.http.server.common", "HttpServerResponseException");
 
     public static final ClassName stringParameterReader = ClassName.get("ru.tinkoff.kora.http.server.common.handler", "StringParameterReader");

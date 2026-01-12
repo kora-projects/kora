@@ -13,6 +13,7 @@ import ru.tinkoff.kora.http.server.common.HttpServerResponse;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerResponseMapper;
+import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -28,14 +29,13 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
 
     @Override
     protected String commonImports() {
-        return """
-            import ru.tinkoff.kora.common.*;
+        return super.commonImports() + """
             import ru.tinkoff.kora.http.server.common.annotation.*;
             import ru.tinkoff.kora.http.common.*;
             import ru.tinkoff.kora.http.common.annotation.*;
             import ru.tinkoff.kora.http.common.body.*;
             import ru.tinkoff.kora.http.common.header.*;
-            import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
+            import ru.tinkoff.kora.http.server.common.handler.*;
             import ru.tinkoff.kora.http.server.common.HttpServerResponse;
             import ru.tinkoff.kora.http.server.common.HttpServerRequest;
             import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
@@ -86,7 +86,7 @@ public abstract class AbstractHttpControllerTest extends AbstractAnnotationProce
     }
 
     protected HttpControllerModule compile(@Language("java") String... sources) {
-        var compileResult = compile(List.of(new HttpControllerProcessor()), sources);
+        var compileResult = compile(List.of(new HttpControllerProcessor(), new KoraAppProcessor()), sources);
         if (compileResult.isFailed()) {
             throw compileResult.compilationException();
         }
