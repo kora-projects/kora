@@ -24,6 +24,8 @@ object HttpClientClassNames {
     val interceptWithClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith")
     val interceptWithContainerClassName = ClassName("ru.tinkoff.kora.http.common.annotation", "InterceptWith", "InterceptWithContainer")
     val httpClientEncoderUtils = ClassName("ru.tinkoff.kora.http.client.common.request", "EncoderUtils")
+    val httpResponseEntity = ClassName("ru.tinkoff.kora.http.common", "HttpResponseEntity");
+    val httpClientResponseEntityMapper = ClassName("ru.tinkoff.kora.http.client.common.response", "HttpClientResponseEntityMapper");
 
     val httpBody = ClassName("ru.tinkoff.kora.http.common.body", "HttpBody")
     val httpHeaders = ClassName("ru.tinkoff.kora.http.common.header", "HttpHeaders")

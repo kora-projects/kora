@@ -12,16 +12,16 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
           import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
           import ru.tinkoff.kora.http.client.common.HttpClient
           import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory
+          import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
+          import ru.tinkoff.kora.http.common.HttpResponseEntity
         """.trimIndent()
     }
 
     @Test
     fun testExtension() {
-        compile0(listOf(KoraAppProcessorProvider(), HttpClientSymbolProcessorProvider()),
+        compile0(
+            listOf(KoraAppProcessorProvider(), HttpClientSymbolProcessorProvider()),
             """
-            import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
-            import java.util.concurrent.CompletionStage
-    
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
                fun client(): HttpClient = org.mockito.Mockito.mock(HttpClient::class.java)
@@ -45,5 +45,59 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
         Assertions.assertThat(graph.nodes)
             .hasSize(7)
     }
+
+
+    @Test
+    fun testExtensionWithTag() {
+        compile0(
+            listOf(KoraAppProcessorProvider()), """
+            @KoraApp
+            interface App {
+                @Root
+                fun root(@Tag(String::class) mapper: HttpClientResponseMapper<HttpResponseEntity<String>>): String = ""
+            
+                @Tag(String::class)
+                fun mapper() : HttpClientResponseMapper<String> = HttpClientResponseMapper<String> { rs -> "" }
+            }
+            """
+        )
+
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testExtensionWithoutTag() {
+        compile0(
+            listOf(KoraAppProcessorProvider()), """
+            @KoraApp
+            interface App {
+                @Root
+                fun root(mapper: HttpClientResponseMapper<HttpResponseEntity<String>>): String = ""
+            
+                fun mapper() : HttpClientResponseMapper<String> = HttpClientResponseMapper<String> { rs -> "" }
+            }
+            """
+        )
+
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testExtensionNullable() {
+        compile0(
+            listOf(KoraAppProcessorProvider()), """
+            @KoraApp
+            interface App {
+                @Root
+                fun root(mapper: HttpClientResponseMapper<HttpResponseEntity<String?>>): String = ""
+            
+                fun mapper() : HttpClientResponseMapper<String> = HttpClientResponseMapper<String> { rs -> "" }
+            }
+            """
+        )
+
+        compileResult.assertSuccess()
+    }
+
 
 }
