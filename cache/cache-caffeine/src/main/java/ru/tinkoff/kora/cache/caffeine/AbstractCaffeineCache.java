@@ -44,7 +44,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
 
         var telemetryContext = telemetry.create("GET_MANY", name);
         var values = caffeine.getAllPresent(keys);
-        telemetryContext.recordSuccess();
+        telemetryContext.recordSuccess(values);
         return values;
     }
 
@@ -53,7 +53,7 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     public Map<K, V> getAll() {
         var telemetryContext = telemetry.create("GET_ALL", name);
         var values = Collections.unmodifiableMap(caffeine.asMap());
-        telemetryContext.recordSuccess();
+        telemetryContext.recordSuccess(values);
         return values;
     }
 
