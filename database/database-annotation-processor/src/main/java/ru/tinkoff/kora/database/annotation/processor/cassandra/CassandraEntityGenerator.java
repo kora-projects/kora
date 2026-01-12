@@ -99,9 +99,8 @@ public class CassandraEntityGenerator {
             .addModifiers(Modifier.PUBLIC);
         var apply = MethodSpec.methodBuilder("apply")
             .addAnnotation(Override.class)
-            .addAnnotation(CommonClassNames.nullable)
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .returns(rowTypeName)
+            .returns(rowTypeName.annotated(CommonClassNames.nullableAnnotation))
             .addParameter(RESULT_SET, "_rs");
         apply.addStatement("var _it = _rs.iterator()");
         apply.beginControlFlow("if (!_it.hasNext())");
