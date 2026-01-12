@@ -12,7 +12,8 @@ object HttpServerClassNames {
     val cookie = ClassName("ru.tinkoff.kora.http.common.annotation", "Cookie");
 
     val httpServerResponse = ClassName("ru.tinkoff.kora.http.server.common", "HttpServerResponse");
-    val httpServerResponseEntity = ClassName("ru.tinkoff.kora.http.server.common", "HttpServerResponse");
+    val httpResponseEntity = ClassName("ru.tinkoff.kora.http.common", "HttpResponseEntity");
+    val httpServerResponseEntityMapper = ClassName("ru.tinkoff.kora.http.server.common.handler", "HttpServerResponseEntityMapper");
     val httpServerResponseException = ClassName("ru.tinkoff.kora.http.server.common", "HttpServerResponseException");
 
     val stringParameterReader = ClassName("ru.tinkoff.kora.http.server.common.handler", "StringParameterReader");
