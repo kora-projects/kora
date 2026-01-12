@@ -154,10 +154,9 @@ public class JdbcEntityGenerator {
 
         var apply = MethodSpec.methodBuilder("apply")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
-            .addAnnotation(CommonClassNames.nullable)
             .addParameter(TypeName.get(ResultSet.class), "_rs")
             .addException(TypeName.get(SQLException.class))
-            .returns(TypeName.get(entity.typeMirror()));
+            .returns(TypeName.get(entity.typeMirror()).annotated(CommonClassNames.nullableAnnotation));
         apply.addCode("if (!_rs.next()) {\n  return null;\n}\n");
         apply.addCode(this.readColumnIds(entity));
         var read = this.rowMapperGenerator.readEntity("_result", entity);

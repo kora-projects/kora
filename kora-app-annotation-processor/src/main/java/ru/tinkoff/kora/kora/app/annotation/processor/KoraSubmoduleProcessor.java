@@ -130,13 +130,16 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                 }
                 for (int i = 0; i < constructor.getParameters().size(); i++) {
                     var parameter = constructor.getParameters().get(i);
-                    var pb = ParameterSpec.get(parameter).toBuilder();
+                    var type = TypeName.get(parameter.asType());
+                    var name = parameter.getSimpleName().toString();
+                    if (CommonUtils.isNullable(parameter)) {
+                        type = type.annotated(CommonClassNames.nullableAnnotation);
+                    }
+                    var pb = ParameterSpec.builder(type, name)
+                        .addModifiers(parameter.getModifiers());
                     var tag = TagUtils.parseTagValue(parameter);
                     if (tag != null) {
                         pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
-                    }
-                    if (CommonUtils.isNullable(parameter)) {
-                        pb.addAnnotation(CommonClassNames.nullable);
                     }
                     mb.addParameter(pb.build());
                     if (i > 0) {
@@ -179,13 +182,16 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
                     mb.addCode("return $L.$L(", moduleName, method.getSimpleName());
                     for (int i = 0; i < method.getParameters().size(); i++) {
                         var parameter = method.getParameters().get(i);
-                        var pb = ParameterSpec.get(parameter).toBuilder();
+                        var type = TypeName.get(parameter.asType());
+                        var name = parameter.getSimpleName().toString();
+                        if (CommonUtils.isNullable(parameter)) {
+                            type = type.annotated(CommonClassNames.nullableAnnotation);
+                        }
+                        var pb = ParameterSpec.builder(type, name)
+                            .addModifiers(parameter.getModifiers());
                         var tag = TagUtils.parseTagValue(parameter);
                         if (tag != null) {
                             pb.addAnnotation(TagUtils.makeAnnotationSpec(tag));
-                        }
-                        if (CommonUtils.isNullable(parameter)) {
-                            pb.addAnnotation(CommonClassNames.nullable);
                         }
                         mb.addParameter(pb.build());
                         if (i > 0) {
