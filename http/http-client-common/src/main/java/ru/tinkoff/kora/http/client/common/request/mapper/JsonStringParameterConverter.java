@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.json.module.http.client;
+package ru.tinkoff.kora.http.client.common.request.mapper;
 
 import ru.tinkoff.kora.http.client.common.HttpClientEncoderException;
 import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;

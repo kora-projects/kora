@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.http.common.body;
 
 import org.jspecify.annotations.Nullable;
-import ru.tinkoff.kora.json.common.JsonCommonModule;
+import ru.tinkoff.kora.json.common.JsonModule;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import tools.jackson.core.JsonEncoding;
 import tools.jackson.core.ObjectWriteContext;
@@ -31,7 +31,7 @@ public final class JsonHttpBodyOutput<T> implements HttpBodyOutput {
 
     @Override
     public void write(OutputStream os) throws IOException {
-        try (var gen = JsonCommonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), os, JsonEncoding.UTF8)) {
+        try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), os, JsonEncoding.UTF8)) {
             this.writer.write(gen, this.value);
         }
     }

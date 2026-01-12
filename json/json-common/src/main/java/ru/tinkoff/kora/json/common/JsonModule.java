@@ -13,7 +13,7 @@ import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-public interface JsonCommonModule {
+public interface JsonModule {
 
     JsonFactory JSON_FACTORY = new JsonFactoryBuilder()
         .recyclerPool(JsonRecyclerPools.threadLocalPool())

@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.cache.redis;
 
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.json.common.JsonCommonModule;
+import ru.tinkoff.kora.json.common.JsonModule;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.annotation.Json;
@@ -10,7 +10,7 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
-public interface RedisCacheMapperModule extends JsonCommonModule {
+public interface RedisCacheMapperModule extends JsonModule {
 
     @Json
     @DefaultComponent

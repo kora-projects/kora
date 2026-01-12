@@ -23,7 +23,7 @@ public class JsonObjectCodecTest {
             }
             """;
 
-        try (var parser = JsonCommonModule.JSON_FACTORY.createParser(json)) {
+        try (var parser = JsonModule.JSON_FACTORY.createParser(json)) {
             parser.nextToken();
             var parseResult = JsonObjectCodec.parse(parser);
 

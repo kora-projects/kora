@@ -4,15 +4,10 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.sql.Time;
-import java.sql.Timestamp;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
-import java.time.temporal.TemporalAdjusters;
-import java.time.temporal.TemporalAmount;
-import java.util.Date;
 
-class JsonTimeTests extends Assertions implements JsonCommonModule {
+class JsonTimeTests extends Assertions implements JsonModule {
 
     @Test
     void localDateDeserializedAndSerialized() throws IOException {

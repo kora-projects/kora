@@ -18,7 +18,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
     default T read(byte[] bytes) {
-        try (var parser = JsonCommonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes)) {
+        try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes)) {
             parser.nextToken();
             return this.read(parser);
         }
@@ -26,7 +26,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
     default T read(byte[] bytes, int offset, int length) {
-        try (var parser = JsonCommonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes, offset, length)) {
+        try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), bytes, offset, length)) {
             parser.nextToken();
             return this.read(parser);
         }
@@ -34,7 +34,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
     default T read(String str) {
-        try (var parser = JsonCommonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), str)) {
+        try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), str)) {
             parser.nextToken();
             return this.read(parser);
         }
@@ -42,7 +42,7 @@ public interface JsonReader<T> extends Mapping.MappingFunction {
 
     @Nullable
     default T read(InputStream is) {
-        try (var parser = JsonCommonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), is)) {
+        try (var parser = JsonModule.JSON_FACTORY.createParser(ObjectReadContext.empty(), is)) {
             parser.nextToken();
             return this.read(parser);
         }
