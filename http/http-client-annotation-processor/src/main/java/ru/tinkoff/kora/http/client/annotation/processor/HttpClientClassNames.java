@@ -22,6 +22,8 @@ public class HttpClientClassNames {
     public static final ClassName httpHeaders = ClassName.get("ru.tinkoff.kora.http.common.header", "HttpHeaders");
     public static final ClassName httpCookie = ClassName.get("ru.tinkoff.kora.http.common.cookie", "Cookie");
     public static final ClassName httpRoute = ClassName.get("ru.tinkoff.kora.http.common.annotation", "HttpRoute");
+    public static final ClassName httpResponseEntity = ClassName.get("ru.tinkoff.kora.http.common", "HttpResponseEntity");
+    public static final ClassName httpClientResponseEntityMapper = ClassName.get("ru.tinkoff.kora.http.client.common.response", "HttpClientResponseEntityMapper");
     public static final ClassName httpClientUnknownException = ClassName.get("ru.tinkoff.kora.http.client.common", "HttpClientUnknownException");
     public static final ClassName httpClientOperationConfig = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "HttpClientOperationConfig");
     public static final ClassName declarativeHttpClientConfig = ClassName.get("ru.tinkoff.kora.http.client.common.declarative", "DeclarativeHttpClientConfig");
