@@ -36,7 +36,7 @@ public class GenericsTest extends AbstractJsonAnnotationProcessorTest {
             }
             """, """
             @KoraApp
-            public interface TestApp extends ru.tinkoff.kora.json.common.JsonCommonModule {
+            public interface TestApp extends ru.tinkoff.kora.json.common.JsonModule {
                 @Root
                 default String root1(ru.tinkoff.kora.json.common.JsonWriter<TestRecord<Integer>> w, ru.tinkoff.kora.json.common.JsonReader<TestRecord<Integer>> r) { return ""; }
                 @Root
