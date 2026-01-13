@@ -11,7 +11,8 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
     public JavaFile generate(OperationsMap ctx) {
         var className = ClassName.get(apiPackage, ctx.get("classname") + "Responses");
         var b = TypeSpec.interfaceBuilder(className)
-            .addAnnotation(generated());
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC);
         for (var operation : ctx.getOperations().getOperation()) {
             var responseClassName = className.nestedClass(capitalize(operation.operationId) + "ApiResponse");
             if (operation.responses.size() == 1) {
