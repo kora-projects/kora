@@ -3,10 +3,9 @@ apply plugin: 'org.jetbrains.kotlin.jvm'
 tasks.findAll {
     if (it.class.canonicalName == "org.jetbrains.kotlin.gradle.tasks.KotlinCompile_Decorated") {
         it.kotlinOptions {
-            jvmTarget = '24'
+            jvmTarget = '25'
             javaParameters = true
             freeCompilerArgs += '-Xjvm-default=all'
         }
-        it.jvmTargetValidationMode = 'IGNORE'
     }
 }

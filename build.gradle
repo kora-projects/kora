@@ -1,5 +1,5 @@
 plugins {
-    id "org.jetbrains.kotlin.jvm" version "2.2.10" apply false
+    id "org.jetbrains.kotlin.jvm" version "2.3.0" apply false
     id 'jacoco'
 }
 
@@ -36,7 +36,7 @@ subprojects {
     tasks.withType(JavaCompile).configureEach {
         options.encoding("UTF-8")
         options.debug = true
-        options.compilerArgs << '-parameters' << '-Xlint:all' << '-Xlint:-serial,-processing' << '-XprintRounds'
+        options.compilerArgs << '-parameters' << '-Xlint:all' << '-Xlint:-serial,-processing,-missing-explicit-ctor' << '-XprintRounds'
     }
 }
 

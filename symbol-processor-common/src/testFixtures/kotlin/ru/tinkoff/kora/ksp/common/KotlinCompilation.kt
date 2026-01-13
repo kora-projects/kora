@@ -1,8 +1,9 @@
 package ru.tinkoff.kora.ksp.common
 
 import com.google.devtools.ksp.impl.KotlinSymbolProcessing
+import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
-import com.google.devtools.ksp.processing.impl.MessageCollectorBasedKSPLogger
+import com.google.devtools.ksp.symbol.KSNode
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
 import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
@@ -80,10 +81,6 @@ class KotlinCompilation {
         val pluginClassPath = classpath.asSequence()
             .map { File(it) }
             .toList() + classpathEntries.map { it.toFile() }
-        val sw = ByteArrayOutputStream()
-        val collector = PrintingMessageCollector(
-            PrintStream(sw, true, StandardCharsets.UTF_8), MessageRenderer.PLAIN_FULL_PATHS, true
-        )
         val kspConfig = com.google.devtools.ksp.processing.KSPJvmConfig.Builder().apply {
             moduleName = "main"
             jvmTarget = "24"
@@ -103,15 +100,31 @@ class KotlinCompilation {
             classOutputDir = baseDir.resolve("classOutputDir").toFile()
             resourceOutputDir = baseDir.resolve("resourceOutputDir").toFile()
         }.build()
-        val l = MessageCollectorBasedKSPLogger(collector, collector, false)
+        val l = MessageCollectorBasedKSPLogger()
         val exitCode = KotlinSymbolProcessing(kspConfig, processors, l).execute()
-        l.reportAll()
-        val messages = sw.toString().split("\n")
-        if (exitCode != KotlinSymbolProcessing.ExitCode.OK || messages.any { it.startsWith("error: [ksp]") }) {
-            throw messages.asCompilationException()
+        if (exitCode != KotlinSymbolProcessing.ExitCode.OK || l.errors.isNotEmpty()) {
+            throw CompilationErrorException(l.errors.toList())
         }
 
         return kspConfig.kotlinOutputDir.walk().filter { it.isFile }.map { it.toPath() }.toList()
+    }
+
+    class MessageCollectorBasedKSPLogger() : KSPLogger {
+        val errors = mutableListOf<String>()
+
+        override fun error(message: String, symbol: KSNode?) {
+            this.errors.add(message)
+        }
+
+        override fun exception(e: Throwable) {
+            this.errors.add(e.toString())
+        }
+
+        override fun info(message: String, symbol: KSNode?) {}
+
+        override fun logging(message: String, symbol: KSNode?) {}
+
+        override fun warn(message: String, symbol: KSNode?) {}
     }
 
     fun kotlinCompileFiles(files: List<Path>): ClassLoader {
