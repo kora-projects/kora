@@ -23,6 +23,7 @@ object ModuleGenerator {
         val clientType = ClassName(packageName, s3client.generatedClassName("ClientImpl"))
         val b: TypeSpec.Builder = interfaceBuilder(s3client.generatedClassName("Module"))
             .generated(ModuleGenerator::class)
+            .addAnnotation(CommonClassNames.module)
 
         val paths = S3ClientUtils.parseConfigBuckets(s3client)
         if (!paths.isEmpty()) {

@@ -24,6 +24,7 @@ public class ModuleGenerator {
         var clientType = ClassName.get(packageName, NameUtils.generatedType(s3client, "ClientImpl"));
         var b = TypeSpec.interfaceBuilder(NameUtils.generatedType(s3client, "Module"))
             .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(CommonClassNames.module)
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
             .addOriginatingElement(s3client);
 
@@ -60,7 +61,7 @@ public class ModuleGenerator {
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configType), "extractor")
             .addStatement("var configValue = config.get($S)", s3ClientConfigPath)
             .addStatement("var parsed = extractor.extract(configValue)")
-            .addCode("if (parsed == null) $T.missingValueAfterParse(configValue);\n", CommonClassNames.configValueExtractionException)
+            .addCode("if (parsed == null) throw $T.missingValueAfterParse(configValue);\n", CommonClassNames.configValueExtractionException)
             .addStatement("return parsed")
             .build());
         var clientImpl = MethodSpec.methodBuilder("clientImpl")
