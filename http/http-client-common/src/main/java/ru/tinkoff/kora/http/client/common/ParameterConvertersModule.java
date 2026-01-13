@@ -1,7 +1,11 @@
 package ru.tinkoff.kora.http.client.common;
 
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.http.client.common.request.mapper.JsonStringParameterConverter;
 import ru.tinkoff.kora.http.client.common.writer.StringParameterConverter;
+import ru.tinkoff.kora.json.common.JsonWriter;
+import ru.tinkoff.kora.json.common.annotation.Json;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -94,5 +98,11 @@ public interface ParameterConvertersModule {
     @DefaultComponent
     default StringParameterConverter<Instant> javaTimeInstantStringParameterConverter() {
         return DateTimeFormatter.ISO_INSTANT::format;
+    }
+
+    @DefaultComponent
+    @Tag(Json.class)
+    default <T> JsonStringParameterConverter<T> jsonStringParameterConverter(JsonWriter<T> writer) {
+        return new JsonStringParameterConverter<>(writer);
     }
 }

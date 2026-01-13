@@ -3,6 +3,9 @@ package ru.tinkoff.kora.kafka.common;
 import org.apache.kafka.common.serialization.*;
 import org.apache.kafka.common.utils.Bytes;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.json.common.JsonReader;
+import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.kafka.common.consumer.deserializer.JsonKafkaDeserializer;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -64,5 +67,11 @@ public interface KafkaDeserializersModule {
     @DefaultComponent
     default Deserializer<Void> voidDeserializer() {
         return new VoidDeserializer();
+    }
+
+    @DefaultComponent
+    @Json
+    default <T> JsonKafkaDeserializer<T> deserializer(JsonReader<T> reader) {
+        return new JsonKafkaDeserializer<>(reader);
     }
 }

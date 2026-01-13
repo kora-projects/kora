@@ -481,7 +481,7 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent(),
             """
                 @KoraApp
-                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                   @Root
                   fun root1(w1: ru.tinkoff.kora.json.common.JsonReader<TaskResult<TaskRun1>>, w2: ru.tinkoff.kora.json.common.JsonReader<TaskResult<TaskRun2>>) = ""
                   @Root

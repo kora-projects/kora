@@ -20,7 +20,7 @@ public class JsonBufTest {
               "f5": 500000000000000000000000000000000000000000000
             }
             """;
-        var p = JsonCommonModule.JSON_FACTORY.createParser(json);
+        var p = JsonModule.JSON_FACTORY.createParser(json);
         p.nextToken();
         var bufferingParser = new BufferingJsonParser(p);
         while (true) {

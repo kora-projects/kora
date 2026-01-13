@@ -3,6 +3,9 @@ package ru.tinkoff.kora.kafka.common;
 import org.apache.kafka.common.serialization.*;
 import org.apache.kafka.common.utils.Bytes;
 import ru.tinkoff.kora.common.DefaultComponent;
+import ru.tinkoff.kora.json.common.JsonWriter;
+import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.kafka.common.producer.serializer.JsonKafkaSerializer;
 
 import java.nio.ByteBuffer;
 import java.util.UUID;
@@ -64,5 +67,11 @@ public interface KafkaSerializersModule {
     @DefaultComponent
     default Serializer<Void> voidSerializer() {
         return new VoidSerializer();
+    }
+
+    @DefaultComponent
+    @Json
+    default <T> Serializer<T> objectSerializer(JsonWriter<T> w) {
+        return new JsonKafkaSerializer<>(w);
     }
 }

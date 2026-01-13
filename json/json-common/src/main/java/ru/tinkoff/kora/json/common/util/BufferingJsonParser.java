@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.common.util;
 
 import org.jspecify.annotations.Nullable;
-import ru.tinkoff.kora.json.common.JsonCommonModule;
+import ru.tinkoff.kora.json.common.JsonModule;
 import tools.jackson.core.*;
 import tools.jackson.core.io.ContentReference;
 import tools.jackson.core.io.IOContext;
@@ -24,7 +24,7 @@ public class BufferingJsonParser extends JsonParserBase {
                 delegate.streamReadConstraints(),
                 StreamWriteConstraints.defaults(),
                 ErrorReportConfiguration.defaults(),
-                JsonCommonModule.JSON_FACTORY._getBufferRecycler(),
+                JsonModule.JSON_FACTORY._getBufferRecycler(),
                 ContentReference.rawReference(delegate),
                 false,
                 JsonEncoding.UTF8

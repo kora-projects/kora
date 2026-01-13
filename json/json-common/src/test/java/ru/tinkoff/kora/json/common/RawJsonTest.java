@@ -16,7 +16,7 @@ class RawJsonTest {
             """);
         var writer = new RawJsonWriter();
         var baos = new ByteArrayOutputStream();
-        try (var gen = JsonCommonModule.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
+        try (var gen = JsonModule.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
             writer.write(gen, rawJson);
         }
         Assertions.assertThat(rawJson.value()).isEqualTo(baos.toByteArray());
@@ -29,7 +29,7 @@ class RawJsonTest {
             """);
 
         var baos = new ByteArrayOutputStream();
-        try (var gen = JsonCommonModule.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
+        try (var gen = JsonModule.JSON_FACTORY.createGenerator(baos, JsonEncoding.UTF8)) {
             JsonObjectCodec.write(gen, rawJson);
         }
         Assertions.assertThat(rawJson.value()).isEqualTo(baos.toByteArray());

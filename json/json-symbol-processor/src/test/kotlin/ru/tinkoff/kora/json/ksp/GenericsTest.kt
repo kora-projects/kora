@@ -15,7 +15,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent(),
             """
                 @KoraApp
-                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                   @Root
                   fun root(w1: ru.tinkoff.kora.json.common.JsonReader<TestClass<String>>, w2: ru.tinkoff.kora.json.common.JsonReader<TestClass<Int>>, w3: ru.tinkoff.kora.json.common.JsonReader<TestClass<Int?>>) = ""
                 }
@@ -37,7 +37,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent(),
             """
                 @KoraApp
-                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                   @Root
                   fun root(w1: ru.tinkoff.kora.json.common.JsonWriter<TestClass<String>>, w2: ru.tinkoff.kora.json.common.JsonWriter<TestClass<Int>>, w3: ru.tinkoff.kora.json.common.JsonWriter<TestClass<Int?>>) = ""
                 }
@@ -62,7 +62,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent(),
             """
                 @KoraApp
-                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                   @Root
                   fun root(w1: ru.tinkoff.kora.json.common.JsonWriter<TestClass<String?>>) = ""
                 }
@@ -83,7 +83,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent(),
             """
                 @KoraApp
-                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                   @Root
                   fun root(w1: ru.tinkoff.kora.json.common.JsonReader<TestClass<String>>, w2: ru.tinkoff.kora.json.common.JsonReader<TestClass<Int>>) = ""
                 }
@@ -105,7 +105,7 @@ class GenericsTest : AbstractJsonSymbolProcessorTest() {
             """.trimIndent(),
             """
                 @KoraApp
-                interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+                interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                   @Root
                   fun root(w1: ru.tinkoff.kora.json.common.JsonWriter<TestClass<String>>, w2: ru.tinkoff.kora.json.common.JsonWriter<TestClass<Int>>) = ""
                 }

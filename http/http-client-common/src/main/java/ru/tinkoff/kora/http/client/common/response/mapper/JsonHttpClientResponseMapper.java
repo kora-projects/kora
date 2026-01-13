@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.json.module.http.client;
+package ru.tinkoff.kora.http.client.common.response.mapper;
 
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;

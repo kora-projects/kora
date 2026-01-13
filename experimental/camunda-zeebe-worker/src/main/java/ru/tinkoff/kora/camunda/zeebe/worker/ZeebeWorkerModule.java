@@ -25,13 +25,13 @@ import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
-import ru.tinkoff.kora.json.common.JsonCommonModule;
+import ru.tinkoff.kora.json.common.JsonModule;
 
 import java.net.URI;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
-public interface ZeebeWorkerModule extends GrpcClientModule, JsonCommonModule {
+public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
 
     default ZeebeWorkerConfig zeebeWorkerConfig(Config config, ConfigValueExtractor<ZeebeWorkerConfig> extractor) {
         return extractor.extract(config.get("zeebe.worker"));

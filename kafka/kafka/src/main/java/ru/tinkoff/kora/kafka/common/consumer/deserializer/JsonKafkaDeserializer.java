@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.json.module.kafka;
+package ru.tinkoff.kora.kafka.common.consumer.deserializer;
 
 import org.apache.kafka.common.errors.SerializationException;
 import org.apache.kafka.common.header.Headers;

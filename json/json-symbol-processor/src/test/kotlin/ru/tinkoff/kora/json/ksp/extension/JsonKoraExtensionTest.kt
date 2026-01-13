@@ -53,7 +53,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
         compile0(
             listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
-            interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+            interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                 @ru.tinkoff.kora.json.common.annotation.Json
                 enum class TestEnum { INSTANCE }
 
@@ -73,7 +73,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
         compile0(
             listOf(KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
             @KoraApp
-            interface TestApp : ru.tinkoff.kora.json.common.JsonCommonModule {
+            interface TestApp : ru.tinkoff.kora.json.common.JsonModule {
                 @ru.tinkoff.kora.json.common.annotation.Json
                 enum class TestEnum { INSTANCE }
 

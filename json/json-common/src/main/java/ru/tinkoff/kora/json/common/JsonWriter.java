@@ -24,8 +24,8 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
     void write(JsonGenerator generator, @Nullable T object);
 
     default byte[] toByteArray(@Nullable T value) {
-        var bb = new ByteArrayBuilder(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
-        try (var gen = JsonCommonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), bb, JsonEncoding.UTF8)) {
+        var bb = new ByteArrayBuilder(JsonModule.JSON_FACTORY._getBufferRecycler());
+        try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), bb, JsonEncoding.UTF8)) {
             this.write(gen, value);
             gen.flush();
             return bb.toByteArray();
@@ -51,8 +51,8 @@ public interface JsonWriter<T> extends Mapping.MappingFunction {
             }
         }
             : ObjectWriteContext.empty();
-        try (var sw = new SegmentedStringWriter(JsonCommonModule.JSON_FACTORY._getBufferRecycler());
-             var gen = JsonCommonModule.JSON_FACTORY.createGenerator(ctx, sw)) {
+        try (var sw = new SegmentedStringWriter(JsonModule.JSON_FACTORY._getBufferRecycler());
+             var gen = JsonModule.JSON_FACTORY.createGenerator(ctx, sw)) {
             this.write(gen, value);
             gen.flush();
             return sw.getAndClear();

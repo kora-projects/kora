@@ -25,7 +25,6 @@ include(
     'config:config-symbol-processor',
     'telemetry:telemetry-common',
     'json:json-common',
-    'json:json-module',
     'json:jackson-module',
     'json:json-annotation-processor',
     'json:json-symbol-processor',
