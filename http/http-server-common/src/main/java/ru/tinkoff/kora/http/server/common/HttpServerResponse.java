@@ -24,18 +24,18 @@ public interface HttpServerResponse {
     }
 
     static HttpServerResponse of(int code, @Nullable HttpHeaders headers, HttpBodyOutput body) {
-        return new SimpleHttpServerResponse(code, headers != null ? headers.toMutable() : null, body);
+        return new SimpleHttpServerResponse(code, headers != null ? headers.toMutable() : HttpHeaders.of(), body);
     }
 
     static HttpServerResponse of(int code, @Nullable HttpHeaders headers) {
-        return new SimpleHttpServerResponse(code, headers != null ? headers.toMutable() : null, HttpBody.empty());
+        return new SimpleHttpServerResponse(code, headers != null ? headers.toMutable() : HttpHeaders.of(), HttpBody.empty());
     }
 
-    static HttpServerResponse of(int code, @Nullable MutableHttpHeaders headers, HttpBodyOutput body) {
-        return new SimpleHttpServerResponse(code, headers, body);
+    static HttpServerResponse of(int code, @Nullable MutableHttpHeaders headers, @Nullable HttpBodyOutput body) {
+        return new SimpleHttpServerResponse(code, headers == null ? HttpHeaders.of() : headers, body);
     }
 
     static HttpServerResponse of(int code, @Nullable MutableHttpHeaders headers) {
-        return new SimpleHttpServerResponse(code, headers, HttpBody.empty());
+        return new SimpleHttpServerResponse(code, headers == null ? HttpHeaders.of() : headers, HttpBody.empty());
     }
 }

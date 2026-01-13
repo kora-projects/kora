@@ -1,26 +1,20 @@
 package ru.tinkoff.kora.http.server.annotation.processor.extension;
 
-import com.palantir.javapoet.ClassName;
+import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import org.jspecify.annotations.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.GenericTypeResolver;
 import ru.tinkoff.kora.http.server.annotation.processor.HttpServerClassNames;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
 
 import javax.annotation.processing.RoundEnvironment;
-import javax.lang.model.element.ElementKind;
-import javax.lang.model.element.ExecutableElement;
-import javax.lang.model.element.Modifier;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
-import javax.lang.model.type.TypeVariable;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.Map;
-import java.util.concurrent.CompletionStage;
+import java.util.ArrayList;
+import java.util.List;
 
 public final class HttpServerRequestMapperKoraExtension implements KoraExtension {
     private final Elements elements;
@@ -34,33 +28,31 @@ public final class HttpServerRequestMapperKoraExtension implements KoraExtension
     @Nullable
     @Override
     public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, String tag) {
-        if (tag != null) {
-            return null;
-        }
         var typeName = TypeName.get(typeMirror);
         if (!(typeName instanceof ParameterizedTypeName ptn)) {
             return null;
         }
-        if (!ptn.rawType().equals(HttpServerClassNames.httpServerRequestMapper)) {
+        if (!ptn.rawType().equals(HttpServerClassNames.httpServerResponseMapper)) {
             return null;
         }
-        if (ptn.typeArguments().get(0) instanceof ParameterizedTypeName future && future.rawType().equals(ClassName.get(CompletionStage.class))) {
-            return null;
-        }
-        var dt = (DeclaredType) typeMirror;
-        return () -> {
-            var fromAsync = this.elements.getTypeElement(HttpServerClassNames.httpServerRequestMapper.canonicalName()).getEnclosedElements()
-                .stream()
-                .filter(e -> e.getKind() == ElementKind.METHOD && e.getModifiers().contains(Modifier.STATIC))
-                .map(ExecutableElement.class::cast)
-                .filter(m -> m.getSimpleName().contentEquals("fromAsync"))
-                .findFirst()
-                .orElseThrow();
-            var tp = (TypeVariable) fromAsync.getTypeParameters().get(0).asType();
-            var responseType = dt.getTypeArguments().get(0);
-            var executableType = (ExecutableType) GenericTypeResolver.resolve(this.types, Map.of(tp, responseType), fromAsync.asType());
-            return ExtensionResult.fromExecutable(fromAsync, executableType);
-        };
+        if (ptn.typeArguments().getFirst() instanceof ParameterizedTypeName entity && entity.rawType().equals(HttpServerClassNames.httpResponseEntity)) {
+            var mapperTypeMirror = (DeclaredType) typeMirror;
+            var entityTypeMirror = (DeclaredType) mapperTypeMirror.getTypeArguments().getFirst();
+            var responseMapperElement = this.elements.getTypeElement(HttpServerClassNames.httpServerResponseMapper.canonicalName());
+            var responseEntityMapperElement = this.elements.getTypeElement(HttpServerClassNames.httpServerResponseEntityMapper.canonicalName());
+            var responseType = entityTypeMirror.getTypeArguments().getFirst();
+            var tags = new ArrayList<String>();
+            tags.add(tag);
+            return () -> new ExtensionResult.CodeBlockResult(
+                responseEntityMapperElement,
+                dependencies -> CodeBlock.of("new $T<>($L)", HttpServerClassNames.httpServerResponseEntityMapper, dependencies),
+                mapperTypeMirror,
+                tag,
+                List.of(this.types.getDeclaredType(responseMapperElement, responseType)),
+                tags
+            );
 
+        }
+        return null;
     }
 }
