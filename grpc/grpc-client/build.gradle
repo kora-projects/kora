@@ -9,13 +9,11 @@ dependencies {
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
 
-    api libs.netty.codec.http2
-    api(libs.grpc.stub) {
-        exclude group: 'io.netty'
+    api libs.grpc.stub
+    api(libs.grpc.okhttp) {
+        exclude group: 'com.squareup.okhttp3'
     }
-    api(libs.grpc.netty) {
-        exclude group: 'io.netty'
-    }
+    implementation libs.okhttp.jvm
 
     testImplementation libs.grpc.java.gen
     testImplementation libs.grpc.protobuf

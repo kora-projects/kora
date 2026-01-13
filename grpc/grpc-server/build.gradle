@@ -8,11 +8,10 @@ dependencies {
     compileOnly libs.grpc.services
     compileOnly libs.grpc.kotlin.stub
 
-    api project(':netty-common')
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
 
-    api libs.grpc.netty
+    api libs.grpc.okhttp
     api libs.grpc.stub
 
     testImplementation libs.grpc.java.gen
