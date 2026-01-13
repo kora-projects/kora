@@ -1,9 +1,8 @@
 package ru.tinkoff.kora.grpc.server;
 
-import io.grpc.BindableService;
-import io.grpc.ServerInterceptor;
+import io.grpc.*;
 import io.grpc.netty.NettyServerBuilder;
-import io.grpc.protobuf.services.ProtoReflectionService;
+import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.netty.channel.EventLoopGroup;
@@ -16,6 +15,7 @@ import ru.tinkoff.kora.application.graph.WrappedRefreshListener;
 import ru.tinkoff.kora.common.DefaultComponent;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
+import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.grpc.server.config.GrpcServerConfig;
@@ -36,9 +36,9 @@ public interface GrpcServerModule extends NettyCommonModule {
     }
 
     @Root
-    default GrpcNettyServer grpcNettyServer(ValueOf<NettyServerBuilder> serverBuilder,
-                                            ValueOf<GrpcServerConfig> config) {
-        return new GrpcNettyServer(serverBuilder, config);
+    default GrpcServer grpcNettyServer(ValueOf<ForwardingServerBuilder<?>> serverBuilder,
+                                       ValueOf<GrpcServerConfig> config) {
+        return new GrpcServer(serverBuilder, config);
     }
 
     @DefaultComponent
@@ -55,20 +55,22 @@ public interface GrpcServerModule extends NettyCommonModule {
         return new DefaultGrpcServerTelemetry(config.telemetry(), tracer, meterRegistry);
     }
 
-    default NettyServerBuilder grpcNettyServerBuilder(
+    default ForwardingServerBuilder<?> grpcNettyServerBuilder(
         ValueOf<GrpcServerConfig> config,
         List<DynamicBindableService> services,
         List<DynamicServerInterceptor> interceptors,
-        @Tag(WorkerLoopGroup.class) EventLoopGroup eventLoop,
-        @Tag(BossLoopGroup.class) EventLoopGroup bossEventLoop,
+        @Tag(NettyCommonModule.WorkerLoopGroup.class) EventLoopGroup eventLoop,
+        @Tag(NettyCommonModule.BossLoopGroup.class) EventLoopGroup bossEventLoop,
         NettyChannelFactory nettyChannelFactory,
-        @Nullable
-        GrpcServerBuilderConfigurer configurer,
+        @Nullable ServerCredentials serverCredentials,
+        @Nullable Configurer<ForwardingServerBuilder<?>> configurer,
         ValueOf<GrpcServerTelemetry> telemetry) {
-
+        if (serverCredentials == null) {
+            serverCredentials = InsecureServerCredentials.create();
+        }
         GrpcServerConfig grpcServerConfig = config.get();
 
-        var builder = NettyServerBuilder.forPort(grpcServerConfig.port())
+        var builder = NettyServerBuilder.forPort(grpcServerConfig.port(), serverCredentials)
             .directExecutor()
             .addTransportFilter(VirtualThreadExecutorTransportFilter.INSTANCE)
             .callExecutor(VirtualThreadExecutorTransportFilter.INSTANCE)
@@ -93,8 +95,8 @@ public interface GrpcServerModule extends NettyCommonModule {
             builder.keepAliveTimeout(grpcServerConfig.keepAliveTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
 
-        if (grpcServerConfig.reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionService")) {
-            builder.addService(ProtoReflectionService.newInstance());
+        if (grpcServerConfig.reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionServiceV1")) {
+            builder.addService(ProtoReflectionServiceV1.newInstance());
         }
 
         interceptors.forEach(builder::intercept);
@@ -104,7 +106,7 @@ public interface GrpcServerModule extends NettyCommonModule {
         services.forEach(builder::addService);
 
         if (configurer != null) {
-            builder = configurer.configure(builder);
+            return configurer.configure(builder);
         }
 
         return builder;

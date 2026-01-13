@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.grpc.server;
 
+import io.grpc.ForwardingServerBuilder;
 import io.grpc.Server;
-import io.grpc.netty.NettyServerBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
@@ -17,18 +17,18 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class GrpcNettyServer implements Lifecycle, ReadinessProbe {
+public class GrpcServer implements Lifecycle, ReadinessProbe {
 
-    private static final Logger logger = LoggerFactory.getLogger(GrpcNettyServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
 
-    private final ValueOf<NettyServerBuilder> nettyServerBuilder;
+    private final ValueOf<ForwardingServerBuilder<?>> nettyServerBuilder;
     private Server server;
 
     private final AtomicReference<GrpcServerState> state = new AtomicReference<>(GrpcServerState.INIT);
     private final ValueOf<GrpcServerConfig> config;
 
-    public GrpcNettyServer(ValueOf<NettyServerBuilder> nettyServerBuilder,
-                           ValueOf<GrpcServerConfig> config) {
+    public GrpcServer(ValueOf<ForwardingServerBuilder<?>> nettyServerBuilder,
+                      ValueOf<GrpcServerConfig> config) {
         this.nettyServerBuilder = nettyServerBuilder;
         this.config = config;
     }

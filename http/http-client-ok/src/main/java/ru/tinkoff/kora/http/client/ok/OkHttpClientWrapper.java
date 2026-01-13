@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.client.common.HttpClientConfig;
 
@@ -18,10 +19,10 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
 
     private final OkHttpClientConfig config;
     private final HttpClientConfig baseConfig;
-    private final All<OkHttpConfigurer> configurers;
+    private final All<Configurer<OkHttpClient.Builder>> configurers;
     private volatile OkHttpClient client;
 
-    public OkHttpClientWrapper(OkHttpClientConfig config, HttpClientConfig baseConfig, All<OkHttpConfigurer> configurers) {
+    public OkHttpClientWrapper(OkHttpClientConfig config, HttpClientConfig baseConfig, All<Configurer<OkHttpClient.Builder>> configurers) {
         this.config = config;
         this.baseConfig = baseConfig;
         this.configurers = configurers;

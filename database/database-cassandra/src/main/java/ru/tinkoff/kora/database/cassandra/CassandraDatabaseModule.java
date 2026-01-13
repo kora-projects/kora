@@ -1,6 +1,9 @@
 package ru.tinkoff.kora.database.cassandra;
 
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import org.jspecify.annotations.Nullable;
+import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
@@ -11,7 +14,7 @@ public interface CassandraDatabaseModule extends CassandraModule {
         return extractor.extract(value);
     }
 
-    default CassandraDatabase cassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable CassandraConfigurer configurer) {
-        return new CassandraDatabase(config, configurer, telemetryFactory);
+    default CassandraDatabase cassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
+        return new CassandraDatabase(config, loaderConfigurer, sessionBuilderConfigurer, telemetryFactory);
     }
 }
