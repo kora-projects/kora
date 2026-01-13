@@ -1,9 +1,6 @@
 package ru.tinkoff.grpc.client;
 
-import io.grpc.ChannelCredentials;
-import io.grpc.ClientInterceptor;
-import io.grpc.ManagedChannel;
-import io.grpc.ServiceDescriptor;
+import io.grpc.*;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,6 +11,7 @@ import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.common.util.TimeUtils;
 
 import java.net.URI;
@@ -32,13 +30,13 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
     private final GrpcClientTelemetryFactory telemetryFactory;
     private final All<ClientInterceptor> interceptors;
     @Nullable
-    private final GrpcClientBuilderConfigurer configurer;
+    private final Configurer<ManagedChannelBuilder<?>> configurer;
     private volatile ManagedChannel channel;
 
     public ManagedChannelLifecycle(GrpcClientConfig config,
                                    @Nullable ChannelCredentials channelCredentials,
                                    All<ClientInterceptor> interceptors,
-                                   @Nullable GrpcClientBuilderConfigurer configurer,
+                                   @Nullable Configurer<ManagedChannelBuilder<?>> configurer,
                                    GrpcClientTelemetryFactory telemetryFactory,
                                    GrpcClientChannelFactory channelFactory,
                                    ServiceDescriptor serviceDefinition) {

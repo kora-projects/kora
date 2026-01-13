@@ -13,6 +13,7 @@ import org.xnio.XnioWorker;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
+import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
@@ -38,6 +39,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
     private final String name;
     private final XnioWorker xnioWorker;
     private final ValueOf<PublicApiHandler> publicApiHandler;
+    @Nullable
+    private final Configurer<Undertow.Builder> configurer;
     private final HttpServerTelemetry telemetry;
 
     private volatile Undertow undertow;
@@ -46,11 +49,13 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
                               ValueOf<PublicApiHandler> publicApiHandler,
                               String name,
                               HttpServerTelemetry telemetry,
-                              @Nullable XnioWorker xnioWorker) {
+                              @Nullable XnioWorker xnioWorker,
+                              @Nullable Configurer<Undertow.Builder> configurer) {
         this.config = config;
         this.name = name;
         this.xnioWorker = xnioWorker;
         this.publicApiHandler = publicApiHandler;
+        this.configurer = configurer;
         this.gracefulShutdown = new GracefulShutdownHandler(this);
         this.telemetry = telemetry;
     }
@@ -102,14 +107,18 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
 
     private Undertow createServer() {
         var config = this.config.get();
-        return Undertow.builder()
+        var undertow = Undertow.builder()
             .setHandler(this.gracefulShutdown)
             .addHttpListener(config.publicApiHttpPort(), "0.0.0.0")
             .setWorker(this.xnioWorker)
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
-            .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
-            .build();
+            .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled());
+
+        if (this.configurer != null) {
+            undertow = this.configurer.configure(undertow);
+        }
+        return undertow.build();
     }
 
     @Override

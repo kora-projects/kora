@@ -45,7 +45,7 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
             )
         );
 
-        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()));
+        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), null);
         dataBase.init();
         try {
             var interceptor = new LiquibaseJdbcDatabaseInterceptor(new LiquibaseConfig() {});

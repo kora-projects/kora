@@ -179,7 +179,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
             )
         );
 
-        var db = new JdbcDatabase(config, DataBaseTelemetryFactory.NOOP);
+        var db = new JdbcDatabase(config, DataBaseTelemetryFactory.NOOP, null);
         try {
             db.init();
         } catch (SQLException e) {

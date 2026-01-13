@@ -1,10 +1,13 @@
 package ru.tinkoff.kora.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.CqlSessionBuilder;
+import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetry;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory;
@@ -16,14 +19,17 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     private static final Logger logger = LoggerFactory.getLogger(CassandraDatabase.class);
 
     private final CassandraConfig config;
-    private final DataBaseTelemetry telemetry;
     @Nullable
-    private final CassandraConfigurer configurer;
+    private final Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer;
+    @Nullable
+    private final Configurer<CqlSessionBuilder> sessionBuilderConfigurer;
+    private final DataBaseTelemetry telemetry;
     private volatile CqlSession cqlSession;
 
-    public CassandraDatabase(CassandraConfig config, @Nullable CassandraConfigurer configurer, DataBaseTelemetryFactory telemetryFactory) {
+    public CassandraDatabase(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, DataBaseTelemetryFactory telemetryFactory) {
         this.config = config;
-        this.configurer = configurer;
+        this.loaderConfigurer = loaderConfigurer;
+        this.sessionBuilderConfigurer = sessionBuilderConfigurer;
         this.telemetry = telemetryFactory.get(
             config.telemetry(),
             Objects.requireNonNullElse(config.basic().sessionName(), "cassandra"),
@@ -47,7 +53,7 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
         var started = System.nanoTime();
 
         try {
-            cqlSession = new CassandraSessionBuilder().build(config, configurer, this.telemetry.meterRegistry());
+            cqlSession = new CassandraSessionBuilder().build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
         } catch (Exception e) {
             throw new RuntimeException("CassandraDatabase '%s' failed to start, due to: %s".formatted(
                 config.basic().contactPoints(), e.getMessage()), e);

@@ -2,6 +2,7 @@ package ru.tinkoff.kora.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import org.jspecify.annotations.Nullable;
+import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DatabaseTelemetryConfig;
 
@@ -69,7 +70,7 @@ public interface JdbcDatabaseConfig {
 
     DatabaseTelemetryConfig telemetry();
 
-    static HikariConfig toHikariConfig(JdbcDatabaseConfig config) {
+    static HikariConfig toHikariConfig(JdbcDatabaseConfig config, @Nullable Configurer<HikariConfig> configurer) {
         var hikariConfig = new HikariConfig();
         hikariConfig.setConnectionTimeout(config.connectionTimeout().toMillis());
         hikariConfig.setValidationTimeout(config.validationTimeout().toMillis());
@@ -87,6 +88,9 @@ public interface JdbcDatabaseConfig {
         hikariConfig.setSchema(config.schema());
         hikariConfig.setDataSourceProperties(config.dsProperties());
         hikariConfig.setRegisterMbeans(false);
+        if (configurer != null) {
+            return configurer.configure(hikariConfig);
+        }
         return hikariConfig;
     }
 }

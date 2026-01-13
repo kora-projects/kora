@@ -14,6 +14,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
             valueOf(publicApiHandler),
             "test",
             telemetry,
+            null,
             null
         );
     }
