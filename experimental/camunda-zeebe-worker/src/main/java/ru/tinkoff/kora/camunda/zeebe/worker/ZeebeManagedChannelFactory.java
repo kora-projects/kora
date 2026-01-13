@@ -12,7 +12,6 @@ import ru.tinkoff.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.Wrapped;
 
-import java.net.SocketAddress;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -83,16 +82,6 @@ final class ZeebeManagedChannelFactory {
 
     private static GrpcClientChannelFactory getZeebeClientChannelFactory(GrpcClientChannelFactory factory, ZeebeClientConfig clientConfig) {
         return new GrpcClientChannelFactory() {
-            @Override
-            public ManagedChannelBuilder<?> forAddress(SocketAddress serverAddress) {
-                return configure(factory.forAddress(serverAddress));
-            }
-
-            @Override
-            public ManagedChannelBuilder<?> forAddress(SocketAddress serverAddress, ChannelCredentials creds) {
-                return configure(factory.forAddress(serverAddress, creds));
-            }
-
             @Override
             public ManagedChannelBuilder<?> forTarget(String target) {
                 return configure(factory.forTarget(target));

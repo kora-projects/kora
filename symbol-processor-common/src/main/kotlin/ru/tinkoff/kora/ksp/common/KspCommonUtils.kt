@@ -50,13 +50,13 @@ object KspCommonUtils {
         var changed = false
         val args = ArrayList<KSTypeArgument>(this.arguments.size)
         for (arg in this.arguments) {
-            val argType = arg.type!!.resolve()
-            val newArgType = argType.fixPlatformType(resolver)
+            val argType = arg.type?.resolve()
+            val newArgType = argType?.fixPlatformType(resolver)
             if (newArgType !== argType) {
                 changed = true
                 args.add(
                     resolver.getTypeArgument(
-                        resolver.createKSTypeReferenceFromKSType(newArgType),
+                        resolver.createKSTypeReferenceFromKSType(newArgType ?: resolver.builtIns.anyType),
                         arg.variance
                     )
                 )

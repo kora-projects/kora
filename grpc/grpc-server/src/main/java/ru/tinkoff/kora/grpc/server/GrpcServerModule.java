@@ -1,11 +1,10 @@
 package ru.tinkoff.kora.grpc.server;
 
 import io.grpc.*;
-import io.grpc.netty.NettyServerBuilder;
+import io.grpc.okhttp.OkHttpServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionServiceV1;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
-import io.netty.channel.EventLoopGroup;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
@@ -13,7 +12,6 @@ import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.WrappedRefreshListener;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
 import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.config.common.Config;
@@ -23,13 +21,11 @@ import ru.tinkoff.kora.grpc.server.interceptors.TelemetryInterceptor;
 import ru.tinkoff.kora.grpc.server.telemetry.DefaultGrpcServerTelemetry;
 import ru.tinkoff.kora.grpc.server.telemetry.GrpcServerTelemetry;
 import ru.tinkoff.kora.grpc.server.telemetry.NoopGrpcServerTelemetry;
-import ru.tinkoff.kora.netty.common.NettyChannelFactory;
-import ru.tinkoff.kora.netty.common.NettyCommonModule;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-public interface GrpcServerModule extends NettyCommonModule {
+public interface GrpcServerModule {
 
     default GrpcServerConfig grpcServerConfig(Config config, ConfigValueExtractor<GrpcServerConfig> configValueExtractor) {
         return configValueExtractor.extract(config.get("grpcServer"));
@@ -59,9 +55,6 @@ public interface GrpcServerModule extends NettyCommonModule {
         ValueOf<GrpcServerConfig> config,
         List<DynamicBindableService> services,
         List<DynamicServerInterceptor> interceptors,
-        @Tag(NettyCommonModule.WorkerLoopGroup.class) EventLoopGroup eventLoop,
-        @Tag(NettyCommonModule.BossLoopGroup.class) EventLoopGroup bossEventLoop,
-        NettyChannelFactory nettyChannelFactory,
         @Nullable ServerCredentials serverCredentials,
         @Nullable Configurer<ForwardingServerBuilder<?>> configurer,
         ValueOf<GrpcServerTelemetry> telemetry) {
@@ -69,15 +62,11 @@ public interface GrpcServerModule extends NettyCommonModule {
             serverCredentials = InsecureServerCredentials.create();
         }
         GrpcServerConfig grpcServerConfig = config.get();
-
-        var builder = NettyServerBuilder.forPort(grpcServerConfig.port(), serverCredentials)
+        var builder = OkHttpServerBuilder.forPort(grpcServerConfig.port(), serverCredentials)
             .directExecutor()
             .addTransportFilter(VirtualThreadExecutorTransportFilter.INSTANCE)
             .callExecutor(VirtualThreadExecutorTransportFilter.INSTANCE)
-            .maxInboundMessageSize(((int) grpcServerConfig.maxMessageSize().toBytes()))
-            .bossEventLoopGroup(bossEventLoop)
-            .workerEventLoopGroup(eventLoop)
-            .channelFactory(nettyChannelFactory.getServerFactory());
+            .maxInboundMessageSize(((int) grpcServerConfig.maxMessageSize().toBytes()));
 
         if (grpcServerConfig.maxConnectionAge() != null) {
             builder.maxConnectionAge(grpcServerConfig.maxConnectionAge().toMillis(), TimeUnit.MILLISECONDS);

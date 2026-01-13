@@ -1,17 +1,15 @@
 package ru.tinkoff.grpc.client;
 
+import io.grpc.ManagedChannelBuilder;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.netty.channel.EventLoopGroup;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
 import ru.tinkoff.grpc.client.config.DefaultServiceConfigConfigValueExtractor;
 import ru.tinkoff.grpc.client.telemetry.DefaultGrpcClientTelemetryFactory;
 import ru.tinkoff.kora.common.DefaultComponent;
-import ru.tinkoff.kora.common.Tag;
-import ru.tinkoff.kora.netty.common.NettyChannelFactory;
-import ru.tinkoff.kora.netty.common.NettyCommonModule;
+import ru.tinkoff.kora.common.util.Configurer;
 
-public interface GrpcClientModule extends NettyCommonModule {
+public interface GrpcClientModule {
     @DefaultComponent
     default DefaultServiceConfigConfigValueExtractor defaultServiceConfigConfigValueExtractor() {
         return new DefaultServiceConfigConfigValueExtractor();
@@ -23,8 +21,7 @@ public interface GrpcClientModule extends NettyCommonModule {
     }
 
     @DefaultComponent
-    default GrpcNettyClientChannelFactory grpcNettyClientChannelFactory(@Tag(WorkerLoopGroup.class) EventLoopGroup eventLoopGroup,
-                                                                        NettyChannelFactory nettyChannelFactory) {
-        return new GrpcNettyClientChannelFactory(eventLoopGroup, nettyChannelFactory);
+    default GrpcOkHttpClientChannelFactory grpcNettyClientChannelFactory(@Nullable Configurer<ManagedChannelBuilder<?>> configurer) {
+        return new GrpcOkHttpClientChannelFactory(configurer);
     }
 }

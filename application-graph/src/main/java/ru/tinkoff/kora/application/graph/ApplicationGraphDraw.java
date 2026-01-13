@@ -21,11 +21,11 @@ public class ApplicationGraphDraw {
         return root;
     }
 
-    public <T> Node<T> addNode0(Type type, Class<?> tag, Graph.Factory<? extends T> factory, Node<?>... dependencies) {
+    public <T> Node<T> addNode0(Type type, @Nullable Class<?> tag, Graph.Factory<? extends T> factory, Node<?>... dependencies) {
         return this.addNode0(type, tag, factory, List.of(), dependencies);
     }
 
-    public <T> Node<T> addNode0(Type type, Class<?> tag, Graph.Factory<? extends T> factory, List<? extends Node<? extends GraphInterceptor<T>>> interceptors, Node<?>... dependencies) {
+    public <T> Node<T> addNode0(Type type, @Nullable Class<?> tag, Graph.Factory<? extends T> factory, List<? extends Node<? extends GraphInterceptor<T>>> interceptors, Node<?>... dependencies) {
         var dependenciesList = new ArrayList<NodeImpl<?>>();
         for (var dependency : dependencies) {
             dependenciesList.add((NodeImpl<?>) dependency);

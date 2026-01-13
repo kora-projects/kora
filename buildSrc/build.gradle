@@ -3,6 +3,6 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.squareup.okhttp3:okhttp:5.0.0-alpha.14'
+    implementation 'com.squareup.okhttp3:okhttp:5.3.2'
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.19.2'
 }

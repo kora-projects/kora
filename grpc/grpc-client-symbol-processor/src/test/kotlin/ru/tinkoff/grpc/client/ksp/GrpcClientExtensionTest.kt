@@ -29,29 +29,7 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
         super.compile0(listOf(GrpcClientStubForSymbolProcessorProvider(), KoraAppProcessorProvider()), *patchedSources)
         compileResult.assertSuccess()
         loadClass("TestAppGraph").toGraph().use { g ->
-            /*
-              1. root config
-              2. duration parser
-              3. log config parser
-              4. tracing config parser
-              6. duration array config parser
-              7. metrics config parser
-              8. telemetry config parser
-              9. config parser
-              10. parsed config
-              11. telemetry factory
-              12. NettyTransportConfig.EventLoop extractor
-              13. NettyTransportConfig extractor
-              14. NettyTransportConfig
-              15. netty event loop group
-              16. netty channel factory
-              17. channel factory
-              18. channel lifecycle
-              19. config mapper
-              20. the stub
-              21. test root
-             */
-            Assertions.assertThat(g.draw.size()).isEqualTo(22)
+            Assertions.assertThat(g.draw.size()).isEqualTo(17)
         }
     }
 
