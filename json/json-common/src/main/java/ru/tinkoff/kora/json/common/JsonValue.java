@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.json.common;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -59,7 +58,7 @@ public sealed interface JsonValue<T> permits JsonNullable, JsonUndefined {
         return JsonNullable.NULL;
     }
 
-    static <T> JsonValue<T> of(@Nonnull T value) {
+    static <T> JsonValue<T> of(T value) {
         Objects.requireNonNull(value, "JsonValue#of require non-null, but got null");
         return new JsonUndefined<>(value);
     }

@@ -1,6 +1,6 @@
 package ru.tinkoff.kora.json.annotation.processor.writer;
 
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 
 import javax.lang.model.type.TypeMirror;

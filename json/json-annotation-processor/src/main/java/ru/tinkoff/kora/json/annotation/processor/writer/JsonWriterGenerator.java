@@ -142,29 +142,29 @@ public class JsonWriterGenerator {
         if (field.writer() == null && field.writerTypeMeta() instanceof WriterFieldType.KnownWriterFieldType typeMeta) {
             if (typeMeta.isJsonUndefined()) {
                 method.beginControlFlow("if (_object.$L.isDefined())", field.accessor());
-                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+                method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L.value()", field.accessor())));
                 method.endControlFlow();
             } else if (typeMeta.isJsonNullable()) {
-                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+                method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
                 method.beginControlFlow("if (_object.$L.isNull())", field.accessor());
                 method.addStatement("_gen.writeNull()");
                 method.nextControlFlow("else");
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L.value()", field.accessor())));
                 method.endControlFlow();
             } else if (field.includeType() == JsonClassWriterMeta.IncludeType.ALWAYS) {
-                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+                method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
                 method.beginControlFlow("if (_object.$L == null)", field.accessor());
                 method.addStatement("_gen.writeNull()");
                 method.nextControlFlow("else");
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
                 method.endControlFlow();
             } else {
-                method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+                method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
                 method.addCode(this.writeKnownType(typeMeta.knownType(), CodeBlock.of("_object.$L", field.accessor())));
             }
         } else {
-            method.addCode("_gen.writeFieldName($L);\n", this.jsonNameStaticName(field));
+            method.addCode("_gen.writeName($L);\n", this.jsonNameStaticName(field));
             if (field.writerTypeMeta().jsonValueType() != null) {
                 method.beginControlFlow("if (_object.$L.isNull())", field.accessor());
                 method.addStatement("_gen.writeNull()");

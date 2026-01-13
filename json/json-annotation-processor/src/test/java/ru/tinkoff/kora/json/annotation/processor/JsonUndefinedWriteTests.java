@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.JsonUndefined;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.ListJsonWriter;
+import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -23,7 +23,7 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
             public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
             """);
 
-        var o = writer("TestRecord").toStringUnchecked(newObject("TestRecord", JsonUndefined.undefined()));
+        var o = writer("TestRecord").toString(newObject("TestRecord", JsonUndefined.undefined()));
 
         assertThat(o).isEqualTo("""
             {}""");
@@ -36,7 +36,7 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
             public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
             """);
 
-        var o = writer("TestRecord").toStringUnchecked(newObject("TestRecord", JsonUndefined.of("test")));
+        var o = writer("TestRecord").toString(newObject("TestRecord", JsonUndefined.of("test")));
 
         assertThat(o).isEqualTo("""
             {"test_field":"test"}""");
@@ -51,14 +51,14 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
 
         var timeWriter = new JsonWriter<Timestamp>() {
             @Override
-            public void write(JsonGenerator generator, @Nullable Timestamp object) throws IOException {
+            public void write(JsonGenerator generator, @Nullable Timestamp object) {
                 if (object != null) {
                     generator.writeNumber(object.getTime());
                 }
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonUndefined.undefined()));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.undefined()));
 
         assertThat(o).isEqualTo("""
             {}""");
@@ -73,14 +73,14 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
 
         var timeWriter = new JsonWriter<Timestamp>() {
             @Override
-            public void write(JsonGenerator generator, @Nullable Timestamp object) throws IOException {
+            public void write(JsonGenerator generator, @Nullable Timestamp object) {
                 if (object != null) {
                     generator.writeNumber(object.getTime());
                 }
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonUndefined.of(Timestamp.from(Instant.ofEpochMilli(1)))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(Timestamp.from(Instant.ofEpochMilli(1)))));
 
         assertThat(o).isEqualTo("""
             {"test_field":1}""");
@@ -99,7 +99,7 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonUndefined.of(List.of())));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of())));
 
         assertThat(o).isEqualTo("""
             {}""");
@@ -118,7 +118,7 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonUndefined.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
 
         assertThat(o).isEqualTo("""
             {"test_field":[1]}""");
@@ -137,7 +137,7 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonUndefined.of(List.of())));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of())));
 
         assertThat(o).isEqualTo("""
             {"test_field":[]}""");
@@ -156,7 +156,7 @@ public class JsonUndefinedWriteTests extends AbstractJsonAnnotationProcessorTest
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonUndefined.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonUndefined.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
 
         assertThat(o).isEqualTo("""
             {"test_field":[1]}""");

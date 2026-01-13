@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.json.common;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -10,7 +10,7 @@ public record JsonUndefined<T>(@Nullable T value) implements JsonValue<T> {
 
     static final JsonUndefined UNDEFINED = new JsonUndefined(null);
 
-    public static <T> JsonUndefined<T> of(@Nonnull T value) {
+    public static <T> JsonUndefined<T> of(T value) {
         Objects.requireNonNull(value, "JsonUndefined#of require non-null, but got null");
         return new JsonUndefined<>(value);
     }
@@ -46,6 +46,19 @@ public record JsonUndefined<T>(@Nullable T value) implements JsonValue<T> {
             throw new NullPointerException("JsonUndefined is undefined");
         } else {
             return value;
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof JsonValue<?> that)) {
+            return false;
+        }
+
+        if (that.isDefined()) {
+            return Objects.equals(value, that.value());
+        } else {
+            return value == null;
         }
     }
 }

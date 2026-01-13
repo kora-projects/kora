@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.json.common;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -10,7 +9,7 @@ public record JsonNullable<T>(@Nullable T value) implements JsonValue<T> {
 
     static final JsonNullable NULL = new JsonNullable(null);
 
-    public static <T> JsonNullable<T> of(@Nonnull T value) {
+    public static <T> JsonNullable<T> of(T value) {
         Objects.requireNonNull(value, "JsonNullable#of require non-null, but got null");
         return new JsonNullable<>(value);
     }
@@ -44,5 +43,18 @@ public record JsonNullable<T>(@Nullable T value) implements JsonValue<T> {
     @Override
     public T value() {
         return value;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (!(o instanceof JsonValue<?> that)) {
+            return false;
+        }
+
+        if (that.isDefined()) {
+            return Objects.equals(value, that.value());
+        } else {
+            return false;
+        }
     }
 }

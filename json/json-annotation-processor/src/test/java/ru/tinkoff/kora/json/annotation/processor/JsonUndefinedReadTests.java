@@ -1,9 +1,9 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonParser;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.JsonReader;
 import ru.tinkoff.kora.json.common.JsonUndefined;
+import tools.jackson.core.JsonParser;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -14,7 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest {
 
     @Test
-    public void jsonReaderNativeNullableIsUndefined() throws IOException {
+    public void jsonReaderNativeNullableIsUndefined() {
         compile("""
             @JsonReader
             public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
@@ -28,7 +28,7 @@ public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest 
     }
 
     @Test
-    public void jsonReaderNativeNullableIsPresent() throws IOException {
+    public void jsonReaderNativeNullableIsPresent() {
         compile("""
             @JsonReader
             public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
@@ -50,7 +50,7 @@ public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest 
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -71,7 +71,7 @@ public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest 
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -84,7 +84,7 @@ public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest 
     }
 
     @Test
-    public void jsonReaderUnknownFieldsAndNativeNullableIsUndefined() throws IOException {
+    public void jsonReaderUnknownFieldsAndNativeNullableIsUndefined() {
         compile("""
             @JsonReader
             public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
@@ -98,7 +98,7 @@ public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest 
     }
 
     @Test
-    public void jsonReaderUnknownFieldsAndNativeNullableIsPresent() throws IOException {
+    public void jsonReaderUnknownFieldsAndNativeNullableIsPresent() {
         compile("""
             @JsonReader
             public record TestRecord(@JsonField("test_field") JsonUndefined<String> testField){}
@@ -120,7 +120,7 @@ public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest 
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };
@@ -141,7 +141,7 @@ public class JsonUndefinedReadTests extends AbstractJsonAnnotationProcessorTest 
 
         var timestampReader = new JsonReader<>() {
             @Override
-            public Timestamp read(JsonParser parser) throws IOException {
+            public Timestamp read(JsonParser parser) {
                 return Timestamp.from(Instant.ofEpochMilli(parser.getLongValue()));
             }
         };

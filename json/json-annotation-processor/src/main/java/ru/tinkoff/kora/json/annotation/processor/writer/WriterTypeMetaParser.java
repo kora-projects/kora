@@ -77,18 +77,17 @@ public class WriterTypeMetaParser {
     }
 
     private WriterFieldType parseWriterFieldType(TypeMirror jsonClass) {
-        @Nullable
         WriterFieldType.JsonValueType jsonValueType = null;
         TypeMirror realType = jsonClass;
         if (jsonClass instanceof DeclaredType dt) {
             if (JsonTypes.jsonValue.canonicalName().equals((dt.asElement()).toString())) {
-                realType = dt.getTypeArguments().get(0);
+                realType = dt.getTypeArguments().getFirst();
                 jsonValueType = WriterFieldType.JsonValueType.VALUE;
             } else if (JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
-                realType = dt.getTypeArguments().get(0);
+                realType = dt.getTypeArguments().getFirst();
                 jsonValueType = WriterFieldType.JsonValueType.NULLABLE;
             } else if (JsonTypes.jsonUndefined.canonicalName().equals((dt.asElement()).toString())) {
-                realType = dt.getTypeArguments().get(0);
+                realType = dt.getTypeArguments().getFirst();
                 jsonValueType = WriterFieldType.JsonValueType.UNDEFINED;
             }
         }

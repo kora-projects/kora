@@ -51,18 +51,17 @@ public class ReaderTypeMetaParser {
 
     @Nullable
     public ReaderFieldType parseReaderFieldType(TypeMirror jsonClass) {
-        @Nullable
         ReaderFieldType.JsonValueType jsonValueType = null;
         TypeMirror realType = jsonClass;
         if (jsonClass instanceof DeclaredType dt) {
             if (JsonTypes.jsonValue.canonicalName().equals((dt.asElement()).toString())) {
-                realType = dt.getTypeArguments().get(0);
+                realType = dt.getTypeArguments().getFirst();
                 jsonValueType = ReaderFieldType.JsonValueType.VALUE;
             } else if (JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
-                realType = dt.getTypeArguments().get(0);
+                realType = dt.getTypeArguments().getFirst();
                 jsonValueType = ReaderFieldType.JsonValueType.NULLABLE;
             } else if (JsonTypes.jsonUndefined.canonicalName().equals((dt.asElement()).toString())) {
-                realType = dt.getTypeArguments().get(0);
+                realType = dt.getTypeArguments().getFirst();
                 jsonValueType = ReaderFieldType.JsonValueType.UNDEFINED;
             }
         }
@@ -90,14 +89,14 @@ public class ReaderTypeMetaParser {
             );
         }
         if (constructors.size() == 1) {
-            return constructors.get(0);
+            return constructors.getFirst();
         }
 
         var jsonReaderConstructors = constructors.stream()
             .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)
             .toList();
         if (jsonReaderConstructors.size() == 1) {
-            return jsonReaderConstructors.get(0);
+            return jsonReaderConstructors.getFirst();
         }
         if (!jsonReaderConstructors.isEmpty()) {
             throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
@@ -110,7 +109,7 @@ public class ReaderTypeMetaParser {
             .filter(e -> AnnotationUtils.findAnnotation(e, JsonTypes.json) != null)
             .toList();
         if (jsonConstructors.size() == 1) {
-            return jsonConstructors.get(0);
+            return jsonConstructors.getFirst();
         }
         if (!jsonConstructors.isEmpty()) {
             throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
@@ -123,7 +122,7 @@ public class ReaderTypeMetaParser {
             .filter(c -> !c.getParameters().isEmpty())
             .toList();
         if (nonEmpty.size() == 1) {
-            return nonEmpty.get(0);
+            return nonEmpty.getFirst();
         }
         throw new ProcessingErrorException("Class: %s\nIn order to generate JsonReader class must have one public constructor or constructor annotated with any of @Json/@JsonReader"
             .formatted(typeElement),

@@ -1,11 +1,11 @@
 package ru.tinkoff.kora.json.annotation.processor;
 
-import com.fasterxml.jackson.core.JsonGenerator;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.json.common.JsonValue;
 import ru.tinkoff.kora.json.common.JsonWriter;
 import ru.tinkoff.kora.json.common.ListJsonWriter;
+import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -23,7 +23,7 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
             public record TestRecord(@JsonField("test_field") JsonValue<String> testField){}
             """);
 
-        var o = writer("TestRecord").toStringUnchecked(newObject("TestRecord", JsonValue.undefined()));
+        var o = writer("TestRecord").toString(newObject("TestRecord", JsonValue.undefined()));
 
         assertThat(o).isEqualTo("""
             {}""");
@@ -36,7 +36,7 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
             public record TestRecord(@JsonField("test_field") JsonValue<String> testField){}
             """);
 
-        var o = writer("TestRecord").toStringUnchecked(newObject("TestRecord", JsonValue.nullValue()));
+        var o = writer("TestRecord").toString(newObject("TestRecord", JsonValue.nullValue()));
 
         assertThat(o).isEqualTo("""
             {"test_field":null}""");
@@ -49,7 +49,7 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
             public record TestRecord(@JsonField("test_field") JsonValue<String> testField){}
             """);
 
-        var o = writer("TestRecord").toStringUnchecked(newObject("TestRecord", JsonValue.of("test")));
+        var o = writer("TestRecord").toString(newObject("TestRecord", JsonValue.of("test")));
 
         assertThat(o).isEqualTo("""
             {"test_field":"test"}""");
@@ -64,14 +64,14 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
 
         var timeWriter = new JsonWriter<Timestamp>() {
             @Override
-            public void write(JsonGenerator generator, @Nullable Timestamp object) throws IOException {
+            public void write(JsonGenerator generator, @Nullable Timestamp object) {
                 if (object != null) {
                     generator.writeNumber(object.getTime());
                 }
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonValue.undefined()));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonValue.undefined()));
 
         assertThat(o).isEqualTo("""
             {}""");
@@ -86,14 +86,14 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
 
         var timeWriter = new JsonWriter<Timestamp>() {
             @Override
-            public void write(JsonGenerator generator, @Nullable Timestamp object) throws IOException {
+            public void write(JsonGenerator generator, @Nullable Timestamp object) {
                 if (object != null) {
                     generator.writeNumber(object.getTime());
                 }
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonValue.nullValue()));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonValue.nullValue()));
 
         assertThat(o).isEqualTo("""
             {"test_field":null}""");
@@ -108,14 +108,14 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
 
         var timeWriter = new JsonWriter<Timestamp>() {
             @Override
-            public void write(JsonGenerator generator, @Nullable Timestamp object) throws IOException {
+            public void write(JsonGenerator generator, @Nullable Timestamp object) {
                 if (object != null) {
                     generator.writeNumber(object.getTime());
                 }
             }
         };
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonValue.of(Timestamp.from(Instant.ofEpochMilli(1)))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonValue.of(Timestamp.from(Instant.ofEpochMilli(1)))));
 
         assertThat(o).isEqualTo("""
             {"test_field":1}""");
@@ -134,7 +134,7 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonValue.of(List.of())));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonValue.of(List.of())));
 
         assertThat(o).isEqualTo("""
             {}""");
@@ -153,7 +153,7 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonValue.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonValue.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
 
         assertThat(o).isEqualTo("""
             {"test_field":[1]}""");
@@ -172,7 +172,7 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonValue.of(List.of())));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonValue.of(List.of())));
 
         assertThat(o).isEqualTo("""
             {"test_field":[]}""");
@@ -191,7 +191,7 @@ public class JsonValueWriteTests extends AbstractJsonAnnotationProcessorTest {
             }
         });
 
-        var o = writer("TestRecord", timeWriter).toStringUnchecked(newObject("TestRecord", JsonValue.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
+        var o = writer("TestRecord", timeWriter).toString(newObject("TestRecord", JsonValue.of(List.of(Timestamp.from(Instant.ofEpochMilli(1))))));
 
         assertThat(o).isEqualTo("""
             {"test_field":[1]}""");
