@@ -427,6 +427,21 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testDeferred() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              fun send(value: String): kotlinx.coroutines.Deferred<*>
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
+
+    @Test
     fun testAop() {
         compile0(
             """
