@@ -14,6 +14,7 @@ object KafkaClassNames {
     val byteArraySerializer = ClassName("org.apache.kafka.common.serialization", "ByteArraySerializer")
     val recordHeaders = ClassName("org.apache.kafka.common.header.internals", "RecordHeaders");
     val header = ClassName("org.apache.kafka.common.header", "Header");
+    val producerRecordMetadata = ClassName("org.apache.kafka.clients.producer", "RecordMetadata")
 
 
     val kafkaListener = ClassName("ru.tinkoff.kora.kafka.common.annotation", "KafkaListener")

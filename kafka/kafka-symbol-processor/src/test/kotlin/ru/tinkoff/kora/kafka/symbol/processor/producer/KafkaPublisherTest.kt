@@ -356,4 +356,32 @@ class KafkaPublisherTest : AbstractSymbolProcessorTest() {
         )
         compileResult.assertSuccess()
     }
+
+    @Test
+    fun testReturnCompletableFuture() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              fun send(value: String): java.util.concurrent.CompletableFuture<*>
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+    @Test
+    fun testDeferred() {
+        compile0(
+            """
+            @KafkaPublisher("test")
+            interface TestProducer {
+              @Topic("test.sendTopic")
+              fun send(value: String): kotlinx.coroutines.Deferred<*>
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+    }
+
 }

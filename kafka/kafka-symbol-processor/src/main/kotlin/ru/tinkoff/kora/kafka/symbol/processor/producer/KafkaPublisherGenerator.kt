@@ -27,7 +27,9 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isDeferred
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
@@ -367,7 +369,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             }
         }
         b.addStatement("val _tctx = this.telemetry!!.record(_telemetryRecord)")
-
+        val returnType = publishMethod.returnType?.resolve()
         if (publishMethod.isSuspend()) {
             b.controlFlow("return %M { _cont ->", suspendCancellableCoroutine) {
                 controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
@@ -378,7 +380,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     controlFlow("if (_ex != null)") {
                         addStatement("_cont.%M(_ex)", resumeWithException)
                         nextControlFlow("else")
-                        if (publishMethod.returnType!!.toTypeName() == UNIT) {
+                        if (returnType!!.toTypeName() == UNIT) {
                             addStatement("_cont.%M(%T)", resume, UNIT)
                         } else {
                             addStatement("_cont.%M(_meta)", resume)
@@ -387,17 +389,23 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 }
             }
         } else {
-            if (publishMethod.returnType!!.toTypeName() != UNIT) {
-                b.addCode("return ")
+            val isCompletionStage = returnType?.isCompletionStage() == true
+            val isDeferred = returnType?.isDeferred() == true
+            if (isCompletionStage || isDeferred) {
+                b.addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
             }
-            b.controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
+            b.controlFlow("val _kafkaFuture = this.delegate!!.send(_record) { _meta, _ex ->") {
                 addStatement("_tctx.onCompletion(_meta, _ex)")
                 if (publishData.callback != null) {
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
                 }
             }
-            if (!publishMethod.isFuture()) {
-                b.addCode(".get()\n")
+            when {
+                isCompletionStage -> b.addStatement("return _future")
+                isDeferred -> b.addStatement("return _future.%M()", MemberName("kotlinx.coroutines.future", "asDeferred"))
+                returnType?.isFuture() == true -> b.addStatement("return _kafkaFuture")
+                returnType == resolver.builtIns.unitType -> b.addStatement("_kafkaFuture.get()")
+                else -> b.addStatement("return _kafkaFuture.get()")
             }
         }
 
