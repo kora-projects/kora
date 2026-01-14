@@ -11,7 +11,9 @@ public class JsonTypes {
     public static final ClassName jsonReaderAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonReader");
     public static final ClassName jsonWriterAnnotation = ClassName.get("ru.tinkoff.kora.json.common.annotation", "JsonWriter");
 
+    public static final ClassName jsonValue = ClassName.get("ru.tinkoff.kora.json.common", "JsonValue");
     public static final ClassName jsonNullable = ClassName.get("ru.tinkoff.kora.json.common", "JsonNullable");
+    public static final ClassName jsonUndefined = ClassName.get("ru.tinkoff.kora.json.common", "JsonUndefined");
     public static final ClassName jsonReader = ClassName.get("ru.tinkoff.kora.json.common", "JsonReader");
     public static final ClassName jsonWriter = ClassName.get("ru.tinkoff.kora.json.common", "JsonWriter");
 
