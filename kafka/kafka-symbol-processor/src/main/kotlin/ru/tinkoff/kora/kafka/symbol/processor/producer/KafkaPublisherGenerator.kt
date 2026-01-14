@@ -29,6 +29,7 @@ import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isCompletionStage
 import ru.tinkoff.kora.ksp.common.CommonClassNames.isDeferred
+import ru.tinkoff.kora.ksp.common.CommonClassNames.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
@@ -388,23 +389,23 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 }
             }
         } else {
-            if (returnType?.isCompletionStage() == true || returnType?.isDeferred() == true) {
+            val isCompletionStage = returnType?.isCompletionStage() == true
+            val isDeferred = returnType?.isDeferred() == true
+            if (isCompletionStage || isDeferred) {
                 b.addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
-            } else if (publishMethod.returnType!!.toTypeName() != UNIT) {
-                b.addCode("return ")
             }
-            b.controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
+            b.controlFlow("val _kafkaFuture = this.delegate!!.send(_record) { _meta, _ex ->") {
                 addStatement("_tctx.onCompletion(_meta, _ex)")
                 if (publishData.callback != null) {
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
                 }
             }
-            if (returnType?.isCompletionStage() == true) {
-                b.addStatement("return _future")
-            } else if (returnType?.isDeferred() == true) {
-                b.addStatement("return _future.%M()", MemberName("kotlinx.coroutines.future", "asDeferred"))
-            } else {
-                b.addCode(".get()\n")
+            when {
+                isCompletionStage -> b.addStatement("return _future")
+                isDeferred -> b.addStatement("return _future.%M()", MemberName("kotlinx.coroutines.future", "asDeferred"))
+                returnType?.isFuture() == true -> b.addStatement("return _kafkaFuture")
+                returnType == resolver.builtIns.unitType -> b.addStatement("_kafkaFuture.get()")
+                else -> b.addStatement("return _kafkaFuture.get()")
             }
         }
 
