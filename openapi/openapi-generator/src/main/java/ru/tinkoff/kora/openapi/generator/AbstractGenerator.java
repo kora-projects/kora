@@ -198,8 +198,7 @@ public abstract class AbstractGenerator<C, R> {
         if (schema.getIsEnum()) {
             if (schema instanceof CodegenProperty p) {
                 if (p.isInnerEnum) {
-                    // todo we probably can generate them
-                    log.warn("Inner enums are not supported right now and will be replaced with strings" + p.jsonSchema);
+                    // this will be handled on model generator level
                     return ClassName.get(String.class);
                 }
             }
@@ -211,8 +210,7 @@ public abstract class AbstractGenerator<C, R> {
             }
             if (schema instanceof CodegenParameter p) {
                 if (schema.getRef() == null) {
-                    // todo we probably can generate them
-                    log.warn("Inner enums are not supported right now and will be replaced with strings: " + p.jsonSchema);
+                    // this will be handled on model generator level
                     return ClassName.get(String.class);
                 }
                 return ClassName.get(modelPackage, p.datatypeWithEnum);

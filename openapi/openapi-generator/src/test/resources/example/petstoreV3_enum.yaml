@@ -102,12 +102,12 @@ components:
               - Retriever
               - Shepherd
         nonReqInt:
-          type: int
+          type: integer
           enum: [ 5, 7, 8, 10 ]
         nonReqArrayInt:
           type: array
           items:
-            type: int
+            type: integer
             enum:
               - 5
               - 7
