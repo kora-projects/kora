@@ -18,6 +18,7 @@ object CommonClassNames {
     val flow = ClassName("kotlinx.coroutines.flow", "Flow")
     val list = List::class.asClassName()
     val future = Future::class.asClassName()
+    val completableFuture = CompletableFuture::class.asClassName()
     val synchronousSink = ClassName("reactor.core.publisher", "SynchronousSink")
     val await = MemberName("kotlinx.coroutines.future", "await")
     val flowBuilder = MemberName("kotlinx.coroutines.flow", "flow")
