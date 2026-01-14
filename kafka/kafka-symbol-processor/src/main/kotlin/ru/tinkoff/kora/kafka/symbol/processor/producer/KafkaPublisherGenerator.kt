@@ -26,6 +26,7 @@ import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isDeferred
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
 import ru.tinkoff.kora.ksp.common.FunctionUtils.isSuspend
 import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
@@ -304,10 +305,10 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 addStatement("val _record = %T(_topic, _partition, null, _key, _value, _headers)", producerRecord)
             }
             addStatement("_observation.observeRecord(_record)")
-            if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend()) {
+            if (publishMethod.isFuture() || publishMethod.isCompletionStage() || publishMethod.isSuspend() || publishMethod.isDeferred()) {
                 addStatement("val _future = %T<%T>()", CommonClassNames.completableFuture, KafkaClassNames.producerRecordMetadata)
             }
-            controlFlow("this.delegate!!.send(_record) { _meta, _ex ->") {
+            controlFlow("val _kafkaFuture = this.delegate!!.send(_record) { _meta, _ex ->") {
                 addStatement("_observation.onCompletion(_meta, _ex)")
                 if (publishData.callback != null) {
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
@@ -321,10 +322,11 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     }
                 }
             }
-            if (publishMethod.isCompletionStage() || publishMethod.isFuture() || publishMethod.isSuspend()) {
-                add("_future\n")
-            } else {
-                add(".get()\n")
+            when {
+                publishMethod.isCompletionStage() || publishMethod.isFuture() -> addStatement("_future")
+                publishMethod.isSuspend() -> addStatement("_future")
+                publishMethod.isDeferred() -> addStatement("_future.%M()", MemberName("kotlinx.coroutines.future", "asDeferred"))
+                else -> addStatement("_kafkaFuture.get()")
             }
         }
         if (publishMethod.isSuspend()) {
