@@ -123,8 +123,30 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                     field = parentFieldMaybe
                 }
             }
-            val type = fieldType(field)
-            val p = ParameterSpec.builder(field.name, type)
+            var fieldType = fieldType(field)
+            if (field.isInnerEnum) {
+                // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
+                val enumModel = CodegenModel()
+                var enumSource = field
+                if (field.isContainer) {
+                    enumSource = field.items
+                }
+                enumModel.name = enumSource.enumName
+                enumModel.allowableValues = enumSource.allowableValues
+                enumModel.dataType = enumSource.dataType
+                enumModel.isString = enumSource.isString
+                enumModel.isLong = enumSource.isLong
+                enumModel.isInteger = enumSource.isInteger
+                val enumTypeSpec = buildEnum(ctx, enumModel)
+                b.addType(enumTypeSpec)
+                fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
+                if (field.isNullable && !field.required) {
+                    fieldType = Classes.jsonNullable.asKt().parameterizedBy(fieldType)
+                } else if (!field.isNullable && !field.required) {
+                    fieldType = fieldType.copy(true)
+                }
+            }
+            val p = ParameterSpec.builder(field.name, fieldType)
             if (field.name != field.baseName) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PROPERTY).addMember("value = %S", field.baseName).build())
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField.asKt()).useSiteTarget(AnnotationSpec.UseSiteTarget.PARAM).addMember("value = %S", field.baseName).build())
@@ -143,12 +165,12 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             } else if (field.defaultValue != null) {
                 p.defaultValue(field.defaultValue)
             }
-            fields.add(Field(field.name, field.baseName, type, field.required, type.isNullable))
+            fields.add(Field(field.name, field.baseName, fieldType, field.required, fieldType.isNullable))
             constructor.addParameter(p.build())
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude.asKt()).addMember("value = %T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType").asKt()).build())
             }
-            val prop = PropertySpec.builder(field.name, type).initializer(field.name)
+            val prop = PropertySpec.builder(field.name, fieldType).initializer(field.name)
             if (superInterfaceFields.contains(field.name)) {
                 prop.addModifiers(KModifier.OVERRIDE)
             }
@@ -207,7 +229,11 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
     }
 
     private fun buildEnum(ctx: ModelsMap, model: CodegenModel): TypeSpec {
-        val enumClassName = ClassName(modelPackage, model.name)
+        val contextModel = ctx.models.first().model
+        val enumClassName = if (contextModel == model)
+            ClassName(modelPackage, model.name)
+        else
+            ClassName(modelPackage, contextModel.name, model.name)
         val b = TypeSpec.enumBuilder(enumClassName)
             .addAnnotation(generated())
         val enumVars = model.allowableValues["enumVars"] as List<Map<String, Any>>
@@ -351,10 +377,10 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         if (model.isString) {
             return String::class.asClassName()
         }
-        if (model.isLong) {
+        if (model.isLong || "Long" == model.dataType) {
             return LONG
         }
-        if (model.isInteger) {
+        if (model.isInteger || "Integer" == model.dataType) {
             return INT
         }
         throw RuntimeException("Illegal enum value type")

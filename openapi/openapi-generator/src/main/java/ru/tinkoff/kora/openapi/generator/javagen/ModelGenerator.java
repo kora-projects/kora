@@ -154,8 +154,31 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                     field = parentFieldMaybe;
                 }
             }
-            var type = fieldType(field);
-            var p = ParameterSpec.builder(type, field.name);
+            var fieldType = fieldType(field);
+            if (field.isInnerEnum) {
+                // todo this field may be inherited from interface model and we should not generate enum here for those cases, but that's some weird contract design tbh
+                var enumModel = new CodegenModel();
+                var enumSource = field;
+                if (field.isContainer) {
+                    enumSource = field.items;
+                }
+                enumModel.name = enumSource.enumName;
+                enumModel.allowableValues = enumSource.allowableValues;
+                enumModel.dataType = enumSource.dataType;
+                enumModel.isString = enumSource.isString;
+                enumModel.isLong = enumSource.isLong;
+                enumModel.isInteger = enumSource.isInteger;
+
+                var enumTypeSpec = buildEnum(ctx, enumModel);
+                b.addType(enumTypeSpec);
+                fieldType = ClassName.get(modelPackage, model.getClassname(), enumModel.name);
+                if (field.isNullable && !field.required) {
+                    fieldType = ParameterizedTypeName.get(Classes.jsonNullable, fieldType);
+                } else if (field.isNullable || !field.required) {
+                    fieldType = fieldType.annotated(AnnotationSpec.builder(Classes.nullable).build());
+                }
+            }
+            var p = ParameterSpec.builder(fieldType, field.name);
             if (!field.name.equals(field.baseName)) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonField).addMember("value", "$S", field.baseName).build());
             }
@@ -163,7 +186,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             if (validation != null) {
                 p.addAnnotation(validation);
             }
-            fields.add(new Field(field.name, field.baseName, type, field.required, field.isNullable));
+            fields.add(new Field(field.name, field.baseName, fieldType, field.required, field.isNullable));
             if (field.required && field.isNullable) {
                 p.addAnnotation(AnnotationSpec.builder(Classes.jsonInclude).addMember("value", "$T.ALWAYS", Classes.jsonInclude.nestedClass("IncludeType")).build());
             }
@@ -241,7 +264,8 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
     }
 
     private TypeSpec buildEnum(ModelsMap ctx, CodegenModel model) {
-        var enumClassName = ClassName.get(modelPackage, model.name);
+        var contextModel = ctx.getModels().getFirst().getModel();
+        var enumClassName = contextModel == model ? ClassName.get(modelPackage, model.name) : ClassName.get(modelPackage, contextModel.name, model.name);
         var b = TypeSpec.enumBuilder(enumClassName)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
@@ -293,7 +317,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
                 .addModifiers(Modifier.PUBLIC)
                 .addAnnotation(Override.class)
                 .addParameter(Classes.jsonGenerator, "gen")
-                .addParameter(enumClassName, "value")
+                .addParameter(enumClassName.annotated(AnnotationSpec.builder(Classes.nullable).build()), "value")
                 .addStatement("this.delegate.write(gen, value)")
                 .build())
             .build());
@@ -366,14 +390,13 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         if (model.isString) {
             return ClassName.get(String.class);
         }
-        if (model.isLong) {
-            return TypeName.LONG;
+        if (model.isLong || "Long".equals(model.dataType)) {
+            return TypeName.LONG.box();
         }
-        if (model.isInteger) {
-            return TypeName.INT;
+        if (model.isInteger || "Integer".equals(model.dataType)) {
+            return TypeName.INT.box();
         }
 
-
-        throw new RuntimeException("Illegal enum value type");
+        throw new RuntimeException("Illegal enum value type: " + model);
     }
 }

@@ -1344,6 +1344,12 @@ public class KoraCodegen extends DefaultCodegen {
         }
         security.fromOpenapi(openAPI);
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
+        if (params.codegenMode.isJava()) {
+            var modelPackage = modelFileFolder() + File.separator + "package-info.java";
+            this.supportingFiles.add(new SupportingFile("modelPackage.mustache", modelPackage));
+            var apiPackage = apiFileFolder() + File.separator + "package-info.java";
+            this.supportingFiles.add(new SupportingFile("apiPackage.mustache", apiPackage));
+        }
         if (!Objects.requireNonNullElse(securitySchemas, Map.of()).isEmpty() && (params.codegenMode.isServer()||params.codegenMode.isClient() && !params.authAsMethodArgument)) {
             switch (params.codegenMode) {
                 case JAVA_CLIENT -> {
