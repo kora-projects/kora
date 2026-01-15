@@ -6,6 +6,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.NOPLogger;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryConfig;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
@@ -26,8 +27,12 @@ public final class DefaultHttpClientTelemetryFactory implements HttpClientTeleme
         if (!config.metrics().enabled() && !config.tracing().enabled() && !config.logging().enabled()) {
             return NoopHttpClientTelemetry.INSTANCE;
         }
-        var requestLog = LoggerFactory.getLogger(clientName + ".request");
-        var responseLog = LoggerFactory.getLogger(clientName + ".response");
+        var requestLog = config.logging().enabled()
+            ? LoggerFactory.getLogger(clientName + ".request")
+            : NOPLogger.NOP_LOGGER;
+        var responseLog = config.logging().enabled()
+            ? LoggerFactory.getLogger(clientName + ".response")
+            : NOPLogger.NOP_LOGGER;
         var tracer = this.tracer;
         if (tracer == null || !config.tracing().enabled()) {
             tracer = TracerProvider.noop().get("http-client");
