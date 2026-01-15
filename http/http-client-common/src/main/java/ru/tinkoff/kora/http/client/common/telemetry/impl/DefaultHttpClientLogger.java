@@ -86,7 +86,7 @@ public class DefaultHttpClientLogger {
 
         requestLog.atLevel(level)
             .addKeyValue("httpRequest", arg)
-            .log("HttpServer received request");
+            .log("HttpClient received request");
     }
 
     public void logResponse(HttpClientRequest rq, HttpClientResponse rs, long processingTime, @Nullable String body) {

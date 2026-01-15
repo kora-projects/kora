@@ -74,7 +74,7 @@ public class DefaultHttpClientLoggerTests {
             verify(gen).writeStringProperty("body", (String) expectedArgs[3]);
         }
 
-        verify(eventBuilder).log("HttpServer received request");
+        verify(eventBuilder).log("HttpClient received request");
     }
 
     @ParameterizedTest
