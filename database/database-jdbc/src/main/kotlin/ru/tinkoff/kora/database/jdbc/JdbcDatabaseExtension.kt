@@ -59,7 +59,7 @@ suspend fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineDispatcher? 
     return this.withConnectionCtxSuspend(context) { connectionCtx ->
         val connection = connectionCtx.connection()
         if (!connection.autoCommit) {
-            return callback.invoke(connection)
+            return@withConnectionCtxSuspend callback.invoke(connection)
         }
         connection.autoCommit = false
         val result: T
