@@ -26,26 +26,22 @@ private suspend fun <T> JdbcConnectionFactory.withConnectionInternal(
         }
     }
 
-    try {
-        val dispatcher = userDispatcher
-            ?: executor?.asCoroutineDispatcher()
-            ?: Dispatchers.IO
+    val dispatcher = userDispatcher
+        ?: executor?.asCoroutineDispatcher()
+        ?: Dispatchers.IO
 
-        val forkCtx = curCtx.fork()
-        return withContext(dispatcher + Context.Kotlin.asCoroutineContext(forkCtx)) {
-            try {
-                val newConnection = newConnection()
-                val connectionCtx = ConnectionContext(newConnection)
-                setContext(forkCtx, connectionCtx)
-                newConnection.use { callback.invoke(connectionCtx) }
-            } catch (e: SQLException) {
-                throw RuntimeSqlException(e)
-            } finally {
-                clearContext(forkCtx)
-            }
+    val forkCtx = curCtx.fork()
+    return withContext(dispatcher + Context.Kotlin.asCoroutineContext(forkCtx)) {
+        try {
+            val newConnection = newConnection()
+            val connectionCtx = ConnectionContext(newConnection)
+            setContext(forkCtx, connectionCtx)
+            newConnection.use { callback.invoke(connectionCtx) }
+        } catch (e: SQLException) {
+            throw RuntimeSqlException(e)
+        } finally {
+            clearContext(forkCtx)
         }
-    } finally {
-        curCtx.inject()
     }
 }
 
@@ -63,7 +59,7 @@ suspend fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineDispatcher? 
     return this.withConnectionCtxSuspend(context) { connectionCtx ->
         val connection = connectionCtx.connection()
         if (!connection.autoCommit) {
-            callback.invoke(connection)
+            return@withConnectionCtxSuspend callback.invoke(connection)
         }
         connection.autoCommit = false
         val result: T
