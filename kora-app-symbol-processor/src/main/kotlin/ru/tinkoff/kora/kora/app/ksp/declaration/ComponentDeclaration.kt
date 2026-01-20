@@ -85,16 +85,6 @@ sealed interface ComponentDeclaration {
         override fun declarationString() = "component  " + classDeclaration.qualifiedName?.asString().toString()
     }
 
-    data class DiscoveredAsDependencyComponent(
-        override val type: KSType,
-        val classDeclaration: KSClassDeclaration,
-        val constructor: KSFunctionDeclaration,
-        override val tag: String?
-    ) : ComponentDeclaration {
-        override val source get() = this.constructor
-        override fun declarationString() = classDeclaration.qualifiedName?.asString().toString()
-    }
-
     data class FromExtensionComponent(
         override val type: KSType,
         override val source: KSDeclaration,
@@ -169,22 +159,6 @@ sealed interface ComponentDeclaration {
             val parameterTypes = constructor.parameters.map { it.type.resolve() }
 
             return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters)
-        }
-
-        fun fromDependency(@Suppress("UNUSED_PARAMETER") ctx: ProcessingContext, classDeclaration: KSClassDeclaration, type: KSType): DiscoveredAsDependencyComponent {
-            val constructor = classDeclaration.primaryConstructor
-            if (constructor == null) {
-                throw ProcessingErrorException("No primary constructor to parse component for: $classDeclaration", classDeclaration)
-            }
-            if (type.isError) {
-                throw ProcessingErrorException(
-                    "Component type is not resolvable in the current round of processing: class $classDeclaration\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
-                    classDeclaration
-                )
-            }
-            val tags = TagUtils.parseTagValue(classDeclaration)
-
-            return DiscoveredAsDependencyComponent(type, classDeclaration, constructor, tags)
         }
 
         fun fromExtension(ctx: ProcessingContext, extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {

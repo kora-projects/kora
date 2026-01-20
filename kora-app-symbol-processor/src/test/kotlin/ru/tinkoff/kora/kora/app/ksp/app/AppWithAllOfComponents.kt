@@ -2,6 +2,7 @@ package ru.tinkoff.kora.kora.app.ksp.app
 
 import ru.tinkoff.kora.application.graph.All
 import ru.tinkoff.kora.application.graph.ValueOf
+import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.KoraApp
 import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.common.annotation.Root
@@ -52,6 +53,8 @@ interface AppWithAllOfComponents {
     class Class1 : Superclass(), SomeInterface
     class Class2 : Superclass(), SomeInterface
     class Class3(private val class4: Class4) : Superclass()
+
+    @Component
     class Class4 : Superclass()
     class Class5 : Superclass()
     data class ClassWithAllOf(val allOfSuperclass: All<Superclass>)

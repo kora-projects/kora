@@ -5,59 +5,6 @@ import org.junit.jupiter.api.Test
 
 open class DependencyTest : AbstractKoraAppProcessorTest() {
     @Test
-    open fun testDiscoveredFinalClassDependency() {
-        val draw = compile(
-            """
-            @KoraApp
-            interface ExampleApplication {
-                class TestClass1
-                
-                @Root
-                fun test(testClass: TestClass1) = ""
-            }
-            """.trimIndent()
-        )
-        Assertions.assertThat(draw.nodes).hasSize(2)
-        draw.init()
-    }
-
-    @Test
-    open fun testDiscoveredFinalClassDependencyWithGeneric() {
-        val draw = compile(
-            """
-            @KoraApp
-            interface ExampleApplication {
-                class TestClass1<T>(t: T)
-                class TestClass2
-                
-                @Root
-                fun test(testClass: TestClass1<TestClass2>) = ""
-            }
-            """.trimIndent()
-        )
-        Assertions.assertThat(draw.nodes).hasSize(3)
-        draw.init()
-    }
-
-    @Test
-    open fun testDiscoveredFinalClassDependencyWithTag() {
-        val draw = compile(
-            """
-            @KoraApp
-            interface ExampleApplication {
-                @Tag(TestClass1::class)
-                class TestClass1
-                
-                @Root
-                fun test(@Tag(TestClass1::class) testClass: TestClass1) = ""
-            }
-            """.trimIndent()
-        )
-        Assertions.assertThat(draw.nodes).hasSize(2)
-        draw.init()
-    }
-
-    @Test
     open fun testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass() {
         Assertions.assertThatThrownBy {
             compile(
@@ -83,7 +30,8 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
 
     @Test
     fun testCycleInGraphResolvedWithProxy() {
-        compile("""
+        compile(
+            """
             @KoraApp
             interface ExampleApplication {
                 fun class1(promise: Interface1): Class1 {
@@ -106,7 +54,8 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
                 class Class1
                 class Class2(override val someVal: String) : Interface1
             }
-        """.trimIndent())
+        """.trimIndent()
+        )
     }
 
     @Test

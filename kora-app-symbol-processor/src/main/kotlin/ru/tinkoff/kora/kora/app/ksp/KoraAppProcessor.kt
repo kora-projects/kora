@@ -425,10 +425,6 @@ class KoraAppProcessor(
                 statement.add(declaration.generator(dependenciesCode))
             }
 
-            is ComponentDeclaration.DiscoveredAsDependencyComponent -> {
-                statement.add("%T(%L)", declaration.classDeclaration.toClassName(), dependenciesCode)
-            }
-
             is ComponentDeclaration.PromisedProxyComponent -> {
                 statement.add("%T(%L)", declaration.className, dependenciesCode)
             }

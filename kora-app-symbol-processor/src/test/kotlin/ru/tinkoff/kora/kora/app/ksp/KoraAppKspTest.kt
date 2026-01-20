@@ -1,5 +1,3 @@
-@file:Suppress("RECEIVER_NULLABILITY_MISMATCH_BASED_ON_JAVA_ANNOTATIONS")
-
 package ru.tinkoff.kora.kora.app.ksp
 
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
@@ -28,7 +26,7 @@ class KoraAppKspTest {
     @Test
     fun testCompile() {
         val graphDraw = testClass(AppWithComponentsKotlin::class)
-        assertThat(graphDraw.nodes).hasSize(10)
+        assertThat(graphDraw.nodes).hasSize(6)
         val materializedGraph = graphDraw.init()
 
         assertThat(materializedGraph).isNotNull
@@ -58,11 +56,6 @@ class KoraAppKspTest {
     @Test
     fun testGenericArrays() {
         testClass(AppWithGenericWithArrays::class)
-    }
-
-    @Test
-    fun testAutocreateComponent() {
-        testClass(AppWithAutocreateComponent::class)
     }
 
     @Test

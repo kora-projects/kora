@@ -215,14 +215,6 @@ class GraphBuilder {
                     )
                     continue@frame
                 }
-                val finalClassComponent = GraphResolutionHelper.findFinalDependency(ctx, dependencyClaim)
-                if (finalClassComponent != null) {
-                    sourceDeclarations.add(finalClassComponent)
-                    stack.addLast(frame.copy(currentDependency = currentDependency))
-                    stack.addLast(ResolutionFrame.Component(finalClassComponent))
-                    stack.addAll(findInterceptors(finalClassComponent))
-                    continue@frame
-                }
                 val extension = ctx.extensions.findExtension(ctx.resolver, dependencyClaim.type, dependencyClaim.tag)
                 if (extension != null) {
                     val extensionResult = extension()

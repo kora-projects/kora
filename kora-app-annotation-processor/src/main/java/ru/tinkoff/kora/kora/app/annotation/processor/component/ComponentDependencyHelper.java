@@ -32,18 +32,6 @@ public class ComponentDependencyHelper {
                 result.add(parseClaim(element, parameterType, tags, isNullable));
             }
             return result;
-        } else if (componentDeclaration instanceof ComponentDeclaration.DiscoveredAsDependencyComponent discoveredAsDependency) {
-            var element = discoveredAsDependency.constructor();
-            var type = (ExecutableType) ctx.types.asMemberOf(discoveredAsDependency.type(), element);
-            var result = new ArrayList<DependencyClaim>(element.getParameters().size());
-            for (int i = 0; i < type.getParameterTypes().size(); i++) {
-                var parameterType = type.getParameterTypes().get(i);
-                var parameterElement = element.getParameters().get(i);
-                var tags = TagUtils.parseTagValue(parameterElement);
-                var isNullable = CommonUtils.isNullable(parameterElement);
-                result.add(parseClaim(element, parameterType, tags, isNullable));
-            }
-            return result;
         } else if (componentDeclaration instanceof ComponentDeclaration.AnnotatedComponent annotated) {
             var element = annotated.constructor();
             var type = (ExecutableType) annotated.constructor().asType();

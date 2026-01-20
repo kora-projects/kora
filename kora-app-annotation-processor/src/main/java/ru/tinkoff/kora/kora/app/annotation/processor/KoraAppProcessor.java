@@ -316,12 +316,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             statement.add("$L($L)", moduleComponent.method().getSimpleName(), dependenciesCode);
         } else if (declaration instanceof ComponentDeclaration.FromExtensionComponent extension) {
             statement.add(extension.generator().apply(dependenciesCode));
-        } else if (declaration instanceof ComponentDeclaration.DiscoveredAsDependencyComponent asDependencyComponent) {
-            if (asDependencyComponent.typeElement().getTypeParameters().isEmpty()) {
-                statement.add("new $T($L)", ClassName.get(asDependencyComponent.typeElement()), dependenciesCode);
-            } else {
-                statement.add("new $T<>($L)", ClassName.get(asDependencyComponent.typeElement()), dependenciesCode);
-            }
         } else if (declaration instanceof ComponentDeclaration.PromisedProxyComponent promisedProxyComponent) {
             if (promisedProxyComponent.typeElement().getTypeParameters().isEmpty()) {
                 statement.add("new $T($L)", promisedProxyComponent.className(), dependenciesCode);

@@ -1,7 +1,5 @@
 package ru.tinkoff.kora.kora.app.ksp
 
-import com.google.devtools.ksp.isOpen
-import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
@@ -10,7 +8,6 @@ import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 import ru.tinkoff.kora.kora.app.ksp.exception.DuplicateDependencyException
-import ru.tinkoff.kora.ksp.common.TagUtils
 
 object GraphResolutionHelper {
     fun findDependency(ctx: ProcessingContext, forDeclaration: ComponentDeclaration, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): SingleDependency? {
@@ -48,27 +45,6 @@ object GraphResolutionHelper {
             }
         }
         return result
-    }
-
-    fun findFinalDependency(ctx: ProcessingContext, dependencyClaim: DependencyClaim): ComponentDeclaration? {
-        val declaration = dependencyClaim.type.declaration
-        if (declaration !is KSClassDeclaration) {
-            return null
-        }
-        if (declaration.isOpen()) {
-            return null
-        }
-        if (declaration.packageName.asString() == "kotlin") {
-            return null
-        }
-        if (declaration.primaryConstructor == null) {
-            return null
-        }
-        val tags = TagUtils.parseTagValue(declaration)
-        if (dependencyClaim.tagMatches(tags)) {
-            return ComponentDeclaration.fromDependency(ctx, declaration, dependencyClaim.type)
-        }
-        return null
     }
 
     fun findDependenciesForAllOf(ctx: ProcessingContext, dependencyClaim: DependencyClaim, resolvedComponents: List<ResolvedComponent>): List<SingleDependency> {
@@ -243,7 +219,6 @@ object GraphResolutionHelper {
                     )
                 }
 
-                is ComponentDeclaration.DiscoveredAsDependencyComponent -> throw IllegalStateException()
                 is ComponentDeclaration.OptionalComponent -> throw IllegalStateException()
             }
         }

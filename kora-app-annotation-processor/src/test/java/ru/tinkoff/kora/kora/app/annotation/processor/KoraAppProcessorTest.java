@@ -68,11 +68,6 @@ class KoraAppProcessorTest {
     }
 
     @Test
-    void testAutocreateComponent() throws Throwable {
-        testClass(AppWithAutocreateComponent.class);
-    }
-
-    @Test
     void testAppWithTags() throws Throwable {
         testClass(AppWithTag.class);
     }
@@ -314,12 +309,6 @@ class KoraAppProcessorTest {
     void appWithExactDependencyMatch() throws Exception {
         var graphDraw = testClass(AppWithExactMatch.class);
         Assertions.assertThat(graphDraw.getNodes()).hasSize(8);
-    }
-
-    @Test
-    void appWithComponentsWithSameName() throws Exception {
-        var graphDraw = testClass(AppWithComponentsWithSameName.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(4);
     }
 
     @Test

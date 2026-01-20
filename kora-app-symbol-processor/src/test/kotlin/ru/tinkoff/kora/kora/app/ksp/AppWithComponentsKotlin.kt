@@ -1,20 +1,11 @@
 package ru.tinkoff.kora.kora.app.ksp
 
+import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.common.KoraApp
 import ru.tinkoff.kora.common.annotation.Root
 
 @KoraApp
 interface AppWithComponentsKotlin {
-
-    @Root
-    fun fromClassFromSomePackage(class1: ru.tinkoff.kora.kora.app.ksp.somepackage.Class1): Class10 {
-        return Class10(class1)
-    }
-
-    @Root
-    fun fromClassFromOtherPackage(class1: ru.tinkoff.kora.kora.app.ksp.otherpackage.Class1): Class9 {
-        return Class9(class1)
-    }
 
     @Root
     fun class2(class3: Interface1): Class2 {
@@ -44,9 +35,9 @@ interface AppWithComponentsKotlin {
     interface Interface1
     class Class3 : Interface1
     class Class4
+
+    @Component
     class Class7(class4: Class4?)
     class Class8
-    class Class9(val class1: ru.tinkoff.kora.kora.app.ksp.otherpackage.Class1)
-    class Class10(val class1: ru.tinkoff.kora.kora.app.ksp.somepackage.Class1)
     class GenericClass<T>(val t: T)
 }
