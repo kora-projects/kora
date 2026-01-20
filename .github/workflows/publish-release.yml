@@ -63,19 +63,3 @@ jobs:
           echo "KORA_CHANGELOG_DESCRIPTION<<EOF" >> $GITHUB_ENV
           echo "Часть изменений в $(curl -s https://kora-projects.github.io/kora-docs/ru/changelog/changelog/ | grep -o '<meta property="og:description" content=".*' | grep -o '"[^"]*"' | tail -n +2 | tr -d '"' | sed 's/[:,]/\n-/g') " >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
-
-      - name: Notify new release to Telegram
-        uses: appleboy/telegram-action@master
-        env:
-          KORA_VERSION: ${{ github.event.release.tag_name }}
-          KORA_CHANGELOG_TAG: ${{ steps.kora_changelog.outputs.KORA_CHANGELOG_TAG }}
-        with:
-          to: ${{ secrets.TELEGRAM_RELEASE_CHAT_ID }}
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          format: markdown
-          message: |
-            Вышла новая версия Kora - ${{ env.KORA_VERSION }}
-            
-            ${{ env.KORA_CHANGELOG_DESCRIPTION }}
-            
-            Полный список в [журнале изменений](https://kora-projects.github.io/kora-docs/ru/changelog/changelog/#${{ env.KORA_CHANGELOG_TAG }})
