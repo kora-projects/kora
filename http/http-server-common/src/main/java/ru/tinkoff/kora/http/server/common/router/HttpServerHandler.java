@@ -21,16 +21,16 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author Stuart Douglas
  */
 
-public class PublicApiHandler {
+public class HttpServerHandler {
 
     private static final HttpServerResponse NOT_FOUND_RESPONSE = HttpServerResponse.of(404);
     private static final HttpServerRequestHandler.HandlerFunction NOT_FOUND_HANDLER = (_) -> NOT_FOUND_RESPONSE;
 
     private final Map<String, PathTemplateMatcher<HttpServerRequestHandler>> pathTemplateMatcher;
     private final PathTemplateMatcher<List<String>> allMethodMatchers;
-    private final AtomicReference<RequestHandler> requestHandler = new AtomicReference<>();
+    private final AtomicReference<@Nullable RequestHandler> requestHandler = new AtomicReference<>();
 
-    public PublicApiHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerConfig config) {
+    public HttpServerHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerConfig config) {
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {

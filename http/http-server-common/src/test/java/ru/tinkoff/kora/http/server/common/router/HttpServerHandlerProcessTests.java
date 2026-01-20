@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.when;
 
-class PublicApiHandlerProcessTests {
+class HttpServerHandlerProcessTests {
 
     static Stream<Arguments> dataWhenDefault() {
         return Stream.of(
@@ -68,7 +68,7 @@ class PublicApiHandlerProcessTests {
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(any())).thenReturn(telemetry);
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, All.of(), config);
+        var handler = new HttpServerHandler(handlers, All.of(), config);
 
         // when
         var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
@@ -116,7 +116,7 @@ class PublicApiHandlerProcessTests {
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(any())).thenReturn(telemetry);
         var config = config(true);
-        var handler = new PublicApiHandler(handlers, All.of(), config);
+        var handler = new HttpServerHandler(handlers, All.of(), config);
 
         // when
         var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
@@ -136,7 +136,7 @@ class PublicApiHandlerProcessTests {
         var config = config(false);
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
         when(telemetryFactory.get(any())).thenReturn(NoopHttpServerTelemetry.INSTANCE);
-        var handler = new PublicApiHandler(handlers, All.of(), config);
+        var handler = new HttpServerHandler(handlers, All.of(), config);
 
         var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
         var routedRq = handler.route(request);
@@ -147,13 +147,7 @@ class PublicApiHandlerProcessTests {
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
         return new HttpServerConfig_Impl(
             8080,
-            8085,
-            "/metrics",
-            "/system/readiness",
-            "/system/liveness",
             ignoreTrailingSlash,
-            10,
-            Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             false,

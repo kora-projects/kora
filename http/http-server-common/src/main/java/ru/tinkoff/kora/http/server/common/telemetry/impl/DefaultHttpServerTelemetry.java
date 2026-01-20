@@ -8,6 +8,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.server.common.HttpServerRequest;
 import ru.tinkoff.kora.http.server.common.router.PublicApiRequest;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerObservation;
@@ -129,7 +130,7 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         return value;
     }
 
-    protected Span createSpan(String template, PublicApiRequest routerRequest) {
+    protected Span createSpan(@Nullable String template, PublicApiRequest routerRequest) {
         if (template == null || !this.config.tracing().enabled()) {
             return Span.getInvalid();
         }

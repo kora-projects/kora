@@ -23,7 +23,7 @@ import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
-import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
+import ru.tinkoff.kora.http.server.common.router.HttpServerHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerObservation;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 import ru.tinkoff.kora.http.server.undertow.request.UndertowPublicApiRequest;
@@ -41,12 +41,12 @@ public class UndertowExchangeProcessor implements HttpHandler {
 
     private final HttpServerTelemetry telemetry;
     private final UndertowContext context;
-    private final PublicApiHandler publicApiHandler;
+    private final HttpServerHandler httpServerHandler;
 
-    public UndertowExchangeProcessor(HttpServerTelemetry telemetry, UndertowContext context, PublicApiHandler publicApiHandler) {
+    public UndertowExchangeProcessor(HttpServerTelemetry telemetry, UndertowContext context, HttpServerHandler httpServerHandler) {
         this.telemetry = telemetry;
         this.context = context;
-        this.publicApiHandler = publicApiHandler;
+        this.httpServerHandler = httpServerHandler;
     }
 
     @Override
@@ -61,7 +61,7 @@ public class UndertowExchangeProcessor implements HttpHandler {
                 try {
                     exchange.startBlocking();
                     var request = new UndertowPublicApiRequest(exchange);
-                    var invocation = this.publicApiHandler.route(request);
+                    var invocation = this.httpServerHandler.route(request);
                     var observation = this.telemetry.observe(request, invocation.request);
                     var ctx = rootCtx.with(observation.span());
                     W3CTraceContextPropagator.getInstance().inject(

@@ -11,35 +11,70 @@ import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.liveness.LivenessProbe;
 import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.config.common.Config;
+import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.annotation.PrivateApi;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
-import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
+import ru.tinkoff.kora.http.server.common.privateapi.LivenessHandler;
+import ru.tinkoff.kora.http.server.common.privateapi.MetricsHandler;
+import ru.tinkoff.kora.http.server.common.privateapi.ReadinessHandler;
+import ru.tinkoff.kora.http.server.common.router.HttpServerHandler;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
 import ru.tinkoff.kora.http.server.common.telemetry.impl.DefaultHttpServerTelemetryFactory;
+import ru.tinkoff.kora.telemetry.common.MetricsScraper;
 
 import java.util.Optional;
 
 public interface HttpServerModule extends StringParameterReadersModule, HttpServerRequestMapperModule, HttpServerResponseMapperModule {
 
     default HttpServerConfig httpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> configValueExtractor) {
-        return configValueExtractor.extract(config.get("httpServer"));
+        var value = config.get("httpServer");
+        var parsed = configValueExtractor.extract(value);
+        if (parsed == null) {
+            throw ConfigValueExtractionException.missingValueAfterParse(value);
+        }
+        return parsed;
     }
 
-    default PrivateApiHandler privateApiHandler(ValueOf<HttpServerConfig> config,
-                                                ValueOf<Optional<PrivateApiMetrics>> meterRegistry,
-                                                All<PromiseOf<ReadinessProbe>> readinessProbes,
-                                                All<PromiseOf<LivenessProbe>> livenessProbes) {
-        return new PrivateApiHandler(config, meterRegistry, readinessProbes, livenessProbes);
-    }
-
-    default PublicApiHandler publicApiHandler(All<HttpServerRequestHandler> handlers,
-                                              @Tag(HttpServerModule.class) All<HttpServerInterceptor> interceptors,
-                                              HttpServerConfig config) {
-        return new PublicApiHandler(handlers, interceptors, config);
+    default HttpServerHandler publicApiHandler(All<HttpServerRequestHandler> handlers,
+                                               @Tag(HttpServerModule.class) All<HttpServerInterceptor> interceptors,
+                                               HttpServerConfig config) {
+        return new HttpServerHandler(handlers, interceptors, config);
     }
 
     @DefaultComponent
-    default DefaultHttpServerTelemetryFactory defaultHttpServerTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
+    default HttpServerTelemetryFactory defaultHttpServerTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
         return new DefaultHttpServerTelemetryFactory(meterRegistry, tracer);
     }
+
+    @PrivateApi
+    default PrivateHttpServerConfig privateApiHttpServerConfig(Config config, ConfigValueExtractor<PrivateHttpServerConfig> configValueExtractor) {
+        var value = config.get("privateHttpServer");
+        var parsed = configValueExtractor.extract(value);
+        if (parsed == null) {
+            throw ConfigValueExtractionException.missingValueAfterParse(value);
+        }
+        return parsed;
+    }
+
+    @PrivateApi
+    default HttpServerRequestHandler livenessHandler(ValueOf<PrivateHttpServerConfig> config, All<PromiseOf<LivenessProbe>> probes) {
+        return new LivenessHandler(config, probes);
+    }
+
+    @PrivateApi
+    default HttpServerRequestHandler readinessHandler(ValueOf<PrivateHttpServerConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
+        return new ReadinessHandler(config, probes);
+    }
+
+    @PrivateApi
+    default HttpServerRequestHandler metricsHandler(ValueOf<PrivateHttpServerConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
+        return new MetricsHandler(config, meterRegistry);
+    }
+
+    @PrivateApi
+    default HttpServerHandler privateApiHandler(@Tag(PrivateApi.class) All<HttpServerRequestHandler> handlers, @Tag(PrivateApi.class) All<HttpServerInterceptor> interceptors, HttpServerConfig config) {
+        return new HttpServerHandler(handlers, interceptors, config);
+    }
+
 }
