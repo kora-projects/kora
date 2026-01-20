@@ -58,17 +58,17 @@ public interface HttpServerModule extends StringParameterReadersModule, HttpServ
     }
 
     @PrivateApi
-    default HttpServerRequestHandler livenessHandler(ValueOf<PrivateHttpServerConfig> config, All<PromiseOf<LivenessProbe>> probes) {
+    default HttpServerRequestHandler livenessHandler(@PrivateApi ValueOf<PrivateHttpServerConfig> config, All<PromiseOf<LivenessProbe>> probes) {
         return new LivenessHandler(config, probes);
     }
 
     @PrivateApi
-    default HttpServerRequestHandler readinessHandler(ValueOf<PrivateHttpServerConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
+    default HttpServerRequestHandler readinessHandler(@PrivateApi ValueOf<PrivateHttpServerConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
         return new ReadinessHandler(config, probes);
     }
 
     @PrivateApi
-    default HttpServerRequestHandler metricsHandler(ValueOf<PrivateHttpServerConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
+    default HttpServerRequestHandler metricsHandler(@PrivateApi ValueOf<PrivateHttpServerConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
         return new MetricsHandler(config, meterRegistry);
     }
 
