@@ -14,6 +14,7 @@ import ru.tinkoff.kora.micrometer.module.resilient.MicrometerTimeoutMetrics;
 
 public interface MetricsModule {
     @Root
+    @DefaultComponent
     default PrometheusMeterRegistryWrapper prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
         return new PrometheusMeterRegistryWrapper(initializers);
     }

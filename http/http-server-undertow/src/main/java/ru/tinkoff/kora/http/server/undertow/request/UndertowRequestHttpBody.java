@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.undertow.request;
 
 import io.undertow.server.HttpServerExchange;
 import io.undertow.util.Headers;
+import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 
@@ -28,6 +29,7 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     }
 
     @Override
+    @NonNull
     public InputStream asInputStream() {
         return this.exchange.getInputStream();
     }

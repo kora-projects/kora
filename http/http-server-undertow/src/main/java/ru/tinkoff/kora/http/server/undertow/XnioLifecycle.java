@@ -9,7 +9,6 @@ import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.application.graph.Wrapped;
 import ru.tinkoff.kora.common.util.TimeUtils;
-import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -17,11 +16,11 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
 
     private static final Logger logger = LoggerFactory.getLogger(XnioLifecycle.class);
 
-    private final ValueOf<HttpServerConfig> configValue;
+    private final ValueOf<UndertowConfig> configValue;
 
     private volatile XnioWorker worker;
 
-    public XnioLifecycle(ValueOf<HttpServerConfig> configValue) {
+    public XnioLifecycle(ValueOf<UndertowConfig> configValue) {
         this.configValue = configValue;
     }
 

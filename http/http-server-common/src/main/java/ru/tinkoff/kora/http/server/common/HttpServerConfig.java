@@ -8,36 +8,12 @@ import java.time.Duration;
 @ConfigValueExtractor
 public interface HttpServerConfig {
 
-    default int publicApiHttpPort() {
+    default int port() {
         return 8080;
-    }
-
-    default int privateApiHttpPort() {
-        return 8085;
-    }
-
-    default String privateApiHttpMetricsPath() {
-        return "/metrics";
-    }
-
-    default String privateApiHttpReadinessPath() {
-        return "/system/readiness";
-    }
-
-    default String privateApiHttpLivenessPath() {
-        return "/system/liveness";
     }
 
     default boolean ignoreTrailingSlash() {
         return false;
-    }
-
-    default int ioThreads() {
-        return Math.max(Runtime.getRuntime().availableProcessors(), 2);
-    }
-
-    default Duration threadKeepAliveTimeout() {
-        return Duration.ofSeconds(60);
     }
 
     default Duration socketReadTimeout() {

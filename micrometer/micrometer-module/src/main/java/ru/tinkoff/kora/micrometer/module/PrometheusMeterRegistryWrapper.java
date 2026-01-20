@@ -13,12 +13,14 @@ import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.telemetry.common.MetricsScraper;
 
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<PrometheusMeterRegistry> {
+public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<PrometheusMeterRegistry>, MetricsScraper {
     private static final String KORA_VERSION = readVersion();
 
     private final List<PrometheusMeterRegistryInitializer> initializers;
@@ -93,4 +95,8 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
         }
     }
 
+    @Override
+    public void scrape(Writer writer) throws IOException {
+        this.registry.scrape(writer);
+    }
 }

@@ -13,7 +13,7 @@ import ru.tinkoff.kora.http.server.common.telemetry.*;
 import java.time.Duration;
 import java.util.List;
 
-class PublicApiHandlerTest {
+class HttpServerHandlerTest {
     private HttpServerTelemetryFactory telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
 
     @Test
@@ -23,7 +23,7 @@ class PublicApiHandlerTest {
             handler("GET", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), config);
+        var handler = new HttpServerHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -33,7 +33,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
     }
 
 
@@ -44,7 +44,7 @@ class PublicApiHandlerTest {
             handler("GET", "/foo/bar/{otherVariable}")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), config);
+        var handler = new HttpServerHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -54,7 +54,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -64,7 +64,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), config);
+        var handler = new HttpServerHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -74,7 +74,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -84,7 +84,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), config);
+        var handler = new HttpServerHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -94,7 +94,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/{otherVariable}/baz")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -104,7 +104,7 @@ class PublicApiHandlerTest {
             handler("GET", "/foo/bar")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), config);
+        var handler = new HttpServerHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -114,7 +114,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar")
         );
         var config = config(false);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
     }
 
     @Test
@@ -125,7 +125,7 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/")
         );
         var config = config(false);
-        var handler = new PublicApiHandler(handlers, List.of(), config);
+        var handler = new HttpServerHandler(handlers, List.of(), config);
     }
 
     @Test
@@ -136,19 +136,13 @@ class PublicApiHandlerTest {
             handler("POST", "/foo/bar/")
         );
         var config = config(true);
-        Assertions.assertThatThrownBy(() -> new PublicApiHandler(handlers, List.of(), config));
+        Assertions.assertThatThrownBy(() -> new HttpServerHandler(handlers, List.of(), config));
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
         return new $HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl(
             0,
-            0,
-            "/metrics",
-            "/system/readiness",
-            "/system/liveness",
             ignoreTrailingSlash,
-            1,
-            Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             false,

@@ -17,7 +17,7 @@ import ru.tinkoff.kora.common.util.Configurer;
 import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.http.server.common.HttpServer;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
-import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
+import ru.tinkoff.kora.http.server.common.router.HttpServerHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
 import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
 
@@ -34,19 +34,19 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
     private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
-    private final ValueOf<HttpServerConfig> config;
+    private final ValueOf<? extends HttpServerConfig> config;
     private final GracefulShutdownHandler gracefulShutdown;
     private final String name;
     private final XnioWorker xnioWorker;
-    private final ValueOf<PublicApiHandler> publicApiHandler;
+    private final ValueOf<HttpServerHandler> publicApiHandler;
     @Nullable
     private final Configurer<Undertow.Builder> configurer;
     private final HttpServerTelemetry telemetry;
 
     private volatile Undertow undertow;
 
-    public UndertowHttpServer(ValueOf<HttpServerConfig> config,
-                              ValueOf<PublicApiHandler> publicApiHandler,
+    public UndertowHttpServer(ValueOf<? extends HttpServerConfig> config,
+                              ValueOf<HttpServerHandler> publicApiHandler,
                               String name,
                               HttpServerTelemetry telemetry,
                               @Nullable XnioWorker xnioWorker,
@@ -68,39 +68,39 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
         this.gracefulShutdown.shutdown();
         final Duration shutdownAwait = this.config.get().shutdownWait();
         try {
-            logger.debug("Public HTTP Server (Undertow) awaiting graceful shutdown...");
+            logger.debug("HTTP Server {} (Undertow) awaiting graceful shutdown...", this.name);
             if (!this.gracefulShutdown.awaitShutdown(shutdownAwait.toMillis())) {
-                logger.warn("Public HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait);
+                logger.warn("HTTP Server {} (Undertow) failed completing graceful shutdown in {}", this.name, shutdownAwait);
             }
         } catch (InterruptedException e) {
-            logger.warn("Public HTTP Server (Undertow) failed completing graceful shutdown in {}", shutdownAwait, e);
+            logger.warn("HTTP Server {} (Undertow) failed completing graceful shutdown in {}", this.name, shutdownAwait, e);
         }
 
         if (this.undertow != null) {
             this.undertow.stop();
             this.undertow = null;
         }
-        logger.info("Public HTTP Server (Undertow) stopped in {}", TimeUtils.tookForLogging(started));
+        logger.info("HTTP Server {} (Undertow) stopped in {}", name, TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void init() {
         try {
-            logger.debug("Public HTTP Server (Undertow) starting...");
+            logger.debug("HTTP Server {} (Undertow) starting...", name);
             final long started = TimeUtils.started();
             this.gracefulShutdown.start();
             this.undertow = this.createServer();
             this.undertow.start();
             this.state.set(HttpServerState.RUN);
             var data = StructuredArgument.marker("port", this.port());
-            logger.info(data, "Public HTTP Server (Undertow) started in {}", TimeUtils.tookForLogging(started));
+            logger.info(data, "HTTP Server {} (Undertow) started in {}", name, TimeUtils.tookForLogging(started));
         } catch (Exception e) {
             if (e.getCause() instanceof BindException be) {
-                throw new RuntimeException("Public HTTP Server (Undertow) failed to start, cause port '%s' is already in use"
-                    .formatted(config.get().publicApiHttpPort()), be);
+                throw new RuntimeException("HTTP Server " + name + " (Undertow) failed to start, cause port '%s' is already in use"
+                    .formatted(config.get().port()), be);
             } else {
-                throw new RuntimeException("Public HTTP Server (Undertow) failed to start on port '%s', due to: %s"
-                    .formatted(config.get().publicApiHttpPort(), e.getMessage()), e);
+                throw new RuntimeException("HTTP Server " + name + " (Undertow) failed to start on port '%s', due to: %s"
+                    .formatted(config.get().port(), e.getMessage()), e);
             }
         }
     }
@@ -109,7 +109,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
         var config = this.config.get();
         var undertow = Undertow.builder()
             .setHandler(this.gracefulShutdown)
-            .addHttpListener(config.publicApiHttpPort(), "0.0.0.0")
+            .addHttpListener(config.port(), "0.0.0.0")
             .setWorker(this.xnioWorker)
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
@@ -161,9 +161,9 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
     @Override
     public ReadinessProbeFailure probe() {
         return switch (this.state.get()) {
-            case INIT -> new ReadinessProbeFailure("Public HTTP Server (Undertow) init");
+            case INIT -> new ReadinessProbeFailure("HTTP Server " + this.name + " (Undertow) init");
             case RUN -> null;
-            case SHUTDOWN -> new ReadinessProbeFailure("Public HTTP Server (Undertow) shutdown");
+            case SHUTDOWN -> new ReadinessProbeFailure("HTTP Server " + this.name + " (Undertow) shutdown");
         };
     }
 
