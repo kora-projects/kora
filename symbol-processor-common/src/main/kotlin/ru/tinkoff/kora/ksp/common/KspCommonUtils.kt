@@ -294,36 +294,7 @@ fun <T> KSAnnotated.visitFunction(visitor: (KSFunctionDeclaration) -> T) = this.
     }
 }, null)
 
-fun <T> KSAnnotated.visitFunctionArgument(visitor: (KSValueParameter) -> T) = this.accept(object : KSEmptyVisitor<Any?, T?>() {
-    override fun defaultHandler(node: KSNode, data: Any?): T? = null
-
-    override fun visitValueParameter(valueParameter: KSValueParameter, data: Any?): T? {
-        return visitor(valueParameter)
-    }
-}, null)
-
-fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List<KSType> {
-    val annotation = target.annotations.firstOrNull { it.annotationType.resolve().declaration.qualifiedName!!.asString() == annotationName }
-    val arguments = annotation?.arguments ?: listOf()
-    return arguments.asSequence()
-        .filter { it.name!!.asString() == "value" }
-        .map {
-            if (it.value is KSType) {
-                sequenceOf(it.value as KSType)
-            } else {
-                (it.value as ArrayList<*>).asSequence().map { it as KSType }
-            }
-        }
-        .flatten()
-        .toList()
-}
-
-
 inline fun <reified T> parseAnnotationValue(target: KSAnnotation, name: String) = target.findValue<T>(name)
-
-fun parseTag(target: KSAnnotated): List<KSType> {
-    return parseAnnotationClassValue(target, CommonClassNames.tag.canonicalName)
-}
 
 fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration) -> Boolean): List<KSFunctionDeclaration> {
     if (ksAnnotated !is KSClassDeclaration) {

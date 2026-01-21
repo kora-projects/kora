@@ -155,7 +155,7 @@ class KoraAppProcessorTest {
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 s.assertThat(e.getMessage()).startsWith("""
                     Required dependency type wasn't found in graph and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 (no tags)
-                      Please check class for @Component annotation or that required module with component factory is plugged in.
+                      Please check class for @Component annotation or that required module with declaration factory is plugged in.
                       Dependency requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency#class2(ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
                 s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(327);
                 s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(14);
@@ -203,7 +203,7 @@ class KoraAppProcessorTest {
                 assertThat(d.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
                 assertThat(d.getMessage(Locale.ENGLISH)).startsWith("""
                     Required dependency type wasn't found in graph and can't be auto created: java.io.Closeable (no tags)
-                      Please check class for @Component annotation or that required module with component factory is plugged in.
+                      Please check class for @Component annotation or that required module with declaration factory is plugged in.
                     """.trim());
             });
 //        assertThatThrownBy(() -> testClass(AppWithFactories11.class))
@@ -217,8 +217,8 @@ class KoraAppProcessorTest {
 //                      Required dependency wasn't found and candidate class java.lang.Long has more then one public constructor
 //                        Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.<T>factory2(java.lang.Long)
 //                     \s
-//                      Factory ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11#factory2 failed to produce component because of missing dependency of type java.lang.Long
-//                      Factory ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11#factory1 failed to produce component because of missing dependency of type java.io.Closeable
+//                      Factory ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11#factory2 failed to produce declaration because of missing dependency of type java.lang.Long
+//                      Factory ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11#factory1 failed to produce declaration because of missing dependency of type java.io.Closeable
 //                        Required dependency implementation wasn't found java.io.Closeable, check if it is declared or appropriate module is declared in @KoraApp
 //                        Requested at: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithFactories11.<T>factory1(java.io.Closeable)
 //                     \s
@@ -249,7 +249,7 @@ class KoraAppProcessorTest {
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 var error = e.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst().get();
                 s.assertThat(error.getMessage(Locale.US))
-                    .startsWith("More than one component matches dependency type: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1");
+                    .startsWith("More than one declaration matches dependency type: ru.tinkoff.kora.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1");
             }));
     }
 

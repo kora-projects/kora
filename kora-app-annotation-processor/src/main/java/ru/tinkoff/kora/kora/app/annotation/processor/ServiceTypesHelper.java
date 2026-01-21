@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
 import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
 import ru.tinkoff.kora.annotation.processor.common.NameUtils;
@@ -54,6 +55,16 @@ public class ServiceTypesHelper {
         var declaredType = (DeclaredType) maybeWrapped;
         var unwrappedType = this.types.asMemberOf(declaredType, wrappedParameterElement);
         return this.types.isSameType(unwrappedType, typeMirror);
+    }
+
+    @Nullable
+    public TypeMirror unwrap(TypeMirror maybeWrapped) {
+        if (!this.types.isAssignable(maybeWrapped, this.wrappedType)) {
+            return null;
+        }
+        var wrappedParameterElement = this.wrappedTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
+        var declaredType = (DeclaredType) maybeWrapped;
+        return this.types.asMemberOf(declaredType, wrappedParameterElement);
     }
 
     public boolean isInterceptorFor(TypeMirror interceptorType, TypeMirror targetType) {
