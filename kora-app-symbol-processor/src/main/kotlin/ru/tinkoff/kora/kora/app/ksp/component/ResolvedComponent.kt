@@ -4,12 +4,11 @@ import com.google.devtools.ksp.symbol.KSType
 import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessor
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
 
-data class ResolvedComponent(
+class ResolvedComponent(
     val index: Int,
     val declaration: ComponentDeclaration,
     val type: KSType,
     val tag: String?,
-    val templateParams: List<KSType>,
     val dependencies: List<ComponentDependency>
 ) {
     val fieldName = "component${index}"

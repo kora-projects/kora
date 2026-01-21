@@ -49,13 +49,13 @@ public class DuplicateDependencyException extends ProcessingErrorException {
                                             ComponentDeclaration declaration,
                                             String deps) {
         if (claim.tag() == null) {
-            return new ProcessingError("More than one component matches dependency type: " + TypeName.get(claim.type()) + " (no tags)\n"
+            return new ProcessingError("More than one declaration matches dependency type: " + TypeName.get(claim.type()) + " (no tags)\n"
                                        + deps
                                        + "\nPlease check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.",
                 declaration.source());
         } else {
             var tagMsg = "@Tag(" + claim.tag() + ".class)";
-            return new ProcessingError("More than one component matches dependency type: " + TypeName.get(claim.type()) + " with " + tagMsg + "\n"
+            return new ProcessingError("More than one declaration matches dependency type: " + TypeName.get(claim.type()) + " with " + tagMsg + "\n"
                                        + deps
                                        + "\nPlease check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.",
                 declaration.source());
