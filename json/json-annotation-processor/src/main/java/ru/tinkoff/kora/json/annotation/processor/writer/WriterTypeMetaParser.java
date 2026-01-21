@@ -77,18 +77,26 @@ public class WriterTypeMetaParser {
     }
 
     private WriterFieldType parseWriterFieldType(TypeMirror jsonClass) {
-        boolean isJsonNullable = false;
+        WriterFieldType.JsonValueType jsonValueType = null;
         TypeMirror realType = jsonClass;
-        if (jsonClass instanceof DeclaredType dt && JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
-            realType = dt.getTypeArguments().get(0);
-            isJsonNullable = true;
+        if (jsonClass instanceof DeclaredType dt) {
+            if (JsonTypes.jsonValue.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().getFirst();
+                jsonValueType = WriterFieldType.JsonValueType.VALUE;
+            } else if (JsonTypes.jsonNullable.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().getFirst();
+                jsonValueType = WriterFieldType.JsonValueType.NULLABLE;
+            } else if (JsonTypes.jsonUndefined.canonicalName().equals((dt.asElement()).toString())) {
+                realType = dt.getTypeArguments().getFirst();
+                jsonValueType = WriterFieldType.JsonValueType.UNDEFINED;
+            }
         }
 
         var knownType = this.knownTypes.detect(realType);
         if (knownType != null) {
-            return new WriterFieldType.KnownWriterFieldType(knownType, realType, isJsonNullable);
+            return new WriterFieldType.KnownWriterFieldType(knownType, realType, jsonValueType);
         } else {
-            return new WriterFieldType.UnknownWriterFieldType(realType, isJsonNullable);
+            return new WriterFieldType.UnknownWriterFieldType(realType, jsonValueType);
         }
     }
 

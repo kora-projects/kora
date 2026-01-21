@@ -1,7 +1,7 @@
 package ru.tinkoff.kora.validation.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.json.common.JsonNullable;
+import ru.tinkoff.kora.json.common.JsonValue;
 import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
 import ru.tinkoff.kora.validation.common.ValidationContext;
 import ru.tinkoff.kora.validation.common.Validator;
@@ -12,7 +12,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
+public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
 
     @Test
     public void fieldJsonNullableIsUndefined() {
@@ -20,7 +20,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(JsonNullable<String> field) {}
+                    record TestRecord(JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -28,7 +28,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.undefined()));
         assertEquals(0, violations.size());
     }
 
@@ -38,7 +38,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(JsonNullable<String> field) {}
+                    record TestRecord(JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -46,7 +46,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.nullValue()));
         assertEquals(0, violations.size());
     }
 
@@ -56,7 +56,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(JsonNullable<String> field) {}
+                    record TestRecord(JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -64,7 +64,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.of("")));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.of("")));
         assertEquals(0, violations.size());
     }
 
@@ -75,7 +75,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord<T>(JsonNullable<T> value) {}
+                    record TestRecord<T>(JsonValue<T> value) {}
                     """);
         compileResult.assertSuccess();
 
@@ -83,7 +83,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.undefined()));
         assertEquals(0, violations.size());
     }
 
@@ -93,7 +93,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord<T>(JsonNullable<T> value) {}
+                    record TestRecord<T>(JsonValue<T> value) {}
                     """);
         compileResult.assertSuccess();
 
@@ -101,7 +101,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.nullValue()));
         assertEquals(0, violations.size());
     }
 
@@ -111,7 +111,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord<T>(JsonNullable<T> value) {}
+                    record TestRecord<T>(JsonValue<T> value) {}
                     """);
         compileResult.assertSuccess();
 
@@ -119,7 +119,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.of("")));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.of("")));
         assertEquals(0, violations.size());
     }
 
@@ -129,7 +129,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NonNull JsonNullable<String> field) {}
+                    record TestRecord(@Nonnull JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -137,7 +137,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.undefined()));
         assertEquals(1, violations.size());
     }
 
@@ -147,7 +147,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NonNull JsonNullable<String> field) {}
+                    record TestRecord(@Nonnull JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -155,7 +155,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.nullValue()));
         assertEquals(1, violations.size());
     }
 
@@ -165,7 +165,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NonNull JsonNullable<String> field) {}
+                    record TestRecord(@Nonnull JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -173,7 +173,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator");
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.of("")));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.of("")));
         assertEquals(0, violations.size());
     }
 
@@ -183,7 +183,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    record TestRecord(@NotBlank @NotEmpty JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -192,7 +192,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.undefined()));
         assertEquals(0, violations.size());
     }
 
@@ -202,7 +202,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    record TestRecord(@NotBlank @NotEmpty JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -211,7 +211,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.nullValue()));
         assertEquals(2, violations.size());
     }
 
@@ -221,7 +221,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    record TestRecord(@NotBlank @NotEmpty JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -230,7 +230,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")));
+        var violations = validator.validate(newObject("TestRecord", JsonValue.of("1")));
         assertEquals(0, violations.size());
     }
 
@@ -240,7 +240,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    record TestRecord(@NotBlank @NotEmpty JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -249,7 +249,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()), ValidationContext.failFast());
+        var violations = validator.validate(newObject("TestRecord", JsonValue.undefined()), ValidationContext.failFast());
         assertEquals(0, violations.size());
     }
 
@@ -259,7 +259,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
             """
                     
                     @Valid
-                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    record TestRecord(@NotBlank @NotEmpty JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -268,7 +268,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()), ValidationContext.failFast());
+        var violations = validator.validate(newObject("TestRecord", JsonValue.nullValue()), ValidationContext.failFast());
         assertEquals(1, violations.size());
     }
 
@@ -277,7 +277,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
             """
                     @Valid
-                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    record TestRecord(@NotBlank @NotEmpty JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -286,7 +286,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")), ValidationContext.failFast());
+        var violations = validator.validate(newObject("TestRecord", JsonValue.of("1")), ValidationContext.failFast());
         assertEquals(0, violations.size());
     }
 }

@@ -1,16 +1,34 @@
 package ru.tinkoff.kora.json.annotation.processor.reader;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 
 import javax.lang.model.type.TypeMirror;
 
 public interface ReaderFieldType {
 
-    boolean isJsonNullable();
+    enum JsonValueType {
+        VALUE,
+        NULLABLE,
+        UNDEFINED
+    }
+
+    @Nullable
+    JsonValueType jsonValueType();
+
+    default boolean isJsonNullable() {
+        return jsonValueType() != null
+               && (jsonValueType() == ReaderFieldType.JsonValueType.VALUE || jsonValueType() == ReaderFieldType.JsonValueType.NULLABLE);
+    }
+
+    default boolean isJsonUndefined() {
+        return jsonValueType() != null
+               && (jsonValueType() == ReaderFieldType.JsonValueType.VALUE || jsonValueType() == JsonValueType.UNDEFINED);
+    }
 
     TypeMirror typeMirror();
 
-    record KnownTypeReaderMeta(KnownType.KnownTypesEnum knownType, TypeMirror typeMirror, boolean isJsonNullable) implements ReaderFieldType {}
+    record KnownTypeReaderMeta(KnownType.KnownTypesEnum knownType, TypeMirror typeMirror, JsonValueType jsonValueType) implements ReaderFieldType {}
 
-    record UnknownTypeReaderMeta(TypeMirror typeMirror, boolean isJsonNullable) implements ReaderFieldType {}
+    record UnknownTypeReaderMeta(TypeMirror typeMirror, JsonValueType jsonValueType) implements ReaderFieldType {}
 }
