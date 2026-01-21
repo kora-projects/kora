@@ -2,6 +2,7 @@ package ru.tinkoff.kora.kora.app.annotation.processor.app;
 
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.Component;
 import ru.tinkoff.kora.common.KoraApp;
 import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.common.annotation.Root;
@@ -80,6 +81,7 @@ public interface AppWithAllOfComponents {
     }
 
 
+    @Component
     final class Class4 extends Superclass {}
 
     final class Class5 extends Superclass {}

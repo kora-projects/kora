@@ -189,12 +189,6 @@ public class GraphBuilder {
                     ));
                     continue frame;
                 }
-                var finalClassComponent = GraphResolutionHelper.findFinalDependency(ctx, dependencyClaim);
-                if (finalClassComponent != null) {
-                    sourceDeclarations.add(finalClassComponent);
-                    this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), finalClassComponent);
-                    continue frame;
-                }
                 var extension = ctx.extensions.findExtension(roundEnv, dependencyClaim.type(), dependencyClaim.tag());
                 if (extension != null) {
                     ExtensionResult extensionResult;

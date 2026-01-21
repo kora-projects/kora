@@ -1,9 +1,7 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
 import org.jspecify.annotations.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.annotation.processor.common.TagUtils;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
@@ -63,32 +61,6 @@ public final class GraphResolutionHelper {
             }
         }
         return result;
-    }
-
-    @Nullable
-    public static ComponentDeclaration findFinalDependency(ProcessingContext ctx, DependencyClaim dependencyClaim) {
-        if (dependencyClaim.type().getKind() != TypeKind.DECLARED) {
-            return null;
-        }
-        var declaredType = (DeclaredType) dependencyClaim.type();
-        var element = (TypeElement) declaredType.asElement();
-        if (element.getKind() != ElementKind.CLASS) {
-            return null;
-        }
-        if (!element.getModifiers().contains(Modifier.FINAL) || !element.getModifiers().contains(Modifier.PUBLIC)) {
-            return null;
-        }
-        var constructors = CommonUtils.findConstructors(element, m -> m.contains(Modifier.PUBLIC));
-        if (constructors.size() != 1) {
-            return null;
-        }
-        var tags = TagUtils.parseTagValue(element);
-
-        if (dependencyClaim.tagsMatches(tags)) {
-            return ComponentDeclaration.fromDependency(ctx, element, declaredType);
-        } else {
-            return null;
-        }
     }
 
     public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, List<ResolvedComponent> resolvedComponents) {
@@ -252,8 +224,6 @@ public final class GraphResolutionHelper {
                 ));
             } else if (sourceDeclaration instanceof ComponentDeclaration.PromisedProxyComponent promisedProxyComponent) {
                 declarations.add(promisedProxyComponent.withType(realReturnType));
-            } else if (sourceDeclaration instanceof ComponentDeclaration.DiscoveredAsDependencyComponent) {
-                throw new IllegalStateException();
             } else {
                 throw new IllegalArgumentException(sourceDeclaration.toString());
             }

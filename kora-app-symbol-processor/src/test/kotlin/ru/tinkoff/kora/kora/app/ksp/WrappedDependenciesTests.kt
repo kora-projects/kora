@@ -105,6 +105,7 @@ class WrappedDependenciesTests : AbstractKoraAppProcessorTest() {
 
                 fun argGen1int(): ArgGen1<Int> = object : ArgGen1<Int> {}
 
+                @Component
                 class ClassGen1<T>
 
                 interface ArgGen1<T>
@@ -165,6 +166,7 @@ class WrappedDependenciesTests : AbstractKoraAppProcessorTest() {
 
                 fun argGen2int(): ArgGen2<String, Int> = object : ArgGen2<String, Int> {}
 
+                @Component
                 class ClassGen2<K, V>
 
                 interface ArgGen2<K, V>

@@ -17,6 +17,7 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
                             
                     class TestRoot 
                     
+                    @Component
                     class TestClass
                     
                     class TestInterceptor : GraphInterceptor<TestClass> {

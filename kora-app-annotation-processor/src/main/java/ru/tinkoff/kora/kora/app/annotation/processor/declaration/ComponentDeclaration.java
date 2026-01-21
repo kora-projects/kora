@@ -9,7 +9,6 @@ import ru.tinkoff.kora.kora.app.annotation.processor.ProcessingContext;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 
 import javax.lang.model.element.*;
-import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.util.ArrayList;
@@ -109,42 +108,6 @@ public sealed interface ComponentDeclaration {
             }
             if (isInterceptor) {
                 sb.append(", isInterceptor=").append(isInterceptor);
-            }
-            sb.append(']');
-            return sb.toString();
-        }
-    }
-
-    record DiscoveredAsDependencyComponent(DeclaredType type, TypeElement typeElement, ExecutableElement constructor, @Nullable String tag) implements ComponentDeclaration {
-
-        @Override
-        public Element source() {
-            return this.constructor;
-        }
-
-        @Override
-        public boolean isTemplate() {
-            return false;
-        }
-
-        @Override
-        public boolean isInterceptor() {
-            return false;
-        }
-
-        @Override
-        public String declarationString() {
-            return typeElement.getQualifiedName().toString();
-        }
-
-        @Override
-        public String toString() {
-            final StringBuilder sb = new StringBuilder("DiscoveredAsDependencyComponent[");
-            sb.append("type=").append(type);
-            sb.append(", typeElement=").append(typeElement);
-            sb.append(", constructor=").append(constructor);
-            if (tag != null) {
-                sb.append(", tag=").append(tag);
             }
             sb.append(']');
             return sb.toString();
@@ -274,19 +237,6 @@ public sealed interface ComponentDeclaration {
         var typeParameters = typeElement.getTypeParameters().stream().map(TypeParameterElement::asType).toList();
         var isInterceptor = ctx.serviceTypeHelper.isInterceptor(type);
         return new AnnotatedComponent(type, typeElement, tags, constructor, parameterTypes, typeParameters, isInterceptor);
-    }
-
-    static ComponentDeclaration fromDependency(ProcessingContext ctx, TypeElement typeElement, DeclaredType declaredType) {
-        var constructors = CommonUtils.findConstructors(typeElement, m -> m.contains(Modifier.PUBLIC));
-        if (constructors.size() != 1) {
-            throw new ProcessingErrorException("Can't create component from discovered as dependency class: class should have exactly one public constructor", typeElement);
-        }
-        var constructor = constructors.get(0);
-        if (TypeParameterUtils.hasRawTypes(declaredType)) {
-            throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", typeElement);
-        }
-        var tags = TagUtils.parseTagValue(typeElement);
-        return new DiscoveredAsDependencyComponent(declaredType, typeElement, constructor, tags);
     }
 
     static ComponentDeclaration fromExtension(ProcessingContext ctx, ExtensionResult.GeneratedResult generatedResult) {

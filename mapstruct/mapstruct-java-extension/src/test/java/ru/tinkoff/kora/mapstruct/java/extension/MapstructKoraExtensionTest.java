@@ -109,6 +109,7 @@ public class MapstructKoraExtensionTest extends AbstractAnnotationProcessorTest 
                 import java.text.SimpleDateFormat;
                 import java.text.ParseException;
 
+                @Component
                 public final class DateMapper {
                     public String asString(Date date) {
                         return date != null ? new SimpleDateFormat( "yyyy-MM-dd" )

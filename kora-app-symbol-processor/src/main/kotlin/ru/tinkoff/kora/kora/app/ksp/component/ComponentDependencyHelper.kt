@@ -38,22 +38,6 @@ object ComponentDependencyHelper {
                 return result
             }
 
-            is ComponentDeclaration.DiscoveredAsDependencyComponent -> {
-                val element = declaration.constructor
-                val constructorParameterTypes = if (declaration.classDeclaration.typeParameters.isEmpty()) {
-                    element.parameters.asSequence().map { it.type.resolve() }
-                } else {
-                    // this will fail but there's nothing we can do about it
-                    element.asMemberOf(declaration.type).parameterTypes.asSequence().mapNotNull { it!! }
-                }
-                val result = ArrayList<DependencyClaim>(element.parameters.size)
-                for ((parameter, parameterType) in element.parameters.asSequence().zip(constructorParameterTypes)) {
-                    val tags = TagUtils.parseTagValue(parameter)
-                    result.add(parseClaim(parameterType, tags, element))
-                }
-                return result
-            }
-
             is ComponentDeclaration.FromExtensionComponent -> {
                 val result = ArrayList<DependencyClaim>(declaration.methodParameterTypes.size)
                 for ((type, tags) in declaration.methodParameterTypes.zip(declaration.methodParameterTags)) {
