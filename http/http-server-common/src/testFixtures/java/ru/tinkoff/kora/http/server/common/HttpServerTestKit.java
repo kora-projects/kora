@@ -1114,7 +1114,7 @@ public abstract class HttpServerTestKit {
                 new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
             ),
-            Size.ofBytesBinary(1024)
+            Size.ofBytesBinary(1024*1024*1024)
         );
         var publicApiHandler = new PublicApiHandler(List.of(handlers), interceptors, new DefaultHttpServerTelemetryFactory(this.loggerFactory, this.metricsFactory, null), config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
