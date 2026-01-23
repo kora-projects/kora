@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.server.common.router;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -165,7 +166,8 @@ class PublicApiHandlerTest {
                 new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, true, Collections.emptySet(), Collections.emptySet(), "***", false),
                 new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
-            ));
+            ),
+            Size.ofBytesBinary(1024));
     }
 
     private HttpServerRequestHandler handler(String method, String route) {
