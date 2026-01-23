@@ -3,6 +3,7 @@ package ru.tinkoff.kora.http.server.common.router;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.http.server.common.$HttpServerConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.HttpServerConfig;
 import ru.tinkoff.kora.http.server.common.HttpServerResponse;
@@ -151,7 +152,9 @@ class HttpServerHandlerTest {
                 new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
-            ));
+            ),
+            Size.ofBytesBinary(1024)
+        );
     }
 
     private HttpServerRequestHandler handler(String method, String route) {
