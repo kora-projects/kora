@@ -970,7 +970,7 @@ public abstract class HttpServerTestKit {
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
             ),
-            Size.ofBytesBinary(1024)
+            Size.of(1, Size.Type.GiB)
         );
         var publicApiHandler = new HttpServerHandler(List.of(handlers), interceptors, config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler, this.telemetry);
