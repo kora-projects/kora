@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.All;
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyInput;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -156,7 +157,8 @@ class HttpServerHandlerProcessTests {
                 new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
-            )
+            ),
+            Size.ofBytesBinary(1024)
         );
     }
 

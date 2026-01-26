@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.GracefulShutdownHandler;
@@ -113,7 +114,9 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
             .setWorker(this.xnioWorker)
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
-            .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled());
+            .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
+            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes())
+            ;
 
         if (this.configurer != null) {
             undertow = this.configurer.configure(undertow);
