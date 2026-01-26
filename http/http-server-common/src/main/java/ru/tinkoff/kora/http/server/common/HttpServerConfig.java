@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.http.server.common;
 
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryConfig;
 
@@ -61,4 +62,8 @@ public interface HttpServerConfig {
     }
 
     HttpServerTelemetryConfig telemetry();
+
+    default Size maxRequestBodySize() {
+        return Size.of(256, Size.Type.MiB);
+    }
 }

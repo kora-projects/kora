@@ -1,6 +1,7 @@
 package ru.tinkoff.kora.http.server.undertow;
 
 import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
 import io.undertow.connector.ByteBufferPool;
 import io.undertow.server.handlers.GracefulShutdownHandler;
 import jakarta.annotation.Nullable;
@@ -97,6 +98,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
             .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
+            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes())
             .build();
     }
 

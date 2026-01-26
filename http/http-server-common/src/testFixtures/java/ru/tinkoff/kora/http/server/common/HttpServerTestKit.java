@@ -1,18 +1,10 @@
 package ru.tinkoff.kora.http.server.common;
 
 import jakarta.annotation.Nullable;
-import okhttp3.ConnectionPool;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
+import okhttp3.*;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.*;
 import org.mockito.AdditionalMatchers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -36,6 +28,7 @@ import ru.tinkoff.kora.common.readiness.ReadinessProbeFailure;
 import ru.tinkoff.kora.common.util.ByteBufferPublisherInputStream;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.common.util.ReactorUtils;
+import ru.tinkoff.kora.common.util.Size;
 import ru.tinkoff.kora.http.common.HttpResultCode;
 import ru.tinkoff.kora.http.common.body.HttpBody;
 import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
@@ -46,15 +39,7 @@ import ru.tinkoff.kora.http.server.common.handler.BlockingRequestExecutor;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestMapper;
 import ru.tinkoff.kora.http.server.common.router.PublicApiHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerLoggerConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.http.server.common.telemetry.DefaultHttpServerTelemetryFactory;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLogger;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLoggerConfig;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerLoggerFactory;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetrics;
-import ru.tinkoff.kora.http.server.common.telemetry.HttpServerMetricsFactory;
-import ru.tinkoff.kora.http.server.common.telemetry.PrivateApiMetrics;
+import ru.tinkoff.kora.http.server.common.telemetry.*;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
@@ -68,15 +53,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
-import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Flow;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
@@ -87,13 +64,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.longThat;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.reset;
-import static org.mockito.Mockito.timeout;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static ru.tinkoff.kora.http.common.HttpMethod.GET;
 import static ru.tinkoff.kora.http.common.HttpMethod.POST;
 
@@ -1142,7 +1113,8 @@ public abstract class HttpServerTestKit {
                 new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, true, Collections.emptySet(), Collections.emptySet(), "***", false),
                 new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
-            )
+            ),
+            Size.ofBytesBinary(1024*1024*1024)
         );
         var publicApiHandler = new PublicApiHandler(List.of(handlers), interceptors, new DefaultHttpServerTelemetryFactory(this.loggerFactory, this.metricsFactory, null), config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler);
