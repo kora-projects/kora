@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.application.graph.ApplicationGraphDraw;
 import ru.tinkoff.kora.application.graph.Node;
 import ru.tinkoff.kora.application.graph.Wrapped;
@@ -60,7 +61,7 @@ final class GraphUtils {
         return findNodeByTypeOrAssignable(graph, candidate.type(), candidate.tagsAsArray());
     }
 
-    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, Class<?>[] tags) {
+    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, @Nullable Class<?>[] tags) {
         if (tags == null || tags.length == 0 || Arrays.equals(TAG_ANY, tags)) {
             final Set<Node<?>> nodes = new HashSet<>();
             for (var graphNode : graph.getNodes()) {

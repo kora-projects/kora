@@ -13,6 +13,10 @@ import java.util.function.Supplier;
 @KoraApp
 public interface TestApplication extends TestExtendModule {
 
+    default TestComponent3 testComponent3() {
+        return new TestComponent3();
+    }
+
     @Root
     default GenericComponent<String> genericComponent1() {
         return new GenericComponent.StringGenericComponent();
@@ -74,12 +78,7 @@ public interface TestApplication extends TestExtendModule {
             public void release() {}
 
             @Override
-            public String generic() {
-                return "1";
-            }
-
-            @Override
-            public ComplexWrapped value() {
+            public ComplexWrappedGeneric<String> value() {
                 return () -> "1";
             }
 
@@ -145,13 +144,17 @@ public interface TestApplication extends TestExtendModule {
         }
     }
 
-    interface ComplexInterfaceHolder<T> extends Wrapped<ComplexWrapped>, Lifecycle, ComplexOther {
+    interface ComplexInterfaceHolder<T> extends Wrapped<ComplexWrappedGeneric<T>>, Lifecycle, ComplexOther {
 
-        T generic();
     }
 
     interface ComplexWrapped {
         String wrapped();
+    }
+
+    interface ComplexWrappedGeneric<T> {
+
+        T generic();
     }
 
     interface ComplexOther {

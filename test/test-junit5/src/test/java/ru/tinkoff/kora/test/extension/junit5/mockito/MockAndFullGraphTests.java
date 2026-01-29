@@ -9,6 +9,7 @@ import ru.tinkoff.kora.test.extension.junit5.TestComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.GenericComponent;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication.CustomWrapper;
+import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplicationOps;
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent3;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
