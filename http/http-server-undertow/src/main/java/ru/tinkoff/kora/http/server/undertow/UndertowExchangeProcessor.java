@@ -106,8 +106,6 @@ public class UndertowExchangeProcessor implements Runnable {
             log.warn("Error dropped", exception);
             exchange.setStatusCode(500);
             exchange.getResponseSender().send(StandardCharsets.UTF_8.encode(Objects.requireNonNullElse(exception.getMessage(), "no message")));
-        } finally {
-            UndertowContext.clear(context);
         }
     }
 
