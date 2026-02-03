@@ -1,5 +1,6 @@
 package io.koraframework.test.extension.junit5;
 
+import jakarta.annotation.Nullable;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.Node;
@@ -59,7 +60,7 @@ final class GraphUtils {
         return findNodeByTypeOrAssignable(graph, candidate.type(), candidate.tag());
     }
 
-    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, Class<?> tag) {
+    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, @Nullable Class<?> tag) {
         if (tag == null || Objects.equals(Tag.Any.class, tag)) {
             final Set<Node<?>> nodes = new HashSet<>();
             for (var graphNode : graph.getNodes()) {

@@ -11,7 +11,7 @@ import io.koraframework.test.extension.junit5.testdata.TestComponent3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@KoraAppTest(TestApplication.class)
+@KoraAppTest(TestApplicationOps.class)
 public class MockOnlyTests {
 
     @Mock

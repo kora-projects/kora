@@ -13,16 +13,14 @@ public class InjectWrapperTests {
     @TestComponent
     private TestApplication.SomeChild someChild;
     @TestComponent
+    private TestApplication.ComplexWrapped someWrapped;
+    @TestComponent
     private Integer someInt;
 
     @Test
-    void emptyTest() {
-        // do nothing
-    }
-
-    @Test
-    void testBean() {
+    void testWrapped() {
         assertNotNull(someInt);
         assertNotNull(someChild);
+        assertNotNull(someWrapped);
     }
 }
