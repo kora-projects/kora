@@ -115,10 +115,8 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
     protected void completeSpan() {
         var end = System.nanoTime();
         var resultCode = Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR);
-        if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR) {
+        if (statusCode >= 400 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
             span.setStatus(StatusCode.ERROR);
-        } else if (exception == null) {
-            span.setStatus(StatusCode.OK);
         }
         span.setAttribute("http.response.result_code", resultCode.string());
         if (statusCode != 0) {

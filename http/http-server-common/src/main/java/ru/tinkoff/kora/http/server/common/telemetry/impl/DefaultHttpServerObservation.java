@@ -112,10 +112,8 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
     protected void closeSpan(HttpResultCode resultCode) {
         if (request.route() != null) {
             span.setAttribute("http.response.result_code", resultCode.string());
-            if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR) {
+            if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
                 span.setStatus(StatusCode.ERROR);
-            } else if (exception == null) {
-                span.setStatus(StatusCode.OK);
             }
             if (statusCode != 0) {
                 span.setAttribute(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, statusCode);
