@@ -56,11 +56,9 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
         return (statusCode, resultCode, exception) -> {
+            span.setAttribute("http.response.result_code", resultCode.string());
             if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null && !(exception instanceof HttpServerResponse)) {
-                span.setAttribute("http.response.result_code", resultCode.string());
                 span.setStatus(StatusCode.ERROR);
-            } else {
-                span.setStatus(StatusCode.OK);
             }
             if (exception != null) {
                 span.setStatus(StatusCode.ERROR);

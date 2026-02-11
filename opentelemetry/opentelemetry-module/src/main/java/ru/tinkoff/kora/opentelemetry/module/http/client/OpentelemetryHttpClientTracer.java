@@ -68,12 +68,12 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
             public void close(Integer statusCode, HttpResultCode resultCode, HttpHeaders headers, Throwable exception) {
                 int code = statusCode == null ? -1 : statusCode;
                 span.setAttribute(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, code);
+                span.setAttribute("http.response.result_code", resultCode.string());
                 if (exception != null) {
-                    span.setAttribute("http.response.result_code", resultCode.string());
                     span.recordException(exception);
                     span.setStatus(StatusCode.ERROR);
-                } else {
-                    span.setStatus(StatusCode.OK);
+                } else if (code >= 400) {
+                    span.setStatus(StatusCode.ERROR);
                 }
                 span.end();
             }
