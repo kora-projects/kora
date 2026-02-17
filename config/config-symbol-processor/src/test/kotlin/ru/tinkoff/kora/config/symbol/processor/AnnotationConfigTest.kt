@@ -389,6 +389,24 @@ class AnnotationConfigTest : AbstractConfigTest() {
     }
 
     @Test
+    fun testDataClassWithDefaultAndCustomType() {
+        val mapper = Mockito.mock(ConfigValueExtractor::class.java)
+        whenever(mapper.extract(ArgumentMatchers.isA(StringValue::class.java))).thenReturn(Duration.ofDays(3000))
+
+        val extractor = compileConfig(
+            listOf(mapper), """
+            @ConfigValueExtractor
+            data class TestConfig(val value1: java.time.Duration, val value2: String = "default-value")
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test")).root()).toString())
+            .isEqualTo("TestConfig(value1=PT72000H, value2=default-value)")
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test", "value2" to "custom")).root()).toString())
+            .isEqualTo("TestConfig(value1=PT72000H, value2=custom)")
+    }
+
+    @Test
     fun testEmptyConfig() {
         val extractor = compileConfig(
             listOf<Any>(), """
