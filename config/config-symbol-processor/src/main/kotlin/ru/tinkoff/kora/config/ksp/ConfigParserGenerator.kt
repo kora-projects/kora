@@ -45,24 +45,6 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val implClassName = ClassName(packageName, typeName, element.simpleName.asString() + "_Impl")
         if (defaultsType != null) {
             typeBuilder.addType(defaultsType)
-            val defaultImplClassName = ClassName(packageName, typeName, element.simpleName.asString() + "_Defaults")
-            val property = PropertySpec.builder("DEFAULTS", defaultImplClassName, KModifier.PRIVATE, KModifier.FINAL)
-                .initializer("%T()", defaultImplClassName)
-            typeBuilder.addProperty(property.build())
-            if (!hasRequiredFields) {
-                val initializer = CodeBlock.builder().add("%T(", implClassName).indent()
-                for (i in fields.indices) {
-                    if (i > 0) {
-                        initializer.add(",")
-                    }
-                    if (fields[i].hasDefault) {
-                        initializer.add("\n  DEFAULTS.%N()", fields[i].name)
-                    } else {
-                        initializer.add("\n  null")
-                    }
-                }
-                initializer.unindent().add("\n)")
-            }
         } else {
             if (fields.isEmpty()) {
                 typeBuilder.addProperty(
@@ -126,19 +108,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(element)
         val fields = f.value
-        val hasRequiredFields = fields.stream()
-            .anyMatch { !it.hasDefault && !it.isNullable }
         val implClassName = element.toClassName()
-        if (!hasRequiredFields) {
-            val initializer = CodeBlock.builder().add("%T(", implClassName).indent()
-            for (i in fields.indices) {
-                if (i > 0) {
-                    initializer.add(",")
-                }
-                initializer.add("\nnull")
-            }
-            initializer.unindent().add("\n)")
-        }
         val constructor = buildConstructor(typeBuilder, fields)
         typeBuilder.primaryConstructor(constructor)
         typeBuilder.addFunction(buildExtractMethod(element, targetType.toTypeName(), implClassName, fields))
@@ -268,7 +238,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
 
     private fun buildDefaultsType(type: KSType, typeDecl: KSClassDeclaration, fields: List<ConfigField>): TypeSpec? {
         var hasDefaults = false
-        val defaults = TypeSpec.classBuilder(typeDecl.simpleName.asString() + "_Defaults")
+        val defaults = TypeSpec.objectBuilder(typeDecl.simpleName.asString() + "_Defaults")
             .addModifiers(KModifier.PRIVATE)
             .addSuperinterface(type.toTypeName())
         for (tp in typeDecl.typeParameters) {
@@ -332,8 +302,36 @@ class ConfigParserGenerator(private val resolver: Resolver) {
                 rootParse.returns(typeName.copy(true))
             }
         }
+        val isDataClassWithDefaults = typeDecl.classKind == ClassKind.CLASS
+            && typeDecl.modifiers.contains(Modifier.DATA)
+            && fields.any { it.hasDefault }
+        val isPojo = typeDecl.classKind == ClassKind.CLASS && !typeDecl.modifiers.contains(Modifier.DATA) && !typeDecl.isRecord()
+
+        // Parse required fields first
         for (field in fields) {
-            rootParse.addStatement("val %N = this.%N(_config)", field.name, "parse_${field.name}")
+            if (!field.hasDefault) {
+                rootParse.addStatement("val %N = this.%N(_config)", field.name, "parse_${field.name}")
+            }
+        }
+
+        if (isDataClassWithDefaults) {
+            // Create local _defaults using parsed required fields (Kotlin fills in default values)
+            val requiredNamedArgs = fields.filter { !it.hasDefault }.joinToCode(",\n") { CodeBlock.of("%N = %N", it.name, it.name) }
+            rootParse.addStatement("val _defaults = %T(%L)", implClassName, requiredNamedArgs)
+        }
+        if (isPojo) {
+            // todo generics?
+            rootParse.addStatement("val _defaults = %T()", typeDecl.toTypeName())
+        }
+        val defaults = when {
+            isDataClassWithDefaults || isPojo -> CodeBlock.of("%N", "_defaults")
+            else -> CodeBlock.of("%T", implClassName.peerClass(typeDecl.simpleName.asString() + "_Defaults"))
+        }
+
+        for (field in fields) {
+            if (field.hasDefault) {
+                rootParse.addStatement("val %N = this.%N(%L, _config)", field.name, "parse_${field.name}", defaults)
+            }
         }
         if (typeDecl.classKind == ClassKind.CLASS && !typeDecl.modifiers.contains(Modifier.DATA) && !typeDecl.isRecord()) {
             rootParse.addStatement("val _result = %T()", implClassName)
@@ -364,34 +362,43 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         val parse = FunSpec.builder("parse_" + field.name)
             .addModifiers(KModifier.PRIVATE)
             .returns(field.typeName)
+        if (field.hasDefault) {
+            parse.addParameter("defaults", typeDecl.toTypeName())
+        }
         parse.addParameter("config", ConfigClassNames.objectValue)
-        parse.addStatement("var value = config.get(%N)", "_${field.name}_path")
-        val isSupportedType = field.mapping == null && supportedTypes.containsKey(field.typeName)
-        parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
-            if (field.isNullable && !field.hasDefault) {
-                addStatement("return null")
-            } else if (field.hasDefault) {
+        parse.addStatement("val value = config.get(%N)", "_${field.name}_path")
+
+        val returnDefaultOrThrow = CodeBlock.builder().apply {
+            if (field.hasDefault) {
                 if (typeDecl.classKind == ClassKind.INTERFACE) {
-                    addStatement("return DEFAULTS.%N()", field.name)
+                    addStatement("return defaults.%N()", field.name)
                 } else {
-                    addStatement("return DEFAULTS.%N", field.name)
+                    addStatement("return defaults.%N", field.name)
                 }
-            } else if (isSupportedType) {
+            } else if (field.isNullable) {
+                addStatement("return null")
+            } else {
                 addStatement("throw %T.missingValue(value)", ConfigClassNames.configValueExtractionException)
             }
-        }
+        }.build()
 
+        val isSupportedType = field.mapping == null && supportedTypes.containsKey(field.typeName)
         if (isSupportedType) {
+            parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
+                addCode(returnDefaultOrThrow)
+            }
             parse.addStatement("return %L", this.parseSupportedType(field.typeName))
         } else if (field.isNullable) {
+            parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
+                addCode(returnDefaultOrThrow)
+            }
             parse.addStatement("return %N.extract(value)", "${field.name}_parser")
         } else {
-            parse.addStatement("var parsed = %N.extract(value)", "${field.name}_parser")
+            parse.addStatement("val parsed = %N.extract(value)", "${field.name}_parser")
             parse.controlFlow("if (parsed == null)") {
-                parse.addStatement("throw %T.missingValueAfterParse(value)", ConfigClassNames.configValueExtractionException)
-                parse.nextControlFlow("else")
-                parse.addStatement("return parsed")
+                addCode(returnDefaultOrThrow)
             }
+            parse.addStatement("return parsed")
         }
         return parse.build()
     }
