@@ -363,8 +363,8 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         }
         parse.addParameter("config", ConfigClassNames.objectValue)
         parse.addStatement("val value = config.get(%N)", "_${field.name}_path")
-        val isSupportedType = field.mapping == null && supportedTypes.containsKey(field.typeName)
-        parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
+
+        val returnDefaultOrThrow = CodeBlock.builder().apply {
             if (field.hasDefault) {
                 if (typeDecl.classKind == ClassKind.INTERFACE) {
                     addStatement("return defaults.%N()", field.name)
@@ -376,19 +376,25 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             } else {
                 addStatement("throw %T.missingValue(value)", ConfigClassNames.configValueExtractionException)
             }
-        }
+        }.build()
 
+        val isSupportedType = field.mapping == null && supportedTypes.containsKey(field.typeName)
         if (isSupportedType) {
+            parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
+                addCode(returnDefaultOrThrow)
+            }
             parse.addStatement("return %L", this.parseSupportedType(field.typeName))
         } else if (field.isNullable) {
+            parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
+                addCode(returnDefaultOrThrow)
+            }
             parse.addStatement("return %N.extract(value)", "${field.name}_parser")
         } else {
             parse.addStatement("val parsed = %N.extract(value)", "${field.name}_parser")
             parse.controlFlow("if (parsed == null)") {
-                parse.addStatement("throw %T.missingValueAfterParse(value)", ConfigClassNames.configValueExtractionException)
-                parse.nextControlFlow("else")
-                parse.addStatement("return parsed")
+                addCode(returnDefaultOrThrow)
             }
+            parse.addStatement("return parsed")
         }
         return parse.build()
     }
