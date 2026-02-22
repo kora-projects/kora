@@ -156,6 +156,6 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
     }
 
     private static Pattern sqlParameterPattern(String sqlParameterName) {
-        return Pattern.compile("[\\s\\n,(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)\\];]|$)");
+        return Pattern.compile("[\\s\\n,=(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)=\\];]|$)");
     }
 }
