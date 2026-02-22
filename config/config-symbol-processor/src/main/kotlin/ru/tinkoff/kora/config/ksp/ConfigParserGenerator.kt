@@ -312,19 +312,8 @@ class ConfigParserGenerator(private val resolver: Resolver) {
 
         if (isDataClassWithDefaults) {
             // Create local _defaults using parsed required fields (Kotlin fills in default values)
-            val defaultsCode = CodeBlock.builder()
-            val requiredFields = fields.filter { !it.hasDefault }
-            defaultsCode.add("val _defaults = %T(", implClassName)
-            if (requiredFields.isNotEmpty()) {
-                defaultsCode.add("\n")
-                for ((i, field) in requiredFields.withIndex()) {
-                    if (i > 0) defaultsCode.add(",\n")
-                    defaultsCode.add("  %N = %N", field.name, field.name)
-                }
-                defaultsCode.add("\n")
-            }
-            defaultsCode.add(")\n")
-            rootParse.addCode(defaultsCode.build())
+            val requiredNamedArgs = fields.filter { !it.hasDefault }.joinToCode(",\n") { CodeBlock.of("%N = %N", it.name, it.name) }
+            rootParse.addStatement("val _defaults = %T(%L)", implClassName, requiredNamedArgs)
         }
         if (isPojo) {
             // todo generics?
