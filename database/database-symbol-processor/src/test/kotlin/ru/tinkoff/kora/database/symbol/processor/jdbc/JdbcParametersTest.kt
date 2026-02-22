@@ -407,4 +407,36 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>("test", "someStatus", "otherStatus")
         Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?")
     }
+
+    @Test
+    fun testSamePrefixParameterNameMappingNoSpaces() {
+        val repository = compile(
+            listOf<Any>(), """            
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT * FROM test WHERE user_status='CREATED'::status_type AND status=:status")
+                fun test(status: String)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", "someStatus")
+        Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status='CREATED'::status_type AND status=?")
+    }
+
+    @Test
+    fun testSamePrefixMultiParameterNameMappingNoSpaces() {
+        val repository = compile(
+            listOf<Any>(), """            
+            @Repository
+            interface TestRepository : JdbcRepository {
+                @Query("SELECT * FROM test WHERE some_status=:status AND user_status='CREATED'::status_type AND diff_status=:statusDiff AND other_status=:status AND status=:status")
+                fun test(status: String, statusDiff: String)
+            }
+            """.trimIndent()
+        )
+
+        repository.invoke<Any>("test", "someStatus", "otherStatus")
+        Mockito.verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status=? AND user_status='CREATED'::status_type AND diff_status=? AND other_status=? AND status=?")
+    }
 }
