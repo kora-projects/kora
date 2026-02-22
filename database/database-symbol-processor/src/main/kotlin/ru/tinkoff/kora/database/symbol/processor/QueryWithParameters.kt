@@ -132,7 +132,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
         }
 
         private fun sqlParameterPattern(sqlParameterName: String): Pattern {
-            return Pattern.compile("[\\s\\n,(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)\\];]|$)")
+            return Pattern.compile("[\\s\\n,=(\\[](?<param>:" + sqlParameterName + ")(?=[\\s\\n,:)=\\];]|$)");
         }
     }
 }
