@@ -323,6 +323,90 @@ class AnnotationConfigTest : AbstractConfigTest() {
     }
 
     @Test
+    fun testDataClassWithDefaultValue() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            data class TestConfig(val value1: String, val value2: String = "default-value")
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1", "value2" to "test2")).root()))
+            .isEqualTo(new("TestConfig", "test1", "test2"))
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1")).root()))
+            .isEqualTo(new("TestConfig", "test1", "default-value"))
+    }
+
+    @Test
+    fun testDataClassWithAllDefaults() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            data class TestConfig(val value1: String = "default1", val value2: Int = 42)
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1", "value2" to 100)).root()).toString())
+            .isEqualTo("TestConfig(value1=test1, value2=100)")
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1")).root()).toString())
+            .isEqualTo("TestConfig(value1=test1, value2=42)")
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value2" to 100)).root()).toString())
+            .isEqualTo("TestConfig(value1=default1, value2=100)")
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf<String, Any>()).root()).toString())
+            .isEqualTo("TestConfig(value1=default1, value2=42)")
+    }
+
+    @Test
+    fun testDataClassWithDefaultAndNullable() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            data class TestConfig(val value1: String, val value2: String? = "default-value")
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1", "value2" to "test2")).root()))
+            .isEqualTo(new("TestConfig", "test1", "test2"))
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1")).root()))
+            .isEqualTo(new("TestConfig", "test1", "default-value"))
+    }
+
+    @Test
+    fun testDataClassWithMultipleDefaults() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigValueExtractor
+            data class TestConfig(val value1: String, val value2: String = "default2", val value3: Int = 42, val value4: Boolean = true)
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1")).root()))
+            .isEqualTo(new("TestConfig", "test1", "default2", 42, true))
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1", "value2" to "v2", "value3" to 100, "value4" to false)).root()))
+            .isEqualTo(new("TestConfig", "test1", "v2", 100, false))
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test1", "value3" to 100)).root()))
+            .isEqualTo(new("TestConfig", "test1", "default2", 100, true))
+    }
+
+    @Test
+    fun testDataClassWithDefaultAndCustomType() {
+        val mapper = Mockito.mock(ConfigValueExtractor::class.java)
+        whenever(mapper.extract(ArgumentMatchers.isA(StringValue::class.java))).thenReturn(Duration.ofDays(3000))
+
+        val extractor = compileConfig(
+            listOf(mapper), """
+            @ConfigValueExtractor
+            data class TestConfig(val value1: java.time.Duration, val value2: String = "default-value")
+            """.trimIndent()
+        )
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test")).root()).toString())
+            .isEqualTo("TestConfig(value1=PT72000H, value2=default-value)")
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value1" to "test", "value2" to "custom")).root()).toString())
+            .isEqualTo("TestConfig(value1=PT72000H, value2=custom)")
+    }
+
+    @Test
     fun testEmptyConfig() {
         val extractor = compileConfig(
             listOf<Any>(), """

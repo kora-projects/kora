@@ -101,7 +101,7 @@ object ConfigUtils {
                 val fieldType = parameter.type.resolve()
                 val isNullable = fieldType.isMarkedNullable
                 val mapping = parameter.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
-                fields.add(ConfigField(name, fieldType.toTypeName(), isNullable, false, false, mapping))
+                fields.add(ConfigField(name, fieldType.toTypeName(), isNullable, parameter.hasDefault, false, mapping))
             }
         }
 
