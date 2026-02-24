@@ -10,4 +10,12 @@ public interface FlywayConfig {
     default List<String> locations() {
         return List.of("db/migration");
     }
+
+    default boolean executeInTransaction() {
+        return true;
+    }
+
+    default boolean validateOnMigrate() {
+        return true;
+    }
 }
