@@ -3,6 +3,7 @@ package ru.tinkoff.kora.database.flyway;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
 import java.util.List;
+import java.util.Map;
 
 @ConfigValueExtractor
 public interface FlywayConfig {
@@ -21,5 +22,13 @@ public interface FlywayConfig {
 
     default boolean validateOnMigrate() {
         return true;
+    }
+
+    default boolean mixed() {
+        return false;
+    }
+
+    default Map<String, String> configurationProperties() {
+        return Map.of();
     }
 }
