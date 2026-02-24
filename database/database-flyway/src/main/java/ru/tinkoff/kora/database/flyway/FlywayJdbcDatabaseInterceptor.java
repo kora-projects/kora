@@ -26,8 +26,10 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
             Flyway.configure()
                 .dataSource(value.value())
                 .locations(flywayConfig.locations().toArray(String[]::new))
+                .mixed(flywayConfig.mixed())
                 .executeInTransaction(flywayConfig.executeInTransaction())
                 .validateOnMigrate(flywayConfig.validateOnMigrate())
+                .configuration(flywayConfig.configurationProperties())
                 .loggers("slf4j")
                 .load()
                 .migrate();
