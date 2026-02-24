@@ -390,9 +390,14 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             }
             parse.addStatement("return %N.extract(value)", "${field.name}_parser")
         } else {
+            if (field.hasDefault) {
+                parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
+                    addCode(returnDefaultOrThrow)
+                }
+            }
             parse.addStatement("val parsed = %N.extract(value)", "${field.name}_parser")
             parse.controlFlow("if (parsed == null)") {
-                addCode(returnDefaultOrThrow)
+                addStatement("throw %T.missingValueAfterParse(value)", ConfigClassNames.configValueExtractionException)
             }
             parse.addStatement("return parsed")
         }
