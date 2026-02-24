@@ -1,8 +1,7 @@
 package ru.tinkoff.kora.config.common.extractor;
 
-import ru.tinkoff.kora.config.common.ConfigValue;
-
 import java.util.HashMap;
+import ru.tinkoff.kora.config.common.ConfigValue;
 
 public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueExtractor<T> {
     private final HashMap<String, T> map;
@@ -16,6 +15,9 @@ public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueE
 
     @Override
     public T extract(ConfigValue<?> value) {
+        if (value instanceof ConfigValue.NullValue) {
+            return null;
+        }
         if (value instanceof ConfigValue.StringValue stringValue) {
             var str = stringValue.value();
             var enumValue = this.map.get(str);
