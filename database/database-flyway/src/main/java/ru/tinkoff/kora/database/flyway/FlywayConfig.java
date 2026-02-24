@@ -7,6 +7,10 @@ import java.util.List;
 @ConfigValueExtractor
 public interface FlywayConfig {
 
+    default boolean enabled() {
+        return true;
+    }
+
     default List<String> locations() {
         return List.of("db/migration");
     }

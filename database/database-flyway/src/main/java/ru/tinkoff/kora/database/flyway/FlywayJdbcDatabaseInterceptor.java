@@ -19,19 +19,24 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
 
     @Override
     public JdbcDatabase init(JdbcDatabase value) {
-        final long started = TimeUtils.started();
-        logger.debug("FlyWay migration applying...");
+        if (flywayConfig.enabled()) {
+            final long started = TimeUtils.started();
+            logger.debug("FlyWay migration applying...");
 
-        Flyway.configure()
-            .dataSource(value.value())
-            .locations(flywayConfig.locations().toArray(String[]::new))
-            .executeInTransaction(flywayConfig.executeInTransaction())
-            .validateOnMigrate(flywayConfig.validateOnMigrate())
-            .loggers("slf4j")
-            .load()
-            .migrate();
+            Flyway.configure()
+                .dataSource(value.value())
+                .locations(flywayConfig.locations().toArray(String[]::new))
+                .executeInTransaction(flywayConfig.executeInTransaction())
+                .validateOnMigrate(flywayConfig.validateOnMigrate())
+                .loggers("slf4j")
+                .load()
+                .migrate();
 
-        logger.info("FlyWay migration applied in {}", TimeUtils.tookForLogging(started));
+            logger.info("FlyWay migration applied in {}", TimeUtils.tookForLogging(started));
+        } else {
+            logger.info("FlyWay is disabled, skipping migrate...");
+        }
+
         return value;
     }
 
