@@ -76,6 +76,12 @@ public class UndertowExchangeProcessor implements Runnable {
         try {
             var request = new UndertowPublicApiRequest(exchange, context);
             var response = this.publicApiHandler.process(context, request);
+            var tracer = this.tracer;
+            if (tracer != null) tracer.inject(
+                this.context,
+                exchange.getResponseHeaders(),
+                (carrier, key, value) -> carrier.add(HttpString.tryFromString(key), value)
+            );
             if (response.response().isDone()) {
                 try {
                     var httpResponse = response.response().join();
@@ -112,13 +118,6 @@ public class UndertowExchangeProcessor implements Runnable {
     private void sendResponse(HttpServerExchange exchange, PublicApiResponse response, HttpServerResponse httpResponse, @Nullable Throwable error) {
         var headers = httpResponse.headers();
         exchange.setStatusCode(httpResponse.code());
-        var tracer = this.tracer;
-        if (tracer != null) tracer.inject(
-            this.context,
-            exchange.getResponseHeaders(),
-            (carrier, key, value) -> carrier.add(HttpString.tryFromString(key), value)
-        );
-
         exchange.getResponseHeaders().put(Headers.SERVER, "kora/undertow");
         var body = httpResponse.body();
         if (body == null) {
