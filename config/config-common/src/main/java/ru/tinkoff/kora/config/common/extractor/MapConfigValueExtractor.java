@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.config.common.extractor;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.util.LinkedHashMap;
@@ -7,7 +8,7 @@ import java.util.Map;
 
 import static ru.tinkoff.kora.config.common.ConfigValue.ObjectValue;
 
-public final class MapConfigValueExtractor<T> implements ConfigValueExtractor<Map<String, T>> {
+public final class MapConfigValueExtractor<T> implements ConfigValueExtractor<Map<String, @Nullable T>> {
     private final ConfigValueExtractor<T> mapValueExtractor;
 
     public MapConfigValueExtractor(ConfigValueExtractor<T> mapValueExtractor) {
@@ -15,9 +16,13 @@ public final class MapConfigValueExtractor<T> implements ConfigValueExtractor<Ma
     }
 
     @Override
-    public Map<String, T> extract(ConfigValue<?> value) {
+    @Nullable
+    public Map<String, @Nullable T> extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
         if (value instanceof ObjectValue objectValue) {
-            var result = new LinkedHashMap<String, T>(objectValue.value().size());
+            var result = new LinkedHashMap<String, @Nullable T>(objectValue.value().size());
             for (var entry : objectValue) {
                 result.put(entry.getKey(), mapValueExtractor.extract(entry.getValue()));
             }

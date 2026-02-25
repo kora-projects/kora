@@ -12,9 +12,11 @@ public class DoubleArrayConfigValueExtractor implements ConfigValueExtractor<dou
         this.doubleConfigValueExtractor = doubleConfigValueExtractor;
     }
 
-    @Nullable
     @Override
-    public double[] extract(ConfigValue<?> value) {
+    public double @Nullable [] extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
         var array = value.asArray();
         var result = new double[array.value().size()];
         for (int i = 0; i < result.length; i++) {

@@ -13,9 +13,11 @@ public class DurationArrayConfigValueExtractor implements ConfigValueExtractor<D
         this.durationConfigValueExtractor = doubleConfigValueExtractor;
     }
 
-    @Nullable
     @Override
-    public Duration[] extract(ConfigValue<?> value) {
+    public Duration @Nullable [] extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
         var array = value.asArray();
         var result = new Duration[array.value().size()];
         for (int i = 0; i < result.length; i++) {

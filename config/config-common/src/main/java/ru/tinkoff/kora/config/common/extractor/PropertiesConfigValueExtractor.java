@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.config.common.extractor;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.util.ArrayList;
@@ -7,7 +8,11 @@ import java.util.Properties;
 
 public class PropertiesConfigValueExtractor implements ConfigValueExtractor<Properties> {
     @Override
+    @Nullable
     public Properties extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
         if (!(value instanceof ConfigValue.ObjectValue objectValue)) {
             throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.ObjectValue.class);
         }
