@@ -1,3 +1,6 @@
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 module kora.config.common {
     requires transitive kora.common;
     requires transitive org.slf4j;

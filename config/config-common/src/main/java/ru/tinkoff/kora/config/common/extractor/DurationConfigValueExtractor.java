@@ -13,8 +13,9 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
         return extractFromValue(value);
     }
 
+    @Nullable
     public static Duration extractFromValue(ConfigValue<?> value) {
-        if (value instanceof ConfigValue.NullValue nv) {
+        if (value.isNull()) {
             return null;
         }
         if (value instanceof ConfigValue.NumberValue number) {

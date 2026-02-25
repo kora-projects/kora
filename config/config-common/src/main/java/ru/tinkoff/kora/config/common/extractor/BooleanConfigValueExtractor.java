@@ -1,10 +1,15 @@
 package ru.tinkoff.kora.config.common.extractor;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.ConfigValue;
 
 public final class BooleanConfigValueExtractor implements ConfigValueExtractor<Boolean> {
     @Override
+    @Nullable
     public Boolean extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
         if (value instanceof ConfigValue.BooleanValue booleanValue) {
             return booleanValue.value();
         }

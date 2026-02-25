@@ -13,7 +13,7 @@ public final class OptionalConfigValueExtractor<T> implements ConfigValueExtract
 
     @Override
     public Optional<T> extract(ConfigValue<?> value) {
-        if (value == null || value instanceof ConfigValue.NullValue) {
+        if (value.isNull()) {
             return Optional.empty();
         }
         var parsed = this.delegate.extract(value);

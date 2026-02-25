@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.config.common.extractor;
 
+import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.config.common.ConfigValue;
 
 import java.time.DateTimeException;
@@ -8,7 +9,11 @@ import java.time.temporal.ChronoUnit;
 
 public class PeriodConfigValueExtractor implements ConfigValueExtractor<Period> {
     @Override
+    @Nullable
     public Period extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
         if (value instanceof ConfigValue.NumberValue number) {
             return Period.ofDays(number.value().intValue());
         }

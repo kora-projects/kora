@@ -7,9 +7,12 @@ import java.time.LocalDate;
 
 public class LocalDateConfigValueExtractor implements ConfigValueExtractor<LocalDate> {
 
-    @Nullable
     @Override
+    @Nullable
     public LocalDate extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
         return LocalDate.parse(value.asString());
     }
 
