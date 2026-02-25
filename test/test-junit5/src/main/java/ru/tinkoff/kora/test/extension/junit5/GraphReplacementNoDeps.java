@@ -14,6 +14,8 @@ import java.util.function.Function;
 
 record GraphReplacementNoDeps<T>(Function<KoraAppGraph, ? extends T> function,
                                  GraphCandidate candidate) implements GraphModification {
+    GraphReplacementNoDeps {
+    }
 
     @SuppressWarnings("unchecked")
     @Override

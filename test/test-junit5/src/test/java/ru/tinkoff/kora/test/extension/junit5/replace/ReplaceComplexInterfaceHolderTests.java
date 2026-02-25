@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import ru.tinkoff.kora.application.graph.TypeRef;
+import ru.tinkoff.kora.common.Tag;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
 import ru.tinkoff.kora.test.extension.junit5.KoraAppTestGraphModifier;
 import ru.tinkoff.kora.test.extension.junit5.KoraGraphModification;
@@ -16,13 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class ReplaceComplexInterfaceHolderTests implements KoraAppTestGraphModifier {
 
     @TestComponent
+    @Tag(TestApplication.ComplexInterfaceHolder.class)
     private TestApplication.ComplexInterfaceHolder<String> holder;
 
     @NotNull
     @Override
     public KoraGraphModification graph() {
         return KoraGraphModification.create()
-            .replaceComponent(TypeRef.of(TestApplication.ComplexInterfaceHolder.class, String.class), () -> {
+            .replaceComponent(TypeRef.of(TestApplication.ComplexInterfaceHolder.class, String.class), TestApplication.ComplexInterfaceHolder.class, () -> {
                 var mock = Mockito.mock(TestApplication.ComplexInterfaceHolder.class);
                 Mockito.when(mock.other()).thenReturn("12345");
                 return mock;
