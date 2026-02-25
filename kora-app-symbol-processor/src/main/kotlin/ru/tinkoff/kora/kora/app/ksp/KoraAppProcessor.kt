@@ -16,7 +16,9 @@ import ru.tinkoff.kora.kora.app.ksp.KoraAppUtils.validateComponent
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
+import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponents
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
+import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclarations
 import ru.tinkoff.kora.kora.app.ksp.declaration.ModuleDeclaration
 import ru.tinkoff.kora.kora.app.ksp.exception.UnresolvedDependencyException
 import ru.tinkoff.kora.kora.app.ksp.interceptor.ComponentInterceptors
@@ -58,7 +60,7 @@ class KoraAppProcessor(
             val element = resolver!!.getClassDeclarationByName(fullName)!!
             try {
                 val graph = buildGraph(ctx, element)
-                write(ctx, element, graph.allModules, graph.components)
+                write(ctx, element, graph.allModules, graph.declarations, graph.components)
             } catch (e: UnresolvedDependencyException) {
                 e.printError(kspLogger)
                 kspLogger.info("Dependency detailed resolution tree:\n\n${e.errors.first().message}")
@@ -227,11 +229,17 @@ class KoraAppProcessor(
     }
 
 
-    private fun write(ctx: ProcessingContext, declaration: KSClassDeclaration, allModules: List<KSClassDeclaration>, components: List<ResolvedComponent>) {
-        val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx, components)
+    private fun write(
+        ctx: ProcessingContext,
+        declaration: KSClassDeclaration,
+        allModules: List<KSClassDeclaration>,
+        declarations: ComponentDeclarations,
+        components: ResolvedComponents
+    ) {
+        val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx, components.components())
         kspLogger.logging("Found interceptors: $interceptors")
         val applicationImplFile = this.generateImpl(declaration, allModules)
-        val applicationGraphFile = this.generateApplicationGraph(ctx, declaration, allModules, components, interceptors)
+        val applicationGraphFile = this.generateApplicationGraph(ctx, declaration, allModules, interceptors, declarations, components)
         applicationImplFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
         applicationGraphFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
     }
@@ -264,8 +272,9 @@ class KoraAppProcessor(
         ctx: ProcessingContext,
         declaration: KSClassDeclaration,
         allModules: List<KSClassDeclaration>,
-        graph: List<ResolvedComponent>,
-        interceptors: ComponentInterceptors
+        interceptors: ComponentInterceptors,
+        declarations: ComponentDeclarations,
+        components: ResolvedComponents
     ): FileSpec {
         val packageName = declaration.packageName.asString()
         val graphName = "${declaration.simpleName.asString()}Graph"
@@ -297,7 +306,7 @@ class KoraAppProcessor(
         var currentConstructor: FunSpec.Builder? = null
         var holders = 0
 
-        for (i in graph.indices) {
+        for ((i, component) in components.components().withIndex()) {
             val componentNumber = i % COMPONENTS_PER_HOLDER_CLASS
             if (componentNumber == 0) {
                 if (currentClass != null) {
@@ -323,19 +332,18 @@ class KoraAppProcessor(
                     currentConstructor.addParameter("ComponentHolder$j", graphTypeName.nestedClass("ComponentHolder$j"));
                 }
             }
-            val component = graph[i];
 
             val aopProxySuperClass = ServiceTypesHelper.findAopProxySuperClass(component.type)
             val propertyType: TypeName = aopProxySuperClass?.toTypeName() ?: component.type.toTypeName()
 
             currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType))
-            val statement = this.generateComponentStatement(ctx, allModules, interceptors, graph, component)
+            val statement = this.generateComponentStatement(ctx, allModules, interceptors, component, declarations, components)
             currentConstructor!!.addCode(statement).addCode("\n")
         }
-        if (graph.isNotEmpty()) {
-            var lastComponentNumber = graph.size / COMPONENTS_PER_HOLDER_CLASS;
-            if (graph.size % COMPONENTS_PER_HOLDER_CLASS == 0) {
-                lastComponentNumber--;
+        if (components.size > 0) {
+            var lastComponentNumber = components.size / COMPONENTS_PER_HOLDER_CLASS;
+            if (components.size % COMPONENTS_PER_HOLDER_CLASS == 0) {
+                lastComponentNumber--
             }
             currentClass!!.addFunction(currentConstructor!!.build());
             classBuilder.addType(currentClass.build())
@@ -370,8 +378,9 @@ class KoraAppProcessor(
         ctx: ProcessingContext,
         allModules: List<KSClassDeclaration>,
         interceptors: ComponentInterceptors,
-        components: List<ResolvedComponent>,
-        component: ResolvedComponent
+        component: ResolvedComponent,
+        declarations: ComponentDeclarations,
+        components: ResolvedComponents
     ): CodeBlock {
         val statement = CodeBlock.builder()
         val declaration = component.declaration
@@ -383,7 +392,7 @@ class KoraAppProcessor(
             statement.add("%L::class.java,\n", component.tag)
         }
         statement.add("{ ")
-        val dependenciesCode = this.getDependenciesCode(ctx, component, components)
+        val dependenciesCode = this.getDependenciesCode(ctx, component, declarations, components)
 
         when (declaration) {
             is ComponentDeclaration.AnnotatedComponent -> {
@@ -451,7 +460,8 @@ class KoraAppProcessor(
         for (dependency in component.dependencies) {
             if (dependency is ComponentDependency.AllOfDependency) {
                 if (dependency.claim.claimType != DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
-                    val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, dependency.claim, components)
+                    val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, dependency.claim)
+                    val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, dependency.claim, dependencyDeclarations, components)
                     for (d in dependencies) {
                         if (!rn) {
                             rn = true
@@ -499,7 +509,12 @@ class KoraAppProcessor(
         return statement.add("\n").build()
     }
 
-    private fun getDependenciesCode(ctx: ProcessingContext, component: ResolvedComponent, components: List<ResolvedComponent>): CodeBlock {
+    private fun getDependenciesCode(
+        ctx: ProcessingContext,
+        component: ResolvedComponent,
+        declarations: ComponentDeclarations,
+        components: ResolvedComponents
+    ): CodeBlock {
         if (component.dependencies.isEmpty()) {
             return CodeBlock.of("")
         }
@@ -508,7 +523,7 @@ class KoraAppProcessor(
             if (i > 0) {
                 block.add(",\n")
             }
-            block.add(dependency.write(ctx, components))
+            block.add(dependency.write(ctx, declarations, components))
         }
         block.unindent().add("\n")
         return block.build()

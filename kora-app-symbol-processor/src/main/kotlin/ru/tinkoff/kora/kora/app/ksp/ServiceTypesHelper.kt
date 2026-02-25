@@ -76,6 +76,20 @@ class ServiceTypesHelper(val resolver: Resolver) {
         return unwrappedType.makeNotNullable() == type // platform nullability ruins equality
     }
 
+    fun unwrap(maybeWrapped: KSType): KSType? {
+        if (!wrappedType.isAssignableFrom(maybeWrapped)) {
+            return null
+        }
+        val maybeWrappedDeclaration = maybeWrapped.declaration as KSClassDeclaration
+        val wrappedClassDeclaration = maybeWrappedDeclaration.getAllSuperTypes().plus(sequence { this.yield(maybeWrappedDeclaration.asType(listOf())) })
+            .first { CommonClassNames.wrapped.canonicalName == it.declaration.qualifiedName?.asString() }
+            .declaration as KSClassDeclaration
+        val wrappedValueFunction = wrappedClassDeclaration.getAllFunctions()
+            .filter { it.simpleName.asString() == "value" }
+            .first()
+        return wrappedValueFunction.asMemberOf(maybeWrapped).returnType!!
+    }
+
     fun isInterceptorFor(maybeInterceptor: KSType, type: KSType): Boolean {
         if (!interceptorType.isAssignableFrom(maybeInterceptor)) {
             return false

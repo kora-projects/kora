@@ -22,6 +22,7 @@ sealed interface ComponentDeclaration {
     val type: KSType
     val source: KSDeclaration
     val tag: String?
+    val isInterceptor: Boolean
 
     fun declarationString(): String
 
@@ -44,7 +45,8 @@ sealed interface ComponentDeclaration {
         override val tag: String?,
         val method: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
-        val typeVariables: List<KSTypeArgument>
+        val typeVariables: List<KSTypeArgument>,
+        override val isInterceptor: Boolean
     ) : ComponentDeclaration {
         override val source get() = this.method
 
@@ -79,7 +81,8 @@ sealed interface ComponentDeclaration {
         override val tag: String?,
         val constructor: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
-        val typeVariables: List<KSTypeArgument>
+        val typeVariables: List<KSTypeArgument>,
+        override val isInterceptor: Boolean
     ) : ComponentDeclaration {
         override val source get() = this.constructor
         override fun declarationString() = "component  " + classDeclaration.qualifiedName?.asString().toString()
@@ -93,6 +96,9 @@ sealed interface ComponentDeclaration {
         override val tag: String?,
         val generator: (CodeBlock) -> CodeBlock
     ) : ComponentDeclaration {
+        override val isInterceptor: Boolean
+            get() = false
+
         override fun declarationString(): String {
             return "extension  " + source.parentDeclaration?.qualifiedName?.asString().toString() + "." + source.simpleName.asString()
         }
@@ -105,6 +111,9 @@ sealed interface ComponentDeclaration {
     ) : ComponentDeclaration {
         override val source get() = this.classDeclaration
         override val tag get() = CommonClassNames.promisedProxy.canonicalName
+        override val isInterceptor: Boolean
+            get() = false
+
         override fun declarationString() = "<Proxy>"
     }
 
@@ -114,6 +123,9 @@ sealed interface ComponentDeclaration {
         override val tag: String?
     ) : ComponentDeclaration {
         override val source get() = type.declaration
+        override val isInterceptor: Boolean
+            get() = false
+
         override fun declarationString() = "Optional.empty"
     }
 
@@ -138,7 +150,7 @@ sealed interface ComponentDeclaration {
                     it.variance
                 )
             }
-            return FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters)
+            return FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type))
         }
 
         fun fromAnnotated(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): AnnotatedComponent {
@@ -158,7 +170,7 @@ sealed interface ComponentDeclaration {
             val tags = TagUtils.parseTagValue(classDeclaration)
             val parameterTypes = constructor.parameters.map { it.type.resolve() }
 
-            return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters)
+            return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type))
         }
 
         fun fromExtension(ctx: ProcessingContext, extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {

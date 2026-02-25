@@ -1,17 +1,19 @@
 package ru.tinkoff.kora.kora.app.annotation.processor;
 
-import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ComponentDependency;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim;
 import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponent;
+import ru.tinkoff.kora.kora.app.annotation.processor.component.ResolvedComponents;
 import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclaration;
-import ru.tinkoff.kora.kora.app.annotation.processor.exception.DuplicateDependencyException;
+import ru.tinkoff.kora.kora.app.annotation.processor.declaration.ComponentDeclarations;
+import ru.tinkoff.kora.kora.app.annotation.processor.declaration.DeclarationWithIndex;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Predicate;
 
 import static ru.tinkoff.kora.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType.*;
@@ -20,111 +22,76 @@ public final class GraphResolutionHelper {
 
     private GraphResolutionHelper() {}
 
-    public static ComponentDependency.@Nullable SingleDependency findDependency(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
-        if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
-            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
+    public static List<DeclarationWithIndex> findDependencyDeclarations(ProcessingContext ctx, ComponentDeclarations declarationMap, DependencyClaim dependencyClaim) {
+        var declarations = declarationMap.getByType(dependencyClaim.type());
+        if (declarations == null) {
+            return List.of();
         }
-
-        var dependencies = findDependencies(ctx, resolvedComponents, dependencyClaim);
-        if (dependencies.size() == 1) {
-            return dependencies.get(0);
-        }
-        if (dependencies.isEmpty()) {
-            return null;
-        }
-
-        throw new DuplicateDependencyException(dependencies, dependencyClaim, forDeclaration);
-    }
-
-    public static List<ComponentDependency.SingleDependency> findDependencies(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
-        var result = new ArrayList<ComponentDependency.SingleDependency>(4);
-        for (var resolvedComponent : resolvedComponents) {
-            if (!dependencyClaim.tagsMatches(resolvedComponent.tag())) {
+        var result = new ArrayList<DeclarationWithIndex>();
+        for (var sourceDeclaration : declarations) {
+            if (sourceDeclaration.declaration().isTemplate()) {
                 continue;
             }
-
-            var isDirectAssignable = ctx.types.isAssignable(resolvedComponent.type(), dependencyClaim.type());
-            var isWrappedAssignable = ctx.serviceTypeHelper.isAssignableToUnwrapped(resolvedComponent.type(), dependencyClaim.type());
-            if (!isDirectAssignable && !isWrappedAssignable) {
+            if (!dependencyClaim.tagsMatches(sourceDeclaration.declaration().tag())) {
                 continue;
             }
-
-            var targetDependency = isWrappedAssignable
-                ? new ComponentDependency.WrappedTargetDependency(dependencyClaim, resolvedComponent)
-                : new ComponentDependency.TargetDependency(dependencyClaim, resolvedComponent);
-
-            switch (dependencyClaim.claimType()) {
-                case ONE_REQUIRED, ONE_NULLABLE -> result.add(targetDependency);
-                case PROMISE_OF, NULLABLE_PROMISE_OF -> result.add(new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency));
-                case VALUE_OF, NULLABLE_VALUE_OF -> result.add(new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency));
-                case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF -> throw new IllegalStateException();
+            if (ctx.types.isAssignable(sourceDeclaration.declaration().type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isAssignableToUnwrapped(sourceDeclaration.declaration().type(), dependencyClaim.type())) {
+                result.add(sourceDeclaration);
             }
         }
         return result;
     }
 
-    public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, List<ResolvedComponent> resolvedComponents) {
+    public static ComponentDependency.SingleDependency toDependency(ProcessingContext ctx, ResolvedComponent resolvedComponent, DependencyClaim dependencyClaim) {
+        var isDirectAssignable = ctx.types.isAssignable(resolvedComponent.type(), dependencyClaim.type());
+        var isWrappedAssignable = ctx.serviceTypeHelper.isAssignableToUnwrapped(resolvedComponent.type(), dependencyClaim.type());
+        if (!isDirectAssignable && !isWrappedAssignable) {
+            throw new IllegalStateException();
+        }
+
+        var targetDependency = isWrappedAssignable
+            ? new ComponentDependency.WrappedTargetDependency(dependencyClaim, resolvedComponent)
+            : new ComponentDependency.TargetDependency(dependencyClaim, resolvedComponent);
+
+        return switch (dependencyClaim.claimType()) {
+            case ONE_REQUIRED, ONE_NULLABLE -> targetDependency;
+            case PROMISE_OF, NULLABLE_PROMISE_OF -> new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
+            case VALUE_OF, NULLABLE_VALUE_OF -> new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
+            case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF -> throw new IllegalStateException();
+        };
+    }
+
+    public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, List<DeclarationWithIndex> declarations, ResolvedComponents resolvedComponents) {
         var claimType = dependencyClaim.claimType();
         var result = new ArrayList<ComponentDependency.SingleDependency>();
-        components:
-        for (var component : resolvedComponents) {
-            if (!dependencyClaim.tagsMatches(component.tag())) {
-                continue components;
+        for (var declarationWithIndex : declarations) {
+            var declaration = declarationWithIndex.declaration();
+            if (!dependencyClaim.tagsMatches(declaration.tag())) {
+                continue;
             }
-            if (ctx.types.isAssignable(component.type(), dependencyClaim.type())) {
+            var component = Objects.requireNonNull(resolvedComponents.getByDeclaration(declarationWithIndex));
+            if (ctx.types.isAssignable(declaration.type(), dependencyClaim.type())) {
                 var targetDependency = new ComponentDependency.TargetDependency(dependencyClaim, component);
-                ComponentDependency.SingleDependency dependency;
-                // todo switch
-                if (claimType == ALL_OF_ONE) {
-                    dependency = targetDependency;
-                } else if (claimType == ALL_OF_PROMISE) {
-                    dependency = new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
-                } else if (claimType == ALL_OF_VALUE) {
-                    dependency = new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
-                } else {
-                    throw new IllegalStateException("Unexpected value: " + dependencyClaim.claimType());
-                }
+                var dependency = switch (claimType) {
+                    case ALL_OF_ONE -> targetDependency;
+                    case ALL_OF_PROMISE -> new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
+                    case ALL_OF_VALUE -> new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
+                    case null, default -> throw new IllegalStateException("Unexpected value: " + dependencyClaim.claimType());
+                };
                 result.add(dependency);
             }
-            if (ctx.serviceTypeHelper.isAssignableToUnwrapped(component.type(), dependencyClaim.type())) {
+            if (ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaim.type())) {
                 var targetDependency = new ComponentDependency.WrappedTargetDependency(dependencyClaim, component);
-                ComponentDependency.SingleDependency dependency;
-                if (claimType == ALL_OF_ONE) {
-                    dependency = targetDependency;
-                } else if (claimType == ALL_OF_PROMISE) {
-                    dependency = new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
-                } else if (claimType == ALL_OF_VALUE) {
-                    dependency = new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
-                } else {
-                    throw new IllegalStateException("Unexpected value: " + dependencyClaim.claimType());
-                }
+                var dependency = switch (claimType) {
+                    case ALL_OF_ONE -> targetDependency;
+                    case ALL_OF_PROMISE -> new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
+                    case ALL_OF_VALUE -> new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
+                    case null, default -> throw new IllegalStateException("Unexpected value: " + dependencyClaim.claimType());
+                };
                 result.add(dependency);
             }
         }
         return result;
-    }
-
-    @Nullable
-    public static ComponentDeclaration findDependencyDeclarationFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
-        if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
-            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
-        }
-
-        var declarations = findDependencyDeclarationsFromTemplate(ctx, forDeclaration, sourceDeclarations, dependencyClaim);
-        if (declarations.size() == 0) {
-            return null;
-        }
-        if (declarations.size() == 1) {
-            return declarations.get(0);
-        }
-        var exactMatch = declarations.stream()
-            .filter(d -> ctx.types.isSameType(d.type(), dependencyClaim.type()))
-            .toList();
-        if (exactMatch.size() == 1) {
-            return exactMatch.get(0);
-        }
-
-        throw new DuplicateDependencyException(dependencyClaim, forDeclaration, declarations);
     }
 
     public static List<ComponentDeclaration> findDependencyDeclarationsFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
@@ -152,80 +119,80 @@ public final class GraphResolutionHelper {
             if (match instanceof ComponentTemplateHelper.TemplateMatch.None) {
                 continue sources;
             }
-            if (!(match instanceof ComponentTemplateHelper.TemplateMatch.Some some)) {
+            if (!(match instanceof ComponentTemplateHelper.TemplateMatch.Some(var map))) {
                 throw new IllegalStateException();
             }
-            var map = some.map();
             var realReturnType = ComponentTemplateHelper.replace(types, declarationDeclaredType, map);
 
-            // todo switch
-            if (sourceDeclaration instanceof ComponentDeclaration.FromModuleComponent declaredComponent) {
-                var realParams = new ArrayList<TypeMirror>(declaredComponent.methodParameterTypes().size());
-                for (var methodParameterType : declaredComponent.methodParameterTypes()) {
-                    realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
+            switch (sourceDeclaration) {
+                case ComponentDeclaration.FromModuleComponent declaredComponent -> {
+                    var realParams = new ArrayList<TypeMirror>(declaredComponent.methodParameterTypes().size());
+                    for (var methodParameterType : declaredComponent.methodParameterTypes()) {
+                        realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
+                    }
+                    var typeParameters = new ArrayList<TypeMirror>();
+                    for (int i = 0; i < declaredComponent.method().getTypeParameters().size(); i++) {
+                        typeParameters.add(ComponentTemplateHelper.replace(types, declaredComponent.method().getTypeParameters().get(i).asType(), map));
+                    }
+                    declarations.add(new ComponentDeclaration.FromModuleComponent(
+                        realReturnType,
+                        declaredComponent.module(),
+                        declaredComponent.tag(),
+                        declaredComponent.method(),
+                        realParams,
+                        typeParameters,
+                        declaredComponent.isInterceptor()
+                    ));
                 }
-                var typeParameters = new ArrayList<TypeMirror>();
-                for (int i = 0; i < declaredComponent.method().getTypeParameters().size(); i++) {
-                    typeParameters.add(ComponentTemplateHelper.replace(types, declaredComponent.method().getTypeParameters().get(i).asType(), map));
+                case ComponentDeclaration.AnnotatedComponent annotatedComponent -> {
+                    var realParams = new ArrayList<TypeMirror>();
+                    for (var methodParameterType : annotatedComponent.methodParameterTypes()) {
+                        realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
+                    }
+                    var typeParameters = new ArrayList<TypeMirror>();
+                    for (int i = 0; i < annotatedComponent.typeElement().getTypeParameters().size(); i++) {
+                        typeParameters.add(ComponentTemplateHelper.replace(types, annotatedComponent.typeElement().getTypeParameters().get(i).asType(), map));
+                    }
+                    declarations.add(new ComponentDeclaration.AnnotatedComponent(
+                        realReturnType,
+                        annotatedComponent.typeElement(),
+                        annotatedComponent.tag(),
+                        annotatedComponent.constructor(),
+                        realParams,
+                        typeParameters,
+                        annotatedComponent.isInterceptor()
+                    ));
                 }
-                declarations.add(new ComponentDeclaration.FromModuleComponent(
-                    realReturnType,
-                    declaredComponent.module(),
-                    declaredComponent.tag(),
-                    declaredComponent.method(),
-                    realParams,
-                    typeParameters,
-                    declaredComponent.isInterceptor()
-                ));
-            } else if (sourceDeclaration instanceof ComponentDeclaration.AnnotatedComponent annotatedComponent) {
-                var realParams = new ArrayList<TypeMirror>();
-                for (var methodParameterType : annotatedComponent.methodParameterTypes()) {
-                    realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
-                }
-                var typeParameters = new ArrayList<TypeMirror>();
-                for (int i = 0; i < annotatedComponent.typeElement().getTypeParameters().size(); i++) {
-                    typeParameters.add(ComponentTemplateHelper.replace(types, annotatedComponent.typeElement().getTypeParameters().get(i).asType(), map));
-                }
-                declarations.add(new ComponentDeclaration.AnnotatedComponent(
-                    realReturnType,
-                    annotatedComponent.typeElement(),
-                    annotatedComponent.tag(),
-                    annotatedComponent.constructor(),
-                    realParams,
-                    typeParameters,
-                    annotatedComponent.isInterceptor()
-                ));
-            } else if (sourceDeclaration instanceof ComponentDeclaration.FromExtensionComponent extensionComponent) {
-                var realParams = new ArrayList<TypeMirror>();
-                // idk what's happening here, but somehow we've got some different identity tpe that can't be replaced
-                for (var tpe : collectTypeVariables(extensionComponent.source())) {
-                    var tv = (TypeVariable) tpe.asType();
-                    var realType = map.get(tv);
-                    if (realType == null) {
-                        var keys = new ArrayList<>(map.keySet());
-                        for (var typeVariable : keys) {
-                            var typeVariableElement = typeVariable.asElement();
-                            if (tpe.getSimpleName().contentEquals(typeVariable.asElement().getSimpleName()) && typeVariableElement.getEnclosingElement().equals(tpe.getEnclosingElement())) {
-                                map.put(tv, map.get(typeVariable));
+                case ComponentDeclaration.FromExtensionComponent extensionComponent -> {
+                    var realParams = new ArrayList<TypeMirror>();
+                    // idk what's happening here, but somehow we've got some different identity tpe that can't be replaced
+                    for (var tpe : collectTypeVariables(extensionComponent.source())) {
+                        var tv = (TypeVariable) tpe.asType();
+                        var realType = map.get(tv);
+                        if (realType == null) {
+                            var keys = new ArrayList<>(map.keySet());
+                            for (var typeVariable : keys) {
+                                var typeVariableElement = typeVariable.asElement();
+                                if (tpe.getSimpleName().contentEquals(typeVariable.asElement().getSimpleName()) && typeVariableElement.getEnclosingElement().equals(tpe.getEnclosingElement())) {
+                                    map.put(tv, map.get(typeVariable));
+                                }
                             }
                         }
                     }
+                    for (var methodParameterType : extensionComponent.dependencyTypes()) {
+                        realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
+                    }
+                    declarations.add(new ComponentDeclaration.FromExtensionComponent(
+                        realReturnType,
+                        extensionComponent.source(),
+                        realParams,
+                        extensionComponent.dependencyTags(),
+                        extensionComponent.tag(),
+                        extensionComponent.generator()
+                    ));
                 }
-                for (var methodParameterType : extensionComponent.dependencyTypes()) {
-                    realParams.add(ComponentTemplateHelper.replace(types, methodParameterType, map));
-                }
-                declarations.add(new ComponentDeclaration.FromExtensionComponent(
-                    realReturnType,
-                    extensionComponent.source(),
-                    realParams,
-                    extensionComponent.dependencyTags(),
-                    extensionComponent.tag(),
-                    extensionComponent.generator()
-                ));
-            } else if (sourceDeclaration instanceof ComponentDeclaration.PromisedProxyComponent promisedProxyComponent) {
-                declarations.add(promisedProxyComponent.withType(realReturnType));
-            } else {
-                throw new IllegalArgumentException(sourceDeclaration.toString());
+                case ComponentDeclaration.PromisedProxyComponent promisedProxyComponent -> declarations.add(promisedProxyComponent.withType(realReturnType));
+                default -> throw new IllegalArgumentException(sourceDeclaration.toString());
             }
         }
         if (declarations.isEmpty()) {
@@ -248,69 +215,10 @@ public final class GraphResolutionHelper {
         return declarations;
     }
 
-    @Nullable
-    public static ComponentDeclaration findDependencyDeclaration(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
-        if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
-            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
-        }
-
-        if (dependencyClaim.claimType() == ALL_OF_ONE || dependencyClaim.claimType() == ALL_OF_PROMISE || dependencyClaim.claimType() == ALL_OF_VALUE) {
-            throw new IllegalStateException();
-        }
-        var declarations = new ArrayList<ComponentDeclaration>();
+    public static List<DeclarationWithIndex> findInterceptorDeclarations(ProcessingContext ctx, List<DeclarationWithIndex> sourceDeclarations, TypeMirror typeMirror) {
+        var result = new ArrayList<DeclarationWithIndex>();
         for (var sourceDeclaration : sourceDeclarations) {
-            if (!dependencyClaim.tagsMatches(sourceDeclaration.tag())) {
-                continue;
-            }
-            var isDirectAssignable = ctx.types.isAssignable(sourceDeclaration.type(), dependencyClaim.type());
-            var isAssignable = isDirectAssignable || ctx.serviceTypeHelper.isAssignableToUnwrapped(sourceDeclaration.type(), dependencyClaim.type());
-
-            if (isAssignable) {
-                declarations.add(sourceDeclaration);
-            }
-        }
-        if (declarations.size() == 1) {
-            return declarations.get(0);
-        }
-        if (declarations.isEmpty()) {
-            return null;
-        }
-        var exactMatch = declarations.stream()
-            .filter(d -> ctx.types.isSameType(d.type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isSameToUnwrapped(d.type(), dependencyClaim.type()))
-            .toList();
-        if (exactMatch.size() == 1) {
-            return exactMatch.get(0);
-        }
-        var nonDefaultComponents = declarations.stream()
-            .filter(Predicate.not(ComponentDeclaration::isDefault))
-            .toList();
-        if (nonDefaultComponents.size() == 1) {
-            return nonDefaultComponents.get(0);
-        }
-
-        throw new DuplicateDependencyException(dependencyClaim, forDeclaration, declarations);
-    }
-
-    public static List<ComponentDeclaration> findDependencyDeclarations(ProcessingContext ctx, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
-        var result = new ArrayList<ComponentDeclaration>();
-        for (var sourceDeclaration : sourceDeclarations) {
-            if (sourceDeclaration.isTemplate()) {
-                continue;
-            }
-            if (!dependencyClaim.tagsMatches(sourceDeclaration.tag())) {
-                continue;
-            }
-            if (ctx.types.isAssignable(sourceDeclaration.type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isAssignableToUnwrapped(sourceDeclaration.type(), dependencyClaim.type())) {
-                result.add(sourceDeclaration);
-            }
-        }
-        return result;
-    }
-
-    public static List<ComponentDeclaration> findInterceptorDeclarations(ProcessingContext ctx, List<ComponentDeclaration> sourceDeclarations, TypeMirror typeMirror) {
-        var result = new ArrayList<ComponentDeclaration>();
-        for (var sourceDeclaration : sourceDeclarations) {
-            if (sourceDeclaration.isInterceptor() && ctx.serviceTypeHelper.isInterceptorFor(sourceDeclaration.type(), typeMirror)) {
+            if (sourceDeclaration.declaration().isInterceptor() && ctx.serviceTypeHelper.isInterceptorFor(sourceDeclaration.declaration().type(), typeMirror)) {
                 result.add(sourceDeclaration);
             }
         }

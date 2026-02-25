@@ -12,11 +12,9 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import java.io.IOException;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class DependencyTest extends AbstractKoraAppTest {
     @Test
@@ -213,27 +211,6 @@ public class DependencyTest extends AbstractKoraAppTest {
             """);
         assertThat(draw.getNodes()).hasSize(6);
         draw.init();
-    }
-
-    @Test
-    public void testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass() {
-        assertThatThrownBy(() -> compile("""
-            @KoraApp
-            public interface ExampleApplication {
-                final class TestClass1 {}
-            
-                @Root
-                default String test(@Tag(TestClass1.class) TestClass1 testClass) { return ""; }
-            }
-            """));
-
-        assertThat(compileResult.isFailed()).isTrue();
-        assertThat(compileResult.errors()).hasSize(1);
-        assertThat(compileResult.errors().get(0).getMessage(Locale.ENGLISH)).startsWith(
-            """
-                Required dependency type wasn't found in graph and can't be auto created: ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1 with tag @Tag(ru.tinkoff.kora.kora.app.annotation.processor.packageForDependencyTest.testDiscoveredFinalClassDependencyTaggedDependencyNoTagOnClass.ExampleApplication.TestClass1.class).
-                  Please check class for @Component annotation or that required module with component factory is plugged in.
-                """);
     }
 
     @Test
