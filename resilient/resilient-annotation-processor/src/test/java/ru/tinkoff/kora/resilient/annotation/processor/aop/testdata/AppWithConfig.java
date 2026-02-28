@@ -42,6 +42,17 @@ public interface AppWithConfig extends ResilientModule, DefaultConfigExtractorsM
                       enabled = false
                     }
                   }
+                  ratelimiter {
+                    default {
+                      limitForPeriod = 1
+                      limitRefreshPeriod = 1s
+                    }
+                    customDisabled {
+                      enabled = false
+                      limitForPeriod = 1
+                      limitRefreshPeriod = 1s
+                    }
+                  }
                 }
                 """
         ).resolve());
