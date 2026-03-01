@@ -19,7 +19,11 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
     protected String commonImports() {
         return super.commonImports() + """
             import ru.tinkoff.kora.json.common.annotation.*;
+            import java.sql.Timestamp;
+            import java.util.List;
+            import ru.tinkoff.kora.json.common.JsonValue;
             import ru.tinkoff.kora.json.common.JsonNullable;
+            import ru.tinkoff.kora.json.common.JsonUndefined;
             import ru.tinkoff.kora.json.common.annotation.JsonInclude.IncludeType;
             import java.util.Optional;
             import tools.jackson.core.JsonParser;
