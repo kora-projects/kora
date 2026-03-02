@@ -404,6 +404,8 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                     addStatement("_future.completeExceptionally(_ex)")
                     nextControlFlow("else if (_meta != null)")
                     addStatement("_future.complete(_meta)")
+                    nextControlFlow("else")
+                    addStatement("_future.completeExceptionally(IllegalStateException())")
                     endControlFlow()
                 }
             }
