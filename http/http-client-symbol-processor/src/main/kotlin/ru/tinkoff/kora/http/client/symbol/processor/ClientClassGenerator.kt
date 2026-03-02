@@ -267,12 +267,12 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             throw ProcessingErrorException("@Query map key type must be String, but was: $keyType", method)
                         }
 
-                        b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
-                            .beginControlFlow("if(!_k.isNullOrBlank())")
+                        b.beginControlFlow("%L.forEach { (_k, _v) -> ", literalName)
+                            .beginControlFlow("if (!_k.isNullOrBlank())")
 
                         val argType = parameterType.arguments[1].type?.resolve()!!
                         if (argType.isMarkedNullable) {
-                            b.beginControlFlow("if(_v == null)")
+                            b.beginControlFlow("if (_v == null)")
                                 .addStatement("_query.add(_k)")
                                 .nextControlFlow("else")
                         }
