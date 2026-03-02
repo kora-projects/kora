@@ -2,3 +2,4 @@ ru.tinkoff.kora.resilient.annotation.processor.aop.CircuitBreakerKoraAspectFacto
 ru.tinkoff.kora.resilient.annotation.processor.aop.RetryKoraAspectFactory
 ru.tinkoff.kora.resilient.annotation.processor.aop.TimeoutKoraAspectFactory
 ru.tinkoff.kora.resilient.annotation.processor.aop.FallbackKoraAspectFactory
+ru.tinkoff.kora.resilient.annotation.processor.aop.RateLimitKoraAspectFactory
