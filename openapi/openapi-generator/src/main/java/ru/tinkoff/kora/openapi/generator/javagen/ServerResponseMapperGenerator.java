@@ -30,6 +30,7 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
         var b = TypeSpec.classBuilder(className)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addAnnotation(generated())
+            .addAnnotation(Classes.component)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpServerResponseMapper, responseClassName));
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);

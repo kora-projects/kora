@@ -27,6 +27,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val formParamClassName = ClassName(apiPackage, ctx["classname"].toString(), capitalize(operation.operationId) + "FormParam")
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
+            .addAnnotation(Classes.component.asKt())
             .addSuperinterface(Classes.httpClientRequestMapper.asKt().parameterizedBy(formParamClassName))
         val constructor = FunSpec.constructorBuilder()
         val apply = FunSpec.builder("apply")

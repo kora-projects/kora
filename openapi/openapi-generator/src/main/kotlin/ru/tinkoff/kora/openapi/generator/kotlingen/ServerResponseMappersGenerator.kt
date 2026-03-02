@@ -26,6 +26,7 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
         val responseClassName = ClassName(apiPackage, ctx.get("classname").toString() + "Responses", capitalize(operation.operationId) + "ApiResponse");
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
+            .addAnnotation(Classes.component.asKt())
             .addSuperinterface(Classes.httpServerResponseMapper.asKt().parameterizedBy(responseClassName));
 
         val constructor = FunSpec.constructorBuilder()

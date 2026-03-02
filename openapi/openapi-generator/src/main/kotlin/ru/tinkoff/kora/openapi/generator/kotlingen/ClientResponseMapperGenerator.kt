@@ -26,6 +26,7 @@ class ClientResponseMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val className = mappers.nestedClass(capitalize(operation.operationId) + response.code + "ApiResponseMapper")
         val b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
+            .addAnnotation(Classes.component.asKt())
             .addSuperinterface(Classes.httpClientResponseMapper.asKt().parameterizedBy(responseType))
         val constructor = FunSpec.constructorBuilder()
         response.dataType?.let {

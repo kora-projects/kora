@@ -265,7 +265,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
 
     private TypeSpec buildEnum(ModelsMap ctx, CodegenModel model) {
         var contextModel = ctx.getModels().getFirst().getModel();
-        var enumClassName = contextModel == model ? ClassName.get(modelPackage, model.name) : ClassName.get(modelPackage, contextModel.name, model.name);
+        var enumClassName = contextModel == model ? ClassName.get(modelPackage, model.name) : ClassName.get(modelPackage, contextModel.classname, model.name);
         var b = TypeSpec.enumBuilder(enumClassName)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);

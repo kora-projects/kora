@@ -233,7 +233,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         val enumClassName = if (contextModel == model)
             ClassName(modelPackage, model.name)
         else
-            ClassName(modelPackage, contextModel.name, model.name)
+            ClassName(modelPackage, contextModel.classname, model.name)
         val b = TypeSpec.enumBuilder(enumClassName)
             .addAnnotation(generated())
         val enumVars = model.allowableValues["enumVars"] as List<Map<String, Any>>
