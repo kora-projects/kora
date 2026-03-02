@@ -180,23 +180,23 @@ public class ClientClassGenerator {
                             if (!requiresConverter(type)) {
                                 b.addStatement("_query.add($L.getKey(), $T.toString($L.getValue()))", paramName, Objects.class, targetLiteral);
                             } else if (CommonUtils.isCollection(type)) {
-                                b.beginControlFlow("$L.getValue().forEach(_vv -> ", targetLiteral);
+                                b.beginControlFlow("for (var _vv : $L.getValue())", targetLiteral);
                                 if (type instanceof DeclaredType dt
                                     && !dt.getTypeArguments().isEmpty()
                                     && !requiresConverter(dt.getTypeArguments().get(0))) {
-                                    b.beginControlFlow("if(_vv == null)");
+                                    b.beginControlFlow("if (_vv == null)");
                                     b.addStatement("_query.add($L.getKey())", paramName);
                                     b.nextControlFlow("else");
                                     b.addStatement("_query.add($L.getKey(), $T.toString(_vv))", paramName, Objects.class);
                                     b.endControlFlow();
                                 } else {
-                                    b.beginControlFlow("if(_vv == null)");
+                                    b.beginControlFlow("if (_vv == null)");
                                     b.addStatement("_query.add($L.getKey())", paramName);
                                     b.nextControlFlow("else");
                                     b.addStatement("_query.add($L.getKey(), $L.convert(_vv))", paramName, getConverterName(methodData, p.parameter()));
                                     b.endControlFlow();
                                 }
-                                b.endControlFlow(")");
+                                b.endControlFlow();
                             } else {
                                 b.addStatement("_query.add($L.getKey(), $L.convert($L.getValue()))", paramName, getConverterName(methodData, p.parameter()), targetLiteral);
                             }
