@@ -105,10 +105,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
+                        if (parameterType.isMap()) {
+                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
+                        }
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
-                        } else if (parameterType.isMap()) {
-                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
                         if (requiresConverter(parameterType)) {
@@ -283,7 +284,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             b.beginControlFlow("_v.forEach { _vv -> ")
 
                             if (resolvedArg.isMarkedNullable) {
-                                b.beginControlFlow("if(_v == null)")
+                                b.beginControlFlow("if(_vv == null)")
                                     .addStatement("_query.add(_k)")
                                     .nextControlFlow("else")
                             }

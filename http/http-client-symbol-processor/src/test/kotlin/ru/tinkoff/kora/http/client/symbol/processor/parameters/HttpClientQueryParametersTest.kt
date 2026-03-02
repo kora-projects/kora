@@ -256,7 +256,7 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
         client.invoke<Unit>("request", mapOf("q1" to listOf("test1")))
 
         Mockito.reset(httpClient)
-        onRequest("POST", "http://test-url:8080/test?q1=test1&q2=test2") { rs -> rs }
+        onRequest("POST", "http://test-url:8080/test?q1=test1&q1=test2") { rs -> rs }
         client.invoke<Unit>("request", mapOf("q1" to listOf("test1", "test2")))
     }
 
@@ -276,7 +276,7 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
         client.invoke<Unit>("request", mapOf("q1" to listOf("test1"), "q2" to listOf("test2")))
 
         Mockito.reset(httpClient)
-        onRequest("POST", "http://test-url:8080/test?q1=test1&q2&q2=test2") { rs -> rs }
+        onRequest("POST", "http://test-url:8080/test?q1=test1&q1&q1=test2") { rs -> rs }
         client.invoke<Unit>("request", mapOf("q1" to listOf("test1", null, "test2")))
     }
 
@@ -296,7 +296,7 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
         client.invoke<Unit>("request", mapOf("q1" to listOf("test1")))
 
         Mockito.reset(httpClient)
-        onRequest("POST", "http://test-url:8080/test?q1=test1&q2=test2") { rs -> rs }
+        onRequest("POST", "http://test-url:8080/test?q1=test1&q1=test2") { rs -> rs }
         client.invoke<Unit>("request", mapOf("q1" to listOf("test1", "test2")))
     }
 }

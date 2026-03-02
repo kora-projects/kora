@@ -178,37 +178,28 @@ public class ClientClassGenerator {
                             b.nextControlFlow("else");
 
                             if (!requiresConverter(type)) {
-                                b.beginControlFlow("if($L.getValue() == null)", targetLiteral);
-                                b.addStatement("_query.add($L.getKey())", paramName);
-                                b.nextControlFlow("else");
-                                b.addCode("_query.add($L.getKey(), $T.toString($L.getValue()))", paramName, Objects.class, targetLiteral);
-                                b.endControlFlow();
-                            } else if (type instanceof DeclaredType dt
-                                       && !dt.getTypeArguments().isEmpty()
-                                       && CommonUtils.isCollection(dt.getTypeArguments().get(0))) {
+                                b.addStatement("_query.add($L.getKey(), $T.toString($L.getValue()))", paramName, Objects.class, targetLiteral);
+                            } else if (CommonUtils.isCollection(type)) {
                                 b.beginControlFlow("$L.getValue().forEach(_vv -> ", targetLiteral);
-                                if(!requiresConverter(dt.getTypeArguments().get(0))) {
+                                if (type instanceof DeclaredType dt
+                                    && !dt.getTypeArguments().isEmpty()
+                                    && !requiresConverter(dt.getTypeArguments().get(0))) {
                                     b.beginControlFlow("if(_vv == null)");
                                     b.addStatement("_query.add($L.getKey())", paramName);
                                     b.nextControlFlow("else");
-                                    b.addCode("_query.add($L.getKey(), $T.toString(_vv))", paramName, Objects.class);
+                                    b.addStatement("_query.add($L.getKey(), $T.toString(_vv))", paramName, Objects.class);
                                     b.endControlFlow();
                                 } else {
                                     b.beginControlFlow("if(_vv == null)");
                                     b.addStatement("_query.add($L.getKey())", paramName);
                                     b.nextControlFlow("else");
-                                    b.addCode("_query.add($L.getKey(), $L.convert(_vv))", paramName, getConverterName(methodData, p.parameter()));
+                                    b.addStatement("_query.add($L.getKey(), $L.convert(_vv))", paramName, getConverterName(methodData, p.parameter()));
                                     b.endControlFlow();
                                 }
                                 b.endControlFlow(")");
                             } else {
-                                b.beginControlFlow("if($L.getValue() == null)", targetLiteral);
-                                b.addStatement("_query.add($L.getKey())", paramName);
-                                b.nextControlFlow("else");
-                                b.addCode("_query.add($L.getKey(), $L.convert($L.getValue()))", paramName, getConverterName(methodData, p.parameter()), targetLiteral);
-                                b.endControlFlow();
+                                b.addStatement("_query.add($L.getKey(), $L.convert($L.getValue()))", paramName, getConverterName(methodData, p.parameter()), targetLiteral);
                             }
-                            b.addStatement(")", StandardCharsets.class);
                             b.endControlFlow().endControlFlow().endControlFlow();
                         } else {
                             b.addCode("_query.unsafeAdd($S, $T.encode(", URLEncoder.encode(p.queryParameterName(), StandardCharsets.UTF_8), URLEncoder.class);
@@ -727,8 +718,8 @@ public class ClientClassGenerator {
                 } else {
                     var isVoid = method.getReturnType().getKind() == TypeKind.VOID;
                     var isFutureOfVoid = (CommonUtils.isFuture(method.getReturnType()) || CommonUtils.isMono(method.getReturnType()))
-                        && method.getReturnType() instanceof DeclaredType dt
-                        && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
+                                         && method.getReturnType() instanceof DeclaredType dt
+                                         && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
                     if (!isVoid && !isFutureOfVoid) {
                         final TypeName responseMapperType;
                         if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null) {
@@ -975,10 +966,11 @@ public class ClientClassGenerator {
                 }
                 if (parameter instanceof Parameter.QueryParameter queryParameter) {
                     var type = queryParameter.parameter().asType();
+                    if (CommonUtils.isMap(type)) {
+                        type = ((DeclaredType) type).getTypeArguments().get(1);
+                    }
                     if (CommonUtils.isCollection(type)) {
                         type = ((DeclaredType) type).getTypeArguments().get(0);
-                    } else if (CommonUtils.isMap(type)) {
-                        type = ((DeclaredType) type).getTypeArguments().get(1);
                     }
 
                     if (requiresConverter(type)) {
