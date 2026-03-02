@@ -5,95 +5,94 @@ import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
 import ru.tinkoff.kora.kora.app.ksp.component.ComponentDependency.*
 import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim
+import ru.tinkoff.kora.kora.app.ksp.component.DependencyClaim.DependencyClaimType.*
 import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponent
+import ru.tinkoff.kora.kora.app.ksp.component.ResolvedComponents
 import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclaration
-import ru.tinkoff.kora.kora.app.ksp.exception.DuplicateDependencyException
+import ru.tinkoff.kora.kora.app.ksp.declaration.ComponentDeclarations
+import ru.tinkoff.kora.kora.app.ksp.declaration.DeclarationWithIndex
+
 
 object GraphResolutionHelper {
-    fun findDependency(ctx: ProcessingContext, forDeclaration: ComponentDeclaration, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): SingleDependency? {
-        val dependencies = findDependencies(ctx, resolvedComponents, dependencyClaim)
-        if (dependencies.size == 1) {
-            return dependencies[0]
-        }
-        if (dependencies.isEmpty()) {
-            return null
-        }
-
-        throw DuplicateDependencyException(dependencies, dependencyClaim, forDeclaration)
-    }
-
-    fun findDependencies(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): List<SingleDependency> {
-        val result = ArrayList<SingleDependency>(4)
-        for (resolvedComponent in resolvedComponents) {
-            if (!dependencyClaim.tagMatches(resolvedComponent.tag)) {
-                continue
-            }
-            val isDirectAssignable = dependencyClaim.type.isAssignableFrom(resolvedComponent.type)
-            val isWrappedAssignable = ctx.serviceTypesHelper.isAssignableToUnwrapped(resolvedComponent.type, dependencyClaim.type)
-            if (!isDirectAssignable && !isWrappedAssignable) {
-                continue
-            }
-            val targetDependency = if (isWrappedAssignable) WrappedTargetDependency(dependencyClaim, resolvedComponent) else TargetDependency(dependencyClaim, resolvedComponent)
-            when (dependencyClaim.claimType) {
-                DependencyClaim.DependencyClaimType.ONE_REQUIRED -> result.add(targetDependency)
-                DependencyClaim.DependencyClaimType.NULLABLE_ONE -> result.add(targetDependency)
-                DependencyClaim.DependencyClaimType.VALUE_OF -> result.add(ValueOfDependency(dependencyClaim, targetDependency))
-                DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF -> result.add(ValueOfDependency(dependencyClaim, targetDependency))
-                DependencyClaim.DependencyClaimType.PROMISE_OF -> result.add(PromiseOfDependency(dependencyClaim, targetDependency))
-                DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF -> result.add(PromiseOfDependency(dependencyClaim, targetDependency))
-                else -> throw IllegalStateException()
-            }
-        }
-        return result
-    }
-
-    fun findDependenciesForAllOf(ctx: ProcessingContext, dependencyClaim: DependencyClaim, resolvedComponents: List<ResolvedComponent>): List<SingleDependency> {
-        val result = mutableListOf<SingleDependency>()
-        for (component in resolvedComponents) {
-            if (!dependencyClaim.tagMatches(component.tag)) {
-                continue
-            }
-            if (dependencyClaim.type.isAssignableFrom(component.type)) {
-                val targetDependency = TargetDependency(dependencyClaim, component)
-                val dependency = when (dependencyClaim.claimType) {
-                    DependencyClaim.DependencyClaimType.ALL -> targetDependency
-                    DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
-                    DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
-                    else -> throw IllegalStateException()
-                }
-                result.add(dependency)
-            }
-            if (ctx.serviceTypesHelper.isAssignableToUnwrapped(component.type, dependencyClaim.type)) {
-                val targetDependency = WrappedTargetDependency(dependencyClaim, component)
-                val dependency = when (dependencyClaim.claimType) {
-                    DependencyClaim.DependencyClaimType.ALL -> targetDependency
-                    DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
-                    DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
-                    else -> throw IllegalStateException()
-                }
-                result.add(dependency)
-            }
-        }
-        return result
-    }
-
-
-    fun findDependencyDeclarationFromTemplate(
+    fun findDependencyDeclarations(
         ctx: ProcessingContext,
-        forDeclaration: ComponentDeclaration,
-        templateDeclarations: List<ComponentDeclaration>,
+        componentDeclarations: ComponentDeclarations,
         dependencyClaim: DependencyClaim
-    ): ComponentDeclaration? {
-        val result = findDependencyDeclarationsFromTemplate(ctx, forDeclaration, templateDeclarations, dependencyClaim)
-        if (result.isEmpty()) {
-            return null
+    ): List<DeclarationWithIndex> {
+        val declarations = componentDeclarations.getByType(dependencyClaim.type)
+        if (declarations.isEmpty()) {
+            return listOf()
         }
-        // todo exact match
-        if (result.size == 1) {
-            return result[0]
-        }
+        val result = ArrayList<DeclarationWithIndex>()
+        for (sourceDeclaration in declarations) {
+            if (sourceDeclaration.declaration.isTemplate()) {
+                continue
+            }
+            if (!dependencyClaim.tagMatches(sourceDeclaration.declaration.tag)) {
+                continue
+            }
 
-        throw DuplicateDependencyException(dependencyClaim, forDeclaration, result)
+            if (dependencyClaim.type.isAssignableFrom(sourceDeclaration.declaration.type) || ctx.serviceTypesHelper.isAssignableToUnwrapped(sourceDeclaration.declaration.type, dependencyClaim.type)) {
+                result.add(sourceDeclaration)
+            }
+        }
+        return result
+    }
+
+    fun toDependency(ctx: ProcessingContext, resolvedComponent: ResolvedComponent, dependencyClaim: DependencyClaim): SingleDependency {
+        val isDirectAssignable = dependencyClaim.type.isAssignableFrom(resolvedComponent.type)
+        val isWrappedAssignable = ctx.serviceTypesHelper.isAssignableToUnwrapped(resolvedComponent.type, dependencyClaim.type)
+        check(isDirectAssignable || isWrappedAssignable)
+
+        val targetDependency = if (isWrappedAssignable)
+            WrappedTargetDependency(dependencyClaim, resolvedComponent)
+        else
+            TargetDependency(dependencyClaim, resolvedComponent)
+
+        return when (dependencyClaim.claimType) {
+            ONE_REQUIRED, NULLABLE_ONE -> targetDependency
+            PROMISE_OF, NULLABLE_PROMISE_OF -> PromiseOfDependency(dependencyClaim, targetDependency)
+            VALUE_OF, NULLABLE_VALUE_OF -> ValueOfDependency(dependencyClaim, targetDependency)
+            ALL, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF -> throw java.lang.IllegalStateException()
+        }
+    }
+
+    fun findDependenciesForAllOf(
+        ctx: ProcessingContext,
+        dependencyClaim: DependencyClaim,
+        declarations: List<DeclarationWithIndex>,
+        resolvedComponents: ResolvedComponents
+    ): MutableList<SingleDependency> {
+        val claimType = dependencyClaim.claimType
+        val result = mutableListOf<SingleDependency>()
+        components@ for (declarationWithIndex in declarations) {
+            val declaration = declarationWithIndex.declaration
+            if (!dependencyClaim.tagMatches(declaration.tag)) {
+                continue@components
+            }
+            val component = resolvedComponents.getByDeclaration(declarationWithIndex)!!
+            if (dependencyClaim.type.isAssignableFrom(declaration.type)) {
+                val targetDependency = TargetDependency(dependencyClaim, component)
+                val dependency = when (claimType) {
+                    ALL -> targetDependency
+                    ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
+                    ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
+                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
+                }
+                result.add(dependency)
+            }
+            if (ctx.serviceTypesHelper.isAssignableToUnwrapped(declaration.type, dependencyClaim.type)) {
+                val targetDependency = WrappedTargetDependency(dependencyClaim, component)
+                val dependency = when (claimType) {
+                    ALL -> targetDependency
+                    ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
+                    ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
+                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
+                }
+                result.add(dependency)
+            }
+        }
+        return result
     }
 
 
@@ -136,7 +135,8 @@ object GraphResolutionHelper {
                             template.tag,
                             template.method,
                             realParams,
-                            realTypeParameters
+                            realTypeParameters,
+                            template.isInterceptor
                         )
                     )
                 }
@@ -167,7 +167,8 @@ object GraphResolutionHelper {
                             template.tag,
                             template.constructor,
                             realParams,
-                            realTypeParameters
+                            realTypeParameters,
+                            template.isInterceptor
                         )
                     )
                 }
@@ -239,54 +240,10 @@ object GraphResolutionHelper {
         return result
     }
 
-
-    fun findDependencyDeclaration(
-        ctx: ProcessingContext,
-        forDeclaration: ComponentDeclaration,
-        sourceDeclarations: List<ComponentDeclaration>,
-        dependencyClaim: DependencyClaim
-    ): ComponentDeclaration? {
-        val claimType = dependencyClaim.claimType
-        assert(claimType !in listOf(DependencyClaim.DependencyClaimType.ALL, DependencyClaim.DependencyClaimType.ALL_OF_PROMISE, DependencyClaim.DependencyClaimType.ALL_OF_VALUE))
-        val declarations = findDependencyDeclarations(ctx, sourceDeclarations, dependencyClaim)
-        if (declarations.size == 1) {
-            return declarations[0]
-        }
-        if (declarations.isEmpty()) {
-            return null
-        }
-        val nonDefaultComponents = declarations.filter { !it.isDefault() }
-        if (nonDefaultComponents.size == 1) {
-            return nonDefaultComponents[0]
-        }
-
-        val exactMatch = declarations.asSequence()
-            .filter { it.type == dependencyClaim.type || ctx.serviceTypesHelper.isSameToUnwrapped(it.type, dependencyClaim.type) }
-            .toList()
-        if (exactMatch.size == 1) {
-            return exactMatch[0]
-        }
-
-        throw DuplicateDependencyException(dependencyClaim, forDeclaration, declarations)
-    }
-
-    fun findDependencyDeclarations(ctx: ProcessingContext, sourceDeclarations: List<ComponentDeclaration>, dependencyClaim: DependencyClaim): List<ComponentDeclaration> {
-        val result = mutableListOf<ComponentDeclaration>()
-        for (sourceDeclaration in sourceDeclarations) {
-            if (!dependencyClaim.tagMatches(sourceDeclaration.tag)) {
-                continue
-            }
-            if (dependencyClaim.type.isAssignableFrom(sourceDeclaration.type) || ctx.serviceTypesHelper.isAssignableToUnwrapped(sourceDeclaration.type, dependencyClaim.type)) {
-                result.add(sourceDeclaration)
-            }
-        }
-        return result
-    }
-
-    fun findInterceptorDeclarations(ctx: ProcessingContext, sourceDeclarations: List<ComponentDeclaration>, type: KSType): MutableList<ComponentDeclaration> {
-        val result = mutableListOf<ComponentDeclaration>()
-        for (sourceDeclaration in sourceDeclarations) {
-            if (ctx.serviceTypesHelper.isInterceptorFor(sourceDeclaration.type, type)) {
+    fun findInterceptorDeclarations(ctx: ProcessingContext, sourceDeclarations: ComponentDeclarations, type: KSType): List<DeclarationWithIndex> {
+        val result = mutableListOf<DeclarationWithIndex>()
+        for (sourceDeclaration in sourceDeclarations.interceptors()) {
+            if (sourceDeclaration.declaration.isInterceptor && ctx.serviceTypesHelper.isInterceptorFor(sourceDeclaration.declaration.type, type)) {
                 result.add(sourceDeclaration)
             }
         }

@@ -58,13 +58,13 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
         if (dependencyClaim.tag() == null) {
             var format = """
                 Required dependency type wasn't found in graph and can't be auto created: %s (no tags)
-                Please check class for @%s annotation or that required module with component factory is plugged in.""";
+                Please check class for @%s annotation or that required module with declaration factory is plugged in.""";
             msg.append(String.format(format, TypeName.get(dependencyClaim.type()), CommonClassNames.component.simpleName()));
         } else {
             var tagMsg = "@Tag(" + dependencyClaim.tag() + ".class)";
             var format = """
                 Required dependency type wasn't found in graph and can't be auto created: %s with tag %s.
-                Please check class for @%s annotation or that required module with component factory is plugged in.""";
+                Please check class for @%s annotation or that required module with declaration factory is plugged in.""";
             msg.append(String.format(format, TypeName.get(dependencyClaim.type()), tagMsg, CommonClassNames.component.simpleName()));
         }
         if (!hints.isEmpty()) {

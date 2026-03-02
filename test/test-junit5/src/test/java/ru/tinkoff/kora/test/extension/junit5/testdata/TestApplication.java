@@ -64,6 +64,7 @@ public interface TestApplication extends TestExtendModule {
     }
 
     @Root
+    @Tag(ComplexInterfaceHolder.class)
     default ComplexInterfaceHolder<String> complexInterfaceStringWrap() {
         return new ComplexInterfaceHolder<>() {
 
