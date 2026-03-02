@@ -399,6 +399,15 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 if (publishData.callback != null) {
                     addStatement("%N.onCompletion(_meta, _ex)", publishData.callback.name?.asString().toString())
                 }
+                if (isCompletionStage || isDeferred) {
+                    beginControlFlow("if (_ex != null)")
+                    addStatement("_future.completeExceptionally(_ex)")
+                    nextControlFlow("else if (_meta != null)")
+                    addStatement("_future.complete(_meta)")
+                    nextControlFlow("else")
+                    addStatement("_future.completeExceptionally(IllegalStateException())")
+                    endControlFlow()
+                }
             }
             when {
                 isCompletionStage -> b.addStatement("return _future")
