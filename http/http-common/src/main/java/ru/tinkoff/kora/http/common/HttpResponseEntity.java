@@ -30,7 +30,7 @@ public interface HttpResponseEntity<T> {
         return new HttpResponseEntityImpl<>(code, HttpHeaders.of(), body);
     }
 
-    static <T> HttpResponseEntity<T> of(int code, MutableHttpHeaders headers, T body) {
+    static <T> HttpResponseEntity<T> of(int code, MutableHttpHeaders headers, @Nullable T body) {
         return new HttpResponseEntityImpl<>(code, headers, body);
     }
 }
