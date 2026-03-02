@@ -278,6 +278,26 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                         if (!requiresConverter(argType)) {
                             b.addStatement("_query.add(_k, _v.toString())")
+                        } else if (argType.isCollection() && argType.arguments[0].type != null) {
+                            val resolvedArg = argType.arguments[0].type?.resolve()!!
+                            b.beginControlFlow("_v.forEach { _vv -> ")
+
+                            if (resolvedArg.isMarkedNullable) {
+                                b.beginControlFlow("if(_v == null)")
+                                    .addStatement("_query.add(_k)")
+                                    .nextControlFlow("else")
+                            }
+
+                            if (!requiresConverter(resolvedArg)) {
+                                b.addStatement("_query.add(_k, _vv.toString())")
+                            } else {
+                                b.addStatement("_query.add(_k, %L.convert(_vv))", getConverterName(methodData, it.parameter))
+                            }
+
+                            if (resolvedArg.isMarkedNullable) {
+                                b.endControlFlow()
+                            }
+                            b.endControlFlow()
                         } else {
                             b.addStatement("_query.add(_k, %L.convert(_v))", getConverterName(methodData, it.parameter))
                         }

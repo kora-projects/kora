@@ -246,6 +246,56 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
         verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?qParam=test1&qSec=test2")));
     }
 
+    @Test
+    public void testMapQueryParameterListString() {
+        var client = compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request(@Query java.util.Map<String, java.util.List<String>> queryParams);
+            }
+            """);
+
+        onRequest("POST", "http://test-url:8080/test?q=test1", rs -> rs.withCode(200));
+        var m = new LinkedHashMap<String, List<String>>();
+        m.put("q", List.of("test1"));
+        client.invoke("request", m);
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?q=test1")));
+
+        reset(httpClient);
+        var m2 = new LinkedHashMap<String, List<String>>();
+        m2.put("q", Arrays.asList("test1", null));
+        m2.put("q2", Arrays.asList("test2"));
+        onRequest("POST", "http://test-url:8080/test?q=test1&q&q2=test2", rs -> rs.withCode(200));
+        client.invoke("request", m2);
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?q=test1&q&q2=test2")));
+    }
+
+    @Test
+    public void testMapQueryParameterListObject() {
+        var client = compileClient(List.of((StringParameterConverter<Object>) Object::toString), """
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              void request(@Query java.util.Map<String, java.util.List<Object>> queryParams);
+            }
+            """);
+
+        onRequest("POST", "http://test-url:8080/test?q=test1", rs -> rs.withCode(200));
+        var m = new LinkedHashMap<String, List<Object>>();
+        m.put("q", List.of("test1"));
+        client.invoke("request", m);
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?q=test1")));
+
+        reset(httpClient);
+        var m2 = new LinkedHashMap<String, List<Object>>();
+        m2.put("q", Arrays.asList("test1", null));
+        m2.put("q2", Arrays.asList("test2"));
+        onRequest("POST", "http://test-url:8080/test?q=test1&q&q2=test2", rs -> rs.withCode(200));
+        client.invoke("request", m2);
+        verify(httpClient).execute(argThat(r -> r.uri().toString().equals("http://test-url:8080/test?q=test1&q&q2=test2")));
+    }
+
     private static Map<String, String> mapOf(String... kv) {
         var m = new LinkedHashMap<String, String>();
         for (int i = 0; i < kv.length; i++) {
