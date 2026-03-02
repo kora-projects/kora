@@ -197,7 +197,7 @@ public class ClientClassGenerator {
                                 }
                                 b.endControlFlow();
                             } else {
-                                b.addStatement("_query.add($L.getKey(), $L.convert($L.getValue()))", paramName, getConverterName(methodData, p.parameter()), targetLiteral);
+                                b.addStatement("_query.add($L.getKey(), $L.convert($L.getValue()))", paramName, getConverterName(methodData, p), targetLiteral);
                             }
                             b.endControlFlow().endControlFlow().endControlFlow();
                         } else {
