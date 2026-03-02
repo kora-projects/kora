@@ -239,4 +239,64 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
         onRequest("POST", "http://test-url:8080/test?q1=test1&q2=test2") { rs -> rs }
         client.invoke<Unit>("request", mapOf("q1" to "test1", "q2" to "test2"))
     }
+
+    @Test
+    fun testMapQueryParamListString() {
+        val client = compile(
+            listOf<Any>(), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(@Query params: Map<String, List<String>>)
+            }
+            """.trimIndent()
+        )
+
+        onRequest("POST", "http://test-url:8080/test?q1=test1") { rs -> rs }
+        client.invoke<Unit>("request", mapOf("q1" to listOf("test1")))
+
+        Mockito.reset(httpClient)
+        onRequest("POST", "http://test-url:8080/test?q1=test1&q1=test2") { rs -> rs }
+        client.invoke<Unit>("request", mapOf("q1" to listOf("test1", "test2")))
+    }
+
+    @Test
+    fun testMapQueryParamListStringNullable() {
+        val client = compile(
+            listOf<Any>(), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(@Query params: Map<String, List<String?>>)
+            }
+            """.trimIndent()
+        )
+
+        onRequest("POST", "http://test-url:8080/test?q1=test1&q2=test2") { rs -> rs }
+        client.invoke<Unit>("request", mapOf("q1" to listOf("test1"), "q2" to listOf("test2")))
+
+        Mockito.reset(httpClient)
+        onRequest("POST", "http://test-url:8080/test?q1=test1&q1&q1=test2") { rs -> rs }
+        client.invoke<Unit>("request", mapOf("q1" to listOf("test1", null, "test2")))
+    }
+
+    @Test
+    fun testMapQueryParamListObject() {
+        val client = compile(
+            listOf<Any>(StringParameterConverter<Any> { it.toString() }), """
+            @HttpClient
+            interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request(@Query params: Map<String, List<Any>>)
+            }
+            """.trimIndent()
+        )
+
+        onRequest("POST", "http://test-url:8080/test?q1=test1") { rs -> rs }
+        client.invoke<Unit>("request", mapOf("q1" to listOf("test1")))
+
+        Mockito.reset(httpClient)
+        onRequest("POST", "http://test-url:8080/test?q1=test1&q1=test2") { rs -> rs }
+        client.invoke<Unit>("request", mapOf("q1" to listOf("test1", "test2")))
+    }
 }
