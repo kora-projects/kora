@@ -32,6 +32,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var b = TypeSpec.classBuilder(capitalize(op.operationId) + "FormParamRequestMapper")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addAnnotation(generated())
+            .addAnnotation(Classes.component)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpServerRequestMapper, formParamClass));
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);

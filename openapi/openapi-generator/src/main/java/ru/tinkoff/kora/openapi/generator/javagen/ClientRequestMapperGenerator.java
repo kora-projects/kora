@@ -32,6 +32,7 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         var formParamClassName = ClassName.get(apiPackage, ctx.get("classname").toString(), capitalize(operation.operationId) + "FormParam");
         var b = TypeSpec.classBuilder(className)
             .addAnnotation(generated())
+            .addAnnotation(Classes.component)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpClientRequestMapper, formParamClassName));
         var constructor = MethodSpec.constructorBuilder()
