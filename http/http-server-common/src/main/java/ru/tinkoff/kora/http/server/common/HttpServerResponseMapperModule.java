@@ -41,6 +41,12 @@ public interface HttpServerResponseMapperModule {
 
     @DefaultComponent
     @Tag(Json.class)
+    default <T> HttpServerResponseMapper<HttpResponseEntity<T>> httpServerJsonResponseEntityMapper(JsonWriter<T> writer) {
+        return new HttpServerResponseEntityMapper<>(new JsonWriterHttpServerResponseMapper<>(writer));
+    }
+
+    @DefaultComponent
+    @Tag(Json.class)
     default <T> JsonWriterHttpServerResponseMapper<T> jsonWriterHttpServerResponseMapper(JsonWriter<T> writer) {
         return new JsonWriterHttpServerResponseMapper<>(writer);
     }

@@ -39,6 +39,11 @@ public interface HttpClientResponseMapperModule {
         return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), mapper.apply(response));
     }
 
+    default <T> HttpClientResponseMapper<HttpResponseEntity<T>> jsonEntityResponseHttpClientResponseMapper(JsonReader<T> reader) {
+        var delegate = new JsonHttpClientResponseMapper<>(reader);
+        return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
+    }
+
     @Tag(Json.class)
     default <T> JsonHttpClientResponseMapper<T> jsonHttpClientResponseMapper(JsonReader<T> reader) {
         return new JsonHttpClientResponseMapper<>(reader);
