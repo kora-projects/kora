@@ -2,6 +2,7 @@ package ru.tinkoff.kora.http.server.common;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
+import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import ru.tinkoff.kora.application.graph.All;
 import ru.tinkoff.kora.application.graph.PromiseOf;
@@ -13,6 +14,7 @@ import ru.tinkoff.kora.common.readiness.ReadinessProbe;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractionException;
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.annotation.InternalApi;
 import ru.tinkoff.kora.http.server.common.annotation.PrivateApi;
 import ru.tinkoff.kora.http.server.common.handler.HttpServerRequestHandler;
 import ru.tinkoff.kora.http.server.common.privateapi.LivenessHandler;
@@ -22,8 +24,6 @@ import ru.tinkoff.kora.http.server.common.router.HttpServerHandler;
 import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetryFactory;
 import ru.tinkoff.kora.http.server.common.telemetry.impl.DefaultHttpServerTelemetryFactory;
 import ru.tinkoff.kora.telemetry.common.MetricsScraper;
-
-import java.util.Optional;
 
 public interface HttpServerModule extends StringParameterReadersModule, HttpServerRequestMapperModule, HttpServerResponseMapperModule {
 
@@ -74,6 +74,21 @@ public interface HttpServerModule extends StringParameterReadersModule, HttpServ
 
     @PrivateApi
     default HttpServerHandler privateApiHandler(@Tag(PrivateApi.class) All<HttpServerRequestHandler> handlers, @Tag(PrivateApi.class) All<HttpServerInterceptor> interceptors, HttpServerConfig config) {
+        return new HttpServerHandler(handlers, interceptors, config);
+    }
+
+    @InternalApi
+    default InternalHttpServerConfig internalApiHttpServerConfig(Config config, ConfigValueExtractor<InternalHttpServerConfig> configValueExtractor) {
+        var value = config.get("internalHttpServer");
+        var parsed = configValueExtractor.extract(value);
+        if (parsed == null) {
+            throw ConfigValueExtractionException.missingValueAfterParse(value);
+        }
+        return parsed;
+    }
+
+    @InternalApi
+    default HttpServerHandler internalApiHandler(@Tag(InternalApi.class) All<HttpServerRequestHandler> handlers, @Tag(InternalApi.class) All<HttpServerInterceptor> interceptors, HttpServerConfig config) {
         return new HttpServerHandler(handlers, interceptors, config);
     }
 

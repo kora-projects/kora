@@ -1,6 +1,33 @@
 package ru.tinkoff.kora.http.server.common;
 
+import static java.time.Instant.now;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import static ru.tinkoff.kora.http.common.HttpMethod.GET;
+import static ru.tinkoff.kora.http.common.HttpMethod.POST;
+
 import io.opentelemetry.api.trace.Span;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import okhttp3.ConnectionPool;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -8,7 +35,11 @@ import okhttp3.RequestBody;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -32,27 +63,14 @@ import ru.tinkoff.kora.http.server.common.privateapi.LivenessHandler;
 import ru.tinkoff.kora.http.server.common.privateapi.MetricsHandler;
 import ru.tinkoff.kora.http.server.common.privateapi.ReadinessHandler;
 import ru.tinkoff.kora.http.server.common.router.HttpServerHandler;
-import ru.tinkoff.kora.http.server.common.telemetry.*;
+import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerObservation;
+import ru.tinkoff.kora.http.server.common.telemetry.HttpServerTelemetry;
+import ru.tinkoff.kora.http.server.common.telemetry.NoopHttpServerTelemetry;
 import ru.tinkoff.kora.telemetry.common.MetricsScraper;
-
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.*;
-import java.util.function.Supplier;
-
-import static java.time.Instant.now;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.*;
-import static ru.tinkoff.kora.http.common.HttpMethod.GET;
-import static ru.tinkoff.kora.http.common.HttpMethod.POST;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class HttpServerTestKit {
@@ -74,6 +92,7 @@ public abstract class HttpServerTestKit {
 
     private volatile HttpServer httpServer = null;
     private volatile HttpServer privateHttpServer = null;
+    private volatile HttpServer internalHttpServer = null;
 
     protected final OkHttpClient client = new OkHttpClient.Builder()
         .connectionPool(new ConnectionPool(0, 1, TimeUnit.MICROSECONDS))
@@ -189,6 +208,84 @@ public abstract class HttpServerTestKit {
         }
     }
 
+
+    @Nested
+    public class InternalApiTest {
+        @Test
+        void testNoopHttpServerWhenNoHandlers() {
+            var noopServer = NoopHttpServer.INSTANCE;
+            assertThat(noopServer.port()).isEqualTo(-1);
+            Assertions.assertDoesNotThrow(noopServer::init);
+            Assertions.assertDoesNotThrow(noopServer::release);
+        }
+
+        @Test
+        void testInternalApiHelloWorld() throws IOException {
+            var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("internal hello"));
+            var handler = handler(GET, "/internal", (_) -> httpResponse);
+            startInternalHttpServer(handler);
+
+            var request = internalApiRequest("/internal")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("internal hello");
+            }
+        }
+
+        @Test
+        void testInternalApiUnknownPath() throws IOException {
+            var handler = handler(GET, "/internal", (_) -> HttpServerResponse.of(200));
+            startInternalHttpServer(handler);
+
+            var request = internalApiRequest("/unknown")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(404);
+            }
+        }
+
+        @Test
+        void testInternalApiWithInterceptor() throws IOException {
+            var httpResponse = HttpServerResponse.of(200, HttpBody.plaintext("internal hello"));
+            var handler = handler(GET, "/internal", (_) -> httpResponse);
+            var interceptor = new HttpServerInterceptor() {
+                @Override
+                public HttpServerResponse intercept(HttpServerRequest request, InterceptChain chain) throws Exception {
+                    var header = request.headers().getFirst("x-internal-block");
+                    if (header != null) {
+                        request.body().close();
+                        return HttpServerResponse.of(403, HttpBody.plaintext("blocked"));
+                    }
+                    return chain.process(request);
+                }
+            };
+            startInternalHttpServer(List.of(interceptor), handler);
+
+            var request = internalApiRequest("/internal")
+                .get()
+                .build();
+
+            try (var response = client.newCall(request).execute()) {
+                assertThat(response.code()).isEqualTo(200);
+                assertThat(response.body().string()).isEqualTo("internal hello");
+            }
+
+            var blockedRequest = internalApiRequest("/internal")
+                .header("x-internal-block", "true")
+                .get()
+                .build();
+
+            try (var response = client.newCall(blockedRequest).execute()) {
+                assertThat(response.code()).isEqualTo(403);
+                assertThat(response.body().string()).isEqualTo("blocked");
+            }
+        }
+    }
 
     @Nested
     public class PublicApiTest {
@@ -990,6 +1087,34 @@ public abstract class HttpServerTestKit {
         }
     }
 
+    protected void startInternalHttpServer(HttpServerRequestHandler... handlers) {
+        startInternalHttpServer(List.of(), handlers);
+    }
+
+    protected void startInternalHttpServer(List<HttpServerInterceptor> interceptors, HttpServerRequestHandler... handlers) {
+        var config = new HttpServerConfig_Impl(
+            0,
+            false,
+            Duration.ofSeconds(1),
+            Duration.ofSeconds(1),
+            false,
+            Duration.ofMillis(1),
+            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            ),
+            Size.of(1, Size.Type.GiB)
+        );
+        var internalApiHandler = new HttpServerHandler(List.of(handlers), interceptors, config);
+        this.internalHttpServer = this.httpServer(valueOf(config), internalApiHandler, this.telemetry);
+        try {
+            this.internalHttpServer.init();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     @AfterEach
     void tearDown() throws Exception {
         if (this.httpServer != null) {
@@ -999,6 +1124,10 @@ public abstract class HttpServerTestKit {
         if (this.privateHttpServer != null) {
             this.privateHttpServer.release();
             this.privateHttpServer = null;
+        }
+        if (this.internalHttpServer != null) {
+            this.internalHttpServer.release();
+            this.internalHttpServer = null;
         }
         this.readinessProbePromise.setValue(readinessProbe);
         this.livenessProbePromise.setValue(livenessProbe);
@@ -1019,6 +1148,10 @@ public abstract class HttpServerTestKit {
 
     protected Request.Builder privateApiRequest(String path) {
         return request(this.privateHttpServer.port(), path);
+    }
+
+    protected Request.Builder internalApiRequest(String path) {
+        return request(this.internalHttpServer.port(), path);
     }
 
     protected Request.Builder request(String path) {
