@@ -411,7 +411,7 @@ public class KoraCodegen extends DefaultCodegen {
         hideGenerationTimestamp = true;
 
         setReservedWordsLowerCase(
-            Set.of(
+            Stream.of(
                 // special words
                 "object",
                 // used as internal variables, can collide with parameter names
@@ -440,7 +440,7 @@ public class KoraCodegen extends DefaultCodegen {
                 "private", "protected", "public", "reified", "return", "sealed", "set", "super",
                 "suspend", "this", "throw", "true", "try", "typealias", "typeof", "val", "var",
                 "when", "where", "while"
-            ).stream().distinct().toList()
+            ).distinct().toList()
         );
 
 
