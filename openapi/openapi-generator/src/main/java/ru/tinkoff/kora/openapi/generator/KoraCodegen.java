@@ -411,7 +411,7 @@ public class KoraCodegen extends DefaultCodegen {
         hideGenerationTimestamp = true;
 
         setReservedWordsLowerCase(
-            Arrays.asList(
+            Set.of(
                 // special words
                 "object",
                 // used as internal variables, can collide with parameter names
@@ -422,14 +422,25 @@ public class KoraCodegen extends DefaultCodegen {
                 "localVarContentType", "localVarAuthNames", "localReturnType",
                 //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
 
-                // language reserved words
-                "abstract", "continue", "for", "new", "switch", "assert",
-                "default", "if", "package", "synchronized", "boolean", "do", "goto", "private",
-                "this", "break", "double", "implements", "protected", "throw", "byte", "else",
-                "import", "public", "throws", "case", "enum", "instanceof", "return", "transient",
-                "catch", "extends", "int", "short", "try", "char", "final", "interface", "static",
-                "void", "class", "finally", "long", "strictfp", "volatile", "const", "float",
-                "native", "super", "while", "null")
+                // Java Reserved Words
+                "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
+                "class", "const", "continue", "default", "do", "double", "else", "enum",
+                "extends", "final", "finally", "float", "for", "goto", "if", "implements",
+                "import", "instanceof", "int", "interface", "long", "native", "new", "package",
+                "private", "protected", "public", "return", "short", "static", "strictfp",
+                "super", "switch", "synchronized", "this", "throw", "throws", "transient",
+                "try", "void", "volatile", "while",
+
+                // Kotlin Reserved Words
+                "abstract", "actual", "annotation", "as", "break", "by", "catch", "class",
+                "companion", "const", "constructor", "continue", "data", "do", "dynamic",
+                "else", "enum", "expect", "external", "false", "final", "finally", "for",
+                "fun", "if", "import", "in", "inline", "interface", "internal", "is", "lateinit",
+                "native", "null", "object", "open", "operator", "out", "override", "package",
+                "private", "protected", "public", "reified", "return", "sealed", "set", "super",
+                "suspend", "this", "throw", "true", "try", "typealias", "typeof", "val", "var",
+                "when", "where", "while"
+            ).stream().distinct().toList()
         );
 
 
@@ -1172,6 +1183,10 @@ public class KoraCodegen extends DefaultCodegen {
 
     @Override
     public String toVarName(String name) {
+        if (nameMapping.containsKey(name)) {
+            name = nameMapping.get(name);
+        }
+
         // sanitize name
         name = sanitizeName(name, "\\W-[\\$]"); // FIXME: a parameter should not be assigned. Also declare the methods parameters as 'final'.
 
