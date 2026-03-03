@@ -429,7 +429,7 @@ public class KoraCodegen extends DefaultCodegen {
                 "import", "instanceof", "int", "interface", "long", "native", "new", "package",
                 "private", "protected", "public", "return", "short", "static", "strictfp",
                 "super", "switch", "synchronized", "this", "throw", "throws", "transient",
-                "try", "void", "volatile", "while", "var", "record", "yield", "sealed",
+                "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when",
 
                 // Kotlin Reserved Words
                 "abstract", "actual", "annotation", "as", "break", "by", "catch", "class",
