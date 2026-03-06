@@ -108,10 +108,11 @@ class ClientClassGenerator(private val resolver: Resolver) {
 
                     is Parameter.QueryParameter -> {
                         var parameterType = parameter.parameter.type.resolve()
+                        if (parameterType.isMap()) {
+                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
+                        }
                         if (parameterType.isCollection()) {
                             parameterType = parameterType.arguments[0].type?.resolve() ?: continue
-                        } else if (parameterType.isMap()) {
-                            parameterType = parameterType.arguments[1].type?.resolve() ?: continue
                         }
 
                         if (requiresConverter(parameterType)) {
@@ -269,18 +270,38 @@ class ClientClassGenerator(private val resolver: Resolver) {
                             throw ProcessingErrorException("@Query map key type must be String, but was: $keyType", method)
                         }
 
-                        b.beginControlFlow("%L.forEach { _k, _v -> ", literalName)
-                            .beginControlFlow("if(!_k.isNullOrBlank())")
+                        b.beginControlFlow("%L.forEach { (_k, _v) -> ", literalName)
+                            .beginControlFlow("if (!_k.isNullOrBlank())")
 
                         val argType = parameterType.arguments[1].type?.resolve()!!
                         if (argType.isMarkedNullable) {
-                            b.beginControlFlow("if(_v == null)")
+                            b.beginControlFlow("if (_v == null)")
                                 .addStatement("_query.add(_k)")
                                 .nextControlFlow("else")
                         }
 
                         if (!requiresConverter(argType)) {
                             b.addStatement("_query.add(_k, _v.toString())")
+                        } else if (argType.isCollection() && argType.arguments[0].type != null) {
+                            val resolvedArg = argType.arguments[0].type?.resolve()!!
+                            b.beginControlFlow("_v.forEach { _vv -> ")
+
+                            if (resolvedArg.isMarkedNullable) {
+                                b.beginControlFlow("if(_vv == null)")
+                                    .addStatement("_query.add(_k)")
+                                    .nextControlFlow("else")
+                            }
+
+                            if (!requiresConverter(resolvedArg)) {
+                                b.addStatement("_query.add(_k, _vv.toString())")
+                            } else {
+                                b.addStatement("_query.add(_k, %L.convert(_vv))", getConverterName(methodData, it.parameter))
+                            }
+
+                            if (resolvedArg.isMarkedNullable) {
+                                b.endControlFlow()
+                            }
+                            b.endControlFlow()
                         } else {
                             b.addStatement("_query.add(_k, %L.convert(_v))", getConverterName(methodData, it.parameter))
                         }
