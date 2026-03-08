@@ -1,7 +1,8 @@
 package io.koraframework.kora.app.annotation.processor.component;
 
-import org.jspecify.annotations.Nullable;
+import com.palantir.javapoet.CodeBlock;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.type.TypeMirror;
 import java.util.List;
@@ -24,6 +25,15 @@ public record ResolvedComponent(int index, ComponentDeclaration declaration, Typ
     public String holderName() {
         var holderNumber = this.index / COMPONENTS_PER_HOLDER_CLASS;
         return "holder" + holderNumber;
+    }
+
+    public CodeBlock nodeRef(String inHolder) {
+        var holderName = holderName();
+        if (inHolder.equals(holderName)) {
+            return CodeBlock.of("$N", fieldName());
+        } else {
+            return CodeBlock.of("$N.$N", holderName, fieldName());
+        }
     }
 
     @Override

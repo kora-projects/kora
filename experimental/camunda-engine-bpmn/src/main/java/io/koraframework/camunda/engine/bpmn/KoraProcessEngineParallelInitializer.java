@@ -1,15 +1,15 @@
 package io.koraframework.camunda.engine.bpmn;
 
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
+import io.koraframework.common.util.TimeUtils;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
-import io.koraframework.common.util.TimeUtils;
 
-import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
 public final class KoraProcessEngineParallelInitializer implements Lifecycle {
@@ -19,12 +19,13 @@ public final class KoraProcessEngineParallelInitializer implements Lifecycle {
     private final ProcessEngine processEngine;
     private final CamundaEngineBpmnConfig camundaEngineConfig;
     private final ProcessEngineConfiguration engineConfiguration;
-    private final List<ProcessEngineConfigurator> camundaConfigurators;
+
+    private final Iterable<ProcessEngineConfigurator> camundaConfigurators;
 
     public KoraProcessEngineParallelInitializer(ProcessEngine processEngine,
                                                 CamundaEngineBpmnConfig camundaEngineConfig,
                                                 ProcessEngineConfiguration engineConfiguration,
-                                                List<ProcessEngineConfigurator> camundaConfigurators) {
+                                                Iterable<ProcessEngineConfigurator> camundaConfigurators) {
         this.processEngine = processEngine;
         this.camundaEngineConfig = camundaEngineConfig;
         this.engineConfiguration = engineConfiguration;
@@ -36,6 +37,10 @@ public final class KoraProcessEngineParallelInitializer implements Lifecycle {
         if (camundaEngineConfig.parallelInitialization().enabled() && engineConfiguration instanceof KoraProcessEngineConfiguration) {
             logger.debug("Camunda BPMN Engine parallel configuring...");
             final long started = TimeUtils.started();
+            var camundaConfigurators = new ArrayList<ProcessEngineConfigurator>();
+            for (var camundaConfigurator : this.camundaConfigurators) {
+                camundaConfigurators.add(camundaConfigurator);
+            }
             var setups = new CompletableFuture<?>[camundaConfigurators.size()];
             for (var i = 0; i < camundaConfigurators.size(); i++) {
                 var camundaConfigurator = camundaConfigurators.get(i);

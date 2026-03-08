@@ -1,5 +1,8 @@
 package io.koraframework.micrometer.module;
 
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
+import io.koraframework.telemetry.common.MetricsScraper;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
@@ -11,24 +14,20 @@ import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
 import io.micrometer.prometheus.PrometheusConfig;
 import io.micrometer.prometheus.PrometheusMeterRegistry;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.application.graph.Wrapped;
-import io.koraframework.telemetry.common.MetricsScraper;
 
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<PrometheusMeterRegistry>, MetricsScraper {
     private static final String KORA_VERSION = readVersion();
 
-    private final List<PrometheusMeterRegistryInitializer> initializers;
+    private final Iterable<PrometheusMeterRegistryInitializer> initializers;
     private volatile PrometheusMeterRegistry registry;
     private volatile JvmGcMetrics gcMetrics;
     private volatile Gauge koraVersionMetric;
 
-    public PrometheusMeterRegistryWrapper(List<PrometheusMeterRegistryInitializer> initializers) {
+    public PrometheusMeterRegistryWrapper(Iterable<PrometheusMeterRegistryInitializer> initializers) {
         this.initializers = initializers;
     }
 

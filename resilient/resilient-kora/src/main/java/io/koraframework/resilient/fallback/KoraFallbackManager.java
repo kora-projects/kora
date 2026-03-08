@@ -3,7 +3,6 @@ package io.koraframework.resilient.fallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -15,9 +14,9 @@ final class KoraFallbackManager implements FallbackManager {
 
     private final FallbackConfig configs;
     private final FallbackMetrics metrics;
-    private final List<FallbackPredicate> failurePredicates;
+    private final Iterable<FallbackPredicate> failurePredicates;
 
-    KoraFallbackManager(FallbackConfig configs, List<FallbackPredicate> failurePredicates, FallbackMetrics metrics) {
+    KoraFallbackManager(FallbackConfig configs, Iterable<FallbackPredicate> failurePredicates, FallbackMetrics metrics) {
         this.configs = configs;
         this.metrics = metrics;
         this.failurePredicates = failurePredicates;
@@ -36,9 +35,11 @@ final class KoraFallbackManager implements FallbackManager {
     }
 
     private FallbackPredicate getFailurePredicate(FallbackConfig.NamedConfig config) {
-        return failurePredicates.stream()
-            .filter(p -> p.name().equals(config.failurePredicateName()))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("FailurePredicateClassName '" + config.failurePredicateName() + "' is not present as bean, please declare it as bean"));
+        for (var p : failurePredicates) {
+            if (p.name().equals(config.failurePredicateName())) {
+                return p;
+            }
+        }
+        throw new IllegalArgumentException("FailurePredicateClassName '" + config.failurePredicateName() + "' is not present as bean, please declare it as bean");
     }
 }

@@ -8,7 +8,6 @@ import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
 import java.beans.FeatureDescriptor;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 public class KoraELResolver extends ELResolver {
@@ -16,8 +15,8 @@ public class KoraELResolver extends ELResolver {
     private final Map<String, Object> componentByKey;
 
     public KoraELResolver(KoraDelegateWrapperFactory wrapperFactory,
-                          List<KoraDelegate> koraDelegates,
-                          List<JavaDelegate> javaDelegates) {
+                          Iterable<KoraDelegate> koraDelegates,
+                          Iterable<JavaDelegate> javaDelegates) {
         this.componentByKey = new HashMap<>();
         for (JavaDelegate delegate : javaDelegates) {
             JavaDelegate wrapped = wrapperFactory.wrap(delegate);

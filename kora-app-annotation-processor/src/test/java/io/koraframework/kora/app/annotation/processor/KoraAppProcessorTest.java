@@ -2,10 +2,6 @@ package io.koraframework.kora.app.annotation.processor;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
-import org.assertj.core.api.Assertions;
-import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
 import io.koraframework.annotation.processor.common.JavaCompilation;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.annotation.processor.common.TestUtils.CompilationErrorException;
@@ -15,6 +11,10 @@ import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.internal.NodeImpl;
 import io.koraframework.common.Tag;
 import io.koraframework.kora.app.annotation.processor.app.*;
+import org.assertj.core.api.Assertions;
+import org.assertj.core.api.SoftAssertions;
+import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.processing.Processor;
 import javax.tools.Diagnostic;
@@ -94,7 +94,8 @@ class KoraAppProcessorTest {
         var graphDraw = testClass(AppWithAllOfValueOf.class);
         var node1 = graphDraw.getNodes().get(0);
         var node2 = graphDraw.getNodes().get(1);
-        assertThat(((NodeImpl<?>) node1).getDependentNodes()).hasSize(1);
+        assertThat(((NodeImpl<?>) node2).createDependencies).hasSize(1);
+        assertThat(((NodeImpl<?>) node2).refreshDependencies).hasSize(0);
 
         var graph = graphDraw.init();
 

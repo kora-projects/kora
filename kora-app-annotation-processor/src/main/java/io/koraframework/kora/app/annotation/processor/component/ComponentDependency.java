@@ -21,23 +21,23 @@ public sealed interface ComponentDependency {
         return switch (this) {
             case AllOfDependency(var claim) -> {
                 var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, claim);
-                var codeBlock = CodeBlock.builder().add("$T.of(", CommonClassNames.all);
-                var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, dependencyDeclarations, resolvedComponents);
-                for (int i = 0; i < dependencies.size(); i++) {
-                    var dependency = dependencies.get(i);
-                    if (i == 0) {
-                        codeBlock.indent().add("\n");
-                    }
-                    codeBlock.add(dependency.write(ctx, graphTypeName, componentDeclarations, resolvedComponents));
-                    if (i == dependencies.size() - 1) {
-                        codeBlock.unindent();
-                    } else {
-                        codeBlock.add(",");
-                    }
-                    codeBlock.add("\n");
+                var codeBlock = CodeBlock.builder();
+                switch (claim.claimType()) {
+                    case ALL_OF_ONE -> codeBlock.add("$T.all(g", CommonClassNames.all);
+                    case ALL_OF_VALUE -> codeBlock.add("$T.allValues(g", CommonClassNames.all);
+                    case ALL_OF_PROMISE -> codeBlock.add("$T.allPromises(g", CommonClassNames.all);
+                    default -> throw new IllegalStateException("Unknown claim type: " + claim.claimType());
                 }
-
-                yield codeBlock.add("  )").build();
+                var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, dependencyDeclarations, resolvedComponents);
+                for (var dependency : dependencies) {
+                    var dependencyNode = dependency.component().nodeRef("some_fake_holder_idc");
+                    if (dependency instanceof WrappedTargetDependency || dependency instanceof ValueOfDependency valueOf && valueOf.delegate instanceof WrappedTargetDependency || dependency instanceof PromiseOfDependency promiseOf && promiseOf.delegate instanceof WrappedTargetDependency) {
+                        codeBlock.add(", $T.unwrap($L)", CommonClassNames.all, dependencyNode);
+                    } else {
+                        codeBlock.add(", $T.node($L)", CommonClassNames.all, dependencyNode);
+                    }
+                }
+                yield codeBlock.add(")").build();
             }
             case NullDependency(var claim) -> switch (claim.claimType()) {
                 case ONE_NULLABLE -> CodeBlock.of("($T) null", claim.type());
@@ -53,16 +53,14 @@ public sealed interface ComponentDependency {
                 var dependency = Objects.requireNonNull(resolvedComponents.getByDeclaration(declarations.getFirst()));
                 yield CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, dependency.holderName(), dependency.fieldName());
             }
-            case PromiseOfDependency(var claim, var delegate) when delegate instanceof WrappedTargetDependency ->
-                CodeBlock.of("g.promiseOf($T.$N.$N).map($T::value).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped, claim.type());
-            case PromiseOfDependency(var claim, var delegate) ->
-                CodeBlock.of("g.promiseOf($T.$N.$N).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), claim.type());
+            case PromiseOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
+                CodeBlock.of("g.promiseOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped);
+            case PromiseOfDependency(_, var delegate) -> CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName());
             case TargetDependency(var _, var component) -> CodeBlock.of("g.get($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
             case TypeOfDependency(var claim) -> TypeOfDependency.buildTypeRef(ctx.types, claim.type());
-            case ValueOfDependency(var claim, var delegate) when delegate instanceof WrappedTargetDependency ->
-                CodeBlock.of("g.valueOf($T.$N.$N).map($T::value).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped, claim.type());
-            case ValueOfDependency(var claim, var delegate) ->
-                CodeBlock.of("g.valueOf($T.$N.$N).map(v -> ($T) v)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), claim.type());
+            case ValueOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
+                CodeBlock.of("g.valueOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped);
+            case ValueOfDependency(_, var delegate) -> CodeBlock.of("g.valueOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName());
             case WrappedTargetDependency(var _, var component) -> CodeBlock.of("g.get($T.$N.$N).value()", graphTypeName, component.holderName(), component.fieldName());
         };
     }

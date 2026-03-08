@@ -1,6 +1,5 @@
 package io.koraframework.http.server.common.privateapi;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.PromiseOf;
 import io.koraframework.http.common.body.HttpBody;
@@ -8,7 +7,9 @@ import io.koraframework.http.server.common.HttpServerRequest;
 import io.koraframework.http.server.common.HttpServerResponse;
 import io.koraframework.http.server.common.HttpServerResponseException;
 import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
+import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.concurrent.*;
 
@@ -35,13 +36,17 @@ public abstract class ProbeHandler<Probe, ProbeFailure> implements HttpServerReq
 
 
     private HttpServerResponse handleProbes(All<PromiseOf<Probe>> probes) {
-        if (probes.isEmpty()) {
+        var probesList = new ArrayList<PromiseOf<Probe>>();
+        for (var probe : probes) {
+            probesList.add(probe);
+        }
+        if (probesList.isEmpty()) {
             return HttpServerResponse.of(200, HttpBody.plaintext("OK"));
         }
-        var futures = new CompletableFuture<?>[probes.size()];
+        var futures = new CompletableFuture<?>[probesList.size()];
         try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
             for (int i = 0; i < futures.length; i++) {
-                var optional = probes.get(i).get();
+                var optional = probesList.get(i).get();
                 if (optional.isEmpty()) {
                     return HttpServerResponse.of(503, HttpBody.plaintext("Probe is not ready yet"));
                 }

@@ -2,17 +2,16 @@ package io.koraframework.kora.app.annotation.processor.component;
 
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.kora.app.annotation.processor.ProcessingContext;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeMirror;
 import java.util.ArrayList;
 import java.util.List;
@@ -20,45 +19,47 @@ import java.util.List;
 public class ComponentDependencyHelper {
 
     public static List<DependencyClaim> parseDependencyClaims(ProcessingContext ctx, ComponentDeclaration componentDeclaration) {
-        // TODO switch
-        if (componentDeclaration instanceof ComponentDeclaration.FromModuleComponent moduleComponent) {
-            var element = moduleComponent.method();
-            var result = new ArrayList<DependencyClaim>(moduleComponent.methodParameterTypes().size() + 1);
-            for (int i = 0; i < moduleComponent.methodParameterTypes().size(); i++) {
-                var parameterType = moduleComponent.methodParameterTypes().get(i);
-                var parameterElement = element.getParameters().get(i);
-                var tags = TagUtils.parseTagValue(parameterElement);
-                var isNullable = CommonUtils.isNullable(parameterElement);
-                result.add(parseClaim(element, parameterType, tags, isNullable));
+        switch (componentDeclaration) {
+            case ComponentDeclaration.FromModuleComponent moduleComponent -> {
+                var element = moduleComponent.method();
+                var result = new ArrayList<DependencyClaim>(moduleComponent.methodParameterTypes().size() + 1);
+                for (int i = 0; i < moduleComponent.methodParameterTypes().size(); i++) {
+                    var parameterType = moduleComponent.methodParameterTypes().get(i);
+                    var parameterElement = element.getParameters().get(i);
+                    var tags = TagUtils.parseTagValue(parameterElement);
+                    var isNullable = CommonUtils.isNullable(parameterElement);
+                    result.add(parseClaim(element, parameterType, tags, isNullable));
+                }
+                return result;
             }
-            return result;
-        } else if (componentDeclaration instanceof ComponentDeclaration.AnnotatedComponent annotated) {
-            var element = annotated.constructor();
-            var type = (ExecutableType) annotated.constructor().asType();
-            var result = new ArrayList<DependencyClaim>(element.getParameters().size());
-            for (int i = 0; i < annotated.methodParameterTypes().size(); i++) {
-                var parameterType = annotated.methodParameterTypes().get(i);
-                var parameterElement = element.getParameters().get(i);
-                var tags = TagUtils.parseTagValue(parameterElement);
-                var isNullable = CommonUtils.isNullable(parameterElement);
-                result.add(parseClaim(element, parameterType, tags, isNullable));
+            case ComponentDeclaration.AnnotatedComponent annotated -> {
+                var element = annotated.constructor();
+                var result = new ArrayList<DependencyClaim>(element.getParameters().size());
+                for (int i = 0; i < annotated.methodParameterTypes().size(); i++) {
+                    var parameterType = annotated.methodParameterTypes().get(i);
+                    var parameterElement = element.getParameters().get(i);
+                    var tags = TagUtils.parseTagValue(parameterElement);
+                    var isNullable = CommonUtils.isNullable(parameterElement);
+                    result.add(parseClaim(element, parameterType, tags, isNullable));
+                }
+                return result;
             }
-            return result;
-        } else if (componentDeclaration instanceof ComponentDeclaration.FromExtensionComponent fromExtension) {
-            var result = new ArrayList<DependencyClaim>(fromExtension.dependencyTypes().size() + 1);
-            var executable = fromExtension.source().getKind() == ElementKind.METHOD || fromExtension.source().getKind() == ElementKind.CONSTRUCTOR
-                ? (ExecutableElement) fromExtension.source()
-                : null;
-            for (int i = 0; i < fromExtension.dependencyTypes().size(); i++) {
-                var parameterType = fromExtension.dependencyTypes().get(i);
-                var tags = fromExtension.dependencyTags().get(i);
-                var element = executable == null ? null : executable.getParameters().get(i);
-                var isNullable = element != null && CommonUtils.isNullable(element);
-                result.add(parseClaim(fromExtension.source(), parameterType, tags, isNullable));
+            case ComponentDeclaration.FromExtensionComponent fromExtension -> {
+                var result = new ArrayList<DependencyClaim>(fromExtension.dependencyTypes().size() + 1);
+                var executable = fromExtension.source().getKind() == ElementKind.METHOD || fromExtension.source().getKind() == ElementKind.CONSTRUCTOR
+                    ? (ExecutableElement) fromExtension.source()
+                    : null;
+                for (int i = 0; i < fromExtension.dependencyTypes().size(); i++) {
+                    var parameterType = fromExtension.dependencyTypes().get(i);
+                    var tags = fromExtension.dependencyTags().get(i);
+                    var element = executable == null ? null : executable.getParameters().get(i);
+                    var isNullable = element != null && CommonUtils.isNullable(element);
+                    result.add(parseClaim(fromExtension.source(), parameterType, tags, isNullable));
+                }
+                return result;
             }
-            return result;
+            case ComponentDeclaration.OptionalComponent _, ComponentDeclaration.PromisedProxyComponent _ -> throw new IllegalArgumentException();
         }
-        throw new IllegalArgumentException();
     }
 
     public static DependencyClaim parseClaim(Element sourceElement, TypeMirror parameterType, @Nullable String tag, boolean isNullable) {

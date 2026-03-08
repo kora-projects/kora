@@ -1,18 +1,18 @@
 package io.koraframework.grpc.client;
 
 import io.grpc.*;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import io.koraframework.grpc.client.config.GrpcClientConfig;
-import io.koraframework.grpc.client.config.GrpcClientConfigInterceptor;
-import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
-import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.util.Configurer;
 import io.koraframework.common.util.TimeUtils;
+import io.koraframework.grpc.client.config.GrpcClientConfig;
+import io.koraframework.grpc.client.config.GrpcClientConfigInterceptor;
+import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
+import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -76,7 +76,7 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         }
 
         var interceptors = new ArrayList<ClientInterceptor>(2);
-        interceptors.addAll(this.interceptors);
+        this.interceptors.forEach(interceptors::add);
 
         var telemetry = telemetryFactory.get(serviceDefinition, config.telemetry(), uri);
         interceptors.add(new GrpcClientTelemetryInterceptor(telemetry));

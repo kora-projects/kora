@@ -1,11 +1,10 @@
 package io.koraframework.http.server.common.router;
 
 
-import io.koraframework.http.server.common.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.*;
 import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,7 +30,7 @@ public class HttpServerHandler {
     private final PathTemplateMatcher<List<String>> allMethodMatchers;
     private final AtomicReference<@Nullable RequestHandler> requestHandler = new AtomicReference<>();
 
-    public HttpServerHandler(List<HttpServerRequestHandler> handlers, List<HttpServerInterceptor> interceptors, HttpServerConfig config) {
+    public HttpServerHandler(Iterable<HttpServerRequestHandler> handlers, Iterable<HttpServerInterceptor> interceptors, HttpServerConfig config) {
         this.pathTemplateMatcher = new HashMap<>();
         this.allMethodMatchers = new PathTemplateMatcher<>();
         for (var h : handlers) {
@@ -64,10 +63,14 @@ public class HttpServerHandler {
                 otherMethods.addAll(oldAllMethodValue.getValue());
             }
         }
-        if (interceptors.isEmpty()) {
+        var interceptorsList = new ArrayList<HttpServerInterceptor>();
+        for (var interceptor : interceptors) {
+            interceptorsList.add(interceptor);
+        }
+        if (interceptorsList.isEmpty()) {
             this.requestHandler.set(new SimpleRequestHandler());
         } else {
-            this.requestHandler.set(new AggregatedRequestHandler(interceptors));
+            this.requestHandler.set(new AggregatedRequestHandler(interceptorsList));
         }
     }
 

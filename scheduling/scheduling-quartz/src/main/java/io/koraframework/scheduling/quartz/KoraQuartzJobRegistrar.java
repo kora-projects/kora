@@ -1,14 +1,14 @@
 package io.koraframework.scheduling.quartz;
 
-import org.quartz.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.RefreshListener;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.util.TimeUtils;
+import org.quartz.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -17,10 +17,10 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraQuartzJobRegistrar.class);
 
-    private final List<ValueOf<KoraQuartzJob>> quartzJobList;
+    private final Iterable<ValueOf<KoraQuartzJob>> quartzJobList;
     private final Scheduler scheduler;
 
-    public KoraQuartzJobRegistrar(List<ValueOf<KoraQuartzJob>> quartzJobList, Scheduler scheduler) {
+    public KoraQuartzJobRegistrar(Iterable<ValueOf<KoraQuartzJob>> quartzJobList, Scheduler scheduler) {
         this.quartzJobList = quartzJobList;
         this.scheduler = scheduler;
     }
@@ -42,10 +42,10 @@ public class KoraQuartzJobRegistrar implements Lifecycle, RefreshListener {
     @Override
     public final void init() {
         try {
-            var quartzJobsNames = quartzJobList.stream()
-                .map(q -> q.get().getClass().getCanonicalName())
-                .toList();
-
+            var quartzJobsNames = new ArrayList<String>();
+            for (var q : quartzJobList) {
+                quartzJobsNames.add(q.get().getClass().getCanonicalName());
+            }
             logger.debug("Quartz Jobs {} starting...", quartzJobsNames);
             var started = System.nanoTime();
 

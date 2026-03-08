@@ -5,16 +5,17 @@ import io.camunda.zeebe.client.api.worker.BackoffSupplier;
 import io.camunda.zeebe.client.api.worker.JobHandler;
 import io.camunda.zeebe.client.api.worker.JobWorker;
 import io.camunda.zeebe.client.api.worker.JobWorkerMetrics;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.camunda.zeebe.worker.ZeebeWorkerConfig.JobConfig;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeClientWorkerMetricsFactory;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryFactory;
 import io.koraframework.common.util.TimeUtils;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -26,7 +27,7 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
     private static final Logger logger = LoggerFactory.getLogger(KoraZeebeJobWorkerEngine.class);
 
     private final ZeebeClient client;
-    private final List<KoraJobWorker> jobWorkers;
+    private final Iterable<KoraJobWorker> jobWorkers;
     private final ZeebeClientConfig clientConfig;
     private final ZeebeWorkerConfig workerConfig;
     private final ZeebeBackoffFactory zeebeBackoffFactory;
@@ -36,7 +37,7 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
     private final List<JobWorker> workers = new CopyOnWriteArrayList<>();
 
     public KoraZeebeJobWorkerEngine(ZeebeClient client,
-                                    List<KoraJobWorker> jobWorkers,
+                                    Iterable<KoraJobWorker> jobWorkers,
                                     ZeebeClientConfig clientConfig,
                                     ZeebeWorkerConfig workerConfig,
                                     ZeebeBackoffFactory zeebeBackoffFactory,
@@ -53,6 +54,10 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
 
     @Override
     public void init() {
+        var jobWorkers = new ArrayList<KoraJobWorker>();
+        for (var jobWorker : this.jobWorkers) {
+            jobWorkers.add(jobWorker);
+        }
         if (!jobWorkers.isEmpty()) {
             logger.debug("Zeebe JobWorkers starting...");
             final long started = TimeUtils.started();
@@ -114,7 +119,10 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
                 }
             }
 
-            final List<String> workerNames = jobWorkers.stream().map(KoraJobWorker::type).toList();
+            var workerNames = new ArrayList<String>();
+            for (var jobWorker : jobWorkers) {
+                workerNames.add(jobWorker.type());
+            }
             logger.info("Zeebe JobWorkers {} stopped in {}", workerNames, TimeUtils.tookForLogging(started));
         }
     }

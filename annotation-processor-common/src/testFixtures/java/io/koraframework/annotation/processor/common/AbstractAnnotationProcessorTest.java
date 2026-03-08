@@ -3,6 +3,7 @@ package io.koraframework.annotation.processor.common;
 
 import io.koraframework.application.graph.*;
 import org.intellij.lang.annotations.Language;
+import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInfo;
@@ -269,6 +270,7 @@ public abstract class AbstractAnnotationProcessorTest {
         }
     }
 
+    @NullMarked
     public static class GraphContainer implements Graph, AutoCloseable {
         private final ApplicationGraphDraw draw;
         private final RefreshableGraph graph;
@@ -307,7 +309,7 @@ public abstract class AbstractAnnotationProcessorTest {
         }
 
         @Override
-        public <T> T get(Node<T> node) {
+        public <T> T get(Node<? extends T> node) {
             return graph.get(node);
         }
 
@@ -317,7 +319,7 @@ public abstract class AbstractAnnotationProcessorTest {
         }
 
         @Override
-        public <T> PromiseOf<T> promiseOf(Node<T> node) {
+        public <T> PromiseOf<T> promiseOf(Node<? extends T> node) {
             return graph.promiseOf(node);
         }
 

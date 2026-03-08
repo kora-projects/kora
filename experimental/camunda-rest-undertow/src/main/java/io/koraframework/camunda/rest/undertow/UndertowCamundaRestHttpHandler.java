@@ -1,5 +1,16 @@
 package io.koraframework.camunda.rest.undertow;
 
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
+import io.koraframework.camunda.rest.CamundaRestConfig;
+import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
+import io.koraframework.camunda.rest.undertow.UndertowPathMatcher.HttpMethodPath;
+import io.koraframework.common.telemetry.Observation;
+import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.http.server.undertow.UndertowContext;
+import io.koraframework.http.server.undertow.UndertowExchangeProcessor;
+import io.koraframework.http.server.undertow.UndertowHttpServer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
@@ -12,17 +23,6 @@ import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.application.graph.Wrapped;
-import io.koraframework.camunda.rest.CamundaRestConfig;
-import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
-import io.koraframework.camunda.rest.undertow.UndertowPathMatcher.HttpMethodPath;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.http.server.undertow.UndertowContext;
-import io.koraframework.http.server.undertow.UndertowExchangeProcessor;
-import io.koraframework.http.server.undertow.UndertowHttpServer;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -39,7 +39,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
     private volatile DeploymentManager deploymentManager;
     private volatile HttpHandler realhttpHandler;
 
-    UndertowCamundaRestHttpHandler(List<Application> applications,
+    UndertowCamundaRestHttpHandler(Iterable<Application> applications,
                                    CamundaRestConfig camundaRestConfig,
                                    CamundaRestTelemetry telemetry) {
         this.telemetry = telemetry;

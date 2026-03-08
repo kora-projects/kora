@@ -20,29 +20,33 @@ sealed interface ComponentDependency {
 
     fun write(ctx: ProcessingContext, typeToDeclarations: ComponentDeclarations, resolvedComponents: ResolvedComponents): CodeBlock = when (this) {
         is AllOfDependency -> {
-            val codeBlock = CodeBlock.builder().add("%T.of(", CommonClassNames.all)
             val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, typeToDeclarations, claim);
+            val codeBlock = CodeBlock.builder()
+            when (claim.claimType) {
+                DependencyClaim.DependencyClaimType.ALL -> codeBlock.add("%T.all(it", CommonClassNames.all)
+                DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> codeBlock.add("%T.allValues(it", CommonClassNames.all)
+                DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> codeBlock.add("%T.allPromises(it", CommonClassNames.all)
+                else -> throw IllegalStateException("Unexpected dependency type ${claim.claimType}")
+            }
             val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, dependencyDeclarations, resolvedComponents)
-            for ((i, dependency) in dependencies.withIndex()) {
-                if (i == 0) {
-                    codeBlock.indent().add("\n")
-                }
-                codeBlock.add(dependency.write(ctx, typeToDeclarations, resolvedComponents))
-                if (i == dependencies.size - 1) {
-                    codeBlock.unindent()
+            for (dependency in dependencies) {
+                val dependencyNode = dependency.component!!.nodeRef("some_fake_holder_idc")
+                if (dependency is ValueOfDependency && dependency.delegate is WrappedTargetDependency || dependency is PromiseOfDependency && dependency.delegate is WrappedTargetDependency || dependency is WrappedTargetDependency) {
+                    codeBlock.add(", %T.unwrap(%L)", CommonClassNames.all, dependencyNode)
                 } else {
-                    codeBlock.add(", ")
+                    codeBlock.add(", %T.node(%L)", CommonClassNames.all, dependencyNode)
                 }
-                codeBlock.add("\n")
             }
             codeBlock.add(")").build()
         }
 
-        is NullDependency -> when (claim.claimType) {
-            DependencyClaim.DependencyClaimType.NULLABLE_ONE -> CodeBlock.of("null as %T", claim.type.toTypeName().copy(true))
-            DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF -> CodeBlock.of("null as %T", CommonClassNames.valueOf.parameterizedBy(claim.type.toTypeName()).copy(true))
-            DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF -> CodeBlock.of("null as %T", CommonClassNames.promiseOf.parameterizedBy(claim.type.toTypeName()).copy(true))
-            else -> throw IllegalArgumentException(claim.claimType.toString())
+        is NullDependency -> {
+            when (claim.claimType) {
+                DependencyClaim.DependencyClaimType.NULLABLE_ONE -> CodeBlock.of("null as %T", claim.type.toTypeName().copy(true))
+                DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF -> CodeBlock.of("null as %T", CommonClassNames.valueOf.parameterizedBy(claim.type.toTypeName()).copy(true))
+                DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF -> CodeBlock.of("null as %T", CommonClassNames.promiseOf.parameterizedBy(claim.type.toTypeName()).copy(true))
+                else -> throw IllegalArgumentException(claim.claimType.toString())
+            }
         }
 
 
@@ -61,29 +65,37 @@ sealed interface ComponentDependency {
             } else {
                 val component = delegate.component!!
                 if (delegate is WrappedTargetDependency) {
-                    CodeBlock.of("it.promiseOf(%N.%N).map { it.value() }.map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
+                    CodeBlock.of("it.promiseOf(%N.%N).map { it.value() }", component.holderName, component.fieldName)
                 } else {
-                    CodeBlock.of("it.promiseOf(%N.%N).map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
+                    CodeBlock.of("it.promiseOf(%N.%N)", component.holderName, component.fieldName)
                 }
             }
         }
 
-        is TargetDependency -> CodeBlock.of("it.get(%N.%N)", component.holderName, component.fieldName)
+        is TargetDependency -> {
+            CodeBlock.of("it.get(%N.%N)", component.holderName, component.fieldName)
+        }
+
         is ValueOfDependency -> {
             if (delegate is NullDependency) {
                 CodeBlock.of("%T.valueOfNull()", CommonClassNames.valueOf)
             } else {
                 val component = delegate.component!!
                 if (delegate is WrappedTargetDependency) {
-                    CodeBlock.of("it.valueOf(%N.%N).map { it.value() }.map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
+                    CodeBlock.of("it.valueOf(%N.%N).map { it.value() }", component.holderName, component.fieldName)
                 } else {
-                    CodeBlock.of("it.valueOf(%N.%N).map { it as %T }", component.holderName, component.fieldName, claim.type.toTypeName())
+                    CodeBlock.of("it.valueOf(%N.%N)", component.holderName, component.fieldName)
                 }
             }
         }
 
-        is WrappedTargetDependency -> CodeBlock.of("it.get(%N.%N).value()", component.holderName, component.fieldName)
-        is TypeOfDependency -> buildTypeRef(claim.type)
+        is WrappedTargetDependency -> {
+            CodeBlock.of("it.get(%N.%N).value()", component.holderName, component.fieldName)
+        }
+
+        is TypeOfDependency -> {
+            buildTypeRef(claim.type)
+        }
     }
 
     sealed interface SingleDependency : ComponentDependency {
@@ -100,8 +112,8 @@ sealed interface ComponentDependency {
 
 
     data class ValueOfDependency(override val claim: DependencyClaim, val delegate: SingleDependency) : SingleDependency {
-        override val component
-            get() = delegate.component
+        override val component: ResolvedComponent
+            get() = delegate.component!!
     }
 
     data class PromiseOfDependency(override val claim: DependencyClaim, val delegate: SingleDependency) : SingleDependency {
