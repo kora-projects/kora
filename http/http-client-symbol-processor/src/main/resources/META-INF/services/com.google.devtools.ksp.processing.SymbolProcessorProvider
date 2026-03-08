@@ -1,1 +1,1 @@
-ru.tinkoff.kora.http.client.symbol.processor.HttpClientSymbolProcessorProvider
+io.koraframework.http.client.symbol.processor.HttpClientSymbolProcessorProvider

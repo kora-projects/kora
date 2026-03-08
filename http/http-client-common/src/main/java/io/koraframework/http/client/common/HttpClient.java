@@ -1,0 +1,27 @@
+package io.koraframework.http.client.common;
+
+import io.koraframework.http.client.common.interceptor.HttpClientInterceptor;
+import io.koraframework.http.client.common.request.HttpClientRequest;
+import io.koraframework.http.client.common.response.HttpClientResponse;
+
+/**
+ * <b>Русский</b>: Базовый интерфейс HTTP клиента для всех реализаций
+ * <hr>
+ * <b>English</b>: Basic HTTP client interface for all implementations
+ */
+public interface HttpClient {
+
+    HttpClientResponse execute(HttpClientRequest request) throws HttpClientException;
+
+    default HttpClient with(HttpClientInterceptor interceptor) {
+        return request -> {
+            try {
+                return interceptor.processRequest(this::execute, request);
+            } catch (HttpClientException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new HttpClientUnknownException(e);
+            }
+        };
+    }
+}

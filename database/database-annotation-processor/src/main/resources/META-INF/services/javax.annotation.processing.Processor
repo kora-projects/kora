@@ -1,4 +1,4 @@
-ru.tinkoff.kora.database.annotation.processor.RepositoryAnnotationProcessor
-ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraUdtAnnotationProcessor
-ru.tinkoff.kora.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor
-ru.tinkoff.kora.database.annotation.processor.cassandra.CassandraEntityAnnotationProcessor
+io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor
+io.koraframework.database.annotation.processor.cassandra.CassandraUdtAnnotationProcessor
+io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor
+io.koraframework.database.annotation.processor.cassandra.CassandraEntityAnnotationProcessor

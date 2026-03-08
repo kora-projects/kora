@@ -1,3 +1,0 @@
-ru.tinkoff.kora.database.annotation.processor.extension.RepositoryLinkerExtensionFactory
-ru.tinkoff.kora.database.annotation.processor.jdbc.extension.JdbcTypesExtensionFactory
-ru.tinkoff.kora.database.annotation.processor.cassandra.extension.CassandraTypesExtensionFactory

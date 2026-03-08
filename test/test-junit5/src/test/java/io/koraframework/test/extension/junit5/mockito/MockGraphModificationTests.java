@@ -1,0 +1,54 @@
+package io.koraframework.test.extension.junit5.mockito;
+
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import io.koraframework.common.Tag;
+import io.koraframework.test.extension.junit5.KoraAppTest;
+import io.koraframework.test.extension.junit5.KoraAppTestGraphModifier;
+import io.koraframework.test.extension.junit5.KoraGraphModification;
+import io.koraframework.test.extension.junit5.TestComponent;
+import io.koraframework.test.extension.junit5.testdata.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+@KoraAppTest(TestApplication.class)
+public class MockGraphModificationTests implements KoraAppTestGraphModifier {
+    @TestComponent
+    TestComponent1 component1;
+    @Tag(LifecycleComponent.class)
+    @TestComponent
+    TestComponent2 component;
+    @TestComponent
+    TestComponent23 component23;
+
+    @Override
+    public KoraGraphModification graph() {
+        return KoraGraphModification.create()
+            .replaceComponent(TestComponent1.class, () -> Mockito.mock(TestComponent1.class))
+            .replaceComponent(TestComponent2.class, LifecycleComponent.class, () -> Mockito.mock(TestComponent2.class));
+    }
+
+    @Test
+    void mockFromGraph() {
+        assertNull(component1.get());
+        Mockito.when(component1.get()).thenReturn("?");
+        assertEquals("?", component1.get());
+    }
+
+    @Test
+    void mockFromGraphWithTag() {
+        assertNull(component.get());
+        Mockito.when(component.get()).thenReturn("?");
+        assertEquals("?", component.get());
+    }
+
+    @Test
+    void mockBeanDependency() {
+        assertNull(component.get());
+        Mockito.when(component.get()).thenReturn("?");
+        assertEquals("?", component.get());
+
+        assertEquals("?3", component23.get());
+    }
+}

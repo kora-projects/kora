@@ -1,1 +1,1 @@
-ru.tinkoff.kora.camunda.zeebe.worker.annotation.processor.ZeebeWorkerAnnotationProcessor
+io.koraframework.camunda.zeebe.worker.annotation.processor.ZeebeWorkerAnnotationProcessor

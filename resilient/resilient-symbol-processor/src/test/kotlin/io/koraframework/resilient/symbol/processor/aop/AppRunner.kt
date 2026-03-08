@@ -1,0 +1,90 @@
+package io.koraframework.resilient.symbol.processor.aop
+
+import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.processing.SymbolProcessorProvider
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
+import io.koraframework.application.graph.ApplicationGraphDraw
+import io.koraframework.application.graph.RefreshableGraph
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
+import io.koraframework.ksp.common.symbolProcess
+import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
+import org.junit.jupiter.api.Assertions
+import java.util.function.Supplier
+import kotlin.reflect.KClass
+
+@KspExperimental
+open class AppRunner : Assertions() {
+
+    data class InitializedGraph(val graphDraw: ApplicationGraphDraw, val refreshableGraph: RefreshableGraph)
+
+    inline fun <reified T> getServiceFromGraph(): T {
+        return getServiceFromGraph(AppWithConfig::class)
+    }
+
+    inline fun <reified T> getServiceFromGraph(app: KClass<*>): T {
+        val pair: Pair<T, T> = getServicesFromGraph(app)
+        return pair.first
+    }
+
+    inline fun <reified T> getServiceFromGraph(graph: InitializedGraph): T {
+        val pair: Pair<T, T> = getServicesFromGraph(graph)
+        return pair.first
+    }
+
+    inline fun <reified T, reified V> getServicesFromGraph(): Pair<T, V> {
+        return getServicesFromGraph(AppWithConfig::class)
+    }
+
+    inline fun <reified T, reified V> getServicesFromGraph(app: KClass<*>): Pair<T, V> {
+        val graph = getGraphForApp(app, listOf(T::class, V::class))
+        return getServicesFromGraph(graph)
+    }
+
+    inline fun <reified T, reified V> getServicesFromGraph(graph: InitializedGraph): Pair<T, V> {
+        val values = graph.graphDraw.nodes
+            .stream()
+            .map { node -> graph.refreshableGraph.get(node) }
+            .toList()
+
+        val t = values.asSequence()
+            .filter { a -> a is T }
+            .map { a -> a as T }
+            .first()
+
+        val v = values.asSequence()
+            .filter { a -> a is V }
+            .map { a -> a as V }
+            .first()
+
+        return Pair(t, v)
+    }
+
+    fun getProcessors(): List<SymbolProcessorProvider> {
+        return listOf(
+            KoraAppProcessorProvider(),
+            AopSymbolProcessorProvider()
+        )
+    }
+
+    private fun getClassLoader(classes: List<KClass<*>>): ClassLoader {
+        return symbolProcess(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), classes)
+    }
+
+    fun getGraphForClasses(targetClasses: List<KClass<*>>): InitializedGraph {
+        return getGraphForApp(AppWithConfig::class, targetClasses)
+    }
+
+    fun getGraphForApp(app: KClass<*>, targetClasses: List<KClass<*>>): InitializedGraph {
+        return try {
+            val classes = targetClasses.toMutableList()
+            classes.add(app)
+            val classLoader = getClassLoader(classes)
+            val clazz = classLoader.loadClass(app.qualifiedName + "Graph")
+            val graphDraw = (clazz.constructors.first().newInstance() as Supplier<ApplicationGraphDraw>).get()
+            val graph = graphDraw.init()
+            InitializedGraph(graphDraw, graph)
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+}

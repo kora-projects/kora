@@ -1,1 +1,1 @@
-ru.tinkoff.kora.test.cassandra.CassandraTestContainer
+io.koraframework.test.cassandra.CassandraTestContainer

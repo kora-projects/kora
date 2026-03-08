@@ -1,0 +1,37 @@
+package io.koraframework.test.extension.junit5.replace;
+
+import org.junit.jupiter.api.Test;
+import io.koraframework.test.extension.junit5.KoraAppTest;
+import io.koraframework.test.extension.junit5.KoraAppTestGraphModifier;
+import io.koraframework.test.extension.junit5.KoraGraphModification;
+import io.koraframework.test.extension.junit5.TestComponent;
+import io.koraframework.test.extension.junit5.testdata.TestApplication;
+import io.koraframework.test.extension.junit5.testdata.TestComponent1;
+import io.koraframework.test.extension.junit5.testdata.TestComponent12;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@KoraAppTest(TestApplication.class)
+public class ReplaceWithGraphTests implements KoraAppTestGraphModifier {
+
+    @Override
+    public KoraGraphModification graph() {
+        return KoraGraphModification.create()
+            .replaceComponent(TestComponent12.class, graph -> {
+                var component1 = graph.getFirst(TestComponent1.class);
+                return new TestComponent12(component1) {
+                    @Override
+                    public String get() {
+                        return "?" + component1.get();
+                    }
+                };
+            });
+    }
+
+    @Test
+    void originalWithReplacedBean(@TestComponent TestComponent1 component1,
+                                  @TestComponent TestComponent12 replace12) {
+        assertEquals("1", component1.get());
+        assertEquals("?1", replace12.get());
+    }
+}

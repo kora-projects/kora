@@ -3,5 +3,5 @@ module kora.telemetry.common {
     requires transitive io.opentelemetry.semconv;
     requires transitive io.opentelemetry.semconv.incubating;
 
-    exports ru.tinkoff.kora.telemetry.common;
+    exports io.koraframework.telemetry.common;
 }

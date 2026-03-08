@@ -1,0 +1,3 @@
+io.koraframework.cache.annotation.processor.aop.CacheableAopKoraAspectFactory
+io.koraframework.cache.annotation.processor.aop.CacheInvalidateAopKoraAspectFactory
+io.koraframework.cache.annotation.processor.aop.CachePutAopKoraAspectFactory

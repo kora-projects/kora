@@ -9,12 +9,12 @@ module kora.common {
     requires transitive micrometer.core;
     requires transitive org.slf4j;
 
-    provides io.opentelemetry.context.ContextStorageProvider with ru.tinkoff.kora.common.telemetry.OpentelemetryContextStorageProvider;
-    exports ru.tinkoff.kora.common;
-    exports ru.tinkoff.kora.common.annotation;
-    exports ru.tinkoff.kora.common.liveness;
-    exports ru.tinkoff.kora.common.naming;
-    exports ru.tinkoff.kora.common.readiness;
-    exports ru.tinkoff.kora.common.telemetry;
-    exports ru.tinkoff.kora.common.util;
+    provides io.opentelemetry.context.ContextStorageProvider with io.koraframework.common.telemetry.OpentelemetryContextStorageProvider;
+    exports io.koraframework.common;
+    exports io.koraframework.common.annotation;
+    exports io.koraframework.common.liveness;
+    exports io.koraframework.common.naming;
+    exports io.koraframework.common.readiness;
+    exports io.koraframework.common.telemetry;
+    exports io.koraframework.common.util;
 }

@@ -1,0 +1,29 @@
+package io.koraframework.kora.app.ksp
+
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
+import io.koraframework.application.graph.ApplicationGraphDraw
+import io.koraframework.ksp.common.AbstractSymbolProcessorTest
+import java.util.function.Supplier
+
+class KoraBigGraphTest : AbstractSymbolProcessorTest() {
+    @Test
+    fun test() {
+        val sb = StringBuilder("\n")
+            .append("@KoraApp\n")
+            .append("interface ExampleApplication {\n")
+        for (i in 0 until 1500) {
+            sb.append("  @Root\n")
+            sb.append("  fun component").append(i).append("() = \"\";\n")
+        }
+        sb.append("}\n")
+        compile0(listOf(KoraAppProcessorProvider()), sb.toString())
+            .assertSuccess()
+
+        val appClass = loadClass("ExampleApplicationGraph")
+        val `object` = appClass.getConstructor().newInstance() as Supplier<ApplicationGraphDraw>
+        val draw = `object`.get()
+        Assertions.assertThat(draw.nodes).hasSize(1500)
+        draw.init()
+    }
+}

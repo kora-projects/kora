@@ -1,0 +1,19 @@
+package io.koraframework.test.extension.junit5.testdata;
+
+import io.koraframework.common.Component;
+import io.koraframework.common.annotation.Root;
+
+@Root
+@Component
+public class TestComponent12 implements LifecycleComponent {
+
+    private final TestComponent1 component1;
+
+    public TestComponent12(TestComponent1 component1) {
+        this.component1 = component1;
+    }
+
+    public String get() {
+        return component1.get() + "2";
+    }
+}

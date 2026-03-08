@@ -1,0 +1,20 @@
+package io.koraframework.cache.symbol.processor.testdata
+
+import io.koraframework.cache.annotation.CachePut
+import io.koraframework.cache.annotation.Cacheable
+import io.koraframework.cache.symbol.processor.testcache.DummyCache21
+import java.math.BigDecimal
+
+class CacheableArgumentMissing {
+    var value = "1"
+
+    @Cacheable(value = DummyCache21::class)
+    fun getValue(arg1: String?, arg2: BigDecimal?): String {
+        return value
+    }
+
+    @CachePut(value = DummyCache21::class, parameters = ["arg1", "arg4"])
+    fun putValue(arg2: BigDecimal?, arg3: String?, arg1: String?): String {
+        return value
+    }
+}

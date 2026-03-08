@@ -1,0 +1,71 @@
+package io.koraframework.kora.app.ksp.app
+
+import io.koraframework.common.Component
+import io.koraframework.common.KoraSubmodule
+import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Root
+import java.math.BigDecimal
+
+@KoraSubmodule
+interface AppWithAppPart {
+
+    @Root
+    fun class1(class2: Class2): Class1 = Class1()
+
+    @Tag(Class1::class)
+    @Root
+    fun class1Tag(class2: @Tag(Class1::class) Class2): Class1 = Class1()
+
+    @Root
+    class Class1
+
+    @Root
+    class Class2
+
+    @Component
+    @Root
+    class Class3
+
+    @Component
+    @Root
+    class Class4
+
+    @Component
+    @Root
+    class Class5(private val s: String?)
+
+//    @Component
+//    @Root
+//    class Class6<T : Number>
+
+    @io.koraframework.common.Module
+    interface Module {
+
+        @Root
+        fun class2(): Class2 = Class2()
+
+        @Tag(Class1::class)
+        @Root
+        fun class3WithDep(class2: Class2): String = "class3-" + class2.javaClass.simpleName
+
+        @Tag(Class2::class)
+        @Root
+        fun class3WithDepNullable(bigDecimal: BigDecimal?): String = "class3-" + if (bigDecimal == null) "0" else bigDecimal.toPlainString()
+
+        @Tag(Class3::class)
+        @Root
+        fun class3WithTaggedDepNullable(@Tag(BigDecimal::class) bigDecimal: BigDecimal?): String = "class3-" + if (bigDecimal == null) "0" else bigDecimal.toPlainString()
+
+        @Tag(Class3::class)
+        @Root
+        fun class4WithTaggedDep(@Tag(Class1::class) class2: Class2): String = "class3-" + class2::class.simpleName!!
+
+        @Tag(Class1::class)
+        @Root
+        fun class2Tagged(): Class2 = Class2()
+
+//        @Tag(Class1::class)
+//        @Root
+//        fun <T : Number> class6(): Class6<T> = Class6()
+    }
+}

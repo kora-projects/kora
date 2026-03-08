@@ -1,4 +1,4 @@
-ru.tinkoff.kora.database.symbol.processor.RepositorySymbolProcessorProvider
-ru.tinkoff.kora.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider
-ru.tinkoff.kora.database.symbol.processor.jdbc.JdbcEntitySymbolProcessorProvider
-ru.tinkoff.kora.database.symbol.processor.cassandra.CassandraEntitySymbolProcessorProvider
+io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider
+io.koraframework.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider
+io.koraframework.database.symbol.processor.jdbc.JdbcEntitySymbolProcessorProvider
+io.koraframework.database.symbol.processor.cassandra.CassandraEntitySymbolProcessorProvider

@@ -1,0 +1,169 @@
+package io.koraframework.kafka.symbol.processor.consumer
+
+import org.apache.kafka.common.serialization.Deserializer
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Disabled
+import org.junit.jupiter.api.Test
+import io.koraframework.common.Tag
+import io.koraframework.kafka.common.consumer.ConsumerAwareRebalanceListener
+import io.koraframework.kafka.common.consumer.KafkaListenerConfig
+import io.koraframework.kafka.common.consumer.containers.handlers.KafkaRecordHandler
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory
+import java.util.*
+
+class KafkaListenerRecordTest : AbstractKafkaListenerAnnotationProcessorTest() {
+    @Test
+    fun testProcessRecord() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    @Disabled("Is not supported by ksp yet")
+    fun testProcessRecordWithTags() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<@Tag(KafkaListener::class) String, @Tag(String::class) String>) {
+                }
+            }
+            """.trimIndent()
+        )
+
+        val module = loadClass("KafkaListenerModule")
+        val container = module.getMethod(
+            "kafkaListenerProcessContainer",
+            KafkaListenerConfig::class.java,
+            KafkaRecordHandler::class.java,
+            Deserializer::class.java,
+            Deserializer::class.java,
+            KafkaConsumerTelemetryFactory::class.java,
+            ConsumerAwareRebalanceListener::class.java
+        )
+        val keyDeserializer = container.parameters[2]
+        val valueDeserializer = container.parameters[3]
+
+        val keyTag = keyDeserializer.getAnnotation(Tag::class.java)
+        val valueTag = valueDeserializer.getAnnotation(Tag::class.java)
+
+        Assertions.assertThat(keyTag).isNotNull()
+        Assertions.assertThat(keyTag.value.java).isEqualTo(loadClass("KafkaListener"))
+        Assertions.assertThat(valueTag).isNotNull()
+        Assertions.assertThat(valueTag.value.java).isEqualTo(loadClass("KafkaListener"))
+    }
+
+    @Test
+    fun testProcessRecordAnyKeyType() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<*, String>) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessRecordAndConsumer() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(consumer: Consumer<String, String>, event: ConsumerRecord<String, String>) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessRecordAndKeyParseException() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>?, exception: RecordKeyDeserializationException?) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessRecordAndValueParseException() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>?, exception: RecordValueDeserializationException?) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessRecordAndParseException() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>?, exception: Exception?) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testProcessRecordAndParseThrowable() {
+        compile(
+            """
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>?, exception: Throwable?) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+    }
+
+    @Test
+    fun testConsumerWithTag() {
+        compile(
+            """
+            @Tag(KafkaListenerClass::class)
+            @Component
+            class KafkaListenerClass {
+                @KafkaListener("test.config.path")
+                fun process(event: ConsumerRecord<String, String>) {
+                }
+            }
+            """.trimIndent()
+        )
+
+        Assertions.assertThat(
+            Arrays.stream(loadClass("KafkaListenerClassModule").getDeclaredMethods())
+                .filter { it.name == "kafkaListenerClassProcessHandler" }
+                .findFirst().get()
+                .parameters[0].getDeclaredAnnotation(Tag::class.java)).isNotNull()
+
+    }
+}

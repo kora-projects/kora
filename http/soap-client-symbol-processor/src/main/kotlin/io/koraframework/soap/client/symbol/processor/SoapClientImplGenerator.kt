@@ -1,0 +1,447 @@
+package io.koraframework.soap.client.symbol.processor
+
+import com.google.devtools.ksp.KspExperimental
+import com.google.devtools.ksp.getDeclaredFunctions
+import com.google.devtools.ksp.processing.Resolver
+import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.*
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.jvm.throws
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import org.w3c.dom.Node
+import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.AnnotationUtils.findValue
+import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
+import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
+import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
+import io.koraframework.ksp.common.KspCommonUtils.fixPlatformType
+import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.TagUtils.addTag
+import io.koraframework.ksp.common.doesImplement
+import io.koraframework.ksp.common.generatedClassName
+import io.koraframework.ksp.common.getOuterClassesAsPrefix
+import java.util.*
+import java.util.function.Function
+
+class SoapClientImplGenerator(private val resolver: Resolver) {
+
+    private val soapFaultException = ClassName("io.koraframework.soap.client.common", "SoapFaultException")
+    private val soapException = ClassName("io.koraframework.soap.client.common", "SoapException")
+    private val soapConfig = ClassName("io.koraframework.soap.client.common", "SoapServiceConfig")
+    private val soapRequestExecutor = ClassName("io.koraframework.soap.client.common", "SoapRequestExecutor")
+    private val httpClient = ClassName("io.koraframework.http.client.common", "HttpClient")
+    private val soapTelemetry = ClassName("io.koraframework.soap.client.common.telemetry", "SoapClientTelemetryFactory")
+    private val soapEnvelope = ClassName("io.koraframework.soap.client.common.envelope", "SoapEnvelope")
+    private val soapResult = ClassName("io.koraframework.soap.client.common", "SoapResult")
+    private val soapMethodDescriptor = ClassName("io.koraframework.soap.client.common", "SoapMethodDescriptor")
+
+    fun generateModule(declaration: KSClassDeclaration, soapClasses: SoapClasses): TypeSpec {
+        val webService = declaration.findAnnotation(soapClasses.webServiceType())!!
+        var serviceName = webService.findValue<String>("name") ?: ""
+        if (serviceName.isEmpty()) {
+            serviceName = webService.findValue<String>("serviceName") ?: ""
+        }
+        if (serviceName.isEmpty()) {
+            serviceName = webService.findValue<String>("portName") ?: ""
+        }
+        if (serviceName.isEmpty()) {
+            serviceName = declaration.simpleName.asString()
+        }
+
+        val configPath = "soapClient.$serviceName"
+        val moduleName = declaration.generatedClassName("SoapClientModule")
+        val extractorClass = CommonClassNames.configValueExtractor.parameterizedBy(soapConfig)
+        val elementType = declaration.toClassName()
+
+        val methodPrefix = serviceName.substring(0, 1).lowercase(Locale.getDefault()) + serviceName.substring(1)
+        val implName = declaration.getOuterClassesAsPrefix() + declaration.simpleName.asString() + "_SoapClientImpl"
+        val type = TypeSpec.interfaceBuilder(moduleName)
+            .generated(WebServiceClientSymbolProcessor::class)
+            .addAnnotation(AnnotationSpec.builder(CommonClassNames.module).build())
+            .addOriginatingKSFile(declaration)
+            .addFunction(
+                FunSpec.builder(methodPrefix + "_SoapConfig")
+                    .returns(soapConfig)
+                    .addAnnotation(CommonClassNames.defaultComponent)
+                    .addTag(elementType.canonicalName)
+                    .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
+                    .addParameter(ParameterSpec.builder("extractor", extractorClass).build())
+                    .addStatement("val value = config.get(%S)", configPath)
+                    .addStatement("val parsed = extractor.extract(value)")
+                    .controlFlow("if (parsed == null)") {
+                        addStatement("throw %T.missingValueAfterParse(value)", CommonClassNames.configValueExtractionException)
+                    }
+                    .addStatement("return parsed")
+                    .build()
+            )
+            .addFunction(
+                FunSpec.builder(methodPrefix + "_SoapClientImpl")
+                    .returns(declaration.toClassName())
+                    .addAnnotation(CommonClassNames.defaultComponent)
+                    .addParameter(ParameterSpec.builder("httpClient", httpClient).build())
+                    .addParameter(ParameterSpec.builder("telemetry", soapTelemetry).build())
+                    .addParameter(
+                        ParameterSpec.builder("config", soapConfig)
+                            .addTag(elementType.canonicalName)
+                            .build()
+                    )
+                    .addParameter(
+                        ParameterSpec.builder("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope).copy(true))
+                            .addTag(elementType.canonicalName)
+                            .build()
+                    )
+                    .addStatement(
+                        "return %T(httpClient, telemetry, config, envelopeProcessor)",
+                        ClassName(declaration.packageName.asString(), implName)
+                    )
+                    .build()
+            )
+
+        return type.build()
+    }
+
+    data class ObjectFactory(val className: ClassName, val type: KSType, val decl: KSClassDeclaration, val fieldName: String) {
+        fun findWrapperResponseType(wrapperClass: String): KSType {
+            for (f in decl.getDeclaredFunctions()) {
+                if (f.modifiers.contains(Modifier.PUBLIC) && f.parameters.isEmpty()) {
+                    val returnType = f.returnType?.resolve()
+                    if (returnType?.toTypeName().toString() == wrapperClass) {
+                        val wrapperClassDecl = returnType!!.declaration as KSClassDeclaration
+                        for (wrapperMethod in wrapperClassDecl.getDeclaredFunctions()) {
+                            if (wrapperMethod.parameters.isEmpty()) {
+                                return wrapperMethod.returnType?.resolve()!!
+                            }
+                        }
+                    }
+                }
+            }
+            throw IllegalArgumentException("No method found for wrapper class $wrapperClass")
+        }
+
+        fun findWrapperMethod(func: KSFunctionDeclaration, parameter: KSValueParameter): KSFunctionDeclaration? {
+            val paramFactoryName = "create" + func.simpleName.asString().replaceFirstChar { it.uppercase() } + parameter.name?.asString()?.replaceFirstChar { it.uppercase() }
+            for (f in decl.getAllFunctions()) {
+                if (f.parameters.size == 1 && f.simpleName.asString() == paramFactoryName) {
+                    return f
+                }
+            }
+            return null
+        }
+    }
+
+    private fun List<ObjectFactory>.findObjectFactoryByWrapper(wrapperClass: String): ObjectFactory {
+        for (objectFactory in this) {
+            val packageName = objectFactory.className.toString().substringBeforeLast('.')
+            if (wrapperClass.startsWith(packageName) && wrapperClass.indexOf('.', packageName.length + 1) < 0) {
+                return objectFactory
+            }
+        }
+        throw IllegalStateException("No suitable object factory found for wrapper class: $wrapperClass")
+    }
+
+
+    fun generate(service: KSClassDeclaration, soapClasses: SoapClasses): TypeSpec {
+        val jaxbClasses = mutableListOf<TypeName>()
+        val objectFactories = mutableListOf<ObjectFactory>()
+        jaxbClasses.add(soapClasses.soapEnvelopeObjectFactory())
+        val xmlSeeAlso = service.findAnnotation(soapClasses.xmlSeeAlsoType())
+        xmlSeeAlso?.arguments?.forEach { arg ->
+            if (arg.name!!.asString() == "value") {
+                @Suppress("unchecked")
+                val types = (arg.value as List<KSType>)
+                for ((i, type) in types.withIndex()) {
+                    val className = type.toTypeName() as ClassName
+                    jaxbClasses.add(className)
+                    objectFactories.add(ObjectFactory(className, type, type.declaration as KSClassDeclaration, "objectFactory$i"))
+                }
+            }
+        }
+        val webService = service.findAnnotation(soapClasses.webServiceType())!!
+        var serviceName = webService.findValue<String>("name") ?: ""
+        if (serviceName.isEmpty()) {
+            serviceName = webService.findValue<String>("serviceName") ?: ""
+        }
+        if (serviceName.isEmpty()) {
+            serviceName = webService.findValue<String>("portName") ?: ""
+        }
+        if (serviceName.isEmpty()) {
+            serviceName = service.simpleName.asString()
+        }
+        val targetNamespace = webService.findValue<String>("targetNamespace")!!
+        val builder = TypeSpec.classBuilder(service.getOuterClassesAsPrefix() + service.simpleName.asString() + "_SoapClientImpl")
+            .generated(WebServiceClientSymbolProcessor::class)
+            .addOriginatingKSFile(service)
+            .addProperty("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope), KModifier.PRIVATE)
+            .addProperty("jaxb", soapClasses.jaxbContextTypeName(), KModifier.PRIVATE)
+            .primaryConstructor(
+                FunSpec.constructorBuilder()
+                    .addParameter("httpClient", soapClasses.httpClientTypeName())
+                    .addParameter("telemetry", soapTelemetry)
+                    .addParameter("config", soapConfig)
+                    .throws(soapClasses.jaxbExceptionTypeName())
+                    .build()
+            )
+            .addSuperinterface(service.toClassName())
+        val jaxbClassesCode = CodeBlock.builder()
+        for (i in jaxbClasses.indices) {
+            jaxbClassesCode.add("%T::class.java", jaxbClasses[i])
+            if (i < jaxbClasses.size - 1) {
+                jaxbClassesCode.add(", ")
+            }
+        }
+
+        for (objectFactory in objectFactories) {
+            val property = PropertySpec
+                .builder(objectFactory.fieldName, objectFactory.className, KModifier.PRIVATE, KModifier.FINAL)
+                .initializer("%T()", objectFactory.className)
+                .build()
+            builder.addProperty(property);
+        }
+
+        val webMethods = service.getDeclaredFunctions()
+            .filter { method -> method.isAnnotationPresent(soapClasses.webMethodType()) }
+            .toList()
+        addRequestClasses(soapClasses, builder, jaxbClassesCode, targetNamespace, webMethods)
+        val constructorBuilder = FunSpec.constructorBuilder()
+            .addParameter("httpClient", soapClasses.httpClientTypeName())
+            .addParameter("telemetry", soapTelemetry)
+            .addParameter("config", soapConfig)
+            .addParameter("envelopeProcessor", Function::class.asClassName().parameterizedBy(soapEnvelope, soapEnvelope).copy(true))
+            .addCode("this.jaxb = %T.newInstance(%L)\n", soapClasses.jaxbContextTypeName(), jaxbClassesCode.build())
+            .addCode("this.envelopeProcessor = envelopeProcessor ?: %T.identity()\n", Function::class.asClassName())
+            .throws(soapClasses.jaxbExceptionTypeName())
+        for (method in webMethods) {
+            val webMethod = method.findAnnotation(soapClasses.webMethodType())!!
+            var soapAction = webMethod.findValue<String>("action")
+            soapAction = if (soapAction.isNullOrEmpty()) {
+                null
+            } else {
+                "\"" + soapAction + "\""
+            }
+            var operationName = webMethod.findValue<String>("operationName") ?: ""
+            if (operationName.isEmpty()) {
+                operationName = method.simpleName.asString()
+            }
+            val executorFieldName = operationName + "RequestExecutor"
+            constructorBuilder.addCode(
+                "this.%L = %T(httpClient, telemetry, %T(jaxb), config, %T(%S, %S,  %S, %S))\n",
+                executorFieldName, soapRequestExecutor, soapClasses.xmlToolsType(), soapMethodDescriptor, service.toClassName().canonicalName, serviceName, operationName, soapAction
+            )
+            builder.addProperty(executorFieldName, soapRequestExecutor, KModifier.PRIVATE)
+            val m = FunSpec.builder(method.simpleName.asString()).addModifiers(KModifier.OVERRIDE)
+            method.parameters.forEach { param ->
+                m.addParameter(param.name!!.asString(), param.type.toTypeName())
+            }
+            method.returnType?.let { m.returns(it.toTypeName()) }
+            addMapRequest(m, method, soapClasses, objectFactories)
+            m.addCode("val __response = this.%L.call(__requestEnvelope)\n", executorFieldName)
+            addMapResponse(m, method, soapClasses, objectFactories)
+            builder.addFunction(m.build())
+        }
+        builder.primaryConstructor(constructorBuilder.build())
+        return builder.build()
+    }
+
+    private fun addRequestClasses(soapClasses: SoapClasses, builder: TypeSpec.Builder, jaxbClassesCode: CodeBlock.Builder, targetNamespace: String, webMethods: List<KSFunctionDeclaration>) {
+        for (method in webMethods) {
+            if (!isRpcBuilding(method, soapClasses)) {
+                continue
+            }
+            val webMethod = method.findAnnotation(soapClasses.webMethodType())!!
+            var operationName = webMethod.findValue<String>("operationName")
+            if (operationName.isNullOrEmpty()) {
+                operationName = method.simpleName.asString()
+            }
+
+            val requestClassName = operationName.toString() + "Request"
+            jaxbClassesCode.add(", %L::class.java", requestClassName)
+            val b = TypeSpec.classBuilder(requestClassName)
+                .addAnnotation(
+                    AnnotationSpec.builder(soapClasses.xmlAccessorTypeClassName())
+                        .addMember("value = %T.NONE", soapClasses.xmlAccessTypeClassName())
+                        .build()
+                )
+                .addAnnotation(
+                    AnnotationSpec.builder(soapClasses.xmlRootElementClassName())
+                        .addMember("namespace = %S", targetNamespace)
+                        .addMember("name = %S", operationName)
+                        .build()
+                )
+            for (parameter in method.parameters) {
+                val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
+                if ("OUT" == webParam.findEnumValue("mode")) {
+                    continue
+                }
+                var type = parameter.type.resolve()
+                type.declaration.let {
+                    if (it is KSClassDeclaration && it.doesImplement(soapClasses.holderType())) {
+                        type = type.arguments.first().type!!.resolve()
+                    }
+                }
+                b.addProperty(
+                    PropertySpec.builder(parameter.name!!.asString(), type.toTypeName().copy(true))
+                        .initializer("null")
+                        .mutable(true)
+                        .addAnnotation(
+                            AnnotationSpec.builder(soapClasses.xmlElementClassName())
+                                .addMember("name = %S", webParam.findValue<String>("partName")!!)
+                                .build()
+                        )
+                        .build()
+                )
+            }
+            builder.addType(b.build())
+        }
+    }
+
+    private fun addMapRequest(m: FunSpec.Builder, method: KSFunctionDeclaration, soapClasses: SoapClasses, objectFactories: List<ObjectFactory>) {
+        val requestWrapper = method.findAnnotation(soapClasses.requestWrapperType())
+        if (requestWrapper != null) {
+            val wrapperClass = requestWrapper.findValue<String>("className")!!
+            val objectFactory = objectFactories.findObjectFactoryByWrapper(wrapperClass)
+            m.addCode("val __requestWrapper = %L()\n", wrapperClass)
+            for (parameter in method.parameters) {
+                val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
+                val webParamName = webParam.findValue<String>("name")!!
+                val parameterWrapperFunc = objectFactory.findWrapperMethod(method, parameter)
+                val parameterTypeName = parameter.type.resolve().toTypeName()
+                val setterName = "set" + webParamName.replaceFirstChar { it.uppercaseChar() }
+                val isHolder = parameterTypeName is ParameterizedTypeName && parameterTypeName.rawType == soapClasses.holderType()
+                if (parameterWrapperFunc == null) {
+                    if (isHolder) {
+                        m.addCode("__requestWrapper.%N(%L.value)\n", setterName, parameter.name?.asString())
+                    } else {
+                        m.addCode("__requestWrapper.%N(%L)\n", setterName, parameter.name?.asString())
+                    }
+                } else {
+                    if (isHolder) {
+                        m.addCode("__requestWrapper.%N(%N.%N(%L.value))\n", setterName, objectFactory.fieldName, parameterWrapperFunc.simpleName.asString(), parameter.name?.asString())
+                    } else {
+                        m.addCode("__requestWrapper.%N(%N.%N(%L))\n", setterName, objectFactory.fieldName, parameterWrapperFunc.simpleName.asString(), parameter.name?.asString())
+                    }
+                }
+            }
+            m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(%T(__requestWrapper))\n", soapClasses.soapEnvelopeTypeName())
+        } else if (isRpcBuilding(method, soapClasses)) {
+            val webMethod = method.findAnnotation(soapClasses.webMethodType())!!
+            var operationName = webMethod.findValue<String>("operationName") ?: ""
+            if (operationName.isEmpty()) {
+                operationName = method.simpleName.asString()
+            }
+            val requestClassName = operationName + "Request"
+            m.addCode("val __requestWrapper = %L()\n", requestClassName)
+            for (parameter in method.parameters) {
+                val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
+                if ("OUT" == webParam.findEnumValue("mode")) {
+                    continue
+                }
+                m.addCode("__requestWrapper.%L = %L\n", parameter, parameter)
+            }
+            m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(%T(__requestWrapper))\n", soapClasses.soapEnvelopeTypeName())
+        } else {
+            assert(method.parameters.size == 1)
+            m.addCode("val __requestEnvelope = this.envelopeProcessor.apply(%T(%L))\n", soapClasses.soapEnvelopeTypeName(), method.parameters[0])
+        }
+    }
+
+    private fun isRpcBuilding(method: KSFunctionDeclaration, soapClasses: SoapClasses): Boolean {
+        val soapBinding = method.parentDeclaration?.findAnnotation(soapClasses.soapBindingType())
+        return soapBinding.findEnumValue("style") == "RPC"
+    }
+
+    @OptIn(KspExperimental::class)
+    private fun addMapResponse(m: FunSpec.Builder, method: KSFunctionDeclaration, soapClasses: SoapClasses, objectFactories: List<ObjectFactory>) {
+        m.controlFlow("if (__response is %T )", soapResult.nestedClass("Failure")) {
+            m.addCode("val __fault = __response.fault()\n")
+            val throws = resolver.getJvmCheckedException(method).toList()
+            if (throws.isNotEmpty()) {
+                m.addStatement("val __detail = __fault.detail.any.firstOrNull()")
+                for (thrownType in throws) {
+                    val thrownTypeDeclaration = thrownType.declaration as KSClassDeclaration
+                    if (!thrownTypeDeclaration.isAnnotationPresent(soapClasses.webFaultType())) {
+                        continue
+                    }
+                    val detailType = thrownTypeDeclaration.getDeclaredFunctions()
+                        .filter { getFaultInfo -> getFaultInfo.simpleName.asString() == "getFaultInfo" }
+                        .mapNotNull { obj -> obj.returnType?.resolve() }
+                        .first()
+                    m.addCode("if (__detail is %T)\n", detailType.toTypeName())
+                    m.addCode("  throw %T(__response.faultMessage(), __detail)\n", thrownType.toTypeName())
+                    m.addCode("else ")
+                }
+            }
+            m.addStatement("throw %T(__response.faultMessage(), __fault)", soapFaultException)
+        }
+        m.addCode("val __success =  __response as %T\n", soapResult.nestedClass("Success"))
+        val responseWrapper = method.findAnnotation(soapClasses.responseWrapperType())
+        if (responseWrapper != null) {
+            val wrapperClass = responseWrapper.findValue<String>("className")!!
+            val webResult = method.findAnnotation(soapClasses.webResultType())
+            m.addCode("val __responseBodyWrapper =  __success.body() as (%L)\n", wrapperClass)
+            if (webResult != null) {
+                val webResultName = webResult.findValue<String>("name")!!
+                m.addCode("return __responseBodyWrapper.get%L()", webResultName.replaceFirstChar { it.uppercaseChar() })
+                val objectFactory = objectFactories.findObjectFactoryByWrapper(wrapperClass)
+                val wrapperFieldType = objectFactory.findWrapperResponseType(wrapperClass).fixPlatformType(resolver)
+                if (wrapperFieldType.toString() != method.returnType?.resolve()?.fixPlatformType(resolver).toString()) {
+                    m.addCode(".value")
+                }
+                m.addCode("\n")
+            } else {
+                for (parameter in method.parameters) {
+                    val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
+                    val mode = webParam.findEnumValue("mode") ?: ""
+                    if (mode.endsWith("IN", false)) {
+                        continue
+                    }
+                    val webParamName = webParam.findValue<String>("name")!!
+                    m.addCode("%L.value = __responseBodyWrapper.get%L()\n", parameter, webParamName.replaceFirstChar { it.uppercaseChar() })
+                }
+            }
+        } else {
+            if (method.returnType!!.resolve() == resolver.builtIns.unitType) {
+                if (isRpcBuilding(method, soapClasses)) {
+                    m.addCode("val __document = __success.body() as %T\n", Node::class)
+                    m.controlFlow("for (__i in 0..__document.childNodes.getLength())") {
+                        addCode("val __child = __document.childNodes.item(__i)\n")
+                        addCode("val __childName = __child.localName\n")
+                        controlFlow("try") {
+                            addCode("when (__childName) {\n")
+                            for (parameter in method.parameters) {
+                                val webParam = parameter.findAnnotation(soapClasses.webParamType())!!
+                                if ("IN" == webParam.findEnumValue("mode")) {
+                                    continue
+                                }
+                                val parameterType = parameter.type.resolve()
+                                val parameterTypeName = parameterType.toTypeName()
+                                if (parameterTypeName !is ParameterizedTypeName || parameterTypeName != soapClasses.holderType()) {
+                                    continue
+                                }
+                                val partType = parameterType.arguments[0]
+                                val partName = webParam.findValue<String>("partName")!!
+                                addCode("%S ->", partName)
+                                addStatement(" %L.value = this.jaxb.createUnmarshaller()\n  .unmarshal(__child, %T::class.java)\n  ?.value", parameter, partType.toTypeName())
+                            }
+                            addCode("\n}\n")
+                            nextControlFlow("catch (__jaxbException: %T)", soapClasses.jaxbExceptionTypeName())
+                            addStatement("throw %T(__jaxbException)", soapException)
+                        }
+
+                    }
+                }
+            } else {
+                m.addCode("return __success.body() as %T\n", method.returnType!!.toTypeName())
+            }
+        }
+    }
+
+    private fun KSAnnotation?.findEnumValue(name: String): String? {
+        val style = this?.findValue<Any>(name)
+        if (style is KSDeclaration) {
+            return style.simpleName.asString()
+        }
+        return style?.toString()
+    }
+}

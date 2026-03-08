@@ -1,1 +1,1 @@
-ru.tinkoff.kora.cache.annotation.processor.CacheAnnotationProcessor,isolating
+io.koraframework.cache.annotation.processor.CacheAnnotationProcessor,isolating

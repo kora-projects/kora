@@ -5,9 +5,9 @@ module kora.config.common {
     requires transitive kora.common;
     requires transitive org.slf4j;
 
-    exports ru.tinkoff.kora.config.common;
-    exports ru.tinkoff.kora.config.common.annotation;
-    exports ru.tinkoff.kora.config.common.extractor;
-    exports ru.tinkoff.kora.config.common.factory;
-    exports ru.tinkoff.kora.config.common.origin;
+    exports io.koraframework.config.common;
+    exports io.koraframework.config.common.annotation;
+    exports io.koraframework.config.common.extractor;
+    exports io.koraframework.config.common.factory;
+    exports io.koraframework.config.common.origin;
 }

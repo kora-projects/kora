@@ -2,7 +2,7 @@
     {
         "tags": [],
         "typeRegex": "io.opentelemetry.api.trace.Tracer",
-        "moduleName": "ru.tinkoff.kora.opentelemetry.tracing.OpentelemetryTracingModule",
-        "artifact": "ru.tinkoff.kora:opentelemetry-tracing"
+        "moduleName": "io.koraframework.opentelemetry.tracing.OpentelemetryTracingModule",
+        "artifact": "io.koraframework:opentelemetry-tracing"
     }
 ]

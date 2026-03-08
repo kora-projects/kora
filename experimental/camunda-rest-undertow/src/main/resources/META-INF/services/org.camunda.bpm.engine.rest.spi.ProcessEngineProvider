@@ -1,1 +1,1 @@
-ru.tinkoff.kora.camunda.rest.KoraProcessEngineProvider
+io.koraframework.camunda.rest.KoraProcessEngineProvider

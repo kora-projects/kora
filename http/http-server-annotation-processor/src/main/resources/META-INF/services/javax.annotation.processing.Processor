@@ -1,1 +1,1 @@
-ru.tinkoff.kora.http.server.annotation.processor.HttpControllerProcessor
+io.koraframework.http.server.annotation.processor.HttpControllerProcessor

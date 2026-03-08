@@ -1,0 +1,40 @@
+package io.koraframework.test.extension.junit5.mockito;
+
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import io.koraframework.common.Tag;
+import io.koraframework.test.extension.junit5.KoraAppTest;
+import io.koraframework.test.extension.junit5.TestComponent;
+import io.koraframework.test.extension.junit5.testdata.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+
+@KoraAppTest(value = TestApplication.class, components = {TestComponent12.class, TestComponent23.class})
+public class MockGraphReplacedTests {
+
+    @Test
+    void mock(@Mock @TestComponent TestComponent1 component1) {
+        assertNull(component1.get());
+        Mockito.when(component1.get()).thenReturn("?");
+        assertEquals("?", component1.get());
+    }
+
+    @Test
+    void mockWithTag(@Tag(LifecycleComponent.class) @Mock @TestComponent TestComponent2 component) {
+        assertNull(component.get());
+        Mockito.when(component.get()).thenReturn("?");
+        assertEquals("?", component.get());
+    }
+
+    @Test
+    void beanWithTaggedMock(@Tag(LifecycleComponent.class) @Mock @TestComponent TestComponent2 component,
+                            @TestComponent TestComponent23 component23) {
+        assertNull(component.get());
+        Mockito.when(component.get()).thenReturn("?");
+        assertEquals("?", component.get());
+
+        assertEquals("?3", component23.get());
+    }
+}

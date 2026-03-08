@@ -1,0 +1,19 @@
+package io.koraframework.json.annotation.processor.reader;
+
+import com.palantir.javapoet.TypeName;
+import org.jspecify.annotations.Nullable;
+import io.koraframework.annotation.processor.common.CommonUtils;
+
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeMirror;
+import java.util.List;
+
+public record JsonClassReaderMeta(TypeMirror typeMirror, TypeElement typeElement, List<FieldMeta> fields) {
+
+    public record FieldMeta(VariableElement parameter,
+                            String jsonName,
+                            TypeName typeName,
+                            @Nullable ReaderFieldType typeMeta,
+                            CommonUtils.@Nullable MappingData reader) {}
+}

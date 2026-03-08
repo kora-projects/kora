@@ -1,0 +1,19 @@
+package io.koraframework.http.server.annotation.processor;
+
+import org.jspecify.annotations.Nullable;
+import io.koraframework.annotation.processor.common.CommonUtils;
+
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.ExecutableType;
+import java.util.Map;
+
+public record RequestMappingData(
+    ExecutableElement executableElement,
+    ExecutableType executableType,
+    String httpMethod,
+    String route,
+    Map<VariableElement, CommonUtils.MappingData> httpRequestMappingData,
+    CommonUtils.@Nullable MappingData responseMapper
+) {
+}

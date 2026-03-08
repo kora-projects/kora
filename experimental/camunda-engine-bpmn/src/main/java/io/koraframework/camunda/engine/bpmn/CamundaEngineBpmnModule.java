@@ -1,0 +1,238 @@
+package io.koraframework.camunda.engine.bpmn;
+
+import io.koraframework.application.graph.All;
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.camunda.engine.bpmn.configurator.AdminUserProcessEngineConfigurator;
+import io.koraframework.camunda.engine.bpmn.configurator.DeploymentProcessEngineConfigurator;
+import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
+import io.koraframework.camunda.engine.bpmn.configurator.SecondStageKoraProcessEngineConfigurator;
+import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineBpmnTelemetryFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.DefaultCamundaEngineBpmnTelemetryFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.KoraEngineTelemetryRegistry;
+import io.koraframework.camunda.engine.bpmn.transaction.CamundaTransactionManager;
+import io.koraframework.camunda.engine.bpmn.transaction.JdbcCamundaTransactionManager;
+import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Root;
+import io.koraframework.common.readiness.ReadinessProbe;
+import io.koraframework.common.telemetry.Observation;
+import io.koraframework.config.common.Config;
+import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.logging.common.MDC;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import org.camunda.bpm.engine.*;
+import org.camunda.bpm.engine.delegate.JavaDelegate;
+import org.camunda.bpm.engine.impl.cfg.IdGenerator;
+import org.camunda.bpm.engine.impl.cfg.ProcessEnginePlugin;
+import org.camunda.bpm.engine.impl.el.JuelExpressionManager;
+import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
+import org.camunda.bpm.engine.impl.persistence.StrongUuidGenerator;
+import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
+import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
+import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
+import org.jspecify.annotations.Nullable;
+
+import javax.sql.DataSource;
+import java.util.Optional;
+
+public interface CamundaEngineBpmnModule {
+
+    default CamundaEngineBpmnConfig camundaEngineBpmnConfig(Config config, ConfigValueExtractor<CamundaEngineBpmnConfig> extractor) {
+        return extractor.extract(config.get("camunda.engine.bpmn"));
+    }
+
+    @Tag(CamundaBpmn.class)
+    @DefaultComponent
+    default DataSource camundaDataSource(DataSource dataSource) {
+        return dataSource;
+    }
+
+    @DefaultComponent
+    default CamundaEngineDataSource camundaKoraDataSource(@Tag(CamundaBpmn.class) DataSource dataSource) {
+        return new CamundaEngineDataSource() {
+            @Override
+            public CamundaTransactionManager transactionManager() {
+                return new JdbcCamundaTransactionManager(dataSource);
+            }
+
+            @Override
+            public DataSource dataSource() {
+                return dataSource;
+            }
+        };
+    }
+
+    @DefaultComponent
+    default IdGenerator camundaEngineBpmnIdGenerator() {
+        return new StrongUuidGenerator();
+    }
+
+    @DefaultComponent
+    default TelemetryRegistry camundaEngineBpmnKoraTelemetryRegistry(@Nullable ApplicationServerImpl applicationServer) {
+        return new KoraEngineTelemetryRegistry(applicationServer);
+    }
+
+    @DefaultComponent
+    default JobExecutor camundaEngineBpmnKoraJobExecutor(CamundaEngineBpmnConfig engineConfig) {
+        if (engineConfig.jobExecutor().virtualThreadsEnabled()) {
+            return new KoraVirtualThreadJobExecutor(engineConfig);
+        } else {
+            return new KoraThreadPoolJobExecutor(engineConfig);
+        }
+    }
+
+    default ReadinessProbe camundaEngineBpmnReadinessProbe(JobExecutor jobExecutor) {
+        return new JobExecutorReadinessProbe(jobExecutor);
+    }
+
+
+    @DefaultComponent
+    default CamundaEngineBpmnTelemetryFactory camundaEngineBpmnTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
+        return new DefaultCamundaEngineBpmnTelemetryFactory(meterRegistry, tracer);
+    }
+
+    @DefaultComponent
+    default KoraDelegateWrapperFactory koraJavaDelegateTelemetryWrapper(CamundaEngineBpmnTelemetryFactory telemetryFactory,
+                                                                        CamundaEngineBpmnConfig camundaEngineBpmnConfig) {
+        return delegate -> {
+            var telemetry = telemetryFactory.get(camundaEngineBpmnConfig.telemetry());
+            return execution -> {
+                var observation = telemetry.observe(delegate.getClass().getCanonicalName());
+                Observation.scoped(observation)
+                    .where(MDC.VALUE, new MDC())
+                    .call(() -> {
+                        try {
+                            observation.observeExecution(execution);
+                            delegate.execute(execution);
+                            return null;
+                        } catch (Throwable e) {
+                            observation.observeError(e);
+                            throw e;
+                        }
+                    });
+            };
+        };
+    }
+
+    @DefaultComponent
+    default ELResolver camundaEngineBpmnKoraELResolver(KoraDelegateWrapperFactory wrapperFactory,
+                                                       All<KoraDelegate> koraDelegates,
+                                                       All<JavaDelegate> javaDelegates) {
+        return new KoraELResolver(wrapperFactory, koraDelegates, javaDelegates);
+    }
+
+    @DefaultComponent
+    default JuelExpressionManager camundaEngineBpmnKoraExpressionManager(ELResolver koraELResolver) {
+        return new KoraExpressionManager(koraELResolver);
+    }
+
+    @DefaultComponent
+    default ArtifactFactory camundaEngineBpmnKoraArtifactFactory(KoraDelegateWrapperFactory wrapperFactory,
+                                                                 All<KoraDelegate> koraDelegates,
+                                                                 All<JavaDelegate> javaDelegates) {
+        return new KoraArtifactFactory(wrapperFactory, koraDelegates, javaDelegates);
+    }
+
+    @DefaultComponent
+    default CamundaVersion camundaEngineBpmnPackageVersion() {
+        return new CamundaVersion(Optional.ofNullable(ProcessEngine.class.getPackage().getImplementationVersion())
+            .map(String::trim)
+            .orElse(null));
+    }
+
+    @DefaultComponent
+    default KoraResolverFactory camundaEngineBpmnKoraComponentResolverFactory(KoraDelegateWrapperFactory wrapperFactory,
+                                                                              All<KoraDelegate> koraDelegates,
+                                                                              All<JavaDelegate> javaDelegates) {
+        return new KoraResolverFactory(wrapperFactory, koraDelegates, javaDelegates);
+    }
+
+    @DefaultComponent
+    default ProcessEngineConfiguration camundaEngineBpmnKoraProcessEngineConfiguration(JobExecutor jobExecutor,
+                                                                                       TelemetryRegistry telemetryRegistry,
+                                                                                       IdGenerator idGenerator,
+                                                                                       JuelExpressionManager koraExpressionManager,
+                                                                                       ArtifactFactory artifactFactory,
+                                                                                       All<ProcessEnginePlugin> plugins,
+                                                                                       CamundaEngineDataSource camundaEngineDataSource,
+                                                                                       CamundaEngineBpmnConfig camundaEngineBpmnConfig,
+                                                                                       KoraResolverFactory componentResolverFactory,
+                                                                                       CamundaVersion camundaVersion) {
+        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaEngineDataSource, camundaEngineBpmnConfig, componentResolverFactory, camundaVersion);
+    }
+
+    @Root
+    @DefaultComponent
+    default KoraProcessEngine camundaEngineBpmnKoraProcessEngine(ProcessEngineConfiguration processEngineConfiguration,
+                                                                 CamundaEngineBpmnConfig camundaEngineBpmnConfig,
+                                                                 All<ProcessEngineConfigurator> camundaConfigurators) {
+        return new KoraProcessEngine(processEngineConfiguration, camundaEngineBpmnConfig, camundaConfigurators);
+    }
+
+    default ProcessEngineConfigurator camundaEngineBpmnKoraAdminUserConfigurator(CamundaEngineBpmnConfig camundaEngineBpmnConfig, CamundaEngineDataSource camundaEngineDataSource) {
+        return new AdminUserProcessEngineConfigurator(camundaEngineBpmnConfig, camundaEngineDataSource);
+    }
+
+    default ProcessEngineConfigurator camundaEngineBpmnKoraResourceDeploymentConfigurator(CamundaEngineBpmnConfig camundaEngineBpmnConfig) {
+        return new DeploymentProcessEngineConfigurator(camundaEngineBpmnConfig);
+    }
+
+    default ProcessEngineConfigurator camundaEngineBpmnKoraProcessEngineTwoStageCamundaConfigurator(ProcessEngineConfiguration engineConfiguration,
+                                                                                                    CamundaEngineBpmnConfig camundaEngineBpmnConfig,
+                                                                                                    JobExecutor jobExecutor) {
+        return new SecondStageKoraProcessEngineConfigurator(engineConfiguration, camundaEngineBpmnConfig, jobExecutor);
+    }
+
+    @Root
+    default Lifecycle camundaKoraProcessEngineParallelInitializer(ProcessEngine processEngine,
+                                                                  CamundaEngineBpmnConfig camundaEngineBpmnConfig,
+                                                                  ProcessEngineConfiguration processEngineConfiguration,
+                                                                  All<ProcessEngineConfigurator> camundaConfigurators) {
+        return new KoraProcessEngineParallelInitializer(processEngine, camundaEngineBpmnConfig, processEngineConfiguration, camundaConfigurators);
+    }
+
+    default RuntimeService camundaEngineBpmnRuntimeService(ProcessEngine processEngine) {
+        return processEngine.getRuntimeService();
+    }
+
+    default RepositoryService camundaEngineBpmnRepositoryService(ProcessEngine processEngine) {
+        return processEngine.getRepositoryService();
+    }
+
+    default ManagementService camundaEngineBpmnManagementService(ProcessEngine processEngine) {
+        return processEngine.getManagementService();
+    }
+
+    default AuthorizationService camundaEngineBpmnAuthorizationService(ProcessEngine processEngine) {
+        return processEngine.getAuthorizationService();
+    }
+
+    default DecisionService camundaEngineBpmnDecisionService(ProcessEngine processEngine) {
+        return processEngine.getDecisionService();
+    }
+
+    default ExternalTaskService camundaEngineBpmnExternalTaskService(ProcessEngine processEngine) {
+        return processEngine.getExternalTaskService();
+    }
+
+    default FilterService camundaEngineBpmnFilterService(ProcessEngine processEngine) {
+        return processEngine.getFilterService();
+    }
+
+    default FormService camundaEngineBpmnFormService(ProcessEngine processEngine) {
+        return processEngine.getFormService();
+    }
+
+    default TaskService camundaEngineBpmnTaskService(ProcessEngine processEngine) {
+        return processEngine.getTaskService();
+    }
+
+    default HistoryService camundaEngineBpmnHistoryService(ProcessEngine processEngine) {
+        return processEngine.getHistoryService();
+    }
+
+    default IdentityService camundaEngineBpmnIdentityService(ProcessEngine processEngine) {
+        return processEngine.getIdentityService();
+    }
+}

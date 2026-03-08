@@ -1,1 +1,1 @@
-ru.tinkoff.kora.soap.client.annotation.processor.WebServiceClientAnnotationProcessor,isolating
+io.koraframework.soap.client.annotation.processor.WebServiceClientAnnotationProcessor,isolating

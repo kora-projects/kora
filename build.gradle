@@ -11,7 +11,7 @@ if (hasProperty('buildScan')) {
 }
 
 allprojects {
-    group = "ru.tinkoff.kora"
+    group = "io.koraframework"
     version = System.getenv().getOrDefault("KORA_VERSION", "2.0.0-SNAPSHOT")
     repositories {
         mavenCentral()
@@ -57,7 +57,7 @@ subprojects {
         return
     }
 
-    group = "ru.tinkoff.kora.experimental"
+    group = "io.koraframework.experimental"
     dependencies {
         implementation libs.jetbrains.annotations
     }
@@ -143,11 +143,14 @@ def createPublishArchive = tasks.register("createPublishArchive", Zip) {
     dependsOn(':maven-parent:publishMavenPublicationToBuildRepository')
 }
 
-tasks.register('uploadPublishArchive', ru.tinkoff.kora.gradle.SonatypePublishTask) {
+
+import io.koraframework.gradle.SonatypePublishTask
+
+tasks.register('uploadPublishArchive', SonatypePublishTask) {
     dependsOn(createPublishArchive)
     archive = rootProject.layout.buildDirectory.file('deployment.zip')
-    username = System.getenv().getOrDefault("REPO_USER", "")
-    password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+    username = System.getenv().getOrDefault("SONATYPE_KORA_IO_USERNAME", "")
+    password = System.getenv().getOrDefault("SONATYPE_KORA_IO_PASSWORD", "")
 }
 
 // config published libraries
@@ -259,8 +262,15 @@ subprojects {
     }
 
     signing {
-        required = false
-        sign publishing.publications.maven
+        var signingKey = System.getenv()["KORA_IO_SIGNING_KEY"]
+        var signingPassword = System.getenv()["KORA_IO_SIGNING_PASSWORD"]
+        if (signingKey == null || signingPassword == null) {
+            required = false
+        } else {
+            required = true
+            useInMemoryPgpKeys(signingKey, signingPassword)
+            sign publishing.publications.maven
+        }
     }
 
     test {

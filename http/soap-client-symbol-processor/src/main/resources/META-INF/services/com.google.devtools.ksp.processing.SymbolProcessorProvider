@@ -1,1 +1,1 @@
-ru.tinkoff.kora.soap.client.symbol.processor.WebServiceClientSymbolProcessorProvider
+io.koraframework.soap.client.symbol.processor.WebServiceClientSymbolProcessorProvider

@@ -1,0 +1,38 @@
+package io.koraframework.test.extension.junit5.replace;
+
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import io.koraframework.application.graph.TypeRef;
+import io.koraframework.common.Tag;
+import io.koraframework.test.extension.junit5.KoraAppTest;
+import io.koraframework.test.extension.junit5.KoraAppTestGraphModifier;
+import io.koraframework.test.extension.junit5.KoraGraphModification;
+import io.koraframework.test.extension.junit5.TestComponent;
+import io.koraframework.test.extension.junit5.testdata.TestApplication;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@KoraAppTest(TestApplication.class)
+public class ReplaceComplexInterfaceHolderTests implements KoraAppTestGraphModifier {
+
+    @TestComponent
+    @Tag(TestApplication.ComplexInterfaceHolder.class)
+    private TestApplication.ComplexInterfaceHolder<String> holder;
+
+    @NotNull
+    @Override
+    public KoraGraphModification graph() {
+        return KoraGraphModification.create()
+            .replaceComponent(TypeRef.of(TestApplication.ComplexInterfaceHolder.class, String.class), TestApplication.ComplexInterfaceHolder.class, () -> {
+                var mock = Mockito.mock(TestApplication.ComplexInterfaceHolder.class);
+                Mockito.when(mock.other()).thenReturn("12345");
+                return mock;
+            });
+    }
+
+    @Test
+    void holderReplaced() {
+        assertEquals("12345", holder.other());
+    }
+}

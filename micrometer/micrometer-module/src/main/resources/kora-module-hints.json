@@ -2,13 +2,13 @@
     {
         "tags": [],
         "typeRegex": "io.micrometer.prometheus.PrometheusMeterRegistry",
-        "moduleName": "ru.tinkoff.kora.micrometer.module.MetricsModule",
-        "artifact": "ru.tinkoff.kora:micrometer-module"
+        "moduleName": "io.koraframework.micrometer.module.MetricsModule",
+        "artifact": "io.koraframework:micrometer-module"
     },
     {
         "tags": [],
         "typeRegex": "io.micrometer.core.instrument.MeterRegistry",
-        "moduleName": "ru.tinkoff.kora.micrometer.module.MetricsModule",
-        "artifact": "ru.tinkoff.kora:micrometer-module"
+        "moduleName": "io.koraframework.micrometer.module.MetricsModule",
+        "artifact": "io.koraframework:micrometer-module"
     }
 ]

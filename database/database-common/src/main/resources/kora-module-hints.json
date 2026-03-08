@@ -1,14 +1,14 @@
 [
     {
         "tags": [],
-        "typeRegex": "ru.tinkoff.kora.database.common.telemetry.DataBaseTelemetryFactory",
-        "moduleName": "ru.tinkoff.kora.database.common.DataBaseModule",
-        "artifact": "ru.tinkoff.kora:database-common"
+        "typeRegex": "io.koraframework.database.common.telemetry.DataBaseTelemetryFactory",
+        "moduleName": "io.koraframework.database.common.DataBaseModule",
+        "artifact": "io.koraframework:database-common"
     },
     {
         "tags": [],
-        "typeRegex": "ru.tinkoff.kora.database.common.telemetry.DataBaseLoggerFactory",
-        "moduleName": "ru.tinkoff.kora.database.common.DataBaseModule",
-        "artifact": "ru.tinkoff.kora:database-common"
+        "typeRegex": "io.koraframework.database.common.telemetry.DataBaseLoggerFactory",
+        "moduleName": "io.koraframework.database.common.DataBaseModule",
+        "artifact": "io.koraframework:database-common"
     }
 ]

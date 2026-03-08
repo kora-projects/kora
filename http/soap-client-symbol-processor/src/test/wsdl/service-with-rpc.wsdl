@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   name="OfferService"
-                  targetNamespace="http://kora.tinkoff.ru/service/with/rpc"
+                  targetNamespace="http://koraframework.io/service/with/rpc"
                   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-                  xmlns:tns="http://kora.tinkoff.ru/service/with/rpc"
+                  xmlns:tns="http://koraframework.io/service/with/rpc"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema">
     <wsdl:message name="testRequestMsg">
         <wsdl:part name="val1" type="xsd:string"/>
@@ -23,12 +23,12 @@
     <wsdl:binding name="ServiceWithRpcBinding" type="tns:ServiceWithRpc">
         <soap:binding style="rpc" transport="http://schemas.xmlsoap.org/soap/http"/>
         <wsdl:operation name="test">
-            <soap:operation soapAction="rpc/http://kora.tinkoff.ru/service/with/rpc"/>
+            <soap:operation soapAction="rpc/http://koraframework.io/service/with/rpc"/>
             <wsdl:input name="testRequest">
-                <soap:body use="literal" namespace="http://kora.tinkoff.ru/service/with/rpc"/>
+                <soap:body use="literal" namespace="http://koraframework.io/service/with/rpc"/>
             </wsdl:input>
             <wsdl:output name="testResponse">
-                <soap:body use="literal" namespace="http://kora.tinkoff.ru/service/with/rpc"/>
+                <soap:body use="literal" namespace="http://koraframework.io/service/with/rpc"/>
             </wsdl:output>
         </wsdl:operation>
     </wsdl:binding>

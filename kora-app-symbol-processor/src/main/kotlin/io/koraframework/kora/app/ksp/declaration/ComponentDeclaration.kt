@@ -1,0 +1,238 @@
+package io.koraframework.kora.app.ksp.declaration
+
+import com.google.devtools.ksp.closestClassDeclaration
+import com.google.devtools.ksp.getDeclaredFunctions
+import com.google.devtools.ksp.isConstructor
+import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.CodeBlock
+import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.TypeName
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.toTypeName
+import io.koraframework.kora.app.ksp.ProcessingContext
+import io.koraframework.kora.app.ksp.extension.ExtensionResult
+import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.KspCommonUtils.fixPlatformType
+import io.koraframework.ksp.common.TagUtils
+import io.koraframework.ksp.common.TagUtils.parseTag
+import io.koraframework.ksp.common.exception.ProcessingErrorException
+
+sealed interface ComponentDeclaration {
+    val type: KSType
+    val source: KSDeclaration
+    val tag: String?
+    val isInterceptor: Boolean
+
+    fun declarationString(): String
+
+    fun isTemplate(): Boolean {
+        for (argument in type.arguments) {
+            if (argument.hasGenericVariable()) {
+                return true
+            }
+        }
+        return false
+    }
+
+    fun isDefault(): Boolean {
+        return false
+    }
+
+    data class FromModuleComponent(
+        override val type: KSType,
+        val module: ModuleDeclaration,
+        override val tag: String?,
+        val method: KSFunctionDeclaration,
+        val methodParameterTypes: List<KSType>,
+        val typeVariables: List<KSTypeArgument>,
+        override val isInterceptor: Boolean
+    ) : ComponentDeclaration {
+        override val source get() = this.method
+
+        // method modifier OVERRIDEN don't show real override and is always there
+        fun isOverriden(): Boolean {
+            return module.element.getDeclaredFunctions()
+                .filter { it.modifiers.contains(Modifier.OVERRIDE) }
+                .any { it ->
+                    it.qualifiedName!!.asString() == method.qualifiedName!!.asString()
+                        && it.parameters.size == method.parameters.size
+                        && it.parameters.map { param -> param.type.toTypeName() }.toList() == method.parameters.map { it.type.toTypeName() }.toList()
+                }
+        }
+
+        override fun declarationString(): String {
+            val args = if (method.parameters.isEmpty()) "()" else "(...)"
+
+            val isOverridenReally = isOverriden()
+            return if (!isOverridenReally && method.findOverridee()?.parentDeclaration != null) {
+                "factory  " + method.findOverridee()!!.parentDeclaration!!.qualifiedName?.asString() + "#" + method.simpleName.asString() + args
+            } else {
+                "factory  " + module.element.qualifiedName?.asString() + "#" + method.simpleName.asString() + args
+            }
+        }
+
+        override fun isDefault(): Boolean = method.findAnnotation(CommonClassNames.defaultComponent) != null
+    }
+
+    data class AnnotatedComponent(
+        override val type: KSType,
+        val classDeclaration: KSClassDeclaration,
+        override val tag: String?,
+        val constructor: KSFunctionDeclaration,
+        val methodParameterTypes: List<KSType>,
+        val typeVariables: List<KSTypeArgument>,
+        override val isInterceptor: Boolean
+    ) : ComponentDeclaration {
+        override val source get() = this.constructor
+        override fun declarationString() = "component  " + classDeclaration.qualifiedName?.asString().toString()
+    }
+
+    data class FromExtensionComponent(
+        override val type: KSType,
+        override val source: KSDeclaration,
+        val methodParameterTypes: List<KSType>,
+        val methodParameterTags: List<String?>,
+        override val tag: String?,
+        val generator: (CodeBlock) -> CodeBlock
+    ) : ComponentDeclaration {
+        override val isInterceptor: Boolean
+            get() = false
+
+        override fun declarationString(): String {
+            return "extension  " + source.parentDeclaration?.qualifiedName?.asString().toString() + "." + source.simpleName.asString()
+        }
+    }
+
+    data class PromisedProxyComponent(
+        override val type: KSType,
+        val classDeclaration: KSClassDeclaration,
+        val className: TypeName
+    ) : ComponentDeclaration {
+        override val source get() = this.classDeclaration
+        override val tag get() = CommonClassNames.promisedProxy.canonicalName
+        override val isInterceptor: Boolean
+            get() = false
+
+        override fun declarationString() = "<Proxy>"
+    }
+
+
+    data class OptionalComponent(
+        override val type: KSType,
+        override val tag: String?
+    ) : ComponentDeclaration {
+        override val source get() = type.declaration
+        override val isInterceptor: Boolean
+            get() = false
+
+        override fun declarationString() = "Optional.empty"
+    }
+
+
+    companion object {
+        fun fromModule(ctx: ProcessingContext, module: ModuleDeclaration, method: KSFunctionDeclaration): FromModuleComponent {
+            // modules can be written in java so we better fix platform nullability
+            val type = method.returnType!!.resolve().fixPlatformType(ctx.resolver)
+            if (type.isError) {
+                throw ProcessingErrorException(
+                    "Component type is not resolvable in the current round of processing: func $method()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    method
+                )
+            }
+            val tags = TagUtils.parseTagValue(method)
+            val parameterTypes = method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
+            val typeParameters = method.typeParameters.map {
+                val t = it.bounds.firstOrNull()?.resolve()?.fixPlatformType(ctx.resolver) ?: ctx.resolver.builtIns.anyType
+
+                ctx.resolver.getTypeArgument(
+                    ctx.resolver.createKSTypeReferenceFromKSType(t),
+                    it.variance
+                )
+            }
+            return FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type))
+        }
+
+        fun fromAnnotated(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): AnnotatedComponent {
+            val constructor = classDeclaration.primaryConstructor
+            if (constructor == null) {
+                throw ProcessingErrorException("@Component annotated class should have primary constructor", classDeclaration)
+            }
+            val typeParameters = classDeclaration.typeParameters.map {
+                val t = it.bounds.firstOrNull()?.resolve() ?: ctx.resolver.builtIns.anyType
+
+                ctx.resolver.getTypeArgument(
+                    ctx.resolver.createKSTypeReferenceFromKSType(t),
+                    it.variance
+                )
+            }
+            val type = classDeclaration.asType(listOf())
+            val tags = TagUtils.parseTagValue(classDeclaration)
+            val parameterTypes = constructor.parameters.map { it.type.resolve() }
+
+            return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type))
+        }
+
+        fun fromExtension(ctx: ProcessingContext, extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {
+            val sourceMethod = extensionResult.constructor
+            val sourceType = extensionResult.type
+            val parameterTypes = sourceType.parameterTypes.map { it!!.fixPlatformType(ctx.resolver) }
+            val parameterTags = sourceMethod.parameters.map { it.parseTag() }
+            val type = sourceType.returnType!!
+            if (type.isError) {
+                throw ProcessingErrorException(
+                    "Component type is not resolvable in the current round of processing: func $sourceType()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    sourceMethod
+                )
+            }
+            val tag = if (sourceMethod.isConstructor()) {
+                sourceMethod.closestClassDeclaration()!!.parseTag()
+            } else {
+                sourceMethod.parseTag()
+            }
+
+            return FromExtensionComponent(type, sourceMethod, parameterTypes, parameterTags, tag) {
+                if (sourceMethod.isConstructor()) {
+                    val clazz = sourceMethod.closestClassDeclaration()!!
+                    CodeBlock.of("%T(%L)", clazz.toClassName(), it)
+                } else {
+                    val parent = sourceMethod.parentDeclaration
+                    if (parent is KSClassDeclaration) {
+                        CodeBlock.of("%M(%L)", MemberName(parent.toClassName(), sourceMethod.simpleName.asString()), it)
+                    } else {
+                        CodeBlock.of("%M(%L)", MemberName(sourceMethod.packageName.asString(), sourceMethod.simpleName.asString()), it)
+                    }
+                }
+            }
+        }
+
+        fun fromExtension(extensionResult: ExtensionResult.CodeBlockResult): FromExtensionComponent {
+            return FromExtensionComponent(
+                extensionResult.componentType,
+                extensionResult.source,
+                extensionResult.dependencyTypes,
+                extensionResult.dependencyTags,
+                extensionResult.componentTag,
+                extensionResult.codeBlock
+            )
+        }
+    }
+}
+
+private fun KSTypeArgument.hasGenericVariable(): Boolean {
+    val type = this.type
+    if (type == null) {
+        return true
+    }
+    val resolvedType = type.resolve()
+    if (resolvedType.declaration is KSTypeParameter) {
+        return true
+    }
+
+    for (param in resolvedType.arguments) {
+        if (param.hasGenericVariable()) {
+            return true
+        }
+    }
+    return false
+}

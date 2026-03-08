@@ -1,1 +1,1 @@
-ru.tinkoff.kora.cache.symbol.processor.CacheSymbolProcessorProvider
+io.koraframework.cache.symbol.processor.CacheSymbolProcessorProvider

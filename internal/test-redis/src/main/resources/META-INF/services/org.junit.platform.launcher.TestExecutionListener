@@ -1,1 +1,1 @@
-ru.tinkoff.kora.test.redis.RedisTestExtension
+io.koraframework.test.redis.RedisTestExtension

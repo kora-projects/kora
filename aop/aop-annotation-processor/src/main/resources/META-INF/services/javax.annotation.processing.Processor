@@ -1,1 +1,1 @@
-ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor
+io.koraframework.aop.annotation.processor.AopAnnotationProcessor

@@ -1,0 +1,39 @@
+package io.koraframework.http.common.form;
+
+import org.jspecify.annotations.Nullable;
+import io.koraframework.http.common.body.HttpBodyOutput;
+
+import java.util.List;
+
+/**
+ * <b>Русский</b>: Описывает тело HTTP запроса/ответа как форма с бинарными данными
+ * <hr>
+ * <b>English</b>: Describes the HTTP request/response body as a form with binary data
+ * <br>
+ * <br>
+ * <a href="https://ru.wikipedia.org/wiki/Multipart/form-data">Описание Формы</a>
+ */
+public record FormMultipart(List<? extends FormPart> parts) {
+
+    public static FormPart data(String name, String value) {
+        return new FormPart.MultipartData(name, value);
+    }
+
+    public static FormPart file(String name, @Nullable String fileName, @Nullable String contentType, byte[] content) {
+        return new FormPart.MultipartFile(name, fileName, contentType, content);
+    }
+
+    public static FormPart file(String name, @Nullable String fileName, HttpBodyOutput content) {
+        return new FormPart.MultipartFileStream(name, fileName, content);
+    }
+
+    public sealed interface FormPart {
+        String name();
+
+        record MultipartFile(String name, @Nullable String fileName, @Nullable String contentType, byte[] content) implements FormPart {}
+
+        record MultipartFileStream(String name, @Nullable String fileName, HttpBodyOutput content) implements FormPart {}
+
+        record MultipartData(String name, String content) implements FormPart {}
+    }
+}

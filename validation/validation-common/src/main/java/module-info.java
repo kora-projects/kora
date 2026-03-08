@@ -3,7 +3,7 @@ module kora.validation.common {
     requires static org.jetbrains.annotations;
     requires kora.config.common;
 
-    exports ru.tinkoff.kora.validation.common;
-    exports ru.tinkoff.kora.validation.common.annotation;
-    exports ru.tinkoff.kora.validation.common.constraint.factory;
+    exports io.koraframework.validation.common;
+    exports io.koraframework.validation.common.annotation;
+    exports io.koraframework.validation.common.constraint.factory;
 }

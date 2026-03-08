@@ -1,1 +1,1 @@
-ru.tinkoff.grpc.client.ksp.GrpcClientStubForSymbolProcessorProvider
+io.koraframework.grpc.client.ksp.GrpcClientStubForSymbolProcessorProvider

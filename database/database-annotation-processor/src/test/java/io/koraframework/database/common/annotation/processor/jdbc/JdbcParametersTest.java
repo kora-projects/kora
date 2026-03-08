@@ -1,0 +1,491 @@
+package io.koraframework.database.common.annotation.processor.jdbc;
+
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import io.koraframework.annotation.processor.common.TestContext;
+import io.koraframework.application.graph.TypeRef;
+import io.koraframework.common.Tag;
+import io.koraframework.database.common.annotation.processor.DbTestUtils;
+import io.koraframework.database.common.annotation.processor.entity.TestEntityJavaBean;
+import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord;
+import io.koraframework.database.common.annotation.processor.jdbc.repository.AllowedParametersRepository;
+import io.koraframework.database.jdbc.JdbcConnectionFactory;
+import io.koraframework.database.jdbc.JdbcDatabaseConfig;
+import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
+import io.koraframework.json.common.annotation.Json;
+
+import java.math.BigDecimal;
+import java.sql.SQLException;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+
+public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
+    @Test
+    void oldTest() throws SQLException {
+        var executor = new MockJdbcExecutor();
+        var ctx = new TestContext();
+        ctx.addContextElement(TypeRef.of(JdbcConnectionFactory.class), executor);
+        ctx.addMock(TypeRef.of(JdbcParameterColumnMapper.class, TestEntityRecord.UnknownTypeField.class));
+        ctx.addMock(TypeRef.of(JdbcEntity.TestEntityFieldJdbcParameterColumnMapperNonFinal.class));
+        AllowedParametersRepository repository = ctx.newInstance(DbTestUtils.compileClass(AllowedParametersRepository.class));
+
+        repository.dtoJavaBeanParameter(TestEntityJavaBean.defaultJavaBean());
+        verify(executor.preparedStatement).setString(1, "field1");
+        verify(executor.preparedStatement).setInt(2, 42);
+        executor.reset();
+
+        repository.dtoRecordParameterMapping(TestEntityRecord.defaultRecord());
+        verify(executor.preparedStatement).setString(1, "field1");
+        verify(executor.preparedStatement).setInt(2, 42);
+        executor.reset();
+
+        Mockito.when(executor.preparedStatement.executeBatch()).thenReturn(new int[]{10, 10, 10});
+        repository.nativeParameterBatch(List.of("test1", "test2"), 42);
+        var order = Mockito.inOrder(executor.preparedStatement);
+        order.verify(executor.preparedStatement).setString(1, "test1");
+        order.verify(executor.preparedStatement).setInt(2, 42);
+        order.verify(executor.preparedStatement).setString(1, "test2");
+        order.verify(executor.preparedStatement).setInt(2, 42);
+        order.verify(executor.preparedStatement).executeBatch();
+        order.verify(executor.preparedStatement).close();
+        order.verifyNoMoreInteractions();
+        executor.reset();
+
+        Mockito.when(executor.preparedStatement.executeBatch()).thenReturn(new int[]{10, 10, 10});
+        repository.mappedBatch(List.of(
+            TestEntityJavaBean.defaultJavaBean(),
+            TestEntityJavaBean.defaultJavaBean()
+        ));
+        order = Mockito.inOrder(executor.preparedStatement);
+        order.verify(executor.preparedStatement).setString(1, "field1");
+        order.verify(executor.preparedStatement).setInt(2, 42);
+        order.verify(executor.preparedStatement).setInt(3, 43);
+        order.verify(executor.preparedStatement).addBatch();
+        order.verify(executor.preparedStatement).setString(1, "field1");
+        order.verify(executor.preparedStatement).setInt(2, 42);
+        order.verify(executor.preparedStatement).setInt(3, 43);
+        order.verify(executor.preparedStatement).addBatch();
+        order.verify(executor.preparedStatement).executeBatch();
+        order.verify(executor.preparedStatement).close();
+        order.verifyNoMoreInteractions();
+        executor.reset();
+
+        Mockito.when(executor.preparedStatement.executeBatch()).thenReturn(new int[]{10, 10, 10});
+        repository.mappedBatch(List.of(
+            TestEntityJavaBean.defaultJavaBean(),
+            TestEntityJavaBean.defaultJavaBean()
+        ));
+        order = Mockito.inOrder(executor.preparedStatement);
+        order.verify(executor.preparedStatement).setString(1, "field1");
+        order.verify(executor.preparedStatement).setInt(2, 42);
+        order.verify(executor.preparedStatement).setString(1, "field1");
+        order.verify(executor.preparedStatement).setInt(2, 42);
+        order.verify(executor.preparedStatement).executeBatch();
+        order.verify(executor.preparedStatement).close();
+        order.verifyNoMoreInteractions();
+        executor.reset();
+
+        repository.parametersWithSimilarNames("test", 42);
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(value1, value2) VALUES (?, ?)");
+        verify(executor.preparedStatement).setString(1, "test");
+        verify(executor.preparedStatement).setInt(2, 42);
+        executor.reset();
+    }
+
+    @Test
+    public void testConnectionParameter() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+            
+                @Query("INSERT INTO test(test) VALUES ('test')")
+                void testConnection(Connection connection);
+            }
+            """);
+
+        repository.invoke("testConnection", executor.mockConnection);
+
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(test) VALUES ('test')");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    void testRecordFullParameterMapping() throws Exception {
+        @SuppressWarnings("unchecked")
+        var mapper = (JdbcParameterColumnMapper<TestEntityRecord>) mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value1, value2) VALUES (:rec.field1, :rec)")
+                void test(io.koraframework.database.common.annotation.processor.entity.TestEntityRecord rec);
+            }
+            """);
+
+        var object = TestEntityRecord.defaultRecord();
+        repository.invoke("test", object);
+
+        verify(executor.preparedStatement).setString(1, "field1");
+        verify(mapper).set(same(executor.preparedStatement), eq(2), refEq(object));
+    }
+
+    @Test
+    public void testAbstractClassRepository() throws SQLException {
+        var config = Mockito.mock(JdbcDatabaseConfig.class);
+        var repository = compileForArgs(List.of(config, executor), """
+            import io.koraframework.database.jdbc.JdbcDatabaseConfig;
+            @Repository
+            public abstract class TestRepository implements JdbcRepository {
+            
+                private final JdbcDatabaseConfig config;
+            
+                public TestRepository(JdbcDatabaseConfig config) {
+                    this.config = config;
+                }
+            
+                @Query("INSERT INTO test(test) VALUES ('test')")
+                abstract void testConnection(Connection connection);
+            }
+            """);
+
+        repository.invoke("testConnection", executor.mockConnection);
+
+        verify(executor.mockConnection).prepareStatement("INSERT INTO test(test) VALUES ('test')");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testNativeParameter() {
+        var repository = compileJdbc(List.of(), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query(\"""
+                  INSERT INTO test(...) VALUES (
+                    :booleanPrimitive,
+                    :booleanBoxed,
+                    :integerPrimitive,
+                    :integerBoxed,
+                    :longPrimitive,
+                    :longBoxed,
+                    :doublePrimitive,
+                    :doubleBoxed,
+                    :string,
+                    :bigDecimal,
+                    :byteArray,
+                    :localDateTime,
+                    :localDate
+                )
+                \""")
+                void nativeParameters(
+                    boolean booleanPrimitive,
+                    @Nullable Boolean booleanBoxed,
+                    int integerPrimitive,
+                    @Nullable Integer integerBoxed,
+                    long longPrimitive,
+                    @Nullable Long longBoxed,
+                    double doublePrimitive,
+                    @Nullable Double doubleBoxed,
+                    String string,
+                    java.math.BigDecimal bigDecimal,
+                    byte[] byteArray,
+                    java.time.LocalDateTime localDateTime,
+                    java.time.LocalDate localDate
+                );
+            }
+            """);
+
+        repository.invoke("nativeParameters", true, false, 1, 2, 3L, 4L, 5d, 6d, "7", new BigDecimal(8), new byte[]{9}, LocalDateTime.now(), LocalDate.now());
+    }
+
+    @Test
+    public void testEntityFieldMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;public final class StringToJsonbParameterMapper implements JdbcParameterColumnMapper<String> {
+                @Override
+                public void set(PreparedStatement stmt, int index, String value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value));
+                }
+            }
+            """, """
+            public record SomeEntity(long id, @Mapping(StringToJsonbParameterMapper.class) String value) {}
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+                void test(SomeEntity entity);
+            }
+            """);
+
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(executor.preparedStatement).setObject(2, Map.of("test", "test-value"));
+    }
+
+    @Test
+    public void testEntityFieldMappingByTag() throws SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            import io.koraframework.json.common.annotation.Json;public record SomeEntity(long id, @Json String value) {}
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:entity.id, :entity.value)")
+                void test(SomeEntity entity);
+            }
+            """);
+
+        repository.invoke("test", newObject("SomeEntity", 42L, "test-value"));
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(mapper).set(any(), eq(2), eq("test-value"));
+
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(Json.class);
+    }
+
+    @Test
+    public void testNativeParameterWithMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """
+            import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;public final class StringToJsonbParameterMapper implements JdbcParameterColumnMapper<String> {
+                @Override
+                public void set(PreparedStatement stmt, int index, String value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(StringToJsonbParameterMapper.class) String value);
+            }
+            """);
+
+        repository.invoke("test", 42L, "test-value");
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(executor.preparedStatement).setObject(2, Map.of("test", "test-value"));
+    }
+
+    @Test
+    public void testUnknownTypeParameter() throws SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, UnknownType value);
+            }
+            """, """
+            public class UnknownType {}
+            """);
+
+        repository.invoke("test", 42L, newObject("UnknownType"));
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(mapper).set(same(executor.preparedStatement), eq(2), any());
+    }
+
+    @Test
+    public void testUnknownTypeEntityField() throws SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f)")
+                void test(long id, TestEntity value);
+            }
+            """, """
+            public class UnknownType {}
+            """, """
+            public record TestEntity(UnknownType f){}
+            """);
+
+        repository.invoke("test", 42L, newObject("TestEntity", newObject("UnknownType")));
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(mapper).set(same(executor.preparedStatement), eq(2), any());
+    }
+
+    @Test
+    public void testNativeParameterNonFinalMapper() throws SQLException {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
+            import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;public class TestMapper implements JdbcParameterColumnMapper<String> {
+                @Override
+                public void set(PreparedStatement stmt, int index, String value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+
+        repository.invoke("test", 42L, "test-value");
+
+        verify(executor.preparedStatement).setLong(1, 42L);
+        verify(executor.preparedStatement).setObject(2, Map.of("test", "test-value"));
+    }
+
+    @Test
+    public void testMultipleParametersWithSameMapper() {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
+            import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;public class TestMapper implements JdbcParameterColumnMapper<String> {
+                @Override
+                public void set(PreparedStatement stmt, int index, String value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test1(long id, @Mapping(TestMapper.class) String value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value)")
+                void test(long id, @Mapping(TestMapper.class) String value);
+            }
+            """);
+    }
+
+    @Test
+    public void testMultipleParameterFieldsWithSameMapper() {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestMapper")), """
+            import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;public class TestMapper implements JdbcParameterColumnMapper<TestRecord> {
+                @Override
+                public void set(PreparedStatement stmt, int index, TestRecord value) throws SQLException {
+                    stmt.setObject(index, java.util.Map.of("test", value.toString()));
+                }
+            }
+            """, """
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test1(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value) VALUES (:id, :value.f1)")
+                void test2(long id, TestRecord value);
+                @Query("INSERT INTO test(id, value1, value2) VALUES (:id, :value1.f1, :value2.f1)")
+                void test2(long id, TestRecord value1, TestRecord value2);
+            }
+            """, """
+            public record TestRecord(@Mapping(TestMapper.class) TestRecord f1, @Mapping(TestMapper.class) TestRecord f2){}
+            """);
+    }
+
+    @Test
+    public void testParameterMappingByTag() throws SQLException {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """
+            import io.koraframework.common.Tag;@Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value)")
+                void test(@Tag(TestRepository.class) String value);
+            }
+            """);
+
+        repository.invoke("test", "test-value");
+
+        verify(mapper).set(any(), eq(1), eq("test-value"));
+
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
+    }
+
+    @Test
+    public void testRecordParameterMapping() {
+        var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
+        var repository = compileJdbc(List.of(mapper), """            
+            import io.koraframework.common.Tag;@Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("INSERT INTO test(value) VALUES (:value::jsonb)")
+                void test(@Tag(TestRepository.class) TestRecord value);
+            }
+            """, """
+            public record TestRecord(String value){}
+            """);
+
+        var mapperConstructorParameter = repository.objectClass.getConstructors()[0].getParameters()[1];
+        assertThat(mapperConstructorParameter.getType()).isEqualTo(JdbcParameterColumnMapper.class);
+        var tag = mapperConstructorParameter.getAnnotation(Tag.class);
+        assertThat(tag).isNotNull();
+        assertThat(tag.value()).isEqualTo(compileResult.loadClass("TestRepository"));
+    }
+
+    @Test
+    public void testSamePrefixParameterNameMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = :status")
+                void test(String status);
+            }
+            """);
+
+        repository.invoke("test", "someStatus");
+
+        verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status = 'CREATED'::status_type AND status = ?");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testSamePrefixMultiParameterNameMapping() throws SQLException {
+        var repository = compileJdbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT * FROM test WHERE some_status = :status AND user_status = 'CREATED'::status_type AND diff_status = :statusDiff AND other_status = :status AND status = :status")
+                void test(String status, String statusDiff);
+            }
+            """);
+
+        repository.invoke("test", "someStatus", "otherStatus");
+
+        verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status = ? AND user_status = 'CREATED'::status_type AND diff_status = ? AND other_status = ? AND status = ?");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testSamePrefixParameterNameMappingNoSpaces() throws SQLException {
+        var repository = compileJdbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT * FROM test WHERE user_status='CREATED'::status_type AND status=:status")
+                void test(String status);
+            }
+            """);
+
+        repository.invoke("test", "someStatus");
+
+        verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE user_status='CREATED'::status_type AND status=?");
+        verify(executor.preparedStatement).execute();
+    }
+
+    @Test
+    public void testSamePrefixMultiParameterNameMappingNoSpaces() throws SQLException {
+        var repository = compileJdbc(List.of(), """            
+            @Repository
+            public interface TestRepository extends JdbcRepository {
+                @Query("SELECT * FROM test WHERE some_status=:status AND user_status='CREATED'::status_type AND diff_status=:statusDiff AND other_status=:status AND status=:status")
+                void test(String status, String statusDiff);
+            }
+            """);
+
+        repository.invoke("test", "someStatus", "otherStatus");
+
+        verify(executor.mockConnection).prepareStatement("SELECT * FROM test WHERE some_status=? AND user_status='CREATED'::status_type AND diff_status=? AND other_status=? AND status=?");
+        verify(executor.preparedStatement).execute();
+    }
+}

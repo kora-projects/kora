@@ -1,1 +1,1 @@
-ru.tinkoff.kora.soap.client.annotation.processor.WebServiceClientAnnotationProcessor
+io.koraframework.soap.client.annotation.processor.WebServiceClientAnnotationProcessor

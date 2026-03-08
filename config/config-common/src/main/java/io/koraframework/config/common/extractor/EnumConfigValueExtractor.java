@@ -1,0 +1,35 @@
+package io.koraframework.config.common.extractor;
+
+import org.jspecify.annotations.Nullable;
+import io.koraframework.config.common.ConfigValue;
+
+import java.util.HashMap;
+
+public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueExtractor<T> {
+    private final HashMap<String, T> map;
+
+    public EnumConfigValueExtractor(Class<T> type) {
+        this.map = new HashMap<>();
+        for (T enumConstant : type.getEnumConstants()) {
+            this.map.put(enumConstant.toString(), enumConstant);
+        }
+    }
+
+    @Override
+    @Nullable
+    public T extract(ConfigValue<?> value) {
+        if (value.isNull()) {
+            return null;
+        }
+        if (value instanceof ConfigValue.StringValue stringValue) {
+            var str = stringValue.value();
+            var enumValue = this.map.get(str);
+            if (enumValue == null) {
+                throw ConfigValueExtractionException.parsingError(value, new IllegalArgumentException("Unknown enum value: " + str + " when expected one of " + map.keySet()));
+            }
+            return enumValue;
+        }
+
+        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
+    }
+}

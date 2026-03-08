@@ -1,1 +1,1 @@
-ru.tinkoff.kora.test.postgres.PostgresTestContainer
+io.koraframework.test.postgres.PostgresTestContainer

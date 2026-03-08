@@ -1,0 +1,25 @@
+package io.koraframework.kora.app.annotation.processor.app;
+
+import io.koraframework.application.graph.TypeRef;
+import io.koraframework.common.KoraApp;
+import io.koraframework.common.annotation.Root;
+
+import java.util.List;
+
+@KoraApp
+public interface AppWithFactories2 {
+    @Root
+    default Class1 class1(GenericClass<List<Class1>, String> dependency) {
+        return new Class1();
+    }
+
+    default <T> GenericClassImpl<List<T>> factory2(TypeRef<T> typeRef) {
+        return new GenericClassImpl<>();
+    }
+
+    class GenericClass<T, Q> {}
+
+    class GenericClassImpl<T> extends GenericClass<T, String> {}
+
+    class Class1 {}
+}

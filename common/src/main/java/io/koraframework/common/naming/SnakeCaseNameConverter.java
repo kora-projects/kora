@@ -1,0 +1,23 @@
+package io.koraframework.common.naming;
+
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * Пример / Example:
+ * <br>
+ * <pre>
+ * "myFieldNAME" &#8594; "my_field_name"
+ * </pre>
+ */
+public final class SnakeCaseNameConverter implements NameConverter {
+    public static final SnakeCaseNameConverter INSTANCE = new SnakeCaseNameConverter();
+
+    @Override
+    public String convert(String originalName) {
+        final String[] splitted = originalName.split("(?<=[a-z])(?=[A-Z])|(?<=[A-Z])(?=[A-Z][a-z])|( +)");
+        return Stream.of(splitted)
+            .map(String::toLowerCase)
+            .collect(Collectors.joining("_"));
+    }
+}

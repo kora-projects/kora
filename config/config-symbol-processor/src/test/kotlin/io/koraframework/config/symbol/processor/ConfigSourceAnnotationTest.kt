@@ -1,0 +1,47 @@
+package io.koraframework.config.symbol.processor
+
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
+import io.koraframework.config.common.Config
+import io.koraframework.config.common.extractor.ConfigValueExtractor
+import io.koraframework.config.common.factory.MapConfigFactory
+
+class ConfigSourceAnnotationTest : AbstractConfigTest() {
+    @Test
+    fun testConfigSourceGeneratesConfigExtractor() {
+        val extractor = compileConfig(
+            listOf<Any>(), """
+            @ConfigSource("test.path")
+            interface TestConfig {
+              fun value() : Int
+            }
+            
+            """.trimIndent()
+        )
+        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 42)).root()))
+            .isEqualTo(new($$"$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42))
+    }
+
+    @Test
+    fun testConfigSourceGeneratesModule() {
+        compileConfig(
+            listOf<Any>(), """
+            @ConfigSource("test.path")
+            interface TestConfig {
+              fun value() : Int
+            }
+            
+            """.trimIndent()
+        )
+        val moduleClass = loadClass("TestConfigModule")
+        assertThat(moduleClass)
+            .isNotNull()
+            .isInterface()
+            .hasMethods("testConfig")
+
+        val method = moduleClass.getMethod("testConfig", Config::class.java, ConfigValueExtractor::class.java)
+        assertThat(method).isNotNull()
+        assertThat(method.returnType).isEqualTo(loadClass("TestConfig"))
+        assertThat(method.isDefault).isTrue()
+    }
+}

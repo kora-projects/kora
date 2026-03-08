@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 option java_multiple_files = true;
-option java_package = "ru.tinkoff.kora.grpc.server.events";
+option java_package = "io.koraframework.grpc.server.events";
 
 service Events {
     rpc sendEvent (SendEventRequest) returns (SendEventResponse) {
