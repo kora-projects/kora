@@ -410,18 +410,9 @@ public class KoraCodegen extends DefaultCodegen {
         supportsInheritance = true;
         hideGenerationTimestamp = true;
 
-        setReservedWordsLowerCase(
-            Stream.of(
-                // special words
-                "object",
-                // used as internal variables, can collide with parameter names
-                "error",
-                "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
-                "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
-                "localVarAccepts", "localVarAccept", "localVarContentTypes",
-                "localVarContentType", "localVarAuthNames", "localReturnType",
-                //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
-
+        final Stream<String> languageReservedWords;
+        if (params.codegenMode().isJava()) {
+            languageReservedWords = Stream.of(
                 // Java Reserved Words
                 "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
                 "class", "const", "continue", "default", "do", "double", "else", "enum",
@@ -429,8 +420,9 @@ public class KoraCodegen extends DefaultCodegen {
                 "import", "instanceof", "int", "interface", "long", "native", "new", "package",
                 "private", "protected", "public", "return", "short", "static", "strictfp",
                 "super", "switch", "synchronized", "this", "throw", "throws", "transient",
-                "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when",
-
+                "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when");
+        } else {
+            languageReservedWords = Stream.of(
                 // Kotlin Reserved Words
                 "abstract", "actual", "annotation", "as", "break", "by", "catch", "class",
                 "companion", "const", "constructor", "continue", "data", "do", "dynamic",
@@ -439,7 +431,23 @@ public class KoraCodegen extends DefaultCodegen {
                 "native", "null", "object", "open", "operator", "out", "override", "package",
                 "private", "protected", "public", "reified", "return", "sealed", "set", "super",
                 "suspend", "this", "throw", "true", "try", "typealias", "typeof", "val", "var",
-                "when", "where", "while"
+                "when", "where", "while");
+        }
+
+        setReservedWordsLowerCase(
+            Stream.concat(
+                Stream.of(
+                    // special words
+                    "object",
+                    // used as internal variables, can collide with parameter names
+                    "error",
+                    "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
+                    "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
+                    "localVarAccepts", "localVarAccept", "localVarContentTypes",
+                    "localVarContentType", "localVarAuthNames", "localReturnType"
+                    //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
+                ),
+                languageReservedWords
             ).distinct().toList()
         );
 
