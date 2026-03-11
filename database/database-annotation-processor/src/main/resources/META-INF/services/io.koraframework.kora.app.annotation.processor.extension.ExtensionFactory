@@ -1,0 +1,3 @@
+io.koraframework.database.annotation.processor.extension.RepositoryLinkerExtensionFactory
+io.koraframework.database.annotation.processor.jdbc.extension.JdbcTypesExtensionFactory
+io.koraframework.database.annotation.processor.cassandra.extension.CassandraTypesExtensionFactory

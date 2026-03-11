@@ -1,0 +1,51 @@
+package io.koraframework.database.common.annotation.processor.entity;
+
+import org.jspecify.annotations.Nullable;
+import io.koraframework.common.Mapping;
+import io.koraframework.common.NamingStrategy;
+import io.koraframework.common.naming.SnakeCaseNameConverter;
+import io.koraframework.database.common.annotation.processor.cassandra.CassandraEntity;
+import io.koraframework.database.common.annotation.processor.jdbc.JdbcEntity;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@NamingStrategy(SnakeCaseNameConverter.class)
+public record TestEntityRecord(
+    String field1,
+    int field2,
+    @Nullable
+    Integer field3,
+    UnknownTypeField unknownTypeField,
+    @Mapping(JdbcEntity.TestEntityFieldJdbcResultColumnMapper.class)
+    @Mapping(JdbcEntity.TestEntityFieldJdbcParameterColumnMapper.class)
+    @Mapping(CassandraEntity.TestEntityFieldCassandraResultColumnMapper.class)
+    @Mapping(CassandraEntity.TestEntityFieldCassandraParameterColumnMapper.class)
+    MappedField1 mappedField1,
+    @Mapping(JdbcEntity.TestEntityFieldJdbcResultColumnMapperNonFinal.class)
+    @Mapping(JdbcEntity.TestEntityFieldJdbcParameterColumnMapperNonFinal.class)
+    @Mapping(CassandraEntity.TestEntityFieldCassandraResultColumnMapperNonFinal.class)
+    @Mapping(CassandraEntity.TestEntityFieldCassandraParameterColumnMapperNonFinal.class)
+    MappedField2 mappedField2
+) {
+
+    public static final Map<String, String> initializedStaticField = new HashMap<>();
+
+    public record UnknownTypeField() {}
+    public record MappedField1() {}
+    public record MappedField2() {}
+
+    public static class TestUnknownType {}
+
+
+    public static TestEntityRecord defaultRecord() {
+        return new TestEntityRecord(
+            "field1",
+            42,
+            43,
+            new UnknownTypeField(),
+            new MappedField1(),
+            new MappedField2()
+        );
+    }
+}

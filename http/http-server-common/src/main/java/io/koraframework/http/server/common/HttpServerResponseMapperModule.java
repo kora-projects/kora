@@ -1,0 +1,53 @@
+package io.koraframework.http.server.common;
+
+import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.Tag;
+import io.koraframework.http.common.HttpResponseEntity;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.server.common.handler.HttpServerResponseEntityMapper;
+import io.koraframework.http.server.common.handler.HttpServerResponseMapper;
+import io.koraframework.http.server.common.mapper.JsonWriterHttpServerResponseMapper;
+import io.koraframework.json.common.JsonWriter;
+import io.koraframework.json.common.annotation.Json;
+
+import java.nio.ByteBuffer;
+
+public interface HttpServerResponseMapperModule {
+
+    @DefaultComponent
+    default HttpServerResponseMapper<HttpServerResponse> noopResponseMapper() {
+        return (request, r) -> r;
+    }
+
+    @DefaultComponent
+    default HttpServerResponseMapper<ByteBuffer> byteBufBodyResponseMapper() {
+        return (request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
+    }
+
+    @DefaultComponent
+    default HttpServerResponseMapper<byte[]> byteArrayResponseMapper() {
+        return (request, r) -> HttpServerResponse.of(200, HttpBody.octetStream(r));
+    }
+
+    @DefaultComponent
+    default HttpServerResponseMapper<String> stringResponseMapper() {
+        return (request, r) -> HttpServerResponse.of(200, HttpBody.plaintext(r));
+    }
+
+    @DefaultComponent
+    default <T> HttpServerResponseMapper<HttpResponseEntity<T>> httpServerResponseEntityMapper(HttpServerResponseMapper<T> delegate) {
+        return new HttpServerResponseEntityMapper<>(delegate);
+    }
+
+    @DefaultComponent
+    @Tag(Json.class)
+    default <T> HttpServerResponseMapper<HttpResponseEntity<T>> httpServerJsonResponseEntityMapper(JsonWriter<T> writer) {
+        return new HttpServerResponseEntityMapper<>(new JsonWriterHttpServerResponseMapper<>(writer));
+    }
+
+    @DefaultComponent
+    @Tag(Json.class)
+    default <T> JsonWriterHttpServerResponseMapper<T> jsonWriterHttpServerResponseMapper(JsonWriter<T> writer) {
+        return new JsonWriterHttpServerResponseMapper<>(writer);
+    }
+}

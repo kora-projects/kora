@@ -1,8 +1,0 @@
-{
-  "resources": {
-    "includes": [
-      { "pattern": "application.conf" },
-      { "pattern": "reference.conf" }
-    ]
-  }
-}

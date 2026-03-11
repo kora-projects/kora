@@ -1,0 +1,92 @@
+package io.koraframework.grpc.server;
+
+import io.grpc.ForwardingServerBuilder;
+import io.grpc.Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.ValueOf;
+import io.koraframework.common.readiness.ReadinessProbe;
+import io.koraframework.common.readiness.ReadinessProbeFailure;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.grpc.server.config.GrpcServerConfig;
+
+import java.io.IOException;
+import java.net.BindException;
+import java.time.Duration;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+public class GrpcServer implements Lifecycle, ReadinessProbe {
+
+    private static final Logger logger = LoggerFactory.getLogger(GrpcServer.class);
+
+    private final ValueOf<ForwardingServerBuilder<?>> nettyServerBuilder;
+    private Server server;
+
+    private final AtomicReference<GrpcServerState> state = new AtomicReference<>(GrpcServerState.INIT);
+    private final ValueOf<GrpcServerConfig> config;
+
+    public GrpcServer(ValueOf<ForwardingServerBuilder<?>> nettyServerBuilder,
+                      ValueOf<GrpcServerConfig> config) {
+        this.nettyServerBuilder = nettyServerBuilder;
+        this.config = config;
+    }
+
+    @Override
+    public void init() {
+        try {
+            logger.debug("Starting gRPC Server...");
+            final long started = TimeUtils.started();
+
+            var builder = nettyServerBuilder.get();
+            this.server = builder.build();
+            this.server.start();
+            this.state.set(GrpcServerState.RUN);
+            logger.info("gRPC Server started in {}", TimeUtils.tookForLogging(started));
+        } catch (IOException e) {
+            if (e.getCause() instanceof BindException be) {
+                throw new RuntimeException("gRPC Server (Netty) failed to start, cause port '%s' is already in use"
+                    .formatted(config.get().port()), be);
+            } else {
+                throw new RuntimeException("gRPC Server (Netty) failed to start on port '%s', due to: {}"
+                    .formatted(config.get().port(), e.getMessage()), e);
+            }
+        }
+    }
+
+    @Override
+    public void release() {
+        logger.debug("gRPC Server stopping...");
+        final long started = TimeUtils.started();
+
+        state.set(GrpcServerState.SHUTDOWN);
+        server.shutdown();
+        final Duration shutdownAwait = config.get().shutdownWait();
+        try {
+            logger.debug("gRPC Server awaiting graceful shutdown...");
+            if (!server.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS)) {
+                logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait);
+                server.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            logger.warn("gRPC Server failed completing graceful shutdown in {}", shutdownAwait, e);
+            server.shutdownNow();
+        }
+
+        logger.info("gRPC Server stopped in {}", TimeUtils.tookForLogging(started));
+    }
+
+    @Override
+    public ReadinessProbeFailure probe() {
+        return switch (this.state.get()) {
+            case INIT -> new ReadinessProbeFailure("GRPC Server init");
+            case RUN -> null;
+            case SHUTDOWN -> new ReadinessProbeFailure("GRPC Server shutdown");
+        };
+    }
+
+    private enum GrpcServerState {
+        INIT, RUN, SHUTDOWN
+    }
+}

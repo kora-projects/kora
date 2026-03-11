@@ -6,7 +6,7 @@ module kora.json.common {
     requires transitive kora.common;
     requires static kotlin.stdlib;
 
-    exports ru.tinkoff.kora.json.common;
-    exports ru.tinkoff.kora.json.common.annotation;
-    exports ru.tinkoff.kora.json.common.util;
+    exports io.koraframework.json.common;
+    exports io.koraframework.json.common.annotation;
+    exports io.koraframework.json.common.util;
 }

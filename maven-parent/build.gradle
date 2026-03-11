@@ -40,7 +40,7 @@ def modifyPom(Node pom) {
                         }
                         annotationProcessorPaths {
                             path {
-                                groupId "ru.tinkoff.kora"
+                                groupId "io.koraframework"
                                 artifactId "annotation-processors"
                                 delegate.version project.version
                             }

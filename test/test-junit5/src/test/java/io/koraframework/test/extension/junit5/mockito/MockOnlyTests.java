@@ -1,0 +1,35 @@
+package io.koraframework.test.extension.junit5.mockito;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import io.koraframework.test.extension.junit5.KoraAppTest;
+import io.koraframework.test.extension.junit5.TestComponent;
+import io.koraframework.test.extension.junit5.testdata.TestApplication;
+import io.koraframework.test.extension.junit5.testdata.TestComponent3;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@KoraAppTest(TestApplication.class)
+public class MockOnlyTests {
+
+    @Mock
+    @TestComponent
+    private TestComponent3 mock;
+
+    @BeforeEach
+    void setupMocks() {
+        Mockito.when(mock.get()).thenReturn("?");
+    }
+
+    @Test
+    void fieldMocked() {
+        assertEquals("?", mock.get());
+    }
+
+    @Test
+    void fieldMockedAndInBeanDependency() {
+        assertEquals("?", mock.get());
+    }
+}

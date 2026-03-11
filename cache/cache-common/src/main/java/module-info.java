@@ -4,7 +4,7 @@ import org.jspecify.annotations.NullMarked;
 module kora.cache.common {
     requires transitive kora.common;
 
-    exports ru.tinkoff.kora.cache;
-    exports ru.tinkoff.kora.cache.annotation;
-    exports ru.tinkoff.kora.cache.telemetry;
+    exports io.koraframework.cache;
+    exports io.koraframework.cache.annotation;
+    exports io.koraframework.cache.telemetry;
 }

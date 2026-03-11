@@ -1,1 +1,1 @@
-ru.tinkoff.kora.scheduling.annotation.processor.KoraSchedulingAnnotationProcessor,isolating
+io.koraframework.scheduling.annotation.processor.KoraSchedulingAnnotationProcessor,isolating

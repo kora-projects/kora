@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   name="OfferService"
-                  targetNamespace="http://kora.tinkoff.ru/simple/service"
+                  targetNamespace="http://koraframework.io/simple/service"
                   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-                  xmlns:tns="http://kora.tinkoff.ru/simple/service"
+                  xmlns:tns="http://koraframework.io/simple/service"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema"
                   xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl">
     <wsdl:types>
-        <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://kora.tinkoff.ru/simple/service">
+        <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://koraframework.io/simple/service">
             <xsd:element name="TestRequest">
                 <xsd:complexType>
                     <xsd:sequence>

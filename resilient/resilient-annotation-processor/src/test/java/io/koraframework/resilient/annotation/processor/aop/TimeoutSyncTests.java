@@ -1,0 +1,63 @@
+package io.koraframework.resilient.annotation.processor.aop;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
+import io.koraframework.resilient.annotation.processor.aop.testdata.*;
+import io.koraframework.resilient.timeout.TimeoutExhaustedException;
+
+import java.io.IOException;
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class TimeoutSyncTests extends AppRunner {
+
+    private TimeoutTarget getService() {
+        final InitializedGraph graph = getGraph(AppWithConfig.class,
+            CircuitBreakerTarget.class,
+            RetryTarget.class,
+            TimeoutTarget.class,
+            FallbackTarget.class);
+
+        return getServiceFromGraph(graph, TimeoutTarget.class);
+    }
+
+    @Test
+    void syncTimeout() {
+        // given
+        var service = getService();
+
+        assertThrows(TimeoutExhaustedException.class, service::getValueSync);
+    }
+
+    @Test
+    void syncTimeoutVoid() {
+        // given
+        var service = getService();
+
+        assertThrows(TimeoutExhaustedException.class, service::getValueSyncVoid);
+    }
+
+    @Test
+    void syncTimeoutCheckedException() {
+        // given
+        var service = getService();
+
+        assertThrows(TimeoutExhaustedException.class, service::getValueSyncCheckedException);
+    }
+
+    @Test
+    void syncTimeoutCheckedExceptionVoid() {
+        // given
+        var service = getService();
+
+        assertThrows(TimeoutExhaustedException.class, service::getValueSyncCheckedExceptionVoid);
+    }
+
+    @Test
+    void syncTimeoutCheckedExceptionVoidFailed() {
+        // given
+        var service = getService();
+
+        var ex = assertThrows(IOException.class, service::getValueSyncCheckedExceptionVoidFailed);
+        assertEquals("OPS", ex.getMessage());
+    }
+}

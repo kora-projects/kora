@@ -2,7 +2,7 @@
     {
         "tags": [],
         "typeRegex": "com.typesafe.config.Config",
-        "moduleName": "ru.tinkoff.kora.config.common.ConfigModule",
-        "artifact": "ru.tinkoff.kora:config-common"
+        "moduleName": "io.koraframework.config.common.ConfigModule",
+        "artifact": "io.koraframework:config-common"
     }
 ]

@@ -1,1 +1,1 @@
-ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider

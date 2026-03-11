@@ -1,0 +1,568 @@
+package io.koraframework.camunda.rest.undertow;
+
+import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.handlers.PathHandler;
+import io.undertow.servlet.api.DeploymentManager;
+import io.undertow.servlet.api.ServletContainer;
+import io.undertow.util.AttachmentKey;
+import jakarta.ws.rs.core.Application;
+import org.jboss.resteasy.core.ResteasyDeploymentImpl;
+import org.jboss.resteasy.plugins.server.undertow.UndertowJaxrsServer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
+import io.koraframework.camunda.rest.CamundaRestConfig;
+import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
+import io.koraframework.camunda.rest.undertow.UndertowPathMatcher.HttpMethodPath;
+import io.koraframework.common.telemetry.Observation;
+import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.http.server.undertow.UndertowContext;
+import io.koraframework.http.server.undertow.UndertowExchangeProcessor;
+import io.koraframework.http.server.undertow.UndertowHttpServer;
+
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+
+final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHandler> {
+
+    private static final Logger logger = LoggerFactory.getLogger(UndertowCamundaRestHttpHandler.class);
+    private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
+
+    private final Application application;
+    private final CamundaRestConfig camundaRestConfig;
+    private final CamundaRestTelemetry telemetry;
+
+    private volatile DeploymentManager deploymentManager;
+    private volatile HttpHandler realhttpHandler;
+
+    UndertowCamundaRestHttpHandler(List<Application> applications,
+                                   CamundaRestConfig camundaRestConfig,
+                                   CamundaRestTelemetry telemetry) {
+        this.telemetry = telemetry;
+        var classes = new HashSet<Class<?>>();
+        var singletons = new HashSet<Object>();
+        var props = new HashMap<String, Object>();
+        for (var app : applications) {
+            classes.addAll(app.getClasses());
+            singletons.addAll(app.getSingletons());
+            props.putAll(app.getProperties());
+        }
+
+        this.application = new Application() {
+            @Override
+            public Set<Class<?>> getClasses() {
+                return classes;
+            }
+
+            @Override
+            public Set<Object> getSingletons() {
+                return singletons;
+            }
+
+            @Override
+            public Map<String, Object> getProperties() {
+                return props;
+            }
+        };
+
+        this.camundaRestConfig = camundaRestConfig;
+    }
+
+    @Override
+    public HttpHandler value() {
+        if (camundaRestConfig.cors().enabled()) {
+            return new UndertowCorsFilter(realhttpHandler, camundaRestConfig);
+        } else {
+            return realhttpHandler;
+        }
+    }
+
+    @Override
+    public void init() throws Exception {
+        logger.debug("Camunda Rest Handler (Undertow) configuring...");
+        var started = TimeUtils.started();
+
+        var deployment = new ResteasyDeploymentImpl();
+        deployment.setApplication(application);
+        deployment.start();
+
+        var root = new PathHandler();
+        var container = ServletContainer.Factory.newInstance();
+
+        var server = new UndertowJaxrsServer();
+        var di = server.undertowDeployment(deployment);
+
+        var classLoader = UndertowCamundaRestHttpHandler.class.getClassLoader();
+        di.setClassLoader(classLoader);
+        di.setContextPath(camundaRestConfig.path());
+        di.setDeploymentName("ResteasyCamundaKora");
+        deploymentManager = container.addDeployment(di);
+        deploymentManager.deploy();
+
+        var restPaths = getRestPaths(camundaRestConfig);
+        var restMatcher = new UndertowPathMatcher(restPaths);
+
+        var restHandler = deploymentManager.start();
+        root.addPrefixPath(camundaRestConfig.path(), exchange -> {
+            var rootCtx = W3CTraceContextPropagator.getInstance().extract(io.opentelemetry.context.Context.root(), exchange.getRequestHeaders(), UndertowExchangeProcessor.HttpServerExchangeMapGetter.INSTANCE);
+            ScopedValue
+                .where(UndertowContext.VALUE, new UndertowContext(exchange))
+                .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
+                .where(OpentelemetryContext.VALUE, rootCtx)
+                .call(() -> {
+                    MDC.clear();
+                    var match = restMatcher.getMatch(exchange.getRequestMethod().toString(), exchange.getRequestPath());
+                    var pathTemplate = match == null ? null : match.pathTemplate();
+                    var pathParams = match == null ? Map.<String, String>of() : match.pathParameters();
+                    var observation = this.telemetry.observe(exchange, pathTemplate);
+                    exchange.addExchangeCompleteListener((e, nextListener) -> {
+                        observation.observeResponseCode(e.getStatusCode());
+                        observation.end();
+                        nextListener.proceed();
+                    });
+                    observation.observeRequest(pathTemplate, pathParams);
+                    var ctx = rootCtx.with(observation.span());
+                    W3CTraceContextPropagator.getInstance().inject(
+                        ctx,
+                        exchange.getResponseHeaders(),
+                        UndertowExchangeProcessor.HttpServerExchangeMapGetter.INSTANCE
+                    );
+
+                    ScopedValue
+                        .where(OpentelemetryContext.VALUE, ctx)
+                        .where(Observation.VALUE, observation)
+                        .call(() -> {
+                            try {
+                                restHandler.handleRequest(exchange);
+                                return null;
+                            } catch (Throwable t) {
+                                observation.observeError(t);
+                                throw t;
+                            }
+                        });
+                    return null;
+                });
+        });
+
+        root.addPrefixPath("/", new OpenApiHttpHandler(camundaRestConfig));
+        this.realhttpHandler = exchange -> {
+            var executor = UndertowHttpServer.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "camunda-rest");
+            exchange.dispatch(executor, root);
+        };
+
+        logger.info("Camunda Rest Handler (Undertow) configured in {}", TimeUtils.tookForLogging(started));
+    }
+
+    @Override
+    public void release() throws Exception {
+        logger.debug("Camunda Rest Handler (Undertow) stopping...");
+        final long started = TimeUtils.started();
+
+        deploymentManager.stop();
+
+        logger.info("Camunda Rest Handler (Undertow) stopped in {}", TimeUtils.tookForLogging(started));
+    }
+
+    private static List<HttpMethodPath> getRestPaths(CamundaRestConfig restConfig) {
+        List<HttpMethodPath> restPaths = new ArrayList<>(400);
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/authorization"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/authorization"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/authorization/check"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/authorization/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/authorization/create"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/authorization/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/authorization/{id}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/authorization/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/authorization/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/batch"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/batch/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/batch/statistics"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/batch/statistics/count"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/batch/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/batch/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/batch/{id}/suspended"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/condition"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/key/{key}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/key/{key}/diagram"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/decision-definition/key/{key}/evaluate"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/decision-definition/key/{key}/history-time-to-live"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/key/{key}/tenant-id/{tenant-id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/key/{key}/tenant-id/{tenant-id}/diagram"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/decision-definition/key/{key}/tenant-id/{tenant-id}/evaluate"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/decision-definition/key/{key}/tenant-id/{tenant-id}/history-time-to-live"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/key/{key}/tenant-id/{tenant-id}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/key/{key}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/{id}/diagram"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/decision-definition/{id}/evaluate"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/decision-definition/{id}/history-time-to-live"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-definition/{id}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/key/{key}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/key/{key}/diagram"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/key/{key}/tenant-id/{tenant-id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/key/{key}/tenant-id/{tenant-id}/diagram"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/key/{key}/tenant-id/{tenant-id}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/key/{key}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/{id}/diagram"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/decision-requirements-definition/{id}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/deployment"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/deployment/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/deployment/create"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/deployment/registered"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/deployment/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/deployment/{id}"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/deployment/{id}/redeploy"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/deployment/{id}/resources"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/deployment/{id}/resources/{resourceId}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/deployment/{id}/resources/{resourceId}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/engine"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/event-subscription"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/event-subscription/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/execution"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/execution"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/execution/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/execution/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/execution/{id}"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/execution/{id}/create-incident"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/execution/{id}/localVariables"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/execution/{id}/localVariables"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/execution/{id}/localVariables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/execution/{id}/localVariables/{varName}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/execution/{id}/localVariables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/execution/{id}/localVariables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/execution/{id}/localVariables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/execution/{id}/messageSubscriptions/{messageName}"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/execution/{id}/messageSubscriptions/{messageName}/trigger"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/execution/{id}/signal"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/external-task"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/external-task/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/fetchAndLock"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/external-task/retries"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/retries-async"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/external-task/topic-names"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/external-task/{id}"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/{id}/bpmnError"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/{id}/complete"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/external-task/{id}/errorDetails"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/{id}/extendLock"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/{id}/failure"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/{id}/lock"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/external-task/{id}/priority"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/external-task/{id}/retries"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/external-task/{id}/unlock"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/filter"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/filter"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/filter/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/filter/create"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/filter/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/filter/{id}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/filter/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/filter/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/filter/{id}/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/filter/{id}/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/filter/{id}/list"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/filter/{id}/list"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/filter/{id}/singleResult"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/filter/{id}/singleResult"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/group"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/group"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/group"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/group/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/group/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/group/create"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/group/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/group/{id}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/group/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/group/{id}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/group/{id}/members"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/group/{id}/members/{userId}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/group/{id}/members/{userId}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/activity-instance"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/activity-instance"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/activity-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/activity-instance/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/activity-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/batch"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/batch/cleanable-batch-report"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/batch/cleanable-batch-report/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/batch/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/batch/set-removal-time"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/history/batch/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/batch/{id}"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/cleanup"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/cleanup/configuration"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/cleanup/job"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/cleanup/jobs"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/decision-definition/cleanable-decision-instance-report"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/decision-definition/cleanable-decision-instance-report/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/decision-instance"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/decision-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/decision-instance/delete"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/decision-instance/set-removal-time"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/decision-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/decision-requirements-definition/{id}/statistics"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/detail"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/detail"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/detail/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/detail/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/detail/{id}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/external-task-log"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/external-task-log"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/external-task-log/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/external-task-log/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/external-task-log/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/external-task-log/{id}/error-details"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/identity-link-log"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/identity-link-log/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/incident"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/incident/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/job-log"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/job-log"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/job-log/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/job-log/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/job-log/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/job-log/{id}/stacktrace"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/process-definition/cleanable-process-instance-report"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/process-definition/cleanable-process-instance-report/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/process-definition/{id}/statistics"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/process-instance"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/process-instance"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/process-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/process-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/process-instance/delete"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/process-instance/report"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/process-instance/set-removal-time"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/history/process-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/process-instance/{id}"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/history/process-instance/{id}/variable-instances"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/task"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/task"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/task/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/task/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/task/report"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/user-operation"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/user-operation/count"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/history/user-operation/{operationId}/clear-annotation"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/history/user-operation/{operationId}/set-annotation"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/variable-instance"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/variable-instance"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/variable-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/history/variable-instance/count"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/history/variable-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/variable-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/history/variable-instance/{id}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/identity/groups"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/identity/password-policy"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/identity/password-policy"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/identity/verify"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/incident"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/incident/count"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/incident/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/incident/{id}"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/incident/{id}/annotation"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/incident/{id}/annotation"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/job"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/job"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/job-definition"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/job-definition"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/job-definition/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/job-definition/count"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job-definition/suspended"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/job-definition/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job-definition/{id}/jobPriority"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job-definition/{id}/retries"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job-definition/{id}/suspended"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/job/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/job/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/job/retries"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job/suspended"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/job/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/job/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job/{id}/duedate"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/job/{id}/duedate/recalculate"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/job/{id}/execute"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job/{id}/priority"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job/{id}/retries"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/job/{id}/stacktrace"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/job/{id}/suspended"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/message"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/metrics"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/metrics/task-worker"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/metrics/{metrics-name}/sum"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/migration/execute"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/migration/executeAsync"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/migration/generate"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/migration/validate"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/modification/execute"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/modification/executeAsync"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/count"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/process-definition/key/{key}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/deployed-start-form"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/diagram"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/form-variables"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-definition/key/{key}/history-time-to-live"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/rendered-form"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/key/{key}/start"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/startForm"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/statistics"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/key/{key}/submit-form"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-definition/key/{key}/suspended"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/deployed-start-form"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/diagram"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/form-variables"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/history-time-to-live"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/rendered-form"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/start"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/startForm"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/statistics"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/submit-form"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/suspended"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/tenant-id/{tenant-id}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/key/{key}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/statistics"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-definition/suspended"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/process-definition/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/deployed-start-form"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/diagram"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/form-variables"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-definition/{id}/history-time-to-live"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/rendered-form"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/{id}/restart"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/{id}/restart-async"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/{id}/start"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/startForm"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/static-called-process-definitions"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/statistics"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-definition/{id}/submit-form"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-definition/{id}/suspended"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-definition/{id}/xml"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/delete"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/delete-historic-query-based"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/job-retries"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/job-retries-historic-query-based"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/message-async"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-instance/suspended"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/suspended-async"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/variables-async"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/process-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance/{id}/activity-instances"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance/{id}/comment"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/{id}/modification"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/{id}/modification-async"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-instance/{id}/suspended"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance/{id}/variables"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/{id}/variables"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/process-instance/{id}/variables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance/{id}/variables/{varName}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/process-instance/{id}/variables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/process-instance/{id}/variables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/process-instance/{id}/variables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/schema/log"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/schema/log"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/signal"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/create"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/report/candidate-group-count"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/task/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/task/{id}"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/assignee"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/attachment"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/attachment/create"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/task/{id}/attachment/{attachmentId}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/attachment/{attachmentId}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/attachment/{attachmentId}/data"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/bpmnError"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/bpmnEscalation"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/claim"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/comment"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/comment/create"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/comment/{commentId}"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/complete"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/delegate"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/deployed-form"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/form"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/form-variables"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/identity-links"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/identity-links"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/identity-links/delete"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/localVariables"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/localVariables"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/task/{id}/localVariables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/localVariables/{varName}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/task/{id}/localVariables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/localVariables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/localVariables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/rendered-form"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/resolve"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/submit-form"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/unclaim"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/variables"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/variables"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/task/{id}/variables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/variables/{varName}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/task/{id}/variables/{varName}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/task/{id}/variables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/task/{id}/variables/{varName}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/telemetry/configuration"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/telemetry/configuration"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/telemetry/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/tenant"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/tenant"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/tenant/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/tenant/create"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/tenant/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/tenant/{id}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/tenant/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/tenant/{id}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/tenant/{id}/group-members"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/tenant/{id}/group-members/{groupId}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/tenant/{id}/group-members/{groupId}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/tenant/{id}/user-members"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/tenant/{id}/user-members/{userId}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/tenant/{id}/user-members/{userId}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/user"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/user"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/user/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/user/create"));
+        restPaths.add(new HttpMethodPath("DELETE", restConfig.path() + "/user/{id}"));
+        restPaths.add(new HttpMethodPath("OPTIONS", restConfig.path() + "/user/{id}"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/user/{id}/credentials"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/user/{id}/profile"));
+        restPaths.add(new HttpMethodPath("PUT", restConfig.path() + "/user/{id}/profile"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/user/{id}/unlock"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/variable-instance"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/variable-instance"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/variable-instance/count"));
+        restPaths.add(new HttpMethodPath("POST", restConfig.path() + "/variable-instance/count"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/variable-instance/{id}"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/variable-instance/{id}/data"));
+        restPaths.add(new HttpMethodPath("GET", restConfig.path() + "/version"));
+        return restPaths;
+    }
+
+}

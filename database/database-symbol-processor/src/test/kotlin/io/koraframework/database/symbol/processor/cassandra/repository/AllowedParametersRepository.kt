@@ -1,0 +1,101 @@
+package io.koraframework.database.symbol.processor.cassandra.repository
+
+import com.datastax.oss.driver.api.core.CqlSession
+import io.koraframework.database.cassandra.CassandraRepository
+import io.koraframework.database.common.annotation.Batch
+import io.koraframework.database.common.annotation.Query
+import io.koraframework.database.common.annotation.Repository
+import io.koraframework.database.symbol.processor.cassandra.AllNativeTypesEntity
+import io.koraframework.database.symbol.processor.entity.EntityWithEmbedded
+import io.koraframework.database.symbol.processor.entity.TestEntity
+import java.math.BigDecimal
+import java.time.LocalDate
+import java.time.LocalDateTime
+
+
+@Repository
+interface AllowedParametersRepository : CassandraRepository {
+    @Query("INSERT INTO test(test) VALUES ('test')")
+    fun connectionParameter(connection: CqlSession)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
+    fun nativeParameter(value1: String?, value2: Int)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
+    fun dataClassParameter(entity: TestEntity?)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:unknownField)")
+    fun unknownTypeFieldParameter(unknownField: TestEntity.UnknownField?)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
+    suspend fun dtoJavaBeanParameterMono(entity: TestEntity?)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
+    fun dtoRecordParameterMapping(entity: TestEntity?)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:value1, :value2)")
+    fun nativeParameterBatch(@Batch value1: List<String?>, value2: Int)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:entity.field1, :entity.field2, :entity.field3, :entity.unknownTypeField, :entity.mappedField1, :entity.mappedField2)")
+    fun dtoBatch(@Batch entity: List<TestEntity?>)
+
+    @Query(
+        """
+        INSERT INTO test(...) VALUES (
+          :booleanPrimitive,
+          :booleanBoxed,
+          :integerPrimitive,
+          :integerBoxed,
+          :longPrimitive,
+          :longBoxed,
+          :doublePrimitive,
+          :doubleBoxed,
+          :string,
+          :bigDecimal,
+          :localDateTime,
+          :localDate
+         )        
+    """
+    )
+    fun allNativeParameters(
+        booleanPrimitive: Boolean,
+        booleanBoxed: Boolean?,
+        integerPrimitive: Int,
+        integerBoxed: Int?,
+        longPrimitive: Long,
+        longBoxed: Long?,
+        doublePrimitive: Double,
+        doubleBoxed: Double?,
+        string: String?,
+        bigDecimal: BigDecimal?,
+        localDateTime: LocalDateTime?,
+        localDate: LocalDate?
+    )
+
+    @Query(
+        """
+        INSERT INTO test(...) VALUES (
+          :entity.booleanPrimitive,
+          :entity.booleanBoxed,
+          :entity.integerPrimitive,
+          :entity.integerBoxed,
+          :entity.longPrimitive,
+          :entity.longBoxed,
+          :entity.doublePrimitive,
+          :entity.doubleBoxed,
+          :entity.string,
+          :entity.bigDecimal,
+          :entity.byteArray,
+          :entity.localDateTime,
+          :entity.localDate
+        )
+    """
+    )
+    fun allNativeParametersDto(entity: AllNativeTypesEntity?)
+
+    @Query("INSERT INTO test(value1, value2) VALUES (:value, :valueTest)")
+    fun parametersWithSimilarNames(value: String?, valueTest: Int)
+
+    @Query("INSERT INTO test(value1, value2, value3, value4) VALUES (:value.f1.f1, :value.f1.f2, :value.f2.f1, :value.f2.f2)")
+    fun parameterWithEmbedded(value: EntityWithEmbedded)
+}

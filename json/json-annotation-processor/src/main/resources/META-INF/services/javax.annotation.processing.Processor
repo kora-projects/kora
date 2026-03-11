@@ -1,1 +1,1 @@
-ru.tinkoff.kora.json.annotation.processor.JsonAnnotationProcessor
+io.koraframework.json.annotation.processor.JsonAnnotationProcessor

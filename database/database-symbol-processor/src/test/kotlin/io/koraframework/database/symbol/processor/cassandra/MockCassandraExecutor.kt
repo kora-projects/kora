@@ -1,0 +1,107 @@
+package io.koraframework.database.symbol.processor.cassandra
+
+import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet
+import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.cql.*
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
+import io.koraframework.database.cassandra.CassandraConnectionFactory
+import io.koraframework.database.common.QueryContext
+import io.koraframework.database.common.telemetry.DataBaseTelemetry
+import io.koraframework.database.common.telemetry.NoopDataBaseObservation
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
+import java.util.function.Function
+
+class MockCassandraExecutor : CassandraConnectionFactory {
+    val resultSet: ResultSet = Mockito.mock(
+        ResultSet::class.java
+    )
+    val asyncResultSet: ReactiveResultSet = Mockito.mock(ReactiveResultSet::class.java)
+    val boundStatementBuilder: BoundStatementBuilder = Mockito.mock(BoundStatementBuilder::class.java)
+    val preparedStatement: PreparedStatement = Mockito.mock(
+        PreparedStatement::class.java
+    )
+    val boundStatement: BoundStatement = Mockito.mock(
+        BoundStatement::class.java
+    )
+    val mockSession: CqlSession = Mockito.mock(CqlSession::class.java)
+    val iterator: Iterator<Row> = Mockito.mock(
+        MutableIterator::class.java
+    ) as Iterator<Row>
+    val row = Mockito.mock(Row::class.java)
+    val batchStatementBuilder: BatchStatementBuilder = Mockito.mock(BatchStatementBuilder::class.java)
+    val telemetry = Mockito.mock(DataBaseTelemetry::class.java)
+
+    fun reset() {
+        Mockito.reset(resultSet, asyncResultSet, boundStatementBuilder, preparedStatement, boundStatement, mockSession, iterator, row, batchStatementBuilder, telemetry)
+        whenever(boundStatementBuilder.build()).thenReturn(boundStatement)
+        whenever<Iterator<Row>>(resultSet.iterator()).thenReturn(iterator)
+        whenever(resultSet.one()).thenReturn(row)
+        whenever(iterator.next()).thenReturn(row)
+        whenever(mockSession.prepare(ArgumentMatchers.anyString())).thenReturn(preparedStatement)
+        whenever(mockSession.prepareAsync(ArgumentMatchers.anyString())).thenReturn(CompletableFuture.completedFuture(preparedStatement))
+        whenever(preparedStatement.boundStatementBuilder()).thenReturn(boundStatementBuilder)
+        whenever(boundStatementBuilder.build()).thenReturn(boundStatement)
+        Mockito.mockStatic(BatchStatement::class.java).use { ignored ->
+            whenever(BatchStatement.builder(DefaultBatchType.UNLOGGED)).thenReturn(batchStatementBuilder)
+        }
+        whenever(telemetry.observe(any())).thenReturn(NoopDataBaseObservation())
+        whenever(mockSession.executeAsync(any<Statement<*>>())).thenReturn(CompletableFuture.completedFuture(MockAsyncResultSet(listOf())))
+        whenever(mockSession.execute(any<Statement<*>>())).thenReturn(resultSet)
+    }
+
+    init {
+        reset()
+    }
+
+    override fun currentSession(): CqlSession {
+        return mockSession
+    }
+
+    override fun telemetry(): DataBaseTelemetry {
+        return telemetry
+    }
+
+    fun <T : Any?> query(query: QueryContext?, profile: String?, statementSetter: Function<BoundStatementBuilder, Statement<*>>, resultExtractor: Function<ResultSet, T>?): T {
+        Mockito.clearInvocations(resultSet, boundStatementBuilder, batchStatementBuilder, boundStatement)
+        val sb = mockSession.prepare(query!!.sql()).boundStatementBuilder()
+        val statement: Statement<out Statement<*>?> = statementSetter.apply(sb)
+        whenever(mockSession.execute(statement)).thenReturn(resultSet)
+        return resultExtractor!!.apply(resultSet)
+    }
+
+    class MockAsyncResultSet(private val rows: List<Row>) : AsyncResultSet {
+        override fun getColumnDefinitions(): ColumnDefinitions {
+            TODO("Not yet implemented")
+        }
+
+        override fun getExecutionInfo(): ExecutionInfo {
+            TODO("Not yet implemented")
+        }
+
+        override fun remaining(): Int {
+            TODO("Not yet implemented")
+        }
+
+        override fun currentPage(): Iterable<Row> {
+            return rows
+        }
+
+        override fun hasMorePages(): Boolean {
+            return false
+        }
+
+        override fun fetchNextPage(): CompletionStage<AsyncResultSet> {
+            TODO("Not yet implemented")
+        }
+
+        override fun wasApplied(): Boolean {
+            return true
+        }
+
+    }
+
+}

@@ -1,0 +1,53 @@
+package io.koraframework.http.client.annotation.processor;
+
+import com.palantir.javapoet.*;
+import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonClassNames;
+
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.util.Elements;
+import java.util.Optional;
+
+import static io.koraframework.http.client.annotation.processor.HttpClientClassNames.httpClientAnnotation;
+
+public class ConfigModuleGenerator {
+    private final Elements elements;
+
+    public ConfigModuleGenerator(ProcessingEnvironment processingEnvironment) {
+        this.elements = processingEnvironment.getElementUtils();
+    }
+
+    public JavaFile generate(TypeElement element) {
+        var lowercaseName = new StringBuilder(element.getSimpleName());
+        lowercaseName.setCharAt(0, Character.toLowerCase(lowercaseName.charAt(0)));
+        var packageName = this.elements.getPackageOf(element).getQualifiedName().toString();
+
+        var configPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(AnnotationUtils.findAnnotation(element, httpClientAnnotation), "configPath");
+        if (configPath == null || configPath.isBlank()) {
+            configPath = "httpClient." + lowercaseName;
+        }
+
+        var configName = HttpClientUtils.configName(element);
+        var moduleName = HttpClientUtils.moduleName(element);
+        var configClass = ClassName.get(packageName, configName);
+        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configClass);
+
+        var type = TypeSpec.interfaceBuilder(moduleName)
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(ConfigModuleGenerator.class))
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(CommonClassNames.module)
+            .addMethod(MethodSpec.methodBuilder(lowercaseName + "Config")
+                .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+                .returns(configClass)
+                .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
+                .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
+                .addStatement("var value = config.get($S)", configPath)
+                .addStatement("return $T.ofNullable(extractor.extract(value)).orElseThrow(() -> $T.missingValueAfterParse(value))", Optional.class, CommonClassNames.configValueExtractionException)
+                .build());
+
+        return JavaFile.builder(packageName, type.build()).build();
+    }
+}

@@ -1,3 +1,0 @@
-ru.tinkoff.kora.cache.annotation.processor.aop.CacheableAopKoraAspectFactory
-ru.tinkoff.kora.cache.annotation.processor.aop.CacheInvalidateAopKoraAspectFactory
-ru.tinkoff.kora.cache.annotation.processor.aop.CachePutAopKoraAspectFactory

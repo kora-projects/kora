@@ -1,8 +1,8 @@
 [
     {
         "tags": [],
-        "typeRegex": "ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory",
-        "moduleName": "ru.tinkoff.kora.database.jdbc.JdbcDatabaseModule",
-        "artifact": "ru.tinkoff.kora:database-jdbc"
+        "typeRegex": "io.koraframework.database.jdbc.JdbcConnectionFactory",
+        "moduleName": "io.koraframework.database.jdbc.JdbcDatabaseModule",
+        "artifact": "io.koraframework:database-jdbc"
     }
 ]

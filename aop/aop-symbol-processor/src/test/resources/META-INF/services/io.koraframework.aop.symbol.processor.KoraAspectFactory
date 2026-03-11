@@ -1,0 +1,7 @@
+io.koraframework.aop.ksp.aoptarget.AopTarget1$Aspect1Factory
+io.koraframework.aop.ksp.aoptarget.AopAliasTarget$AspectAliasesFactory
+io.koraframework.aop.ksp.aoptarget.AopTarget2$Aspect21Factory
+io.koraframework.aop.ksp.aoptarget.AopTarget2$Aspect22Factory
+io.koraframework.aop.ksp.aoptarget.AopTarget3$Aspect3Factory
+io.koraframework.aop.ksp.TestAnnotation1$TestAnnotationAspectFactory
+io.koraframework.aop.ksp.TestAnnotation2$TestAnnotationAspectFactory

@@ -1,0 +1,27 @@
+package io.koraframework.annotation.processor.common;
+
+import com.palantir.javapoet.ClassName;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
+
+public class NameUtils {
+
+    public static String getOuterClassesAsPrefix(Element element) {
+        var prefix = new StringBuilder("$");
+        var parent = element.getEnclosingElement();
+        while (parent.getKind() != ElementKind.PACKAGE) {
+            prefix.insert(1, parent.getSimpleName().toString() + "_");
+            parent = parent.getEnclosingElement();
+        }
+        return prefix.toString();
+    }
+
+    public static String generatedType(Element from, String postfix) {
+        return NameUtils.getOuterClassesAsPrefix(from) + from.getSimpleName() + "_" + postfix;
+    }
+
+    public static String generatedType(Element from, ClassName postfix) {
+        return NameUtils.getOuterClassesAsPrefix(from) + from.getSimpleName() + "_" + postfix.simpleName();
+    }
+}

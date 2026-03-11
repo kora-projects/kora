@@ -5,7 +5,7 @@ module kora.logging.common {
     requires transitive org.slf4j;
     requires transitive jul.to.slf4j;
 
-    exports ru.tinkoff.kora.logging.common;
-    exports ru.tinkoff.kora.logging.common.annotation;
-    exports ru.tinkoff.kora.logging.common.arg;
+    exports io.koraframework.logging.common;
+    exports io.koraframework.logging.common.annotation;
+    exports io.koraframework.logging.common.arg;
 }

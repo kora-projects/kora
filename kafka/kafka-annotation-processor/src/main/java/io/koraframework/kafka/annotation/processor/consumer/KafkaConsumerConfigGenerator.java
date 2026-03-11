@@ -1,0 +1,54 @@
+package io.koraframework.kafka.annotation.processor.consumer;
+
+import com.palantir.javapoet.MethodSpec;
+import com.palantir.javapoet.ParameterizedTypeName;
+import com.palantir.javapoet.TypeSpec;
+import org.jspecify.annotations.Nullable;
+import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.TagUtils;
+import io.koraframework.kafka.annotation.processor.KafkaClassNames;
+
+import javax.lang.model.element.AnnotationMirror;
+import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.util.Elements;
+import java.util.Objects;
+
+import static io.koraframework.kafka.annotation.processor.utils.KafkaUtils.*;
+
+public class KafkaConsumerConfigGenerator {
+
+    public KafkaConfigData generate(Elements elements, ExecutableElement method, AnnotationMirror listenerAnnotation) {
+        var targetTag = findConsumerUserTag(method);
+        TypeSpec tagBuilded;
+        if (targetTag == null) {
+            var tag = prepareConsumerTag(elements, method);
+            targetTag = tag;
+            tagBuilded = TypeSpec.classBuilder(tag.simpleName())
+                .addAnnotation(AnnotationUtils.generated(KafkaConsumerConfigGenerator.class))
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+                .build();
+        } else {
+            tagBuilded = null;
+        }
+
+        var configPath = AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value");
+        var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(method, "Config"))
+            .returns(KafkaClassNames.kafkaConsumerConfig)
+            .addParameter(CommonClassNames.config, "config")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.kafkaConsumerConfig), "extractor")
+            .addStatement("var configValue = config.get($S)", configPath)
+            .addStatement("return extractor.extract(configValue)")
+            .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
+            .addAnnotation(TagUtils.makeAnnotationSpec(targetTag));
+
+        return new KafkaConfigData(tagBuilded, methodBuilder.build());
+    }
+
+    public record KafkaConfigData(@Nullable TypeSpec tag, MethodSpec configMethod) {
+        public KafkaConfigData {
+            Objects.requireNonNull(configMethod);
+        }
+    }
+}

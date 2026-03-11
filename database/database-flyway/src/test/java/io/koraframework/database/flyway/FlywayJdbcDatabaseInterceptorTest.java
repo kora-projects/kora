@@ -1,0 +1,72 @@
+package io.koraframework.database.flyway;
+
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.TracerProvider;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import io.koraframework.database.common.telemetry.*;
+import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
+import io.koraframework.database.jdbc.JdbcDatabase;
+import io.koraframework.test.postgres.PostgresParams;
+import io.koraframework.test.postgres.PostgresTestContainer;
+
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.time.Duration;
+import java.util.Map;
+import java.util.Properties;
+
+@ExtendWith({PostgresTestContainer.class})
+public class FlywayJdbcDatabaseInterceptorTest {
+
+    @Test
+    public void testFlywayInterceptor(PostgresParams params) throws SQLException {
+        var config = new $JdbcDatabaseConfig_ConfigValueExtractor.JdbcDatabaseConfig_Impl(
+            params.user(),
+            params.password(),
+            params.jdbcUrl(),
+            "testPool",
+            null,
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            Duration.ofMillis(1000L),
+            2, // flyway uses two connections for migration and schema management
+            0,
+            Duration.ofMillis(1000L),
+            false,
+            new Properties(),
+            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTelemetryConfig_DatabaseLogConfig_ConfigValueExtractor.DatabaseLogConfig_Impl(true),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(true, Map.of()),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
+            )
+        );
+        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), null);
+        dataBase.init();
+        try {
+
+            var interceptor = new FlywayJdbcDatabaseInterceptor(new FlywayConfig() {});
+            Assertions.assertSame(dataBase, interceptor.init(dataBase), "FlywayJdbcDatabaseInterceptor should return same reference on init");
+
+            dataBase.inTx((Connection connection) -> {
+                var resultSet = connection
+                    .createStatement()
+                    .executeQuery("SELECT * FROM test_migrated_table WHERE id = 100");
+
+                Assertions.assertTrue(resultSet.next(), "test_migrated_table should contain row with id = 100");
+                Assertions.assertAll(
+                    () -> Assertions.assertEquals(100, resultSet.getLong("id"), "id should be equal to 100"),
+                    () -> Assertions.assertEquals("foo", resultSet.getString("name"), "name should be equal to 'foo'")
+                );
+            });
+
+            Assertions.assertSame(dataBase, interceptor.release(dataBase), "FlywayJdbcDatabaseInterceptor should return same reference on release");
+        } finally {
+            dataBase.release();
+        }
+
+    }
+}

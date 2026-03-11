@@ -1,0 +1,61 @@
+package io.koraframework.validation.annotation.processor;
+
+import org.junit.jupiter.api.Test;
+import io.koraframework.application.graph.TypeRef;
+import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import io.koraframework.validation.common.Validator;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+public class ValidationSealedTypeTest extends AbstractValidationAnnotationProcessorTest {
+
+    @Test
+    public void testSealedInterface() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            """
+                @Valid
+                public sealed interface TestInterface {
+                  @Valid
+                  record TestRecord(@Size(min = 1, max = 5) java.util.List<String> list) implements TestInterface {}
+                }
+                """);
+        compileResult.assertSuccess();
+
+        var validatorClass = compileResult.loadClass("$TestInterface_Validator");
+        assertThat(validatorClass).isNotNull();
+        assertThat(validatorClass.getConstructors()).hasSize(1);
+
+        var constructor = validatorClass.getConstructors()[0];
+        var parameters = constructor.getParameterTypes();
+        assertThat(parameters).containsExactly(Validator.class);
+
+        assertThat(constructor.getGenericParameterTypes()).containsExactly(TypeRef.of(Validator.class, compileResult.loadClass("TestInterface$TestRecord")));
+    }
+
+    @Test
+    public void testExtensionForProcessedType() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            """
+                @Valid
+                public sealed interface TestInterface {
+                  @Valid
+                  record TestRecord(@Size(min = 1, max = 5) java.util.List<String> list) implements TestInterface {}
+                }
+                """, """
+                @KoraApp
+                public interface TestApp extends ValidatorModule{
+                   @Root
+                   default String root(Validator<TestInterface> testRecordValidator) { return "";}
+                }
+                """);
+        compileResult.assertSuccess();
+
+        var validatorClass = compileResult.loadClass("$TestInterface_Validator");
+        assertThat(validatorClass).isNotNull();
+        var graph = compileResult.loadClass("TestAppGraph");
+        assertThat(graph).isNotNull();
+    }
+
+}

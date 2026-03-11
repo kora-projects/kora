@@ -6,12 +6,12 @@ module kora.http.server.common {
     requires transitive kora.logging.common;
     requires transitive kora.telemetry.common;
 
-    exports ru.tinkoff.kora.http.server.common;
-    exports ru.tinkoff.kora.http.server.common.annotation;
-    exports ru.tinkoff.kora.http.server.common.auth;
-    exports ru.tinkoff.kora.http.server.common.form;
-    exports ru.tinkoff.kora.http.server.common.handler;
-    exports ru.tinkoff.kora.http.server.common.mapper;
-    exports ru.tinkoff.kora.http.server.common.router;
-    exports ru.tinkoff.kora.http.server.common.telemetry;
+    exports io.koraframework.http.server.common;
+    exports io.koraframework.http.server.common.annotation;
+    exports io.koraframework.http.server.common.auth;
+    exports io.koraframework.http.server.common.form;
+    exports io.koraframework.http.server.common.handler;
+    exports io.koraframework.http.server.common.mapper;
+    exports io.koraframework.http.server.common.router;
+    exports io.koraframework.http.server.common.telemetry;
 }

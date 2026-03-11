@@ -6,5 +6,5 @@ module kora.cache.caffeine {
     requires transitive com.github.benmanes.caffeine;
     requires transitive kora.config.common;
 
-    exports ru.tinkoff.kora.cache.caffeine;
+    exports io.koraframework.cache.caffeine;
 }

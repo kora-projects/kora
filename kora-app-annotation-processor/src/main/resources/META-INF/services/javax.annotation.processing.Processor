@@ -1,2 +1,2 @@
-ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor
-ru.tinkoff.kora.kora.app.annotation.processor.KoraSubmoduleProcessor
+io.koraframework.kora.app.annotation.processor.KoraAppProcessor
+io.koraframework.kora.app.annotation.processor.KoraSubmoduleProcessor

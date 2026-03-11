@@ -1,0 +1,427 @@
+package io.koraframework.kora.app.annotation.processor;
+
+import com.palantir.javapoet.*;
+import org.jspecify.annotations.NullMarked;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
+import io.koraframework.annotation.processor.common.*;
+import io.koraframework.kora.app.annotation.processor.component.ComponentDependency;
+import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
+import io.koraframework.kora.app.annotation.processor.component.ResolvedComponent;
+import io.koraframework.kora.app.annotation.processor.component.ResolvedComponents;
+import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclarations;
+import io.koraframework.kora.app.annotation.processor.declaration.ModuleDeclaration;
+import io.koraframework.kora.app.annotation.processor.interceptor.ComponentInterceptors;
+
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedOptions;
+import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
+import javax.tools.Diagnostic;
+import java.io.IOException;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
+import java.util.*;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+@SupportedOptions("koraLogLevel")
+@NullMarked
+public class KoraAppProcessor extends AbstractKoraProcessor {
+
+    public static final int COMPONENTS_PER_HOLDER_CLASS = 500;
+
+    private static final Logger log = LoggerFactory.getLogger(KoraAppProcessor.class);
+
+    private final List<TypeElement> koraAppElements = new ArrayList<>();
+    private final List<TypeElement> modules = new ArrayList<>();
+    private final List<TypeElement> components = new ArrayList<>();
+
+    @Override
+    public synchronized void init(ProcessingEnvironment processingEnv) {
+        super.init(processingEnv);
+        log.info("@KoraApp processor started");
+    }
+
+    @Override
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(CommonClassNames.koraApp, CommonClassNames.module, CommonClassNames.component, CommonClassNames.koraSubmodule);
+    }
+
+    @Override
+    protected void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        this.processModules(annotatedElements);
+        this.processComponents(annotatedElements);
+        this.processApps(annotatedElements);
+
+        if (roundEnv.processingOver()) {
+            if (this.elements.getTypeElement(CommonClassNames.koraApp.canonicalName()) == null) {
+                return;
+            }
+            var ctx = new ProcessingContext(processingEnv);
+            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements", this.koraAppElements);
+
+            for (var element : this.koraAppElements) {
+                try {
+                    var result = buildGraph(roundEnv, ctx, element);
+                    this.write(element, ctx, result);
+                } catch (ProcessingErrorException e) {
+                    e.printError(this.processingEnv);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+    }
+
+    private void processApps(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of())) {
+            var element = annotated.element();
+            if (element.getKind() == ElementKind.INTERFACE) {
+                if (log.isInfoEnabled()) {
+                    log.info("@KoraApp element found:\n{}", element.toString().indent(4));
+                }
+                this.koraAppElements.add((TypeElement) element);
+            } else {
+                this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@KoraApp can be placed only on interfaces", element);
+            }
+        }
+    }
+
+    private void processComponents(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.component, List.of())) {
+            var componentElement = annotated.element();
+            if (componentElement.getKind() != ElementKind.CLASS) {
+                continue;
+            }
+            if (componentElement.getModifiers().contains(Modifier.ABSTRACT)) {
+                continue;
+            }
+
+            var typeElement = (TypeElement) componentElement;
+            if (!CommonUtils.hasAopAnnotations(typeElement)) {
+                this.components.add(typeElement);
+            }
+        }
+    }
+
+    private void processModules(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
+        for (var annotated : annotatedElements.getOrDefault(CommonClassNames.module, List.of())) {
+            if (annotated.element().getKind() != ElementKind.INTERFACE) {
+                continue;
+            }
+            var te = (TypeElement) annotated.element();
+            this.modules.add(te);
+        }
+    }
+
+    private ResolvedGraph buildGraph(RoundEnvironment roundEnv, ProcessingContext ctx, Element classElement) {
+        if (classElement.getKind() != ElementKind.INTERFACE) {
+            throw new ProcessingErrorException("@KoraApp is only applicable to interfaces", classElement);
+        }
+        var type = (TypeElement) classElement;
+        var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
+        if (log.isTraceEnabled()) {
+            log.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.modules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
+                .map(Object::toString).sorted()
+                .collect(Collectors.joining("\n")).indent(4));
+        }
+        var mixedInModuleComponents = KoraAppUtils.parseComponents(ctx, interfaces.stream().map(ModuleDeclaration.MixedInModule::new).toList());
+        if (log.isTraceEnabled()) {
+            log.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
+        }
+        var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
+        var discoveredModules = this.modules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
+        var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
+        var annotatedModulesComponents = KoraAppUtils.parseComponents(ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
+        var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
+        for (var component : this.components) {
+            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, component));
+        }
+        allComponents.addAll(mixedInModuleComponents);
+        allComponents.addAll(annotatedModulesComponents);
+        allComponents.sort(Comparator.comparing(Objects::toString));
+
+        record Components(List<ComponentDeclaration> templates, List<ComponentDeclaration> nonTemplates) {}
+        var components = allComponents.stream().collect(Collectors.teeing(
+            Collectors.filtering(ComponentDeclaration::isTemplate, Collectors.toList()),
+            Collectors.filtering(Predicate.not(ComponentDeclaration::isTemplate), Collectors.toCollection(ArrayList::new)),
+            Components::new
+        ));
+
+        var rootSet = components.nonTemplates.stream()
+            .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
+                || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
+            .toList();
+
+        var graphBuilder = new GraphBuilder(ctx, roundEnv, type, allModules, components.nonTemplates, components.templates, rootSet);
+
+        return graphBuilder.build();
+    }
+
+    private void write(TypeElement type, ProcessingContext ctx, ResolvedGraph ok) throws IOException {
+        var interceptors = ComponentInterceptors.parseInterceptors(ctx, ok.components().components());
+
+        var applicationImplFile = this.generateImpl(type, ok.allModules());
+        var applicationGraphFile = this.generateApplicationGraph(ctx, type, ok.allModules(), interceptors, ok.declarations(), ok.components());
+
+        applicationImplFile.writeTo(this.processingEnv.getFiler());
+        applicationGraphFile.writeTo(this.processingEnv.getFiler());
+    }
+
+
+    private JavaFile generateApplicationGraph(ProcessingContext ctx, Element classElement, List<TypeElement> allModules, ComponentInterceptors interceptors, ComponentDeclarations declarations, ResolvedComponents components) {
+        var packageElement = (PackageElement) classElement.getEnclosingElement();
+        var implClass = ClassName.get(packageElement.getQualifiedName().toString(), "$" + classElement.getSimpleName().toString() + "Impl");
+        var graphName = classElement.getSimpleName().toString() + "Graph";
+        var graphTypeName = ClassName.get(packageElement.getQualifiedName().toString(), graphName);
+        var classBuilder = TypeSpec.classBuilder(graphName)
+            .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
+            .addModifiers(Modifier.PUBLIC)
+            .addSuperinterface(ParameterizedTypeName.get(ClassName.get(Supplier.class), CommonClassNames.applicationGraphDraw))
+            .addField(CommonClassNames.applicationGraphDraw, "graphDraw", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+            .addMethod(MethodSpec
+                .methodBuilder("get")
+                .addAnnotation(Override.class)
+                .addModifiers(Modifier.PUBLIC)
+                .returns(CommonClassNames.applicationGraphDraw)
+                .addStatement("return graphDraw")
+                .build());
+        var currentClass = (TypeSpec.Builder) null;
+        var currentConstructor = (MethodSpec.Builder) null;
+        int holders = 0;
+        var componentsList = new ArrayList<>(components.components());
+        for (int i = 0; i < componentsList.size(); i++) {
+            var componentNumber = i % COMPONENTS_PER_HOLDER_CLASS;
+            if (componentNumber == 0) {
+                if (currentClass != null) {
+                    currentClass.addMethod(currentConstructor.build());
+                    classBuilder.addType(currentClass.build());
+                    var prevNumber = ((i / COMPONENTS_PER_HOLDER_CLASS) - 1);
+                    classBuilder.addField(graphTypeName.nestedClass("ComponentHolder" + prevNumber), "holder" + prevNumber, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+                }
+                holders++;
+                var className = graphTypeName.nestedClass("ComponentHolder" + i / COMPONENTS_PER_HOLDER_CLASS);
+                currentClass = TypeSpec.classBuilder(className)
+                    .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
+                    .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL);
+                currentConstructor = MethodSpec.constructorBuilder()
+                    .addModifiers(Modifier.PUBLIC)
+                    .addParameter(CommonClassNames.applicationGraphDraw, "graphDraw")
+                    .addParameter(implClass, "impl")
+                    .addStatement("var map = new $T<$T, $T>()", HashMap.class, String.class, Type.class)
+                    .beginControlFlow("for (var field : $T.class.getDeclaredFields())", className)
+                    .addStatement("if (!field.getName().startsWith($S)) continue", "component")
+                    .addStatement("map.put(field.getName(), (($T) field.getGenericType()).getActualTypeArguments()[0])", ParameterizedType.class)
+                    .endControlFlow();
+                for (int j = 0; j < i / COMPONENTS_PER_HOLDER_CLASS; j++) {
+                    currentConstructor.addParameter(graphTypeName.nestedClass("ComponentHolder" + j), "ComponentHolder" + j);
+                }
+            }
+            var component = componentsList.get(i);
+            TypeName componentTypeName = TypeName.get(component.type()).box();
+            var typeMirrorElement = types.asElement(component.type());
+            if (typeMirrorElement instanceof TypeElement te) {
+                var annotation = AnnotationUtils.findAnnotation(typeMirrorElement, CommonClassNames.aopProxy);
+                if (annotation != null) {
+                    var superElement = types.asElement(te.getSuperclass());
+                    var aopProxyName = NameUtils.generatedType(superElement, "_AopProxy");
+                    if (typeMirrorElement.getSimpleName().contentEquals(aopProxyName)) {
+                        componentTypeName = TypeName.get(te.getSuperclass()).box();
+                    }
+                }
+            }
+
+            currentClass.addField(FieldSpec.builder(ParameterizedTypeName.get(CommonClassNames.node, componentTypeName), component.fieldName(), Modifier.PRIVATE, Modifier.FINAL).build());
+            currentConstructor.addStatement("var _type_of_$L = map.get($S)", component.fieldName(), component.fieldName());
+            var statement = this.generateComponentStatement(ctx, graphTypeName, allModules, interceptors, declarations, components, component);
+            currentConstructor.addStatement(statement);
+        }
+        if (components.size() > 0) {
+            var lastComponentNumber = components.size() / COMPONENTS_PER_HOLDER_CLASS;
+            if (components.size() % COMPONENTS_PER_HOLDER_CLASS == 0) {
+                lastComponentNumber--;
+            }
+            currentClass.addMethod(currentConstructor.build());
+            classBuilder.addType(currentClass.build());
+            classBuilder.addField(graphTypeName.nestedClass("ComponentHolder" + lastComponentNumber), "holder" + lastComponentNumber, Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+        }
+
+
+        var staticBlock = CodeBlock.builder();
+
+        staticBlock
+            .addStatement("var impl = new $T()", implClass)
+            .addStatement("graphDraw = new $T($T.class)", CommonClassNames.applicationGraphDraw, classElement);
+        for (int i = 0; i < holders; i++) {
+            staticBlock.add("$N = new $T(graphDraw, impl", "holder" + i, graphTypeName.nestedClass("ComponentHolder" + i));
+            for (int j = 0; j < i; j++) {
+                staticBlock.add(", holder" + j);
+            }
+            staticBlock.add(");\n");
+        }
+
+        var supplierMethodBuilder = MethodSpec.methodBuilder("graph")
+            .returns(CommonClassNames.applicationGraphDraw)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .addStatement("return graphDraw");
+
+
+        return JavaFile.builder(packageElement.getQualifiedName().toString(), classBuilder
+                .addMethod(supplierMethodBuilder.build())
+                .addStaticBlock(staticBlock.build())
+                .build())
+            .build();
+    }
+
+    private CodeBlock generateComponentStatement(ProcessingContext ctx, ClassName graphTypeName, List<TypeElement> allModules, ComponentInterceptors interceptors, ComponentDeclarations declarations, ResolvedComponents components, ResolvedComponent component) {
+        var statement = CodeBlock.builder();
+        var declaration = component.declaration();
+        statement.add("$L = graphDraw.addNode0(_type_of_$L, ", component.fieldName(), component.fieldName());
+        if (component.tag() == null) {
+            statement.add("null, ");
+        } else {
+            statement.add("$L.class, ", component.tag());
+        }
+        statement.add("g -> ");
+        var dependenciesCode = this.generateDependenciesCode(ctx, component, graphTypeName, declarations, components);
+
+        switch (declaration) {
+            case ComponentDeclaration.AnnotatedComponent annotatedComponent -> {
+                statement.add("new $T", ClassName.get(annotatedComponent.typeElement()));
+                if (!annotatedComponent.typeVariables().isEmpty()) {
+                    statement.add("<");
+                    for (int i = 0; i < annotatedComponent.typeVariables().size(); i++) {
+                        if (i > 0) statement.add(", ");
+                        statement.add("$T", annotatedComponent.typeVariables().get(i));
+                    }
+                    statement.add(">");
+                }
+                statement.add("($L)", dependenciesCode);
+            }
+            case ComponentDeclaration.FromModuleComponent moduleComponent -> {
+                if (moduleComponent.module() instanceof ModuleDeclaration.AnnotatedModule(var element)) {
+                    statement.add("impl.module$L.", allModules.indexOf(element));
+                } else {
+                    statement.add("impl.");
+                }
+                if (!moduleComponent.typeVariables().isEmpty()) {
+                    statement.add("<");
+                    for (int i = 0; i < moduleComponent.typeVariables().size(); i++) {
+                        if (i > 0) statement.add(", ");
+                        statement.add("$T", moduleComponent.typeVariables().get(i));
+                    }
+                    statement.add(">");
+                }
+                statement.add("$L($L)", moduleComponent.method().getSimpleName(), dependenciesCode);
+            }
+            case ComponentDeclaration.FromExtensionComponent extension -> statement.add(extension.generator().apply(dependenciesCode));
+            case ComponentDeclaration.PromisedProxyComponent promisedProxyComponent -> {
+                if (promisedProxyComponent.typeElement().getTypeParameters().isEmpty()) {
+                    statement.add("new $T($L)", promisedProxyComponent.className(), dependenciesCode);
+                } else {
+                    statement.add("new $T<>($L)", promisedProxyComponent.className(), dependenciesCode);
+                }
+            }
+            case ComponentDeclaration.OptionalComponent optional -> {
+                var optionalOf = ((DeclaredType) optional.type()).getTypeArguments().get(0);
+                statement.add("$T.<$T>ofNullable($L)", Optional.class, optionalOf, dependenciesCode);
+            }
+            case null, default -> throw new RuntimeException("Unknown type " + declaration);
+        }
+        var resolvedDependencies = component.dependencies();
+        statement.add(", $T.of(", List.class);
+        var interceptorsFor = interceptors.interceptorsFor(component);
+        for (int i = 0; i < interceptorsFor.size(); i++) {
+            var interceptor = interceptorsFor.get(i);
+            if (component.holderName().equals(interceptor.component().holderName())) {
+                statement.add("$N", interceptor.component().fieldName());
+            } else {
+                statement.add("$N.$N", interceptor.component().holderName(), interceptor.component().fieldName());
+            }
+            if (i < interceptorsFor.size() - 1) {
+                statement.add(", ");
+            }
+        }
+        statement.add(")");
+        for (var resolvedDependency : resolvedDependencies) {
+            if (resolvedDependency instanceof ComponentDependency.AllOfDependency(var claim)) {
+                if (claim.claimType() != DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
+                    var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, claim);
+                    var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, dependencyDeclarations, components);
+                    for (var dependency : dependencies) {
+                        if (component.holderName().equals(dependency.component().holderName())) {
+                            statement.add(", $N", dependency.component().fieldName());
+                        } else {
+                            statement.add(", $N.$N", dependency.component().holderName(), dependency.component().fieldName());
+                        }
+                        if (claim.claimType() == DependencyClaim.DependencyClaimType.ALL_OF_VALUE) {
+                            statement.add(".valueOf()");
+                        }
+                    }
+                }
+                continue;
+            }
+            if (resolvedDependency instanceof ComponentDependency.PromiseOfDependency || resolvedDependency instanceof ComponentDependency.PromisedProxyParameterDependency) {
+                continue;
+            }
+
+            if (resolvedDependency instanceof ComponentDependency.SingleDependency dependency && dependency.component() != null) {
+                if (component.holderName().equals(dependency.component().holderName())) {
+                    statement.add(", $N", dependency.component().fieldName());
+                } else {
+                    statement.add(", $N.$N", dependency.component().holderName(), dependency.component().fieldName());
+                }
+                if (resolvedDependency instanceof ComponentDependency.ValueOfDependency) {
+                    statement.add(".valueOf()");
+                }
+            }
+        }
+        statement.add(")");
+        return statement.build();
+    }
+
+    private CodeBlock generateDependenciesCode(ProcessingContext ctx, ResolvedComponent component, ClassName graphTypeName, ComponentDeclarations declarations, ResolvedComponents components) {
+        var resolvedDependencies = component.dependencies();
+        if (resolvedDependencies.isEmpty()) {
+            return CodeBlock.of("");
+        }
+        var b = CodeBlock.builder();
+        b.indent();
+        b.add("\n");
+        for (int i = 0, dependenciesSize = resolvedDependencies.size(); i < dependenciesSize; i++) {
+            if (i > 0) b.add(",\n");
+            var resolvedDependency = resolvedDependencies.get(i);
+            b.add(resolvedDependency.write(ctx, graphTypeName, declarations, components));
+        }
+        b.unindent();
+        b.add("\n");
+        return b.build();
+    }
+
+    private JavaFile generateImpl(TypeElement classElement, List<TypeElement> modules) throws IOException {
+        var typeMirror = classElement.asType();
+        var packageElement = (PackageElement) classElement.getEnclosingElement();
+        var className = "$" + classElement.getSimpleName().toString() + "Impl";
+        var classBuilder = TypeSpec.classBuilder(className)
+            .addAnnotation(AnnotationUtils.generated(KoraAppProcessor.class))
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addSuperinterface(typeMirror);
+
+        for (int i = 0; i < modules.size(); i++) {
+            var module = modules.get(i);
+            classBuilder.addField(FieldSpec.builder(TypeName.get(module.asType()), "module" + i, Modifier.PUBLIC, Modifier.FINAL)
+                .initializer("new $T(){}", module.asType())
+                .build());
+        }
+
+        return JavaFile.builder(packageElement.getQualifiedName().toString(), classBuilder.build())
+            .build();
+    }
+
+}

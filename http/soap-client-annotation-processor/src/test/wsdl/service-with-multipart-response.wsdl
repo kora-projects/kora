@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
                   name="OfferService"
-                  targetNamespace="http://kora.tinkoff.ru/service/with/multipart"
+                  targetNamespace="http://koraframework.io/service/with/multipart"
                   xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
-                  xmlns:tns="http://kora.tinkoff.ru/service/with/multipart"
+                  xmlns:tns="http://koraframework.io/service/with/multipart"
                   xmlns:xsd="http://www.w3.org/2001/XMLSchema">
     <wsdl:types>
-        <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://kora.tinkoff.ru/service/with/multipart">
+        <xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://koraframework.io/service/with/multipart">
             <xsd:element name="TestRequest">
                 <xsd:complexType>
                     <xsd:sequence>

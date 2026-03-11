@@ -1,2 +1,2 @@
-ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
-ru.tinkoff.kora.kora.app.ksp.KoraSubmoduleProcessorProvider
+io.koraframework.kora.app.ksp.KoraAppProcessorProvider
+io.koraframework.kora.app.ksp.KoraSubmoduleProcessorProvider

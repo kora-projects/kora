@@ -1,0 +1,23 @@
+package io.koraframework.json.jackson.module.http.server;
+
+import io.koraframework.application.graph.TypeRef;
+import io.koraframework.http.server.common.HttpServerRequest;
+import io.koraframework.http.server.common.HttpServerResponse;
+import io.koraframework.http.server.common.handler.HttpServerResponseMapper;
+import io.koraframework.json.jackson.module.http.JacksonHttpBodyOutput;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectWriter;
+
+public final class JacksonHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
+    private final ObjectWriter objectMapper;
+
+    public JacksonHttpServerResponseMapper(ObjectMapper objectMapper, TypeRef<T> typeRef) {
+        this.objectMapper = objectMapper.writerFor(objectMapper.constructType(typeRef));
+    }
+
+    @Override
+    public HttpServerResponse apply(HttpServerRequest request, T result) {
+        var body = new JacksonHttpBodyOutput<>(objectMapper, result);
+        return HttpServerResponse.of(200, body);
+    }
+}

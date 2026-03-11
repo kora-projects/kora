@@ -1,0 +1,37 @@
+package io.koraframework.json.jackson.module.http;
+
+import io.koraframework.http.common.body.HttpBodyOutput;
+import tools.jackson.databind.ObjectWriter;
+
+import java.io.IOException;
+import java.io.OutputStream;
+
+public final class JacksonHttpBodyOutput<T> implements HttpBodyOutput {
+    private final ObjectWriter objectMapper;
+    private final T value;
+
+    public JacksonHttpBodyOutput(ObjectWriter objectMapper, T value) {
+        this.objectMapper = objectMapper;
+        this.value = value;
+    }
+
+    @Override
+    public long contentLength() {
+        return -1;
+    }
+
+    @Override
+    public String contentType() {
+        return "application/json";
+    }
+
+    @Override
+    public void write(OutputStream os) throws IOException {
+        this.objectMapper.writeValue(os, this.value);
+    }
+
+    @Override
+    public void close() throws IOException {
+
+    }
+}

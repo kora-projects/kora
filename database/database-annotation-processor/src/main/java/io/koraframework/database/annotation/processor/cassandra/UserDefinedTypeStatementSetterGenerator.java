@@ -1,0 +1,143 @@
+package io.koraframework.database.annotation.processor.cassandra;
+
+
+import com.palantir.javapoet.*;
+import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.annotation.processor.common.CommonClassNames;
+import io.koraframework.annotation.processor.common.CommonUtils;
+import io.koraframework.annotation.processor.common.NameUtils;
+import io.koraframework.database.annotation.processor.entity.DbEntity;
+
+import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Modifier;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Elements;
+import javax.lang.model.util.Types;
+import java.util.ArrayList;
+import java.util.Objects;
+
+public class UserDefinedTypeStatementSetterGenerator {
+
+    private final Elements elements;
+    private final Types types;
+    private final ProcessingEnvironment processingEnv;
+
+    public UserDefinedTypeStatementSetterGenerator(ProcessingEnvironment processingEnv) {
+        this.processingEnv = processingEnv;
+        this.elements = processingEnv.getElementUtils();
+        this.types = processingEnv.getTypeUtils();
+    }
+
+    public void generate(TypeElement element, TypeMirror typeMirror) {
+        this.generateMapper(element, typeMirror);
+        this.generateListMapper(element, typeMirror);
+    }
+
+    public void generateMapper(TypeElement element, TypeMirror typeMirror) {
+        var packageName = this.elements.getPackageOf(element);
+        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, CassandraTypes.PARAMETER_COLUMN_MAPPER))
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(typeMirror)));
+        var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        this.addMappers(typeSpec, constructor, entity);
+        var apply = MethodSpec.methodBuilder("apply")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(Override.class)
+            .addParameter(CassandraTypes.SETTABLE_BY_NAME, "_stmt")
+            .addParameter(int.class, "_index")
+            .addParameter(TypeName.get(typeMirror), "_value");
+        apply.beginControlFlow("if (_value == null)").addStatement("_stmt.setToNull(_index)").addStatement("return").endControlFlow();
+
+        apply.addStatement("var _type = ($T) _stmt.getType(_index)", CassandraTypes.USER_DEFINED_TYPE);
+        this.readIndexes(apply, entity);
+        apply.addStatement("var _object = _type.newValue()");
+        apply.addCode("\n");
+        this.setFields(apply, entity);
+        apply.addCode("\n");
+        apply.addStatement("_stmt.setUdtValue(_index, _object)");
+
+        typeSpec.addMethod(apply.build());
+        typeSpec.addMethod(constructor.build());
+
+        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
+    public void generateListMapper(TypeElement element, TypeMirror typeMirror) {
+        var packageName = this.elements.getPackageOf(element);
+        var listType = ParameterizedTypeName.get(CommonClassNames.list, TypeName.get(typeMirror));
+        var typeSpec = TypeSpec.classBuilder(NameUtils.generatedType(element, "List_CassandraParameterColumnMapper"))
+            .addOriginatingElement(element)
+            .addAnnotation(AnnotationUtils.generated(UserDefinedTypeStatementSetterGenerator.class))
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addSuperinterface(ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, listType));
+        var entity = Objects.requireNonNull(DbEntity.parseEntity(this.types, typeMirror));
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+        this.addMappers(typeSpec, constructor, entity);
+        var apply = MethodSpec.methodBuilder("apply")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(Override.class)
+            .addParameter(CassandraTypes.SETTABLE_BY_NAME, "_stmt")
+            .addParameter(int.class, "_index")
+            .addParameter(listType, "_listValue");
+        apply.beginControlFlow("if (_listValue == null)").addStatement("_stmt.setToNull(_index)").addStatement("return").endControlFlow();
+
+        apply.addStatement("var _listType = ($T) _stmt.getType(_index)", CassandraTypes.LIST_TYPE);
+        apply.addStatement("var _type = ($T) _listType.getElementType()", CassandraTypes.USER_DEFINED_TYPE);
+        this.readIndexes(apply, entity);
+        apply.addStatement("var _listResult = new $T<$T>(_listValue.size())", ArrayList.class, CassandraTypes.UDT_VALUE);
+        apply.beginControlFlow("for (var _value : _listValue)");
+        apply.addStatement("var _object = _type.newValue()");
+        this.setFields(apply, entity);
+        apply.addStatement("_listResult.add(_object)");
+        apply.endControlFlow();
+        apply.addCode("\n");
+        apply.addStatement("_stmt.setList(_index, _listResult, $T.class)", CassandraTypes.UDT_VALUE);
+
+        typeSpec.addMethod(apply.build());
+        typeSpec.addMethod(constructor.build());
+
+        var javaFile = JavaFile.builder(packageName.getQualifiedName().toString(), typeSpec.build()).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
+    }
+
+    private void readIndexes(MethodSpec.Builder apply, DbEntity entity) {
+        for (var entityField : entity.columns()) {
+            var fieldName = entityField.element().getSimpleName().toString();
+            apply.addStatement("var $N = _type.firstIndexOf($S)", "_index_of_" + fieldName, entityField.columnName());
+        }
+    }
+
+    private void setFields(MethodSpec.Builder apply, DbEntity entity) {
+        for (var entityField : entity.columns()) {
+            var fieldName = entityField.element().getSimpleName().toString();
+            var index = CodeBlock.of("$N", "_index_of_" + fieldName);
+            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
+            if (nativeType != null) {
+                apply.addStatement(nativeType.bind("_object", "_value.%s()".formatted(entityField.accessor()), index));
+            } else {
+                var mapperName = "_" + fieldName + "_mapper";
+                apply.addStatement("this.$N.apply(_object, $L, _value.$N())", mapperName, index, entityField.accessor());
+            }
+        }
+    }
+
+    private void addMappers(TypeSpec.Builder typeSpec, MethodSpec.Builder constructor, DbEntity entity) {
+        for (var entityField : entity.columns()) {
+            var fieldName = entityField.element().getSimpleName().toString();
+            var nativeType = CassandraNativeTypes.findNativeType(TypeName.get(entityField.type()));
+            if (nativeType == null) {
+                var mapperName = "_" + fieldName + "_mapper";
+                // todo mapping annotation support?
+                var mapperType = ParameterizedTypeName.get(CassandraTypes.PARAMETER_COLUMN_MAPPER, TypeName.get(entityField.type()));
+                constructor.addParameter(mapperType, mapperName);
+                constructor.addStatement("this.$N = $N", mapperName, mapperName);
+                typeSpec.addField(mapperType, mapperName, Modifier.PRIVATE, Modifier.FINAL);
+            }
+        }
+    }
+}

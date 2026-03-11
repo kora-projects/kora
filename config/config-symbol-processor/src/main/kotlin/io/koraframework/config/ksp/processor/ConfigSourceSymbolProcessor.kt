@@ -1,0 +1,74 @@
+package io.koraframework.config.ksp.processor
+
+import com.google.devtools.ksp.processing.*
+import com.google.devtools.ksp.symbol.ClassKind
+import com.google.devtools.ksp.symbol.KSAnnotated
+import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.squareup.kotlinpoet.FileSpec
+import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.KModifier
+import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.TypeSpec
+import com.squareup.kotlinpoet.ksp.toClassName
+import com.squareup.kotlinpoet.ksp.writeTo
+import io.koraframework.config.ksp.ConfigClassNames
+import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.AnnotationUtils.findValue
+import io.koraframework.ksp.common.BaseSymbolProcessor
+import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
+import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.visitClass
+
+class ConfigSourceSymbolProcessor(
+    environment: SymbolProcessorEnvironment
+) : BaseSymbolProcessor(environment) {
+    private val codeGenerator: CodeGenerator = environment.codeGenerator
+
+    override fun processRound(resolver: Resolver): List<KSAnnotated> {
+        val classesToProcess = resolver.getSymbolsWithAnnotation(ConfigClassNames.configSourceAnnotation.canonicalName).toList()
+
+        classesToProcess.forEach {
+            it.visitClass { config ->
+                val typeBuilder = TypeSpec.interfaceBuilder(config.simpleName.asString() + "Module")
+                val configSource = config.findAnnotation(ConfigClassNames.configSourceAnnotation)!!
+                val path = configSource.findValue<String>("value")!!
+                val name = StringBuilder(config.simpleName.asString())
+                var parent = config.parentDeclaration
+                while (parent is KSClassDeclaration && (parent.classKind == ClassKind.CLASS || parent.classKind == ClassKind.INTERFACE)) {
+                    name.insert(0, parent.simpleName.asString())
+                    parent = parent.parentDeclaration
+                }
+                name.replace(0, 1, name[0].lowercaseChar().toString())
+                val function = FunSpec.builder(name.toString())
+                    .returns(config.toClassName())
+                    .addModifiers(KModifier.PUBLIC)
+                    .addParameter("config", ConfigClassNames.config)
+                    .addParameter(
+                        "extractor",
+                        ConfigClassNames.configValueExtractor.parameterizedBy(config.toClassName())
+                    )
+                    .addStatement("val configValue = config.get(%S)", path)
+                    .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
+                val type = typeBuilder.addFunction(function.build())
+                    .addAnnotation(CommonClassNames.module)
+                    .generated(ConfigSourceSymbolProcessor::class)
+                    .addModifiers(KModifier.PUBLIC)
+                    .addOriginatingKSFile(config)
+                    .build()
+                val packageElement = config.packageName.asString()
+                val fileSpec = FileSpec.builder(packageElement, type.name!!)
+                    .addType(type)
+                    .build()
+                fileSpec.writeTo(codeGenerator, false)
+            }
+        }
+        return listOf()
+    }
+}
+
+class ConfigSourceSymbolProcessorProvider : SymbolProcessorProvider {
+    override fun create(environment: SymbolProcessorEnvironment): SymbolProcessor {
+        return ConfigSourceSymbolProcessor(environment)
+    }
+}

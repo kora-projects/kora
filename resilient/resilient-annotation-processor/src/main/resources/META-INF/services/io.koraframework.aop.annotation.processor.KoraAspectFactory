@@ -1,0 +1,4 @@
+io.koraframework.resilient.annotation.processor.aop.CircuitBreakerKoraAspectFactory
+io.koraframework.resilient.annotation.processor.aop.RetryKoraAspectFactory
+io.koraframework.resilient.annotation.processor.aop.TimeoutKoraAspectFactory
+io.koraframework.resilient.annotation.processor.aop.FallbackKoraAspectFactory

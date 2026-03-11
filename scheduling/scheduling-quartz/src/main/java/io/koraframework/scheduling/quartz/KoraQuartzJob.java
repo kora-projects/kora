@@ -1,0 +1,59 @@
+package io.koraframework.scheduling.quartz;
+
+import org.quartz.Job;
+import org.quartz.JobExecutionContext;
+import org.quartz.Trigger;
+import org.slf4j.MDC;
+import io.koraframework.common.telemetry.Observation;
+import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
+
+import java.util.List;
+import java.util.function.Consumer;
+
+public abstract class KoraQuartzJob implements Job {
+    private final Consumer<JobExecutionContext> job;
+    private final List<Trigger> trigger;
+    private final SchedulingTelemetry telemetry;
+
+    public KoraQuartzJob(SchedulingTelemetry telemetry, Consumer<JobExecutionContext> job, Trigger trigger) {
+        this(telemetry, job, List.of(trigger));
+    }
+
+    public KoraQuartzJob(SchedulingTelemetry telemetry, Consumer<JobExecutionContext> job, List<Trigger> trigger) {
+        this.job = job;
+        this.trigger = trigger;
+        this.telemetry = telemetry;
+    }
+
+    @Override
+    public final void execute(JobExecutionContext jobExecutionContext) {
+        ScopedValue.where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
+            .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root())
+            .run(() -> {
+                MDC.clear();
+                var observation = this.telemetry.observe();
+                ScopedValue.where(Observation.VALUE, observation)
+                    .where(OpentelemetryContext.VALUE, io.opentelemetry.context.Context.root().with(observation.span()))
+                    .run(() -> {
+                        observation.observeRun();
+                        try {
+                            this.job.accept(jobExecutionContext);
+                        } catch (Throwable e) {
+                            observation.observeError(e);
+                            throw e;
+                        } finally {
+                            observation.end();
+                        }
+                    });
+            });
+    }
+
+    public Trigger getTrigger() {
+        return this.trigger.get(0);
+    }
+
+    public List<Trigger> getTriggers() {
+        return this.trigger;
+    }
+}

@@ -1,0 +1,114 @@
+package io.koraframework.test.extension.junit5;
+
+import org.junit.jupiter.api.extension.ExtensionConfigurationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import io.koraframework.application.graph.ApplicationGraphDraw;
+import io.koraframework.application.graph.Node;
+import io.koraframework.application.graph.RefreshableGraph;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.test.extension.junit5.KoraJUnit5Extension.TestMethodMetadata;
+
+import java.util.List;
+import java.util.concurrent.Semaphore;
+
+final class TestGraph implements AutoCloseable {
+
+    public enum Status {
+        CREATED,
+        INITIALIZED,
+        RELEASED
+    }
+
+    private static final Logger logger = LoggerFactory.getLogger(KoraJUnit5Extension.class);
+
+    private static final int PERMIT_WITH_PROPS = 64;
+    private static final int PERMIT_NO_PROPS = 1;
+    private static final Semaphore LOCK = new Semaphore(PERMIT_WITH_PROPS);
+
+    private final ApplicationGraphDraw graph;
+    private final TestMethodMetadata metadata;
+    private final List<Node<?>> nodes;
+    private final List<Node<?>> mocks;
+
+    private volatile TestGraphContext graphInitialized;
+    private volatile Status status;
+
+    TestGraph(ApplicationGraphDraw graph,
+              TestMethodMetadata metadata,
+              List<Node<?>> nodes,
+              List<Node<?>> mocks) {
+        this.graph = graph;
+        this.metadata = metadata;
+        this.nodes = nodes;
+        this.mocks = mocks;
+        this.status = Status.CREATED;
+    }
+
+    List<Node<?>> getNodes() {
+        return nodes;
+    }
+
+    List<Node<?>> getMocks() {
+        return mocks;
+    }
+
+    void initialize() {
+        logger.trace("@KoraAppTest dependency container initializing...");
+        final long started = TimeUtils.started();
+
+        var config = metadata.classMetadata().config();
+
+        if (!config.systemProperties().isEmpty()) {
+            // system property set/unset sync required or props reshare between different init graphs
+            LOCK.acquireUninterruptibly(PERMIT_WITH_PROPS);
+            initGraph(config, started);
+            LOCK.release(PERMIT_WITH_PROPS);
+        } else {
+            LOCK.acquireUninterruptibly(PERMIT_NO_PROPS);
+            initGraph(config, started);
+            LOCK.release(PERMIT_NO_PROPS);
+        }
+    }
+
+    private void initGraph(KoraJUnit5Extension.TestClassMetadata.Config config, long started) {
+        try {
+            config.setup(graph);
+            final RefreshableGraph initGraph = graph.init();
+            this.graphInitialized = new TestGraphContext(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
+            this.status = Status.INITIALIZED;
+            logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
+        } catch (Exception e) {
+            throw new ExtensionConfigurationException("Dependency container initialization failed after: " + TimeUtils.tookForLogging(started), e);
+        } finally {
+            config.cleanup();
+        }
+    }
+
+    TestGraphContext initialized() {
+        if (graphInitialized == null) {
+            throw new ExtensionConfigurationException("Dependency container is not initialized, initialization probably failed on previous steps!");
+        }
+        return graphInitialized;
+    }
+
+    Status status() {
+        return status;
+    }
+
+    @Override
+    public void close() {
+        if (graphInitialized != null) {
+            final long started = TimeUtils.started();
+            logger.trace("@KoraAppTest dependency container releasing...");
+            try {
+                graphInitialized.refreshableGraph().release();
+                this.status = Status.RELEASED;
+            } catch (Error | Exception e) {
+                throw new ExtensionConfigurationException("Dependency container release failed after: " + TimeUtils.tookForLogging(started), e);
+            }
+            graphInitialized = null;
+            logger.debug("@KoraAppTest dependency container released in {}", TimeUtils.tookForLogging(started));
+        }
+    }
+}

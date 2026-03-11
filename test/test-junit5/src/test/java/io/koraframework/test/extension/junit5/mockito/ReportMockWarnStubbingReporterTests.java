@@ -1,0 +1,55 @@
+package io.koraframework.test.extension.junit5.mockito;
+
+import org.junit.jupiter.api.Test;
+import org.junit.platform.engine.discovery.DiscoverySelectors;
+import org.junit.platform.launcher.core.LauncherDiscoveryRequestBuilder;
+import org.junit.platform.launcher.core.LauncherFactory;
+import org.junit.platform.launcher.listeners.SummaryGeneratingListener;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import org.mockito.quality.Strictness;
+import io.koraframework.test.extension.junit5.KoraAppTest;
+import io.koraframework.test.extension.junit5.TestComponent;
+import io.koraframework.test.extension.junit5.testdata.TestApplication;
+import io.koraframework.test.extension.junit5.testdata.TestComponent1;
+import io.koraframework.test.extension.junit5.testdata.TestComponent12;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+@SuppressWarnings(value = {"JUnitMalformedDeclaration", "EqualsWithItself"})
+public class ReportMockWarnStubbingReporterTests {
+
+    @Test
+    public void mockWarn() {
+        var request = LauncherDiscoveryRequestBuilder.request()
+            .selectors(DiscoverySelectors.selectClass(MockWarnTest.class)).build();
+
+        var launcher = LauncherFactory.create();
+        var listener = new SummaryGeneratingListener();
+
+        launcher.registerTestExecutionListeners(listener);
+        launcher.execute(request);
+
+        assertEquals(2, listener.getSummary().getTestsSucceededCount());
+    }
+
+    @KoraAppTest(value = TestApplication.class, components = TestComponent12.class)
+    @MockitoStrictness(Strictness.WARN)
+    static class MockWarnTest {
+        @Mock
+        @TestComponent
+        private TestComponent1 mock;
+
+        @Test
+        void mockField() {
+            Mockito.when(mock.get()).thenReturn("?");
+            assertEquals("?", "?");
+        }
+
+        @Test
+        void mockParameter(@Mock @TestComponent TestComponent1 mock) {
+            Mockito.when(mock.get()).thenReturn("?");
+            assertEquals("?", "?");
+        }
+    }
+}

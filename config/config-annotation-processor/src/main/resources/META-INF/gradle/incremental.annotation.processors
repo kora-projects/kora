@@ -1,2 +1,2 @@
-ru.tinkoff.kora.config.annotation.processor.processor.ConfigParserAnnotationProcessor,isolating
-ru.tinkoff.kora.config.annotation.processor.processor.ConfigSourceAnnotationProcessor,isolating
+io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor,isolating
+io.koraframework.config.annotation.processor.processor.ConfigSourceAnnotationProcessor,isolating

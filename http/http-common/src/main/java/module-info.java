@@ -6,12 +6,12 @@ module kora.http.common {
 
     requires static transitive kora.json.common;
 
-    exports ru.tinkoff.kora.http.common;
-    exports ru.tinkoff.kora.http.common.annotation;
-    exports ru.tinkoff.kora.http.common.auth;
-    exports ru.tinkoff.kora.http.common.body;
-    exports ru.tinkoff.kora.http.common.cookie;
-    exports ru.tinkoff.kora.http.common.form;
-    exports ru.tinkoff.kora.http.common.header;
-    exports ru.tinkoff.kora.http.common.telemetry;
+    exports io.koraframework.http.common;
+    exports io.koraframework.http.common.annotation;
+    exports io.koraframework.http.common.auth;
+    exports io.koraframework.http.common.body;
+    exports io.koraframework.http.common.cookie;
+    exports io.koraframework.http.common.form;
+    exports io.koraframework.http.common.header;
+    exports io.koraframework.http.common.telemetry;
 }
