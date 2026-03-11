@@ -31,7 +31,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     public static HttpServerResponseException of(int code, Throwable throwable) {
-        return of(throwable, code, Objects.requireNonNull(throwable.getMessage(), "Internal server error"));
+        return of(throwable, code, Objects.requireNonNullElse(throwable.getMessage(), "Internal server error"));
     }
 
     public static HttpServerResponseException of(int code, String text, MutableHttpHeaders headers) {
@@ -39,7 +39,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
     }
 
     public static HttpServerResponseException of(int code, Throwable throwable, MutableHttpHeaders headers) {
-        return of(throwable, code, Objects.requireNonNull(throwable.getMessage(), "Internal server error"), headers);
+        return of(throwable, code, Objects.requireNonNullElse(throwable.getMessage(), "Internal server error"), headers);
     }
 
     public static HttpServerResponseException of(@Nullable Throwable cause, int code, String text) {
