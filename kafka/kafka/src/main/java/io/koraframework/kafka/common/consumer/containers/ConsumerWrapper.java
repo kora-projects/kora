@@ -3,6 +3,7 @@ package io.koraframework.kafka.common.consumer.containers;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.*;
+import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.serialization.Deserializer;
 import org.jspecify.annotations.Nullable;
 
@@ -66,14 +67,18 @@ public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
     }
 
     @Override
-    public void unsubscribe() {
-        realConsumer.unsubscribe();
+    public void subscribe(SubscriptionPattern pattern, ConsumerRebalanceListener callback) {
+        realConsumer.subscribe(pattern, callback);
     }
 
     @Override
-    @Deprecated
-    public ConsumerRecords<K, V> poll(long timeout) {
-        return new ConsumerRecordsWrapper<>(realConsumer.poll(timeout), keyDeserializer, valueDeserializer);
+    public void subscribe(SubscriptionPattern pattern) {
+        realConsumer.subscribe(pattern);
+    }
+
+    @Override
+    public void unsubscribe() {
+        realConsumer.unsubscribe();
     }
 
     @Override
@@ -117,6 +122,16 @@ public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    public void registerMetricForSubscription(KafkaMetric metric) {
+
+    }
+
+    @Override
+    public void unregisterMetricFromSubscription(KafkaMetric metric) {
+
+    }
+
+    @Override
     public void seek(TopicPartition partition, long offset) {
         realConsumer.seek(partition, offset);
     }
@@ -144,18 +159,6 @@ public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
     @Override
     public long position(TopicPartition partition, Duration timeout) {
         return realConsumer.position(partition, timeout);
-    }
-
-    @Override
-    @Deprecated
-    public OffsetAndMetadata committed(TopicPartition partition) {
-        return realConsumer.committed(partition);
-    }
-
-    @Override
-    @Deprecated
-    public OffsetAndMetadata committed(TopicPartition partition, Duration timeout) {
-        return realConsumer.committed(partition, timeout);
     }
 
     @Override
@@ -264,8 +267,14 @@ public final class ConsumerWrapper<K, V> implements Consumer<K, V> {
     }
 
     @Override
+    @Deprecated
     public void close(Duration timeout) {
         realConsumer.close(timeout);
+    }
+
+    @Override
+    public void close(CloseOptions option) {
+        realConsumer.close(option);
     }
 
     @Override
