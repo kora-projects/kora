@@ -1,10 +1,6 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.NullMarked;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.event.Level;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.kora.app.annotation.processor.component.ComponentDependency;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
@@ -14,6 +10,10 @@ import io.koraframework.kora.app.annotation.processor.declaration.ComponentDecla
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclarations;
 import io.koraframework.kora.app.annotation.processor.declaration.ModuleDeclaration;
 import io.koraframework.kora.app.annotation.processor.interceptor.ComponentInterceptors;
+import org.jspecify.annotations.NullMarked;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.event.Level;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
@@ -282,12 +282,32 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private CodeBlock generateComponentStatement(ProcessingContext ctx, ClassName graphTypeName, List<TypeElement> allModules, ComponentInterceptors interceptors, ComponentDeclarations declarations, ResolvedComponents components, ResolvedComponent component) {
         var statement = CodeBlock.builder();
         var declaration = component.declaration();
-        statement.add("$L = graphDraw.addNode0(_type_of_$L, ", component.fieldName(), component.fieldName());
+        var componentHolder = component.holderName();
+        var componentField = component.fieldName();
+        statement.add("$L = graphDraw.addNode(_type_of_$L, ", componentField, componentField);
         if (component.tag() == null) {
-            statement.add("null, ");
+            statement.add("null, \n");
         } else {
-            statement.add("$L.class, ", component.tag());
+            statement.add("$L.class, \n", component.tag());
         }
+
+        var createDependencies = getCreateDependencies(ctx, declarations, components, componentHolder, component.dependencies());
+        statement.add("$L,\n", createDependencies);
+
+        var refreshDependencies = getRefreshDependencies(ctx, declarations, components, componentHolder, component.dependencies());
+        statement.add("$L,\n", refreshDependencies);
+
+        var interceptorsFor = interceptors.interceptorsFor(component);
+        statement.add("$T.of(", List.class);
+        for (int i = 0; i < interceptorsFor.size(); i++) {
+            if (i > 0) {
+                statement.add(", ");
+            }
+            var interceptor = interceptorsFor.get(i);
+            statement.add("$L", interceptor.component().nodeRef(componentHolder));
+        }
+        statement.add("),\n");
+
         statement.add("g -> ");
         var dependenciesCode = this.generateDependenciesCode(ctx, component, graphTypeName, declarations, components);
 
@@ -334,54 +354,6 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             }
             case null, default -> throw new RuntimeException("Unknown type " + declaration);
         }
-        var resolvedDependencies = component.dependencies();
-        statement.add(", $T.of(", List.class);
-        var interceptorsFor = interceptors.interceptorsFor(component);
-        for (int i = 0; i < interceptorsFor.size(); i++) {
-            var interceptor = interceptorsFor.get(i);
-            if (component.holderName().equals(interceptor.component().holderName())) {
-                statement.add("$N", interceptor.component().fieldName());
-            } else {
-                statement.add("$N.$N", interceptor.component().holderName(), interceptor.component().fieldName());
-            }
-            if (i < interceptorsFor.size() - 1) {
-                statement.add(", ");
-            }
-        }
-        statement.add(")");
-        for (var resolvedDependency : resolvedDependencies) {
-            if (resolvedDependency instanceof ComponentDependency.AllOfDependency(var claim)) {
-                if (claim.claimType() != DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
-                    var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, claim);
-                    var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, dependencyDeclarations, components);
-                    for (var dependency : dependencies) {
-                        if (component.holderName().equals(dependency.component().holderName())) {
-                            statement.add(", $N", dependency.component().fieldName());
-                        } else {
-                            statement.add(", $N.$N", dependency.component().holderName(), dependency.component().fieldName());
-                        }
-                        if (claim.claimType() == DependencyClaim.DependencyClaimType.ALL_OF_VALUE) {
-                            statement.add(".valueOf()");
-                        }
-                    }
-                }
-                continue;
-            }
-            if (resolvedDependency instanceof ComponentDependency.PromiseOfDependency || resolvedDependency instanceof ComponentDependency.PromisedProxyParameterDependency) {
-                continue;
-            }
-
-            if (resolvedDependency instanceof ComponentDependency.SingleDependency dependency && dependency.component() != null) {
-                if (component.holderName().equals(dependency.component().holderName())) {
-                    statement.add(", $N", dependency.component().fieldName());
-                } else {
-                    statement.add(", $N.$N", dependency.component().holderName(), dependency.component().fieldName());
-                }
-                if (resolvedDependency instanceof ComponentDependency.ValueOfDependency) {
-                    statement.add(".valueOf()");
-                }
-            }
-        }
         statement.add(")");
         return statement.build();
     }
@@ -401,6 +373,79 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
         b.unindent();
         b.add("\n");
+        return b.build();
+    }
+
+    private CodeBlock getCreateDependencies(ProcessingContext ctx, ComponentDeclarations componentDeclarations, ResolvedComponents resolvedComponents, String componentHolder, List<ComponentDependency> dependencies) {
+        var result = new ArrayList<CodeBlock>();
+        for (var dependency : dependencies) {
+            switch (dependency) {
+                case ComponentDependency.NullDependency _, ComponentDependency.PromisedProxyParameterDependency _ -> {}
+                case ComponentDependency.SingleDependency singleDependency -> {
+                    switch (singleDependency) {
+                        case ComponentDependency.PromiseOfDependency _, ComponentDependency.TypeOfDependency _ -> {}
+                        case ComponentDependency.TargetDependency targetDependency ->
+                            result.add(CodeBlock.of("$T.singleDependency($L)", CommonClassNames.applicationGraphDraw, targetDependency.component().nodeRef(componentHolder)));
+                        case ComponentDependency.ValueOfDependency valueOfDependency ->
+                            result.add(CodeBlock.of("$T.singleDependency($L)", CommonClassNames.applicationGraphDraw, valueOfDependency.component().nodeRef(componentHolder)));
+                        case ComponentDependency.WrappedTargetDependency wrappedTargetDependency ->
+                            result.add(CodeBlock.of("$T.singleDependency($L)", CommonClassNames.applicationGraphDraw, wrappedTargetDependency.component().nodeRef(componentHolder)));
+                    }
+                }
+                case ComponentDependency.AllOfDependency allOfDependency -> {
+                    if (allOfDependency.claim().claimType() != DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
+                        var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, allOfDependency.claim());
+                        for (var dependencyDeclaration : dependencyDeclarations) {
+                            var resolvedComponent = Objects.requireNonNull(resolvedComponents.getByDeclaration(dependencyDeclaration));
+                            result.add(CodeBlock.of("$T.allOfDependency($L)", CommonClassNames.applicationGraphDraw, resolvedComponent.nodeRef(componentHolder)));
+                        }
+                    }
+                }
+            }
+        }
+        var b = CodeBlock.builder();
+        b.add("$T.of(", List.class);
+        for (int i = 0; i < result.size(); i++) {
+            if (i > 0) {
+                b.add(", ");
+            }
+            b.add("$L", result.get(i));
+        }
+        b.add(")");
+        return b.build();
+    }
+
+    private CodeBlock getRefreshDependencies(ProcessingContext ctx, ComponentDeclarations componentDeclarations, ResolvedComponents resolvedComponents, String componentHolder, List<ComponentDependency> dependencies) {
+        var result = new ArrayList<ResolvedComponent>();
+        for (var dependency : dependencies) {
+            switch (dependency) {
+                case ComponentDependency.NullDependency _, ComponentDependency.PromisedProxyParameterDependency _ -> {}
+                case ComponentDependency.SingleDependency singleDependency -> {
+                    switch (singleDependency) {
+                        case ComponentDependency.PromiseOfDependency _, ComponentDependency.TypeOfDependency _, ComponentDependency.ValueOfDependency _ -> {}
+                        case ComponentDependency.TargetDependency targetDependency -> result.add(targetDependency.component());
+                        case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(wrappedTargetDependency.component());
+                    }
+                }
+                case ComponentDependency.AllOfDependency allOfDependency -> {
+                    if (allOfDependency.claim().claimType() == DependencyClaim.DependencyClaimType.ALL_OF_ONE) {
+                        var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, allOfDependency.claim());
+                        for (var dependencyDeclaration : dependencyDeclarations) {
+                            result.add(Objects.requireNonNull(resolvedComponents.getByDeclaration(dependencyDeclaration)));
+                        }
+                    }
+                }
+            }
+        }
+        var b = CodeBlock.builder();
+        b.add("$T.of(", List.class);
+        for (int i = 0; i < result.size(); i++) {
+            if (i > 0) {
+                b.add(", ");
+            }
+            b.add("$L", result.get(i).nodeRef(componentHolder));
+        }
+        b.add(")");
         return b.build();
     }
 

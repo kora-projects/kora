@@ -161,7 +161,7 @@ class KoraAppProcessor(
                 components.add(component)
             }
         }
-        val b = GraphBuilder(ctx!!, declaration, allModules, components, templateComponents)
+        val b = GraphBuilder(ctx, declaration, allModules, components, templateComponents)
         return b.build()
     }
 
@@ -384,13 +384,32 @@ class KoraAppProcessor(
     ): CodeBlock {
         val statement = CodeBlock.builder()
         val declaration = component.declaration
-        statement.add("%N = graphDraw.addNode0(map[%S], ", component.fieldName, component.fieldName)
+        val componentHolder = component.holderName
+        val componentField = component.fieldName
+
+        statement.add("%N = graphDraw.addNode(map[%S], ", componentField, component.fieldName)
         statement.indent().add("\n")
         if (component.tag == null) {
             statement.add("null,\n")
         } else {
             statement.add("%L::class.java,\n", component.tag)
         }
+        val createDependencies = getCreateDependencies(ctx, declarations, components, componentHolder, component.dependencies)
+        statement.add("%L,\n", createDependencies);
+
+        val refreshDependencies = getRefreshDependencies(ctx, declarations, components, componentHolder, component.dependencies)
+        statement.add("%L,\n", refreshDependencies)
+
+        statement.add("listOf(")
+        for ((i, interceptor) in interceptors.interceptorsFor(declaration).withIndex()) {
+            if (i > 0) {
+                statement.add(", ")
+            }
+            statement.add("%L", interceptor.component.nodeRef(componentHolder))
+        }
+        statement.add("),\n")
+
+
         statement.add("{ ")
         val dependenciesCode = this.getDependenciesCode(ctx, component, declarations, components)
 
@@ -442,72 +461,117 @@ class KoraAppProcessor(
                 statement.add("%T.ofNullable(%L)", Optional::class.asClassName(), dependenciesCode)
             }
         }
-        statement.add(" },\n")
-        statement.add("listOf(")
-        for ((i, interceptor) in interceptors.interceptorsFor(declaration).withIndex()) {
-            if (i > 0) {
-                statement.add(", ")
-            }
-            if (component.holderName == interceptor.component.holderName) {
-                statement.add("%N", interceptor.component.fieldName)
-            } else {
-                statement.add("%N.%N", interceptor.component.holderName, interceptor.component.fieldName)
-            }
-        }
-        statement.add(")")
+        statement.add(" }\n")
+        return statement.unindent().add(")\n").build()
+    }
 
-        var rn = false
-        for (dependency in component.dependencies) {
-            if (dependency is ComponentDependency.AllOfDependency) {
-                if (dependency.claim.claimType != DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
-                    val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, dependency.claim)
-                    val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, dependency.claim, dependencyDeclarations, components)
-                    for (d in dependencies) {
-                        if (!rn) {
-                            rn = true
-                            statement.add(",\n")
-                        } else {
-                            statement.add(", ")
-                        }
-                        if (component.holderName == d.component!!.holderName) {
-                            statement.add("%N", d.component!!.fieldName)
-                        } else {
-                            statement.add("%N.%N", d.component!!.holderName, d.component!!.fieldName)
-                        }
-                        if (dependency.claim.claimType == DependencyClaim.DependencyClaimType.ALL_OF_VALUE) {
-                            statement.add(".valueOf()")
+
+    private fun getCreateDependencies(
+        ctx: ProcessingContext,
+        componentDeclarations: ComponentDeclarations,
+        resolvedComponents: ResolvedComponents,
+        componentHolder: String,
+        dependencies: List<ComponentDependency>
+    ): CodeBlock {
+        val result = mutableListOf<CodeBlock>()
+        for (dependency in dependencies) {
+            when (dependency) {
+                is ComponentDependency.NullDependency, is ComponentDependency.PromisedProxyParameterDependency -> {}
+                is ComponentDependency.TypeOfDependency -> {}
+                is ComponentDependency.SingleDependency -> {
+                    when (dependency) {
+                        is ComponentDependency.PromiseOfDependency -> {}
+                        is ComponentDependency.TargetDependency -> result.add(
+                            CodeBlock.of(
+                                "%T.singleDependency(%L)",
+                                CommonClassNames.applicationGraphDraw,
+                                dependency.component.nodeRef(componentHolder)
+                            )
+                        )
+
+                        is ComponentDependency.ValueOfDependency -> result.add(
+                            CodeBlock.of(
+                                "%T.singleDependency(%L)",
+                                CommonClassNames.applicationGraphDraw,
+                                dependency.component.nodeRef(componentHolder)
+                            )
+                        )
+
+                        is ComponentDependency.WrappedTargetDependency -> result.add(
+                            CodeBlock.of(
+                                "%T.singleDependency(%L)",
+                                CommonClassNames.applicationGraphDraw,
+                                dependency.component.nodeRef(componentHolder)
+                            )
+                        )
+                    }
+                }
+
+                is ComponentDependency.AllOfDependency -> {
+                    if (dependency.claim.claimType !== DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
+                        val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
+                        for (dependencyDeclaration in dependencyDeclarations) {
+                            val resolvedComponent: ResolvedComponent = resolvedComponents.getByDeclaration(dependencyDeclaration)!!
+                            result.add(CodeBlock.of("%T.allOfDependency(%L)", CommonClassNames.applicationGraphDraw, resolvedComponent.nodeRef(componentHolder)))
                         }
                     }
                 }
-                continue
+
             }
-            if (dependency is ComponentDependency.PromiseOfDependency) {
-                continue
+        }
+        val b = CodeBlock.builder()
+        b.add("%M(", MemberName("kotlin.collections", "listOf"))
+        for (i in result.indices) {
+            if (i > 0) {
+                b.add(", ")
             }
-            if (dependency is ComponentDependency.PromisedProxyParameterDependency) {
-                continue
-            }
-            if (dependency is ComponentDependency.SingleDependency && dependency.component != null) {
-                if (!rn) {
-                    rn = true
-                    statement.add(",\n")
-                } else {
-                    statement.add(", ")
+            b.add("%L", result[i])
+        }
+        b.add(")")
+        return b.build()
+    }
+
+    private fun getRefreshDependencies(
+        ctx: ProcessingContext,
+        componentDeclarations: ComponentDeclarations,
+        resolvedComponents: ResolvedComponents,
+        componentHolder: String,
+        dependencies: List<ComponentDependency>
+    ): CodeBlock {
+        val result = mutableListOf<ResolvedComponent>()
+        for (dependency in dependencies) {
+            when (dependency) {
+                is ComponentDependency.NullDependency, is ComponentDependency.PromisedProxyParameterDependency, is ComponentDependency.TypeOfDependency -> {}
+                is ComponentDependency.SingleDependency -> {
+                    when (dependency) {
+                        is ComponentDependency.TargetDependency -> result.add(dependency.component)
+                        is ComponentDependency.WrappedTargetDependency -> result.add(dependency.component)
+                        is ComponentDependency.PromiseOfDependency, is ComponentDependency.ValueOfDependency -> {}
+                    }
                 }
-                if (component.holderName == dependency.component!!.holderName) {
-                    statement.add("%N", dependency.component!!.fieldName)
-                } else {
-                    statement.add("%N.%N", dependency.component!!.holderName, dependency.component!!.fieldName)
-                }
-                if (dependency is ComponentDependency.ValueOfDependency) {
-                    statement.add(".valueOf()")
+
+                is ComponentDependency.AllOfDependency -> {
+                    if (dependency.claim.claimType === DependencyClaim.DependencyClaimType.ALL) {
+                        val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
+                        for (dependencyDeclaration in dependencyDeclarations) {
+                            result.add(resolvedComponents.getByDeclaration(dependencyDeclaration)!!)
+                        }
+                    }
                 }
             }
         }
-        statement.unindent()
-        statement.add("\n)")
-        return statement.add("\n").build()
+        val b = CodeBlock.builder()
+        b.add("%M(", MemberName("kotlin.collections", "listOf"))
+        for (i in result.indices) {
+            if (i > 0) {
+                b.add(", ")
+            }
+            b.add("%L", result[i].nodeRef(componentHolder))
+        }
+        b.add(")")
+        return b.build()
     }
+
 
     private fun getDependenciesCode(
         ctx: ProcessingContext,

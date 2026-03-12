@@ -1,17 +1,17 @@
 package io.koraframework.camunda.engine.bpmn;
 
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
+import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
+import io.koraframework.common.util.TimeUtils;
 import org.camunda.bpm.engine.ProcessEngine;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
 import org.camunda.bpm.engine.ProcessEngines;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.application.graph.Wrapped;
-import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
-import io.koraframework.common.util.TimeUtils;
 
-import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 
 public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine> {
@@ -20,13 +20,13 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
 
     private final ProcessEngineConfiguration engineConfiguration;
     private final CamundaEngineBpmnConfig engineConfig;
-    private final List<ProcessEngineConfigurator> camundaConfigurators;
+    private final Iterable<ProcessEngineConfigurator> camundaConfigurators;
 
     private volatile ProcessEngine processEngine;
 
     public KoraProcessEngine(ProcessEngineConfiguration engineConfiguration,
                              CamundaEngineBpmnConfig engineConfig,
-                             List<ProcessEngineConfigurator> camundaConfigurators) {
+                             Iterable<ProcessEngineConfigurator> camundaConfigurators) {
         this.engineConfig = engineConfig;
         this.engineConfiguration = engineConfiguration;
         this.camundaConfigurators = camundaConfigurators;
@@ -59,6 +59,10 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
                 logger.debug("Camunda BPMN Engine configuring...");
                 final long startedConfiguring = TimeUtils.started();
 
+                var camundaConfigurators = new ArrayList<ProcessEngineConfigurator>();
+                for (var configurator : this.camundaConfigurators) {
+                    camundaConfigurators.add(configurator);
+                }
                 var setups = new CompletableFuture<?>[camundaConfigurators.size()];
                 for (var i = 0; i < camundaConfigurators.size(); i++) {
                     var camundaConfigurator = camundaConfigurators.get(i);

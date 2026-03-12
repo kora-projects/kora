@@ -1,11 +1,6 @@
 package io.koraframework.kora.app.ksp
 
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
-import org.assertj.core.api.Assertions
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.SoftAssertions
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.fail
 import io.koraframework.application.graph.ApplicationGraphDraw
 import io.koraframework.application.graph.internal.NodeImpl
 import io.koraframework.common.Tag
@@ -14,6 +9,11 @@ import io.koraframework.kora.app.ksp.app.AppWithOptionalComponents.*
 import io.koraframework.ksp.common.CompilationErrorException
 import io.koraframework.ksp.common.KotlinCompilation
 import io.koraframework.ksp.common.symbolProcess
+import org.assertj.core.api.Assertions
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.SoftAssertions
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.fail
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.lang.reflect.Constructor
@@ -139,8 +139,9 @@ class KoraAppKspTest {
     fun appWithAllOfValueOf() {
         val graphDraw = testClass(AppWithAllOfValueOf::class)
         val node1 = graphDraw.nodes[0] as NodeImpl<*>
-        val node2 = graphDraw.nodes[1]
-        assertThat(node1.dependentNodes).hasSize(1)
+        val node2 = graphDraw.nodes[1] as NodeImpl<*>
+        assertThat(node2.createDependencies).hasSize(1)
+        assertThat(node2.refreshDependencies).hasSize(0)
         val graph = graphDraw.init()
         val node1Value1 = graph[node1]
         val node2Value1 = graph[node2]

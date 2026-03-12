@@ -1,5 +1,7 @@
 package io.koraframework.camunda.engine.bpmn;
 
+import io.koraframework.camunda.engine.bpmn.transaction.KoraTransactionContextFactory;
+import io.koraframework.camunda.engine.bpmn.transaction.KoraTransactionInterceptor;
 import org.apache.ibatis.builder.xml.XMLConfigBuilder;
 import org.camunda.bpm.engine.ArtifactFactory;
 import org.camunda.bpm.engine.ProcessEngineConfiguration;
@@ -25,15 +27,10 @@ import org.camunda.bpm.engine.runtime.CaseInstanceQuery;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.camunda.engine.bpmn.transaction.KoraTransactionContextFactory;
-import io.koraframework.camunda.engine.bpmn.transaction.KoraTransactionInterceptor;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 import static java.util.Collections.emptyList;
 import static org.camunda.bpm.engine.impl.history.HistoryLevel.HISTORY_LEVEL_FULL;
@@ -49,14 +46,14 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     private final CamundaEngineDataSource camundaEngineDataSource;
     private final CamundaVersion camundaVersion;
     private final CamundaEngineBpmnConfig engineConfig;
-    private final List<ProcessEnginePlugin> plugins;
+    private final Iterable<ProcessEnginePlugin> plugins;
 
     public KoraProcessEngineConfiguration(JobExecutor jobExecutor,
                                           @Nullable TelemetryRegistry telemetryRegistry,
                                           IdGenerator idGenerator,
                                           JuelExpressionManager koraExpressionManager,
                                           ArtifactFactory artifactFactory,
-                                          List<ProcessEnginePlugin> plugins,
+                                          Iterable<ProcessEnginePlugin> plugins,
                                           CamundaEngineDataSource camundaEngineDataSource,
                                           CamundaEngineBpmnConfig engineConfig,
                                           KoraResolverFactory componentResolverFactory,
@@ -152,9 +149,15 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     }
 
     protected void registerProcessEnginePlugins() {
-        if (!plugins.isEmpty()) {
+        var pluginsList = new ArrayList<ProcessEnginePlugin>();
+        for (var plugin : plugins) {
+            pluginsList.add(plugin);
+        }
+
+
+        if (!pluginsList.isEmpty()) {
             logger.info("Registering process engine plugins: {}", plugins);
-            setProcessEnginePlugins(plugins);
+            setProcessEnginePlugins(pluginsList);
         }
     }
 

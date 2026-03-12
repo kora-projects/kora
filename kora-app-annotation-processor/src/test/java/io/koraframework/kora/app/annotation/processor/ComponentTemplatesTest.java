@@ -1,9 +1,8 @@
 package io.koraframework.kora.app.annotation.processor;
 
-import org.assertj.core.api.Assert;
+import io.koraframework.annotation.processor.common.CompileResult;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import io.koraframework.annotation.processor.common.CompileResult;
 
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 

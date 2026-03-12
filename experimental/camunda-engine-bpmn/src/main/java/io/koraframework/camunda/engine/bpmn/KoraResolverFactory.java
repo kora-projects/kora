@@ -6,7 +6,6 @@ import org.camunda.bpm.engine.impl.scripting.engine.Resolver;
 import org.camunda.bpm.engine.impl.scripting.engine.ResolverFactory;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -15,8 +14,8 @@ public final class KoraResolverFactory implements ResolverFactory, Resolver {
     private final Map<String, Object> componentByKey;
 
     public KoraResolverFactory(KoraDelegateWrapperFactory wrapperFactory,
-                               List<KoraDelegate> koraDelegates,
-                               List<JavaDelegate> javaDelegates) {
+                               Iterable<KoraDelegate> koraDelegates,
+                               Iterable<JavaDelegate> javaDelegates) {
         this.componentByKey = new HashMap<>();
         for (JavaDelegate delegate : javaDelegates) {
             JavaDelegate wrapped = wrapperFactory.wrap(delegate);

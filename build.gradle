@@ -36,7 +36,10 @@ subprojects {
     tasks.withType(JavaCompile).configureEach {
         options.encoding("UTF-8")
         options.debug = true
-        options.compilerArgs << '-parameters' << '-Xlint:all' << '-Xlint:-serial,-processing,-missing-explicit-ctor' << '-XprintRounds'
+        options.compilerArgs << '-parameters' << '-XprintRounds'
+        if (name == "compileJava" && !project.name.contains("internal")) {
+            options.compilerArgs << '-Xlint:all' << '-Xlint:-serial,-processing,-missing-explicit-ctor'
+        }
     }
 }
 

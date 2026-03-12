@@ -3,11 +3,6 @@ package io.koraframework.grpc.server;
 import io.grpc.*;
 import io.grpc.okhttp.OkHttpServerBuilder;
 import io.grpc.protobuf.services.ProtoReflectionServiceV1;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
-import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.api.trace.TracerProvider;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.WrappedRefreshListener;
@@ -21,7 +16,13 @@ import io.koraframework.grpc.server.interceptors.TelemetryInterceptor;
 import io.koraframework.grpc.server.telemetry.DefaultGrpcServerTelemetry;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetry;
 import io.koraframework.grpc.server.telemetry.NoopGrpcServerTelemetry;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.api.trace.TracerProvider;
+import org.jspecify.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -102,7 +103,11 @@ public interface GrpcServerModule {
     }
 
     default WrappedRefreshListener<List<DynamicBindableService>> dynamicBindableServicesListener(All<ValueOf<BindableService>> services) {
-        var dynamicServices = services.stream().map(DynamicBindableService::new).toList();
+        var dynamicServices = new ArrayList<DynamicBindableService>();
+        // caching All<ValueOf<T>> won't be safe after conditional components introduced, but let's just hope conditional grpc service instance is not a thing
+        for (var service : services) {
+            dynamicServices.add(new DynamicBindableService(service));
+        }
 
         return new WrappedRefreshListener<>() {
             @Override
@@ -118,7 +123,11 @@ public interface GrpcServerModule {
     }
 
     default WrappedRefreshListener<List<DynamicServerInterceptor>> dynamicInterceptorsListener(All<ValueOf<ServerInterceptor>> interceptors) {
-        var dynamicServerInterceptors = interceptors.stream().map(DynamicServerInterceptor::new).toList();
+        var dynamicServerInterceptors = new ArrayList<DynamicServerInterceptor>();
+        // caching All<ValueOf<T>> won't be safe after conditional components introduced, but let's just hope conditional grpc service interceptor is not a thing
+        for (var interceptor : interceptors) {
+            dynamicServerInterceptors.add(new DynamicServerInterceptor(interceptor));
+        }
 
         return new WrappedRefreshListener<>() {
             @Override

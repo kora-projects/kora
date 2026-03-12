@@ -3,7 +3,6 @@ package io.koraframework.resilient.circuitbreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,10 +12,10 @@ final class KoraCircuitBreakerManager implements CircuitBreakerManager {
 
     private final Map<String, CircuitBreaker> circuitBreakerMap = new ConcurrentHashMap<>();
     private final CircuitBreakerConfig config;
-    private final List<CircuitBreakerPredicate> failurePredicates;
+    private final Iterable<CircuitBreakerPredicate> failurePredicates;
     private final CircuitBreakerMetrics metrics;
 
-    KoraCircuitBreakerManager(CircuitBreakerConfig config, List<CircuitBreakerPredicate> failurePredicates, CircuitBreakerMetrics metrics) {
+    KoraCircuitBreakerManager(CircuitBreakerConfig config, Iterable<CircuitBreakerPredicate> failurePredicates, CircuitBreakerMetrics metrics) {
         this.config = config;
         this.failurePredicates = failurePredicates;
         this.metrics = metrics;
@@ -35,9 +34,11 @@ final class KoraCircuitBreakerManager implements CircuitBreakerManager {
     }
 
     private CircuitBreakerPredicate getFailurePredicate(CircuitBreakerConfig.NamedConfig config) {
-        return failurePredicates.stream()
-            .filter(p -> p.name().equals(config.failurePredicateName()))
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("FailurePredicateClassName " + config.failurePredicateName() + " is not present as bean, please declare it as bean"));
+        for (var p : failurePredicates) {
+            if (p.name().equals(config.failurePredicateName())) {
+                return p;
+            }
+        }
+        throw new IllegalArgumentException("FailurePredicateClassName " + config.failurePredicateName() + " is not present as bean, please declare it as bean");
     }
 }

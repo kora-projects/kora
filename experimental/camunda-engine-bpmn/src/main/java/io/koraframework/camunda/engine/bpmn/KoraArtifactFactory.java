@@ -5,7 +5,6 @@ import org.camunda.bpm.engine.delegate.JavaDelegate;
 import org.camunda.bpm.engine.impl.DefaultArtifactFactory;
 
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public final class KoraArtifactFactory implements ArtifactFactory {
@@ -14,8 +13,8 @@ public final class KoraArtifactFactory implements ArtifactFactory {
     private final Map<String, Object> componentByKey;
 
     public KoraArtifactFactory(KoraDelegateWrapperFactory wrapperFactory,
-                               List<KoraDelegate> koraDelegates,
-                               List<JavaDelegate> javaDelegates) {
+                               Iterable<KoraDelegate> koraDelegates,
+                               Iterable<JavaDelegate> javaDelegates) {
         this.componentByKey = new HashMap<>();
         for (JavaDelegate delegate : javaDelegates) {
             JavaDelegate wrapped = wrapperFactory.wrap(delegate);

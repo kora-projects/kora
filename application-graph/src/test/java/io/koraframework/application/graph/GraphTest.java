@@ -3,17 +3,18 @@ package io.koraframework.application.graph;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.koraframework.application.graph.internal.NodeImpl;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.internal.NodeImpl;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -387,12 +388,15 @@ class GraphTest {
         mock.releaseTime = -1;
         mock.refreshTime = -1;
 
-        draw.replaceNodeKeepDependencies(graph.object2Node, g -> mock);
+
+        @SuppressWarnings("unchecked")
+        var nodeToReplace = (Node<TestObject>) draw.getNodes().get(graph.draw.getNodes().indexOf(graph.object2Node));
+        draw.replaceNodeKeepDependencies(nodeToReplace, g -> mock);
         var newGraph = draw.init();
 
         @SuppressWarnings("unchecked")
         var object5Node = (Node<TestObject>) draw.getNodes().stream()
-            .filter(n -> ((NodeImpl<TestObject>) n).factory == graph.object5Factory)
+            .filter(n -> ((NodeImpl<TestObject>) n).factory instanceof ApplicationGraphDraw.ReplacedGraphFactory<? extends TestObject> f && f.node.factory == graph.object5Factory)
             .findFirst()
             .get();
 
@@ -412,11 +416,11 @@ class GraphTest {
         var object4 = new AtomicReference<>("");
         var counter = new AtomicInteger(0);
 
-        var n1 = draw.addNode0(TestObject.class, null, g -> "");
-        var n2 = draw.addNode0(TestObject.class, null, g -> object2.get(), n1);
-        var n3 = draw.addNode0(TestObject.class, null, g -> object3.get(), n1);
-        var n4 = draw.addNode0(TestObject.class, null, g -> object4.get(), n2, n3);
-        var n5 = draw.addNode0(TestObject.class, null, g -> counter.incrementAndGet(), n4);
+        var n1 = draw.addNode(TestObject.class, null, List.of(), List.of(), List.of(), _ -> "");
+        var n2 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n1, false)), List.of(n1), List.of(), _ -> object2.get());
+        var n3 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n1, false)), List.of(n1), List.of(), _ -> object3.get());
+        var n4 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n2, false), new ApplicationGraphDraw.CreateDependency(n3, false)), List.of(n2, n3), List.of(), _ -> object4.get());
+        var n5 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n4, false)), List.of(n4), List.of(), _ -> counter.incrementAndGet());
 
         var graph = draw.init();
 
@@ -449,20 +453,20 @@ class GraphTest {
     private static class ReferenceGraph {
         private final AtomicLong absoluteTime = new AtomicLong();
         private final ApplicationGraphDraw draw = new ApplicationGraphDraw(ReferenceGraph.class);
-        private final TestObjectFactory rootFactory = factory("root", absoluteTime);
-        private final Node<TestObject> rootNode = draw.addNode0(TestObject.class, TAG, rootFactory);
-        private final TestObjectFactory object1Factory = factory("o1", absoluteTime, rootNode);
-        private final Node<TestObject> object1Node = draw.addNode0(TestObject.class, TAG, object1Factory, rootNode);
-        private final TestObjectFactory interceptor1Factory = factory("i1", absoluteTime);
-        private final Node<TestObject> interceptor1 = draw.addNode0(TestObject.class, TAG, interceptor1Factory);
-        private final TestObjectFactory object2Factory = factory("o2", absoluteTime, rootNode);
-        private final Node<TestObject> object2Node = draw.addNode0(TestObject.class, TAG, object2Factory, List.of(interceptor1), rootNode);
-        private final TestObjectFactory object3Factory = factory("o3", absoluteTime, object1Node);
-        private final Node<TestObject> object3Node = draw.addNode0(TestObject.class, TAG, object3Factory, object1Node);
-        private final TestObjectFactory object4Factory = factory("o4", absoluteTime, object1Node);
-        private final Node<TestObject> object4Node = draw.addNode0(TestObject.class, TAG, object4Factory, object1Node, object2Node.valueOf());
-        private final TestObjectFactory object5Factory = factory("o5", absoluteTime, object2Node);
-        private final Node<TestObject> object5Node = draw.addNode0(TestObject.class, TAG, object5Factory, object2Node);
+        private final TestObjectFactory rootFactory = factory("root", absoluteTime, Set.of());
+        private final Node<TestObject> rootNode = draw.addNode(TestObject.class, TAG, List.of(), List.of(), List.of(), rootFactory);
+        private final TestObjectFactory object1Factory = factory("o1", absoluteTime, Set.of(), rootNode);
+        private final Node<TestObject> object1Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(rootNode, false)), List.of(rootNode), List.of(), object1Factory);
+        private final TestObjectFactory interceptor1Factory = factory("i1", absoluteTime, Set.of());
+        private final Node<TestObject> interceptor1 = draw.addNode(TestObject.class, TAG, List.of(), List.of(), List.of(), interceptor1Factory);
+        private final TestObjectFactory object2Factory = factory("o2", absoluteTime, Set.of(), rootNode);
+        private final Node<TestObject> object2Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(rootNode, false)), List.of(rootNode), List.of(interceptor1), object2Factory);
+        private final TestObjectFactory object3Factory = factory("o3", absoluteTime, Set.of(), object1Node);
+        private final Node<TestObject> object3Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(object1Node, false)), List.of(object1Node), List.of(), object3Factory);
+        private final TestObjectFactory object4Factory = factory("o4", absoluteTime, Set.of(object2Node), object1Node);
+        private final Node<TestObject> object4Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(object1Node, false), new ApplicationGraphDraw.CreateDependency(object2Node, false)), List.of(object1Node), List.of(), object4Factory);
+        private final TestObjectFactory object5Factory = factory("o5", absoluteTime, Set.of(), object2Node);
+        private final Node<TestObject> object5Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(object2Node, false)), List.of(object2Node), List.of(), object5Factory);
 
         private final RefreshableGraph graph = this.draw.init();
 
@@ -699,16 +703,18 @@ class GraphTest {
         private final AtomicInteger counter = new AtomicInteger(0);
         private final AtomicReference<Type> type = new AtomicReference<>(Type.SIMPLE);
         private final ConcurrentLinkedDeque<TestObject> objects = new ConcurrentLinkedDeque<>();
+        private final Set<Node<TestObject>> nonRefreshDependencies;
         private final List<Node<TestObject>> dependencies;
         private final AtomicLong absoluteTime;
         private final String name;
 
         @SafeVarargs
-        private TestObjectFactory(String name, AtomicLong absoluteTime, Node<TestObject>... dependencies) {
+        private TestObjectFactory(String name, AtomicLong absoluteTime, Set<Node<TestObject>> nonRefreshDependencies, Node<TestObject>... createDependencies) {
             this.name = name;
             this.absoluteTime = absoluteTime;
-            this.dependencies = new ArrayList<>(dependencies.length);
-            this.dependencies.addAll(Arrays.asList(dependencies));
+            this.nonRefreshDependencies = nonRefreshDependencies;
+            this.dependencies = new ArrayList<>(createDependencies.length);
+            this.dependencies.addAll(Arrays.asList(createDependencies));
         }
 
         private enum Type {
@@ -724,7 +730,7 @@ class GraphTest {
             this.counter.incrementAndGet();
             var dependencies = this.dependencies.stream()
                 .map(dep -> {
-                    if (dep.isValueOf()) {
+                    if (nonRefreshDependencies.contains(dep)) {
                         return graph.valueOf(dep);
                     } else {
                         return graph.get(dep);
@@ -766,7 +772,7 @@ class GraphTest {
     }
 
     @SafeVarargs
-    private static TestObjectFactory factory(String name, AtomicLong absoluteTime, Node<TestObject>... dependencies) {
-        return new TestObjectFactory(name, absoluteTime, dependencies);
+    private static TestObjectFactory factory(String name, AtomicLong absoluteTime, Set<Node<TestObject>> nonRefreshDependencies, Node<TestObject>... dependencies) {
+        return new TestObjectFactory(name, absoluteTime, nonRefreshDependencies, dependencies);
     }
 }

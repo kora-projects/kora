@@ -4,20 +4,19 @@ import io.grpc.ChannelCredentials;
 import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
 import io.grpc.ServiceDescriptor;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
+import io.koraframework.common.util.TimeUtils;
 import io.koraframework.grpc.client.GrpcClientChannelFactory;
 import io.koraframework.grpc.client.config.GrpcClientConfig;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.util.TimeUtils;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.List;
 import java.util.Objects;
 
 final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedChannel> {
@@ -29,13 +28,13 @@ final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedCh
     private final GrpcClientChannelFactory channelFactory;
     private final ChannelCredentials channelCredentials;
     private final GrpcClientTelemetryFactory telemetryFactory;
-    private final List<ClientInterceptor> interceptors;
+    private final Iterable<ClientInterceptor> interceptors;
 
     private volatile ManagedChannel channel;
 
     public ZeebeManagedChannelLifecycle(GrpcClientConfig config,
                                         @Nullable ChannelCredentials channelCredentials,
-                                        List<ClientInterceptor> interceptors,
+                                        Iterable<ClientInterceptor> interceptors,
                                         GrpcClientTelemetryFactory telemetryFactory,
                                         GrpcClientChannelFactory channelFactory,
                                         ServiceDescriptor serviceDefinition) {
@@ -77,7 +76,7 @@ final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedCh
         if (telemetry != null) {
             interceptors.add(new GrpcClientTelemetryInterceptor(telemetry));
         }
-        interceptors.addAll(this.interceptors);
+        this.interceptors.forEach(interceptors::add);
         builder.intercept(interceptors);
         this.channel = builder.build();
 

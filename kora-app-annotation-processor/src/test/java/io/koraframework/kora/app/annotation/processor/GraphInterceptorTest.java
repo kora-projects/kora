@@ -1,8 +1,8 @@
 package io.koraframework.kora.app.annotation.processor;
 
-import org.junit.jupiter.api.Test;
 import io.koraframework.application.graph.RefreshableGraph;
 import io.koraframework.application.graph.internal.NodeImpl;
+import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,7 +43,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
             """);
         assertThat(draw.getNodes()).hasSize(3);
         draw.init();
-        assertThat(((NodeImpl<?>) draw.getNodes().get(1)).getInterceptors()).hasSize(1);
+        assertThat(((NodeImpl<?>) draw.getNodes().get(1)).interceptors).hasSize(1);
     }
 
     @Test
@@ -91,7 +91,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
         RefreshableGraph init = draw.init();
 
         NodeImpl<?> node = (NodeImpl<?>) draw.getNodes().get(1);
-        assertThat((node).getInterceptors()).hasSize(1);
+        assertThat((node).interceptors).hasSize(1);
         var value = node.factory.get(init);
         assertThat(value.getClass().getSimpleName()).isEqualTo("$ExampleApplication_TestClass__AopProxy");
     }
@@ -126,7 +126,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
             """);
         assertThat(draw.getNodes()).hasSize(2);
         draw.init();
-        assertThat(((NodeImpl<?>) draw.getNodes().get(1)).getInterceptors()).hasSize(1);
+        assertThat(((NodeImpl<?>) draw.getNodes().get(1)).interceptors).hasSize(1);
     }
 
 }
