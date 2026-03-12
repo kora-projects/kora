@@ -388,7 +388,10 @@ class GraphTest {
         mock.releaseTime = -1;
         mock.refreshTime = -1;
 
-        draw.replaceNodeKeepDependencies(graph.object2Node, g -> mock);
+
+        @SuppressWarnings("unchecked")
+        var nodeToReplace = (Node<TestObject>) draw.getNodes().get(graph.draw.getNodes().indexOf(graph.object2Node));
+        draw.replaceNodeKeepDependencies(nodeToReplace, g -> mock);
         var newGraph = draw.init();
 
         @SuppressWarnings("unchecked")
