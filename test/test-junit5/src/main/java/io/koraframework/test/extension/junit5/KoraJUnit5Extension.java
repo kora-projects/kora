@@ -1,6 +1,10 @@
 package io.koraframework.test.extension.junit5;
 
 import io.koraframework.application.graph.*;
+import io.koraframework.application.graph.internal.GraphImpl;
+import io.koraframework.common.Tag;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.test.extension.junit5.mockito.MockitoStrictness;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.TestInstance;
@@ -11,10 +15,6 @@ import org.mockito.quality.Strictness;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import io.koraframework.application.graph.internal.GraphImpl;
-import io.koraframework.common.Tag;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.test.extension.junit5.mockito.MockitoStrictness;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -218,7 +218,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         logger.debug("Resetting mocks...");
         if (MockUtils.haveAnyMockEngine()) {
             for (var node : graphInitialized.graphDraw().getNodes()) {
-                var mockCandidate = graphInitialized.refreshableGraph().get(node);
+                var mockCandidate = graphInitialized.initializedGraph().get(node);
                 if (mockCandidate instanceof Wrapped<?> w) {
                     MockUtils.resetIfMock(w.value());
                 } else {
@@ -779,13 +779,13 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (Graph.class.equals(candidate.type())
             || GraphImpl.class.equals(candidate.type())
             || RefreshableGraph.class.equals(candidate.type())) {
-            return graph.refreshableGraph();
+            return graph.initializedGraph();
         }
 
         Set<Node<?>> nodes = GraphUtils.findNodeByTypeOrAssignable(graph.graphDraw(), candidate);
         if (nodes.size() == 1) {
             Node<?> node = nodes.iterator().next();
-            var object = graph.refreshableGraph().get(node);
+            var object = graph.initializedGraph().get(node);
             boolean isNodeWrapped = GraphUtils.isWrapped(node.type());
             boolean isCandidateWrapped = GraphUtils.isWrapped(candidate.type());
             if (isNodeWrapped && !isCandidateWrapped && object instanceof Wrapped<?> w) {

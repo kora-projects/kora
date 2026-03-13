@@ -1,13 +1,11 @@
 package io.koraframework.application.graph.internal;
 
-import io.koraframework.application.graph.ApplicationGraphDraw;
-import io.koraframework.application.graph.Graph;
-import io.koraframework.application.graph.GraphInterceptor;
-import io.koraframework.application.graph.Node;
+import io.koraframework.application.graph.*;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.List;
+import java.util.function.Function;
 
 public final class NodeImpl<T> implements Node<T> {
     public final ApplicationGraphDraw graphDraw;
@@ -17,6 +15,8 @@ public final class NodeImpl<T> implements Node<T> {
     public final Type type;
     @Nullable
     public final Class<?> tag;
+    @Nullable
+    public final Function<Graph, GraphCondition.ConditionResult> condition;
 
     public final List<ApplicationGraphDraw.CreateDependency> createDependencies;
     public final List<Node<?>> refreshDependencies;
@@ -26,6 +26,7 @@ public final class NodeImpl<T> implements Node<T> {
         ApplicationGraphDraw graphDraw,
         Type type,
         @Nullable Class<?> tag,
+        @Nullable Function<Graph, GraphCondition.ConditionResult> condition,
         int index,
         List<ApplicationGraphDraw.CreateDependency> createDependencies,
         List<Node<?>> refreshDependencies,
@@ -39,6 +40,7 @@ public final class NodeImpl<T> implements Node<T> {
         this.type = type;
         this.interceptors = List.copyOf(interceptors);
         this.tag = tag;
+        this.condition = condition;
     }
 
     @Override
@@ -49,7 +51,13 @@ public final class NodeImpl<T> implements Node<T> {
     @Override
     @Nullable
     public Class<?> tag() {
-        return tag;
+        return this.tag;
+    }
+
+    @Override
+    @Nullable
+    public Function<Graph, GraphCondition.ConditionResult> condition() {
+        return this.condition;
     }
 
     @Override

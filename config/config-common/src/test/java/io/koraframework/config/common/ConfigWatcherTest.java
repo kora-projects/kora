@@ -2,26 +2,29 @@ package io.koraframework.config.common;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import io.koraframework.application.graph.ApplicationGraphDraw;
+import io.koraframework.application.graph.InitializedGraph;
+import io.koraframework.application.graph.ValueOf;
+import io.koraframework.config.common.factory.MapConfigFactory;
+import io.koraframework.config.common.origin.ConfigOrigin;
+import io.koraframework.config.common.origin.ContainerConfigOrigin;
+import io.koraframework.config.common.origin.FileConfigOrigin;
+import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.ValueOf;
-import io.koraframework.config.common.factory.MapConfigFactory;
-import io.koraframework.config.common.origin.ContainerConfigOrigin;
-import io.koraframework.config.common.origin.FileConfigOrigin;
-import io.koraframework.config.common.origin.SimpleConfigOrigin;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Optional;
+import java.util.List;
 import java.util.Properties;
 
-import static org.assertj.core.api.Assertions.assertThat;
 import static io.koraframework.config.common.ConfigTestUtils.*;
+import static org.assertj.core.api.Assertions.assertThat;
 
 
 class ConfigWatcherTest {
@@ -32,21 +35,61 @@ class ConfigWatcherTest {
         """);
     private Path dataDir = createOrUpdateDataDir(this.configDir, this.currentConfigDir);
     private Path configFile = createConfigFile(this.configDir, this.dataDir);
-    private final ValueOf<Config> config = getConfig();
-    private final ConfigWatcher configWatcher = new ConfigWatcher(Optional.of(config.map(Config::origin)), 50);
+
+
+    private ValueOf<Config> config;
+    private InitializedGraph graph;
+
+    ConfigWatcherTest() throws IOException {
+    }
+
 
     @BeforeEach
     void setUp() throws InterruptedException {
         ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(ConfigWatcher.class).setLevel(Level.TRACE);
         System.setProperty("config.file", configFile.toString());
-        this.configWatcher.init();
+
+        var draw = new ApplicationGraphDraw(ConfigWatcherTest.class);
+        var originNode = draw.addNode(
+            ConfigOrigin.class,
+            null,
+            null,
+            List.of(),
+            List.of(),
+            List.of(),
+            _ -> new ContainerConfigOrigin(
+                new FileConfigOrigin(ConfigWatcherTest.this.configFile),
+                new SimpleConfigOrigin("test")
+            )
+        );
+        var configNode = draw.addNode(
+            Config.class,
+            null,
+            null,
+            List.of(ApplicationGraphDraw.singleDependency(originNode)),
+            List.of(originNode),
+            List.of(),
+            g -> load(g.get(originNode))
+        );
+        draw.addNode(
+            ConfigWatcher.class,
+            null,
+            null,
+            List.of(ApplicationGraphDraw.singleDependency(originNode)),
+            List.of(originNode),
+            List.of(),
+            g -> new ConfigWatcher(g, originNode, 50)
+        );
+
+        this.graph = draw.init();
+        this.config = graph.valueOf(configNode);
         Thread.sleep(100);
     }
 
     @AfterEach
-    void tearDown() {
+    void tearDown() throws Exception {
         ((LoggerContext) LoggerFactory.getILoggerFactory()).getLogger(ConfigWatcher.class).setLevel(null);
-        this.configWatcher.release();
+        this.graph.release();
         System.clearProperty("config.file");
     }
 
@@ -122,39 +165,11 @@ class ConfigWatcherTest {
         throw error;
     }
 
-
-    ConfigWatcherTest() throws IOException {
-    }
-
-    private ValueOf<Config> getConfig() throws IOException {
-        return new ValueOf<>() {
-            private volatile Config config = this.load();
-
-            @Override
-            public Config get() {
-                return config;
-            }
-
-            @Override
-            public void refresh() {
-                try {
-                    this.config = this.load();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            private Config load() throws IOException {
-                var origin = new ContainerConfigOrigin(
-                    new FileConfigOrigin(ConfigWatcherTest.this.configFile),
-                    new SimpleConfigOrigin("test")
-                );
-                var properties = new Properties();
-                try (var is = Files.newInputStream(ConfigWatcherTest.this.configFile)) {
-                    properties.load(is);
-                }
-                return MapConfigFactory.fromProperties(origin, properties);
-            }
-        };
+    private Config load(ContainerConfigOrigin origin) throws IOException {
+        var properties = new Properties();
+        try (var is = Files.newInputStream(ConfigWatcherTest.this.configFile)) {
+            properties.load(is);
+        }
+        return MapConfigFactory.fromProperties(origin, properties);
     }
 }

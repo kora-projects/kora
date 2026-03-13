@@ -1,5 +1,8 @@
 package io.koraframework.scheduling.quartz;
 
+import io.koraframework.application.graph.ValueOf;
+import io.koraframework.scheduling.common.telemetry.NoopSchedulingObservation;
+import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -7,11 +10,7 @@ import org.quartz.JobExecutionContext;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
-import io.koraframework.application.graph.ValueOf;
-import io.koraframework.scheduling.common.telemetry.NoopSchedulingObservation;
-import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 
-import java.util.Date;
 import java.util.List;
 import java.util.Properties;
 import java.util.UUID;
@@ -103,11 +102,6 @@ class KoraQuartzJobRegistrarTest {
         @Override
         public T get() {
             return value;
-        }
-
-        @Override
-        public void refresh() {
-
         }
     }
 }

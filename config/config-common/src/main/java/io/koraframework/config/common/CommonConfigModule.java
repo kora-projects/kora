@@ -1,7 +1,7 @@
 package io.koraframework.config.common;
 
-import org.jspecify.annotations.Nullable;
-import io.koraframework.application.graph.ValueOf;
+import io.koraframework.application.graph.Node;
+import io.koraframework.application.graph.RefreshableGraph;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.annotation.ApplicationConfig;
 import io.koraframework.config.common.annotation.Environment;
@@ -11,8 +11,7 @@ import io.koraframework.config.common.factory.MergeConfigFactory;
 import io.koraframework.config.common.origin.ConfigOrigin;
 import io.koraframework.config.common.origin.EnvironmentOrigin;
 import io.koraframework.config.common.origin.SystemPropertiesOrigin;
-
-import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 public interface CommonConfigModule extends DefaultConfigExtractorsModule {
 
@@ -35,7 +34,7 @@ public interface CommonConfigModule extends DefaultConfigExtractorsModule {
     }
 
     @Root
-    default ConfigWatcher configRefresher(@ApplicationConfig Optional<ValueOf<ConfigOrigin>> applicationConfig) {
-        return new ConfigWatcher(applicationConfig, 1000);
+    default ConfigWatcher configRefresher(RefreshableGraph graph, @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode, int checkTime) {
+        return new ConfigWatcher(graph, applicationConfigNode, 1000);
     }
 }

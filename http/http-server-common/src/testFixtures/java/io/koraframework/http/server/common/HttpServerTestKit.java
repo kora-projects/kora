@@ -1,19 +1,5 @@
 package io.koraframework.http.server.common;
 
-import io.koraframework.http.server.common.telemetry.*;
-import io.opentelemetry.api.trace.Span;
-import okhttp3.ConnectionPool;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okio.BufferedSink;
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.*;
-import org.mockito.AdditionalAnswers;
-import org.mockito.ArgumentMatchers;
-import org.mockito.Mockito;
-import org.mockito.verification.VerificationMode;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.PromiseOf;
 import io.koraframework.application.graph.ValueOf;
@@ -33,7 +19,21 @@ import io.koraframework.http.server.common.privateapi.LivenessHandler;
 import io.koraframework.http.server.common.privateapi.MetricsHandler;
 import io.koraframework.http.server.common.privateapi.ReadinessHandler;
 import io.koraframework.http.server.common.router.HttpServerHandler;
+import io.koraframework.http.server.common.telemetry.*;
 import io.koraframework.telemetry.common.MetricsScraper;
+import io.opentelemetry.api.trace.Span;
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okio.BufferedSink;
+import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.*;
+import org.mockito.AdditionalAnswers;
+import org.mockito.ArgumentMatchers;
+import org.mockito.Mockito;
+import org.mockito.verification.VerificationMode;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -46,13 +46,13 @@ import java.util.Optional;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 
+import static io.koraframework.http.common.HttpMethod.GET;
+import static io.koraframework.http.common.HttpMethod.POST;
 import static java.time.Instant.now;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.Mockito.*;
-import static io.koraframework.http.common.HttpMethod.GET;
-import static io.koraframework.http.common.HttpMethod.POST;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public abstract class HttpServerTestKit {
@@ -1005,16 +1005,7 @@ public abstract class HttpServerTestKit {
     }
 
     protected static <T> ValueOf<T> valueOf(T instance) {
-        return new ValueOf<>() {
-            @Override
-            public T get() {
-                return instance;
-            }
-
-            @Override
-            public void refresh() {
-            }
-        };
+        return () -> instance;
     }
 
     protected Request.Builder privateApiRequest(String path) {

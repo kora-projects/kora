@@ -38,7 +38,6 @@ public class CommonClassNames {
     public static final ClassName all = ClassName.get("io.koraframework.application.graph", "All");
     public static final ClassName typeRef = ClassName.get("io.koraframework.application.graph", "TypeRef");
     public static final ClassName wrapped = ClassName.get("io.koraframework.application.graph", "Wrapped");
-    public static final ClassName wrappedUnwrappedValue = ClassName.get("io.koraframework.application.graph", "Wrapped", "UnwrappedValue");
     public static final ClassName promiseOf = ClassName.get("io.koraframework.application.graph", "PromiseOf");
     public static final ClassName valueOf = ClassName.get("io.koraframework.application.graph", "ValueOf");
     public static final ClassName applicationGraphDraw = ClassName.get("io.koraframework.application.graph", "ApplicationGraphDraw");

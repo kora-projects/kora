@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Type;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class ApplicationGraphDraw {
@@ -34,6 +35,7 @@ public class ApplicationGraphDraw {
     public <T> Node<T> addNode(
         Type type,
         @Nullable Class<?> tag,
+        @Nullable Function<Graph, GraphCondition.ConditionResult> condition,
         List<CreateDependency> createDependencies,
         List<Node<?>> refreshDependencies,
         List<Node<? extends GraphInterceptor<T>>> interceptors,
@@ -52,6 +54,7 @@ public class ApplicationGraphDraw {
             this,
             type,
             tag,
+            condition,
             this.graphNodes.size(),
             createDependencies,
             refreshDependencies,
@@ -62,7 +65,7 @@ public class ApplicationGraphDraw {
         return node;
     }
 
-    public RefreshableGraph init() {
+    public InitializedGraph init() {
         var graph = new GraphImpl(this);
         graph.init();
         return graph;
@@ -101,14 +104,14 @@ public class ApplicationGraphDraw {
     public <T> void replaceNode(Node<T> node, Graph.Factory<? extends T> factory) {
         var casted = (NodeImpl<T>) node;
         this.graphNodes.set(casted.index, new NodeImpl<T>(
-            this, casted.type, casted.tag, casted.index, List.of(), List.of(), List.of(), factory
+            this, casted.type, casted.tag, casted.condition, casted.index, List.of(), List.of(), List.of(), factory
         ));
     }
 
     public <T> void replaceNodeKeepDependencies(Node<T> node, Graph.Factory<? extends T> factory) {
         var casted = (NodeImpl<T>) node;
         this.graphNodes.set(casted.index, new NodeImpl<T>(
-            this, casted.type, casted.tag, casted.index, casted.createDependencies, casted.refreshDependencies, List.of(), factory
+            this, casted.type, casted.tag, casted.condition, casted.index, casted.createDependencies, casted.refreshDependencies, List.of(), factory
         ));
     }
 
@@ -143,6 +146,7 @@ public class ApplicationGraphDraw {
                 var replacedNode = draw.<T>addNode(
                     node.type(),
                     node.tag(),
+                    node.condition(),
                     createDependencies,
                     refreshDependencies,
                     interceptors,
@@ -170,8 +174,15 @@ public class ApplicationGraphDraw {
         }
 
         @Override
-        public T get(Graph graph) throws Exception {
-            var replacedGraph = new Graph() {
+        public T get(RefreshableGraph graph) throws Exception {
+            var replacedGraph = new RefreshableGraph() {
+                @Override
+                public void refresh(Node<?> fromNode) {
+                    graph.refresh(switch (fromNode) {
+                        case NodeImpl<?> n -> nodes.get(n.index);
+                    });
+                }
+
                 @Override
                 public ApplicationGraphDraw draw() {
                     return graph.draw();
@@ -196,6 +207,18 @@ public class ApplicationGraphDraw {
                     return switch (node1) {
                         case NodeImpl<? extends N> n -> graph.promiseOf((Node<N>) nodes.get(n.index));
                     };
+                }
+
+                @Override
+                public <N> PromiseOf<N> getOnePromiseOf(Node<? extends N>... oneOfNodes) {
+                    Node<? extends N>[] fixed = new Node[oneOfNodes.length];
+                    for (int i = 0; i < oneOfNodes.length; i++) {
+                        switch (oneOfNodes[i]) {
+                            case NodeImpl<? extends N> n -> fixed[i] = (Node<N>) nodes.get(n.index);
+                        }
+                    }
+
+                    return graph.getOnePromiseOf(fixed);
                 }
             };
             return node.factory.get(replacedGraph);
@@ -227,11 +250,19 @@ public class ApplicationGraphDraw {
                     for (var interceptor : node.interceptors) {
                         interceptors.add(this.accept((NodeImpl<? extends GraphInterceptor<T>>) interceptor));
                     }
-                    Graph.Factory<T> factory = graph -> node.factory.get(new Graph() {
+                    Graph.Factory<T> factory = graph -> node.factory.get(new RefreshableGraph() {
+                        @Override
+                        public void refresh(Node<?> fromNode) {
+                            var casted = (NodeImpl<?>) fromNode;
+                            var realNode = (Node<?>) subgraph.graphNodes.get(seen.get(casted.index));
+                            graph.refresh(realNode);
+                        }
+
                         @Override
                         public ApplicationGraphDraw draw() {
                             return subgraph;
                         }
+
 
                         @Override
                         public <Q> Q get(Node<? extends Q> node1) {
@@ -256,8 +287,21 @@ public class ApplicationGraphDraw {
                             var realNode = (Node<? extends Q>) subgraph.graphNodes.get(seen.get(casted.index));
                             return graph.promiseOf(realNode);
                         }
+
+                        @Override
+                        @SuppressWarnings("unchecked")
+                        public <N> PromiseOf<N> getOnePromiseOf(Node<? extends N>... oneOfNodes) {
+                            Node<? extends N>[] fixed = new Node[oneOfNodes.length];
+                            for (int i = 0; i < oneOfNodes.length; i++) {
+                                switch (oneOfNodes[i]) {
+                                    case NodeImpl<? extends N> n -> fixed[i] = (Node<N>) subgraph.graphNodes.get(seen.get(n.index));
+                                }
+                            }
+
+                            return graph.getOnePromiseOf(fixed);
+                        }
                     });
-                    var newNode = (NodeImpl<T>) subgraph.addNode(node.type(), node.tag(), dependencies, dependencyNodes, interceptors, factory);// todo
+                    var newNode = (NodeImpl<T>) subgraph.addNode(node.type(), node.tag(), node.condition(), dependencies, dependencyNodes, interceptors, factory);// todo
                     seen.put(node.index, newNode.index);
                     return newNode;
                 }

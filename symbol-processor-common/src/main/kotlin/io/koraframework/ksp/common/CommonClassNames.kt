@@ -42,7 +42,6 @@ object CommonClassNames {
     val all = ClassName("io.koraframework.application.graph", "All")
     val typeRef = ClassName("io.koraframework.application.graph", "TypeRef")
     val wrapped = ClassName("io.koraframework.application.graph", "Wrapped")
-    val wrappedUnwrappedValue = ClassName("io.koraframework.application.graph", "Wrapped", "UnwrappedValue")
     val promiseOf = ClassName("io.koraframework.application.graph", "PromiseOf")
     val valueOf = ClassName("io.koraframework.application.graph", "ValueOf")
     val applicationGraphDraw = ClassName("io.koraframework.application.graph", "ApplicationGraphDraw")

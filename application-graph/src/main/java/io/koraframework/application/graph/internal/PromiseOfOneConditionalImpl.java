@@ -4,11 +4,11 @@ import io.koraframework.application.graph.Node;
 
 import java.util.Optional;
 
-public class PromiseOfImpl<T> extends BasePromiseOf<T> {
-    private final Node<? extends T> node;
+public class PromiseOfOneConditionalImpl<T> extends BasePromiseOf<T> {
+    private final Node<? extends T>[] nodes;
 
-    public PromiseOfImpl(NodeImpl<? extends T> node) {
-        this.node = node;
+    public PromiseOfOneConditionalImpl(Node<? extends T>[] nodes) {
+        this.nodes = nodes;
     }
 
     @Override
@@ -17,7 +17,7 @@ public class PromiseOfImpl<T> extends BasePromiseOf<T> {
         if (graph == null) {
             return Optional.empty();
         } else {
-            return Optional.of(graph.get(this.node));
+            return Optional.of(graph.getOneOf(nodes));
         }
     }
 }
