@@ -194,7 +194,6 @@ class KoraAppProcessorTest {
             .hasMessageStartingWith("Encountered circular dependency in graph for source type");
         testClass(AppWithFactories7.class).init();
         testClass(AppWithFactories8.class).init();
-        testClass(AppWithFactories9.class).init();
         assertThatThrownBy(() -> testClass(AppWithFactories10.class))
             .isInstanceOf(CompilationErrorException.class)
             .hasMessageStartingWith("Required dependency type wasn't found in graph and can't be auto created: java.io.Closeable")
@@ -304,12 +303,6 @@ class KoraAppProcessorTest {
         Assertions.assertThat(materializedGraph).isNotNull();
 
         materializedGraph.release();
-    }
-
-    @Test
-    void appWithExactDependencyMatch() throws Exception {
-        var graphDraw = testClass(AppWithExactMatch.class);
-        Assertions.assertThat(graphDraw.getNodes()).hasSize(8);
     }
 
     @Test

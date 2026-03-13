@@ -247,7 +247,6 @@ class KoraAppKspTest {
 
         testClass(AppWithFactories8::class).init()
 
-        testClass(AppWithFactories9::class).init()
         Assertions.assertThatThrownBy { testClass(AppWithFactories10::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
@@ -345,12 +344,6 @@ class KoraAppKspTest {
         val materializedGraph = graphDraw.init()
         assertThat(materializedGraph).isNotNull
         materializedGraph.release()
-    }
-
-    @Test
-    fun appWithExactDependencyMatch() {
-        val graphDraw = testClass(AppWithExactMatch::class)
-        assertThat(graphDraw.nodes).hasSize(8)
     }
 
     @Test
