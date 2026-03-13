@@ -1,7 +1,6 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
@@ -16,6 +15,7 @@ import io.koraframework.kora.app.annotation.processor.exception.CircularDependen
 import io.koraframework.kora.app.annotation.processor.exception.DuplicateDependencyException;
 import io.koraframework.kora.app.annotation.processor.exception.UnresolvedDependencyException;
 import io.koraframework.kora.app.annotation.processor.extension.ExtensionResult;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.RoundEnvironment;
 import javax.lang.model.element.ElementKind;
@@ -143,20 +143,13 @@ public class GraphBuilder {
                     if (dependencyDeclarations.size() == 1) {
                         dependencyDeclaration = dependencyDeclarations.getFirst();
                     } else {
-                        var exactMatch = dependencyDeclarations.stream()
-                            .filter(d -> ctx.types.isSameType(d.declaration().type(), dependencyClaim.type()) || ctx.serviceTypeHelper.isSameToUnwrapped(d.declaration().type(), dependencyClaim.type()))
+                        var nonDefaultComponents = dependencyDeclarations.stream()
+                            .filter(Predicate.not(d -> d.declaration().isDefault()))
                             .toList();
-                        if (exactMatch.size() == 1) {
-                            dependencyDeclaration = exactMatch.getFirst();
+                        if (nonDefaultComponents.size() == 1) {
+                            dependencyDeclaration = nonDefaultComponents.getFirst();
                         } else {
-                            var nonDefaultComponents = dependencyDeclarations.stream()
-                                .filter(Predicate.not(d -> d.declaration().isDefault()))
-                                .toList();
-                            if (nonDefaultComponents.size() == 1) {
-                                dependencyDeclaration = nonDefaultComponents.getFirst();
-                            } else {
-                                throw new DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
-                            }
+                            throw new DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
                         }
                     }
                     var resolved = resolvedComponents.getByDeclaration(dependencyDeclaration);

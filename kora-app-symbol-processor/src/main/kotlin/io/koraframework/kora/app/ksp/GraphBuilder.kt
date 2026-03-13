@@ -138,20 +138,14 @@ class GraphBuilder {
                     if (dependencyDeclarations.size == 1) {
                         dependencyDeclaration = dependencyDeclarations.first()
                     } else {
-                        val exactMatch = dependencyDeclarations
-                            .filter { d -> d.declaration.type == dependencyClaim.type || ctx.serviceTypesHelper.isSameToUnwrapped(d.declaration.type, dependencyClaim.type) }
-                        if (exactMatch.size == 1) {
-                            dependencyDeclaration = exactMatch.first()
+                        val nonDefaultComponents = dependencyDeclarations.stream()
+                            .filter { !it.declaration.isDefault() }
+                            .toList()
+                        if (nonDefaultComponents.size == 1) {
+                            dependencyDeclaration = nonDefaultComponents.first()
                         } else {
-                            val nonDefaultComponents = dependencyDeclarations.stream()
-                                .filter { !it.declaration.isDefault() }
-                                .toList()
-                            if (nonDefaultComponents.size == 1) {
-                                dependencyDeclaration = nonDefaultComponents.first()
-                            } else {
 
-                                throw DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList())
-                            }
+                            throw DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList())
                         }
                     }
                     val resolved = resolvedComponents.getByDeclaration(dependencyDeclaration)
