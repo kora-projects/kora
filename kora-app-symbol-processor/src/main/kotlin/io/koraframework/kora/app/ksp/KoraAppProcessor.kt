@@ -394,6 +394,8 @@ class KoraAppProcessor(
         } else {
             statement.add("%L::class.java,\n", component.tag)
         }
+        statement.add("null,\n") // todo conditions
+
         val createDependencies = getCreateDependencies(ctx, declarations, components, componentHolder, component.dependencies)
         statement.add("%L,\n", createDependencies);
 
@@ -483,24 +485,21 @@ class KoraAppProcessor(
                         is ComponentDependency.PromiseOfDependency -> {}
                         is ComponentDependency.TargetDependency -> result.add(
                             CodeBlock.of(
-                                "%T.singleDependency(%L)",
-                                CommonClassNames.applicationGraphDraw,
+                                "%L",
                                 dependency.component.nodeRef(componentHolder)
                             )
                         )
 
                         is ComponentDependency.ValueOfDependency -> result.add(
                             CodeBlock.of(
-                                "%T.singleDependency(%L)",
-                                CommonClassNames.applicationGraphDraw,
+                                "%L",
                                 dependency.component.nodeRef(componentHolder)
                             )
                         )
 
                         is ComponentDependency.WrappedTargetDependency -> result.add(
                             CodeBlock.of(
-                                "%T.singleDependency(%L)",
-                                CommonClassNames.applicationGraphDraw,
+                                "%L",
                                 dependency.component.nodeRef(componentHolder)
                             )
                         )
@@ -511,8 +510,8 @@ class KoraAppProcessor(
                     if (dependency.claim.claimType !== DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
                         val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
                         for (dependencyDeclaration in dependencyDeclarations) {
-                            val resolvedComponent: ResolvedComponent = resolvedComponents.getByDeclaration(dependencyDeclaration)!!
-                            result.add(CodeBlock.of("%T.allOfDependency(%L)", CommonClassNames.applicationGraphDraw, resolvedComponent.nodeRef(componentHolder)))
+                            val resolvedComponent = resolvedComponents.getByDeclaration(dependencyDeclaration)!!
+                            result.add(CodeBlock.of("%L", resolvedComponent.nodeRef(componentHolder)))
                         }
                     }
                 }

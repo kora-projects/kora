@@ -53,6 +53,7 @@ public class AnnotationUtils {
             return Objects.requireNonNull(list.get(0));
         }
     }
+
     @Nullable
     public static AnnotationMirror findAnnotation(Elements elements, Element element, ClassName name) {
         var list = findAnnotations(elements, element, name, null);
@@ -84,6 +85,7 @@ public class AnnotationUtils {
         }
         return result;
     }
+
     public static List<AnnotationMirror> findAnnotations(Elements elements, Element element, ClassName name, @Nullable ClassName containerName) {
         var result = new ArrayList<AnnotationMirror>();
         for (var annotationMirror : elements.getAllAnnotationMirrors(element)) {
@@ -134,6 +136,9 @@ public class AnnotationUtils {
                 if (value == null) {
                     return null;
                 }
+                if (value.toString().equals("<error>")) {
+                    throw new ProcessingErrorException("Tag value is not a valid type ", null, annotationMirror, value);
+                }
                 var annotationValue = value.getValue();
                 if (annotationValue instanceof List<?> list) {
                     var result = new ArrayList<>();
@@ -151,6 +156,7 @@ public class AnnotationUtils {
                 } else {
                     @SuppressWarnings("unchecked")
                     var finalValue = (T) value.getValue();
+
                     return finalValue;
                 }
             }

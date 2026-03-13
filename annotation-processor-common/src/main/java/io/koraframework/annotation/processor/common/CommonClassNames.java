@@ -32,6 +32,7 @@ public class CommonClassNames {
     public static final ClassName module = ClassName.get("io.koraframework.common", "Module");
     public static final ClassName component = ClassName.get("io.koraframework.common", "Component");
     public static final ClassName defaultComponent = ClassName.get("io.koraframework.common", "DefaultComponent");
+    public static final ClassName conditional = ClassName.get("io.koraframework.common.annotation", "Conditional");
 
     public static final ClassName node = ClassName.get("io.koraframework.application.graph", "Node");
     public static final ClassName lifecycle = ClassName.get("io.koraframework.application.graph", "Lifecycle");

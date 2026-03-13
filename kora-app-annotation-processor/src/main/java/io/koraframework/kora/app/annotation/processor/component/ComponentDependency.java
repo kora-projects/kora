@@ -3,38 +3,37 @@ package io.koraframework.kora.app.annotation.processor.component;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import io.koraframework.annotation.processor.common.CommonClassNames;
-import io.koraframework.kora.app.annotation.processor.GraphResolutionHelper;
 import io.koraframework.kora.app.annotation.processor.ProcessingContext;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
-import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclarations;
 
 import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public sealed interface ComponentDependency {
 
     DependencyClaim claim();
 
-    default CodeBlock write(ProcessingContext ctx, ClassName graphTypeName, ComponentDeclarations componentDeclarations, ResolvedComponents resolvedComponents) {
+    default CodeBlock write(ProcessingContext ctx, ClassName graphTypeName) {
         return switch (this) {
-            case AllOfDependency(var claim) -> {
-                var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, claim);
+            case AllOfDependency allOf -> {
                 var codeBlock = CodeBlock.builder();
-                switch (claim.claimType()) {
+                switch (allOf.claim().claimType()) {
                     case ALL_OF_ONE -> codeBlock.add("$T.all(g", CommonClassNames.all);
                     case ALL_OF_VALUE -> codeBlock.add("$T.allValues(g", CommonClassNames.all);
                     case ALL_OF_PROMISE -> codeBlock.add("$T.allPromises(g", CommonClassNames.all);
-                    default -> throw new IllegalStateException("Unknown claim type: " + claim.claimType());
+                    default -> throw new IllegalStateException("Unknown claim type: " + allOf.claim().claimType());
                 }
-                var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, dependencyDeclarations, resolvedComponents);
-                for (var dependency : dependencies) {
+                for (var dependency : allOf.resolvedDependencies) {
                     var dependencyNode = dependency.component().nodeRef("some_fake_holder_idc");
-                    if (dependency instanceof WrappedTargetDependency || dependency instanceof ValueOfDependency valueOf && valueOf.delegate instanceof WrappedTargetDependency || dependency instanceof PromiseOfDependency promiseOf && promiseOf.delegate instanceof WrappedTargetDependency) {
-                        codeBlock.add(", $T.unwrap($L)", CommonClassNames.all, dependencyNode);
-                    } else {
-                        codeBlock.add(", $T.node($L)", CommonClassNames.all, dependencyNode);
+                    switch (dependency) {
+                        case WrappedTargetDependency _ -> codeBlock.add(", $T.unwrap($L)", CommonClassNames.all, dependencyNode);
+                        case ValueOfDependency valueOf when valueOf.delegate instanceof WrappedTargetDependency -> codeBlock.add(", $T.unwrap($L)", CommonClassNames.all, dependencyNode);
+                        case PromiseOfDependency promiseOf when promiseOf.delegate instanceof WrappedTargetDependency -> codeBlock.add(", $T.unwrap($L)", CommonClassNames.all, dependencyNode);
+                        default -> codeBlock.add(", $T.node($L)", CommonClassNames.all, dependencyNode);
                     }
                 }
                 yield codeBlock.add(")").build();
@@ -45,12 +44,8 @@ public sealed interface ComponentDependency {
                 case NULLABLE_PROMISE_OF -> CodeBlock.of("($T<$T>) null", CommonClassNames.promiseOf, claim.type());
                 default -> throw new IllegalArgumentException(claim.claimType().toString());
             };
-            case PromisedProxyParameterDependency(_, var claim) -> {
-                var declarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, claim);
-                if (declarations.size() != 1) {
-                    throw new IllegalStateException();
-                }
-                var dependency = Objects.requireNonNull(resolvedComponents.getByDeclaration(declarations.getFirst()));
+            case PromisedProxyParameterDependency promised -> {
+                var dependency = Objects.requireNonNull(promised.realDependency);
                 yield CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, dependency.holderName(), dependency.fieldName());
             }
             case PromiseOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
@@ -184,15 +179,50 @@ public sealed interface ComponentDependency {
     }
 
 
-    // AllOf dependencies has no resolved declaration: we will resolve them after graph building
+    final class AllOfDependency implements ComponentDependency {
+        private final DependencyClaim claim;
+        // AllOf dependencies has no resolved declaration: we will resolve them after graph building
+        final List<SingleDependency> resolvedDependencies = new ArrayList<>();
 
-    record AllOfDependency(DependencyClaim claim) implements ComponentDependency {
+        public AllOfDependency(DependencyClaim claim) {this.claim = claim;}
+
+        @Override
+        public DependencyClaim claim() {return claim;}
+
+        public void addResolved(List<SingleDependency> resolvedComponents) {
+            this.resolvedDependencies.addAll(resolvedComponents);
+        }
+
+        @Override
+        public String toString() {
+            return "AllOfDependency[claim=" + claim + ']';
+        }
+
     }
 
-    record PromisedProxyParameterDependency(ComponentDeclaration declaration, DependencyClaim claim) implements ComponentDependency {
+    final class PromisedProxyParameterDependency implements ComponentDependency {
+        private final ComponentDeclaration declaration;
+        private final DependencyClaim claim;
+        ResolvedComponent realDependency;
+
+        public PromisedProxyParameterDependency(ComponentDeclaration declaration, DependencyClaim claim) {
+            this.declaration = declaration;
+            this.claim = claim;
+        }
+
         @Override
         public String toString() {
             return "PromisedProxyParameterDependency[claim=" + claim + ", declaration=" + declaration + ']';
+        }
+
+        public ComponentDeclaration declaration() {return declaration;}
+
+        @Override
+        public DependencyClaim claim() {return claim;}
+
+
+        public void setPromised(ResolvedComponent realDependency) {
+            this.realDependency = realDependency;
         }
     }
 }

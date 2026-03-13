@@ -216,6 +216,7 @@ public final class GraphImpl implements InitializedGraph {
             }
         }
         this.conditionResultsCache.putAll(tmpGraph.conditionResultsCache);
+        tmpGraph.delegate = this;
         log.trace("Dependency container refreshed, ");
     }
 
@@ -237,7 +238,7 @@ public final class GraphImpl implements InitializedGraph {
             var lock = locks.get(i);
             Thread.ofVirtual().name("release-" + i).start(() -> {
                 for (var dependencyNode : node.createDependencies) {
-                    locks.get(toImpl(draw, dependencyNode.node()).index).readLock().lock();
+                    locks.get(toImpl(draw, dependencyNode).index).readLock().lock();
                 }
                 for (var interceptorNode : node.interceptors) {
                     locks.get(toImpl(draw, interceptorNode).index).readLock().lock();
@@ -258,7 +259,7 @@ public final class GraphImpl implements InitializedGraph {
                 } finally {
                     lock.writeLock().unlock();
                     for (var dependencyNode : node.createDependencies) {
-                        locks.get(toImpl(draw, dependencyNode.node()).index).readLock().unlock();
+                        locks.get(toImpl(draw, dependencyNode).index).readLock().unlock();
                     }
                     for (var interceptorNode : node.interceptors) {
                         locks.get(toImpl(draw, interceptorNode).index).readLock().unlock();
@@ -335,6 +336,8 @@ public final class GraphImpl implements InitializedGraph {
         private final AtomicReferenceArray<@Nullable CompletableFuture<@Nullable Void>> inits;
         private final BitSet initialized;
         private final boolean debugEnabled;
+        @Nullable
+        public volatile GraphImpl delegate;
 
         private TmpGraph(GraphImpl rootGraph) {
             this.rootGraph = rootGraph;
@@ -351,6 +354,10 @@ public final class GraphImpl implements InitializedGraph {
 
         @Override
         public GraphCondition condition(Node<? extends GraphCondition> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.condition(node);
+            }
             return () -> conditionResultsCache.computeIfAbsent(
                 new GraphConditionKey(this.rootGraph.draw, node),
                 key -> get(key.node).eval()
@@ -364,11 +371,20 @@ public final class GraphImpl implements InitializedGraph {
 
         @Override
         public <T> T get(Node<? extends T> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.get(node);
+            }
             return getImpl(this.rootGraph.draw, this.tmpArray, node);
         }
 
         @Override
-        public <T> ValueOf<T> valueOf(Node<? extends T> node) {
+        public final <T> ValueOf<T> valueOf(Node<? extends T> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.valueOf(node);
+            }
+
             var casted = (NodeImpl<? extends T>) node;
             // dirty hack to make copied graph work with valueOf
             @SuppressWarnings("unchecked")
@@ -379,7 +395,12 @@ public final class GraphImpl implements InitializedGraph {
         }
 
         @Override
-        public <T> PromiseOf<T> promiseOf(Node<? extends T> node) {
+        public final <T> PromiseOf<T> promiseOf(Node<? extends T> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.promiseOf(node);
+            }
+
             var casted = (NodeImpl<? extends T>) node;
             // dirty hack to make copied graph work with valueOf
             @SuppressWarnings("unchecked")
@@ -391,7 +412,12 @@ public final class GraphImpl implements InitializedGraph {
 
         @Override
         @SuppressWarnings("unchecked")
-        public <T> PromiseOf<T> getOnePromiseOf(Node<? extends T>... nodes) {
+        public final <T> PromiseOf<T> getOnePromiseOf(Node<? extends T>... nodes) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.getOnePromiseOf(nodes);
+            }
+
             Node<? extends T>[] fixedNodes = new Node[nodes.length];
 
             for (int i = 0; i < nodes.length; i++) {
@@ -406,12 +432,32 @@ public final class GraphImpl implements InitializedGraph {
             return promise;
         }
 
+        @Override
+        @SafeVarargs
+        public final <T> T getOneOf(Node<? extends T>... nodes) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.getOneOf(nodes);
+            }
+            return RefreshableGraph.super.getOneOf(nodes);
+        }
+
+        @Override
+        @SafeVarargs
+        public final <T> ValueOf<T> getOneValueOf(Node<? extends T>... nodes) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.getOneValueOf(nodes);
+            }
+            return RefreshableGraph.super.getOneValueOf(nodes);
+        }
+
         private <T> void createNode(int startFrom, NodeImpl<T> node) throws Exception {
             @SuppressWarnings("unchecked")
             T oldObject = (T) this.rootGraph.objects.get(node.index);
             for (var dependencyNode : node.createDependencies) {
                 try {
-                    var init = this.inits.get(toImpl(rootGraph.draw, dependencyNode.node()).index);
+                    var init = this.inits.get(toImpl(rootGraph.draw, dependencyNode).index);
                     if (init != null) {
                         init.get();
                     }
@@ -456,7 +502,7 @@ public final class GraphImpl implements InitializedGraph {
 
 
             if (this.rootGraph.log.isTraceEnabled()) {
-                var dependenciesStr = node.createDependencies.stream().map(ApplicationGraphDraw.CreateDependency::node).map(Node::toString).collect(Collectors.joining(",", "[", "]"));
+                var dependenciesStr = node.createDependencies.stream().map(Node::toString).collect(Collectors.joining(",", "[", "]"));
                 this.rootGraph.log.trace("Creating node {}, dependencies {}", node.index, dependenciesStr);
             }
 

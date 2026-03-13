@@ -1,38 +1,46 @@
 package io.koraframework.kora.app.annotation.processor.component;
 
+import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.type.TypeMirror;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static io.koraframework.kora.app.annotation.processor.KoraAppProcessor.COMPONENTS_PER_HOLDER_CLASS;
 
-public record ResolvedComponent(int index, ComponentDeclaration declaration, TypeMirror type, @Nullable String tag, List<TypeMirror> templateParams, List<ComponentDependency> dependencies) {
-    public ResolvedComponent {
-        Objects.requireNonNull(declaration);
-        Objects.requireNonNull(type);
-        Objects.requireNonNull(templateParams);
-        Objects.requireNonNull(dependencies);
-    }
+public final class ResolvedComponent {
+    private final int index;
+    private final ComponentDeclaration declaration;
+    private final TypeMirror type;
+    private final @Nullable String tag;
+    private final List<TypeMirror> templateParams;
+    private final List<ComponentDependency> dependencies;
+    private final String fieldName;
+    private final String holderName;
+    private final Set<ClassName> parentConditions = new HashSet<>();
 
-    public String fieldName() {
-        return "component" + this.index;
-    }
-
-    public String holderName() {
+    public ResolvedComponent(int index, ComponentDeclaration declaration, TypeMirror type, @Nullable String tag, List<TypeMirror> templateParams, List<ComponentDependency> dependencies) {
+        this.index = index;
+        this.declaration = Objects.requireNonNull(declaration);
+        this.type = Objects.requireNonNull(type);
+        this.tag = tag;
+        this.templateParams = Objects.requireNonNull(templateParams);
+        this.dependencies = Objects.requireNonNull(dependencies);
+        this.fieldName = "component" + this.index;
         var holderNumber = this.index / COMPONENTS_PER_HOLDER_CLASS;
-        return "holder" + holderNumber;
+        this.holderName = "holder" + holderNumber;
     }
 
     public CodeBlock nodeRef(String inHolder) {
-        var holderName = holderName();
         if (inHolder.equals(holderName)) {
-            return CodeBlock.of("$N", fieldName());
+            return CodeBlock.of("$N", fieldName);
         } else {
-            return CodeBlock.of("$N.$N", holderName, fieldName());
+            return CodeBlock.of("$N.$N", holderName, fieldName);
         }
     }
 
@@ -60,5 +68,47 @@ public record ResolvedComponent(int index, ComponentDeclaration declaration, Typ
         }
         sb.append(']');
         return sb.toString();
+    }
+
+    public int index() {return index;}
+
+    public ComponentDeclaration declaration() {return declaration;}
+
+    public TypeMirror type() {return type;}
+
+    public @Nullable String tag() {return tag;}
+
+    public List<TypeMirror> templateParams() {return templateParams;}
+
+    public List<ComponentDependency> dependencies() {return dependencies;}
+
+    public String fieldName() {return fieldName;}
+
+    public String holderName() {return holderName;}
+
+    public Set<ClassName> parentConditions() {return parentConditions;}
+
+    public void processParentCondition(@Nullable ClassName condition) {
+        if (condition != null) {
+            this.parentConditions.add(condition);
+        } else {
+            this.parentConditions.clear();
+        }
+        for (var dependency : this.dependencies) {
+            switch (dependency) {
+                case ComponentDependency.NullDependency _ -> {}
+                case ComponentDependency.TypeOfDependency _ -> {}
+                case ComponentDependency.PromisedProxyParameterDependency _ -> {}
+                case ComponentDependency.PromiseOfDependency promiseOfDependency -> promiseOfDependency.component().processParentCondition(condition);
+                case ComponentDependency.AllOfDependency allOfDependency -> {
+                    for (var d : allOfDependency.resolvedDependencies) {
+                        d.component().processParentCondition(condition);
+                    }
+                }
+                case ComponentDependency.TargetDependency targetDependency -> targetDependency.component().processParentCondition(condition);
+                case ComponentDependency.ValueOfDependency valueOfDependency -> valueOfDependency.component().processParentCondition(condition);
+                case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> wrappedTargetDependency.component().processParentCondition(condition);
+            }
+        }
     }
 }

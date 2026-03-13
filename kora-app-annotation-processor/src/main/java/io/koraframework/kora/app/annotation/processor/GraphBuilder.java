@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import com.palantir.javapoet.*;
+import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
@@ -36,25 +37,30 @@ public class GraphBuilder {
     private final TypeElement root;
     private final List<TypeElement> allModules;
     private final List<ComponentDeclaration> templates;
-    private final List<ComponentDeclaration> rootSet;
+    private final List<DeclarationWithIndex> rootSet;
 
     private final ResolvedComponents resolvedComponents;
     private final Deque<ResolutionFrame> stack;
     private final ComponentDeclarations declarations;
 
 
-    public GraphBuilder(ProcessingContext ctx, RoundEnvironment roundEnv, TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates, List<ComponentDeclaration> rootSet) {
+    public GraphBuilder(ProcessingContext ctx, RoundEnvironment roundEnv, TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates) {
         this.ctx = ctx;
         this.roundEnv = roundEnv;
         this.root = root;
         this.allModules = allModules;
         this.templates = templates;
-        this.rootSet = rootSet;
+        this.rootSet = new ArrayList<>();
         this.stack = new ArrayDeque<>();
 
-        for (var rootDeclaration : rootSet) {
-            var rootDeclarationIdx = sourceDeclarations.indexOf(rootDeclaration);
-            this.stack.push(new ResolutionFrame.Root(rootDeclaration, rootDeclarationIdx));
+        for (int i = 0; i < sourceDeclarations.size(); i++) {
+            var maybeRoot = sourceDeclarations.get(i);
+            var isRoot = AnnotationUtils.isAnnotationPresent(maybeRoot.source(), CommonClassNames.root)
+                || maybeRoot instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root);
+            if (isRoot) {
+                this.stack.push(new ResolutionFrame.Root(maybeRoot, i));
+                this.rootSet.add(new DeclarationWithIndex(maybeRoot, i));
+            }
         }
         this.declarations = new ComponentDeclarations(ctx);
         for (var sourceDeclaration : sourceDeclarations) {
@@ -239,8 +245,29 @@ public class GraphBuilder {
             }
 
             resolvedComponents.add(componentFrame.declarationIdx, declaration, resolvedDependencies);
-
         }
+        for (var component : resolvedComponents.components()) {
+            for (var dependency : component.dependencies()) {
+                if (dependency instanceof ComponentDependency.AllOfDependency allOf) {
+                    var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, allOf.claim());
+                    var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, allOf.claim(), dependencyDeclarations, resolvedComponents);
+                    allOf.addResolved(dependencies);
+                }
+                if (dependency instanceof ComponentDependency.PromisedProxyParameterDependency proxy) {
+                    var componentDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, proxy.claim());
+                    if (componentDeclarations.size() != 1) {
+                        throw new IllegalStateException();
+                    }
+                    var realDependency = Objects.requireNonNull(resolvedComponents.getByDeclaration(componentDeclarations.getFirst()));
+                    proxy.setPromised(realDependency);
+                }
+            }
+        }
+
+        for (var root : this.rootSet) {
+            resolvedComponents.getByDeclaration(root).processParentCondition(root.declaration().condition());
+        }
+
         return new ResolvedGraph(root, allModules, declarations, resolvedComponents);
     }
 

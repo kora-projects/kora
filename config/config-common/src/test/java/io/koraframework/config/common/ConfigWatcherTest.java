@@ -66,7 +66,7 @@ class ConfigWatcherTest {
             Config.class,
             null,
             null,
-            List.of(ApplicationGraphDraw.singleDependency(originNode)),
+            List.of(originNode),
             List.of(originNode),
             List.of(),
             g -> load(g.get(originNode))
@@ -75,7 +75,7 @@ class ConfigWatcherTest {
             ConfigWatcher.class,
             null,
             null,
-            List.of(ApplicationGraphDraw.singleDependency(originNode)),
+            List.of(originNode),
             List.of(originNode),
             List.of(),
             g -> new ConfigWatcher(g, originNode, 50)

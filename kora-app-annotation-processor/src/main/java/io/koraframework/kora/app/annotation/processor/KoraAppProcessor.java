@@ -154,12 +154,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             Components::new
         ));
 
-        var rootSet = components.nonTemplates.stream()
-            .filter(cd -> AnnotationUtils.isAnnotationPresent(cd.source(), CommonClassNames.root)
-                || cd instanceof ComponentDeclaration.AnnotatedComponent ac && AnnotationUtils.isAnnotationPresent(ac.typeElement(), CommonClassNames.root))
-            .toList();
 
-        var graphBuilder = new GraphBuilder(ctx, roundEnv, type, allModules, components.nonTemplates, components.templates, rootSet);
+        var graphBuilder = new GraphBuilder(ctx, roundEnv, type, allModules, components.nonTemplates, components.templates);
 
         return graphBuilder.build();
     }
@@ -291,6 +287,13 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             statement.add("$L.class, \n", component.tag());
         }
 
+        if (component.parentConditions().isEmpty() && component.declaration().condition() == null) {
+            statement.add("null,\n");
+        } else {
+            throw new IllegalStateException("TODO");
+        }
+
+
         var createDependencies = getCreateDependencies(ctx, declarations, components, componentHolder, component.dependencies());
         statement.add("$L,\n", createDependencies);
 
@@ -309,7 +312,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         statement.add("),\n");
 
         statement.add("g -> ");
-        var dependenciesCode = this.generateDependenciesCode(ctx, component, graphTypeName, declarations, components);
+        var dependenciesCode = this.generateDependenciesCode(ctx, component, graphTypeName);
 
         switch (declaration) {
             case ComponentDeclaration.AnnotatedComponent annotatedComponent -> {
@@ -358,7 +361,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         return statement.build();
     }
 
-    private CodeBlock generateDependenciesCode(ProcessingContext ctx, ResolvedComponent component, ClassName graphTypeName, ComponentDeclarations declarations, ResolvedComponents components) {
+    private CodeBlock generateDependenciesCode(ProcessingContext ctx, ResolvedComponent component, ClassName graphTypeName) {
         var resolvedDependencies = component.dependencies();
         if (resolvedDependencies.isEmpty()) {
             return CodeBlock.of("");
@@ -369,7 +372,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         for (int i = 0, dependenciesSize = resolvedDependencies.size(); i < dependenciesSize; i++) {
             if (i > 0) b.add(",\n");
             var resolvedDependency = resolvedDependencies.get(i);
-            b.add(resolvedDependency.write(ctx, graphTypeName, declarations, components));
+            b.add(resolvedDependency.write(ctx, graphTypeName));
         }
         b.unindent();
         b.add("\n");
@@ -384,12 +387,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 case ComponentDependency.SingleDependency singleDependency -> {
                     switch (singleDependency) {
                         case ComponentDependency.PromiseOfDependency _, ComponentDependency.TypeOfDependency _ -> {}
-                        case ComponentDependency.TargetDependency targetDependency ->
-                            result.add(CodeBlock.of("$T.singleDependency($L)", CommonClassNames.applicationGraphDraw, targetDependency.component().nodeRef(componentHolder)));
-                        case ComponentDependency.ValueOfDependency valueOfDependency ->
-                            result.add(CodeBlock.of("$T.singleDependency($L)", CommonClassNames.applicationGraphDraw, valueOfDependency.component().nodeRef(componentHolder)));
-                        case ComponentDependency.WrappedTargetDependency wrappedTargetDependency ->
-                            result.add(CodeBlock.of("$T.singleDependency($L)", CommonClassNames.applicationGraphDraw, wrappedTargetDependency.component().nodeRef(componentHolder)));
+                        case ComponentDependency.TargetDependency targetDependency -> result.add(CodeBlock.of("$L", targetDependency.component().nodeRef(componentHolder)));
+                        case ComponentDependency.ValueOfDependency valueOfDependency -> result.add(CodeBlock.of("$L", valueOfDependency.component().nodeRef(componentHolder)));
+                        case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(CodeBlock.of("$L", wrappedTargetDependency.component().nodeRef(componentHolder)));
                     }
                 }
                 case ComponentDependency.AllOfDependency allOfDependency -> {
@@ -397,7 +397,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, allOfDependency.claim());
                         for (var dependencyDeclaration : dependencyDeclarations) {
                             var resolvedComponent = Objects.requireNonNull(resolvedComponents.getByDeclaration(dependencyDeclaration));
-                            result.add(CodeBlock.of("$T.allOfDependency($L)", CommonClassNames.applicationGraphDraw, resolvedComponent.nodeRef(componentHolder)));
+                            result.add(CodeBlock.of("$L", resolvedComponent.nodeRef(componentHolder)));
                         }
                     }
                 }

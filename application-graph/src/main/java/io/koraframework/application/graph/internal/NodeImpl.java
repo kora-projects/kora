@@ -18,7 +18,7 @@ public final class NodeImpl<T> implements Node<T> {
     @Nullable
     public final Function<Graph, GraphCondition.ConditionResult> condition;
 
-    public final List<ApplicationGraphDraw.CreateDependency> createDependencies;
+    public final List<Node<?>> createDependencies;
     public final List<Node<?>> refreshDependencies;
     public final List<Node<? extends GraphInterceptor<T>>> interceptors;
 
@@ -28,7 +28,7 @@ public final class NodeImpl<T> implements Node<T> {
         @Nullable Class<?> tag,
         @Nullable Function<Graph, GraphCondition.ConditionResult> condition,
         int index,
-        List<ApplicationGraphDraw.CreateDependency> createDependencies,
+        List<Node<?>> createDependencies,
         List<Node<?>> refreshDependencies,
         List<Node<? extends GraphInterceptor<T>>> interceptors,
         Graph.Factory<? extends T> factory) {
