@@ -16,18 +16,6 @@ jobs:
           java-version: '25'
           distribution: 'adopt'
 
-      - name: Retrieve the secret and decode it to a file
-        env:
-          GPG_KEY: ${{ secrets.SONATYPE_GPG_KEY }}
-        run: echo "$GPG_KEY" | base64 --decode > /tmp/secring.gpg
-
-      - name: Retrieve the gradle.properties
-        env:
-          SIGN_OSSRH_GRADLE_PROPERTIES: ${{ secrets.SONATYPE_GRADLE_PROPERTIES }}
-        run: |
-          mkdir -p ~/.gradle
-          echo -en "$SIGN_OSSRH_GRADLE_PROPERTIES" | base64 --decode > ~/.gradle/gradle.properties
-
       - name: Gradle setup
         uses: gradle/actions/setup-gradle@v4
 
@@ -37,5 +25,7 @@ jobs:
       - name: Gradle publish
         run: ./gradlew publishMavenPublicationToSnapshotRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg --no-daemon --parallel
         env:
-          REPO_USER: ${{ secrets.SONATYPE_USERNAME }}
-          REPO_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
+          KORA_IO_SIGNING_KEY: ${{ secrets.KORA_IO_SIGNING_KEY }}
+          KORA_IO_SIGNING_PASSWORD: ${{ secrets.KORA_IO_SIGNING_PASSWORD }}
+          SONATYPE_KORA_IO_USERNAME: ${{ secrets.SONATYPE_KORA_IO_USERNAME }}
+          SONATYPE_KORA_IO_PASSWORD: ${{ secrets.SONATYPE_KORA_IO_PASSWORD }}
