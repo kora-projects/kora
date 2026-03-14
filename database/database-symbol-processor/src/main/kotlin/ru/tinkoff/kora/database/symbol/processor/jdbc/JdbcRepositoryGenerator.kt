@@ -114,7 +114,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         val b = method.queryMethodBuilder(resolver)
         if (method.isSuspend()) {
             b.addStatement("val _ctxCurrent = %T.current()", CommonClassNames.context)
-            b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._executor.%M()) {", withContext, asCoroutineDispatcher)
+            b.beginControlFlow("return %M(kotlin.coroutines.coroutineContext + this._dispatcher) {", withContext)
         }
         b.addStatement("val _query = %L", queryContextFieldName)
 
@@ -282,8 +282,8 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
 
         if (queryMethods.any { it.isSuspend() }) {
             val executor = Executor::class.asClassName()
-            builder.addProperty("_executor", executor, KModifier.PRIVATE, KModifier.FINAL)
-            constructorBuilder.addStatement("this._executor = _executor")
+            builder.addProperty("_dispatcher", ClassName("kotlinx.coroutines", "CoroutineDispatcher"), KModifier.PRIVATE)
+            constructorBuilder.addStatement("this._dispatcher = _executor.%M()", asCoroutineDispatcher)
             if (executorTag != null) {
                 constructorBuilder.addParameter(
                     ParameterSpec.builder("_executor", executor)
