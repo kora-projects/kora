@@ -324,7 +324,7 @@ public abstract class AbstractAnnotationProcessorTest {
         }
 
         @Override
-        public <T> PromiseOf<T> getOnePromiseOf(Node<? extends T>... nodes) {
+        public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... nodes) {
             return graph.getOnePromiseOf(nodes);
         }
 

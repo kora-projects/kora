@@ -15,7 +15,8 @@ class TestAspectKoraAspect : KoraAspect {
 
     override fun getSupportedAnnotationTypes(): Set<String> = setOf(TestAspect::class.qualifiedName!!)
 
-    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult = KoraAspect.ApplyResult.Noop.INSTANCE
+    override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult =
+        KoraAspect.ApplyResult.Noop.INSTANCE
 }
 
 class TestAspectKoraAspectFactory : KoraAspectFactory {

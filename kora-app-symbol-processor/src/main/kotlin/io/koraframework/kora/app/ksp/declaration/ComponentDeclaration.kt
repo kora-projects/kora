@@ -4,6 +4,7 @@ import com.google.devtools.ksp.closestClassDeclaration
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.TypeName
@@ -12,17 +13,20 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.ProcessingContext
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.fixPlatformType
 import io.koraframework.ksp.common.TagUtils
 import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
+
 sealed interface ComponentDeclaration {
     val type: KSType
     val source: KSDeclaration
     val tag: String?
     val isInterceptor: Boolean
+    val condition: ClassName?
 
     fun declarationString(): String
 
@@ -46,7 +50,8 @@ sealed interface ComponentDeclaration {
         val method: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
         val typeVariables: List<KSTypeArgument>,
-        override val isInterceptor: Boolean
+        override val isInterceptor: Boolean,
+        override val condition: ClassName?
     ) : ComponentDeclaration {
         override val source get() = this.method
 
@@ -82,7 +87,8 @@ sealed interface ComponentDeclaration {
         val constructor: KSFunctionDeclaration,
         val methodParameterTypes: List<KSType>,
         val typeVariables: List<KSTypeArgument>,
-        override val isInterceptor: Boolean
+        override val isInterceptor: Boolean,
+        override val condition: ClassName?,
     ) : ComponentDeclaration {
         override val source get() = this.constructor
         override fun declarationString() = "component  " + classDeclaration.qualifiedName?.asString().toString()
@@ -99,6 +105,9 @@ sealed interface ComponentDeclaration {
         override val isInterceptor: Boolean
             get() = false
 
+        override val condition: ClassName?
+            get() = null
+
         override fun declarationString(): String {
             return "extension  " + source.parentDeclaration?.qualifiedName?.asString().toString() + "." + source.simpleName.asString()
         }
@@ -113,6 +122,9 @@ sealed interface ComponentDeclaration {
         override val tag get() = CommonClassNames.promisedProxy.canonicalName
         override val isInterceptor: Boolean
             get() = false
+        override val condition: ClassName?
+            get() = null
+
 
         override fun declarationString() = "<Proxy>"
     }
@@ -125,6 +137,8 @@ sealed interface ComponentDeclaration {
         override val source get() = type.declaration
         override val isInterceptor: Boolean
             get() = false
+        override val condition: ClassName?
+            get() = null
 
         override fun declarationString() = "Optional.empty"
     }
@@ -141,6 +155,10 @@ sealed interface ComponentDeclaration {
                 )
             }
             val tags = TagUtils.parseTagValue(method)
+            val conditionalAnnotation = method.findAnnotation(CommonClassNames.conditional)
+            val condition = conditionalAnnotation?.findValueNoDefault<KSType>("tag")
+                ?.toClassName()
+
             val parameterTypes = method.parameters.map { it.type.resolve().fixPlatformType(ctx.resolver) }
             val typeParameters = method.typeParameters.map {
                 val t = it.bounds.firstOrNull()?.resolve()?.fixPlatformType(ctx.resolver) ?: ctx.resolver.builtIns.anyType
@@ -150,7 +168,7 @@ sealed interface ComponentDeclaration {
                     it.variance
                 )
             }
-            return FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type))
+            return FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type), condition)
         }
 
         fun fromAnnotated(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): AnnotatedComponent {
@@ -166,11 +184,14 @@ sealed interface ComponentDeclaration {
                     it.variance
                 )
             }
+            val conditionalAnnotation = classDeclaration.findAnnotation(CommonClassNames.conditional)
+            val condition = conditionalAnnotation?.findValueNoDefault<KSType>("tag")
+                ?.toClassName()
             val type = classDeclaration.asType(listOf())
             val tags = TagUtils.parseTagValue(classDeclaration)
             val parameterTypes = constructor.parameters.map { it.type.resolve() }
 
-            return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type))
+            return AnnotatedComponent(type, classDeclaration, tags, constructor, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type), condition)
         }
 
         fun fromExtension(ctx: ProcessingContext, extensionResult: ExtensionResult.GeneratedResult): FromExtensionComponent {

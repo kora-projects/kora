@@ -5,10 +5,7 @@ import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
-import io.koraframework.kora.app.annotation.processor.component.ComponentDependency;
-import io.koraframework.kora.app.annotation.processor.component.ComponentDependencyHelper;
-import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
-import io.koraframework.kora.app.annotation.processor.component.ResolvedComponents;
+import io.koraframework.kora.app.annotation.processor.component.*;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclarations;
 import io.koraframework.kora.app.annotation.processor.declaration.DeclarationWithIndex;
@@ -28,6 +25,7 @@ import javax.lang.model.type.TypeKind;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 
 import static io.koraframework.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType.*;
 
@@ -42,6 +40,7 @@ public class GraphBuilder {
     private final ResolvedComponents resolvedComponents;
     private final Deque<ResolutionFrame> stack;
     private final ComponentDeclarations declarations;
+    private final Map<ClassName, ResolvedComponent> conditionByTag;
 
 
     public GraphBuilder(ProcessingContext ctx, RoundEnvironment roundEnv, TypeElement root, List<TypeElement> allModules, List<ComponentDeclaration> sourceDeclarations, List<ComponentDeclaration> templates) {
@@ -67,6 +66,7 @@ public class GraphBuilder {
             this.declarations.add(sourceDeclaration);
         }
         this.resolvedComponents = new ResolvedComponents();
+        this.conditionByTag = new HashMap<>();
     }
 
     public GraphBuilder(GraphBuilder from) {
@@ -79,6 +79,7 @@ public class GraphBuilder {
         this.stack = new ArrayDeque<>(from.stack);
         this.resolvedComponents = new ResolvedComponents(from.resolvedComponents);
         this.declarations = new ComponentDeclarations(from.declarations);
+        this.conditionByTag = new HashMap<>(from.conditionByTag);
     }
 
     public sealed interface ResolutionFrame {
@@ -126,6 +127,33 @@ public class GraphBuilder {
             if (checkCycle(declaration)) {
                 continue;
             }
+            var componentCondition = declaration.condition();
+            condition:
+            if (componentCondition != null) {
+                var resolvedCondition = this.conditionByTag.get(componentCondition);
+                if (resolvedCondition != null) {
+                    break condition;
+                }
+                var conditionDeclarations = declarations.getByType(CommonClassNames.graphCondition)
+                    .stream()
+                    .filter(d -> componentCondition.canonicalName().equals(d.declaration().tag()))
+                    .toList();
+                if (conditionDeclarations.isEmpty()) {
+                    throw new ProcessingErrorException("Component declares condition with tag %s, but none found in graph: %s".formatted(componentCondition.toString(), declaration), declaration.source());
+                }
+                if (conditionDeclarations.size() > 1) {
+                    var str = conditionDeclarations.stream().map(DeclarationWithIndex::declaration).map(Object::toString).collect(Collectors.joining("\n")).indent(2);
+                    throw new ProcessingErrorException("Component declares condition with tag %s, but multiple candidates found in graph:\n%s\n%s".formatted(componentCondition.toString(), declaration, str), declaration.source());
+                }
+                var conditionDeclaration = conditionDeclarations.getFirst();
+                resolvedCondition = this.resolvedComponents.getByDeclaration(conditionDeclaration);
+                if (resolvedCondition == null) {
+                    this.addResolveComponentFrame(componentFrame, conditionDeclaration);
+                    continue frame;
+                } else {
+                    this.conditionByTag.put(componentCondition, resolvedCondition);
+                }
+            }
 
             dependency:
             for (int currentDependency = componentFrame.currentDependency(); currentDependency < dependenciesToFind.size(); currentDependency++) {
@@ -155,6 +183,21 @@ public class GraphBuilder {
                         if (nonDefaultComponents.size() == 1) {
                             dependencyDeclaration = nonDefaultComponents.getFirst();
                         } else {
+                            var allConditional = nonDefaultComponents.stream().allMatch(d -> d.declaration().condition() != null);
+                            if (allConditional) {
+                                var resolvedConditional = new ArrayList<ResolvedComponent>();
+                                for (var nonDefaultComponent : nonDefaultComponents) {
+                                    var resolved = resolvedComponents.getByDeclaration(nonDefaultComponent);
+                                    if (resolved != null) {
+                                        resolvedConditional.add(resolved);
+                                    } else {
+                                        this.addResolveComponentFrame(componentFrame.withCurrentDependency(currentDependency), nonDefaultComponent);
+                                        continue frame;
+                                    }
+                                }
+                                resolvedDependencies.add(GraphResolutionHelper.toOneOfDependency(ctx, resolvedConditional, dependencyClaim));
+                                continue dependency;
+                            }
                             throw new DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
                         }
                     }
@@ -264,11 +307,13 @@ public class GraphBuilder {
             }
         }
 
-        for (var root : this.rootSet) {
-            resolvedComponents.getByDeclaration(root).processParentCondition(root.declaration().condition());
+        // we should move conditions as early in graph as possible
+        this.resolvedComponents.processConditions(this.conditionByTag);
+        for (var component : this.resolvedComponents.components().reversed()) {
+            component.processCondition();
         }
 
-        return new ResolvedGraph(root, allModules, declarations, resolvedComponents);
+        return new ResolvedGraph(root, allModules, this.resolvedComponents.components(), conditionByTag);
     }
 
     private void addResolveComponentFrame(ResolutionFrame.Component currentFrame, DeclarationWithIndex declaration) {
@@ -402,7 +447,7 @@ public class GraphBuilder {
         var dependencyClaim = prevComponent.dependenciesToFind().get(prevComponent.currentDependency());
         var dependencyClaimType = dependencyClaim.type();
         var dependencyClaimTypeElement = ctx.types.asElement(dependencyClaimType);
-        if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()))) {
+        if (!(ctx.types.isAssignable(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isAssignableToUnwrapped(declaration.type(), dependencyClaimType) || ctx.serviceTypeHelper.isInterceptor(declaration.type()) || ctx.serviceTypeHelper.isCondition(declaration.type()))) {
             throw new CircularDependencyException(List.of(prevComponent.declaration(), declaration), declaration);
         }
         for (var inStackFrame : stack) {

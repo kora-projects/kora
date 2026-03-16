@@ -1,9 +1,9 @@
 package io.koraframework.kora.app.annotation.processor;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.NameUtils;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
@@ -19,6 +19,8 @@ public class ServiceTypesHelper {
     private final DeclaredType wrappedType;
     private final TypeElement interceptorTypeElement;
     private final DeclaredType interceptorType;
+    private final TypeElement conditionTypeElement;
+    private final DeclaredType conditionType;
 
     public ServiceTypesHelper(Elements elements, Types types) {
         this.elements = elements;
@@ -27,6 +29,8 @@ public class ServiceTypesHelper {
         this.wrappedType = Objects.requireNonNull(this.types.getDeclaredType(this.wrappedTypeElement, this.types.getWildcardType(null, null)));
         this.interceptorTypeElement = Objects.requireNonNull(this.elements.getTypeElement(CommonClassNames.graphInterceptor.canonicalName()));
         this.interceptorType = Objects.requireNonNull(this.types.getDeclaredType(this.interceptorTypeElement, this.types.getWildcardType(null, null)));
+        this.conditionTypeElement = Objects.requireNonNull(this.elements.getTypeElement(CommonClassNames.graphCondition.canonicalName()));
+        this.conditionType = Objects.requireNonNull(this.types.getDeclaredType(this.conditionTypeElement));
     }
 
     public DeclaredType tryUnwrap(DeclaredType maybeWrapped) {
@@ -97,6 +101,10 @@ public class ServiceTypesHelper {
 
     public boolean isInterceptor(TypeMirror maybeInterceptor) {
         return this.types.isAssignable(maybeInterceptor, this.interceptorType);
+    }
+
+    public boolean isCondition(TypeMirror maybeInterceptor) {
+        return this.types.isAssignable(maybeInterceptor, this.conditionType);
     }
 
     public TypeMirror getInterceptedType(TypeMirror maybeInterceptor) {

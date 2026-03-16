@@ -2,6 +2,7 @@ package io.koraframework.application.graph.internal;
 
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Graph;
+import io.koraframework.application.graph.NodeWithMapper;
 import io.koraframework.application.graph.ValueOf;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ public final class AllValuesImpl<T> implements All<ValueOf<T>> {
     private final ArrayList<ValueWrapper<?, T>> values;
 
     @SafeVarargs
-    public AllValuesImpl(Graph graph, AllOfElement<?, T>... nodes) {
+    public AllValuesImpl(Graph graph, NodeWithMapper<?, T>... nodes) {
         this.values = new ArrayList<>(nodes.length);
         for (var node : nodes) {
             this.values.add(new ValueWrapper<>(graph, node));
@@ -20,7 +21,7 @@ public final class AllValuesImpl<T> implements All<ValueOf<T>> {
     }
 
     private record ValueWrapper<N, V>(ValueOf<? extends N> value, Function<N, V> mapper) {
-        public ValueWrapper(Graph graph, AllOfElement<N, V> element) {
+        public ValueWrapper(Graph graph, NodeWithMapper<N, V> element) {
             var promise = graph.valueOf(element.node());
             this(promise, element.mapper());
         }

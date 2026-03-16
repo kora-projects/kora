@@ -61,6 +61,16 @@ public final class GraphResolutionHelper {
         };
     }
 
+    public static ComponentDependency toOneOfDependency(ProcessingContext ctx, List<ResolvedComponent> resolvedComponents, DependencyClaim dependencyClaim) {
+        var dependencies = new ArrayList<ComponentDependency.SingleDependency>(resolvedComponents.size());
+
+        for (var resolvedComponent : resolvedComponents) {
+            dependencies.add(toDependency(ctx, resolvedComponent, dependencyClaim));
+        }
+
+        return new ComponentDependency.OneOfDependency(dependencyClaim, dependencies);
+    }
+
     public static List<ComponentDependency.SingleDependency> findDependenciesForAllOf(ProcessingContext ctx, DependencyClaim dependencyClaim, List<DeclarationWithIndex> declarations, ResolvedComponents resolvedComponents) {
         var claimType = dependencyClaim.claimType();
         var result = new ArrayList<ComponentDependency.SingleDependency>();

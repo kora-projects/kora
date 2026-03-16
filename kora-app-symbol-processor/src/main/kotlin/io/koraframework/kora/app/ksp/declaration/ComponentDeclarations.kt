@@ -4,6 +4,7 @@ import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ANY
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.TypeParameterResolver
@@ -48,7 +49,11 @@ class ComponentDeclarations(private val ctx: ProcessingContext) {
             typeName = typeName.rawType
         }
         val result = this.typeToDeclarations.getOrDefault(typeName, listOf())
-        return Collections.unmodifiableList<DeclarationWithIndex>(result)
+        return result
+    }
+
+    fun getByType(type: ClassName): List<DeclarationWithIndex> {
+        return this.typeToDeclarations.getOrDefault(type, listOf())
     }
 
     fun interceptors(): MutableList<DeclarationWithIndex> {

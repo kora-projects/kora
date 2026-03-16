@@ -3,6 +3,7 @@ package io.koraframework.kora.app.ksp
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.google.devtools.ksp.symbol.KSTypeArgument
+import io.koraframework.kora.app.ksp.component.ComponentDependency
 import io.koraframework.kora.app.ksp.component.ComponentDependency.*
 import io.koraframework.kora.app.ksp.component.DependencyClaim
 import io.koraframework.kora.app.ksp.component.DependencyClaim.DependencyClaimType.*
@@ -57,44 +58,15 @@ object GraphResolutionHelper {
         }
     }
 
-    fun findDependenciesForAllOf(
-        ctx: ProcessingContext,
-        dependencyClaim: DependencyClaim,
-        declarations: List<DeclarationWithIndex>,
-        resolvedComponents: ResolvedComponents
-    ): MutableList<SingleDependency> {
-        val claimType = dependencyClaim.claimType
-        val result = mutableListOf<SingleDependency>()
-        components@ for (declarationWithIndex in declarations) {
-            val declaration = declarationWithIndex.declaration
-            if (!dependencyClaim.tagMatches(declaration.tag)) {
-                continue@components
-            }
-            val component = resolvedComponents.getByDeclaration(declarationWithIndex)!!
-            if (dependencyClaim.type.isAssignableFrom(declaration.type)) {
-                val targetDependency = TargetDependency(dependencyClaim, component)
-                val dependency = when (claimType) {
-                    ALL -> targetDependency
-                    ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
-                    ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
-                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
-                }
-                result.add(dependency)
-            }
-            if (ctx.serviceTypesHelper.isAssignableToUnwrapped(declaration.type, dependencyClaim.type)) {
-                val targetDependency = WrappedTargetDependency(dependencyClaim, component)
-                val dependency = when (claimType) {
-                    ALL -> targetDependency
-                    ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
-                    ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
-                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
-                }
-                result.add(dependency)
-            }
-        }
-        return result
-    }
+    fun toOneOfDependency(ctx: ProcessingContext, resolvedComponents: List<ResolvedComponent>, dependencyClaim: DependencyClaim): ComponentDependency {
+        val dependencies = mutableListOf<SingleDependency>()
 
+        for (resolvedComponent in resolvedComponents) {
+            dependencies.add(toDependency(ctx, resolvedComponent, dependencyClaim))
+        }
+
+        return OneOfDependency(dependencyClaim, dependencies)
+    }
 
     fun findDependencyDeclarationsFromTemplate(
         ctx: ProcessingContext,
@@ -136,7 +108,8 @@ object GraphResolutionHelper {
                             template.method,
                             realParams,
                             realTypeParameters,
-                            template.isInterceptor
+                            template.isInterceptor,
+                            template.condition
                         )
                     )
                 }
@@ -168,7 +141,8 @@ object GraphResolutionHelper {
                             template.constructor,
                             realParams,
                             realTypeParameters,
-                            template.isInterceptor
+                            template.isInterceptor,
+                            template.condition
                         )
                     )
                 }
@@ -245,4 +219,45 @@ object GraphResolutionHelper {
         }
         return result
     }
+
+
+    fun findDependenciesForAllOf(
+        ctx: ProcessingContext,
+        dependencyClaim: DependencyClaim,
+        declarations: List<DeclarationWithIndex>,
+        resolvedComponents: ResolvedComponents
+    ): List<SingleDependency> {
+        val claimType = dependencyClaim.claimType
+        val result = mutableListOf<SingleDependency>()
+        for (declarationWithIndex in declarations) {
+            val declaration = declarationWithIndex.declaration
+            if (!dependencyClaim.tagMatches(declaration.tag)) {
+                continue
+            }
+            val component = resolvedComponents.getByDeclaration(declarationWithIndex)!!
+            if (dependencyClaim.type.isAssignableFrom(declaration.type)) {
+                val targetDependency = TargetDependency(dependencyClaim, component)
+                val dependency = when (claimType) {
+                    ALL -> targetDependency
+                    ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
+                    ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
+                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
+                }
+                result.add(dependency)
+            }
+
+            if (ctx.serviceTypesHelper.isAssignableToUnwrapped(declaration.type, dependencyClaim.type)) {
+                val targetDependency = WrappedTargetDependency(dependencyClaim, component)
+                val dependency = when (claimType) {
+                    ALL -> targetDependency
+                    ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
+                    ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
+                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
+                }
+                result.add(dependency)
+            }
+        }
+        return result
+    }
+
 }

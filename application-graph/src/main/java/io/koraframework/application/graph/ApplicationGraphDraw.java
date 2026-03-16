@@ -200,11 +200,11 @@ public class ApplicationGraphDraw {
                 }
 
                 @Override
-                public <N> PromiseOf<N> getOnePromiseOf(Node<? extends N>... oneOfNodes) {
-                    Node<? extends N>[] fixed = new Node[oneOfNodes.length];
+                public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... oneOfNodes) {
+                    NodeWithMapper<N, V>[] fixed = new NodeWithMapper[oneOfNodes.length];
                     for (int i = 0; i < oneOfNodes.length; i++) {
-                        switch (oneOfNodes[i]) {
-                            case NodeImpl<? extends N> n -> fixed[i] = (Node<N>) nodes.get(n.index);
+                        switch (oneOfNodes[i].node()) {
+                            case NodeImpl<? extends N> n -> fixed[i] = new NodeWithMapper<>((Node<N>) nodes.get(n.index), oneOfNodes[i].mapper());
                         }
                     }
 
@@ -276,13 +276,14 @@ public class ApplicationGraphDraw {
                             return graph.promiseOf(realNode);
                         }
 
+
                         @Override
                         @SuppressWarnings("unchecked")
-                        public <N> PromiseOf<N> getOnePromiseOf(Node<? extends N>... oneOfNodes) {
-                            Node<? extends N>[] fixed = new Node[oneOfNodes.length];
+                        public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... oneOfNodes) {
+                            NodeWithMapper<N, V>[] fixed = new NodeWithMapper[oneOfNodes.length];
                             for (int i = 0; i < oneOfNodes.length; i++) {
-                                switch (oneOfNodes[i]) {
-                                    case NodeImpl<? extends N> n -> fixed[i] = (Node<N>) subgraph.graphNodes.get(seen.get(n.index));
+                                switch (oneOfNodes[i].node()) {
+                                    case NodeImpl<? extends N> n -> fixed[i] = new NodeWithMapper<>((Node<N>) subgraph.graphNodes.get(seen.get(n.index)), oneOfNodes[i].mapper());
                                 }
                             }
 

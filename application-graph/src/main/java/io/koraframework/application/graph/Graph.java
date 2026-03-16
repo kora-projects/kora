@@ -17,21 +17,23 @@ public interface Graph {
     <T> PromiseOf<T> promiseOf(Node<? extends T> node);
 
     @SuppressWarnings("unchecked")
-    default <T> T getOneOf(Node<? extends T>... nodes) {
+    default <N, V> V getOneOf(NodeWithMapper<N, V>... nodes) {
         var node = getOneNodeMatchingCondition(this, nodes);
-        return this.get(node);
+        var value = this.get(node.node());
+        return node.mapper().apply(value);
     }
 
     @SuppressWarnings("unchecked")
-    default <T> ValueOf<T> getOneValueOf(Node<? extends T>... nodes) {
+    default <N, V> ValueOf<V> getOneValueOf(NodeWithMapper<N, V>... nodes) {
         return () -> {
             var node = getOneNodeMatchingCondition(this, nodes);
-            return this.get(node);
+            var value = this.get(node.node());
+            return node.mapper().apply(value);
         };
     }
 
     @SuppressWarnings("unchecked")
-    <T> PromiseOf<T> getOnePromiseOf(Node<? extends T>... nodes);
+    <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... nodes);
 
     default GraphCondition condition(Node<? extends GraphCondition> node) {
         return get(node);
@@ -42,24 +44,24 @@ public interface Graph {
     }
 
     @SafeVarargs
-    private static <T> Node<? extends T> getOneNodeMatchingCondition(Graph graph, Node<? extends T>... nodes) {
-        var lastValue = (@Nullable Node<? extends T>) null;
+    private static <T, V> NodeWithMapper<T, V> getOneNodeMatchingCondition(Graph graph, NodeWithMapper<T, V>... nodes) {
+        var lastValue = (@Nullable NodeWithMapper<T, V>) null;
         var errors = new ArrayList<Map.Entry<Node<?>, GraphCondition.ConditionResult.Failed>>(nodes.length);
-        var matchedNodes = new ArrayList<Node<? extends T>>(nodes.length);
+        var matchedNodes = new ArrayList<NodeWithMapper<? extends T, V>>(nodes.length);
         var matchReasons = new ArrayList<Map.Entry<Node<?>, GraphCondition.ConditionResult.Matched>>(nodes.length);
         for (var node : nodes) {
-            var condition = node.condition();
+            var condition = node.node().condition();
             if (condition == null) {
                 lastValue = node;
                 matchedNodes.add(node);
-                matchReasons.add(Map.entry(node, new GraphCondition.ConditionResult.Matched("Node %s has no conditions".formatted(node.toString()))));
+                matchReasons.add(Map.entry(node.node(), new GraphCondition.ConditionResult.Matched("Node %s has no conditions".formatted(node.toString()))));
             } else {
                 switch (condition.apply(graph)) {
-                    case GraphCondition.ConditionResult.Failed failed -> errors.add(Map.entry(node, failed));
+                    case GraphCondition.ConditionResult.Failed failed -> errors.add(Map.entry(node.node(), failed));
                     case GraphCondition.ConditionResult.Matched matched -> {
                         lastValue = node;
                         matchedNodes.add(node);
-                        matchReasons.add(Map.entry(node, matched));
+                        matchReasons.add(Map.entry(node.node(), matched));
                     }
                 }
             }

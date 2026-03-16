@@ -8,19 +8,16 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeParameterResolver
-import io.koraframework.kora.app.ksp.GraphResolutionHelper
 import io.koraframework.kora.app.ksp.ProcessingContext
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
-import io.koraframework.kora.app.ksp.declaration.ComponentDeclarations
 import io.koraframework.ksp.common.CommonClassNames
 
 
 sealed interface ComponentDependency {
     val claim: DependencyClaim
 
-    fun write(ctx: ProcessingContext, typeToDeclarations: ComponentDeclarations, resolvedComponents: ResolvedComponents): CodeBlock = when (this) {
+    fun write(ctx: ProcessingContext): CodeBlock = when (this) {
         is AllOfDependency -> {
-            val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, typeToDeclarations, claim);
             val codeBlock = CodeBlock.builder()
             when (claim.claimType) {
                 DependencyClaim.DependencyClaimType.ALL -> codeBlock.add("%T.all(it", CommonClassNames.all)
@@ -28,13 +25,12 @@ sealed interface ComponentDependency {
                 DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> codeBlock.add("%T.allPromises(it", CommonClassNames.all)
                 else -> throw IllegalStateException("Unexpected dependency type ${claim.claimType}")
             }
-            val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, claim, dependencyDeclarations, resolvedComponents)
-            for (dependency in dependencies) {
+            for (dependency in resolvedDependencies) {
                 val dependencyNode = dependency.component!!.nodeRef("some_fake_holder_idc")
                 if (dependency is ValueOfDependency && dependency.delegate is WrappedTargetDependency || dependency is PromiseOfDependency && dependency.delegate is WrappedTargetDependency || dependency is WrappedTargetDependency) {
-                    codeBlock.add(", %T.unwrap(%L)", CommonClassNames.all, dependencyNode)
+                    codeBlock.add(", %T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
                 } else {
-                    codeBlock.add(", %T.node(%L)", CommonClassNames.all, dependencyNode)
+                    codeBlock.add(", %T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
                 }
             }
             codeBlock.add(")").build()
@@ -51,11 +47,7 @@ sealed interface ComponentDependency {
 
 
         is PromisedProxyParameterDependency -> {
-            val declarations = GraphResolutionHelper.findDependencyDeclarations(ctx, typeToDeclarations, claim)
-            if (declarations.size != 1) {
-                throw IllegalStateException();
-            }
-            val dependency = resolvedComponents.getByDeclaration(declarations.first())!!
+            val dependency = realDependency
             CodeBlock.of("it.promiseOf(self.%N.%N)", dependency.holderName, dependency.fieldName)
         }
 
@@ -96,6 +88,38 @@ sealed interface ComponentDependency {
         is TypeOfDependency -> {
             buildTypeRef(claim.type)
         }
+
+        is OneOfDependency -> {
+            val b = CodeBlock.builder()
+            when (claim.claimType) {
+                DependencyClaim.DependencyClaimType.ONE_REQUIRED -> b.add("it.getOneOf(")
+                DependencyClaim.DependencyClaimType.VALUE_OF -> b.add("it.getOneValueOf(")
+                DependencyClaim.DependencyClaimType.PROMISE_OF -> b.add("it.getOnePromiseOf(")
+                else -> throw IllegalStateException("Unknown claim type: " + claim.claimType)
+            }
+            for ((i, dependency) in dependencies.withIndex()) {
+                if (i > 0) b.add(", ")
+                val dependencyNode = dependency.component!!.nodeRef("_")
+                when (dependency) {
+                    is WrappedTargetDependency -> b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+                    is PromiseOfDependency -> if (dependency.delegate is WrappedTargetDependency) {
+                        b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+                    } else {
+                        b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+                    }
+
+                    is ValueOfDependency -> if (dependency.delegate is WrappedTargetDependency) {
+                        b.add("%T.unwrap(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+                    } else {
+                        b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+                    }
+
+                    else -> b.add("%T.node(%L)", CommonClassNames.nodeWithMapper, dependencyNode)
+
+                }
+            }
+            b.add(")").build()
+        }
     }
 
     sealed interface SingleDependency : ComponentDependency {
@@ -103,6 +127,8 @@ sealed interface ComponentDependency {
     }
 
     data class TargetDependency(override val claim: DependencyClaim, override val component: ResolvedComponent) : SingleDependency
+
+    data class OneOfDependency(override val claim: DependencyClaim, val dependencies: List<SingleDependency>) : ComponentDependency
 
     data class WrappedTargetDependency(override val claim: DependencyClaim, override val component: ResolvedComponent) : SingleDependency
 
@@ -148,8 +174,21 @@ sealed interface ComponentDependency {
         }
     }
 
-    data class AllOfDependency(override val claim: DependencyClaim) : ComponentDependency
+    data class AllOfDependency(override val claim: DependencyClaim) : ComponentDependency {
+        val resolvedDependencies: MutableList<SingleDependency> = ArrayList()
 
-    data class PromisedProxyParameterDependency(val declaration: ComponentDeclaration, override val claim: DependencyClaim) : ComponentDependency
+
+        fun addResolved(resolvedComponents: List<SingleDependency>) {
+            this.resolvedDependencies.addAll(resolvedComponents)
+        }
+
+        override fun toString(): String {
+            return "AllOfDependency(claim=$claim)"
+        }
+    }
+
+    data class PromisedProxyParameterDependency(val declaration: ComponentDeclaration, override val claim: DependencyClaim) : ComponentDependency {
+        lateinit var realDependency: ResolvedComponent
+    }
 
 }

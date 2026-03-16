@@ -37,15 +37,15 @@ public interface GraphCondition {
                 }
             }
             if (failedReasons.isEmpty()) {
-                var sb = new StringBuilder("All of required conditions were matched: \n");
+                var sb = new StringBuilder("All of required conditions were matched:\n");
                 for (var matched : matchedReasons) {
-                    sb.append(matched.reason().indent(2)).append("\n");
+                    sb.append(matched.reason().indent(2));
                 }
                 return new ConditionResult.Failed(sb.toString());
             } else {
-                var sb = new StringBuilder("Some of required conditions were failed: \n");
+                var sb = new StringBuilder("Some of required conditions were failed:\n");
                 for (var failedReason : failedReasons) {
-                    sb.append(failedReason.reason().indent(2)).append("\n");
+                    sb.append(failedReason.reason().indent(2));
                 }
                 return new ConditionResult.Failed(sb.toString());
             }

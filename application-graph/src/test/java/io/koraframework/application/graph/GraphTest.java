@@ -471,7 +471,7 @@ class GraphTest {
             List.of(candidate1, candidate2, candidate3),
             List.of(),
             List.of(),
-            g -> g.getOneOf(candidate1, candidate2, candidate3)
+            g -> g.getOneOf(NodeWithMapper.node(candidate1), NodeWithMapper.node(candidate2), NodeWithMapper.node(candidate3))
         );
 
         draw.init().release();
@@ -492,7 +492,7 @@ class GraphTest {
             List.of(candidate1, candidate2, candidate3),
             List.of(),
             List.of(),
-            g -> g.getOneOf(candidate1, candidate2, candidate3)
+            g -> g.getOneOf(NodeWithMapper.node(candidate1), NodeWithMapper.node(candidate2), NodeWithMapper.node(candidate3))
         );
 
         assertThatThrownBy(draw::init)
@@ -520,7 +520,7 @@ class GraphTest {
             List.of(candidate1, candidate2, candidate3),
             List.of(),
             List.of(),
-            g -> g.getOneOf(candidate1, candidate2, candidate3)
+            g -> g.getOneOf(NodeWithMapper.node(candidate1), NodeWithMapper.node(candidate2), NodeWithMapper.node(candidate3))
         );
 
         assertThatThrownBy(draw::init)

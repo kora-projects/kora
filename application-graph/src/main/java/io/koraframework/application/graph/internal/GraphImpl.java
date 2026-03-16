@@ -81,7 +81,7 @@ public final class GraphImpl implements InitializedGraph {
             throw new IllegalStateException("Value was not initialized");
         }
         if (value instanceof ConditionFailedGraphValue(GraphCondition.ConditionResult.Failed(var reason))) {
-            throw new RuntimeException("Node value was not initialized: " + reason.indent(2));
+            throw new RuntimeException("Node value was not initialized: " + reason);
         }
         return (T) value;
     }
@@ -99,9 +99,9 @@ public final class GraphImpl implements InitializedGraph {
     }
 
     @Override
-    public <T> PromiseOf<T> getOnePromiseOf(Node<? extends T>... nodes) {
+    public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... nodes) {
         for (var node : nodes) {
-            var _ = toImpl(draw, node);
+            var _ = toImpl(draw, node.node());
         }
         return () -> Optional.of(this.getOneOf(nodes));
     }
@@ -412,29 +412,30 @@ public final class GraphImpl implements InitializedGraph {
 
         @Override
         @SuppressWarnings("unchecked")
-        public final <T> PromiseOf<T> getOnePromiseOf(Node<? extends T>... nodes) {
+        public final <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... nodes) {
             var delegate = this.delegate;
             if (delegate != null) {
                 return delegate.getOnePromiseOf(nodes);
             }
 
-            Node<? extends T>[] fixedNodes = new Node[nodes.length];
+            NodeWithMapper<N, V>[] fixedNodes = new NodeWithMapper[nodes.length];
 
             for (int i = 0; i < nodes.length; i++) {
                 var node = nodes[i];
-                var casted = (NodeImpl<? extends T>) node;
-                var fixed = (NodeImpl<? extends T>) this.rootGraph.draw.getNodes().get(casted.index);
-                fixedNodes[i] = fixed;
+                toImpl(this.rootGraph.draw, node.node());
+                var casted = (NodeImpl<? extends N>) toImpl(this.rootGraph.draw, node.node());
+                var fixed = (NodeImpl<? extends N>) this.rootGraph.draw.getNodes().get(casted.index);
+                fixedNodes[i] = new NodeWithMapper<>(fixed, node.mapper());
             }
 
-            var promise = new PromiseOfOneConditionalImpl<T>(fixedNodes);
+            var promise = new PromiseOfOneConditionalImpl<>(fixedNodes);
             this.newPromises.add(promise);
             return promise;
         }
 
         @Override
         @SafeVarargs
-        public final <T> T getOneOf(Node<? extends T>... nodes) {
+        public final <N, V> V getOneOf(NodeWithMapper<N, V>... nodes) {
             var delegate = this.delegate;
             if (delegate != null) {
                 return delegate.getOneOf(nodes);
@@ -444,7 +445,7 @@ public final class GraphImpl implements InitializedGraph {
 
         @Override
         @SafeVarargs
-        public final <T> ValueOf<T> getOneValueOf(Node<? extends T>... nodes) {
+        public final <N, V> ValueOf<V> getOneValueOf(NodeWithMapper<N, V>... nodes) {
             var delegate = this.delegate;
             if (delegate != null) {
                 return delegate.getOneValueOf(nodes);

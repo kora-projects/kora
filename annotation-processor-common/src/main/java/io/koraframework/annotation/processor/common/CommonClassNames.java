@@ -37,12 +37,14 @@ public class CommonClassNames {
     public static final ClassName node = ClassName.get("io.koraframework.application.graph", "Node");
     public static final ClassName lifecycle = ClassName.get("io.koraframework.application.graph", "Lifecycle");
     public static final ClassName all = ClassName.get("io.koraframework.application.graph", "All");
+    public static final ClassName nodeWithMapper = ClassName.get("io.koraframework.application.graph", "NodeWithMapper");
     public static final ClassName typeRef = ClassName.get("io.koraframework.application.graph", "TypeRef");
     public static final ClassName wrapped = ClassName.get("io.koraframework.application.graph", "Wrapped");
     public static final ClassName promiseOf = ClassName.get("io.koraframework.application.graph", "PromiseOf");
     public static final ClassName valueOf = ClassName.get("io.koraframework.application.graph", "ValueOf");
     public static final ClassName applicationGraphDraw = ClassName.get("io.koraframework.application.graph", "ApplicationGraphDraw");
     public static final ClassName graphInterceptor = ClassName.get("io.koraframework.application.graph", "GraphInterceptor");
+    public static final ClassName graphCondition = ClassName.get("io.koraframework.application.graph", "GraphCondition");
     public static final ClassName promisedProxy = ClassName.get("io.koraframework.common", "PromisedProxy");
     public static final ClassName refreshListener = ClassName.get("io.koraframework.application.graph", "RefreshListener");
 

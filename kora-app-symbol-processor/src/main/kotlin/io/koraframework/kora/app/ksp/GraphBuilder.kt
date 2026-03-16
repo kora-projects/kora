@@ -9,11 +9,8 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.*
 import io.koraframework.kora.app.ksp.GraphResolutionHelper.findDependencyDeclarationsFromTemplate
-import io.koraframework.kora.app.ksp.component.ComponentDependency
-import io.koraframework.kora.app.ksp.component.ComponentDependencyHelper
-import io.koraframework.kora.app.ksp.component.DependencyClaim
+import io.koraframework.kora.app.ksp.component.*
 import io.koraframework.kora.app.ksp.component.DependencyClaim.DependencyClaimType.*
-import io.koraframework.kora.app.ksp.component.ResolvedComponents
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclarations
 import io.koraframework.kora.app.ksp.declaration.DeclarationWithIndex
@@ -37,9 +34,10 @@ class GraphBuilder {
     val allModules: List<KSClassDeclaration>
     val componentDeclarations: ComponentDeclarations
     val templateDeclarations: MutableList<ComponentDeclaration>
-    val rootSet: List<ComponentDeclaration>
+    val rootSet: List<DeclarationWithIndex>
     val resolvedComponents: ResolvedComponents
     val stack: Deque<ResolutionFrame>
+    val conditionByTag: MutableMap<ClassName, ResolvedComponent>
 
     constructor(from: GraphBuilder) {
         this.ctx = from.ctx
@@ -50,6 +48,7 @@ class GraphBuilder {
         this.templateDeclarations = ArrayList(from.templateDeclarations)
         this.resolvedComponents = ResolvedComponents(from.resolvedComponents)
         this.stack = ArrayDeque(from.stack)
+        this.conditionByTag = HashMap(from.conditionByTag)
     }
 
     constructor(
@@ -67,17 +66,19 @@ class GraphBuilder {
         }
         this.templateDeclarations = templateDeclarations
         this.root = root
-        this.rootSet = sourceDeclarations.filter {
-            it.source.isAnnotationPresent(CommonClassNames.root) || it is ComponentDeclaration.AnnotatedComponent && it.classDeclaration.isAnnotationPresent(CommonClassNames.root)
-        }
+        this.rootSet = sourceDeclarations.asSequence().withIndex()
+            .filter {
+                it.value.source.isAnnotationPresent(CommonClassNames.root) || it.value.let { it is ComponentDeclaration.AnnotatedComponent && it.classDeclaration.isAnnotationPresent(CommonClassNames.root) }
+            }
+            .map { DeclarationWithIndex(it.index, it.value) }
+            .toList()
         this.resolvedComponents = ResolvedComponents()
         this.stack = ArrayDeque()
         for (root in rootSet) {
-            val declIdx = sourceDeclarations.indexOf(root)
-            stack.push(ResolutionFrame.Root(root, declIdx))
+            stack.push(ResolutionFrame.Root(root.declaration, root.index))
         }
+        this.conditionByTag = HashMap()
     }
-
 
     sealed interface ResolutionFrame {
         data class Root(val declaration: ComponentDeclaration, val declIdx: Int) : ResolutionFrame
@@ -115,6 +116,29 @@ class GraphBuilder {
             if (checkCycle(declaration)) {
                 continue
             }
+            val componentCondition = declaration.condition
+            if (componentCondition != null) {
+                val resolvedCondition = this.conditionByTag[componentCondition]
+                if (resolvedCondition == null) {
+                    val conditionDeclarations = componentDeclarations.getByType(CommonClassNames.graphCondition)
+                        .filter { componentCondition.canonicalName == it.declaration.tag }
+                    if (conditionDeclarations.isEmpty()) {
+                        throw ProcessingErrorException("Component declares condition with tag ${componentCondition}, but none found in graph: $declaration", declaration.source)
+                    }
+                    if (conditionDeclarations.size > 1) {
+                        val str = conditionDeclarations.joinToString("\n") { it.declaration.toString() }.prependIndent("  ")
+                        throw ProcessingErrorException("Component declares condition with tag $componentCondition, but multiple candidates found in graph:\n$declaration\n$str", declaration.source)
+                    }
+                    val conditionDeclaration = conditionDeclarations.first()
+                    val resolvedCondition = this.resolvedComponents.getByDeclaration(conditionDeclaration)
+                    if (resolvedCondition == null) {
+                        this.addResolveComponentFrame(frame, conditionDeclaration)
+                        continue@frame
+                    } else {
+                        this.conditionByTag[componentCondition] = resolvedCondition
+                    }
+                }
+            }
 
             dependency@ for (currentDependency in frame.currentDependency until dependenciesToFind.size) {
                 val dependencyClaim = dependenciesToFind[currentDependency]
@@ -144,8 +168,22 @@ class GraphBuilder {
                         if (nonDefaultComponents.size == 1) {
                             dependencyDeclaration = nonDefaultComponents.first()
                         } else {
-
-                            throw DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList())
+                            val allConditional = nonDefaultComponents.all { it.declaration.condition != null }
+                            if (allConditional) {
+                                val resolvedConditional = mutableListOf<ResolvedComponent>()
+                                for (nonDefaultComponent in nonDefaultComponents) {
+                                    val resolved = resolvedComponents.getByDeclaration(nonDefaultComponent)
+                                    if (resolved != null) {
+                                        resolvedConditional.add(resolved)
+                                    } else {
+                                        this.addResolveComponentFrame(frame.copy(currentDependency = currentDependency), nonDefaultComponent);
+                                        continue@frame
+                                    }
+                                }
+                                resolvedDependencies.add(GraphResolutionHelper.toOneOfDependency(ctx, resolvedConditional, dependencyClaim));
+                                continue@dependency;
+                            }
+                            throw DuplicateDependencyException(dependencyClaim, declaration, dependencyDeclarations.stream().map(DeclarationWithIndex::declaration).toList());
                         }
                     }
                     val resolved = resolvedComponents.getByDeclaration(dependencyDeclaration)
@@ -244,7 +282,31 @@ class GraphBuilder {
             }
             resolvedComponents.add(frame.declIdx, declaration, resolvedDependencies)
         }
-        return ResolvedGraph(root, allModules, componentDeclarations, resolvedComponents)
+        for (component in resolvedComponents.components()) {
+            for (dependency in component.dependencies) {
+                if (dependency is ComponentDependency.AllOfDependency) {
+                    val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
+                    val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, dependency.claim, dependencyDeclarations, resolvedComponents);
+                    dependency.addResolved(dependencies);
+                }
+                if (dependency is ComponentDependency.PromisedProxyParameterDependency) {
+                    val componentDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
+                    if (componentDeclarations.size != 1) {
+                        throw IllegalStateException();
+                    }
+                    val realDependency = resolvedComponents.getByDeclaration(componentDeclarations.first())!!
+                    dependency.realDependency = realDependency
+                }
+            }
+        }
+
+        // we should move conditions as early in graph as possible
+        resolvedComponents.processConditions(conditionByTag)
+        for (component in resolvedComponents.componentsReversed()) {
+            component.processCondition()
+        }
+
+        return ResolvedGraph(root, allModules, resolvedComponents.components().toList(), conditionByTag)
     }
 
     private fun findOptionalDependency(dependencyClaim: DependencyClaim): ComponentDependency? {
