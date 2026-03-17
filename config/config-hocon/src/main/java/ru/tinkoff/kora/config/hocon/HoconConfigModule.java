@@ -16,6 +16,8 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public interface HoconConfigModule extends CommonConfigModule {
     @ApplicationConfig
@@ -84,5 +86,32 @@ public interface HoconConfigModule extends CommonConfigModule {
     @ApplicationConfig
     default Config config(@ApplicationConfig ConfigOrigin origin, com.typesafe.config.Config hoconConfig) {
         return HoconConfigFactory.fromHocon(origin, hoconConfig);
+    }
+
+    /**
+     * Walks the parsed Typesafe Config tree and collects all unique file paths
+     * from which config values originated (including include files).
+     */
+    static Set<Path> extractIncludedFiles(com.typesafe.config.Config config) {
+        var files = new LinkedHashSet<Path>();
+        collectFileOrigins(config.root(), files);
+        return files;
+    }
+
+    private static void collectFileOrigins(com.typesafe.config.ConfigValue value, Set<Path> files) {
+        var origin = value.origin();
+        var filename = origin.filename();
+        if (filename != null && !filename.startsWith("merge of ")) {
+            files.add(Path.of(filename).toAbsolutePath());
+        }
+        if (value instanceof com.typesafe.config.ConfigObject obj) {
+            for (var entry : obj.entrySet()) {
+                collectFileOrigins(entry.getValue(), files);
+            }
+        } else if (value instanceof com.typesafe.config.ConfigList list) {
+            for (var item : list) {
+                collectFileOrigins(item, files);
+            }
+        }
     }
 }
