@@ -1,8 +1,10 @@
 package ru.tinkoff.kora.config.hocon;
 
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigRenderOptions;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
@@ -67,7 +69,15 @@ public class HoconConfigFactory {
         return new ConfigValue.ArrayValue(new SimpleConfigValueOrigin(origin, path), List.copyOf(result));
     }
 
-    static ConfigOrigin enrichOriginWithIncludes(FileConfigOrigin baseOrigin, Set<Path> includedFiles) {
+    static ConfigOrigin parseAndEnrichOrigin(Path path) {
+        var baseOrigin = new FileConfigOrigin(path);
+        var includer = new TrackingConfigIncluder();
+        var options = ConfigParseOptions.defaults().setIncluder(includer);
+        ConfigFactory.parseFile(path.toFile(), options);
+        return enrichOriginWithIncludes(baseOrigin, includer.getIncludedFiles());
+    }
+
+    private static ConfigOrigin enrichOriginWithIncludes(FileConfigOrigin baseOrigin, Set<Path> includedFiles) {
         if (includedFiles.isEmpty()) {
             return baseOrigin;
         }
