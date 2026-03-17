@@ -9,7 +9,14 @@ public class ContainerConfigOrigin implements ConfigOrigin {
     private final String description;
 
     public ContainerConfigOrigin(List<ConfigOrigin> origins) {
-        this.origins = new ArrayList<>(origins);
+        this.origins = new ArrayList<>();
+        for (var origin : origins) {
+            if (origin instanceof ContainerConfigOrigin container) {
+                this.origins.addAll(container.origins());
+            } else {
+                this.origins.add(origin);
+            }
+        }
         this.description = this.origins.stream()
             .map(ConfigOrigin::description)
             .collect(Collectors.joining(",\n  ", "Container of:\n  ", ""));
