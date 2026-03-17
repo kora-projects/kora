@@ -72,7 +72,7 @@ class HoconConfigFactoryTest {
                 """.formatted(overrideFile.toAbsolutePath()));
 
             var parsedConfig = ConfigFactory.parseFile(mainFile.toFile());
-            var files = HoconConfigModule.extractIncludedFiles(parsedConfig);
+            var files = HoconConfigFactory.extractIncludedFiles(parsedConfig);
 
             assertThat(files).hasSize(2);
             assertThat(files).contains(mainFile.toAbsolutePath());
@@ -106,7 +106,7 @@ class HoconConfigFactoryTest {
                 """.formatted(level1File.toAbsolutePath()));
 
             var parsedConfig = ConfigFactory.parseFile(mainFile.toFile());
-            var files = HoconConfigModule.extractIncludedFiles(parsedConfig);
+            var files = HoconConfigFactory.extractIncludedFiles(parsedConfig);
 
             assertThat(files).hasSize(3);
             assertThat(files).contains(mainFile.toAbsolutePath());
@@ -130,7 +130,7 @@ class HoconConfigFactoryTest {
                 """.formatted(tempDir.resolve("nonexistent.conf").toAbsolutePath()));
 
             var parsedConfig = ConfigFactory.parseFile(mainFile.toFile());
-            var files = HoconConfigModule.extractIncludedFiles(parsedConfig);
+            var files = HoconConfigFactory.extractIncludedFiles(parsedConfig);
 
             // Non-existent optional include should not appear in result
             assertThat(files).hasSize(1);
