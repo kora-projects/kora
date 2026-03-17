@@ -8,6 +8,13 @@ public class ContainerConfigOrigin implements ConfigOrigin {
     private final List<ConfigOrigin> origins;
     private final String description;
 
+    public ContainerConfigOrigin(List<ConfigOrigin> origins) {
+        this.origins = new ArrayList<>(origins);
+        this.description = this.origins.stream()
+            .map(ConfigOrigin::description)
+            .collect(Collectors.joining(",\n  ", "Container of:\n  ", ""));
+    }
+
     public ContainerConfigOrigin(ConfigOrigin origin1, ConfigOrigin origin2) {
         this.origins = new ArrayList<>();
         if (origin1 instanceof ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin container) {
