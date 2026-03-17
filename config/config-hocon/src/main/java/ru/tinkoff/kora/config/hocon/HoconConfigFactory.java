@@ -12,9 +12,16 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
 import jakarta.annotation.Nullable;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+
+import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
+import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
 
 public class HoconConfigFactory {
     public static Config fromHocon(ConfigOrigin origin, com.typesafe.config.Config config) {
@@ -60,5 +67,52 @@ public class HoconConfigFactory {
             result.add(toValue(origin, configValue, path.child(i)));
         }
         return new ConfigValue.ArrayValue(new SimpleConfigValueOrigin(origin, path), List.copyOf(result));
+    }
+
+    /**
+     * Walks the parsed Typesafe Config tree and collects all unique file paths
+     * from which config values originated (including include files).
+     */
+    static Set<Path> extractIncludedFiles(com.typesafe.config.Config config) {
+        var files = new LinkedHashSet<Path>();
+        collectFileOrigins(config.root(), files);
+        return files;
+    }
+
+    static ConfigOrigin enrichOriginWithIncludes(FileConfigOrigin baseOrigin, com.typesafe.config.Config parsedConfig) {
+        var includedFiles = extractIncludedFiles(parsedConfig);
+        includedFiles.remove(baseOrigin.path().toAbsolutePath());
+        if (includedFiles.isEmpty()) {
+            return baseOrigin;
+        }
+        var origins = new ArrayList<ConfigOrigin>();
+        origins.add(baseOrigin);
+        for (var includedFile : includedFiles) {
+            if (Files.exists(includedFile)) {
+                origins.add(new FileConfigOrigin(includedFile));
+            }
+        }
+        if (origins.size() == 1) {
+            return baseOrigin;
+        }
+        return new ContainerConfigOrigin(origins);
+    }
+
+    private static void collectFileOrigins(com.typesafe.config.ConfigValue value, Set<Path> files) {
+        var origin = value.origin();
+        var filename = origin.filename();
+        // Typesafe Config 1.4.4 creates synthetic origins like "merge of file1, file2" when merging values
+        if (filename != null && !filename.startsWith("merge of ")) {
+            files.add(Path.of(filename).toAbsolutePath());
+        }
+        if (value instanceof com.typesafe.config.ConfigObject obj) {
+            for (var entry : obj.entrySet()) {
+                collectFileOrigins(entry.getValue(), files);
+            }
+        } else if (value instanceof com.typesafe.config.ConfigList list) {
+            for (var item : list) {
+                collectFileOrigins(item, files);
+            }
+        }
     }
 }
