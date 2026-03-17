@@ -119,6 +119,7 @@ public interface HoconConfigModule extends CommonConfigModule {
     private static void collectFileOrigins(com.typesafe.config.ConfigValue value, Set<Path> files) {
         var origin = value.origin();
         var filename = origin.filename();
+        // Typesafe Config 1.4.4 creates synthetic origins like "merge of file1, file2" when merging values
         if (filename != null && !filename.startsWith("merge of ")) {
             files.add(Path.of(filename).toAbsolutePath());
         }
