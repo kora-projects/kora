@@ -118,6 +118,17 @@ public class ConfigWatcher implements Lifecycle {
                     this.applicationConfig.get().refresh();
                     log.info("Config refreshed");
                     state.putAll(changed);
+
+                    // Recalculate watched files after refresh to pick up new include files
+                    var refreshedConfig = this.applicationConfig.get().get();
+                    var refreshedOrigins = this.parseOrigin(refreshedConfig);
+                    for (var origin : refreshedOrigins) {
+                        if (!state.containsKey(origin.path())) {
+                            var newFileState = stateExtractor.apply(origin.path());
+                            state.put(origin.path(), newFileState);
+                            log.debug("Added new config file to watch: {}", origin.path());
+                        }
+                    }
                 }
                 Thread.sleep(this.checkTime);
             } catch (InterruptedException ignore) {
