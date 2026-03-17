@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.config.hocon;
 
 import com.typesafe.config.ConfigFactory;
-import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.impl.ConfigImpl;
 import ru.tinkoff.kora.config.common.CommonConfigModule;
@@ -43,12 +42,12 @@ public interface HoconConfigModule extends CommonConfigModule {
             }
             if (resourceUrl.getProtocol().equals("file")) {
                 var path = Path.of(resourceUrl.toURI());
-                return parseAndEnrichOrigin(path);
+                return HoconConfigFactory.parseAndEnrichOrigin(path);
             }
             return new ResourceConfigOrigin(resourceUrl);
         } else {
             var path = Path.of(file);
-            return parseAndEnrichOrigin(path);
+            return HoconConfigFactory.parseAndEnrichOrigin(path);
         }
     }
 
@@ -82,14 +81,5 @@ public interface HoconConfigModule extends CommonConfigModule {
     @ApplicationConfig
     default Config config(@ApplicationConfig ConfigOrigin origin, com.typesafe.config.Config hoconConfig) {
         return HoconConfigFactory.fromHocon(origin, hoconConfig);
-    }
-
-    private static ConfigOrigin parseAndEnrichOrigin(Path path) {
-        var baseOrigin = new FileConfigOrigin(path);
-        var includer = new TrackingConfigIncluder();
-        var options = ConfigParseOptions.defaults().setIncluder(includer);
-        ConfigFactory.parseFile(path.toFile(), options);
-        var includedFiles = includer.getIncludedFiles();
-        return HoconConfigFactory.enrichOriginWithIncludes(baseOrigin, includedFiles);
     }
 }
