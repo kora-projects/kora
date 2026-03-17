@@ -117,6 +117,34 @@ class HoconConfigFactoryTest {
     }
 
     @Test
+    void testTrackingIncluderRecordsHeuristicInclude() throws IOException {
+        var tempDir = Files.createTempDirectory("hocon-test");
+        try {
+            var overrideFile = tempDir.resolve("override.conf");
+            Files.writeString(overrideFile, """
+                database.url = "jdbc:postgresql://prod:5432/db"
+                """);
+
+            var mainFile = tempDir.resolve("application.conf");
+            Files.writeString(mainFile, """
+                include "override.conf"
+                database.username = "user"
+                """);
+
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
+
+            assertThat(includer.getIncludedFiles()).hasSize(1);
+            assertThat(includer.getIncludedFiles()).contains(overrideFile.toAbsolutePath());
+        } finally {
+            Files.walk(tempDir)
+                .sorted(java.util.Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete());
+        }
+    }
+
+    @Test
     void testTrackingIncluderIgnoresNonExistentOptionalInclude() throws IOException {
         var tempDir = Files.createTempDirectory("hocon-test");
         try {

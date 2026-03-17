@@ -13,7 +13,7 @@ import java.util.Set;
 
 /**
  * A {@link ConfigIncluder} wrapper that records all file paths encountered
- * via {@code include file("...")} directives during HOCON parsing.
+ * via {@code include file("...")} and {@code include "..."} directives during HOCON parsing.
  * <p>
  * Delegates actual include resolution to the fallback (default) includer.
  */
@@ -33,6 +33,13 @@ final class TrackingConfigIncluder implements ConfigIncluder, ConfigIncluderFile
 
     @Override
     public ConfigObject include(ConfigIncludeContext context, String what) {
+        var parseable = context.relativeTo(what);
+        if (parseable != null) {
+            var filename = parseable.origin().filename();
+            if (filename != null) {
+                includedFiles.add(Path.of(filename).toAbsolutePath());
+            }
+        }
         return fallback.include(context, what);
     }
 
