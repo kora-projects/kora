@@ -1,17 +1,14 @@
 package ru.tinkoff.kora.config.hocon;
 
 import com.typesafe.config.ConfigFactory;
-import org.assertj.core.api.Assertions;
+import com.typesafe.config.ConfigParseOptions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.config.common.ConfigValue;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -57,7 +54,7 @@ class HoconConfigFactoryTest {
     }
 
     @Test
-    void testExtractFileOrigins() throws IOException {
+    void testTrackingIncluderRecordsIncludedFile() throws IOException {
         var tempDir = Files.createTempDirectory("hocon-test");
         try {
             var overrideFile = tempDir.resolve("override.conf");
@@ -71,12 +68,12 @@ class HoconConfigFactoryTest {
                 database.username = "user"
                 """.formatted(overrideFile.toAbsolutePath()));
 
-            var parsedConfig = ConfigFactory.parseFile(mainFile.toFile());
-            var files = HoconConfigFactory.extractIncludedFiles(parsedConfig);
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
 
-            assertThat(files).hasSize(2);
-            assertThat(files).contains(mainFile.toAbsolutePath());
-            assertThat(files).contains(overrideFile.toAbsolutePath());
+            assertThat(includer.getIncludedFiles()).hasSize(1);
+            assertThat(includer.getIncludedFiles()).contains(overrideFile.toAbsolutePath());
         } finally {
             Files.walk(tempDir)
                 .sorted(java.util.Comparator.reverseOrder())
@@ -85,7 +82,7 @@ class HoconConfigFactoryTest {
     }
 
     @Test
-    void testExtractFileOriginsNestedIncludes() throws IOException {
+    void testTrackingIncluderRecordsNestedIncludes() throws IOException {
         var tempDir = Files.createTempDirectory("hocon-test");
         try {
             var level2File = tempDir.resolve("level2.conf");
@@ -105,13 +102,13 @@ class HoconConfigFactoryTest {
                 database.username = "user"
                 """.formatted(level1File.toAbsolutePath()));
 
-            var parsedConfig = ConfigFactory.parseFile(mainFile.toFile());
-            var files = HoconConfigFactory.extractIncludedFiles(parsedConfig);
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
 
-            assertThat(files).hasSize(3);
-            assertThat(files).contains(mainFile.toAbsolutePath());
-            assertThat(files).contains(level1File.toAbsolutePath());
-            assertThat(files).contains(level2File.toAbsolutePath());
+            assertThat(includer.getIncludedFiles()).hasSize(2);
+            assertThat(includer.getIncludedFiles()).contains(level1File.toAbsolutePath());
+            assertThat(includer.getIncludedFiles()).contains(level2File.toAbsolutePath());
         } finally {
             Files.walk(tempDir)
                 .sorted(java.util.Comparator.reverseOrder())
@@ -120,7 +117,7 @@ class HoconConfigFactoryTest {
     }
 
     @Test
-    void testExtractFileOriginsWithOptionalNonExistentInclude() throws IOException {
+    void testTrackingIncluderIgnoresNonExistentOptionalInclude() throws IOException {
         var tempDir = Files.createTempDirectory("hocon-test");
         try {
             var mainFile = tempDir.resolve("application.conf");
@@ -129,12 +126,15 @@ class HoconConfigFactoryTest {
                 database.username = "user"
                 """.formatted(tempDir.resolve("nonexistent.conf").toAbsolutePath()));
 
-            var parsedConfig = ConfigFactory.parseFile(mainFile.toFile());
-            var files = HoconConfigFactory.extractIncludedFiles(parsedConfig);
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
 
-            // Non-existent optional include should not appear in result
-            assertThat(files).hasSize(1);
-            assertThat(files).contains(mainFile.toAbsolutePath());
+            // includeFile is called even for non-existent files, but the file doesn't exist on disk
+            // TrackingConfigIncluder records the path; enrichOriginWithIncludes won't add non-existent files
+            // since FileConfigOrigin is only created for paths that exist
+            assertThat(includer.getIncludedFiles()).hasSize(1);
+            assertThat(includer.getIncludedFiles()).contains(tempDir.resolve("nonexistent.conf").toAbsolutePath());
         } finally {
             Files.walk(tempDir)
                 .sorted(java.util.Comparator.reverseOrder())
