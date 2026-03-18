@@ -171,6 +171,10 @@ public class GraphBuilder {
                     resolvedDependencies.add(new ComponentDependency.TypeOfDependency(dependencyClaim));
                     continue dependency;
                 }
+                if (dependencyClaim.claimType() == GRAPH) {
+                    resolvedDependencies.add(new ComponentDependency.GraphDependency(dependencyClaim));
+                    continue dependency;
+                }
                 var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, this.declarations, dependencyClaim);
                 if (!dependencyDeclarations.isEmpty()) {
                     final DeclarationWithIndex dependencyDeclaration;

@@ -53,7 +53,11 @@ public sealed interface ComponentDependency {
             case PromiseOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
                 CodeBlock.of("g.promiseOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped);
             case PromiseOfDependency(_, var delegate) -> CodeBlock.of("g.promiseOf($T.$N.$N)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName());
-            case TargetDependency(var _, var component) -> CodeBlock.of("g.get($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
+            case TargetDependency(var claim, var component) -> switch (claim.claimType()) {
+                case ONE_REQUIRED, ONE_NULLABLE -> CodeBlock.of("g.get($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
+                case NODE_OF -> CodeBlock.of("$T.$N.$N", graphTypeName, component.holderName(), component.fieldName());
+                default -> throw new IllegalStateException("Unexpected value: " + claim.claimType());
+            };
             case TypeOfDependency(var claim) -> TypeOfDependency.buildTypeRef(ctx.types, claim.type());
             case ValueOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
                 CodeBlock.of("g.valueOf($T.$N.$N).map($T::value)", graphTypeName, delegate.component().holderName(), delegate.component().fieldName(), CommonClassNames.wrapped);
@@ -87,6 +91,7 @@ public sealed interface ComponentDependency {
                 }
                 yield b.add(")").build();
             }
+            case GraphDependency _ -> CodeBlock.of("g");
         };
     }
 
@@ -182,7 +187,7 @@ public sealed interface ComponentDependency {
         }
     }
 
-    record TypeOfDependency(DependencyClaim claim) implements SingleDependency {
+    record TypeOfDependency(DependencyClaim claim) implements ComponentDependency {
         private static CodeBlock buildTypeRef(Types types, TypeMirror typeRef) {
             if (typeRef instanceof DeclaredType) {
                 var b = CodeBlock.builder();
@@ -202,12 +207,9 @@ public sealed interface ComponentDependency {
                 return CodeBlock.of("$T.of($T.class)", CommonClassNames.typeRef, typeRef);
             }
         }
-
-        @Override
-        public ResolvedComponent component() {
-            return null;
-        }
     }
+
+    record GraphDependency(DependencyClaim claim) implements ComponentDependency {}
 
 
     final class AllOfDependency implements ComponentDependency {

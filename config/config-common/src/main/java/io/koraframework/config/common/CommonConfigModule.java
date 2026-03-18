@@ -34,7 +34,7 @@ public interface CommonConfigModule extends DefaultConfigExtractorsModule {
     }
 
     @Root
-    default ConfigWatcher configRefresher(RefreshableGraph graph, @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode, int checkTime) {
+    default ConfigWatcher configRefresher(RefreshableGraph graph, @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode) {
         return new ConfigWatcher(graph, applicationConfigNode, 1000);
     }
 }

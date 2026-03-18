@@ -275,43 +275,46 @@ public class GraphFileGenerator {
     }
 
     private CodeBlock getCreateDependencies(String componentHolder, ResolvedComponent component) {
-        var result = new ArrayList<CodeBlock>();
+        var result = new ArrayList<ResolvedComponent>();
         if (component.declaration().condition() != null) {
             var condition = Objects.requireNonNull(this.conditions.get(component.declaration().condition()));
-            result.add(CodeBlock.of("$L", condition.nodeRef(componentHolder)));
+            result.add(condition);
         }
         for (var parentConditionTag : component.parentConditions()) {
             var condition = Objects.requireNonNull(this.conditions.get(parentConditionTag));
-            result.add(CodeBlock.of("$L", condition.nodeRef(componentHolder)));
+            result.add(condition);
         }
         for (var dependency : component.dependencies()) {
             switch (dependency) {
                 case ComponentDependency.NullDependency _, ComponentDependency.PromisedProxyParameterDependency _ -> {}
                 case ComponentDependency.SingleDependency singleDependency -> {
                     switch (singleDependency) {
-                        case ComponentDependency.PromiseOfDependency _, ComponentDependency.TypeOfDependency _ -> {}
-                        case ComponentDependency.TargetDependency targetDependency -> result.add(CodeBlock.of("$L", targetDependency.component().nodeRef(componentHolder)));
-                        case ComponentDependency.ValueOfDependency valueOfDependency -> result.add(CodeBlock.of("$L", valueOfDependency.component().nodeRef(componentHolder)));
-                        case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(CodeBlock.of("$L", wrappedTargetDependency.component().nodeRef(componentHolder)));
+                        case ComponentDependency.PromiseOfDependency _ -> {}
+                        case ComponentDependency.TargetDependency targetDependency when targetDependency.claim().claimType() != DependencyClaim.DependencyClaimType.NODE_OF ->
+                            result.add(targetDependency.component());
+                        case ComponentDependency.TargetDependency _ -> {}
+                        case ComponentDependency.ValueOfDependency valueOfDependency -> result.add(valueOfDependency.component());
+                        case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(wrappedTargetDependency.component());
                     }
                 }
                 case ComponentDependency.AllOfDependency allOfDependency -> {
                     if (allOfDependency.claim().claimType() != DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
                         for (var d : allOfDependency.getResolvedDependencies()) {
-                            result.add(CodeBlock.of("$L", d.component().nodeRef(componentHolder)));
+                            result.add(d.component());
                         }
                     }
                 }
                 case ComponentDependency.OneOfDependency oneOfDependency -> {
                     for (var singleDependency : oneOfDependency.dependencies()) {
                         switch (singleDependency) {
-                            case ComponentDependency.PromiseOfDependency _, ComponentDependency.TypeOfDependency _ -> {}
-                            case ComponentDependency.TargetDependency targetDependency -> result.add(CodeBlock.of("$L", targetDependency.component().nodeRef(componentHolder)));
-                            case ComponentDependency.ValueOfDependency valueOfDependency -> result.add(CodeBlock.of("$L", valueOfDependency.component().nodeRef(componentHolder)));
-                            case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(CodeBlock.of("$L", wrappedTargetDependency.component().nodeRef(componentHolder)));
+                            case ComponentDependency.PromiseOfDependency _ -> {}
+                            case ComponentDependency.TargetDependency targetDependency -> result.add(targetDependency.component());
+                            case ComponentDependency.ValueOfDependency valueOfDependency -> result.add(valueOfDependency.component());
+                            case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(wrappedTargetDependency.component());
                         }
                     }
                 }
+                case ComponentDependency.GraphDependency _, ComponentDependency.TypeOfDependency _ -> {}
             }
         }
         var b = CodeBlock.builder();
@@ -320,7 +323,7 @@ public class GraphFileGenerator {
             if (i > 0) {
                 b.add(", ");
             }
-            b.add("$L", result.get(i));
+            b.add("$L", CodeBlock.of("$L", result.get(i).nodeRef(componentHolder)));
         }
         b.add(")");
         return b.build();
@@ -341,8 +344,10 @@ public class GraphFileGenerator {
                 case ComponentDependency.NullDependency _, ComponentDependency.PromisedProxyParameterDependency _ -> {}
                 case ComponentDependency.SingleDependency singleDependency -> {
                     switch (singleDependency) {
-                        case ComponentDependency.PromiseOfDependency _, ComponentDependency.TypeOfDependency _, ComponentDependency.ValueOfDependency _ -> {}
-                        case ComponentDependency.TargetDependency targetDependency -> result.add(targetDependency.component());
+                        case ComponentDependency.PromiseOfDependency _, ComponentDependency.ValueOfDependency _ -> {}
+                        case ComponentDependency.TargetDependency targetDependency when targetDependency.claim().claimType() != DependencyClaim.DependencyClaimType.NODE_OF ->
+                            result.add(targetDependency.component());
+                        case ComponentDependency.TargetDependency _ -> {}
                         case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(wrappedTargetDependency.component());
                     }
                 }
@@ -356,13 +361,14 @@ public class GraphFileGenerator {
                 case ComponentDependency.OneOfDependency oneOfDependency -> {
                     for (var singleDependency : oneOfDependency.dependencies()) {
                         switch (singleDependency) {
-                            case ComponentDependency.PromiseOfDependency _, ComponentDependency.TypeOfDependency _ -> {}
+                            case ComponentDependency.PromiseOfDependency _ -> {}
                             case ComponentDependency.TargetDependency targetDependency -> result.add(targetDependency.component());
                             case ComponentDependency.ValueOfDependency valueOfDependency -> result.add(valueOfDependency.component());
                             case ComponentDependency.WrappedTargetDependency wrappedTargetDependency -> result.add(wrappedTargetDependency.component());
                         }
                     }
                 }
+                case ComponentDependency.GraphDependency _, ComponentDependency.TypeOfDependency _ -> {}
             }
         }
         var b = CodeBlock.builder();

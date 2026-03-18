@@ -14,6 +14,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
 import javax.annotation.processing.SupportedOptions;
 import javax.lang.model.element.*;
+import javax.lang.model.type.TypeKind;
 import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.*;
@@ -107,6 +108,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 continue;
             }
             var te = (TypeElement) annotated.element();
+            for (var member : elements.getAllMembers(te)) {
+                if (member.getKind() == ElementKind.METHOD && member.getModifiers().contains(Modifier.DEFAULT)) {
+                    var method = (ExecutableElement) member;
+                    if (method.getReturnType().getKind() != TypeKind.DECLARED) {
+                        messager.printMessage(Diagnostic.Kind.ERROR, "Only reference types are allowed as graph components");
+                    }
+                }
+            }
             this.modules.add(te);
         }
     }

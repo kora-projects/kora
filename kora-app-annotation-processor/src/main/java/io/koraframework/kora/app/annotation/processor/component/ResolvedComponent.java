@@ -125,6 +125,7 @@ public final class ResolvedComponent {
             switch (dependency) {
                 case ComponentDependency.NullDependency _ -> {}
                 case ComponentDependency.TypeOfDependency _ -> {}
+                case ComponentDependency.GraphDependency _ -> {}
                 case ComponentDependency.PromisedProxyParameterDependency _ -> {}
                 case ComponentDependency.PromiseOfDependency promiseOfDependency -> promiseOfDependency.component().addParentCondition(condition);
                 case ComponentDependency.AllOfDependency allOfDependency -> {

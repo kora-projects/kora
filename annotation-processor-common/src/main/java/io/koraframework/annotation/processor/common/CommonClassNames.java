@@ -43,6 +43,8 @@ public class CommonClassNames {
     public static final ClassName promiseOf = ClassName.get("io.koraframework.application.graph", "PromiseOf");
     public static final ClassName valueOf = ClassName.get("io.koraframework.application.graph", "ValueOf");
     public static final ClassName applicationGraphDraw = ClassName.get("io.koraframework.application.graph", "ApplicationGraphDraw");
+    public static final ClassName graph = ClassName.get("io.koraframework.application.graph", "Graph");
+    public static final ClassName refreshableGraph = ClassName.get("io.koraframework.application.graph", "RefreshableGraph");
     public static final ClassName graphInterceptor = ClassName.get("io.koraframework.application.graph", "GraphInterceptor");
     public static final ClassName graphCondition = ClassName.get("io.koraframework.application.graph", "GraphCondition");
     public static final ClassName promisedProxy = ClassName.get("io.koraframework.common", "PromisedProxy");

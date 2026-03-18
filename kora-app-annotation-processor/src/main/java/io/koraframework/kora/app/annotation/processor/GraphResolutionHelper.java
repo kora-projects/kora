@@ -54,10 +54,10 @@ public final class GraphResolutionHelper {
             : new ComponentDependency.TargetDependency(dependencyClaim, resolvedComponent);
 
         return switch (dependencyClaim.claimType()) {
-            case ONE_REQUIRED, ONE_NULLABLE -> targetDependency;
+            case ONE_REQUIRED, ONE_NULLABLE, NODE_OF -> targetDependency;
             case PROMISE_OF, NULLABLE_PROMISE_OF -> new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
             case VALUE_OF, NULLABLE_VALUE_OF -> new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
-            case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF -> throw new IllegalStateException();
+            case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF, GRAPH -> throw new IllegalStateException();
         };
     }
 

@@ -1,10 +1,10 @@
 package io.koraframework.kora.app.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
 import io.koraframework.common.Module;
 import io.koraframework.common.Tag;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.annotation.processing.RoundEnvironment;
@@ -233,6 +233,37 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         Assertions.assertThat(draw.getNodes()).hasSize(4);
+        draw.init();
+    }
+
+    @Test
+    public void testGraphDependency() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root1(Graph graph) { return ""; }
+            
+                @Root
+                default Object root2(RefreshableGraph graph) { return ""; }
+            }
+            """);
+        Assertions.assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+    }
+
+    @Test
+    public void testNodeDependency() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root1(Node<String> node) { return ""; }
+            
+                default String component() { return ""; }
+            }
+            """);
+        Assertions.assertThat(draw.getNodes()).hasSize(2);
         draw.init();
     }
 

@@ -52,6 +52,7 @@ public class ResolvedComponents {
                     case ComponentDependency.PromisedProxyParameterDependency _,
                          ComponentDependency.PromiseOfDependency _,
                          ComponentDependency.TypeOfDependency _,
+                         ComponentDependency.GraphDependency _,
                          ComponentDependency.NullDependency _ -> 0;
                     case ComponentDependency.AllOfDependency allOfDependency -> {
                         var max = 0;
