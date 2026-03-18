@@ -786,7 +786,7 @@ public abstract class HttpServerTestKit {
     @Test
     void testSyncByteArrayRequestMapper() throws IOException {
         var module = new HttpServerRequestMapperModule() {};
-        var mapper = module.byteArrayRequestMapper();
+        var mapper = module.byteArrayHttpServerRequestMapper();
 
         testByteArrayMapper(mapper);
     }
