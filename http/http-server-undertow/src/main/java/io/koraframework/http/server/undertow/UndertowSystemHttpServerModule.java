@@ -35,20 +35,9 @@ public interface UndertowSystemHttpServerModule extends HttpServerModule {
         return new UndertowHttpHandler("kora-undertow-system", handler, NoopHttpServerTelemetry.INSTANCE);
     }
 
-    @SystemApi
     @DefaultComponent
-    default Wrapped<XnioWorker> undertowSystemHttpServerXnioWorker(@SystemApi @Nullable Configurer<XnioWorker.Builder> configurer) {
-        return new XnioLifecycle(new ValueOf<>() {
-            @Override
-            public UndertowConfig get() {
-                return new UndertowConfig() {
-                    @Override
-                    public int ioThreads() {return 1;}
-                };
-            }
-
-            @Override
-            public void refresh() {}
-        }, configurer);
+    default Wrapped<XnioWorker> xnioWorker(ValueOf<UndertowConfig> configValue,
+                                           @Nullable Configurer<XnioWorker.Builder> configurer) {
+        return new XnioLifecycle(configValue, configurer);
     }
 }

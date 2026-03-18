@@ -15,93 +15,93 @@ import java.util.UUID;
 public interface HttpClientParameterWriterModule {
 
     @DefaultComponent
-    default HttpClientParameterWriter<Boolean> booleanConverter() {
+    default HttpClientParameterWriter<Boolean> booleanHttpClientParameterWriter() {
         return Object::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<Short> shortConverter() {
+    default HttpClientParameterWriter<Short> shortHttpClientParameterWriter() {
         return Object::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<Integer> integerConverter() {
+    default HttpClientParameterWriter<Integer> integerHttpClientParameterWriter() {
         return Object::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<Long> longConverter() {
+    default HttpClientParameterWriter<Long> longHttpClientParameterWriter() {
         return Object::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<Double> doubleConverter() {
+    default HttpClientParameterWriter<Double> doubleHttpClientParameterWriter() {
         return Object::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<Float> floatConverter() {
+    default HttpClientParameterWriter<Float> floatHttpClientParameterWriter() {
         return Object::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<UUID> uuidConverter() {
+    default HttpClientParameterWriter<UUID> uuidHttpClientParameterWriter() {
         return UUID::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<BigDecimal> bigDecimalConverter() {
+    default HttpClientParameterWriter<BigDecimal> bigDecimalHttpClientParameterWriter() {
         return BigDecimal::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<BigInteger> bigIntegerConverter() {
+    default HttpClientParameterWriter<BigInteger> bigIntegerHttpClientParameterWriter() {
         return BigInteger::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<Duration> durationConverter() {
+    default HttpClientParameterWriter<Duration> durationHttpClientParameterWriter() {
         return Duration::toString;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<OffsetTime> javaTimeOffsetTimeStringParameterConverter() {
+    default HttpClientParameterWriter<OffsetTime> javaTimeOffsetTimeHttpClientParameterWriter() {
         return DateTimeFormatter.ISO_OFFSET_TIME::format;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<OffsetDateTime> javaTimeOffsetDateTimeStringParameterConverter() {
+    default HttpClientParameterWriter<OffsetDateTime> javaTimeOffsetDateTimeHttpClientParameterWriter() {
         return DateTimeFormatter.ISO_OFFSET_DATE_TIME::format;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<LocalTime> javaTimeLocalTimeStringParameterConverter() {
+    default HttpClientParameterWriter<LocalTime> javaTimeLocalTimeHttpClientParameterWriter() {
         return DateTimeFormatter.ISO_LOCAL_TIME::format;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<LocalDate> javaTimeLocalDateStringParameterConverter() {
+    default HttpClientParameterWriter<LocalDate> javaTimeLocalDateHttpClientParameterWriter() {
         return DateTimeFormatter.ISO_LOCAL_DATE::format;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<LocalDateTime> javaTimeLocalDateTimeStringParameterConverter() {
+    default HttpClientParameterWriter<LocalDateTime> javaTimeLocalDateTimeHttpClientParameterWriter() {
         return DateTimeFormatter.ISO_LOCAL_DATE_TIME::format;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<ZonedDateTime> javaTimeZonedDateTimeStringParameterConverter() {
+    default HttpClientParameterWriter<ZonedDateTime> javaTimeZonedDateTimeHttpClientParameterWriter() {
         return DateTimeFormatter.ISO_ZONED_DATE_TIME::format;
     }
 
     @DefaultComponent
-    default HttpClientParameterWriter<Instant> javaTimeInstantStringParameterConverter() {
+    default HttpClientParameterWriter<Instant> javaTimeInstantHttpClientParameterWriter() {
         return DateTimeFormatter.ISO_INSTANT::format;
     }
 
     @DefaultComponent
     @Tag(Json.class)
-    default <T> JsonHttpClientParameterWriter<T> jsonStringParameterConverter(JsonWriter<T> writer) {
+    default <T> JsonHttpClientParameterWriter<T> jsonHttpClientParameterWriter(JsonWriter<T> writer) {
         return new JsonHttpClientParameterWriter<>(writer);
     }
 }

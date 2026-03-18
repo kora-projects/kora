@@ -12,7 +12,7 @@ import io.koraframework.config.common.extractor.ConfigValueExtractionException;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
-import io.koraframework.http.server.common.request.mapper.HttpParameterReaderModule;
+import io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule;
 import io.koraframework.http.server.common.request.mapper.HttpServerRequestMapperModule;
 import io.koraframework.http.server.common.response.mapper.HttpServerResponseMapperModule;
 import io.koraframework.http.server.common.router.HttpServerHandler;
@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Optional;
 
-public interface HttpServerModule extends HttpParameterReaderModule, HttpServerRequestMapperModule, HttpServerResponseMapperModule {
+public interface HttpServerModule extends HttpServerParameterReaderModule, HttpServerRequestMapperModule, HttpServerResponseMapperModule {
 
     default HttpServerConfig httpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> configValueExtractor) {
         var value = config.get("httpServer");

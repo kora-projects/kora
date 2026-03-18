@@ -15,12 +15,12 @@ import java.nio.charset.StandardCharsets;
 public interface HttpServerRequestMapperModule {
 
     @DefaultComponent
-    default HttpServerRequestMapper<HttpServerRequest> noopRequestMapper() {
+    default HttpServerRequestMapper<HttpServerRequest> noopHttpServerRequestMapper() {
         return (r) -> r;
     }
 
     @DefaultComponent
-    default HttpServerRequestMapper<ByteBuffer> byteBufBodyRequestMapper() {
+    default HttpServerRequestMapper<ByteBuffer> byteBufBodyHttpServerRequestMapper() {
         return (r) -> {
             try (var body = r.body()) {
                 var content = body.getFullContentIfAvailable();
@@ -35,7 +35,7 @@ public interface HttpServerRequestMapperModule {
     }
 
     @DefaultComponent
-    default HttpServerRequestMapper<byte[]> byteArrayRequestMapper() {
+    default HttpServerRequestMapper<byte[]> byteArrayHttpServerRequestMapper() {
         return (request) -> {
             try (var body = request.body()) {
                 var full = body.getFullContentIfAvailable();
@@ -56,7 +56,7 @@ public interface HttpServerRequestMapperModule {
     }
 
     @DefaultComponent
-    default HttpServerRequestMapper<String> stringRequestMapper(HttpServerRequestMapper<byte[]> mapper) {
+    default HttpServerRequestMapper<String> stringHttpServerRequestMapper(HttpServerRequestMapper<byte[]> mapper) {
         return request -> {
             var bytes = mapper.apply(request);
             if (bytes == null) {
@@ -68,7 +68,7 @@ public interface HttpServerRequestMapperModule {
     }
 
     @DefaultComponent
-    default HttpServerRequestMapper<InputStream> inputStreamRequestMapper() {
+    default HttpServerRequestMapper<InputStream> inputStreamHttpServerRequestMapper() {
         return r -> r.body().asInputStream();
     }
 
@@ -78,7 +78,7 @@ public interface HttpServerRequestMapperModule {
     }
 
     @DefaultComponent
-    default FormMultipartServerRequestMapper formMultipartServerRequestMapper() {
+    default FormMultipartServerRequestMapper formMultipartServerHttpServerRequestMapper() {
         return new FormMultipartServerRequestMapper();
     }
 

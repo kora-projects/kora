@@ -34,12 +34,6 @@ public interface UndertowPublicHttpServerModule extends UndertowSystemHttpServer
         return new UndertowHttpHandler("kora-undertow", publicApiHandler, telemetry);
     }
 
-    @DefaultComponent
-    default Wrapped<XnioWorker> xnioWorker(ValueOf<UndertowConfig> configValue,
-                                           @Nullable Configurer<XnioWorker.Builder> configurer) {
-        return new XnioLifecycle(configValue, configurer);
-    }
-
     default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowConfig> extractor) {
         var value = config.get("httpServer.undertow");
         var parsed = extractor.extract(value);
