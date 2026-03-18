@@ -1,5 +1,6 @@
 package io.koraframework.camunda.rest.undertow;
 
+import io.koraframework.http.server.undertow.UndertowHttpHandler;
 import io.undertow.io.IoCallback;
 import io.undertow.io.Sender;
 import io.undertow.server.HttpHandler;
@@ -15,9 +16,9 @@ import io.koraframework.http.common.HttpMethod;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.cookie.Cookie;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.HttpServerResponse;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.undertow.UndertowHttpServer;
 import io.koraframework.openapi.management.OpenApiHttpServerHandler;
 import io.koraframework.openapi.management.RapidocHttpServerHandler;
@@ -84,7 +85,7 @@ final class OpenApiHttpHandler implements HttpHandler {
             exchange.endExchange();
             return;
         }
-        var executor = UndertowHttpServer.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "undertow-kora-camunda");
+        var executor = UndertowHttpHandler.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "undertow-kora-camunda");
         exchange.dispatch(executor, exchange1 -> {
             var fakeRequest = getFakeRequest(match);
             var openapi = restConfig.openapi();
@@ -104,6 +105,16 @@ final class OpenApiHttpHandler implements HttpHandler {
     private HttpServerRequest getFakeRequest(UndertowPathMatcher.Match match) {
         return new HttpServerRequest() {
             @Override
+            public String scheme() {
+                return "http";
+            }
+
+            @Override
+            public String host() {
+                return "localhost";
+            }
+
+            @Override
             public String method() {
                 return "";
             }
@@ -114,7 +125,7 @@ final class OpenApiHttpHandler implements HttpHandler {
             }
 
             @Override
-            public String route() {
+            public String pathTemplate() {
                 return "";
             }
 
@@ -129,7 +140,7 @@ final class OpenApiHttpHandler implements HttpHandler {
             }
 
             @Override
-            public Map<String, ? extends Collection<String>> queryParams() {
+            public Map<String, List<String>> queryParams() {
                 return Map.of();
             }
 
@@ -143,6 +154,11 @@ final class OpenApiHttpHandler implements HttpHandler {
             @Override
             public HttpBodyInput body() {
                 return null;
+            }
+
+            @Override
+            public long requestStartTimeInNanos() {
+                return 0;
             }
         };
     }

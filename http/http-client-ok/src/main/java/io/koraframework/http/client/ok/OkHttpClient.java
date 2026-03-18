@@ -1,6 +1,10 @@
 package io.koraframework.http.client.ok;
 
 import io.koraframework.http.client.common.*;
+import io.koraframework.http.client.common.exception.HttpClientConnectionException;
+import io.koraframework.http.client.common.exception.HttpClientException;
+import io.koraframework.http.client.common.exception.HttpClientTimeoutException;
+import io.koraframework.http.client.common.exception.HttpClientUnknownException;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.internal.http.HttpMethod;

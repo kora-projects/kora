@@ -3,7 +3,7 @@ package io.koraframework.json.jackson.module.http.client;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.http.client.common.HttpClientDecoderException;
+import io.koraframework.http.client.common.exception.HttpClientDecoderException;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.response.HttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;

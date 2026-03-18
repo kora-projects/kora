@@ -1,8 +1,8 @@
 package io.koraframework.http.server.symbol.processor
 
 import org.junit.jupiter.api.Test
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler
-import io.koraframework.http.server.common.handler.HttpServerResponseEntityMapper
+import io.koraframework.http.server.common.request.HttpServerRequestHandler
+import io.koraframework.http.server.common.response.mapper.HttpServerResponseEntityMapper
 
 class SuspendHttpControllerTest : AbstractHttpControllerTest() {
     @Test
@@ -121,7 +121,11 @@ class SuspendHttpControllerTest : AbstractHttpControllerTest() {
             
             """.trimIndent()
         )
-        val handler: HttpServerRequestHandler = module.getHandler("get_test", HttpServerResponseEntityMapper(strResponseMapper()))
+        val handler: HttpServerRequestHandler = module.getHandler("get_test",
+            HttpServerResponseEntityMapper(
+                strResponseMapper()
+            )
+        )
         assertThat(handler, "GET", "/test")
             .hasStatus(403)
             .hasBody("test")

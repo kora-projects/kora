@@ -1,6 +1,6 @@
 package io.koraframework.http.server.annotation.processor;
 
-import io.koraframework.http.server.common.handler.HttpServerResponseEntityMapper;
+import io.koraframework.http.server.common.response.mapper.HttpServerResponseEntityMapper;
 import org.junit.jupiter.api.Test;
 
 public class BlockingHttpControllerTest extends AbstractHttpControllerTest {

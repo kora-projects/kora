@@ -6,6 +6,7 @@ import java.time.Duration;
 
 @ConfigValueExtractor
 public interface UndertowConfig {
+
     default int ioThreads() {
         return Math.max(Runtime.getRuntime().availableProcessors(), 2);
     }

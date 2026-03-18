@@ -1,16 +1,5 @@
 package io.koraframework.http.server.undertow;
 
-import io.undertow.Undertow;
-import io.undertow.UndertowOptions;
-import io.undertow.server.HttpHandler;
-import io.undertow.server.HttpServerExchange;
-import io.undertow.server.handlers.GracefulShutdownHandler;
-import io.undertow.util.AttachmentKey;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.xnio.Options;
-import org.xnio.XnioWorker;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
@@ -18,47 +7,46 @@ import io.koraframework.common.util.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.router.HttpServerHandler;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.logging.common.arg.StructuredArgument;
+import io.undertow.Undertow;
+import io.undertow.UndertowOptions;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.handlers.GracefulShutdownHandler;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.xnio.Options;
+import org.xnio.XnioWorker;
 
 import java.net.BindException;
 import java.net.InetSocketAddress;
 import java.time.Duration;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandler {
+public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     private static final Logger logger = LoggerFactory.getLogger(UndertowHttpServer.class);
 
     private final AtomicReference<HttpServerState> state = new AtomicReference<>(HttpServerState.INIT);
-    private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
     private final ValueOf<? extends HttpServerConfig> config;
     private final GracefulShutdownHandler gracefulShutdown;
     private final String name;
     private final XnioWorker xnioWorker;
-    private final ValueOf<HttpServerHandler> publicApiHandler;
     @Nullable
     private final Configurer<Undertow.Builder> configurer;
-    private final HttpServerTelemetry telemetry;
 
     private volatile Undertow undertow;
 
-    public UndertowHttpServer(ValueOf<? extends HttpServerConfig> config,
-                              ValueOf<HttpServerHandler> publicApiHandler,
-                              String name,
-                              HttpServerTelemetry telemetry,
-                              @Nullable XnioWorker xnioWorker,
+    public UndertowHttpServer(String name,
+                              HttpHandler httpHandler,
+                              XnioWorker xnioWorker,
+                              ValueOf<? extends HttpServerConfig> config,
                               @Nullable Configurer<Undertow.Builder> configurer) {
         this.config = config;
         this.name = name;
         this.xnioWorker = xnioWorker;
-        this.publicApiHandler = publicApiHandler;
         this.configurer = configurer;
-        this.gracefulShutdown = new GracefulShutdownHandler(this);
-        this.telemetry = telemetry;
+        this.gracefulShutdown = new GracefulShutdownHandler(httpHandler);
     }
 
     @Override
@@ -115,41 +103,13 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe, HttpHandl
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
             .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
-            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes())
-            ;
+            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes());
 
         if (this.configurer != null) {
             undertow = this.configurer.configure(undertow);
         }
         return undertow.build();
     }
-
-    @Override
-    public void handleRequest(HttpServerExchange exchange) {
-        var context = new UndertowContext(exchange);
-        var exchangeProcessor = new UndertowExchangeProcessor(this.telemetry, context, this.publicApiHandler.get());
-        var executor = getOrCreateExecutor(exchange, executorServiceAttachmentKey, this.name);
-        exchange.dispatch(executor, exchangeProcessor);
-    }
-
-    public static ExecutorService getOrCreateExecutor(HttpServerExchange exchange, AttachmentKey<ExecutorService> key, String serverName) {
-        var connection = exchange.getConnection();
-        var existingExecutor = connection.getAttachment(key);
-        if (existingExecutor != null) {
-            return existingExecutor;
-        }
-        var threadName = serverName + "-" + connection.getId();
-        var executor = Executors.newSingleThreadExecutor(r -> Thread.ofVirtual().name(threadName).unstarted(r));
-        connection.addCloseListener(c -> {
-            var e = c.removeAttachment(key);
-            if (e != null) {
-                e.shutdownNow();
-            }
-        });
-        connection.putAttachment(key, executor);
-        return executor;
-    }
-
 
     @Override
     public int port() {

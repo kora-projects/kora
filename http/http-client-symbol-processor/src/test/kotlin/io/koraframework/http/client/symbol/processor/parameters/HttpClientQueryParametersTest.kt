@@ -3,7 +3,7 @@ package io.koraframework.http.client.symbol.processor.parameters
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertThrows
 import org.mockito.Mockito
-import io.koraframework.http.client.common.writer.StringParameterConverter
+import io.koraframework.http.client.common.response.HttpClientParameterWriter
 import io.koraframework.http.client.symbol.processor.AbstractHttpClientTest
 
 class HttpClientQueryParametersTest : AbstractHttpClientTest() {
@@ -182,7 +182,7 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
     @Test
     fun testMapQueryParamWithConverter() {
         val client = compile(
-            listOf<Any>(StringParameterConverter<Any> { it.toString() }), """
+            listOf<Any>(HttpClientParameterWriter<Any> { it.toString() }), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
@@ -222,7 +222,7 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
     @Test
     fun testMapQueryParamWithConverterNullable() {
         val client = compile(
-            listOf<Any>(StringParameterConverter<Any> { it.toString() }), """
+            listOf<Any>(HttpClientParameterWriter<Any> { it.toString() }), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
@@ -282,7 +282,7 @@ class HttpClientQueryParametersTest : AbstractHttpClientTest() {
     @Test
     fun testMapQueryParamListObject() {
         val client = compile(
-            listOf<Any>(StringParameterConverter<Any> { it.toString() }), """
+            listOf<Any>(HttpClientParameterWriter<Any> { it.toString() }), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")

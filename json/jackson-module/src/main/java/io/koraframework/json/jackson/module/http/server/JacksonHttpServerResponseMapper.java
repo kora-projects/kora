@@ -1,9 +1,9 @@
 package io.koraframework.json.jackson.module.http.server;
 
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.HttpServerResponse;
-import io.koraframework.http.server.common.handler.HttpServerResponseMapper;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponseMapper;
 import io.koraframework.json.jackson.module.http.JacksonHttpBodyOutput;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectWriter;

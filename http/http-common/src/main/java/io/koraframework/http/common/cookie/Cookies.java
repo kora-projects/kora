@@ -153,28 +153,28 @@ public class Cookies {
         sb.append(cookie.name()).append("=").append(cookie.value());
 
         if (cookie.path() != null) {
-            sb.append("; Path=").append(cookie.path());
+            sb.append(";Path=").append(cookie.path());
         }
         if (cookie.domain() != null) {
-            sb.append("; Domain=").append(cookie.domain());
+            sb.append(";Domain=").append(cookie.domain());
         }
         if (cookie.maxAge() != null) {
-            sb.append("; Max-Age=").append(cookie.maxAge());
+            sb.append(";Max-Age=").append(cookie.maxAge());
         }
         if (cookie.expires() != null) {
-            sb.append("; Expires=").append(cookie.expires().format(DateTimeFormatter.RFC_1123_DATE_TIME));
+            sb.append(";Expires=").append(cookie.expires().format(DateTimeFormatter.RFC_1123_DATE_TIME));
         }
         if (cookie.isSecure()) {
-            sb.append("; Secure");
+            sb.append(";Secure");
         }
         if (cookie.isHttpOnly()) {
-            sb.append("; HttpOnly");
+            sb.append(";HttpOnly");
         }
         if (cookie.comment() != null) {
-            sb.append("; Comment=").append(cookie.comment());
+            sb.append(";Comment=").append(cookie.comment());
         }
         if (cookie.isSameSite() && cookie.sameSiteMode() != null) {
-            sb.append("; SameSite=").append(cookie.sameSiteMode());
+            sb.append(";SameSite=").append(cookie.sameSiteMode());
         }
 
         return sb.toString();
@@ -315,7 +315,7 @@ public class Cookies {
                         if (i + 2 == cookie.length()) { // Cookie: key="\" or Cookie: key="...\"
                             break;
                         }
-                        if (i + 2 < cookie.length() && (cookie.charAt(i + 2) == ';'      // Cookie: key="\"; key2=...
+                        if (i + 2 < cookie.length() && (cookie.charAt(i + 2) == ';'      // Cookie: key="\";key2=...
                             || (commaIsSeperator && cookie.charAt(i + 2) == ','))) { // Cookie: key="\", key2=...
                             break;
                         }

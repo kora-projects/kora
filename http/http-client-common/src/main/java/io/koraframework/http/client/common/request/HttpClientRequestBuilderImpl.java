@@ -1,10 +1,10 @@
 package io.koraframework.http.client.common.request;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.net.URLEncoder;
@@ -21,7 +21,7 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
 
     @Nullable
     private final URI fromUri;
-    private final List<TemplateParam> templateParams = new ArrayList<>();
+    private final List<PathParam> pathParams = new ArrayList<>();
     private final List<QueryParam> queryParams = new ArrayList<>();
     private HttpBodyOutput body = HttpBody.empty();
     @Nullable
@@ -45,7 +45,7 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
 
     @Override
     public HttpClientRequest build() {
-        var resolved = resolveUri(this.fromUri, this.uriTemplate, this.templateParams, this.queryParams);
+        var resolved = resolveUri(this.fromUri, this.uriTemplate, this.pathParams, this.queryParams);
 
         return new DefaultHttpClientRequest(
             this.method,
@@ -58,69 +58,88 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
     }
 
     @Override
-    public HttpClientRequestBuilder templateParam(String name, String value) {
-        this.templateParams.add(new TemplateParam(name, value));
+    public HttpClientRequestBuilder pathParam(String name, String value) {
+        boolean found = false;
+        for (int i = 0; i < this.pathParams.size(); i++) {
+            var entry = this.pathParams.get(i);
+            if (entry.name().equals(name)) {
+                pathParams.set(i, new PathParam(name, value));
+                found = true;
+                break;
+            }
+        }
 
+        if (!found) {
+            this.pathParams.add(new PathParam(name, value));
+        }
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder queryParam(String name) {
         this.queryParams.add(new QueryParam(name, null));
-
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder queryParam(String name, String value) {
         this.queryParams.add(new QueryParam(name, value));
+        return this;
+    }
 
+    @Override
+    public HttpClientRequestBuilder queryParamRemove(String name) {
+        this.queryParams.removeIf(q -> q.name().equals(name));
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder header(String name, String value) {
         this.headers.set(name, value);
-
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder header(String name, List<String> value) {
         this.headers.set(name, value);
+        return this;
+    }
 
+    @Override
+    public HttpClientRequestBuilder headerRemove(String name) {
+        this.headers.remove(name);
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder requestTimeout(int timeoutMillis) {
         this.requestTimeout = Duration.ofMillis(timeoutMillis);
-
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder requestTimeout(Duration timeout) {
         this.requestTimeout = timeout;
-
         return this;
     }
 
     @Override
     public HttpClientRequestBuilder body(HttpBodyOutput body) {
         this.body = body;
-
         return this;
     }
 
-    private record TemplateParam(String name, String value) {}
+    private record PathParam(String name, String value) {}
 
     private record QueryParam(String name, @Nullable String value) {}
 
     private record ResolvedUri(URI uri, String uriTemplate) {}
 
-    private static ResolvedUri resolveUri(@Nullable URI fromUri, String uriTemplate, List<TemplateParam> templateParams, List<QueryParam> queryParams) {
-        if (templateParams.isEmpty() && queryParams.isEmpty()) {
+    private static ResolvedUri resolveUri(@Nullable URI fromUri,
+                                          String uriTemplate,
+                                          List<PathParam> pathParams,
+                                          List<QueryParam> queryParams) {
+        if (pathParams.isEmpty() && queryParams.isEmpty()) {
             return fromUri != null
                 ? buildResolvedUri(fromUri, uriTemplate, uriTemplate, fromUri)
                 : buildResolvedUri(null, uriTemplate, uriTemplate, URI.create(uriTemplate));
@@ -128,7 +147,7 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
         var template = fromUri != null
             ? fromUri.toString()
             : uriTemplate;
-        for (var i = templateParams.listIterator(templateParams.size()); i.hasPrevious(); ) {
+        for (var i = pathParams.listIterator(pathParams.size()); i.hasPrevious(); ) {
             var entry = i.previous();
             template = template.replace("{" + entry.name() + "}", URLEncoder.encode(entry.value(), UTF_8));
         }
@@ -161,5 +180,17 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
         }
 
         return new ResolvedUri(uri, resultTemplate);
+    }
+
+    @Override
+    public String toString() {
+        return "HttpClientRequestBuilder{method=" + method +
+               ", path=" + uriTemplate +
+               ", pathParams=" + pathParams +
+               ", queryParams=" + queryParams +
+               ", headers=" + headers +
+               ", body=" + body +
+               ", requestTimeout=" + requestTimeout +
+               '}';
     }
 }

@@ -2,9 +2,8 @@ package io.koraframework.http.client.annotation.processor.parameters;
 
 import org.junit.jupiter.api.Test;
 import io.koraframework.http.client.annotation.processor.AbstractHttpClientTest;
-import io.koraframework.http.client.common.writer.StringParameterConverter;
+import io.koraframework.http.client.common.response.HttpClientParameterWriter;
 import io.koraframework.http.common.cookie.Cookie;
-import io.koraframework.http.common.header.HttpHeaders;
 
 import java.util.HashSet;
 import java.util.List;
@@ -134,7 +133,7 @@ public class HttpClientCookieParametersTest extends AbstractHttpClientTest {
 
     @Test
     public void testMapCookieParamWithConverter() {
-        var client = compileClient(List.of((StringParameterConverter<Object>) Object::toString), """
+        var client = compileClient(List.of((HttpClientParameterWriter<Object>) Object::toString), """
             @HttpClient
             public interface TestClient {
               @HttpRoute(method = "POST", path = "/test")

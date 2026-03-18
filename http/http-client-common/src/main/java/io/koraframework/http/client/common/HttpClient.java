@@ -1,5 +1,7 @@
 package io.koraframework.http.client.common;
 
+import io.koraframework.http.client.common.exception.HttpClientException;
+import io.koraframework.http.client.common.exception.HttpClientUnknownException;
 import io.koraframework.http.client.common.interceptor.HttpClientInterceptor;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;

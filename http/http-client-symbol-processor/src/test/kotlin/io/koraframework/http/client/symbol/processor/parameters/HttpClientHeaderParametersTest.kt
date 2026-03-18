@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.verify
-import io.koraframework.http.client.common.writer.StringParameterConverter
+import io.koraframework.http.client.common.response.HttpClientParameterWriter
 import io.koraframework.http.client.symbol.processor.AbstractHttpClientTest
 import io.koraframework.http.common.header.HttpHeaders
 
@@ -132,7 +132,7 @@ class HttpClientHeaderParametersTest : AbstractHttpClientTest() {
 
     @Test
     fun testMapHeaderParamWithConverter() {
-        val client = compile(listOf<Any>(StringParameterConverter<Any> { it.toString() }), """
+        val client = compile(listOf<Any>(HttpClientParameterWriter<Any> { it.toString() }), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
@@ -174,7 +174,7 @@ class HttpClientHeaderParametersTest : AbstractHttpClientTest() {
 
     @Test
     fun testMapHeaderParamWithConverterNullable() {
-        val client = compile(listOf<Any>(StringParameterConverter<Any> { it.toString() }), """
+        val client = compile(listOf<Any>(HttpClientParameterWriter<Any> { it.toString() }), """
             @HttpClient
             interface TestClient {
               @HttpRoute(method = "POST", path = "/test")

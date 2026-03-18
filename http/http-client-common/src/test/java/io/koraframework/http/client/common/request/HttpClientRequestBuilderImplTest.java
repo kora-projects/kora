@@ -12,7 +12,7 @@ class HttpClientRequestBuilderImplTest {
     @Test
     void testBuildWithQuery() {
         var result = HttpClientRequest.post("/foo/{bar}/baz")
-            .templateParam("bar", "rab")
+            .pathParam("bar", "rab")
             .queryParam("qw+e", "a+sd")
             .queryParam("zxc", "cxz")
             .build();

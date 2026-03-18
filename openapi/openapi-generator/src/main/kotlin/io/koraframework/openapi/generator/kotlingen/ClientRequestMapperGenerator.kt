@@ -9,6 +9,11 @@ import io.koraframework.openapi.generator.KoraCodegen.isContentJson
 
 
 class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
+
+    companion object {
+        val urlEncodedWriter = ClassName("io.koraframework.http.client.common.request.form", "FormUrlEncodedWriter")
+    }
+
     override fun generate(ctx: OperationsMap): FileSpec {
         val className = ClassName(apiPackage, ctx["classname"].toString() + "ClientRequestMappers")
         val b = TypeSpec.interfaceBuilder(className)
@@ -52,7 +57,7 @@ class ClientRequestMapperGenerator : AbstractKotlinGenerator<OperationsMap>() {
             throw IllegalArgumentException("Unsupported form type: $operation")
         }
         if (urlEncodedForm) {
-            apply.addStatement("val b = %T()", ClassName("io.koraframework.http.client.common.form", "UrlEncodedWriter"))
+            apply.addStatement("val b = %T()", urlEncodedWriter)
             for (formParam in operation.formParams) {
                 if (formParam.required) {
                     apply.beginControlFlow("value.%N.let", formParam.paramName)

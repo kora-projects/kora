@@ -3,8 +3,8 @@ package io.koraframework.openapi.management;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.http.common.HttpMethod;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandlerImpl;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
+import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 
 public interface OpenApiManagementModule {
 

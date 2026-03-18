@@ -1,5 +1,6 @@
 package io.koraframework.http.server.undertow;
 
+import io.koraframework.http.server.undertow.request.UndertowHttpRouterRequest;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
@@ -22,11 +23,10 @@ import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.HttpServer;
-import io.koraframework.http.server.common.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
-import io.koraframework.http.server.undertow.request.UndertowPublicApiRequest;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -60,9 +60,9 @@ public class UndertowExchangeProcessor implements HttpHandler {
                 MDC.clear();
                 try {
                     exchange.startBlocking();
-                    var request = new UndertowPublicApiRequest(exchange);
+                    var request = new UndertowHttpRouterRequest(exchange);
                     var invocation = this.httpServerHandler.route(request);
-                    var observation = this.telemetry.observe(request, invocation.request);
+                    var observation = this.telemetry.observe(invocation.request);
                     var ctx = rootCtx.with(observation.span());
                     W3CTraceContextPropagator.getInstance().inject(
                         ctx,
@@ -106,7 +106,6 @@ public class UndertowExchangeProcessor implements HttpHandler {
                 }
             });
     }
-
 
     private void sendResponse(HttpServerObservation observation, HttpServerExchange exchange, HttpServerResponse httpResponse) {
         httpResponse = observation.observeResponse(httpResponse);
@@ -225,5 +224,4 @@ public class UndertowExchangeProcessor implements HttpHandler {
             headers.add(HttpString.tryFromString(key), value);
         }
     }
-
 }

@@ -1,5 +1,9 @@
 package io.koraframework.http.server.common.telemetry.impl;
 
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.telemetry.HttpServerObservation;
+import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
+import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.micrometer.core.instrument.*;
 import io.micrometer.core.instrument.noop.NoopTimer;
 import io.opentelemetry.api.trace.Span;
@@ -8,12 +12,6 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
-import org.jspecify.annotations.Nullable;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.router.PublicApiRequest;
-import io.koraframework.http.server.common.telemetry.HttpServerObservation;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -45,47 +43,47 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
     }
 
     @Override
-    public HttpServerObservation observe(PublicApiRequest publicApiRequest, HttpServerRequest request) {
-        var span = this.createSpan(request.route(), publicApiRequest);
-        var requestDuration = this.requestDuration(publicApiRequest, request);
-        var activeRequests = this.activeRequests(publicApiRequest, request);
+    public HttpServerObservation observe(HttpServerRequest request) {
+        var span = this.createSpan(request);
+        var requestDuration = this.requestDuration(request);
+        var activeRequests = this.activeRequests(request);
 
-        return new DefaultHttpServerObservation(config, request, publicApiRequest.requestStartTime(), span, logger, requestDuration, activeRequests);
+        return new DefaultHttpServerObservation(config, request, request.requestStartTimeInNanos(), span, logger, requestDuration, activeRequests);
     }
 
-    protected Meter.MeterProvider<Timer> requestDuration(PublicApiRequest publicApiRequest, HttpServerRequest request) {
+    protected Meter.MeterProvider<Timer> requestDuration(HttpServerRequest request) {
         if (!this.config.metrics().enabled()) {
             return _ -> NOOP_TIMER;
         }
         var key = new DurationCacheKey(
-            publicApiRequest.method(),
-            Objects.requireNonNullElse(request.route(), "UNKNOWN_ROUTE"),
-            publicApiRequest.scheme(),
-            publicApiRequest.hostName()
+            request.method(),
+            Objects.requireNonNullElse(request.pathTemplate(), "UNKNOWN_ROUTE"),
+            request.scheme(),
+            request.host()
         );
         var baseCache = this.durationCache.computeIfAbsent(key, _ -> new ConcurrentHashMap<>());
-        return tags -> baseCache.computeIfAbsent(Tags.of(tags), t -> requestDuration(publicApiRequest, request, t));
+        return tags -> baseCache.computeIfAbsent(Tags.of(tags), t -> requestDuration(request, t));
     }
 
-    protected Function<Tags, AtomicLong> activeRequests(PublicApiRequest publicApiRequest, HttpServerRequest request) {
+    protected Function<Tags, AtomicLong> activeRequests(HttpServerRequest request) {
         if (!this.config.metrics().enabled()) {
             return _ -> new AtomicLong(0);
         }
         var key = new DurationCacheKey(
-            publicApiRequest.method(),
-            Objects.requireNonNullElse(request.route(), "UNKNOWN_ROUTE"),
-            publicApiRequest.scheme(),
-            publicApiRequest.hostName()
+            request.method(),
+            Objects.requireNonNullElse(request.pathTemplate(), "UNKNOWN_ROUTE"),
+            request.scheme(),
+            request.host()
         );
         var baseCache = this.activeRequestsCache.computeIfAbsent(key, _ -> new ConcurrentHashMap<>());
-        return tags -> baseCache.computeIfAbsent(tags, t -> activeRequests(publicApiRequest, request, t));
+        return tags -> baseCache.computeIfAbsent(tags, t -> activeRequests(request, t));
     }
 
-    protected Timer requestDuration(PublicApiRequest publicApiRequest, HttpServerRequest request, Tags additionalTags) {
-        var method = publicApiRequest.method();
-        var scheme = publicApiRequest.scheme();
-        var host = publicApiRequest.hostName();
-        var pathTemplate = Objects.requireNonNullElse(request.route(), "UNKNOWN_ROUTE");
+    protected Timer requestDuration(HttpServerRequest request, Tags additionalTags) {
+        var method = request.method();
+        var scheme = request.scheme();
+        var host = request.host();
+        var pathTemplate = Objects.requireNonNullElse(request.pathTemplate(), "UNKNOWN_ROUTE");
 
         var tags = new ArrayList<Tag>();
         tags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), method));
@@ -105,11 +103,11 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         return builder.register(this.meterRegistry);
     }
 
-    protected AtomicLong activeRequests(PublicApiRequest publicApiRequest, HttpServerRequest request, Tags additionalTags) {
-        var method = publicApiRequest.method();
-        var scheme = publicApiRequest.scheme();
-        var host = publicApiRequest.hostName();
-        var pathTemplate = Objects.requireNonNullElse(request.route(), "UNKNOWN_ROUTE");
+    protected AtomicLong activeRequests(HttpServerRequest request, Tags additionalTags) {
+        var method = request.method();
+        var scheme = request.scheme();
+        var host = request.host();
+        var pathTemplate = Objects.requireNonNullElse(request.pathTemplate(), "UNKNOWN_ROUTE");
 
         var tags = new ArrayList<Tag>();
         tags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), method));
@@ -130,18 +128,18 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         return value;
     }
 
-    protected Span createSpan(@Nullable String template, PublicApiRequest routerRequest) {
-        if (template == null || !this.config.tracing().enabled()) {
+    protected Span createSpan(HttpServerRequest request) {
+        if (request.pathTemplate() == null || !this.config.tracing().enabled()) {
             return Span.getInvalid();
         }
         var span = this.tracer
-            .spanBuilder(routerRequest.method() + " " + template)
+            .spanBuilder(request.method() + " " + request.pathTemplate())
             .setSpanKind(SpanKind.SERVER)
-            .setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, routerRequest.method())
-            .setAttribute(UrlAttributes.URL_SCHEME, routerRequest.scheme())
-            .setAttribute(ServerAttributes.SERVER_ADDRESS, routerRequest.hostName())
-            .setAttribute(UrlAttributes.URL_PATH, routerRequest.path())
-            .setAttribute(HttpAttributes.HTTP_ROUTE, template);
+            .setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method())
+            .setAttribute(UrlAttributes.URL_SCHEME, request.scheme())
+            .setAttribute(ServerAttributes.SERVER_ADDRESS, request.host())
+            .setAttribute(UrlAttributes.URL_PATH, request.path())
+            .setAttribute(HttpAttributes.HTTP_ROUTE, request.pathTemplate());
         for (var attribute : config.tracing().attributes().entrySet()) {
             span.setAttribute(attribute.getKey(), attribute.getValue());
         }

@@ -8,7 +8,8 @@ import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 class ExtensionTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {
         return super.commonImports() + """
-            import io.koraframework.http.server.common.handler.*
+            import io.koraframework.http.server.common.request.*
+            import io.koraframework.http.server.common.response.*
             import io.koraframework.http.server.common.*
             import io.koraframework.http.common.*
             """.trimIndent()

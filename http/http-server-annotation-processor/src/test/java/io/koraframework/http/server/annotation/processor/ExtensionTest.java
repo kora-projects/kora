@@ -7,10 +7,12 @@ import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import java.util.List;
 
 public class ExtensionTest extends AbstractAnnotationProcessorTest {
+
     @Override
     protected String commonImports() {
         return super.commonImports() + """
-            import io.koraframework.http.server.common.handler.*;
+            import io.koraframework.http.server.common.request.*;
+            import io.koraframework.http.server.common.response.*;
             import io.koraframework.http.server.common.*;
             import io.koraframework.http.common.*;
             """;

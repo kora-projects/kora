@@ -5,8 +5,8 @@ import okhttp3.RequestBody;
 import okio.BufferedSink;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.http.client.common.HttpClientConnectionException;
-import io.koraframework.http.client.common.HttpClientEncoderException;
+import io.koraframework.http.client.common.exception.HttpClientConnectionException;
+import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.common.body.HttpBodyOutput;
 
 import java.io.IOException;

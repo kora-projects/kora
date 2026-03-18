@@ -11,6 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 public class ServerRequestMapperGenerator extends AbstractJavaGenerator<OperationsMap> {
+
+    public static final ClassName MULTIPART_READER = ClassName.get("io.koraframework.http.server.common.request.form", "MultipartReaderUtils");
+    public static final ClassName FORM_URL_ENCODED_MAPPER = ClassName.get("io.koraframework.http.server.common.request.mapper", "FormUrlEncodedServerRequestMapper");
+
     @Override
     public JavaFile generate(OperationsMap ctx) {
         var b = TypeSpec.interfaceBuilder(ctx.get("classname") + "ServerRequestMappers")
@@ -89,7 +93,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             }
             b.addStatement("var $N = ($T) null", formParam.paramName, type);
         }
-        b.addStatement("var _parts = $T.read(rq)", ClassName.get("io.koraframework.http.server.common.form", "MultipartReader"));
+        b.addStatement("var _parts = $T.read(rq)", MULTIPART_READER);
         b.beginControlFlow("for (var _part : _parts) switch(_part.name())");
         for (var formParam : op.formParams) {
             b.beginControlFlow("case $S -> ", formParam.baseName);
@@ -132,7 +136,7 @@ public class ServerRequestMapperGenerator extends AbstractJavaGenerator<Operatio
         b.beginControlFlow("try (var _body = rq.body(); var _is = _body.asInputStream())");
         b.addStatement("var _bytes = _is.readAllBytes()");
         b.addStatement("var _bodyString = new $T(_bytes, $T.UTF_8)", String.class, StandardCharsets.class);
-        b.addStatement("var _formData = $T.read(_bodyString);", ClassName.get("io.koraframework.http.server.common.form", "FormUrlEncodedServerRequestMapper"));
+        b.addStatement("var _formData = $T.read(_bodyString);", FORM_URL_ENCODED_MAPPER);
         for (var p : op.formParams) {
             var type = asType(p);
             var partName = "_" + p.paramName + "_part";

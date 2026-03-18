@@ -1,7 +1,7 @@
 package io.koraframework.http.client.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import io.koraframework.http.client.common.HttpClientResponseException;
+import io.koraframework.http.client.common.exception.HttpClientResponseException;
 
 import java.util.List;
 

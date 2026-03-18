@@ -1,5 +1,6 @@
 package io.koraframework.camunda.rest.telemetry;
 
+import io.koraframework.http.server.undertow.request.UndertowHttpRouterRequest;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -11,10 +12,9 @@ import io.undertow.server.HttpServerExchange;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.router.LazyRequest;
+import io.koraframework.http.server.common.request.RouterHttpServerRequest;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
-import io.koraframework.http.server.undertow.request.UndertowPublicApiRequest;
 
 import java.util.Map;
 import java.util.Objects;
@@ -69,8 +69,8 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
         this.route = route;
         this.pathParams = pathParams;
         if (route != null && this.config.logging().enabled()) {
-            var request = new LazyRequest(
-                new UndertowPublicApiRequest(this.exchange),
+            var request = new RouterHttpServerRequest(
+                new UndertowHttpRouterRequest(this.exchange),
                 pathParams,
                 route
             );
@@ -111,8 +111,8 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
 
     protected void writeLog(long processingTime) {
         if (route != null && this.config.logging().enabled()) {
-            var request = new LazyRequest(
-                new UndertowPublicApiRequest(exchange),
+            var request = new RouterHttpServerRequest(
+                new UndertowHttpRouterRequest(exchange),
                 pathParams,
                 route
             );

@@ -2,11 +2,12 @@ package io.koraframework.http.server.common.telemetry.impl;
 
 import io.opentelemetry.api.trace.Span;
 import io.koraframework.http.common.HttpResultCode;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.HttpServerResponse;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 
 public final class NoopHttpServerObservation implements HttpServerObservation {
+
     public static final HttpServerObservation INSTANCE = new NoopHttpServerObservation();
 
     @Override
@@ -30,12 +31,12 @@ public final class NoopHttpServerObservation implements HttpServerObservation {
     }
 
     @Override
-    public HttpServerRequest observeRequest(HttpServerRequest rq) {
-        return rq;
+    public HttpServerRequest observeRequest(HttpServerRequest request) {
+        return request;
     }
 
     @Override
-    public HttpServerResponse observeResponse(HttpServerResponse rs) {
-        return rs;
+    public HttpServerResponse observeResponse(HttpServerResponse response) {
+        return response;
     }
 }

@@ -1,6 +1,9 @@
 package io.koraframework.http.client.common;
 
 import ch.qos.logback.classic.Level;
+import io.koraframework.http.client.common.exception.HttpClientConnectionException;
+import io.koraframework.http.client.common.exception.HttpClientEncoderException;
+import io.koraframework.http.client.common.exception.HttpClientTimeoutException;
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.MethodOrderer;
@@ -33,11 +36,11 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         ctx.getLogger("io.koraframework.http.client").setLevel(Level.OFF);
         var expectedRequest = request("/")
             .withMethod(POST)
-            .withHeader("Content-Type", "text/plain; charset=UTF-8")
+            .withHeader("Content-Type", "text/plain;charset=UTF-8")
             .withBody("test-request", StandardCharsets.UTF_8);
         server.when(expectedRequest).respond(response()
             .withBody("test-response", StandardCharsets.UTF_8)
-            .withHeaders(Header.header("Content-type", "text/plain; charset=UTF-8"))
+            .withHeaders(Header.header("Content-type", "text/plain;charset=UTF-8"))
         );
 
         var request = HttpClientRequest.post("/")
@@ -46,7 +49,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         call(request)
             .assertCode(200)
-            .assertHeader("Content-type", "text/plain; charset=UTF-8")
+            .assertHeader("Content-type", "text/plain;charset=UTF-8")
             .assertBody()
             .asString(StandardCharsets.UTF_8)
             .isEqualTo("test-response");
@@ -71,7 +74,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         server.when(request("/")).respond(response()
             .withBody(new String(responseBody, StandardCharsets.ISO_8859_1), StandardCharsets.ISO_8859_1)
-            .withHeaders(Header.header("Content-type", "text/plain; charset=ISO_8859_1"))
+            .withHeaders(Header.header("Content-type", "text/plain;charset=ISO_8859_1"))
         );
 
         var request = HttpClientRequest.post("/")
@@ -80,7 +83,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
 
         call(request)
             .assertCode(200)
-            .assertHeader("Content-type", "text/plain; charset=ISO_8859_1")
+            .assertHeader("Content-type", "text/plain;charset=ISO_8859_1")
             .assertBody()
             .isEqualTo(responseBody);
     }
@@ -108,7 +111,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         server.when(expectedRequest).respond(response()
             .withDelay(TimeUnit.SECONDS, 2)
             .withBody("test", StandardCharsets.ISO_8859_1)
-            .withHeaders(Header.header("Content-type", "text/plain; charset=ISO_8859_1"))
+            .withHeaders(Header.header("Content-type", "text/plain;charset=ISO_8859_1"))
         );
 
         var request = HttpClientRequest.post("/")
@@ -128,7 +131,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         server.when(expectedRequest).respond(response()
             .withDelay(TimeUnit.MILLISECONDS, 300)
             .withBody("test", StandardCharsets.ISO_8859_1)
-            .withHeaders(Header.header("Content-type", "text/plain; charset=ISO_8859_1"))
+            .withHeaders(Header.header("Content-type", "text/plain;charset=ISO_8859_1"))
         );
 
         var request = HttpClientRequest.post("/")
@@ -151,7 +154,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         );
         server.when(expectedRequest).respond(response()
             .withBody("test", StandardCharsets.ISO_8859_1)
-            .withHeaders(Header.header("Content-type", "text/plain; charset=ISO_8859_1"))
+            .withHeaders(Header.header("Content-type", "text/plain;charset=ISO_8859_1"))
         );
 
         var request = HttpClientRequest.post("/")
@@ -167,7 +170,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         ctx.getLogger("io.koraframework.http.client").setLevel(Level.OFF);
 
         var request = HttpClientRequest.post("http://google.com:1488/foo/{bar}/baz")
-            .templateParam("bar", "rab")
+            .pathParam("bar", "rab")
             .body(HttpBody.plaintext("test-request"))
             .build();
 

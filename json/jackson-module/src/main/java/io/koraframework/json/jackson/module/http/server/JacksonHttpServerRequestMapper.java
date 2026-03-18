@@ -1,9 +1,9 @@
 package io.koraframework.json.jackson.module.http.server;
 
 import io.koraframework.common.util.ByteBufferInputStream;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.HttpServerResponseException;
-import io.koraframework.http.server.common.handler.HttpServerRequestMapper;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
+import io.koraframework.http.server.common.request.HttpServerRequestMapper;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.ObjectReader;

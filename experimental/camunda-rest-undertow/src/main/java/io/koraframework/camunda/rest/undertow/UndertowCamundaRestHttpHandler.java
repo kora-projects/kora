@@ -10,6 +10,7 @@ import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.server.undertow.UndertowContext;
 import io.koraframework.http.server.undertow.UndertowExchangeProcessor;
+import io.koraframework.http.server.undertow.UndertowHttpHandler;
 import io.koraframework.http.server.undertow.UndertowHttpServer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.undertow.server.HttpHandler;
@@ -150,7 +151,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
 
         root.addPrefixPath("/", new OpenApiHttpHandler(camundaRestConfig));
         this.realhttpHandler = exchange -> {
-            var executor = UndertowHttpServer.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "camunda-rest");
+            var executor = UndertowHttpHandler.getOrCreateExecutor(exchange, executorServiceAttachmentKey, "camunda-rest");
             exchange.dispatch(executor, root);
         };
 

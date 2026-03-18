@@ -7,9 +7,9 @@ import org.mockito.Mockito;
 import io.koraframework.common.util.Size;
 import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueExtractor;
 import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.HttpServerResponse;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandlerImpl;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
+import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 
 import java.time.Duration;
 import java.util.List;
