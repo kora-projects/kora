@@ -96,4 +96,40 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(draw.nodes).hasSize(5)
     }
 
+
+    @Test
+    fun testGraphDependency() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root1(graph: Graph): String { return ""; }
+            
+                @Root
+                fun root2(graph: RefreshableGraph): String { return ""; }
+            }
+            """
+        );
+        Assertions.assertThat(draw.nodes).hasSize(2);
+        draw.init();
+    }
+
+    @Test
+    fun testNodeDependency() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root1(node: Node<String>): Any { return ""; }
+            
+                fun component(): String { return ""; }
+            }
+            """
+        );
+        Assertions.assertThat(draw.nodes).hasSize(2);
+        draw.init();
+    }
+
 }

@@ -16,7 +16,12 @@ data class DependencyClaim(val type: KSType, val tag: String?, val claimType: De
         TYPE_REF,
         ALL,
         ALL_OF_VALUE,
-        ALL_OF_PROMISE
+        ALL_OF_PROMISE,
+
+        GRAPH,
+
+        // todo nullable node of
+        NODE_OF,
     }
 
     fun tagMatches(other: String?) = tag.tagMatches(other)

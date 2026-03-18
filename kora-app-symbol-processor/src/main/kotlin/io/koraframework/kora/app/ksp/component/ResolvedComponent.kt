@@ -89,6 +89,8 @@ class ResolvedComponent(
                         d.component?.addParentCondition(condition)
                     }
                 }
+
+                is ComponentDependency.GraphDependency -> {}
             }
         }
     }

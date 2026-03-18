@@ -51,10 +51,10 @@ object GraphResolutionHelper {
             TargetDependency(dependencyClaim, resolvedComponent)
 
         return when (dependencyClaim.claimType) {
-            ONE_REQUIRED, NULLABLE_ONE -> targetDependency
+            ONE_REQUIRED, NULLABLE_ONE, NODE_OF -> targetDependency
             PROMISE_OF, NULLABLE_PROMISE_OF -> PromiseOfDependency(dependencyClaim, targetDependency)
             VALUE_OF, NULLABLE_VALUE_OF -> ValueOfDependency(dependencyClaim, targetDependency)
-            ALL, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF -> throw java.lang.IllegalStateException()
+            ALL, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF, GRAPH -> throw java.lang.IllegalStateException()
         }
     }
 

@@ -74,11 +74,21 @@ object ComponentDependencyHelper {
                 )
             )
         }
+        if (typeName == CommonClassNames.graph || typeName == CommonClassNames.refreshableGraph) {
+            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.GRAPH)
+        }
         if (typeName is ParameterizedTypeName) {
             val firstTypeParam = parameterType.arguments[0].type!!.resolve()
             if (typeName.rawType == CommonClassNames.typeRef) {
                 return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.TYPE_REF)
             }
+            if (typeName.rawType.canonicalName == CommonClassNames.node.canonicalName) {
+                if (firstTypeParam.isMarkedNullable) {
+                    throw ProcessingErrorException("Nullable arguments to node are not allowed", element)
+                }
+                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NODE_OF);
+            }
+
             if (typeName.rawType == CommonClassNames.all) {
                 val allOf = typeName.typeArguments[0]
                 if (allOf is ParameterizedTypeName) {

@@ -65,7 +65,11 @@ sealed interface ComponentDependency {
         }
 
         is TargetDependency -> {
-            CodeBlock.of("it.get(%N.%N)", component.holderName, component.fieldName)
+            if (claim.claimType == DependencyClaim.DependencyClaimType.NODE_OF) {
+                CodeBlock.of("%N.%N", component.holderName, component.fieldName)
+            } else {
+                CodeBlock.of("it.get(%N.%N)", component.holderName, component.fieldName)
+            }
         }
 
         is ValueOfDependency -> {
@@ -120,6 +124,8 @@ sealed interface ComponentDependency {
             }
             b.add(")").build()
         }
+
+        is GraphDependency -> CodeBlock.of("it")
     }
 
     sealed interface SingleDependency : ComponentDependency {
@@ -173,6 +179,8 @@ sealed interface ComponentDependency {
             }
         }
     }
+
+    data class GraphDependency(override val claim: DependencyClaim) : ComponentDependency
 
     data class AllOfDependency(override val claim: DependencyClaim) : ComponentDependency {
         val resolvedDependencies: MutableList<SingleDependency> = ArrayList()

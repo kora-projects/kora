@@ -47,6 +47,8 @@ object CommonClassNames {
     val promiseOf = ClassName("io.koraframework.application.graph", "PromiseOf")
     val valueOf = ClassName("io.koraframework.application.graph", "ValueOf")
     val applicationGraphDraw = ClassName("io.koraframework.application.graph", "ApplicationGraphDraw")
+    val graph = ClassName("io.koraframework.application.graph", "Graph")
+    val refreshableGraph = ClassName("io.koraframework.application.graph", "RefreshableGraph")
     val graphInterceptor = ClassName("io.koraframework.application.graph", "GraphInterceptor")
     val graphCondition = ClassName("io.koraframework.application.graph", "GraphCondition")
     val promisedProxy = ClassName("io.koraframework.common", "PromisedProxy")

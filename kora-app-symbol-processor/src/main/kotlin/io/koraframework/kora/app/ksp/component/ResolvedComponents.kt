@@ -46,6 +46,7 @@ class ResolvedComponents() {
                 is ComponentDependency.PromiseOfDependency -> 0
                 is ComponentDependency.TypeOfDependency -> 0
                 is ComponentDependency.NullDependency -> 0
+                is ComponentDependency.GraphDependency -> 0
                 is ComponentDependency.AllOfDependency -> dependency.resolvedDependencies.maxOfOrNull { maxDependencyIndex(it) } ?: 0
                 is ComponentDependency.OneOfDependency -> dependency.dependencies.maxOfOrNull { maxDependencyIndex(it) } ?: 0
                 is ComponentDependency.TargetDependency -> dependency.component.index

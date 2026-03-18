@@ -41,6 +41,7 @@ public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyC
         NULLABLE_PROMISE_OF,
         TYPE_REF,
         GRAPH,
+        // todo nullable node of
         NODE_OF,
         ALL_OF_ONE,
         ALL_OF_VALUE,

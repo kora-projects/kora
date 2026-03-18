@@ -156,6 +156,11 @@ class GraphBuilder {
                     resolvedDependencies.add(ComponentDependency.TypeOfDependency(dependencyClaim))
                     continue@dependency
                 }
+                if (dependencyClaim.claimType == GRAPH) {
+                    resolvedDependencies.add(ComponentDependency.GraphDependency(dependencyClaim));
+                    continue@dependency
+                }
+
                 val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependencyClaim)
                 if (!dependencyDeclarations.isEmpty()) {
                     val dependencyDeclaration: DeclarationWithIndex

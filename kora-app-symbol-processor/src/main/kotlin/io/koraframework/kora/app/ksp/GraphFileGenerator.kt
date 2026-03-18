@@ -291,6 +291,8 @@ class GraphFileGenerator(
                     }
 
                 }
+
+                is ComponentDependency.GraphDependency -> {}
             }
         }
         val b = CodeBlock.builder()
@@ -350,7 +352,7 @@ class GraphFileGenerator(
                         }
                     }
                 }
-
+                is ComponentDependency.GraphDependency -> {}
             }
         }
         val b = CodeBlock.builder()
