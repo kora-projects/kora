@@ -59,7 +59,7 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
         reset(httpClient)
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
-        Assertions.assertThatThrownBy { client.invoke<Unit>("request") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<Unit>("request") }.isInstanceOf(HttpClientResponseException::class.java)
     }
 
     @Test
@@ -93,7 +93,7 @@ class BlockingApiTest : AbstractHttpClientTest() {
         reset(httpClient, mapper)
 
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(500) }
-        Assertions.assertThatThrownBy { client.invoke<String>("request") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<String>("request") }.isInstanceOf(HttpClientResponseException::class.java)
         Mockito.verify(mapper, Mockito.never()).apply(ArgumentMatchers.any())
     }
 
@@ -235,7 +235,7 @@ class BlockingApiTest : AbstractHttpClientTest() {
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
         Assertions.assertThatThrownBy { client.invoke<String>("request") }
-            .isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+            .isInstanceOf(HttpClientResponseException::class.java)
     }
 
     @Test
@@ -264,11 +264,11 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
-        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(HttpClientResponseException::class.java)
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
-        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(HttpClientResponseException::class.java)
     }
 
     @Test
@@ -299,11 +299,11 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(200) }
-        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(HttpClientResponseException::class.java)
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(500) }
-        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<String>("test") }.isInstanceOf(HttpClientResponseException::class.java)
     }
 
     @Test
@@ -347,7 +347,7 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
-        Assertions.assertThatThrownBy { client.invoke<Any>("test") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<Any>("test") }.isInstanceOf(HttpClientResponseException::class.java)
     }
 
     @Test
@@ -387,7 +387,7 @@ class BlockingApiTest : AbstractHttpClientTest() {
 
         reset(httpClient)
         onRequest("GET", "http://test-url:8080/test") { rs -> rs.withCode(201) }
-        Assertions.assertThatThrownBy { client.invoke<Any>("test") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientResponseException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<Any>("test") }.isInstanceOf(HttpClientResponseException::class.java)
     }
 
     @Test
@@ -414,7 +414,7 @@ class BlockingApiTest : AbstractHttpClientTest() {
         whenever(mapper.apply(ArgumentMatchers.any()))
             .thenAnswer { throw Exception() }
         onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
-        Assertions.assertThatThrownBy { client.invoke<Unit>("request", "test-value") }.isInstanceOf(_root_ide_package_.io.koraframework.http.client.common.exception.HttpClientEncoderException::class.java)
+        Assertions.assertThatThrownBy { client.invoke<Unit>("request", "test-value") }.isInstanceOf(HttpClientEncoderException::class.java)
         Mockito.verify(mapper).apply(ArgumentMatchers.eq("test-value"))
     }
 
