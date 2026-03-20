@@ -49,6 +49,40 @@ interface {{classname}}ClientResponseMappers {
   }
 
   {{/responses}}
+  {{#vendorExtensions.plainResponse}}
+
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper(
+    {{#vendorExtensions.plainResponseHasBody}}{{#vendorExtensions.hasPlainSuccessMapperTag}}@{{vendorExtensions.plainSuccessMapperTag}} {{/vendorExtensions.hasPlainSuccessMapperTag}}private val successMapper: HttpClientResponseMapper<CompletionStage<{{{vendorExtensions.plainResponseType}}}>>{{#vendorExtensions.hasPlainErrorResponses}},{{/vendorExtensions.hasPlainErrorResponses}}{{/vendorExtensions.plainResponseHasBody}}
+    {{#vendorExtensions.plainErrorResponses}}{{#hasMapperTag}}@{{mapperTag}} {{/hasMapperTag}}private val error{{code}}Mapper: HttpClientResponseMapper<CompletionStage<{{{dataType}}}>>{{#hasMore}},{{/hasMore}}{{/vendorExtensions.plainErrorResponses}}
+  ) : HttpClientResponseMapper<CompletionStage<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Unit{{/vendorExtensions.plainResponseHasBody}}>> {
+
+    override fun apply(response: HttpClientResponse): CompletionStage<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Unit{{/vendorExtensions.plainResponseHasBody}}> {
+      val code = response.code()
+      if (code in 200..299) {
+        {{#vendorExtensions.plainResponseHasBody}}return successMapper.apply(response){{/vendorExtensions.plainResponseHasBody}}
+        {{^vendorExtensions.plainResponseHasBody}}return CompletableFuture.completedFuture(null){{/vendorExtensions.plainResponseHasBody}}
+      }
+      {{#vendorExtensions.plainErrorResponses}}
+      {{^isDefault}}
+      if (code == {{code}}) {
+        return this.error{{code}}Mapper.apply(response)
+          .thenApply { body -> throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body) }
+      }
+      {{/isDefault}}
+      {{/vendorExtensions.plainErrorResponses}}
+      {{#vendorExtensions.plainErrorResponses}}
+      {{#isDefault}}
+      return this.errordefaultMapper.apply(response)
+        .thenApply { body -> throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body) }
+      {{/isDefault}}
+      {{/vendorExtensions.plainErrorResponses}}
+      {{^vendorExtensions.hasPlainErrorResponses}}
+      return CompletableFuture.failedFuture(ru.tinkoff.kora.http.client.common.HttpClientResponseException.ofRaw(response))
+      {{/vendorExtensions.hasPlainErrorResponses}}
+    }
+  }
+  {{/vendorExtensions.plainResponse}}
 {{/operation}}
 {{/operations}}
 }

@@ -32,6 +32,42 @@ interface {{classname}}ClientResponseMappers {
     }
   }
   {{/responses}}
+  {{#vendorExtensions.plainResponse}}
+
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+  class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper(
+    {{#vendorExtensions.plainResponseHasBody}}{{#vendorExtensions.hasPlainSuccessMapperTag}}@{{vendorExtensions.plainSuccessMapperTag}} {{/vendorExtensions.hasPlainSuccessMapperTag}}private val successMapper: HttpClientResponseMapper<{{{vendorExtensions.plainResponseType}}}>{{#vendorExtensions.hasPlainErrorResponses}},{{/vendorExtensions.hasPlainErrorResponses}}{{/vendorExtensions.plainResponseHasBody}}
+    {{#vendorExtensions.plainErrorResponses}}{{#hasMapperTag}}@{{mapperTag}} {{/hasMapperTag}}private val error{{code}}Mapper: HttpClientResponseMapper<{{{dataType}}}>{{#hasMore}},{{/hasMore}}{{/vendorExtensions.plainErrorResponses}}
+  ) : HttpClientResponseMapper<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Unit{{/vendorExtensions.plainResponseHasBody}}> {
+
+    override fun apply(response: HttpClientResponse): {{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Unit{{/vendorExtensions.plainResponseHasBody}} {
+      val code = response.code()
+      if (code in 200..299) {
+        {{#vendorExtensions.plainResponseHasBody}}return successMapper.apply(response){{/vendorExtensions.plainResponseHasBody}}
+        {{^vendorExtensions.plainResponseHasBody}}return{{/vendorExtensions.plainResponseHasBody}}
+      }
+      {{#vendorExtensions.plainErrorResponses}}
+      {{^isDefault}}
+      if (code == {{code}}) {
+        val body = this.error{{code}}Mapper.apply(response)
+        throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body)
+      }
+      {{/isDefault}}
+      {{/vendorExtensions.plainErrorResponses}}
+      {{#vendorExtensions.plainErrorResponses}}
+      {{#isDefault}}
+      run {
+        val body = this.errordefaultMapper.apply(response)
+        throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body)
+      }
+      {{/isDefault}}
+      {{/vendorExtensions.plainErrorResponses}}
+      {{^vendorExtensions.hasPlainErrorResponses}}
+      throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.ofRaw(response)
+      {{/vendorExtensions.hasPlainErrorResponses}}
+    }
+  }
+  {{/vendorExtensions.plainResponse}}
 {{/operation}}
 {{/operations}}
 }

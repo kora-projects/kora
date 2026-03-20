@@ -9,7 +9,7 @@ package {{package}}
 {{/imports}}
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-interface {{classname}}Responses { {{#operations}}{{#operation}}{{#vendorExtensions.singleResponse}}{{#responses}}
+interface {{classname}}Responses { {{#operations}}{{#operation}}{{^vendorExtensions.plainResponse}}{{#vendorExtensions.singleResponse}}{{#responses}}
 
   /** {{message}} (status code {{code}}) */
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
@@ -39,7 +39,7 @@ interface {{classname}}Responses { {{#operations}}{{#operation}}{{#vendorExtensi
       {{/-last}}{{/headers}}) : {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse
     {{/responses}}
   }
-{{/vendorExtensions.singleResponse}}
+{{/vendorExtensions.singleResponse}}{{/vendorExtensions.plainResponse}}
 {{/operation}}
 {{/operations}}
 }
