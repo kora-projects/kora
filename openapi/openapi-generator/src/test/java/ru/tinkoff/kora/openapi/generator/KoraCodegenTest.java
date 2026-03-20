@@ -55,6 +55,7 @@ class KoraCodegenTest {
             @Nullable
             private String implicitHeadersRegex;
             private boolean defaultDelegate;
+            private boolean plainResponse;
 
             public boolean authAsArg() {return authAsArg;}
 
@@ -105,6 +106,13 @@ class KoraCodegenTest {
                 this.defaultDelegate = defaultDelegate;
                 return this;
             }
+
+            public boolean plainResponse() {return plainResponse;}
+
+            public Options setPlainResponse(boolean plainResponse) {
+                this.plainResponse = plainResponse;
+                return this;
+            }
         }
     }
 
@@ -142,6 +150,7 @@ class KoraCodegenTest {
             "/example/petstoreV3_discriminator.yaml",
             "/example/petstoreV3_nullable.yaml",
             "/example/petstoreV3_filter.yaml",
+            "/example/petstoreV3_plain_response.yaml",
             "/example/petstoreV3.yaml",
             "/example/petstoreV2.yaml",
         };
@@ -169,6 +178,10 @@ class KoraCodegenTest {
 
                 if (name.equals("petstoreV3")) {
                     result.add(new SwaggerParams(mode, fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
+                }
+
+                if (name.equals("petstoreV3_plain_response") && !mode.contains("server")) {
+                    result.add(new SwaggerParams(mode, fileName, name + "_plain", new SwaggerParams.Options().setPlainResponse(true)));
                 }
 
                 if (fileName.contains("discriminator")
@@ -238,6 +251,10 @@ class KoraCodegenTest {
 
         if (options.implicitHeadersRegex() != null) {
             configurator.addAdditionalProperty("implicitHeadersRegex", options.implicitHeadersRegex());
+        }
+
+        if (options.plainResponse()) {
+            configurator.addAdditionalProperty("response", "plain");
         }
 
         if (spec.contains("_filter")) {

@@ -19,6 +19,7 @@ import java.util.concurrent.CompletableFuture
 interface {{classname}}ClientResponseMappers {
 {{#operations}}
 {{#operation}}
+  {{^vendorExtensions.plainResponse}}
   {{#responses}}
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}{{code}}ApiResponseMapper({{#dataType}}{{#vendorExtensions.hasMapperTag}}
@@ -49,6 +50,7 @@ interface {{classname}}ClientResponseMappers {
   }
 
   {{/responses}}
+  {{/vendorExtensions.plainResponse}}
   {{#vendorExtensions.plainResponse}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")

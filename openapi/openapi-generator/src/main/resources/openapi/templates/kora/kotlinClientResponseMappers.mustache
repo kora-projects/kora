@@ -16,6 +16,7 @@ import {{package}}.{{classname}}Responses.*
 interface {{classname}}ClientResponseMappers {
 {{#operations}}
 {{#operation}}
+  {{^vendorExtensions.plainResponse}}
   {{#responses}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
@@ -32,6 +33,7 @@ interface {{classname}}ClientResponseMappers {
     }
   }
   {{/responses}}
+  {{/vendorExtensions.plainResponse}}
   {{#vendorExtensions.plainResponse}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
