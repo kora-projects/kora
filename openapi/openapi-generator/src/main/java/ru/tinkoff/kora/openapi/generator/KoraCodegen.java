@@ -144,6 +144,18 @@ public class KoraCodegen extends DefaultCodegen {
         }
     }
 
+    enum ResponseStyle {
+        SEALED,
+        PLAIN;
+
+        static ResponseStyle of(String value) {
+            return switch (value.toLowerCase()) {
+                case "plain" -> PLAIN;
+                default -> SEALED;
+            };
+        }
+    }
+
     record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
     record Interceptor(@Nullable String type, @Nullable Object tag) {}
@@ -175,7 +187,8 @@ public class KoraCodegen extends DefaultCodegen {
         boolean implicitHeaders,
         @Nullable Pattern implicitHeadersRegex,
         boolean forceIncludeOptional,
-        boolean forceIncludeNonRequired
+        boolean forceIncludeNonRequired,
+        ResponseStyle responseStyle
     ) {
         static List<CliOption> cliOptions() {
             var cliOptions = new ArrayList<CliOption>();
@@ -196,6 +209,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
             cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
             cliOptions.add(CliOption.newString(FORCE_INCLUDE_NON_REQUIRED, "If enabled forces only NonRequired fields to be included ALWAYS even if null"));
+            cliOptions.add(CliOption.newString(RESPONSE_STYLE, "Response handling style: 'sealed' (default) wraps all responses in sealed interface, 'plain' returns success type directly and throws exception for errors. Only applies to client modes."));
             return cliOptions;
         }
 
@@ -220,6 +234,7 @@ public class KoraCodegen extends DefaultCodegen {
             Pattern implicitHeadersRegex = null;
             var forceIncludeOptional = false;
             var forceIncludeNonRequired = false;
+            var responseStyle = ResponseStyle.SEALED;
 
             if (additionalProperties.containsKey(CODEGEN_MODE)) {
                 codegenMode = Mode.ofMode(additionalProperties.get(CODEGEN_MODE).toString());
@@ -303,10 +318,17 @@ public class KoraCodegen extends DefaultCodegen {
             if (additionalProperties.containsKey(FORCE_INCLUDE_NON_REQUIRED)) {
                 forceIncludeNonRequired = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_NON_REQUIRED).toString());
             }
+            if (additionalProperties.containsKey(RESPONSE_STYLE)) {
+                if (codegenMode.isClient()) {
+                    responseStyle = ResponseStyle.of(additionalProperties.get(RESPONSE_STYLE).toString());
+                } else if ("plain".equalsIgnoreCase(additionalProperties.get(RESPONSE_STYLE).toString())) {
+                    System.err.println("[WARN] response=plain is only supported for client modes, ignoring for " + codegenMode);
+                }
+            }
 
             return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, authAllowMultiple, primaryAuth, clientConfigPrefix,
                 securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable,
-                filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex, forceIncludeOptional, forceIncludeNonRequired);
+                filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex, forceIncludeOptional, forceIncludeNonRequired, responseStyle);
         }
 
         void processAdditionalProperties(Map<String, Object> additionalProperties) {
@@ -375,6 +397,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String IMPLICIT_HEADERS_REGEX = "implicitHeadersRegex";
     public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
     public static final String FORCE_INCLUDE_NON_REQUIRED = "forceIncludeNonRequired";
+    public static final String RESPONSE_STYLE = "response";
 
     protected String invokerPackage = "org.openapitools";
     protected boolean fullJavaUtil;
