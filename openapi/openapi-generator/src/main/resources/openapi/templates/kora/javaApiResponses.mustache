@@ -10,7 +10,7 @@ package {{package}};
 import jakarta.annotation.Nullable;
 
 @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora"){{#discriminator}}{{>typeInfoAnnotation}}{{/discriminator}}
-public interface {{classname}}Responses { {{#operations}}{{#operation}}{{#vendorExtensions.singleResponse}}{{#responses}}
+public interface {{classname}}Responses { {{#operations}}{{#operation}}{{^vendorExtensions.plainResponse}}{{#vendorExtensions.singleResponse}}{{#responses}}
 
   /** {{message}} (status code {{code}}) */
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora")
@@ -39,5 +39,5 @@ public interface {{classname}}Responses { {{#operations}}{{#operation}}{{#vendor
         @Nullable {{/required}}String {{#lambda.camelcase}}{{nameInCamelCase}}{{/lambda.camelcase}}{{^-last}},{{/-last}}{{#-last}}
       {{/-last}}{{/headers}}) implements {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}ApiResponse {}
     {{/responses}}
-  } {{/vendorExtensions.singleResponse}}{{/operation}}{{/operations}}
+  } {{/vendorExtensions.singleResponse}}{{/vendorExtensions.plainResponse}}{{/operation}}{{/operations}}
 }

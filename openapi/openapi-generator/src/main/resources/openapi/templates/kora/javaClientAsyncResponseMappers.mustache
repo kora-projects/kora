@@ -56,6 +56,53 @@ public interface {{classname}}ClientResponseMappers {
   }
 
   {{/responses}}
+  {{#vendorExtensions.plainResponse}}
+
+  @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper implements HttpClientResponseMapper<CompletionStage<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Void{{/vendorExtensions.plainResponseHasBody}}>>{
+    {{#vendorExtensions.plainResponseHasBody}}
+    private final HttpClientResponseMapper<CompletionStage<{{{vendorExtensions.plainResponseType}}}>> successMapper;
+    {{/vendorExtensions.plainResponseHasBody}}
+    {{#vendorExtensions.plainErrorResponses}}
+    private final HttpClientResponseMapper<CompletionStage<{{{dataType}}}>> error{{code}}Mapper;
+    {{/vendorExtensions.plainErrorResponses}}
+
+    public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper(
+      {{#vendorExtensions.plainResponseHasBody}}{{#vendorExtensions.hasPlainSuccessMapperTag}}@{{vendorExtensions.plainSuccessMapperTag}} {{/vendorExtensions.hasPlainSuccessMapperTag}}HttpClientResponseMapper<CompletionStage<{{{vendorExtensions.plainResponseType}}}>> successMapper{{#vendorExtensions.hasPlainErrorResponses}},{{/vendorExtensions.hasPlainErrorResponses}}{{/vendorExtensions.plainResponseHasBody}}
+      {{#vendorExtensions.plainErrorResponses}}{{#hasMapperTag}}@{{mapperTag}} {{/hasMapperTag}}HttpClientResponseMapper<CompletionStage<{{{dataType}}}>> error{{code}}Mapper{{#hasMore}},{{/hasMore}}{{/vendorExtensions.plainErrorResponses}}
+    ) {
+      {{#vendorExtensions.plainResponseHasBody}}this.successMapper = successMapper;{{/vendorExtensions.plainResponseHasBody}}
+      {{#vendorExtensions.plainErrorResponses}}this.error{{code}}Mapper = error{{code}}Mapper;
+      {{/vendorExtensions.plainErrorResponses}}
+    }
+
+    @Override
+    public CompletionStage<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Void{{/vendorExtensions.plainResponseHasBody}}> apply(HttpClientResponse response) throws java.io.IOException {
+      var code = response.code();
+      if (code >= 200 && code < 300) {
+        {{#vendorExtensions.plainResponseHasBody}}return successMapper.apply(response);{{/vendorExtensions.plainResponseHasBody}}
+        {{^vendorExtensions.plainResponseHasBody}}return CompletableFuture.completedFuture(null);{{/vendorExtensions.plainResponseHasBody}}
+      }
+      {{#vendorExtensions.plainErrorResponses}}
+      {{^isDefault}}
+      if (code == {{code}}) {
+        return this.error{{code}}Mapper.apply(response)
+          .thenApply(body -> { throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body); });
+      }
+      {{/isDefault}}
+      {{/vendorExtensions.plainErrorResponses}}
+      {{#vendorExtensions.plainErrorResponses}}
+      {{#isDefault}}
+      return this.errordefaultMapper.apply(response)
+        .thenApply(body -> { throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body); });
+      {{/isDefault}}
+      {{/vendorExtensions.plainErrorResponses}}
+      {{^vendorExtensions.hasPlainErrorResponses}}
+      return CompletableFuture.failedFuture(ru.tinkoff.kora.http.client.common.HttpClientResponseException.ofRaw(response));
+      {{/vendorExtensions.hasPlainErrorResponses}}
+    }
+  }
+  {{/vendorExtensions.plainResponse}}
 {{/operation}}
 {{/operations}}
 }
