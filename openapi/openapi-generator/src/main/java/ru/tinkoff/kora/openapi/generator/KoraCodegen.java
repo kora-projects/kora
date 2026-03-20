@@ -2548,6 +2548,71 @@ public class KoraCodegen extends DefaultCodegen {
             for (var response : op.responses) {
                 response.vendorExtensions.put("singleResponse", op.responses.size() == 1);
             }
+
+            // Plain response mode
+            var isPlainResponse = false;
+            if (params.responseStyle() == ResponseStyle.PLAIN && params.codegenMode().isClient()) {
+                // Collect distinct 2xx data types
+                var successDataTypes = op.responses.stream()
+                    .filter(r -> !r.isDefault && r.code != null && r.code.startsWith("2"))
+                    .map(r -> r.dataType)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .toList();
+
+                if (successDataTypes.size() <= 1) {
+                    isPlainResponse = true;
+
+                    // Find the primary 2xx response
+                    var successResponse = op.responses.stream()
+                        .filter(r -> !r.isDefault && r.code != null && r.code.startsWith("2") && r.dataType != null)
+                        .findFirst()
+                        .orElse(null);
+
+                    op.vendorExtensions.put("plainResponse", true);
+                    if (successResponse != null) {
+                        op.vendorExtensions.put("plainResponseType", successResponse.dataType);
+                        op.vendorExtensions.put("plainResponseHasBody", true);
+                        // Success mapper tag (for @Json annotation on success mapper constructor param)
+                        op.vendorExtensions.put("hasPlainSuccessMapperTag",
+                            successResponse.vendorExtensions.getOrDefault("hasMapperTag", false));
+                        op.vendorExtensions.put("plainSuccessMapperTag",
+                            successResponse.vendorExtensions.getOrDefault("mapperTag", params.jsonAnnotation));
+                    } else {
+                        op.vendorExtensions.put("plainResponseHasBody", false);
+                        op.vendorExtensions.put("hasPlainSuccessMapperTag", false);
+                    }
+
+                    // Collect error responses with described schemas
+                    var errorResponses = new ArrayList<Map<String, Object>>();
+                    for (var response : op.responses) {
+                        if (response.isDefault || (response.code != null && !response.code.startsWith("2"))) {
+                            if (response.dataType != null) {
+                                var errorEntry = new HashMap<String, Object>();
+                                errorEntry.put("code", response.isDefault ? "default" : response.code);
+                                errorEntry.put("isDefault", response.isDefault);
+                                errorEntry.put("dataType", response.dataType);
+                                errorEntry.put("hasMapperTag", response.vendorExtensions.getOrDefault("hasMapperTag", false));
+                                errorEntry.put("mapperTag", response.vendorExtensions.getOrDefault("mapperTag", params.jsonAnnotation));
+                                if (!errorResponses.isEmpty()) {
+                                    errorResponses.get(errorResponses.size() - 1).put("hasMore", true);
+                                }
+                                errorEntry.put("hasMore", false);
+                                errorResponses.add(errorEntry);
+                            }
+                        }
+                    }
+                    op.vendorExtensions.put("plainErrorResponses", errorResponses);
+                    op.vendorExtensions.put("hasPlainErrorResponses", !errorResponses.isEmpty());
+                }
+            }
+            if (!isPlainResponse) {
+                op.vendorExtensions.put("plainResponse", false);
+            }
+            for (var response : op.responses) {
+                response.vendorExtensions.put("plainResponse", isPlainResponse);
+            }
+
             if (op.hasAuthMethods) {
                 var operationAuthMethods = new TreeSet<String>();
                 for (var authMethod : op.authMethods) {
