@@ -51,19 +51,18 @@ interface {{classname}}ClientResponseMappers {
 
   {{/responses}}
   {{/vendorExtensions.plainResponse}}
-  {{#vendorExtensions.plainResponse}}
+  {{#vendorExtensions.plainResponse}}{{#vendorExtensions.plainResponseHasBody}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
   class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper(
-    {{#vendorExtensions.plainResponseHasBody}}{{#vendorExtensions.hasPlainSuccessMapperTag}}@{{vendorExtensions.plainSuccessMapperTag}} {{/vendorExtensions.hasPlainSuccessMapperTag}}private val successMapper: HttpClientResponseMapper<CompletionStage<{{{vendorExtensions.plainResponseType}}}>>{{#vendorExtensions.hasPlainErrorResponses}},{{/vendorExtensions.hasPlainErrorResponses}}{{/vendorExtensions.plainResponseHasBody}}
+    {{#vendorExtensions.hasPlainSuccessMapperTag}}@{{vendorExtensions.plainSuccessMapperTag}} {{/vendorExtensions.hasPlainSuccessMapperTag}}private val successMapper: HttpClientResponseMapper<CompletionStage<{{{vendorExtensions.plainResponseType}}}>>{{#vendorExtensions.hasPlainErrorResponses}},{{/vendorExtensions.hasPlainErrorResponses}}
     {{#vendorExtensions.plainErrorResponses}}{{#hasMapperTag}}@{{mapperTag}} {{/hasMapperTag}}private val error{{code}}Mapper: HttpClientResponseMapper<CompletionStage<{{{dataType}}}>>{{#hasMore}},{{/hasMore}}{{/vendorExtensions.plainErrorResponses}}
-  ) : HttpClientResponseMapper<CompletionStage<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Unit{{/vendorExtensions.plainResponseHasBody}}>> {
+  ) : HttpClientResponseMapper<CompletionStage<{{{vendorExtensions.plainResponseType}}}>> {
 
-    override fun apply(response: HttpClientResponse): CompletionStage<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Unit{{/vendorExtensions.plainResponseHasBody}}> {
+    override fun apply(response: HttpClientResponse): CompletionStage<{{{vendorExtensions.plainResponseType}}}> {
       val code = response.code()
       if (code in 200..299) {
-        {{#vendorExtensions.plainResponseHasBody}}return successMapper.apply(response){{/vendorExtensions.plainResponseHasBody}}
-        {{^vendorExtensions.plainResponseHasBody}}return CompletableFuture.completedFuture(null){{/vendorExtensions.plainResponseHasBody}}
+        return successMapper.apply(response)
       }
       {{#vendorExtensions.plainErrorResponses}}
       {{^isDefault}}
@@ -84,7 +83,7 @@ interface {{classname}}ClientResponseMappers {
       {{/vendorExtensions.hasPlainErrorResponses}}
     }
   }
-  {{/vendorExtensions.plainResponse}}
+  {{/vendorExtensions.plainResponseHasBody}}{{/vendorExtensions.plainResponse}}
 {{/operation}}
 {{/operations}}
 }

@@ -54,32 +54,30 @@ public interface {{classname}}ClientResponseMappers {
   }
   {{/responses}}
   {{/vendorExtensions.plainResponse}}
-  {{#vendorExtensions.plainResponse}}
+  {{#vendorExtensions.plainResponse}}{{#vendorExtensions.plainResponseHasBody}}
 
   @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
-  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper implements HttpClientResponseMapper<{{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Void{{/vendorExtensions.plainResponseHasBody}}> {
-    {{#vendorExtensions.plainResponseHasBody}}
+  final class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper implements HttpClientResponseMapper<{{{vendorExtensions.plainResponseType}}}> {
+
     private final HttpClientResponseMapper<{{{vendorExtensions.plainResponseType}}}> successMapper;
-    {{/vendorExtensions.plainResponseHasBody}}
     {{#vendorExtensions.plainErrorResponses}}
     private final HttpClientResponseMapper<{{{dataType}}}> error{{code}}Mapper;
     {{/vendorExtensions.plainErrorResponses}}
 
     public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}PlainResponseMapper(
-      {{#vendorExtensions.plainResponseHasBody}}{{#vendorExtensions.hasPlainSuccessMapperTag}}@{{vendorExtensions.plainSuccessMapperTag}} {{/vendorExtensions.hasPlainSuccessMapperTag}}HttpClientResponseMapper<{{{vendorExtensions.plainResponseType}}}> successMapper{{#vendorExtensions.hasPlainErrorResponses}},{{/vendorExtensions.hasPlainErrorResponses}}{{/vendorExtensions.plainResponseHasBody}}
+      {{#vendorExtensions.hasPlainSuccessMapperTag}}@{{vendorExtensions.plainSuccessMapperTag}} {{/vendorExtensions.hasPlainSuccessMapperTag}}HttpClientResponseMapper<{{{vendorExtensions.plainResponseType}}}> successMapper{{#vendorExtensions.hasPlainErrorResponses}},{{/vendorExtensions.hasPlainErrorResponses}}
       {{#vendorExtensions.plainErrorResponses}}{{#hasMapperTag}}@{{mapperTag}} {{/hasMapperTag}}HttpClientResponseMapper<{{{dataType}}}> error{{code}}Mapper{{#hasMore}},{{/hasMore}}{{/vendorExtensions.plainErrorResponses}}
     ) {
-      {{#vendorExtensions.plainResponseHasBody}}this.successMapper = successMapper;{{/vendorExtensions.plainResponseHasBody}}
+      this.successMapper = successMapper;
       {{#vendorExtensions.plainErrorResponses}}this.error{{code}}Mapper = error{{code}}Mapper;
       {{/vendorExtensions.plainErrorResponses}}
     }
 
     @Override
-    public {{#vendorExtensions.plainResponseHasBody}}{{{vendorExtensions.plainResponseType}}}{{/vendorExtensions.plainResponseHasBody}}{{^vendorExtensions.plainResponseHasBody}}Void{{/vendorExtensions.plainResponseHasBody}} apply(HttpClientResponse response) throws java.io.IOException {
+    public {{{vendorExtensions.plainResponseType}}} apply(HttpClientResponse response) throws java.io.IOException {
       var code = response.code();
       if (code >= 200 && code < 300) {
-        {{#vendorExtensions.plainResponseHasBody}}return successMapper.apply(response);{{/vendorExtensions.plainResponseHasBody}}
-        {{^vendorExtensions.plainResponseHasBody}}return null;{{/vendorExtensions.plainResponseHasBody}}
+        return successMapper.apply(response);
       }
       {{#vendorExtensions.plainErrorResponses}}
       {{^isDefault}}
@@ -102,7 +100,7 @@ public interface {{classname}}ClientResponseMappers {
       {{/vendorExtensions.hasPlainErrorResponses}}
     }
   }
-  {{/vendorExtensions.plainResponse}}
+  {{/vendorExtensions.plainResponseHasBody}}{{/vendorExtensions.plainResponse}}
 {{/operation}}
 {{/operations}}
 }
