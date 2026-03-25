@@ -32,17 +32,29 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private final GracefulShutdownHandler gracefulShutdown;
     private final XnioWorker xnioWorker;
     private final ByteBufferPool byteBufferPool;
+    @Nullable
+    private final UndertowConfigurer undertowConfigurer;
 
     private volatile Undertow undertow;
+
+    @Deprecated
+    public UndertowHttpServer(ValueOf<HttpServerConfig> config,
+                              ValueOf<UndertowPublicApiHandler> publicApiHandler,
+                              @Nullable XnioWorker xnioWorker,
+                              ByteBufferPool byteBufferPool) {
+        this(config, publicApiHandler, xnioWorker, byteBufferPool, null, null);
+    }
 
     public UndertowHttpServer(ValueOf<HttpServerConfig> config,
                               ValueOf<UndertowPublicApiHandler> publicApiHandler,
                               @Nullable XnioWorker xnioWorker,
                               ByteBufferPool byteBufferPool,
-                              @Nullable HttpHandlerConfigurer httpHandlerConfigurer) {
+                              @Nullable HttpHandlerConfigurer httpHandlerConfigurer,
+                              @Nullable UndertowConfigurer undertowConfigurer) {
         this.config = config;
         this.xnioWorker = xnioWorker;
         this.byteBufferPool = byteBufferPool;
+        this.undertowConfigurer = undertowConfigurer;
         HttpHandler baseHandler = exchange -> publicApiHandler.get().handleRequest(exchange);
         HttpHandler handler = httpHandlerConfigurer == null ? baseHandler : httpHandlerConfigurer.configure(baseHandler);
         this.gracefulShutdown = new GracefulShutdownHandler(handler);
@@ -95,15 +107,20 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
 
     private Undertow createServer() {
         var config = this.config.get();
-        return Undertow.builder()
+        var builder = Undertow.builder()
             .addHttpListener(config.publicApiHttpPort(), "0.0.0.0", this.gracefulShutdown)
             .setWorker(this.xnioWorker)
             .setByteBufferPool(this.byteBufferPool)
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
             .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
-            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes())
-            .build();
+            .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes());
+
+        if (this.undertowConfigurer != null) {
+            builder = this.undertowConfigurer.configure(builder);
+        }
+
+        return builder.build();
     }
 
     @Override

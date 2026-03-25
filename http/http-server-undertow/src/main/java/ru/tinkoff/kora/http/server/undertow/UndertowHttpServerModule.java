@@ -32,8 +32,9 @@ public interface UndertowHttpServerModule extends UndertowModule {
                                                   ValueOf<UndertowPublicApiHandler> handler,
                                                   @Tag(Undertow.class) XnioWorker worker,
                                                   @Tag(Undertow.class) ByteBufferPool byteBufferPool,
-                                                  @Nullable HttpHandlerConfigurer httpHandlerConfigurer) {
-        return new UndertowHttpServer(config, handler, worker, byteBufferPool, httpHandlerConfigurer);
+                                                  @Nullable HttpHandlerConfigurer httpHandlerConfigurer,
+                                                  @Nullable UndertowConfigurer undertowConfigurer) {
+        return new UndertowHttpServer(config, handler, worker, byteBufferPool, httpHandlerConfigurer, undertowConfigurer);
     }
 
     default UndertowHttpServerConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowHttpServerConfig> extractor) {
