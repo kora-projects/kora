@@ -14,6 +14,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
             valueOf(new UndertowPublicApiHandler(publicApiHandler, null)),
             null,
             new DefaultByteBufferPool(false, 1024),
+            null,
             null
         );
     }
