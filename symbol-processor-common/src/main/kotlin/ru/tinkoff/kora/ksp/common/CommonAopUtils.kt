@@ -61,7 +61,11 @@ object CommonAopUtils {
         }
 
         for (annotationMirror in type.annotations) {
-            if (isAopAnnotation(annotationMirror)) {
+            if (isAopAnnotation(annotationMirror)
+                || CommonClassNames.tag == annotationMirror.annotationType.resolve().toClassName()
+                || CommonClassNames.mapping == annotationMirror.annotationType.resolve().toClassName()
+                || CommonClassNames.mappings == annotationMirror.annotationType.resolve().toClassName()
+            ) {
                 b.addAnnotation(annotationMirror.toAnnotationSpec())
             }
         }
@@ -104,6 +108,9 @@ object CommonAopUtils {
             for (annotation in parameter.annotations) {
                 val resolvedAnnotation = annotation.annotationType.resolveToUnderlying()
                 if (isAopAnnotation(resolvedAnnotation)
+                    || CommonClassNames.tag == annotation.annotationType.resolve().toClassName()
+                    || CommonClassNames.mapping == annotation.annotationType.resolve().toClassName()
+                    || CommonClassNames.mappings == annotation.annotationType.resolve().toClassName()
                     || resolvedAnnotation.declaration.packageName.asString().endsWith(".Nonnull")
                     || resolvedAnnotation.declaration.packageName.asString().endsWith(".NotNull")
                 ) {
