@@ -38,15 +38,20 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
     private volatile Undertow undertow;
 
     public UndertowHttpServer(String name,
-                              HttpHandler httpHandler,
+                              ValueOf<HttpHandler> httpHandler,
                               XnioWorker xnioWorker,
                               ValueOf<? extends HttpServerConfig> config,
-                              @Nullable Configurer<Undertow.Builder> configurer) {
+                              @Nullable Configurer<Undertow.Builder> configurer,
+                              @Nullable Configurer<HttpHandler> handlerConfigurer) {
         this.config = config;
         this.name = name;
         this.xnioWorker = xnioWorker;
         this.configurer = configurer;
-        this.gracefulShutdown = new GracefulShutdownHandler(httpHandler);
+        var handler = (HttpHandler) new VirtualThreadHttpHandler(name, (exchange) -> httpHandler.get().handleRequest(exchange));
+        if (handlerConfigurer != null) {
+            handler = handlerConfigurer.configure(handler);
+        }
+        this.gracefulShutdown = new GracefulShutdownHandler(handler);
     }
 
     @Override
@@ -117,7 +122,7 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             return -1;
         }
         var infos = this.undertow.getListenerInfo();
-        var address = (InetSocketAddress) infos.get(0).getAddress();
+        var address = (InetSocketAddress) infos.getFirst().getAddress();
         return address.getPort();
     }
 

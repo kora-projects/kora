@@ -1,7 +1,6 @@
 package io.koraframework.http.server.undertow;
 
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.common.util.Configurer;
@@ -19,19 +18,20 @@ import org.xnio.XnioWorker;
 public interface UndertowPublicHttpServerModule extends UndertowSystemHttpServerModule {
 
     @Root
-    default UndertowHttpServer undertowPublicHttpServer(HttpHandler httpHandler,
+    default UndertowHttpServer undertowPublicHttpServer(ValueOf<HttpHandler> httpHandler,
                                                         XnioWorker worker,
                                                         ValueOf<HttpServerConfig> config,
-                                                        @Nullable Configurer<Undertow.Builder> configurer) {
-        return new UndertowHttpServer("kora-undertow", httpHandler, worker, config, configurer);
+                                                        @Nullable Configurer<Undertow.Builder> configurer,
+                                                        @Nullable Configurer<HttpHandler> handlerConfigurer) {
+        return new UndertowHttpServer("kora-undertow", httpHandler, worker, config, configurer, handlerConfigurer);
     }
 
     @DefaultComponent
-    default HttpHandler undertowPublicHttpHandler(ValueOf<HttpServerConfig> config,
-                                                  ValueOf<HttpServerHandler> publicApiHandler,
+    default HttpHandler undertowPublicHttpHandler(HttpServerConfig config,
+                                                  HttpServerHandler publicApiHandler,
                                                   HttpServerTelemetryFactory telemetryFactory) {
-        var telemetry = telemetryFactory.get(config.get().telemetry());
-        return new UndertowHttpHandler("kora-undertow", publicApiHandler, telemetry);
+        var telemetry = telemetryFactory.get(config.telemetry());
+        return new RequestProcessingHttpHandler(telemetry, publicApiHandler);
     }
 
     default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowConfig> extractor) {

@@ -1,5 +1,15 @@
 package io.koraframework.http.server.undertow;
 
+import io.koraframework.common.telemetry.Observation;
+import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.koraframework.http.common.HttpResultCode;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.http.server.common.HttpServer;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.router.HttpServerHandler;
+import io.koraframework.http.server.common.telemetry.HttpServerObservation;
+import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.undertow.request.UndertowHttpRouterRequest;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
@@ -17,16 +27,6 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.http.common.HttpResultCode;
-import io.koraframework.http.common.body.HttpBody;
-import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.HttpServer;
-import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.router.HttpServerHandler;
-import io.koraframework.http.server.common.telemetry.HttpServerObservation;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -35,17 +35,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Objects;
 
-public class UndertowExchangeProcessor implements HttpHandler {
+public class RequestProcessingHttpHandler implements HttpHandler {
 
     private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
 
     private final HttpServerTelemetry telemetry;
-    private final UndertowContext context;
     private final HttpServerHandler httpServerHandler;
 
-    public UndertowExchangeProcessor(HttpServerTelemetry telemetry, UndertowContext context, HttpServerHandler httpServerHandler) {
+    public RequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerHandler httpServerHandler) {
         this.telemetry = telemetry;
-        this.context = context;
         this.httpServerHandler = httpServerHandler;
     }
 
@@ -53,7 +51,7 @@ public class UndertowExchangeProcessor implements HttpHandler {
     public void handleRequest(HttpServerExchange exchange) {
         var rootCtx = W3CTraceContextPropagator.getInstance().extract(Context.root(), exchange.getRequestHeaders(), HttpServerExchangeMapGetter.INSTANCE);
         ScopedValue
-            .where(UndertowContext.VALUE, this.context)
+            .where(UndertowContext.VALUE, new UndertowContext(exchange))
             .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
             .where(OpentelemetryContext.VALUE, rootCtx)
             .run(() -> {
