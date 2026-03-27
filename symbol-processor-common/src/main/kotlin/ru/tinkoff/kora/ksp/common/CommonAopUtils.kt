@@ -63,7 +63,6 @@ object CommonAopUtils {
         for (annotationMirror in type.annotations) {
             val resolvedAnnotation = annotationMirror.annotationType.resolveToUnderlying()
             if (isAopAnnotation(annotationMirror)
-                || CommonClassNames.tag == resolvedAnnotation.toClassName()
                 || CommonClassNames.mapping == resolvedAnnotation.toClassName()
                 || CommonClassNames.mappings == resolvedAnnotation.toClassName()
             ) {

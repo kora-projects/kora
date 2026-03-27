@@ -378,7 +378,6 @@ public class CommonUtils {
         }
         for (var annotationMirror : method.getAnnotationMirrors()) {
             if (CommonUtils.isAopAnnotation(annotationMirror)
-                || CommonClassNames.tag.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                 || CommonClassNames.mapping.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                 || CommonClassNames.mappings.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                 || annotationMirror.getAnnotationType().toString().endsWith(".Nullable")) {
