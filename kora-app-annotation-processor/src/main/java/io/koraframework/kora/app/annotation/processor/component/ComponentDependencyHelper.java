@@ -12,7 +12,9 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.WildcardType;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -68,40 +70,55 @@ public class ComponentDependencyHelper {
         }
 
         var typeName = TypeName.get(parameterType);
+        if (typeName.equals(CommonClassNames.graph) || typeName.equals(CommonClassNames.refreshableGraph)) {
+            return new DependencyClaim(sourceElement, parameterType, tag, DependencyClaimType.GRAPH);
+        }
         if (typeName instanceof ParameterizedTypeName ptn && parameterType instanceof DeclaredType dt) {
             if (ptn.rawType().canonicalName().equals(CommonClassNames.typeRef.canonicalName())) {
-                return new DependencyClaim(dt.getTypeArguments().getFirst(), tag, DependencyClaimType.TYPE_REF);
+                return new DependencyClaim(sourceElement, dt.getTypeArguments().getFirst(), tag, DependencyClaimType.TYPE_REF);
+            }
+            if (ptn.rawType().canonicalName().equals(CommonClassNames.node.canonicalName())) {
+                var type = dt.getTypeArguments().getFirst();
+                if (type.getKind() == TypeKind.DECLARED) {
+                    return new DependencyClaim(sourceElement, type, tag, DependencyClaimType.NODE_OF);
+                }
+                if (type.getKind() == TypeKind.WILDCARD && type instanceof WildcardType wildcard) {
+                    if (wildcard.getExtendsBound() != null) {
+                        return new DependencyClaim(sourceElement, wildcard.getExtendsBound(), tag, DependencyClaimType.NODE_OF);
+                    }
+                }
+                throw new ProcessingErrorException("Unexpected Node argument: expected Node<T> ", sourceElement);
             }
             if (ptn.rawType().canonicalName().equals(CommonClassNames.all.canonicalName())) {
                 if (ptn.typeArguments().getFirst() instanceof ParameterizedTypeName allOfType && dt.getTypeArguments().getFirst() instanceof DeclaredType allOfTypeName) {
                     if (allOfType.rawType().canonicalName().equals(CommonClassNames.valueOf.canonicalName())) {
-                        return new DependencyClaim(allOfTypeName.getTypeArguments().getFirst(), tag, DependencyClaimType.ALL_OF_VALUE);
+                        return new DependencyClaim(sourceElement, allOfTypeName.getTypeArguments().getFirst(), tag, DependencyClaimType.ALL_OF_VALUE);
                     }
                     if (allOfType.rawType().canonicalName().equals(CommonClassNames.promiseOf.canonicalName())) {
-                        return new DependencyClaim(allOfTypeName.getTypeArguments().getFirst(), tag, DependencyClaimType.ALL_OF_PROMISE);
+                        return new DependencyClaim(sourceElement, allOfTypeName.getTypeArguments().getFirst(), tag, DependencyClaimType.ALL_OF_PROMISE);
                     }
                 }
-                return new DependencyClaim(dt.getTypeArguments().getFirst(), tag, DependencyClaimType.ALL_OF_ONE);
+                return new DependencyClaim(sourceElement, dt.getTypeArguments().getFirst(), tag, DependencyClaimType.ALL_OF_ONE);
             }
             if (ptn.rawType().canonicalName().equals(CommonClassNames.valueOf.canonicalName())) {
                 if (isNullable) {
-                    return new DependencyClaim(dt.getTypeArguments().getFirst(), tag, DependencyClaimType.NULLABLE_VALUE_OF);
+                    return new DependencyClaim(sourceElement, dt.getTypeArguments().getFirst(), tag, DependencyClaimType.NULLABLE_VALUE_OF);
                 } else {
-                    return new DependencyClaim(dt.getTypeArguments().getFirst(), tag, DependencyClaimType.VALUE_OF);
+                    return new DependencyClaim(sourceElement, dt.getTypeArguments().getFirst(), tag, DependencyClaimType.VALUE_OF);
                 }
             }
             if (ptn.rawType().canonicalName().equals(CommonClassNames.promiseOf.canonicalName())) {
                 if (isNullable) {
-                    return new DependencyClaim(dt.getTypeArguments().getFirst(), tag, DependencyClaimType.NULLABLE_PROMISE_OF);
+                    return new DependencyClaim(sourceElement, dt.getTypeArguments().getFirst(), tag, DependencyClaimType.NULLABLE_PROMISE_OF);
                 } else {
-                    return new DependencyClaim(dt.getTypeArguments().getFirst(), tag, DependencyClaimType.PROMISE_OF);
+                    return new DependencyClaim(sourceElement, dt.getTypeArguments().getFirst(), tag, DependencyClaimType.PROMISE_OF);
                 }
             }
         }
         if (isNullable) {
-            return new DependencyClaim(parameterType, tag, DependencyClaimType.ONE_NULLABLE);
+            return new DependencyClaim(sourceElement, parameterType, tag, DependencyClaimType.ONE_NULLABLE);
         } else {
-            return new DependencyClaim(parameterType, tag, DependencyClaimType.ONE_REQUIRED);
+            return new DependencyClaim(sourceElement, parameterType, tag, DependencyClaimType.ONE_REQUIRED);
         }
     }
 

@@ -32,17 +32,21 @@ public class CommonClassNames {
     public static final ClassName module = ClassName.get("io.koraframework.common", "Module");
     public static final ClassName component = ClassName.get("io.koraframework.common", "Component");
     public static final ClassName defaultComponent = ClassName.get("io.koraframework.common", "DefaultComponent");
+    public static final ClassName conditional = ClassName.get("io.koraframework.common.annotation", "Conditional");
 
     public static final ClassName node = ClassName.get("io.koraframework.application.graph", "Node");
     public static final ClassName lifecycle = ClassName.get("io.koraframework.application.graph", "Lifecycle");
     public static final ClassName all = ClassName.get("io.koraframework.application.graph", "All");
+    public static final ClassName nodeWithMapper = ClassName.get("io.koraframework.application.graph", "NodeWithMapper");
     public static final ClassName typeRef = ClassName.get("io.koraframework.application.graph", "TypeRef");
     public static final ClassName wrapped = ClassName.get("io.koraframework.application.graph", "Wrapped");
-    public static final ClassName wrappedUnwrappedValue = ClassName.get("io.koraframework.application.graph", "Wrapped", "UnwrappedValue");
     public static final ClassName promiseOf = ClassName.get("io.koraframework.application.graph", "PromiseOf");
     public static final ClassName valueOf = ClassName.get("io.koraframework.application.graph", "ValueOf");
     public static final ClassName applicationGraphDraw = ClassName.get("io.koraframework.application.graph", "ApplicationGraphDraw");
+    public static final ClassName graph = ClassName.get("io.koraframework.application.graph", "Graph");
+    public static final ClassName refreshableGraph = ClassName.get("io.koraframework.application.graph", "RefreshableGraph");
     public static final ClassName graphInterceptor = ClassName.get("io.koraframework.application.graph", "GraphInterceptor");
+    public static final ClassName graphCondition = ClassName.get("io.koraframework.application.graph", "GraphCondition");
     public static final ClassName promisedProxy = ClassName.get("io.koraframework.common", "PromisedProxy");
     public static final ClassName refreshListener = ClassName.get("io.koraframework.application.graph", "RefreshListener");
 

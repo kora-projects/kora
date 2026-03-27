@@ -8,17 +8,11 @@ import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.symbol.*
 import com.squareup.kotlinpoet.*
-import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.ksp.toClassName
-import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.writeTo
 import io.koraframework.kora.app.ksp.KoraAppUtils.validateComponent
-import io.koraframework.kora.app.ksp.component.ComponentDependency
-import io.koraframework.kora.app.ksp.component.DependencyClaim
 import io.koraframework.kora.app.ksp.component.ResolvedComponent
-import io.koraframework.kora.app.ksp.component.ResolvedComponents
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
-import io.koraframework.kora.app.ksp.declaration.ComponentDeclarations
 import io.koraframework.kora.app.ksp.declaration.ModuleDeclaration
 import io.koraframework.kora.app.ksp.exception.UnresolvedDependencyException
 import io.koraframework.kora.app.ksp.interceptor.ComponentInterceptors
@@ -26,13 +20,8 @@ import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonAopUtils.hasAopAnnotations
 import io.koraframework.ksp.common.CommonClassNames
-import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.exception.ProcessingErrorException
-import java.lang.reflect.ParameterizedType
-import java.lang.reflect.Type
-import java.util.*
-import java.util.function.Supplier
 
 class KoraAppProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -60,7 +49,7 @@ class KoraAppProcessor(
             val element = resolver!!.getClassDeclarationByName(fullName)!!
             try {
                 val graph = buildGraph(ctx, element)
-                write(ctx, element, graph.allModules, graph.declarations, graph.components)
+                write(ctx, element, graph.allModules, graph.components, graph.conditionByTag)
             } catch (e: UnresolvedDependencyException) {
                 e.printError(kspLogger)
                 kspLogger.info("Dependency detailed resolution tree:\n\n${e.errors.first().message}")
@@ -233,13 +222,14 @@ class KoraAppProcessor(
         ctx: ProcessingContext,
         declaration: KSClassDeclaration,
         allModules: List<KSClassDeclaration>,
-        declarations: ComponentDeclarations,
-        components: ResolvedComponents
+        components: List<ResolvedComponent>,
+        conditionByTag: MutableMap<ClassName, ResolvedComponent>
     ) {
-        val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx, components.components())
+        val interceptors: ComponentInterceptors = ComponentInterceptors.parseInterceptors(ctx, components)
         kspLogger.logging("Found interceptors: $interceptors")
         val applicationImplFile = this.generateImpl(declaration, allModules)
-        val applicationGraphFile = this.generateApplicationGraph(ctx, declaration, allModules, interceptors, declarations, components)
+        val applicationGraphFile = GraphFileGenerator(ctx, declaration, allModules, interceptors, components, conditionByTag)
+            .generate()
         applicationImplFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
         applicationGraphFile.writeTo(codeGenerator = codeGenerator, Dependencies.ALL_FILES)
     }
@@ -268,328 +258,4 @@ class KoraAppProcessor(
         return fileSpec.addType(classBuilder.build()).build()
     }
 
-    private fun generateApplicationGraph(
-        ctx: ProcessingContext,
-        declaration: KSClassDeclaration,
-        allModules: List<KSClassDeclaration>,
-        interceptors: ComponentInterceptors,
-        declarations: ComponentDeclarations,
-        components: ResolvedComponents
-    ): FileSpec {
-        val packageName = declaration.packageName.asString()
-        val graphName = "${declaration.simpleName.asString()}Graph"
-        val graphTypeName = ClassName(packageName, graphName)
-
-        val fileSpec = FileSpec.builder(
-            packageName = packageName,
-            fileName = graphName
-        )
-
-        val implClass = ClassName(packageName, "\$${declaration.simpleName.asString()}Impl")
-        val supplierSuperInterface = Supplier::class.asClassName().parameterizedBy(CommonClassNames.applicationGraphDraw)
-        val classBuilder = TypeSpec.classBuilder(graphName)
-            .generated(KoraAppProcessor::class)
-            .addSuperinterface(supplierSuperInterface)
-            .addFunction(
-                FunSpec.builder("get")
-                    .addModifiers(KModifier.OVERRIDE)
-                    .returns(CommonClassNames.applicationGraphDraw)
-                    .addStatement("return graphDraw")
-                    .build()
-            )
-
-        val companion = TypeSpec.companionObjectBuilder()
-            .generated(KoraAppProcessor::class)
-            .addProperty("graphDraw", CommonClassNames.applicationGraphDraw)
-
-        var currentClass: TypeSpec.Builder? = null
-        var currentConstructor: FunSpec.Builder? = null
-        var holders = 0
-
-        for ((i, component) in components.components().withIndex()) {
-            val componentNumber = i % COMPONENTS_PER_HOLDER_CLASS
-            if (componentNumber == 0) {
-                if (currentClass != null) {
-                    currentClass.primaryConstructor(currentConstructor!!.build())
-                    classBuilder.addType(currentClass.build())
-                    val prevNumber = i / COMPONENTS_PER_HOLDER_CLASS - 1
-                    companion.addProperty("holder$prevNumber", graphTypeName.nestedClass("ComponentHolder$prevNumber"))
-                }
-                holders++
-                val className = graphTypeName.nestedClass("ComponentHolder" + i / COMPONENTS_PER_HOLDER_CLASS)
-                currentClass = TypeSpec.classBuilder(className)
-                    .generated(KoraAppProcessor::class)
-                currentConstructor = FunSpec.constructorBuilder()
-                    .addParameter("graphDraw", CommonClassNames.applicationGraphDraw)
-                    .addParameter("impl", implClass)
-                    .addStatement("val self = %T", graphTypeName)
-                    .addStatement("val map = %T<%T, %T>()", HashMap::class.asClassName(), String::class.asClassName(), Type::class.asClassName())
-                    .controlFlow("for (field in %T::class.java.declaredFields)", className) {
-                        controlFlow("if (!field.name.startsWith(%S))", "component") { addStatement("continue") }
-                        addStatement("map[field.name] = (field.genericType as %T).actualTypeArguments[0]", ParameterizedType::class.asClassName())
-                    }
-                for (j in 0 until i / COMPONENTS_PER_HOLDER_CLASS) {
-                    currentConstructor.addParameter("ComponentHolder$j", graphTypeName.nestedClass("ComponentHolder$j"));
-                }
-            }
-
-            val aopProxySuperClass = ServiceTypesHelper.findAopProxySuperClass(component.type)
-            val propertyType: TypeName = aopProxySuperClass?.toTypeName() ?: component.type.toTypeName()
-
-            currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType))
-            val statement = this.generateComponentStatement(ctx, allModules, interceptors, component, declarations, components)
-            currentConstructor!!.addCode(statement).addCode("\n")
-        }
-        if (components.size > 0) {
-            var lastComponentNumber = components.size / COMPONENTS_PER_HOLDER_CLASS;
-            if (components.size % COMPONENTS_PER_HOLDER_CLASS == 0) {
-                lastComponentNumber--
-            }
-            currentClass!!.addFunction(currentConstructor!!.build());
-            classBuilder.addType(currentClass.build())
-            companion.addProperty("holder$lastComponentNumber", graphTypeName.nestedClass("ComponentHolder$lastComponentNumber"));
-        }
-
-
-        val initBlock = CodeBlock.builder()
-            .addStatement("val self = %T", graphTypeName)
-            .addStatement("val impl = %T()", implClass)
-            .addStatement("graphDraw =  %T(%T::class.java)", CommonClassNames.applicationGraphDraw, declaration.toClassName())
-        for (i in 0 until holders) {
-            initBlock.add("%N = %T(graphDraw, impl", "holder$i", graphTypeName.nestedClass("ComponentHolder$i"))
-            for (j in 0 until i) {
-                initBlock.add(", holder$j")
-            }
-            initBlock.add(")\n");
-        }
-
-        val supplierMethodBuilder = FunSpec.builder("graph")
-            .returns(CommonClassNames.applicationGraphDraw)
-            .addCode("\nreturn graphDraw\n", declaration.simpleName.asString() + "Graph")
-        return fileSpec.addType(
-            classBuilder
-                .addType(companion.addInitializerBlock(initBlock.build()).addFunction(supplierMethodBuilder.build()).build())
-                .addFunction(supplierMethodBuilder.build())
-                .build()
-        ).build()
-    }
-
-    private fun generateComponentStatement(
-        ctx: ProcessingContext,
-        allModules: List<KSClassDeclaration>,
-        interceptors: ComponentInterceptors,
-        component: ResolvedComponent,
-        declarations: ComponentDeclarations,
-        components: ResolvedComponents
-    ): CodeBlock {
-        val statement = CodeBlock.builder()
-        val declaration = component.declaration
-        val componentHolder = component.holderName
-        val componentField = component.fieldName
-
-        statement.add("%N = graphDraw.addNode(map[%S], ", componentField, component.fieldName)
-        statement.indent().add("\n")
-        if (component.tag == null) {
-            statement.add("null,\n")
-        } else {
-            statement.add("%L::class.java,\n", component.tag)
-        }
-        val createDependencies = getCreateDependencies(ctx, declarations, components, componentHolder, component.dependencies)
-        statement.add("%L,\n", createDependencies);
-
-        val refreshDependencies = getRefreshDependencies(ctx, declarations, components, componentHolder, component.dependencies)
-        statement.add("%L,\n", refreshDependencies)
-
-        statement.add("listOf(")
-        for ((i, interceptor) in interceptors.interceptorsFor(declaration).withIndex()) {
-            if (i > 0) {
-                statement.add(", ")
-            }
-            statement.add("%L", interceptor.component.nodeRef(componentHolder))
-        }
-        statement.add("),\n")
-
-
-        statement.add("{ ")
-        val dependenciesCode = this.getDependenciesCode(ctx, component, declarations, components)
-
-        when (declaration) {
-            is ComponentDeclaration.AnnotatedComponent -> {
-                statement.add("%T", declaration.classDeclaration.toClassName())
-                if (declaration.typeVariables.isNotEmpty()) {
-                    statement.add("<")
-                    for ((i, tv) in declaration.typeVariables.withIndex()) {
-                        if (i > 0) {
-                            statement.add(", ")
-                        }
-                        statement.add("%L", tv.type!!.toTypeName())
-                    }
-                    statement.add(">")
-                }
-                statement.add("(%L)", dependenciesCode)
-            }
-
-            is ComponentDeclaration.FromModuleComponent -> {
-                if (declaration.module is ModuleDeclaration.AnnotatedModule) {
-                    statement.add("impl.module%L.", allModules.indexOf(declaration.module.element))
-                } else {
-                    statement.add("impl.")
-                }
-                statement.add("%N", declaration.method.simpleName.asString())
-                if (declaration.typeVariables.isNotEmpty()) {
-                    statement.add("<")
-                    for ((i, tv) in declaration.typeVariables.withIndex()) {
-                        if (i > 0) {
-                            statement.add(", ")
-                        }
-                        statement.add("%L", tv.type!!.toTypeName())
-                    }
-                    statement.add(">")
-                }
-                statement.add("(%L)", dependenciesCode)
-            }
-
-            is ComponentDeclaration.FromExtensionComponent -> {
-                statement.add(declaration.generator(dependenciesCode))
-            }
-
-            is ComponentDeclaration.PromisedProxyComponent -> {
-                statement.add("%T(%L)", declaration.className, dependenciesCode)
-            }
-
-            is ComponentDeclaration.OptionalComponent -> {
-                statement.add("%T.ofNullable(%L)", Optional::class.asClassName(), dependenciesCode)
-            }
-        }
-        statement.add(" }\n")
-        return statement.unindent().add(")\n").build()
-    }
-
-
-    private fun getCreateDependencies(
-        ctx: ProcessingContext,
-        componentDeclarations: ComponentDeclarations,
-        resolvedComponents: ResolvedComponents,
-        componentHolder: String,
-        dependencies: List<ComponentDependency>
-    ): CodeBlock {
-        val result = mutableListOf<CodeBlock>()
-        for (dependency in dependencies) {
-            when (dependency) {
-                is ComponentDependency.NullDependency, is ComponentDependency.PromisedProxyParameterDependency -> {}
-                is ComponentDependency.TypeOfDependency -> {}
-                is ComponentDependency.SingleDependency -> {
-                    when (dependency) {
-                        is ComponentDependency.PromiseOfDependency -> {}
-                        is ComponentDependency.TargetDependency -> result.add(
-                            CodeBlock.of(
-                                "%T.singleDependency(%L)",
-                                CommonClassNames.applicationGraphDraw,
-                                dependency.component.nodeRef(componentHolder)
-                            )
-                        )
-
-                        is ComponentDependency.ValueOfDependency -> result.add(
-                            CodeBlock.of(
-                                "%T.singleDependency(%L)",
-                                CommonClassNames.applicationGraphDraw,
-                                dependency.component.nodeRef(componentHolder)
-                            )
-                        )
-
-                        is ComponentDependency.WrappedTargetDependency -> result.add(
-                            CodeBlock.of(
-                                "%T.singleDependency(%L)",
-                                CommonClassNames.applicationGraphDraw,
-                                dependency.component.nodeRef(componentHolder)
-                            )
-                        )
-                    }
-                }
-
-                is ComponentDependency.AllOfDependency -> {
-                    if (dependency.claim.claimType !== DependencyClaim.DependencyClaimType.ALL_OF_PROMISE) {
-                        val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
-                        for (dependencyDeclaration in dependencyDeclarations) {
-                            val resolvedComponent: ResolvedComponent = resolvedComponents.getByDeclaration(dependencyDeclaration)!!
-                            result.add(CodeBlock.of("%T.allOfDependency(%L)", CommonClassNames.applicationGraphDraw, resolvedComponent.nodeRef(componentHolder)))
-                        }
-                    }
-                }
-
-            }
-        }
-        val b = CodeBlock.builder()
-        b.add("%M(", MemberName("kotlin.collections", "listOf"))
-        for (i in result.indices) {
-            if (i > 0) {
-                b.add(", ")
-            }
-            b.add("%L", result[i])
-        }
-        b.add(")")
-        return b.build()
-    }
-
-    private fun getRefreshDependencies(
-        ctx: ProcessingContext,
-        componentDeclarations: ComponentDeclarations,
-        resolvedComponents: ResolvedComponents,
-        componentHolder: String,
-        dependencies: List<ComponentDependency>
-    ): CodeBlock {
-        val result = mutableListOf<ResolvedComponent>()
-        for (dependency in dependencies) {
-            when (dependency) {
-                is ComponentDependency.NullDependency, is ComponentDependency.PromisedProxyParameterDependency, is ComponentDependency.TypeOfDependency -> {}
-                is ComponentDependency.SingleDependency -> {
-                    when (dependency) {
-                        is ComponentDependency.TargetDependency -> result.add(dependency.component)
-                        is ComponentDependency.WrappedTargetDependency -> result.add(dependency.component)
-                        is ComponentDependency.PromiseOfDependency, is ComponentDependency.ValueOfDependency -> {}
-                    }
-                }
-
-                is ComponentDependency.AllOfDependency -> {
-                    if (dependency.claim.claimType === DependencyClaim.DependencyClaimType.ALL) {
-                        val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
-                        for (dependencyDeclaration in dependencyDeclarations) {
-                            result.add(resolvedComponents.getByDeclaration(dependencyDeclaration)!!)
-                        }
-                    }
-                }
-            }
-        }
-        val b = CodeBlock.builder()
-        b.add("%M(", MemberName("kotlin.collections", "listOf"))
-        for (i in result.indices) {
-            if (i > 0) {
-                b.add(", ")
-            }
-            b.add("%L", result[i].nodeRef(componentHolder))
-        }
-        b.add(")")
-        return b.build()
-    }
-
-
-    private fun getDependenciesCode(
-        ctx: ProcessingContext,
-        component: ResolvedComponent,
-        declarations: ComponentDeclarations,
-        components: ResolvedComponents
-    ): CodeBlock {
-        if (component.dependencies.isEmpty()) {
-            return CodeBlock.of("")
-        }
-        val block = CodeBlock.builder().indent().add("\n")
-        for ((i, dependency) in component.dependencies.withIndex()) {
-            if (i > 0) {
-                block.add(",\n")
-            }
-            block.add(dependency.write(ctx, declarations, components))
-        }
-        block.unindent().add("\n")
-        return block.build()
-    }
 }

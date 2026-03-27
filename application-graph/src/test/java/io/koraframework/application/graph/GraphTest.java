@@ -3,6 +3,8 @@ package io.koraframework.application.graph;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.koraframework.application.graph.exception.MoreThanOneConditionalNodeMatches;
+import io.koraframework.application.graph.exception.NoneOfConditionalNodeMatches;
 import io.koraframework.application.graph.internal.NodeImpl;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
@@ -262,7 +264,7 @@ class GraphTest {
         var value1 = graph.graph.valueOf(graph.node1());
         var oldObject1 = graph.object1();
 
-        value1.refresh();
+        graph.graph.refresh(graph.node1());
 
         assertThat(oldObject1).isNotSameAs(graph.object1());
     }
@@ -364,7 +366,7 @@ class GraphTest {
         var object2 = graph.object2();
         var beforeRefresh = graph.absoluteTime.getAndIncrement();
 
-        graph.graph.valueOf(graph.node4()).refresh();
+        graph.graph.refresh(graph.node4());
 
         assertThat(object2.refreshTime).isGreaterThan(beforeRefresh);
     }
@@ -416,11 +418,11 @@ class GraphTest {
         var object4 = new AtomicReference<>("");
         var counter = new AtomicInteger(0);
 
-        var n1 = draw.addNode(TestObject.class, null, List.of(), List.of(), List.of(), _ -> "");
-        var n2 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n1, false)), List.of(n1), List.of(), _ -> object2.get());
-        var n3 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n1, false)), List.of(n1), List.of(), _ -> object3.get());
-        var n4 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n2, false), new ApplicationGraphDraw.CreateDependency(n3, false)), List.of(n2, n3), List.of(), _ -> object4.get());
-        var n5 = draw.addNode(TestObject.class, null, List.of(new ApplicationGraphDraw.CreateDependency(n4, false)), List.of(n4), List.of(), _ -> counter.incrementAndGet());
+        var n1 = draw.addNode(TestObject.class, null, null, List.of(), List.of(), List.of(), _ -> "");
+        var n2 = draw.addNode(TestObject.class, null, null, List.of(n1), List.of(n1), List.of(), _ -> object2.get());
+        var n3 = draw.addNode(TestObject.class, null, null, List.of(n1), List.of(n1), List.of(), _ -> object3.get());
+        var n4 = draw.addNode(TestObject.class, null, null, List.of(n2, n3), List.of(n2, n3), List.of(), _ -> object4.get());
+        var n5 = draw.addNode(TestObject.class, null, null, List.of(n4), List.of(n4), List.of(), _ -> counter.incrementAndGet());
 
         var graph = draw.init();
 
@@ -436,6 +438,104 @@ class GraphTest {
         graph.refresh(n2);
         assertThat(counter).hasValue(2);
     }
+
+
+    static class NodeConditionImpl implements GraphCondition {
+        private final GraphCondition.ConditionResult conditionResult;
+
+        NodeConditionImpl(GraphCondition.ConditionResult conditionResult) {this.conditionResult = conditionResult;}
+
+        @Override
+        public GraphCondition.ConditionResult eval() {
+            return conditionResult;
+        }
+
+        @Override
+        public String toString() {
+            return "test condition";
+        }
+    }
+
+    @Test
+    void conditionalComponentWorksWithExactlyOneMatch() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var matched = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(), g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("test")));
+        var failed = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(), g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("test")));
+        var candidate1 = draw.addNode(String.class, null, g -> g.condition(matched).eval(), List.of(matched), List.of(matched), List.of(), g -> "");
+        var candidate2 = draw.addNode(String.class, null, g -> g.condition(failed).eval(), List.of(failed), List.of(failed), List.of(), g -> "");
+        var candidate3 = draw.addNode(String.class, null, g -> g.condition(failed).eval(), List.of(failed), List.of(failed), List.of(), g -> "");
+        draw.addNode(
+            String.class,
+            null,
+            null,
+            List.of(candidate1, candidate2, candidate3),
+            List.of(),
+            List.of(),
+            g -> g.getOneOf(NodeWithMapper.node(candidate1), NodeWithMapper.node(candidate2), NodeWithMapper.node(candidate3))
+        );
+
+        draw.init().release();
+    }
+
+    @Test
+    void conditionalComponentFailsWithMoreThanOneMatch() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var matched = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(), g -> new NodeConditionImpl(GraphCondition.ConditionResult.matched("condition matched")));
+        var failed = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(), g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("condition failed")));
+        var candidate1 = draw.addNode(String.class, null, g -> g.condition(matched).eval(), List.of(matched), List.of(matched), List.of(), g -> "");
+        var candidate2 = draw.addNode(String.class, null, g -> g.condition(matched).eval(), List.of(matched), List.of(failed), List.of(), g -> "");
+        var candidate3 = draw.addNode(String.class, null, g -> g.condition(failed).eval(), List.of(failed), List.of(failed), List.of(), g -> "");
+        draw.addNode(
+            String.class,
+            null,
+            null,
+            List.of(candidate1, candidate2, candidate3),
+            List.of(),
+            List.of(),
+            g -> g.getOneOf(NodeWithMapper.node(candidate1), NodeWithMapper.node(candidate2), NodeWithMapper.node(candidate3))
+        );
+
+        assertThatThrownBy(draw::init)
+            .isExactlyInstanceOf(MoreThanOneConditionalNodeMatches.class)
+            .hasMessage("""
+                More than one conditional candidates was created:
+                - node 2 of type class java.lang.String:
+                    condition matched
+                - node 3 of type class java.lang.String:
+                    condition matched
+                """);
+    }
+
+    @Test
+    void conditionalComponentFailsWithZero() throws Exception {
+        var draw = new ApplicationGraphDraw(GraphTest.class);
+        var failed = draw.addNode(GraphCondition.class, null, null, List.of(), List.of(), List.of(), g -> new NodeConditionImpl(GraphCondition.ConditionResult.failed("condition failed")));
+        var candidate1 = draw.addNode(String.class, null, g -> g.condition(failed).eval(), List.of(failed), List.of(failed), List.of(), g -> "");
+        var candidate2 = draw.addNode(String.class, null, g -> g.condition(failed).eval(), List.of(failed), List.of(failed), List.of(), g -> "");
+        var candidate3 = draw.addNode(String.class, null, g -> g.condition(failed).eval(), List.of(failed), List.of(failed), List.of(), g -> "");
+        draw.addNode(
+            String.class,
+            null,
+            null,
+            List.of(candidate1, candidate2, candidate3),
+            List.of(),
+            List.of(),
+            g -> g.getOneOf(NodeWithMapper.node(candidate1), NodeWithMapper.node(candidate2), NodeWithMapper.node(candidate3))
+        );
+
+        assertThatThrownBy(draw::init)
+            .isExactlyInstanceOf(NoneOfConditionalNodeMatches.class)
+            .hasMessage("""
+                None of conditional candidates was created:
+                - node  of type class java.lang.String1:
+                    condition failed
+                - node  of type class java.lang.String2:
+                    condition failed
+                - node  of type class java.lang.String3:
+                    condition failed
+                """);
+    }
+
 
     /**
      * <pre>
@@ -454,21 +554,21 @@ class GraphTest {
         private final AtomicLong absoluteTime = new AtomicLong();
         private final ApplicationGraphDraw draw = new ApplicationGraphDraw(ReferenceGraph.class);
         private final TestObjectFactory rootFactory = factory("root", absoluteTime, Set.of());
-        private final Node<TestObject> rootNode = draw.addNode(TestObject.class, TAG, List.of(), List.of(), List.of(), rootFactory);
+        private final Node<TestObject> rootNode = draw.addNode(TestObject.class, TAG, null, List.of(), List.of(), List.of(), rootFactory);
         private final TestObjectFactory object1Factory = factory("o1", absoluteTime, Set.of(), rootNode);
-        private final Node<TestObject> object1Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(rootNode, false)), List.of(rootNode), List.of(), object1Factory);
+        private final Node<TestObject> object1Node = draw.addNode(TestObject.class, TAG, null, List.of(rootNode), List.of(rootNode), List.of(), object1Factory);
         private final TestObjectFactory interceptor1Factory = factory("i1", absoluteTime, Set.of());
-        private final Node<TestObject> interceptor1 = draw.addNode(TestObject.class, TAG, List.of(), List.of(), List.of(), interceptor1Factory);
+        private final Node<TestObject> interceptor1 = draw.addNode(TestObject.class, TAG, null, List.of(), List.of(), List.of(), interceptor1Factory);
         private final TestObjectFactory object2Factory = factory("o2", absoluteTime, Set.of(), rootNode);
-        private final Node<TestObject> object2Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(rootNode, false)), List.of(rootNode), List.of(interceptor1), object2Factory);
+        private final Node<TestObject> object2Node = draw.addNode(TestObject.class, TAG, null, List.of(rootNode), List.of(rootNode), List.of(interceptor1), object2Factory);
         private final TestObjectFactory object3Factory = factory("o3", absoluteTime, Set.of(), object1Node);
-        private final Node<TestObject> object3Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(object1Node, false)), List.of(object1Node), List.of(), object3Factory);
+        private final Node<TestObject> object3Node = draw.addNode(TestObject.class, TAG, null, List.of(object1Node), List.of(object1Node), List.of(), object3Factory);
         private final TestObjectFactory object4Factory = factory("o4", absoluteTime, Set.of(object2Node), object1Node);
-        private final Node<TestObject> object4Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(object1Node, false), new ApplicationGraphDraw.CreateDependency(object2Node, false)), List.of(object1Node), List.of(), object4Factory);
+        private final Node<TestObject> object4Node = draw.addNode(TestObject.class, TAG, null, List.of(object1Node, object2Node), List.of(object1Node), List.of(), object4Factory);
         private final TestObjectFactory object5Factory = factory("o5", absoluteTime, Set.of(), object2Node);
-        private final Node<TestObject> object5Node = draw.addNode(TestObject.class, TAG, List.of(new ApplicationGraphDraw.CreateDependency(object2Node, false)), List.of(object2Node), List.of(), object5Factory);
+        private final Node<TestObject> object5Node = draw.addNode(TestObject.class, TAG, null, List.of(object2Node), List.of(object2Node), List.of(), object5Factory);
 
-        private final RefreshableGraph graph = this.draw.init();
+        private final InitializedGraph graph = this.draw.init();
 
         public static ReferenceGraph graph() {
             return new ReferenceGraph();
@@ -722,7 +822,7 @@ class GraphTest {
         }
 
         @Override
-        public TestObject get(Graph graph) {
+        public TestObject get(RefreshableGraph graph) {
             if (this.type.compareAndSet(Type.SAME_VALUE, Type.SIMPLE)) {
                 return this.objects.peekLast();
             }

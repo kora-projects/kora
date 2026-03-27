@@ -11,6 +11,6 @@ record GraphAddition(Function<KoraAppGraph, ?> function, GraphCandidate candidat
     public void accept(ApplicationGraphDraw graphDraw) {
         var tags = candidate().tag();
 
-        graphDraw.addNode(candidate().type(), tags, List.of(), List.of(), List.of(), g -> function.apply(new DefaultKoraAppGraph(graphDraw, g)));
+        graphDraw.addNode(candidate().type(), tags, null, List.of(), List.of(), List.of(), g -> function.apply(new DefaultKoraAppGraph(graphDraw, g)));
     }
 }

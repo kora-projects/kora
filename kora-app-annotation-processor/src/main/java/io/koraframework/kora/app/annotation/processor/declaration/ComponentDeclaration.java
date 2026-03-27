@@ -3,10 +3,10 @@ package io.koraframework.kora.app.annotation.processor.declaration;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.TypeName;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.kora.app.annotation.processor.ProcessingContext;
 import io.koraframework.kora.app.annotation.processor.extension.ExtensionResult;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.*;
 import javax.lang.model.type.TypeMirror;
@@ -36,7 +36,10 @@ public sealed interface ComponentDeclaration {
 
     String declarationString();
 
-    record FromModuleComponent(TypeMirror type, ModuleDeclaration module, @Nullable String tag, ExecutableElement method, List<TypeMirror> methodParameterTypes,
+    @Nullable
+    ClassName condition();
+
+    record FromModuleComponent(TypeMirror type, ModuleDeclaration module, @Nullable String tag, @Nullable ClassName condition, ExecutableElement method, List<TypeMirror> methodParameterTypes,
                                List<TypeMirror> typeVariables, boolean isInterceptor) implements ComponentDeclaration {
         @Override
         public Element source() {
@@ -79,7 +82,7 @@ public sealed interface ComponentDeclaration {
         }
     }
 
-    record AnnotatedComponent(TypeMirror type, TypeElement typeElement, @Nullable String tag, ExecutableElement constructor, List<TypeMirror> methodParameterTypes,
+    record AnnotatedComponent(TypeMirror type, TypeElement typeElement, @Nullable String tag, @Nullable ClassName condition, ExecutableElement constructor, List<TypeMirror> methodParameterTypes,
                               List<TypeMirror> typeVariables, boolean isInterceptor) implements ComponentDeclaration {
         @Override
         public Element source() {
@@ -133,6 +136,11 @@ public sealed interface ComponentDeclaration {
         }
 
         @Override
+        public @Nullable ClassName condition() {
+            return null;
+        }
+
+        @Override
         public String toString() {
             final StringBuilder sb = new StringBuilder("FromExtensionComponent[");
             sb.append("type=").append(type);
@@ -180,6 +188,11 @@ public sealed interface ComponentDeclaration {
         public String declarationString() {
             return "<Proxy>";
         }
+
+        @Override
+        public @Nullable ClassName condition() {
+            return null;
+        }
     }
 
     record OptionalComponent(TypeMirror type, @Nullable String tag) implements ComponentDeclaration {
@@ -196,6 +209,11 @@ public sealed interface ComponentDeclaration {
         @Override
         public String declarationString() {
             return "<EmptyOptional>";
+        }
+
+        @Override
+        public @Nullable ClassName condition() {
+            return null;
         }
 
         @Override
@@ -216,10 +234,14 @@ public sealed interface ComponentDeclaration {
             throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", method);
         }
         var tags = TagUtils.parseTagValue(method);
+        var conditionalAnnotation = AnnotationUtils.findAnnotation(method, CommonClassNames.conditional);
+        var condition = conditionalAnnotation != null
+            ? (ClassName) TypeName.get(Objects.requireNonNull(AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(conditionalAnnotation, "tag")))
+            : null;
         var parameterTypes = method.getParameters().stream().map(VariableElement::asType).toList();
         var typeParameters = method.getTypeParameters().stream().map(TypeParameterElement::asType).toList();
         var isInterceptor = ctx.serviceTypeHelper.isInterceptor(type);
-        return new FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters, isInterceptor);
+        return new FromModuleComponent(type, module, tags, condition, method, parameterTypes, typeParameters, isInterceptor);
     }
 
     static ComponentDeclaration fromAnnotated(ProcessingContext ctx, TypeElement typeElement) {
@@ -233,10 +255,14 @@ public sealed interface ComponentDeclaration {
             ctx.messager.printMessage(Diagnostic.Kind.WARNING, "Components with raw types can break dependency resolution in unpredictable way", typeElement);
         }
         var tags = TagUtils.parseTagValue(typeElement);
+        var conditionalAnnotation = AnnotationUtils.findAnnotation(typeElement, CommonClassNames.conditional);
+        var condition = conditionalAnnotation != null
+            ? (ClassName) TypeName.get(Objects.requireNonNull(AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(conditionalAnnotation, "tag")))
+            : null;
         var parameterTypes = constructor.getParameters().stream().map(VariableElement::asType).toList();
         var typeParameters = typeElement.getTypeParameters().stream().map(TypeParameterElement::asType).toList();
         var isInterceptor = ctx.serviceTypeHelper.isInterceptor(type);
-        return new AnnotatedComponent(type, typeElement, tags, constructor, parameterTypes, typeParameters, isInterceptor);
+        return new AnnotatedComponent(type, typeElement, tags, condition, constructor, parameterTypes, typeParameters, isInterceptor);
     }
 
     static ComponentDeclaration fromExtension(ProcessingContext ctx, ExtensionResult.GeneratedResult generatedResult) {

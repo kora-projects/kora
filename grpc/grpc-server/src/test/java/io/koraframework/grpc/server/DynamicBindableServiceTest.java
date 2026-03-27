@@ -1,11 +1,10 @@
 package io.koraframework.grpc.server;
 
 import io.grpc.*;
-import org.junit.jupiter.api.Test;
-import io.koraframework.application.graph.ValueOf;
 import io.koraframework.grpc.server.app.EventService;
 import io.koraframework.grpc.server.events.SendEventRequest;
 import io.koraframework.grpc.server.events.SendEventResponse;
+import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicReference;
@@ -17,17 +16,7 @@ class DynamicBindableServiceTest {
     void testReload() {
         var ref = new AtomicReference<BindableService>();
         ref.set(new EventService("test1"));
-        var bindableService = new DynamicBindableService(new ValueOf<BindableService>() {
-            @Override
-            public BindableService get() {
-                return ref.get();
-            }
-
-            @Override
-            public void refresh() {
-
-            }
-        });
+        var bindableService = new DynamicBindableService(ref::get);
 
         var service = bindableService.bindService();
         var request = SendEventRequest.getDefaultInstance();

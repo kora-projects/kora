@@ -1,13 +1,13 @@
 package io.koraframework.test.extension.junit5;
 
+import io.koraframework.application.graph.ApplicationGraphDraw;
+import io.koraframework.application.graph.Node;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.test.extension.junit5.KoraJUnit5Extension.TestMethodMetadata;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.extension.ExtensionConfigurationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.ApplicationGraphDraw;
-import io.koraframework.application.graph.Node;
-import io.koraframework.application.graph.RefreshableGraph;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.test.extension.junit5.KoraJUnit5Extension.TestMethodMetadata;
 
 import java.util.List;
 import java.util.concurrent.Semaphore;
@@ -31,6 +31,7 @@ final class TestGraph implements AutoCloseable {
     private final List<Node<?>> nodes;
     private final List<Node<?>> mocks;
 
+    @Nullable
     private volatile TestGraphContext graphInitialized;
     private volatile Status status;
 
@@ -74,7 +75,7 @@ final class TestGraph implements AutoCloseable {
     private void initGraph(KoraJUnit5Extension.TestClassMetadata.Config config, long started) {
         try {
             config.setup(graph);
-            final RefreshableGraph initGraph = graph.init();
+            var initGraph = graph.init();
             this.graphInitialized = new TestGraphContext(initGraph, graph, new DefaultKoraAppGraph(graph, initGraph));
             this.status = Status.INITIALIZED;
             logger.debug("@KoraAppTest dependency container initialized in {}", TimeUtils.tookForLogging(started));
@@ -102,7 +103,7 @@ final class TestGraph implements AutoCloseable {
             final long started = TimeUtils.started();
             logger.trace("@KoraAppTest dependency container releasing...");
             try {
-                graphInitialized.refreshableGraph().release();
+                graphInitialized.initializedGraph().release();
                 this.status = Status.RELEASED;
             } catch (Error | Exception e) {
                 throw new ExtensionConfigurationException("Dependency container release failed after: " + TimeUtils.tookForLogging(started), e);

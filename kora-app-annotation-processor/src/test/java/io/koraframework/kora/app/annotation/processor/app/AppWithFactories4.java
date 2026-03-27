@@ -10,11 +10,11 @@ import java.util.List;
 @KoraApp
 public interface AppWithFactories4 {
 
-    default int intComponent() {
+    default Integer intComponent() {
         return 0;
     }
 
-    default <T extends List<Class1>> TwoGenericClass<T, Class2> factory(TypeRef<T> typeRef1, TypeRef<Class2> typeRef2, int dependency) {
+    default <T extends List<Class1>> TwoGenericClass<T, Class2> factory(TypeRef<T> typeRef1, TypeRef<Class2> typeRef2, Integer dependency) {
         return new TwoGenericClass<>();
     }
 

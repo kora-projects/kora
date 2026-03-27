@@ -273,7 +273,7 @@ public abstract class AbstractAnnotationProcessorTest {
     @NullMarked
     public static class GraphContainer implements Graph, AutoCloseable {
         private final ApplicationGraphDraw draw;
-        private final RefreshableGraph graph;
+        private final InitializedGraph graph;
 
         public GraphContainer(ApplicationGraphDraw draw) {
             this.draw = draw;
@@ -321,6 +321,11 @@ public abstract class AbstractAnnotationProcessorTest {
         @Override
         public <T> PromiseOf<T> promiseOf(Node<? extends T> node) {
             return graph.promiseOf(node);
+        }
+
+        @Override
+        public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... nodes) {
+            return graph.getOnePromiseOf(nodes);
         }
 
         @Override

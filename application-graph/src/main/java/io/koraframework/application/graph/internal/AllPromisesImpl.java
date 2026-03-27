@@ -2,6 +2,7 @@ package io.koraframework.application.graph.internal;
 
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Graph;
+import io.koraframework.application.graph.NodeWithMapper;
 import io.koraframework.application.graph.PromiseOf;
 
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ public final class AllPromisesImpl<T> implements All<PromiseOf<T>> {
     private final ArrayList<PromiseWrapper<?, T>> values;
 
     @SafeVarargs
-    public AllPromisesImpl(Graph graph, AllOfElement<?, T>... nodes) {
+    public AllPromisesImpl(Graph graph, NodeWithMapper<?, T>... nodes) {
         this.values = new ArrayList<>(nodes.length);
         for (var node : nodes) {
             this.values.add(new PromiseWrapper<>(graph, node));
@@ -20,7 +21,7 @@ public final class AllPromisesImpl<T> implements All<PromiseOf<T>> {
     }
 
     private record PromiseWrapper<N, V>(PromiseOf<? extends N> promise, Function<N, V> mapper) {
-        public PromiseWrapper(Graph graph, AllOfElement<N, V> element) {
+        public PromiseWrapper(Graph graph, NodeWithMapper<N, V> element) {
             var promise = graph.promiseOf(element.node());
             this(promise, element.mapper());
         }

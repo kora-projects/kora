@@ -16,7 +16,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
-public final class GraphImpl implements RefreshableGraph, Lifecycle {
+public final class GraphImpl implements InitializedGraph {
     private static final long SLOW_NODE_INIT_THRESHOLD = Long.parseLong(System.getProperty("kora.graph.slowNodeInitThresholdMillis", "100"));
     private static final CompletableFuture<Void> EMPTY_FUTURE = CompletableFuture.completedFuture(null);
 
@@ -36,6 +36,26 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
     @Override
     public ApplicationGraphDraw draw() {
         return this.draw;
+    }
+
+    private record GraphConditionKey(ApplicationGraphDraw draw, Node<? extends GraphCondition> node) {
+        @Override
+        public int hashCode() {return toImpl(draw, node).index;}
+
+        @Override
+        public boolean equals(Object obj) {return obj instanceof GraphConditionKey(var draw, var node) && node == this.node && draw == this.draw;}
+    }
+
+    private record ConditionFailedGraphValue(GraphCondition.ConditionResult.Failed reason) {}
+
+    private final ConcurrentMap<GraphConditionKey, GraphCondition.ConditionResult> conditionResultsCache = new ConcurrentHashMap<>();
+
+    @Override
+    public GraphCondition condition(Node<? extends GraphCondition> node) {
+        return () -> conditionResultsCache.computeIfAbsent(
+            new GraphConditionKey(draw, node),
+            key -> get(key.node).eval()
+        );
     }
 
     @Override
@@ -60,29 +80,30 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         if (value == null) {
             throw new IllegalStateException("Value was not initialized");
         }
+        if (value instanceof ConditionFailedGraphValue(GraphCondition.ConditionResult.Failed(var reason))) {
+            throw new RuntimeException("Node value was not initialized: " + reason);
+        }
         return (T) value;
     }
 
     @Override
     public <T> ValueOf<T> valueOf(final Node<? extends T> node) {
-        var casted = toImpl(draw, node);
-        return new ValueOf<>() {
-            @Override
-            public T get() {
-                return GraphImpl.this.get(node);
-            }
-
-            @Override
-            public void refresh() {
-                GraphImpl.this.refresh(casted);
-            }
-        };
+        var _ = toImpl(draw, node);
+        return () -> GraphImpl.this.get(node);
     }
 
     @Override
     public <T> PromiseOf<T> promiseOf(final Node<? extends T> node) {
-        var casted = toImpl(draw, node);
-        return new PromiseOfImpl<>(this, casted);
+        var _ = toImpl(draw, node);
+        return () -> Optional.of(this.get(node));
+    }
+
+    @Override
+    public <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... nodes) {
+        for (var node : nodes) {
+            var _ = toImpl(draw, node.node());
+        }
+        return () -> Optional.of(this.getOneOf(nodes));
     }
 
     @Override
@@ -146,6 +167,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
 
     private void initializeSubgraph(int startFrom) {
         log.trace("Materializing graph objects {}", startFrom);
+        this.conditionResultsCache.clear();
         var tmpGraph = new TmpGraph(this);
         var errors = tmpGraph.init(startFrom);
         if (!errors.isEmpty()) {
@@ -193,6 +215,8 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 }
             }
         }
+        this.conditionResultsCache.putAll(tmpGraph.conditionResultsCache);
+        tmpGraph.delegate = this;
         log.trace("Dependency container refreshed, ");
     }
 
@@ -214,7 +238,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             var lock = locks.get(i);
             Thread.ofVirtual().name("release-" + i).start(() -> {
                 for (var dependencyNode : node.createDependencies) {
-                    locks.get(toImpl(draw, dependencyNode.node()).index).readLock().lock();
+                    locks.get(toImpl(draw, dependencyNode).index).readLock().lock();
                 }
                 for (var interceptorNode : node.interceptors) {
                     locks.get(toImpl(draw, interceptorNode).index).readLock().lock();
@@ -235,7 +259,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 } finally {
                     lock.writeLock().unlock();
                     for (var dependencyNode : node.createDependencies) {
-                        locks.get(toImpl(draw, dependencyNode.node()).index).readLock().unlock();
+                        locks.get(toImpl(draw, dependencyNode).index).readLock().unlock();
                     }
                     for (var interceptorNode : node.interceptors) {
                         locks.get(toImpl(draw, interceptorNode).index).readLock().unlock();
@@ -304,14 +328,16 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
         }
     }
 
-    private static class TmpGraph implements Graph {
+    private static class TmpGraph implements RefreshableGraph {
         private final GraphImpl rootGraph;
         private final AtomicReferenceArray<@Nullable Object> tmpArray;
         private final Collection<TmpValueOf<?>> newValueOf = new ConcurrentLinkedDeque<>();
-        private final Collection<PromiseOfImpl<?>> newPromises = new ConcurrentLinkedDeque<>();
+        private final Collection<BasePromiseOf<?>> newPromises = new ConcurrentLinkedDeque<>();
         private final AtomicReferenceArray<@Nullable CompletableFuture<@Nullable Void>> inits;
         private final BitSet initialized;
         private final boolean debugEnabled;
+        @Nullable
+        public volatile GraphImpl delegate;
 
         private TmpGraph(GraphImpl rootGraph) {
             this.rootGraph = rootGraph;
@@ -324,6 +350,20 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             this.debugEnabled = this.rootGraph.log.isDebugEnabled();
         }
 
+        private final ConcurrentMap<GraphConditionKey, GraphCondition.ConditionResult> conditionResultsCache = new ConcurrentHashMap<>();
+
+        @Override
+        public GraphCondition condition(Node<? extends GraphCondition> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.condition(node);
+            }
+            return () -> conditionResultsCache.computeIfAbsent(
+                new GraphConditionKey(this.rootGraph.draw, node),
+                key -> get(key.node).eval()
+            );
+        }
+
         @Override
         public ApplicationGraphDraw draw() {
             return this.rootGraph.draw();
@@ -331,29 +371,86 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
 
         @Override
         public <T> T get(Node<? extends T> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.get(node);
+            }
             return getImpl(this.rootGraph.draw, this.tmpArray, node);
         }
 
         @Override
-        public <T> ValueOf<T> valueOf(Node<? extends T> node) {
+        public final <T> ValueOf<T> valueOf(Node<? extends T> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.valueOf(node);
+            }
+
             var casted = (NodeImpl<? extends T>) node;
             // dirty hack to make copied graph work with valueOf
             @SuppressWarnings("unchecked")
             var fixed = (NodeImpl<? extends T>) this.rootGraph.draw.getNodes().get(casted.index);
-            var value = new TmpValueOf<T>(fixed, this, this.rootGraph);
+            var value = new TmpValueOf<T>(fixed, this);
             this.newValueOf.add(value);
             return value;
         }
 
         @Override
-        public <T> PromiseOf<T> promiseOf(Node<? extends T> node) {
+        public final <T> PromiseOf<T> promiseOf(Node<? extends T> node) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.promiseOf(node);
+            }
+
             var casted = (NodeImpl<? extends T>) node;
             // dirty hack to make copied graph work with valueOf
             @SuppressWarnings("unchecked")
             var fixed = (NodeImpl<? extends T>) this.rootGraph.draw.getNodes().get(casted.index);
-            var promise = new PromiseOfImpl<T>(null, fixed);
+            var promise = new PromiseOfImpl<T>(fixed);
             this.newPromises.add(promise);
             return promise;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public final <N, V> PromiseOf<V> getOnePromiseOf(NodeWithMapper<N, V>... nodes) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.getOnePromiseOf(nodes);
+            }
+
+            NodeWithMapper<N, V>[] fixedNodes = new NodeWithMapper[nodes.length];
+
+            for (int i = 0; i < nodes.length; i++) {
+                var node = nodes[i];
+                toImpl(this.rootGraph.draw, node.node());
+                var casted = (NodeImpl<? extends N>) toImpl(this.rootGraph.draw, node.node());
+                var fixed = (NodeImpl<? extends N>) this.rootGraph.draw.getNodes().get(casted.index);
+                fixedNodes[i] = new NodeWithMapper<>(fixed, node.mapper());
+            }
+
+            var promise = new PromiseOfOneConditionalImpl<>(fixedNodes);
+            this.newPromises.add(promise);
+            return promise;
+        }
+
+        @Override
+        @SafeVarargs
+        public final <N, V> V getOneOf(NodeWithMapper<N, V>... nodes) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.getOneOf(nodes);
+            }
+            return RefreshableGraph.super.getOneOf(nodes);
+        }
+
+        @Override
+        @SafeVarargs
+        public final <N, V> ValueOf<V> getOneValueOf(NodeWithMapper<N, V>... nodes) {
+            var delegate = this.delegate;
+            if (delegate != null) {
+                return delegate.getOneValueOf(nodes);
+            }
+            return RefreshableGraph.super.getOneValueOf(nodes);
         }
 
         private <T> void createNode(int startFrom, NodeImpl<T> node) throws Exception {
@@ -361,7 +458,7 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
             T oldObject = (T) this.rootGraph.objects.get(node.index);
             for (var dependencyNode : node.createDependencies) {
                 try {
-                    var init = this.inits.get(toImpl(rootGraph.draw, dependencyNode.node()).index);
+                    var init = this.inits.get(toImpl(rootGraph.draw, dependencyNode).index);
                     if (init != null) {
                         init.get();
                     }
@@ -393,8 +490,20 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                     return;
                 }
             }
+            if (node.condition() != null) {
+                switch (node.condition().apply(this)) {
+                    case GraphCondition.ConditionResult.Matched _ -> {}
+                    case GraphCondition.ConditionResult.Failed failed -> {
+                        this.rootGraph.log.trace("Creating node {} canceled: {}", node.index, failed.reason());
+                        this.tmpArray.set(node.index, new ConditionFailedGraphValue(failed));
+                        return;
+                    }
+                }
+            }
+
+
             if (this.rootGraph.log.isTraceEnabled()) {
-                var dependenciesStr = node.createDependencies.stream().map(ApplicationGraphDraw.CreateDependency::node).map(Node::toString).collect(Collectors.joining(",", "[", "]"));
+                var dependenciesStr = node.createDependencies.stream().map(Node::toString).collect(Collectors.joining(",", "[", "]"));
                 this.rootGraph.log.trace("Creating node {}, dependencies {}", node.index, dependenciesStr);
             }
 
@@ -438,6 +547,11 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
                 }
             }
             this.tmpArray.set(node.index, newObject);
+        }
+
+        @Override
+        public void refresh(Node<?> fromNode) {
+            this.rootGraph.refresh(fromNode);
         }
 
         private static class DependencyInitializationFailedException extends RuntimeException {
@@ -517,23 +631,16 @@ public final class GraphImpl implements RefreshableGraph, Lifecycle {
 
     private static class TmpValueOf<T> implements ValueOf<T> {
         public volatile Graph tmpGraph;
-        private final GraphImpl rootGraph;
         private final NodeImpl<? extends T> node;
 
-        private TmpValueOf(NodeImpl<? extends T> node, Graph tmpGraph, GraphImpl rootGraph) {
+        private TmpValueOf(NodeImpl<? extends T> node, Graph tmpGraph) {
             this.node = node;
             this.tmpGraph = tmpGraph;
-            this.rootGraph = rootGraph;
         }
 
         @Override
         public T get() {
             return this.tmpGraph.get(this.node);
-        }
-
-        @Override
-        public void refresh() {
-            this.rootGraph.refresh(this.node);
         }
     }
 

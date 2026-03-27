@@ -8,16 +8,16 @@ import io.koraframework.common.annotation.Root;
 @KoraApp
 public interface AppWithFactories7 {
 
-    default int intComponent() {
+    default Integer intComponent() {
         return 0;
     }
 
-    default <T> GenericClass<T> factory1(TypeRef<T> typeRef, int dependency) {
+    default <T> GenericClass<T> factory1(TypeRef<T> typeRef, Integer dependency) {
         throw new IllegalStateException();
     }
 
     @Tag(Class1.class)
-    default <T> GenericClass<T> factory2(TypeRef<T> typeRef, int dependency) {
+    default <T> GenericClass<T> factory2(TypeRef<T> typeRef, Integer dependency) {
         return new GenericClass<>();
     }
 

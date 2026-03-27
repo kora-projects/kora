@@ -7,11 +7,11 @@ import io.koraframework.common.annotation.Root;
 @KoraApp
 public interface AppWithFactories1 {
 
-    default int intComponent() {
+    default Integer intComponent() {
         return 0;
     }
 
-    default <T> GenericClass<T> factory(TypeRef<T> typeRef, int dependency) {
+    default <T> GenericClass<T> factory(TypeRef<T> typeRef, Integer dependency) {
         return new GenericClass<>();
     }
 

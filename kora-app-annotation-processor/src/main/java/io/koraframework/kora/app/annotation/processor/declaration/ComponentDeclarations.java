@@ -1,5 +1,6 @@
 package io.koraframework.kora.app.annotation.processor.declaration;
 
+import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
 import io.koraframework.kora.app.annotation.processor.ProcessingContext;
@@ -51,6 +52,10 @@ public class ComponentDeclarations {
             typeName = ptn.rawType();
         }
         return Collections.unmodifiableList(this.typeToDeclarations.getOrDefault(typeName, List.of()));
+    }
+
+    public List<DeclarationWithIndex> getByType(ClassName type) {
+        return Collections.unmodifiableList(this.typeToDeclarations.getOrDefault(type, List.of()));
     }
 
     public List<DeclarationWithIndex> interceptors() {
