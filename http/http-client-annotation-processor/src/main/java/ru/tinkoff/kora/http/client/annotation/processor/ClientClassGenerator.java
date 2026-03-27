@@ -900,29 +900,50 @@ public class ClientClassGenerator {
         List<Parameter> parameters) {
     }
 
+    static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {
+        var result = new HashSet<TypeElement>();
+        collectInterfaces(types, result, typeElement);
+        return result;
+    }
+
+    private static void collectInterfaces(Types types, Set<TypeElement> collectedElements, TypeElement typeElement) {
+        if (collectedElements.add(typeElement)) {
+            if (typeElement.asType().getKind() == TypeKind.ERROR) {
+                throw new ProcessingErrorException("Element is error: %s".formatted(typeElement.toString()), typeElement);
+            }
+            for (var directlyImplementedInterface : typeElement.getInterfaces()) {
+                var interfaceElement = (TypeElement) types.asElement(directlyImplementedInterface);
+                collectInterfaces(types, collectedElements, interfaceElement);
+            }
+        }
+    }
+
     private List<MethodData> parseMethods(TypeElement element) {
         var result = new ArrayList<MethodData>();
-        for (var enclosedElement : elements.getAllMembers(element)) {
-            if (enclosedElement.getKind() != ElementKind.METHOD) {
-                continue;
-            }
-            var method = (ExecutableElement) enclosedElement;
-            if (method.getModifiers().contains(Modifier.DEFAULT) || method.getModifiers().contains(Modifier.STATIC)) {
-                continue;
-            }
-            if (method.getEnclosingElement().toString().equals("java.lang.Object")) {
-                continue;
-            }
-            var parameters = new ArrayList<Parameter>();
-            for (int i = 0; i < method.getParameters().size(); i++) {
-                var parameter = Parameter.parse(method, i);
-                parameters.add(parameter);
-            }
-            var returnType = TypeName.get(method.getReturnType());
-            var responseCodeMappers = this.parseMapperData(method);
+        var interfaces = collectInterfaces(types, element);
+        for (TypeElement typeElement : interfaces) {
+            for (var enclosedElement : elements.getAllMembers(typeElement)) {
+                if (enclosedElement.getKind() != ElementKind.METHOD) {
+                    continue;
+                }
+                var method = (ExecutableElement) enclosedElement;
+                if (method.getModifiers().contains(Modifier.DEFAULT) || method.getModifiers().contains(Modifier.STATIC)) {
+                    continue;
+                }
+                if (method.getEnclosingElement().toString().equals("java.lang.Object")) {
+                    continue;
+                }
+                var parameters = new ArrayList<Parameter>();
+                for (int i = 0; i < method.getParameters().size(); i++) {
+                    var parameter = Parameter.parse(method, i);
+                    parameters.add(parameter);
+                }
+                var returnType = TypeName.get(method.getReturnType());
+                var responseCodeMappers = this.parseMapperData(method);
 
-            var responseMapper = CommonUtils.parseMapping(method).getMapping(httpClientResponseMapper);
-            result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
+                var responseMapper = CommonUtils.parseMapping(method).getMapping(httpClientResponseMapper);
+                result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
+            }
         }
         return result;
     }
