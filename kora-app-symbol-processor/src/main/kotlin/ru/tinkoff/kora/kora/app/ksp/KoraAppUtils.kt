@@ -5,17 +5,16 @@ import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSNode
 import com.google.devtools.ksp.validate
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 
 object KoraAppUtils {
-    fun KSClassDeclaration.validateModule() = validate() && getDeclaredFunctions().all { it.validate() }
+
+    fun KSClassDeclaration.validateModule() = getDeclaredFunctions().all { it.validate() }
 
     fun KSClassDeclaration.validateComponent(): Boolean {
-        if (!validate()) {
-            return false
-        }
         val constructor = findSinglePublicConstructor()
         return constructor.validate()
     }

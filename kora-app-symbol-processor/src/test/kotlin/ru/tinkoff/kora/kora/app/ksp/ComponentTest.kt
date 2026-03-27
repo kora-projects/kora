@@ -53,4 +53,26 @@ class ComponentTest : AbstractKoraAppProcessorTest() {
         Assertions.assertThat(draw.nodes).hasSize(3)
         draw.init()
     }
+    @Test
+    fun testComponentWithValidateStackoverflow() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun test(testClass: TestClass) = ""
+            }
+            """.trimIndent(),
+            """
+            @Component
+            class TestClass : Function<Enum<*>> {
+                fun apply(t: Enum<*>) {
+                }
+            }
+            
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(2)
+        draw.init()
+    }
 }
