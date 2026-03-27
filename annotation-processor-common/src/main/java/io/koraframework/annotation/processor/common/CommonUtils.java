@@ -364,6 +364,8 @@ public class CommonUtils {
         for (var annotationMirror : method.getAnnotationMirrors()) {
             if (CommonUtils.isAopAnnotation(annotationMirror)
                 || CommonUtils.isAopAnnotationUtil(annotationMirror)
+                || CommonClassNames.mapping.canonicalName().equals(annotationMirror.getAnnotationType().toString())
+                || CommonClassNames.mappings.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                 || annotationMirror.getAnnotationType().toString().endsWith(".Nullable")) {
                 methodBuilder.addAnnotation(AnnotationSpec.get(annotationMirror));
             }
@@ -381,6 +383,9 @@ public class CommonUtils {
             for (var annotationMirror : parameter.getAnnotationMirrors()) {
                 if (CommonUtils.isAopAnnotation(annotationMirror)
                     || CommonUtils.isAopAnnotationUtil(annotationMirror)
+                    || CommonClassNames.tag.canonicalName().equals(annotationMirror.getAnnotationType().toString())
+                    || CommonClassNames.mapping.canonicalName().equals(annotationMirror.getAnnotationType().toString())
+                    || CommonClassNames.mappings.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                     || annotationMirror.getAnnotationType().toString().endsWith(".Nullable")
                     || annotationMirror.getAnnotationType().toString().endsWith(".Nonnull")
                     || annotationMirror.getAnnotationType().toString().endsWith(".NotNull")) {
