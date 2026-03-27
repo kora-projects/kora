@@ -2,11 +2,11 @@ package io.koraframework.http.server.symbol.processor
 
 import io.koraframework.http.common.body.HttpBody
 import io.koraframework.http.common.header.HttpHeaders
-import io.koraframework.http.server.common.HttpServerRequest
-import io.koraframework.http.server.common.HttpServerResponse
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler
-import io.koraframework.http.server.common.handler.HttpServerRequestMapper
-import io.koraframework.http.server.common.handler.HttpServerResponseMapper
+import io.koraframework.http.server.common.request.HttpServerRequest
+import io.koraframework.http.server.common.response.HttpServerResponse
+import io.koraframework.http.server.common.request.HttpServerRequestHandler
+import io.koraframework.http.server.common.request.HttpServerRequestMapper
+import io.koraframework.http.server.common.response.HttpServerResponseMapper
 import io.koraframework.http.server.symbol.procesor.HttpControllerProcessorProvider
 import io.koraframework.http.server.symbol.processor.server.HttpResponseAssert
 import io.koraframework.http.server.symbol.processor.server.SimpleHttpServerRequest
@@ -28,9 +28,9 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
         import io.koraframework.http.common.body.*;
         import io.koraframework.http.common.header.*;
         import io.koraframework.http.common.HttpResponseEntity;
-        import io.koraframework.http.server.common.HttpServerResponse;
-        import io.koraframework.http.server.common.HttpServerRequest;
-        import io.koraframework.http.server.common.HttpServerInterceptor;
+        import io.koraframework.http.server.common.response.HttpServerResponse;
+        import io.koraframework.http.server.common.request.HttpServerRequest;
+        import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
         import io.koraframework.http.common.HttpMethod.*;
         import java.util.concurrent.CompletionStage;
         import java.util.concurrent.CompletableFuture;
@@ -79,11 +79,21 @@ abstract class AbstractHttpControllerTest : AbstractSymbolProcessorTest() {
     }
 
     protected fun strResponseMapper(): HttpServerResponseMapper<String> {
-        return HttpServerResponseMapper { request: HttpServerRequest, result: String? -> HttpServerResponse.of(200, HttpBody.plaintext(result)) }
+        return HttpServerResponseMapper { request: HttpServerRequest, result: String? ->
+            HttpServerResponse.of(
+                200,
+                HttpBody.plaintext(result)
+            )
+        }
     }
 
     protected fun stringRequestMapper(): HttpServerRequestMapper<String> {
-        return HttpServerRequestMapper { request: HttpServerRequest -> String(request.body().asInputStream().readAllBytes(), StandardCharsets.UTF_8) }
+        return HttpServerRequestMapper { request: HttpServerRequest ->
+            String(
+                request.body().asInputStream().readAllBytes(),
+                StandardCharsets.UTF_8
+            )
+        }
     }
 
     protected fun assertThat(handler: HttpServerRequestHandler, method: String, relativeUrl: String): HttpResponseAssert {

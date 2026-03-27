@@ -4,7 +4,7 @@ import io.opentelemetry.context.Context;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.http.client.common.HttpClient;
-import io.koraframework.http.client.common.HttpClientException;
+import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;

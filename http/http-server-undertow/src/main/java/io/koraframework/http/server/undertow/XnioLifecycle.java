@@ -1,6 +1,8 @@
 package io.koraframework.http.server.undertow;
 
+import io.koraframework.common.util.Configurer;
 import io.undertow.Undertow;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xnio.Xnio;
@@ -17,11 +19,15 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
     private static final Logger logger = LoggerFactory.getLogger(XnioLifecycle.class);
 
     private final ValueOf<UndertowConfig> configValue;
+    @Nullable
+    private final Configurer<XnioWorker.Builder> configurer;
 
     private volatile XnioWorker worker;
 
-    public XnioLifecycle(ValueOf<UndertowConfig> configValue) {
+    public XnioLifecycle(ValueOf<UndertowConfig> configValue,
+                         @Nullable Configurer<XnioWorker.Builder> configurer) {
         this.configValue = configValue;
+        this.configurer = configurer;
     }
 
     @Override
@@ -35,15 +41,20 @@ public final class XnioLifecycle implements Lifecycle, Wrapped<XnioWorker> {
         var t = new Thread(() -> {
             try {
                 // XnioWorker will be daemon despite flag .setDaemon(false) if the thread it is started from is daemon (virtual thread)
-                var worker = Xnio.getInstance(Undertow.class.getClassLoader())
+                var builder = Xnio.getInstance(Undertow.class.getClassLoader())
                     .createWorkerBuilder()
                     .setCoreWorkerPoolSize(1)
                     .setMaxWorkerPoolSize(1)
                     .setWorkerIoThreads(httpServerConfig.ioThreads())
                     .setWorkerKeepAlive(((int) httpServerConfig.threadKeepAliveTimeout().toMillis()))
                     .setDaemon(false)
-                    .setWorkerName("kora-undertow")
-                    .build();
+                    .setWorkerName("kora-undertow");
+
+                if(configurer != null) {
+                    builder = configurer.configure(builder);
+                }
+                var worker = builder.build();
+
                 f.complete(worker);
             } catch (Throwable e) {
                 f.completeExceptionally(e);

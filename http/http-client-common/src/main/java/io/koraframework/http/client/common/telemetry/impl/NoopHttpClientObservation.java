@@ -9,13 +9,13 @@ public class NoopHttpClientObservation implements HttpClientObservation {
     public static final NoopHttpClientObservation INSTANCE = new NoopHttpClientObservation();
 
     @Override
-    public HttpClientRequest observeRequest(HttpClientRequest rq) {
-        return rq;
+    public HttpClientRequest observeRequest(HttpClientRequest request) {
+        return request;
     }
 
     @Override
-    public HttpClientResponse observeResponse(HttpClientResponse rs) {
-        return rs;
+    public HttpClientResponse observeResponse(HttpClientResponse response) {
+        return response;
     }
 
     @Override

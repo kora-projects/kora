@@ -5,8 +5,8 @@ import org.junit.jupiter.api.Test
 import io.koraframework.application.graph.TypeRef
 import io.koraframework.common.Tag
 import io.koraframework.http.common.header.HttpHeaders
-import io.koraframework.http.server.common.handler.HttpServerRequestMapper
-import io.koraframework.http.server.common.handler.StringParameterReader
+import io.koraframework.http.server.common.request.HttpServerRequestMapper
+import io.koraframework.http.server.common.request.HttpServerParameterReader
 import java.lang.reflect.ParameterizedType
 import kotlin.reflect.KClass
 import kotlin.reflect.full.functions
@@ -181,7 +181,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
+            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
             val type = it.parameters[1].parameterizedType as ParameterizedType
             Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("BigInteger")
         }
@@ -343,7 +343,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
+            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
             val type = it.parameters[1].parameterizedType as ParameterizedType
             Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("BigInteger")
         }
@@ -379,7 +379,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
+            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
             val type = it.parameters[1].parameterizedType as ParameterizedType
             Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
         }
@@ -415,7 +415,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
         val clazz = loadClass("ControllerModule")
         clazz.methods.forEach {
             Assertions.assertThat(it.parameters).hasSize(2)
-            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(StringParameterReader::class.java)
+            Assertions.assertThat(it.parameters[1].type).isAssignableFrom(HttpServerParameterReader::class.java)
             val type = it.parameters[1].parameterizedType as ParameterizedType
             Assertions.assertThat(type.actualTypeArguments[0].typeName).endsWith("TestEnum")
         }
@@ -559,7 +559,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             }
             """.trimIndent(), """
-            class Mapper : io.koraframework.http.server.common.handler.HttpServerRequestMapper<CompletionStage<String>> {
+            class Mapper : io.koraframework.http.server.common.request.HttpServerRequestMapper<CompletionStage<String>> {
                override fun apply(request: HttpServerRequest) : CompletionStage<String> {
                   return CompletableFuture.completedFuture(request.toString())
                }
@@ -583,7 +583,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
                 }
             }
             """.trimIndent(), """
-            class Mapper : io.koraframework.http.server.common.handler.HttpServerRequestMapper<String> {
+            class Mapper : io.koraframework.http.server.common.request.HttpServerRequestMapper<String> {
                override fun apply(request: HttpServerRequest) : String {
                   return request.toString()
                }
@@ -610,7 +610,9 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         );
         compileResult.assertSuccess();
-        val parser = StringParameterReader<Any> { throw RuntimeException("test-error") }
+        val parser = HttpServerParameterReader<Any> {
+            throw RuntimeException("test-error")
+        }
 
         val handler = module.getHandler("get_test", parser);
 
@@ -632,7 +634,9 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         );
         compileResult.assertSuccess();
-        val parser = StringParameterReader<Any> { throw RuntimeException("test-error") }
+        val parser = HttpServerParameterReader<Any> {
+            throw RuntimeException("test-error")
+        }
 
         val handler = module.getHandler("get_test", parser);
 
@@ -654,7 +658,9 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             """.trimIndent()
         );
         compileResult.assertSuccess();
-        val parser = StringParameterReader<Any> { throw RuntimeException("test-error") }
+        val parser = HttpServerParameterReader<Any> {
+            throw RuntimeException("test-error")
+        }
 
         val handler = module.getHandler("get_string_test", parser);
 

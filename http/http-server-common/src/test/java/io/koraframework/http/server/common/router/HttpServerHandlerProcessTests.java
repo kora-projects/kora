@@ -13,12 +13,11 @@ import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
 import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.HttpServerResponse;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandlerImpl;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
+import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 
 import java.time.Duration;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -72,7 +71,7 @@ class HttpServerHandlerProcessTests {
         var handler = new HttpServerHandler(handlers, All.of(), config);
 
         // when
-        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var request = new HttpRouterRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
         var routedRq = handler.route(request);
@@ -120,7 +119,7 @@ class HttpServerHandlerProcessTests {
         var handler = new HttpServerHandler(handlers, All.of(), config);
 
         // when
-        var request = new PublicApiRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var request = new HttpRouterRequestImpl(method, path, "foo", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
 
         // then
         var routedRq = handler.route(request);
@@ -139,7 +138,7 @@ class HttpServerHandlerProcessTests {
         when(telemetryFactory.get(any())).thenReturn(NoopHttpServerTelemetry.INSTANCE);
         var handler = new HttpServerHandler(handlers, All.of(), config);
 
-        var request = new PublicApiRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
+        var request = new HttpRouterRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());
         var routedRq = handler.route(request);
         var rs = routedRq.proceed(routedRq.request);
         assertThat(rs.code()).isEqualTo(200);
@@ -166,15 +165,15 @@ class HttpServerHandlerProcessTests {
         return new HttpServerRequestHandlerImpl(method, route, (httpServerRequest) -> HttpServerResponse.of(200));
     }
 
-    private record PublicApiRequestImpl(
+    private record HttpRouterRequestImpl(
         String method,
         String path,
         String hostName,
         String scheme,
         HttpHeaders headers,
-        Map<String, ? extends Collection<String>> queryParams,
+        Map<String, List<String>> queryParams,
         HttpBodyInput body
-    ) implements PublicApiRequest {
+    ) implements HttpRouterRequest {
         @Override
         public long requestStartTime() {
             return 0;

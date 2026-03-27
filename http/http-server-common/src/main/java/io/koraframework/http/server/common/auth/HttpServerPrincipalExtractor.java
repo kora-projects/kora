@@ -2,7 +2,7 @@ package io.koraframework.http.server.common.auth;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.common.Principal;
-import io.koraframework.http.server.common.HttpServerRequest;
+import io.koraframework.http.server.common.request.HttpServerRequest;
 
 /**
  * <b>Русский</b>: Контракт по извлечению контекста авторизации из HTTP запроса

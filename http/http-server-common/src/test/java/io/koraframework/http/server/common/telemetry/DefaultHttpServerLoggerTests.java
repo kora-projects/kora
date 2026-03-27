@@ -25,7 +25,7 @@ import io.koraframework.http.common.cookie.Cookie;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
 import io.koraframework.http.server.common.HttpServer;
-import io.koraframework.http.server.common.HttpServerRequest;
+import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import tools.jackson.core.JsonGenerator;
@@ -93,7 +93,7 @@ public class DefaultHttpServerLoggerTests {
 
     @ParameterizedTest
     @MethodSource("getLogStartTestsData")
-    public void logStartTests(Level level, Map<String, ? extends Collection<String>> queryParams, HttpHeaders headers, Boolean pathTemplate, Object... expectedArgs) throws IOException {
+    public void logStartTests(Level level, Map<String, List<String>> queryParams, HttpHeaders headers, Boolean pathTemplate, Object... expectedArgs) throws IOException {
         expectLogLevel(level);
         var config = pathTemplate == null ? config("") : config("pathTemplate = " + pathTemplate);
         var logger = new DefaultHttpServerLogger(config);
@@ -225,8 +225,18 @@ public class DefaultHttpServerLoggerTests {
         root.setLevel(level);
     }
 
-    private HttpServerRequest request(String method, String path, String route, Map<String, ? extends Collection<String>> queryParams, HttpHeaders headers) {
+    private HttpServerRequest request(String method, String path, String route, Map<String, List<String>> queryParams, HttpHeaders headers) {
         return new HttpServerRequest() {
+            @Override
+            public String scheme() {
+                return "http";
+            }
+
+            @Override
+            public String host() {
+                return "localhost";
+            }
+
             @Override
             public String method() {
                 return method;
@@ -238,7 +248,7 @@ public class DefaultHttpServerLoggerTests {
             }
 
             @Override
-            public String route() {
+            public String pathTemplate() {
                 return route;
             }
 
@@ -253,7 +263,7 @@ public class DefaultHttpServerLoggerTests {
             }
 
             @Override
-            public Map<String, ? extends Collection<String>> queryParams() {
+            public Map<String, List<String>> queryParams() {
                 return queryParams;
             }
 
@@ -265,6 +275,11 @@ public class DefaultHttpServerLoggerTests {
             @Override
             public HttpBodyInput body() {
                 return HttpBody.empty();
+            }
+
+            @Override
+            public long requestStartTimeInNanos() {
+                return 0;
             }
         };
     }

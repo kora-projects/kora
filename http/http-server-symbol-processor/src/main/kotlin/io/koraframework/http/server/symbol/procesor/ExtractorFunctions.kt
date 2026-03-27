@@ -5,7 +5,7 @@ import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 
 
 object ExtractorFunctions {
-    private val extractorsPackage = ClassName("io.koraframework.http.server.common.handler", "RequestHandlerUtils")
+    private val extractorsPackage = ClassName("io.koraframework.http.server.common.request", "RequestHandlerUtils")
     private val UUID = ClassName("java.util", "UUID")
 
     val path = mapOf<TypeName, MemberName>(

@@ -12,20 +12,20 @@ public interface HttpClientRequestBuilder {
 
     HttpClientRequest build();
 
-    HttpClientRequestBuilder templateParam(String name, String value);
+    HttpClientRequestBuilder pathParam(String name, String value);
 
-    default HttpClientRequestBuilder templateParam(String name, int value) {
-        return this.templateParam(name, Integer.toString(value));
+    default HttpClientRequestBuilder pathParam(String name, int value) {
+        return this.pathParam(name, Integer.toString(value));
     }
 
-    default HttpClientRequestBuilder templateParam(String name, long value) {
-        return this.templateParam(name, Long.toString(value));
+    default HttpClientRequestBuilder pathParam(String name, long value) {
+        return this.pathParam(name, Long.toString(value));
     }
 
-    default HttpClientRequestBuilder templateParam(String name, UUID value) {
+    default HttpClientRequestBuilder pathParam(String name, UUID value) {
         Objects.requireNonNull(value);
 
-        return this.templateParam(name, Objects.toString(value));
+        return this.pathParam(name, Objects.toString(value));
     }
 
     HttpClientRequestBuilder queryParam(String name);
@@ -57,9 +57,13 @@ public interface HttpClientRequestBuilder {
         return this.queryParam(name, Objects.toString(value));
     }
 
+    HttpClientRequestBuilder queryParamRemove(String name);
+
     HttpClientRequestBuilder header(String name, String value);
 
     HttpClientRequestBuilder header(String name, List<String> value);
+
+    HttpClientRequestBuilder headerRemove(String name);
 
     HttpClientRequestBuilder requestTimeout(int timeoutMillis);
 

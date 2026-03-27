@@ -6,9 +6,9 @@ import org.junit.jupiter.api.Test;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.Tag;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.handler.HttpServerRequestMapper;
-import io.koraframework.http.server.common.handler.StringParameterReader;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.request.HttpServerRequestMapper;
+import io.koraframework.http.server.common.request.HttpServerParameterReader;
 
 import java.lang.reflect.ParameterizedType;
 import java.util.Arrays;
@@ -198,7 +198,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
             Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
-            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(HttpServerParameterReader.class);
 
             var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("BigInteger");
@@ -382,7 +382,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
             Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
-            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(HttpServerParameterReader.class);
 
             var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("BigInteger");
@@ -420,7 +420,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
             Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
-            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(HttpServerParameterReader.class);
 
             var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("TestEnum");
@@ -458,7 +458,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
         final Class<?> controllerModule = compileResult.loadClass("ControllerModule");
         for (var moduleMethod : controllerModule.getMethods()) {
             Assertions.assertThat(moduleMethod.getParameters()).hasSize(2);
-            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(StringParameterReader.class);
+            Assertions.assertThat(moduleMethod.getParameters()[1].getType()).isAssignableFrom(HttpServerParameterReader.class);
 
             var type = ((ParameterizedType) moduleMethod.getParameters()[1].getParameterizedType());
             Assertions.assertThat(type.getActualTypeArguments()[0].getTypeName()).endsWith("TestEnum");
@@ -544,7 +544,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     @Test
     void testRequest() {
         var m = compile("""
-            import io.koraframework.http.server.common.HttpServerRequest;@HttpController
+            import io.koraframework.http.server.common.request.HttpServerRequest;@HttpController
             public class Controller {
                 @HttpRoute(method = GET, path = "/request")
                 void request(HttpServerRequest request) {
@@ -585,7 +585,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
                 }
                 """,
             """
-                import io.koraframework.http.server.common.HttpServerRequest;public class Mapper implements HttpServerRequestMapper<String> {
+                import io.koraframework.http.server.common.request.HttpServerRequest;import io.koraframework.http.server.common.request.HttpServerRequestMapper;public class Mapper implements HttpServerRequestMapper<String> {
                 
                     @Override
                     public String apply(HttpServerRequest request) {
@@ -610,7 +610,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             }
             """);
         compileResult.assertSuccess();
-        var parser = new StringParameterReader<Object>() {
+        var parser = new HttpServerParameterReader<Object>() {
             @Override
             public Object read(String string) {
                 System.out.println(string);
@@ -636,7 +636,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             }
             """);
         compileResult.assertSuccess();
-        var parser = new StringParameterReader<Object>() {
+        var parser = new HttpServerParameterReader<Object>() {
             @Override
             public Object read(String string) {
                 System.out.println(string);
@@ -662,7 +662,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
             }
             """);
         compileResult.assertSuccess();
-        var parser = new StringParameterReader<Object>() {
+        var parser = new HttpServerParameterReader<Object>() {
             @Override
             public Object read(String string) {
                 System.out.println(string);

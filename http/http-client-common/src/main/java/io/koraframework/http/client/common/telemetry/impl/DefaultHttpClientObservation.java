@@ -41,47 +41,47 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
     }
 
     @Override
-    public HttpClientRequest observeRequest(HttpClientRequest rq) {
+    public HttpClientRequest observeRequest(HttpClientRequest request) {
         if (logger.logRequestBody()) {
-            var charset = detectCharset(rq.body().contentType());
+            var charset = detectCharset(request.body().contentType());
             if (charset != null) {
-                var body = rq.body();
+                var body = request.body();
                 var full = body.getFullContentIfAvailable();
                 if (full != null) {
-                    logger.logRequest(rq, charset.decode(full).toString());
-                    return rq;
+                    logger.logRequest(request, charset.decode(full).toString());
+                    return request;
                 }
 
-                return rq.toBuilder()
-                    .body(new DefaultHttpClientTelemetryRequestBodyWrapper(rq, body, charset, logger))
+                return request.toBuilder()
+                    .body(new DefaultHttpClientTelemetryRequestBodyWrapper(request, body, charset, logger))
                     .build();
             }
         }
-        logger.logRequest(rq, null);
-        return rq;
+        logger.logRequest(request, null);
+        return request;
     }
 
     @Override
-    public HttpClientResponse observeResponse(HttpClientResponse rs) {
-        this.statusCode = rs.code();
-        this.rs = rs;
-        this.resultCode = HttpResultCode.fromStatusCode(rs.code());
+    public HttpClientResponse observeResponse(HttpClientResponse response) {
+        this.statusCode = response.code();
+        this.rs = response;
+        this.resultCode = HttpResultCode.fromStatusCode(response.code());
         this.processingTime = System.nanoTime() - startNanos;
         if (logger.logResponseBody()) {
-            var charset = detectCharset(rs.body().contentType());
+            var charset = detectCharset(response.body().contentType());
             if (charset != null) {
-                var body = rs.body();
+                var body = response.body();
                 var full = body.getFullContentIfAvailable();
                 if (full != null) {
-                    logger.logResponse(rq, rs, processingTime, charset.decode(full).toString());
-                    return rs;
+                    logger.logResponse(rq, response, processingTime, charset.decode(full).toString());
+                    return response;
                 }
-                var rsBody = new DefaultHttpClientTelemetryCollectingResponseBodyWrapper(logger, rq, rs, processingTime, charset);
-                return new DefaultHttpClientTelemetryResponseWrapper(rs, rsBody);
+                var rsBody = new DefaultHttpClientTelemetryCollectingResponseBodyWrapper(logger, rq, response, processingTime, charset);
+                return new DefaultHttpClientTelemetryResponseWrapper(response, rsBody);
             }
         }
-        logger.logResponse(rq, rs, processingTime, null);
-        return rs;
+        logger.logResponse(rq, response, processingTime, null);
+        return response;
     }
 
     @Override

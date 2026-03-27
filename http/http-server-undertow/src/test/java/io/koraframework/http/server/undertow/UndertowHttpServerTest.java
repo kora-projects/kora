@@ -12,10 +12,10 @@ class UndertowHttpServerTest extends HttpServerTestKit {
     @Override
     protected HttpServer httpServer(ValueOf<? extends HttpServerConfig> config, HttpServerHandler httpServerHandler, HttpServerTelemetry telemetry) {
         return new UndertowHttpServer(
-            config,
-            valueOf(httpServerHandler),
             "test",
-            telemetry,
+            valueOf(new RequestProcessingHttpHandler(telemetry, httpServerHandler)),
+            null,
+            config,
             null,
             null
         );

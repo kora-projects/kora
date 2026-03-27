@@ -3,7 +3,12 @@ package io.koraframework.http.server.common.router;
 
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.*;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
+import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.request.RouterHttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -90,33 +95,33 @@ public class HttpServerHandler {
         }
     }
 
-    public PublicApiInvocation route(PublicApiRequest publicApiRequest) {
+    public PublicApiInvocation route(HttpRouterRequest httpRouterRequest) {
         final HttpServerRequestHandler.HandlerFunction handlerFunction;
         final Map<String, String> templateParameters;
-        final @Nullable String routeTemplate;
+        final @Nullable String pathTemplate;
 
-        var methodMatchers = this.pathTemplateMatcher.get(publicApiRequest.method());
-        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(publicApiRequest.path());
+        var methodMatchers = this.pathTemplateMatcher.get(httpRouterRequest.method());
+        var pathTemplateMatch = methodMatchers == null ? null : methodMatchers.match(httpRouterRequest.path());
         if (pathTemplateMatch == null) {
-            var allMethodMatch = this.allMethodMatchers.match(publicApiRequest.path());
+            var allMethodMatch = this.allMethodMatchers.match(httpRouterRequest.path());
             if (allMethodMatch != null) {
                 var allowed = String.join(", ", allMethodMatch.value());
                 handlerFunction = _ -> {
                     throw HttpServerResponseException.of(405, "Method Not Allowed", HttpHeaders.of("allow", allowed));
                 };
-                routeTemplate = allMethodMatch.matchedTemplate();
+                pathTemplate = allMethodMatch.matchedTemplate();
                 templateParameters = Map.of();
             } else {
                 handlerFunction = NOT_FOUND_HANDLER;
-                routeTemplate = null;
+                pathTemplate = null;
                 templateParameters = Map.of();
             }
         } else {
             templateParameters = pathTemplateMatch.parameters();
-            routeTemplate = pathTemplateMatch.matchedTemplate();
+            pathTemplate = pathTemplateMatch.matchedTemplate();
             handlerFunction = (rq) -> pathTemplateMatch.value().handle(rq);
         }
-        var request = new LazyRequest(publicApiRequest, templateParameters, routeTemplate);
+        var request = new RouterHttpServerRequest(httpRouterRequest, templateParameters, pathTemplate);
         var handler = this.requestHandler.get();
         return new PublicApiInvocation(handler, handlerFunction, request);
     }

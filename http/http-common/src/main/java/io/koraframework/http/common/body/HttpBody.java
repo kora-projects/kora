@@ -83,11 +83,11 @@ public interface HttpBody extends Closeable {
     }
 
     static DefaultFullHttpBody plaintext(String content) {
-        return new DefaultFullHttpBody(ByteBuffer.wrap(content.getBytes(StandardCharsets.UTF_8)), "text/plain; charset=utf-8");
+        return new DefaultFullHttpBody(ByteBuffer.wrap(content.getBytes(StandardCharsets.UTF_8)), "text/plain;charset=utf-8");
     }
 
     static DefaultFullHttpBody plaintext(ByteBuffer content) {
-        return new DefaultFullHttpBody(content.slice(), "text/plain; charset=utf-8");
+        return new DefaultFullHttpBody(content.slice(), "text/plain;charset=utf-8");
     }
 
     static DefaultFullHttpBody json(String content) {

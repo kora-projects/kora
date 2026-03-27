@@ -1,10 +1,10 @@
 package io.koraframework.openapi.management;
 
 import io.koraframework.http.common.body.HttpBody;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.HttpServerResponse;
-import io.koraframework.http.server.common.HttpServerResponseException;
-import io.koraframework.http.server.common.handler.HttpServerRequestHandler;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 
 import java.nio.charset.StandardCharsets;
 import java.util.List;

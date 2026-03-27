@@ -7,7 +7,7 @@ import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
 import io.koraframework.http.common.HttpResultCode;
-import io.koraframework.http.common.telemetry.Masking;
+import io.koraframework.http.common.telemetry.MaskingUtils;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 
 import java.util.Locale;
@@ -73,10 +73,10 @@ public class DefaultHttpClientLogger {
             gen.writeStringProperty("authority", rq.uri().getAuthority());
             gen.writeStringProperty("operation", operation);
             if (finalQuery != null && !finalQuery.isEmpty()) {
-                gen.writeStringProperty("queryParams", Masking.toMaskedString(maskedQueryParams, mask, finalQuery));
+                gen.writeStringProperty("queryParams", MaskingUtils.toMaskedString(maskedQueryParams, mask, finalQuery));
             }
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringProperty("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
+                gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             if (finalBody != null) {
                 gen.writeStringProperty("body", requestBodyString(finalBody));
@@ -122,7 +122,7 @@ public class DefaultHttpClientLogger {
                 gen.writeNumberProperty("statusCode", statusCode);
             }
             if (finalHeaders != null && !finalHeaders.isEmpty()) {
-                gen.writeStringProperty("headers", Masking.toMaskedString(maskedHeaders, mask, finalHeaders));
+                gen.writeStringProperty("headers", MaskingUtils.toMaskedString(maskedHeaders, mask, finalHeaders));
             }
             if (finalBody != null) {
                 gen.writeStringProperty("body", responseBodyString(finalBody));

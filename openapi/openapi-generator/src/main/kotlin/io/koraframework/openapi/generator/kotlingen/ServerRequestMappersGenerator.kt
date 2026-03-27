@@ -9,6 +9,12 @@ import java.nio.charset.StandardCharsets
 
 
 class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
+
+    companion object {
+        val multipartReader = ClassName("io.koraframework.http.server.common.request.form", "MultipartReaderUtils")
+        val formUrlMapper = ClassName("io.koraframework.http.server.common.request.mapper", "FormUrlEncodedServerRequestMapper")
+    }
+
     override fun generate(ctx: OperationsMap): FileSpec {
         val b = TypeSpec.interfaceBuilder(ctx.get("classname").toString() + "ServerRequestMappers")
             .addAnnotation(generated())
@@ -81,7 +87,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
             }
             b.addStatement("var %N = null as %T?", formParam.paramName, type.copy(false))
         }
-        b.addStatement("val _parts = %T.read(rq)", ClassName("io.koraframework.http.server.common.form", "MultipartReader"))
+        b.addStatement("val _parts = %T.read(rq)", multipartReader)
         b.beginControlFlow("for (_part in _parts) when(_part.name())")
         for (formParam in op.formParams) {
             b.beginControlFlow("%S -> ", formParam.baseName)
@@ -124,7 +130,7 @@ class ServerRequestMappersGenerator : AbstractKotlinGenerator<OperationsMap>() {
         b.beginControlFlow("_body.asInputStream().use { _is ->")
         b.addStatement("val _bytes = _is.readAllBytes()")
         b.addStatement("val _bodyString = %T(_bytes, %T.UTF_8)", String::class.asClassName(), StandardCharsets::class.asClassName())
-        b.addStatement("val _formData = %T.read(_bodyString)", ClassName("io.koraframework.http.server.common.form", "FormUrlEncodedServerRequestMapper"))
+        b.addStatement("val _formData = %T.read(_bodyString)", formUrlMapper)
         for (p in op.formParams) {
             val type = asType(p).asKt()
             val partName = "_" + p.paramName + "_part"

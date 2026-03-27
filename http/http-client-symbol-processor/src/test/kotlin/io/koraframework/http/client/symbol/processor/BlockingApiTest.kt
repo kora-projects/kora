@@ -2,8 +2,8 @@ package io.koraframework.http.client.symbol.processor
 
 import io.koraframework.common.Component
 import io.koraframework.common.Tag
-import io.koraframework.http.client.common.HttpClientEncoderException
-import io.koraframework.http.client.common.HttpClientResponseException
+import io.koraframework.http.client.common.exception.HttpClientEncoderException
+import io.koraframework.http.client.common.exception.HttpClientResponseException
 import io.koraframework.http.client.common.request.HttpClientRequestMapper
 import io.koraframework.http.client.common.response.HttpClientResponseMapper
 import io.koraframework.http.common.body.HttpBody

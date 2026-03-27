@@ -10,8 +10,8 @@ import io.opentelemetry.semconv.HttpAttributes;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.HttpServerResponse;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 
@@ -59,25 +59,25 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
     }
 
     @Override
-    public HttpServerRequest observeRequest(HttpServerRequest rq) {
+    public HttpServerRequest observeRequest(HttpServerRequest request) {
         var logger = this.logger;
         if (this.config.metrics().enabled()) {
             this.activeRequests.apply(Tags.empty()).decrementAndGet();
         }
-        if (this.request.route() != null && this.config.logging().enabled()) {
-            logger.logStart(request);
+        if (this.request.pathTemplate() != null && this.config.logging().enabled()) {
+            logger.logStart(this.request);
         }
-        return rq;
+        return request;
     }
 
     @Override
-    public HttpServerResponse observeResponse(HttpServerResponse rs) {
-        this.httpHeaders = rs.headers();
+    public HttpServerResponse observeResponse(HttpServerResponse response) {
+        this.httpHeaders = response.headers();
         if (this.statusCode == 0) {
-            this.resultCode = HttpResultCode.fromStatusCode(rs.code());
+            this.resultCode = HttpResultCode.fromStatusCode(response.code());
         }
-        this.statusCode = rs.code();
-        return rs;
+        this.statusCode = response.code();
+        return response;
     }
 
     @Override
@@ -104,13 +104,13 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
     }
 
     protected void writeLog(long processingTime) {
-        if (request.route() != null && this.config.logging().enabled()) {
+        if (request.pathTemplate() != null && this.config.logging().enabled()) {
             this.logger.logEnd(request, statusCode, Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR), processingTime, httpHeaders, exception);
         }
     }
 
     protected void closeSpan(HttpResultCode resultCode) {
-        if (request.route() != null) {
+        if (request.pathTemplate() != null) {
             span.setAttribute("http.response.result_code", resultCode.string());
             if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
                 span.setStatus(StatusCode.ERROR);

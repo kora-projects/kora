@@ -3,7 +3,7 @@ package io.koraframework.http.server.symbol.processor.server
 import org.assertj.core.api.AbstractByteArrayAssert
 import org.assertj.core.api.Assertions
 import io.koraframework.http.common.header.HttpHeaders
-import io.koraframework.http.server.common.HttpServerResponse
+import io.koraframework.http.server.common.response.HttpServerResponse
 import java.io.ByteArrayOutputStream
 import java.nio.charset.StandardCharsets
 import java.util.*

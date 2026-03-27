@@ -1,10 +1,10 @@
 package io.koraframework.validation.module.http.server;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.http.server.common.HttpServerInterceptor;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.HttpServerResponse;
-import io.koraframework.http.server.common.HttpServerResponseException;
+import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponseException;
 import io.koraframework.validation.common.ViolationException;
 
 public final class ValidationHttpServerInterceptor implements HttpServerInterceptor {

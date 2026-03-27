@@ -5,7 +5,7 @@ import io.koraframework.annotation.processor.common.CompileResult;
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import io.koraframework.http.client.annotation.processor.AbstractHttpClientTest;
 import io.koraframework.http.client.annotation.processor.HttpClientAnnotationProcessor;
-import io.koraframework.http.client.common.writer.StringParameterConverter;
+import io.koraframework.http.client.common.response.HttpClientParameterWriter;
 
 import java.util.*;
 
@@ -227,7 +227,7 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
     @Test
     public void testMapQueryParameterWithConverter() {
-        var client = compileClient(List.of((StringParameterConverter<Object>) Object::toString), """
+        var client = compileClient(List.of((HttpClientParameterWriter<Object>) Object::toString), """
             @HttpClient
             public interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
@@ -272,7 +272,7 @@ public class HttpClientQueryParametersTest extends AbstractHttpClientTest {
 
     @Test
     public void testMapQueryParameterListObject() {
-        var client = compileClient(List.of((StringParameterConverter<Object>) Object::toString), """
+        var client = compileClient(List.of((HttpClientParameterWriter<Object>) Object::toString), """
             @HttpClient
             public interface TestClient {
               @HttpRoute(method = "POST", path = "/test")

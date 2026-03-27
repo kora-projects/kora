@@ -22,9 +22,11 @@ import java.util.AbstractMap;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-public class HttpServerUtils {
-    public record Interceptor(TypeName type, @Nullable AnnotationSpec tag) {
-    }
+public final class HttpServerUtils {
+
+    private HttpServerUtils() { }
+
+    public record Interceptor(TypeName type, @Nullable AnnotationSpec tag) { }
 
     public static Interceptor parseInterceptor(AnnotationMirror a) {
         var interceptorType = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(a, "value");

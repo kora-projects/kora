@@ -1,6 +1,7 @@
 package io.koraframework.http.client.jdk;
 
 import io.koraframework.http.client.common.*;
+import io.koraframework.http.client.common.exception.*;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.body.HttpBodyOutput;

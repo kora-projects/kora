@@ -5,8 +5,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
-import io.koraframework.http.server.common.HttpServerRequest;
-import io.koraframework.http.server.common.handler.RequestHandlerUtils;
+import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.request.RequestHandlerUtils;
 
 import java.util.List;
 import java.util.Map;

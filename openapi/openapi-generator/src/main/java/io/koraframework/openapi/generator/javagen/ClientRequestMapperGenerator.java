@@ -12,6 +12,9 @@ import java.util.Objects;
 import static io.koraframework.openapi.generator.KoraCodegen.isContentJson;
 
 public class ClientRequestMapperGenerator extends AbstractJavaGenerator<OperationsMap> {
+
+    public static final ClassName URL_ENCODED_WRITER = ClassName.get("io.koraframework.http.client.common.request.form", "FormUrlEncodedWriter");
+
     @Override
     public JavaFile generate(OperationsMap ctx) {
         var className = ClassName.get(apiPackage, ctx.get("classname") + "ClientRequestMappers");
@@ -61,7 +64,7 @@ public class ClientRequestMapperGenerator extends AbstractJavaGenerator<Operatio
             throw new IllegalArgumentException("Unsupported form type: " + operation);
         }
         if (urlEncodedForm) {
-            apply.addStatement("var b = new $T()", ClassName.get("io.koraframework.http.client.common.form", "UrlEncodedWriter"));
+            apply.addStatement("var b = new $T()", URL_ENCODED_WRITER);
             for (var formParam : operation.formParams) {
                 apply.beginControlFlow("if (value.$N() != null)", formParam.paramName);
                 if (requiresMapper(formParam)) {
