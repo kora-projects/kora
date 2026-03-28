@@ -2,6 +2,7 @@ package io.koraframework.application.graph.internal;
 
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Graph;
+import io.koraframework.application.graph.GraphCondition;
 import io.koraframework.application.graph.NodeWithMapper;
 
 import java.util.ArrayList;
@@ -15,7 +16,10 @@ public final class AllSimpleImpl<T> implements All<T> {
     public AllSimpleImpl(Graph graph, NodeWithMapper<?, T>... nodes) {
         this.values = new ArrayList<T>(nodes.length);
         for (var node : nodes) {
-            this.values.add(get(graph, node));
+            var condition = node.node().condition();
+            if (condition == null || condition.apply(graph) instanceof GraphCondition.ConditionResult.Matched) {
+                this.values.add(get(graph, node));
+            }
         }
     }
 

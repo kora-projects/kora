@@ -119,6 +119,7 @@ public final class ResolvedComponent {
         } else {
             condition = new HashSet<>(this.parentConditions);
             condition.add(this.declaration.condition());
+            condition.remove(UNCONDITIONALLY);
         }
 
         for (var dependency : this.dependencies) {

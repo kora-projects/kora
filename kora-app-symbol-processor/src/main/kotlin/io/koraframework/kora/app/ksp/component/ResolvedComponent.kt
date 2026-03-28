@@ -65,6 +65,7 @@ class ResolvedComponent(
             else -> {
                 val set = HashSet(this.parentConditions)
                 set.add(this.declaration.condition)
+                set.remove(unconditionally)
                 set
             }
         }

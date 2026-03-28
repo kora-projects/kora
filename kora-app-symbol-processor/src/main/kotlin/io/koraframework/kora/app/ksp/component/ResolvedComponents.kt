@@ -73,7 +73,7 @@ class ResolvedComponents() {
                 .map { maxDependencyIndex(it) }
                 .minOrNull() ?: -1
             require(conditionIndex > maxDependency)
-            resolvedComponents.copyInto(resolvedComponents, maxDependency + 1, maxDependency + 2, conditionIndex - maxDependency)
+            resolvedComponents.copyInto(resolvedComponents, maxDependency + 1, maxDependency + 2, conditionIndex - maxDependency - 1)
             resolvedComponents[maxDependency + 1] = condition;
             for (i in maxDependency + 1..conditionIndex) {
                 resolvedComponents[i]?.setIndex(i)
