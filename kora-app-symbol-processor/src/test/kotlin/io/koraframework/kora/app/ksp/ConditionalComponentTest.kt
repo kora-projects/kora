@@ -160,4 +160,45 @@ class ConditionalComponentTest : AbstractKoraAppProcessorTest() {
         }
     }
 
+    @Test
+    fun testConditionalWithAll() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                @Root
+                fun root(o1: All<TestInterface>, o2: All<PromiseOf<TestInterface>>, o3: All<ValueOf<TestInterface>>): Any {
+                    o1.forEach(java.util.Objects::requireNonNull)
+                    o2.forEach(java.util.Objects::requireNonNull)
+                    o3.forEach(java.util.Objects::requireNonNull)
+                    return o2.iterator().next()
+                }
+            
+                @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+                fun matches(): GraphCondition { return io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition() }
+
+                @Tag(io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+                fun failed(): GraphCondition { return  io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition() }
+            }
+            
+            """.trimIndent(), """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.MatchesCondition::class)
+            class TestClass1: TestInterface
+            """.trimIndent(), """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.ksp.ConditionalComponentTest.FailedCondition::class)
+            class TestClass2: TestInterface
+            """.trimIndent(), """
+            interface TestInterface
+            """.trimIndent()
+        )
+        assertThat(draw.nodes).hasSize(5)
+        val graph = draw.init()
+        val class1Node = draw.nodes.first { it.type().toString().contains("TestClass1") }
+        val class2Node = draw.nodes.first { it.type().toString().contains("TestClass2") }
+        assertThat(graph.get(class1Node)).isNotNull()
+        assertThatThrownBy { graph.get(class2Node) }
+            .hasMessage("Node value was not initialized: test")
+    }
 }
