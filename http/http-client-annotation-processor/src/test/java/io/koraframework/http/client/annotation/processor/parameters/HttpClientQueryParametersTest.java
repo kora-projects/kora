@@ -1,11 +1,11 @@
 package io.koraframework.http.client.annotation.processor.parameters;
 
-import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.CompileResult;
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import io.koraframework.http.client.annotation.processor.AbstractHttpClientTest;
 import io.koraframework.http.client.annotation.processor.HttpClientAnnotationProcessor;
-import io.koraframework.http.client.common.response.HttpClientParameterWriter;
+import io.koraframework.http.client.common.request.HttpClientParameterWriter;
+import org.junit.jupiter.api.Test;
 
 import java.util.*;
 

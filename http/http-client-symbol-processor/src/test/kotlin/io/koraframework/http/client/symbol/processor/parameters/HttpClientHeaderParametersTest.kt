@@ -1,12 +1,12 @@
 package io.koraframework.http.client.symbol.processor.parameters
 
+import io.koraframework.http.client.common.request.HttpClientParameterWriter
+import io.koraframework.http.client.symbol.processor.AbstractHttpClientTest
+import io.koraframework.http.common.header.HttpHeaders
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
 import org.mockito.kotlin.argThat
 import org.mockito.kotlin.verify
-import io.koraframework.http.client.common.response.HttpClientParameterWriter
-import io.koraframework.http.client.symbol.processor.AbstractHttpClientTest
-import io.koraframework.http.common.header.HttpHeaders
 
 class HttpClientHeaderParametersTest : AbstractHttpClientTest() {
     @Test

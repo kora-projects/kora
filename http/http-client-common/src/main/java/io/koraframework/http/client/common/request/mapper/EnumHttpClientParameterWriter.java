@@ -1,6 +1,6 @@
-package io.koraframework.http.client.common.response.mapper;
+package io.koraframework.http.client.common.request.mapper;
 
-import io.koraframework.http.client.common.response.HttpClientParameterWriter;
+import io.koraframework.http.client.common.request.HttpClientParameterWriter;
 
 import java.util.function.Function;
 

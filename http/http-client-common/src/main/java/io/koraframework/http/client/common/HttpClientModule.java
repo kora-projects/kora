@@ -1,15 +1,15 @@
 package io.koraframework.http.client.common;
 
-import io.koraframework.http.client.common.response.mapper.HttpClientParameterWriterModule;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.opentelemetry.api.trace.Tracer;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule;
 import io.koraframework.http.client.common.request.mapper.HttpClientRequestMapperModule;
 import io.koraframework.http.client.common.response.HttpClientResponseMapperModule;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetryFactory;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import org.jspecify.annotations.Nullable;
 
 public interface HttpClientModule extends HttpClientRequestMapperModule, HttpClientResponseMapperModule, HttpClientParameterWriterModule {
 
