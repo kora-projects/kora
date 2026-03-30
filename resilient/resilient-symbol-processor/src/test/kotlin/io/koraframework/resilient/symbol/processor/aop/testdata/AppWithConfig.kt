@@ -6,10 +6,14 @@ import io.koraframework.common.KoraApp
 import io.koraframework.config.common.DefaultConfigExtractorsModule
 import io.koraframework.config.common.origin.SimpleConfigOrigin
 import io.koraframework.config.hocon.HoconConfigFactory
-import io.koraframework.resilient.ResilientModule
+import io.koraframework.resilient.circuitbreaker.CircuitBreakerModule
+import io.koraframework.resilient.fallback.FallbackModule
+import io.koraframework.resilient.ratelimiter.RateLimiterModule
+import io.koraframework.resilient.retry.RetryModule
+import io.koraframework.resilient.timeout.TimeoutModule
 
 @KoraApp
-interface AppWithConfig : ResilientModule, DefaultConfigExtractorsModule {
+interface AppWithConfig : DefaultConfigExtractorsModule, CircuitBreakerModule, RetryModule, TimeoutModule, FallbackModule, RateLimiterModule {
     fun config(config: Config) = HoconConfigFactory.fromHocon(SimpleConfigOrigin("test"), config)
 
     fun config() = ConfigFactory.parseString(
@@ -40,6 +44,17 @@ interface AppWithConfig : ResilientModule, DefaultConfigExtractorsModule {
                 }
                 customDisabled {
                   enabled = false
+                }
+              }
+              ratelimiter {
+                default {
+                  limitForPeriod = 1
+                  limitRefreshPeriod = 1s
+                }
+                customDisabled {
+                  enabled = false
+                  limitForPeriod = 1
+                  limitRefreshPeriod = 1s
                 }
               }
             }

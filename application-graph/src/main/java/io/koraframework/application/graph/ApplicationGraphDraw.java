@@ -83,7 +83,7 @@ public class ApplicationGraphDraw {
         var result = new ArrayList<Node<?>>();
         for (var graphNode : this.graphNodes) {
             if (graphNode.type().equals(type)) {
-                if (Objects.equals(tag, graphNode.tag()) || tag != null && tag.getCanonicalName().equals("ru.tinkoff.kora.common.Tag.Any")) {
+                if (Objects.equals(tag, graphNode.tag()) || tag != null && tag.getCanonicalName().equals("io.koraframework.common.Tag.Any")) {
                     result.add(graphNode);
                 }
             }
