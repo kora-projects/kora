@@ -6,7 +6,7 @@ import ru.tinkoff.kora.config.common.ConfigValuePath;
 import ru.tinkoff.kora.config.common.impl.SimpleConfig;
 import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
-import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
+import ru.tinkoff.kora.config.common.origin.SimpleContainerConfigOrigin;
 
 import jakarta.annotation.Nullable;
 import java.util.LinkedHashMap;
@@ -15,7 +15,7 @@ public class MergeConfigFactory {
     public static Config merge(Config config, Config fallback) {
         var root1 = config.root();
         var root2 = fallback.root();
-        var origin = new ContainerConfigOrigin(config.origin(), fallback.origin());
+        var origin = new SimpleContainerConfigOrigin(config.origin(), fallback.origin());
         var path = ConfigValuePath.root();
 
         var newRoot = mergeObjects(origin, path, root1, root2);

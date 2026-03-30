@@ -118,6 +118,21 @@ public class ConfigWatcher implements Lifecycle {
                     this.applicationConfig.get().refresh();
                     log.info("Config refreshed");
                     state.putAll(changed);
+
+                    // Recalculate watched files after refresh
+                    var refreshedConfig = this.applicationConfig.get().get();
+                    var refreshedOrigins = this.parseOrigin(refreshedConfig);
+                    var refreshedPaths = new java.util.HashSet<Path>();
+                    for (var origin : refreshedOrigins) {
+                        refreshedPaths.add(origin.path());
+                        if (!state.containsKey(origin.path())) {
+                            var newFileState = stateExtractor.apply(origin.path());
+                            state.put(origin.path(), newFileState);
+                            log.debug("Added new config file to watch: {}", origin.path());
+                        }
+                    }
+                    // Remove files no longer in config
+                    state.keySet().removeIf(path -> !refreshedPaths.contains(path));
                 }
                 Thread.sleep(this.checkTime);
             } catch (InterruptedException ignore) {

@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
-import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
+import ru.tinkoff.kora.config.common.origin.SimpleContainerConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
 import java.io.IOException;
@@ -102,6 +102,72 @@ class ConfigWatcherTest {
         });
     }
 
+    @Test
+    void configRefreshesOnIncludedFileChange() throws IOException, InterruptedException {
+        // Create include file
+        var includeFile = Files.createTempFile(configDir, "include-", ".conf");
+        includeFile.toFile().deleteOnExit();
+        Files.writeString(includeFile, """
+            database.pool=5
+            """);
+
+        var includeConfig = new ValueOf<Config>() {
+            private volatile Config config = this.load();
+
+            @Override
+            public Config get() {
+                return config;
+            }
+
+            @Override
+            public void refresh() {
+                this.config = this.load();
+            }
+
+            private Config load() {
+                try {
+                    var origin = new SimpleContainerConfigOrigin(
+                        new FileConfigOrigin(ConfigWatcherTest.this.configFile),
+                        new FileConfigOrigin(includeFile)
+                    );
+                    var properties = new java.util.Properties();
+                    try (var is = Files.newInputStream(ConfigWatcherTest.this.configFile)) {
+                        properties.load(is);
+                    }
+                    try (var is = Files.newInputStream(includeFile)) {
+                        var includeProps = new java.util.Properties();
+                        includeProps.load(is);
+                        properties.putAll(includeProps);
+                    }
+                    return MapConfigFactory.fromProperties(origin, properties);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+
+        var includeWatcher = new ConfigWatcher(Optional.of(includeConfig.map(Config::origin)), 50);
+        includeWatcher.init();
+        Thread.sleep(100);
+
+        try {
+            var oldConfig = includeConfig.get();
+            Thread.sleep(10);
+
+            // Modify the include file
+            Files.writeString(includeFile, """
+                database.pool=20
+                """);
+
+            assertWithTimeout(Duration.ofSeconds(10), () -> {
+                assertThat(oldConfig).isNotSameAs(includeConfig.get());
+                assertThat(includeConfig.get().get("database.pool").asString()).isEqualTo("20");
+            });
+        } finally {
+            includeWatcher.release();
+        }
+    }
+
     private static void assertWithTimeout(Duration duration, Runnable runnable) {
         var deadline = Instant.now().plus(duration);
         AssertionError error = null;
@@ -145,7 +211,7 @@ class ConfigWatcherTest {
             }
 
             private Config load() throws IOException {
-                var origin = new ContainerConfigOrigin(
+                var origin = new SimpleContainerConfigOrigin(
                     new FileConfigOrigin(ConfigWatcherTest.this.configFile),
                     new SimpleConfigOrigin("test")
                 );
