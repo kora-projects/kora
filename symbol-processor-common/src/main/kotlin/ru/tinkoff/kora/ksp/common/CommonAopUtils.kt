@@ -127,9 +127,7 @@ object CommonAopUtils {
         if (hasAopAnnotation(ksAnnotated)) {
             return true
         }
-        val methods = findMethods(ksAnnotated) { f ->
-            f.isPublic() || f.isProtected()
-        }
+        val methods = findMethods(ksAnnotated) { f -> f.isPublic() || f.isProtected() }
         for (method in methods) {
             if (hasAopAnnotation(method)) {
                 return true
