@@ -1,8 +1,8 @@
-package ru.tinkoff.kora.resilient.symbol.processor.aop.testdata
+package io.koraframework.resilient.symbol.processor.aop.testdata
 
-import ru.tinkoff.kora.common.Component
-import ru.tinkoff.kora.common.annotation.Root
-import ru.tinkoff.kora.resilient.ratelimiter.annotation.RateLimit
+import io.koraframework.common.Component
+import io.koraframework.common.annotation.Root
+import io.koraframework.resilient.ratelimiter.annotation.RateLimit
 
 @Component
 @Root

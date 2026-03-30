@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.resilient.symbol.processor.aop
+package io.koraframework.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
@@ -6,25 +6,25 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
-import ru.tinkoff.kora.aop.symbol.processor.KoraAspect
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
-import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
-import ru.tinkoff.kora.ksp.common.CommonClassNames
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isCompletionStage
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlow
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFlux
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isFuture
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isMono
-import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
-import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
+import io.koraframework.aop.symbol.processor.KoraAspect
+import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.AnnotationUtils.findValue
+import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
+import io.koraframework.ksp.common.FunctionUtils.isFlow
+import io.koraframework.ksp.common.FunctionUtils.isFlux
+import io.koraframework.ksp.common.FunctionUtils.isFuture
+import io.koraframework.ksp.common.FunctionUtils.isMono
+import io.koraframework.ksp.common.FunctionUtils.isVoid
+import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Future
 
 class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
-        private val ANNOTATION_TYPE = ClassName("ru.tinkoff.kora.resilient.ratelimiter.annotation", "RateLimit")
-        private val EXCEEDED_EXCEPTION = ClassName("ru.tinkoff.kora.resilient.ratelimiter", "RateLimitExceededException")
+        private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.ratelimiter.annotation", "RateLimit")
+        private val EXCEEDED_EXCEPTION = ClassName("io.koraframework.resilient.ratelimiter", "RateLimitExceededException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -45,9 +45,9 @@ class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
         val rateLimiterName = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<String>("value")!!
 
-        val managerType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.ratelimiter.RateLimiterManager")!!.asType(listOf())
+        val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.ratelimiter.RateLimiterManager")!!.asType(listOf())
         val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
-        val rateLimiterType = resolver.getClassDeclarationByName("ru.tinkoff.kora.resilient.ratelimiter.RateLimiter")!!.asType(listOf())
+        val rateLimiterType = resolver.getClassDeclarationByName("io.koraframework.resilient.ratelimiter.RateLimiter")!!.asType(listOf())
         val fieldRateLimiter = aspectContext.fieldFactory.constructorInitialized(
             rateLimiterType,
             CodeBlock.of("%L[%S]", fieldManager, rateLimiterName)

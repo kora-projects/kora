@@ -1,13 +1,13 @@
-package ru.tinkoff.kora.resilient.ratelimiter.annotation;
+package io.koraframework.resilient.ratelimiter.annotation;
 
-import ru.tinkoff.kora.common.AopAnnotation;
-import ru.tinkoff.kora.resilient.ratelimiter.RateLimitExceededException;
-import ru.tinkoff.kora.resilient.ratelimiter.RateLimiterConfig;
+import io.koraframework.common.AopAnnotation;
+import io.koraframework.resilient.ratelimiter.RateLimitExceededException;
+import io.koraframework.resilient.ratelimiter.RateLimiterConfig;
 
 import java.lang.annotation.*;
 
 /**
- * Annotation allow applying {@link ru.tinkoff.kora.resilient.ratelimiter.RateLimiter} to a specific method.
+ * Annotation allow applying {@link io.koraframework.resilient.ratelimiter.RateLimiter} to a specific method.
  * When applied to method, method may throw {@link RateLimitExceededException} when rate limit is exceeded.
  */
 @AopAnnotation

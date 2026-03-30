@@ -1,13 +1,13 @@
-package ru.tinkoff.kora.resilient.symbol.processor.aop
+package io.koraframework.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
-import ru.tinkoff.kora.resilient.ratelimiter.RateLimitExceededException
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.AppWithConfig
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.CircuitBreakerTarget
-import ru.tinkoff.kora.resilient.symbol.processor.aop.testdata.RateLimitTarget
+import io.koraframework.resilient.ratelimiter.RateLimitExceededException
+import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
+import io.koraframework.resilient.symbol.processor.aop.testdata.CircuitBreakerTarget
+import io.koraframework.resilient.symbol.processor.aop.testdata.RateLimitTarget
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental

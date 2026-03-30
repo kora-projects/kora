@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.resilient.ratelimiter;
+package io.koraframework.resilient.ratelimiter;
 
 /**
  * Metrics interface for {@link RateLimiter} events.

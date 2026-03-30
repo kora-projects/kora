@@ -1,6 +1,6 @@
-package ru.tinkoff.kora.resilient.ratelimiter;
+package io.koraframework.resilient.ratelimiter;
 
-import ru.tinkoff.kora.resilient.ResilientException;
+import io.koraframework.resilient.ResilientException;
 
 /**
  * Exception thrown when the rate limit is exceeded for a given {@link RateLimiter}.

@@ -1,9 +1,9 @@
-package ru.tinkoff.kora.resilient.annotation.processor.aop;
+package io.koraframework.resilient.annotation.processor.aop;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import ru.tinkoff.kora.resilient.annotation.processor.aop.testdata.*;
-import ru.tinkoff.kora.resilient.ratelimiter.RateLimitExceededException;
+import io.koraframework.resilient.annotation.processor.aop.testdata.*;
+import io.koraframework.resilient.ratelimiter.RateLimitExceededException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class RateLimitSyncTests extends AppRunner {

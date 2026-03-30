@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.resilient.ratelimiter;
+package io.koraframework.resilient.ratelimiter;
 
 final class NoopRateLimiterMetrics implements RateLimiterMetrics {
 

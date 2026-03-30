@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.resilient.ratelimiter;
+package io.koraframework.resilient.ratelimiter;
 
 import java.util.function.Supplier;
 
@@ -9,7 +9,7 @@ import java.util.function.Supplier;
  * <p>
  * When the rate limit is exceeded, a {@link RateLimitExceededException} is thrown.
  * <p>
- * Usage via annotation: {@link ru.tinkoff.kora.resilient.ratelimiter.annotation.RateLimit}
+ * Usage via annotation: {@link io.koraframework.resilient.ratelimiter.annotation.RateLimit}
  * Usage via imperative style: inject {@link RateLimiterManager} and call {@link RateLimiterManager#get(String)}
  */
 public interface RateLimiter {

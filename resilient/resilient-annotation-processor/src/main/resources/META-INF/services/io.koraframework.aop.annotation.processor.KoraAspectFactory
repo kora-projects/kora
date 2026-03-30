@@ -2,3 +2,4 @@ io.koraframework.resilient.annotation.processor.aop.CircuitBreakerKoraAspectFact
 io.koraframework.resilient.annotation.processor.aop.RetryKoraAspectFactory
 io.koraframework.resilient.annotation.processor.aop.TimeoutKoraAspectFactory
 io.koraframework.resilient.annotation.processor.aop.FallbackKoraAspectFactory
+io.koraframework.resilient.annotation.processor.aop.RateLimitKoraAspectFactory

@@ -1,10 +1,10 @@
-package ru.tinkoff.kora.resilient.annotation.processor.aop;
+package io.koraframework.resilient.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import ru.tinkoff.kora.annotation.processor.common.MethodUtils;
-import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
-import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
+import io.koraframework.annotation.processor.common.MethodUtils;
+import io.koraframework.annotation.processor.common.ProcessingErrorException;
+import io.koraframework.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
@@ -17,8 +17,8 @@ import static com.palantir.javapoet.CodeBlock.joining;
 
 public class RateLimitKoraAspect implements KoraAspect {
 
-    private static final ClassName ANNOTATION_TYPE = ClassName.get("ru.tinkoff.kora.resilient.ratelimiter.annotation", "RateLimit");
-    private static final ClassName EXCEEDED_EXCEPTION = ClassName.get("ru.tinkoff.kora.resilient.ratelimiter", "RateLimitExceededException");
+    private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.ratelimiter.annotation", "RateLimit");
+    private static final ClassName EXCEEDED_EXCEPTION = ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimitExceededException");
 
     private final ProcessingEnvironment env;
 
@@ -53,10 +53,10 @@ public class RateLimitKoraAspect implements KoraAspect {
             .orElseThrow();
 
         var managerType = env.getTypeUtils().getDeclaredType(
-            env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.ratelimiter.RateLimiterManager"));
+            env.getElementUtils().getTypeElement("io.koraframework.resilient.ratelimiter.RateLimiterManager"));
         var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
         var rateLimiterType = env.getTypeUtils().getDeclaredType(
-            env.getElementUtils().getTypeElement("ru.tinkoff.kora.resilient.ratelimiter.RateLimiter"));
+            env.getElementUtils().getTypeElement("io.koraframework.resilient.ratelimiter.RateLimiter"));
         var fieldRateLimiter = aspectContext.fieldFactory().constructorInitialized(rateLimiterType,
             CodeBlock.of("$L.get($S)", fieldManager, rateLimiterName));
 

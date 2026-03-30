@@ -1,7 +1,7 @@
-package ru.tinkoff.kora.resilient.ratelimiter;
+package io.koraframework.resilient.ratelimiter;
 
 import org.jspecify.annotations.Nullable;
-import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
 import java.util.Map;
