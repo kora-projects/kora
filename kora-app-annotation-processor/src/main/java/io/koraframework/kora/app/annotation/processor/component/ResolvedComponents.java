@@ -94,7 +94,7 @@ public class ResolvedComponents {
                 .min(Comparator.naturalOrder())
                 .orElse(-1);
             assert conditionIndex > maxDependency;
-            System.arraycopy(resolvedComponents, maxDependency + 1, resolvedComponents, maxDependency + 2, conditionIndex - maxDependency);
+            System.arraycopy(resolvedComponents, maxDependency + 1, resolvedComponents, maxDependency + 2, conditionIndex - maxDependency - 1);
             resolvedComponents[maxDependency + 1] = condition;
             for (int i = maxDependency + 1; i <= conditionIndex; i++) {
                 resolvedComponents[i].setIndex(i);

@@ -173,4 +173,55 @@ public class ConditionalComponentTest extends AbstractKoraAppTest {
             }
         }
     }
+
+    @Test
+    public void testConditionalWithAll() {
+        var draw = compile("""
+            import io.koraframework.application.graph.All;import io.koraframework.application.graph.PromiseOf;import io.koraframework.application.graph.ValueOf;@KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(All<TestInterface> o1, All<PromiseOf<TestInterface>> o2, All<ValueOf<TestInterface>> o3) {
+                    o1.forEach(java.util.Objects::requireNonNull);
+                    o2.forEach(java.util.Objects::requireNonNull);
+                    o3.forEach(java.util.Objects::requireNonNull);
+                    return o2.iterator().next();
+                }
+            
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new  io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+            
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+                default GraphCondition failed() { return new  io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition(); }
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+            public class TestClass1 implements TestInterface{
+            }
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.FailedCondition.class)
+            public class TestClass2 implements TestInterface{
+            }
+            """, """
+            public interface TestInterface {}
+            """);
+        assertThat(draw.getNodes()).hasSize(5);
+        var graph = draw.init();
+        var class1Node = draw.getNodes()
+            .stream()
+            .filter(n -> n.type().toString().contains("TestClass1"))
+            .findFirst()
+            .get();
+        var class2Node = draw.getNodes()
+            .stream()
+            .filter(n -> n.type().toString().contains("TestClass2"))
+            .findFirst()
+            .get();
+        Assertions.assertThat(graph.get(class1Node)).isNotNull();
+        Assertions.assertThatThrownBy(() -> graph.get(class2Node))
+            .hasMessage("Node value was not initialized: test");
+    }
+
+
 }

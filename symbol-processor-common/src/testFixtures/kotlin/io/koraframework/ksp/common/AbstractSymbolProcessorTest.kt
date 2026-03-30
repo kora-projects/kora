@@ -91,6 +91,7 @@ abstract class AbstractSymbolProcessorTest {
                             s.indexOf("{", it + 1),
                             s.indexOf(":", it + 1),
                             s.indexOf("<", it + 1),
+                            s.length - 1
                         )
                             .map { it1 -> it to it1 }
                     }
