@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.ValueOf;
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory;
-import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
+import ru.tinkoff.kora.config.common.origin.SimpleContainerConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
 import java.io.IOException;
@@ -126,7 +126,7 @@ class ConfigWatcherTest {
 
             private Config load() {
                 try {
-                    var origin = new ContainerConfigOrigin(
+                    var origin = new SimpleContainerConfigOrigin(
                         new FileConfigOrigin(ConfigWatcherTest.this.configFile),
                         new FileConfigOrigin(includeFile)
                     );
@@ -211,7 +211,7 @@ class ConfigWatcherTest {
             }
 
             private Config load() throws IOException {
-                var origin = new ContainerConfigOrigin(
+                var origin = new SimpleContainerConfigOrigin(
                     new FileConfigOrigin(ConfigWatcherTest.this.configFile),
                     new SimpleConfigOrigin("test")
                 );

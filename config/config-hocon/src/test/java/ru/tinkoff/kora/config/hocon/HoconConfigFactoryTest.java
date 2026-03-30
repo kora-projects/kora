@@ -158,11 +158,8 @@ class HoconConfigFactoryTest {
             var options = ConfigParseOptions.defaults().setIncluder(includer);
             ConfigFactory.parseFile(mainFile.toFile(), options);
 
-            // includeFile is called even for non-existent files, but the file doesn't exist on disk
-            // TrackingConfigIncluder records the path; enrichOriginWithIncludes won't add non-existent files
-            // since FileConfigOrigin is only created for paths that exist
-            assertThat(includer.getIncludedFiles()).hasSize(1);
-            assertThat(includer.getIncludedFiles()).contains(tempDir.resolve("nonexistent.conf").toAbsolutePath());
+            // Non-existent files are filtered out by TrackingConfigIncluder
+            assertThat(includer.getIncludedFiles()).isEmpty();
         } finally {
             Files.walk(tempDir)
                 .sorted(java.util.Comparator.reverseOrder())

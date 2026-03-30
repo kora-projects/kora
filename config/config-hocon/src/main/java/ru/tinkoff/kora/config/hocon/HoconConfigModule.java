@@ -7,12 +7,11 @@ import ru.tinkoff.kora.config.common.CommonConfigModule;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.annotation.ApplicationConfig;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
-import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
-import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
-import ru.tinkoff.kora.config.common.origin.ResourceConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
+import java.io.InputStreamReader;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 public interface HoconConfigModule extends CommonConfigModule {
@@ -42,28 +41,21 @@ public interface HoconConfigModule extends CommonConfigModule {
             }
             if (resourceUrl.getProtocol().equals("file")) {
                 var path = Path.of(resourceUrl.toURI());
-                return HoconConfigFactory.parseAndEnrichOrigin(path);
+                return HoconConfigFactory.fileOrigin(path);
             }
-            return new ResourceConfigOrigin(resourceUrl);
+            return HoconConfigFactory.resourceOrigin(resourceUrl);
         } else {
             var path = Path.of(file);
-            return HoconConfigFactory.parseAndEnrichOrigin(path);
+            return HoconConfigFactory.fileOrigin(path);
         }
     }
 
     @ApplicationConfig
     default com.typesafe.config.Config applicationUnresolved(@ApplicationConfig ConfigOrigin origin) throws Exception {
-        if (origin instanceof FileConfigOrigin file) {
-            return ConfigFactory.parseFile(file.path().toFile());
-        } else if (origin instanceof ContainerConfigOrigin container) {
-            for (var o : container.origins()) {
-                if (o instanceof FileConfigOrigin file) {
-                    return ConfigFactory.parseFile(file.path().toFile());
-                }
+        if (origin instanceof HoconConfigOrigin hocon) {
+            try (var reader = new InputStreamReader(hocon.openInputStream(), StandardCharsets.UTF_8)) {
+                return ConfigFactory.parseReader(reader);
             }
-            return ConfigFactory.empty();
-        } else if (origin instanceof ResourceConfigOrigin resource) {
-            return ConfigFactory.parseURL(resource.url());
         } else {
             return ConfigFactory.empty();
         }

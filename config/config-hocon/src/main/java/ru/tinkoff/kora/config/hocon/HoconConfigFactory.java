@@ -14,13 +14,12 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
 import jakarta.annotation.Nullable;
+import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Set;
 
-import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
 
 public class HoconConfigFactory {
@@ -69,23 +68,18 @@ public class HoconConfigFactory {
         return new ConfigValue.ArrayValue(new SimpleConfigValueOrigin(origin, path), List.copyOf(result));
     }
 
-    static ConfigOrigin parseAndEnrichOrigin(Path path) {
-        var baseOrigin = new FileConfigOrigin(path);
+    static HoconConfigOrigin fileOrigin(Path path) {
         var includer = new TrackingConfigIncluder();
         var options = ConfigParseOptions.defaults().setIncluder(includer);
         ConfigFactory.parseFile(path.toFile(), options);
-        return enrichOriginWithIncludes(baseOrigin, includer.getIncludedFiles());
+        var includedFiles = new ArrayList<FileConfigOrigin>();
+        for (var includedFile : includer.getIncludedFiles()) {
+            includedFiles.add(new FileConfigOrigin(includedFile));
+        }
+        return new HoconConfigOrigin(path, includedFiles);
     }
 
-    private static ConfigOrigin enrichOriginWithIncludes(FileConfigOrigin baseOrigin, Set<Path> includedFiles) {
-        if (includedFiles.isEmpty()) {
-            return baseOrigin;
-        }
-        var origins = new ArrayList<ConfigOrigin>();
-        origins.add(baseOrigin);
-        for (var includedFile : includedFiles) {
-            origins.add(new FileConfigOrigin(includedFile));
-        }
-        return new ContainerConfigOrigin(origins);
+    static HoconConfigOrigin resourceOrigin(URL url) {
+        return new HoconConfigOrigin(url);
     }
 }
