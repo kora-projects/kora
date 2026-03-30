@@ -51,7 +51,7 @@ interface {{classname}}ClientResponseMappers {
       {{^isDefault}}
       if (code == {{code}}) {
         val body = this.error{{code}}Mapper.apply(response)
-        throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body)
+        throw ru.tinkoff.kora.http.client.common.HttpClientDecodedResponseException(code, response.headers(), body)
       }
       {{/isDefault}}
       {{/vendorExtensions.plainErrorResponses}}
@@ -59,7 +59,7 @@ interface {{classname}}ClientResponseMappers {
       {{#isDefault}}
       run {
         val body = this.errordefaultMapper.apply(response)
-        throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body)
+        throw ru.tinkoff.kora.http.client.common.HttpClientDecodedResponseException(code, response.headers(), body)
       }
       {{/isDefault}}
       {{/vendorExtensions.plainErrorResponses}}

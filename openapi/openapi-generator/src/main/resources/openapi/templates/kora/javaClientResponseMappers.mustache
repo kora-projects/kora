@@ -83,7 +83,7 @@ public interface {{classname}}ClientResponseMappers {
       {{^isDefault}}
       if (code == {{code}}) {
         var body = this.error{{code}}Mapper.apply(response);
-        throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body);
+        throw new ru.tinkoff.kora.http.client.common.HttpClientDecodedResponseException(code, response.headers(), body);
       }
       {{/isDefault}}
       {{/vendorExtensions.plainErrorResponses}}
@@ -91,7 +91,7 @@ public interface {{classname}}ClientResponseMappers {
       {{#isDefault}}
       {
         var body = this.errordefaultMapper.apply(response);
-        throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body);
+        throw new ru.tinkoff.kora.http.client.common.HttpClientDecodedResponseException(code, response.headers(), body);
       }
       {{/isDefault}}
       {{/vendorExtensions.plainErrorResponses}}

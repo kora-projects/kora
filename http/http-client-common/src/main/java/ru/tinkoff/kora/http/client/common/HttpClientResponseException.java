@@ -1,6 +1,5 @@
 package ru.tinkoff.kora.http.client.common;
 
-import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.util.FlowUtils;
 import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
 import ru.tinkoff.kora.http.common.header.HttpHeaders;
@@ -13,23 +12,19 @@ public class HttpClientResponseException extends HttpClientException {
     private final int code;
     private final HttpHeaders headers;
     private final byte[] bytes;
-    @Nullable
-    private final Object body;
 
     public HttpClientResponseException(int code, HttpHeaders headers, byte[] bytes) {
-        this(code, headers, bytes, null);
-    }
-
-    public HttpClientResponseException(int code, HttpHeaders headers, byte[] bytes, @Nullable Object body) {
         super("HTTP response with status code %d:\n%s".formatted(code, new String(bytes, StandardCharsets.UTF_8)));
         this.code = code;
         this.headers = headers;
         this.bytes = bytes;
-        this.body = body;
     }
 
-    public static HttpClientResponseException of(int code, HttpHeaders headers, @Nullable Object body) {
-        return new HttpClientResponseException(code, headers, new byte[0], body);
+    protected HttpClientResponseException(String message, int code, HttpHeaders headers, byte[] bytes) {
+        super(message);
+        this.code = code;
+        this.headers = headers;
+        this.bytes = bytes;
     }
 
     public static HttpClientResponseException ofRaw(HttpClientResponse response) {
@@ -102,17 +97,5 @@ public class HttpClientResponseException extends HttpClientException {
 
     public byte[] getBytes() {
         return bytes;
-    }
-
-    @SuppressWarnings("unchecked")
-    public <T> T body() {
-        return (T) body;
-    }
-
-    public <T> T body(Class<T> type) {
-        if (type.isInstance(body)) {
-            return type.cast(body);
-        }
-        return null;
     }
 }

@@ -68,14 +68,14 @@ interface {{classname}}ClientResponseMappers {
       {{^isDefault}}
       if (code == {{code}}) {
         return this.error{{code}}Mapper.apply(response)
-          .thenApply { body -> throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body) }
+          .thenApply { body -> throw ru.tinkoff.kora.http.client.common.HttpClientDecodedResponseException(code, response.headers(), body) }
       }
       {{/isDefault}}
       {{/vendorExtensions.plainErrorResponses}}
       {{#vendorExtensions.plainErrorResponses}}
       {{#isDefault}}
       return this.errordefaultMapper.apply(response)
-        .thenApply { body -> throw ru.tinkoff.kora.http.client.common.HttpClientResponseException.of(code, response.headers(), body) }
+        .thenApply { body -> throw ru.tinkoff.kora.http.client.common.HttpClientDecodedResponseException(code, response.headers(), body) }
       {{/isDefault}}
       {{/vendorExtensions.plainErrorResponses}}
       {{^vendorExtensions.hasPlainErrorResponses}}
