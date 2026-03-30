@@ -6,6 +6,7 @@ import com.typesafe.config.ConfigIncluderFile;
 import com.typesafe.config.ConfigObject;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.LinkedHashSet;
@@ -14,6 +15,9 @@ import java.util.Set;
 /**
  * A {@link ConfigIncluder} wrapper that records all file paths encountered
  * via {@code include file("...")} and {@code include "..."} directives during HOCON parsing.
+ * <p>
+ * Only tracks includes that resolve to actual files on the filesystem.
+ * Classpath resources and URLs are ignored.
  * <p>
  * Delegates actual include resolution to the fallback (default) includer.
  */
@@ -37,7 +41,10 @@ final class TrackingConfigIncluder implements ConfigIncluder, ConfigIncluderFile
         if (parseable != null) {
             var filename = parseable.origin().filename();
             if (filename != null) {
-                includedFiles.add(Path.of(filename).toAbsolutePath());
+                var path = Path.of(filename).toAbsolutePath();
+                if (Files.isRegularFile(path)) {
+                    includedFiles.add(path);
+                }
             }
         }
         return fallback.include(context, what);
@@ -45,7 +52,10 @@ final class TrackingConfigIncluder implements ConfigIncluder, ConfigIncluderFile
 
     @Override
     public ConfigObject includeFile(ConfigIncludeContext context, File what) {
-        includedFiles.add(what.toPath().toAbsolutePath());
+        var path = what.toPath().toAbsolutePath();
+        if (Files.isRegularFile(path)) {
+            includedFiles.add(path);
+        }
         if (fallback instanceof ConfigIncluderFile fileIncluder) {
             return fileIncluder.includeFile(context, what);
         }
