@@ -35,7 +35,7 @@ object HttpClientClassNames {
     val httpClientResponseEntityMapper = ClassName("io.koraframework.http.client.common.response.mapper", "HttpClientResponseEntityMapper");
 
     val httpClientTelemetryFactory = ClassName("io.koraframework.http.client.common.telemetry", "HttpClientTelemetryFactory")
-    val stringParameterConverter = ClassName("io.koraframework.http.client.common.response", "HttpClientParameterWriter")
+    val stringParameterConverter = ClassName("io.koraframework.http.client.common.request", "HttpClientParameterWriter")
     val httpClientOperationConfig = ClassName("io.koraframework.http.client.common.declarative", "HttpClientOperationConfig")
     val declarativeHttpClientConfig = ClassName("io.koraframework.http.client.common.declarative", "DeclarativeHttpClientConfig")
     val telemetryHttpClientConfig = ClassName("io.koraframework.http.client.common.telemetry", "HttpClientTelemetryConfig")

@@ -1,7 +1,7 @@
-package io.koraframework.http.client.common.response.mapper;
+package io.koraframework.http.client.common.request.mapper;
 
 import io.koraframework.http.client.common.exception.HttpClientEncoderException;
-import io.koraframework.http.client.common.response.HttpClientParameterWriter;
+import io.koraframework.http.client.common.request.HttpClientParameterWriter;
 import io.koraframework.json.common.JsonWriter;
 
 public class JsonHttpClientParameterWriter<T> implements HttpClientParameterWriter<T> {
