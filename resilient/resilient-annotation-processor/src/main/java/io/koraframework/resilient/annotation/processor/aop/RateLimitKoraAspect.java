@@ -12,7 +12,6 @@ import javax.lang.model.element.ExecutableElement;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 import static com.palantir.javapoet.CodeBlock.joining;
 
@@ -39,8 +38,8 @@ public class RateLimitKoraAspect implements KoraAspect {
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("Publisher methods are not supported", method);
+        if (MethodUtils.isPublisher(method) || MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("Future and Publisher methods are not supported", method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
@@ -61,14 +60,7 @@ public class RateLimitKoraAspect implements KoraAspect {
         var fieldRateLimiter = aspectContext.fieldFactory().constructorInitialized(rateLimiterType,
             CodeBlock.of("$L.get($S)", fieldManager, rateLimiterName));
 
-        final CodeBlock body;
-        if (MethodUtils.isFuture(method)) {
-            body = buildBodyFuture(method, superCall, fieldRateLimiter);
-        } else {
-            body = buildBodySync(method, superCall, fieldRateLimiter);
-        }
-
-        return new ApplyResult.MethodBody(body);
+        return new ApplyResult.MethodBody(buildBodySync(method, superCall, fieldRateLimiter));
     }
 
     private CodeBlock buildBodySync(ExecutableElement method, String superCall, String rlField) {
@@ -92,21 +84,6 @@ public class RateLimitKoraAspect implements KoraAspect {
                 throw _e;
             }
             """, rlField, methodCall.toString(), returnCall.toString(), EXCEEDED_EXCEPTION).build();
-    }
-
-    private CodeBlock buildBodyFuture(ExecutableElement method, String superCall, String rlField) {
-        final CodeBlock superMethod = buildMethodCall(method, superCall);
-
-        return CodeBlock.builder().add("""
-            try {
-                $L.acquire();
-                return $L;
-            } catch ($T _e) {
-                return $T.failedFuture(_e);
-            } catch (Throwable _e) {
-                throw _e;
-            }
-            """, rlField, superMethod, EXCEEDED_EXCEPTION, CompletableFuture.class).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {
