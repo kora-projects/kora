@@ -38,7 +38,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private MethodSpec buildRequiredArgsCall(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
-        var returnType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+        var returnType = resolveReturnType(ctx, operation);
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(returnType)
@@ -89,7 +89,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private MethodSpec buildRequiredArgsWithArgsCall(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
-        var returnType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+        var returnType = resolveReturnType(ctx, operation);
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(returnType)
@@ -211,7 +211,22 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
 
+    private TypeName resolveReturnType(OperationsMap ctx, CodegenOperation operation) {
+        if (Boolean.TRUE.equals(operation.vendorExtensions.get("plainResponse"))) {
+            var plainDataType = (String) operation.vendorExtensions.get("plainResponseDataType");
+            if (plainDataType != null) {
+                return asType(operation.responses.stream()
+                    .filter(r -> !r.isDefault && r.code != null && r.code.startsWith("2") && r.dataType != null)
+                    .findFirst()
+                    .orElseThrow());
+            }
+            return TypeName.VOID;
+        }
+        return ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+    }
+
     private MethodSpec buildMethod(OperationsMap ctx, CodegenOperation operation) {
+        var isPlain = Boolean.TRUE.equals(operation.vendorExtensions.get("plainResponse"));
         var tag = ctx.get("baseName").toString();
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
@@ -222,12 +237,23 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(this.buildHttpRoute(operation));
-        for (var response : operation.responses) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
-                .addMember("code", "$L", response.isDefault ? "-1" : response.code)
-                .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper"))
-                .build()
-            );
+        if (isPlain) {
+            var plainDataType = operation.vendorExtensions.get("plainResponseDataType");
+            if (plainDataType != null) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
+                    .addMember("code", "$L", "-1")
+                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + "PlainResponseMapper"))
+                    .build()
+                );
+            }
+        } else {
+            for (var response : operation.responses) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
+                    .addMember("code", "$L", response.isDefault ? "-1" : response.code)
+                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper"))
+                    .build()
+                );
+            }
         }
         if (!params.authAsMethodArgument) {
             var requirement = this.security.securityRequirementByOperation.get(operation.operationId);
@@ -242,7 +268,19 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         }
 
         this.buildInterceptors(tag, Classes.httpClientInterceptor).forEach(b::addAnnotation);
-        b.returns(ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
+        if (isPlain) {
+            var plainDataType = (String) operation.vendorExtensions.get("plainResponseDataType");
+            if (plainDataType != null) {
+                b.returns(asType(operation.responses.stream()
+                    .filter(r -> !r.isDefault && r.code != null && r.code.startsWith("2") && r.dataType != null)
+                    .findFirst()
+                    .orElseThrow()));
+            } else {
+                b.returns(TypeName.VOID);
+            }
+        } else {
+            b.returns(ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
+        }
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             for (var param : this.buildAuthParameters(operation)) {
                 b.addParameter(param);

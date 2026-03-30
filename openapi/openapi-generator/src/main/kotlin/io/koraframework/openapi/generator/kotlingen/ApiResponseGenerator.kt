@@ -10,6 +10,9 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
         val b = TypeSpec.interfaceBuilder(className)
             .addAnnotation(generated())
         for (operation in ctx.operations.operation) {
+            if (operation.vendorExtensions["plainResponse"] == true) {
+                continue
+            }
             val responseClassName = className.nestedClass(capitalize(operation.operationId) + "ApiResponse")
             if (operation.responses.size == 1) {
                 b.addType(response(ctx, responseClassName, operation.responses.single()))

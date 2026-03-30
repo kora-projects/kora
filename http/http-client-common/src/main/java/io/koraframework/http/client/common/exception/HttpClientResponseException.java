@@ -18,6 +18,12 @@ public class HttpClientResponseException extends HttpClientException {
         this.bytes = bytes;
     }
 
+    protected HttpClientResponseException(String message, int code, HttpHeaders headers, byte[] bytes) {
+        super(message);
+        this.code = code;
+        this.headers = headers;
+        this.bytes = bytes;
+    }
 
     public static HttpClientResponseException fromResponse(HttpClientResponse response) throws IOException {
         try (var body = response.body()) {

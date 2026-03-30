@@ -1307,9 +1307,46 @@ public class KoraCodegen extends DefaultCodegen {
         var operationList = operations.getOperation();
         for (var op : operationList) {
             handleImplicitHeaders(op);
+            handlePlainResponseMode(op);
         }
         this.operationsByClassName.put(objs.getOperations().getClassname(), objs);
         return objs;
+    }
+
+    private void handlePlainResponseMode(CodegenOperation op) {
+        if (params.responseStyle != ResponseStyle.PLAIN || !params.codegenMode.isClient()) {
+            op.vendorExtensions.put("plainResponse", false);
+            return;
+        }
+
+        var successDataTypes = op.responses.stream()
+            .filter(r -> !r.isDefault && r.code != null && r.code.startsWith("2"))
+            .map(r -> r.dataType)
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+
+        if (successDataTypes.size() > 1) {
+            op.vendorExtensions.put("plainResponse", false);
+            return;
+        }
+
+        op.vendorExtensions.put("plainResponse", true);
+
+        var successResponse = op.responses.stream()
+            .filter(r -> !r.isDefault && r.code != null && r.code.startsWith("2") && r.dataType != null)
+            .findFirst()
+            .orElse(null);
+
+        if (successResponse != null) {
+            op.vendorExtensions.put("plainResponseDataType", successResponse.dataType);
+        }
+
+        var errorResponses = op.responses.stream()
+            .filter(r -> r.isDefault || (r.code != null && !r.code.startsWith("2")))
+            .filter(r -> r.dataType != null)
+            .toList();
+        op.vendorExtensions.put("plainErrorResponses", errorResponses);
     }
 
     public static boolean isContentJson(CodegenParameter parameter) {
