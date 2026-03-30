@@ -22,6 +22,7 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
     }
 
     private fun buildFunction(ctx: OperationsMap, operation: CodegenOperation): FunSpec {
+        val isPlain = operation.vendorExtensions["plainResponse"] == true
         val tag = ctx.get("baseName").toString()
         val b = FunSpec.builder(operation.operationId)
             .addModifiers(KModifier.ABSTRACT)
@@ -29,16 +30,31 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         buildAdditionalAnnotations(tag).forEach { b.addAnnotation(it) }
         b.addAnnotations(this.buildImplicitHeaders(operation))
         b.addAnnotation(buildRouteAnnotation(operation))
-        for (response in operation.responses) {
-            b.addAnnotation(
-                AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
-                    .addMember("code = %L", if (response.isDefault) "-1" else response.code)
-                    .addMember(
-                        "mapper = %T::class",
-                        ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", (StringUtils.capitalize(operation.operationId) + response.code) + "ApiResponseMapper")
-                    )
-                    .build()
-            )
+        if (isPlain) {
+            val plainDataType = operation.vendorExtensions["plainResponseDataType"]
+            if (plainDataType != null) {
+                b.addAnnotation(
+                    AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
+                        .addMember("code = %L", "-1")
+                        .addMember(
+                            "mapper = %T::class",
+                            ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + "PlainResponseMapper")
+                        )
+                        .build()
+                )
+            }
+        } else {
+            for (response in operation.responses) {
+                b.addAnnotation(
+                    AnnotationSpec.builder(Classes.responseCodeMapper.asKt())
+                        .addMember("code = %L", if (response.isDefault) "-1" else response.code)
+                        .addMember(
+                            "mapper = %T::class",
+                            ClassName(apiPackage, ctx.get("classname").toString() + "ClientResponseMappers", (StringUtils.capitalize(operation.operationId) + response.code) + "ApiResponseMapper")
+                        )
+                        .build()
+                )
+            }
         }
 //        this.buildMethodAuth(operation, Classes.httpClientInterceptor.asKt())?.let {
 //            b.addAnnotation(it)
@@ -47,7 +63,17 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         if (operation.isDeprecated) {
             b.addAnnotation(AnnotationSpec.builder(Deprecated::class.asClassName()).addMember("%S", "deprecated").build())
         }
-        b.returns(ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"))
+        if (isPlain) {
+            val plainDataType = operation.vendorExtensions["plainResponseDataType"] as? String
+            if (plainDataType != null) {
+                val successResponse = operation.responses.first { r -> !r.isDefault && r.code != null && r.code.startsWith("2") && r.dataType != null }
+                b.returns(asType(successResponse).asKt())
+            } else {
+                b.returns(UNIT)
+            }
+        } else {
+            b.returns(ClassName(apiPackage, ctx.get("classname").toString() + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"))
+        }
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             b.addParameter(this.buildAuthParameter(operation));
         }

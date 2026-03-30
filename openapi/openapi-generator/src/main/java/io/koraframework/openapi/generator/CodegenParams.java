@@ -28,7 +28,8 @@ public class CodegenParams {
     public static final String IMPLICIT_HEADERS = "implicitHeaders";
     public static final String IMPLICIT_HEADERS_REGEX = "implicitHeadersRegex";
     public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
-    
+    public static final String RESPONSE_STYLE = "response";
+
     public CodegenMode codegenMode = CodegenMode.JAVA_CLIENT;
     public boolean enableValidation = false;
     public boolean authAsMethodArgument = false;
@@ -45,6 +46,7 @@ public class CodegenParams {
     public boolean implicitHeaders = false;
     public @Nullable Pattern implicitHeadersRegex = null;
     public boolean forceIncludeOptional = false;
+    public ResponseStyle responseStyle = ResponseStyle.SEALED;
 
     static List<CliOption> cliOptions() {
         var cliOptions = new ArrayList<CliOption>();
@@ -62,6 +64,7 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
         cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
         cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
+        cliOptions.add(CliOption.newString(RESPONSE_STYLE, "Response handling style: 'sealed' (default) wraps all responses in sealed interface, 'plain' returns success type directly and throws exception for errors. Only applies to client modes."));
         return cliOptions;
     }
 
@@ -136,6 +139,11 @@ public class CodegenParams {
         }
         if (additionalProperties.containsKey(FORCE_INCLUDE_OPTIONAL)) {
             params.forceIncludeOptional = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_OPTIONAL).toString());
+        }
+        if (additionalProperties.containsKey(RESPONSE_STYLE)) {
+            if (params.codegenMode.isClient()) {
+                params.responseStyle = ResponseStyle.of(additionalProperties.get(RESPONSE_STYLE).toString());
+            }
         }
         return params;
     }

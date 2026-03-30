@@ -1,0 +1,147 @@
+openapi: "3.0.0"
+info:
+  version: 1.0.0
+  title: Swagger Petstore Plain
+  license:
+    name: MIT
+servers:
+  - url: http://petstore.swagger.io/v1
+paths:
+  /pets:
+    get:
+      summary: List all pets
+      operationId: listPets
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+      responses:
+        '200':
+          description: A list of pets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pets"
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        default:
+          description: unexpected error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /pets/{petId}:
+    get:
+      summary: Info for a specific pet
+      operationId: showPetById
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Expected response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        '404':
+          description: Pet not found
+    delete:
+      summary: Delete a pet
+      operationId: deletePet
+      parameters:
+        - name: petId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Pet deleted
+        '404':
+          description: Pet not found
+  /pets/search:
+    get:
+      summary: Search pets (multiple 2xx same type)
+      operationId: searchPets
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Full results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pets"
+        '206':
+          description: Partial results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pets"
+  /pets/multi:
+    get:
+      summary: Multi response (different 2xx types - fallback to sealed)
+      operationId: multiResponse
+      responses:
+        '200':
+          description: Full pet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pet"
+        '202':
+          description: Accepted with status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Status"
+components:
+  schemas:
+    Pet:
+      type: object
+      required:
+        - id
+        - name
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+    Pets:
+      type: array
+      items:
+        $ref: "#/components/schemas/Pet"
+    Error:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: integer
+          format: int32
+        message:
+          type: string
+    Status:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
