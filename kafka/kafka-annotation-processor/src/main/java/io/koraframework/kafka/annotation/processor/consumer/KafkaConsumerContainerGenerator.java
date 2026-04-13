@@ -3,6 +3,7 @@ package io.koraframework.kafka.annotation.processor.consumer;
 import com.palantir.javapoet.MethodSpec;
 import com.palantir.javapoet.ParameterSpec;
 import com.palantir.javapoet.ParameterizedTypeName;
+import io.koraframework.annotation.processor.common.AnnotationUtils;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.TagUtils;
@@ -64,8 +65,10 @@ public class KafkaConsumerContainerGenerator {
             .addAnnotation(Nullable.class)
             .build());
 
+        var configPath = AnnotationUtils.parseAnnotationValueWithoutDefault(listenerAnnotation, "value");
         var consumerName = ((TypeElement) executableElement.getEnclosingElement()).getQualifiedName() + "#" + executableElement.getSimpleName();
-        methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, config.driverProperties(), config.telemetry())", consumerName);
+        methodBuilder.addStatement("var telemetry = telemetryFactory.get($S, $S, config.driverProperties(), config.telemetry())",
+            configPath, consumerName);
 
         var consumerParameter = parameters.stream().filter(r -> r instanceof ConsumerParameter.Consumer).map(ConsumerParameter.Consumer.class::cast).findFirst();
         if (handlerTypeName.rawType().equals(recordHandler)) {
@@ -77,11 +80,11 @@ public class KafkaConsumerContainerGenerator {
         methodBuilder.beginControlFlow("if (config.topics() == null || config.topics().size() != 1)"); // todo allow list?
         methodBuilder.addStatement("throw new java.lang.IllegalArgumentException($S + config.topics())", "@KafkaListener require to specify 1 topic to subscribe when groupId is null, but received: ");
         methodBuilder.endControlFlow();
-        methodBuilder.addCode("return new $T<>($S, config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);",
-            kafkaAssignConsumerContainer, consumerName);
+        methodBuilder.addCode("return new $T<>($S, $S, config, config.topics().get(0), keyDeserializer, valueDeserializer, telemetry, wrappedHandler);",
+             kafkaAssignConsumerContainer, configPath, consumerName);
         methodBuilder.addCode("$<\n} else {$>\n");
-        methodBuilder.addCode("return new $T<>($S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener);",
-            kafkaSubscribeConsumerContainer, consumerName);
+        methodBuilder.addCode("return new $T<>($S, $S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener);",
+            kafkaSubscribeConsumerContainer, configPath, consumerName);
         methodBuilder.addCode("$<\n}\n");
         return methodBuilder.build();
     }

@@ -2,6 +2,7 @@ package io.koraframework.kafka.common.containers;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 import org.apache.kafka.clients.admin.NewPartitions;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -51,13 +52,14 @@ class KafkaAssignConsumerContainerTest {
             List.of(testTopic),
             null,
             null,
-            Either.right("earliest"),
+            Either.right(KafkaListenerConfig.Offset.earliest),
             Duration.ofMillis(100),
             Duration.ofMillis(100),
             Integer.valueOf(2),
             Duration.ofSeconds(1),
             Duration.ofMillis(10000),
             true,
+            null,
             new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
                 new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
                 new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
@@ -66,7 +68,7 @@ class KafkaAssignConsumerContainerTest {
         );
         var deque = new ConcurrentLinkedDeque<>();
         var telemetry = Mockito.mock(KafkaConsumerTelemetry.class);
-        var container = new KafkaAssignConsumerContainer<>("test", config, params.topic("test-topic"), new StringDeserializer(), new IntegerDeserializer(), telemetry, (observation, records, consumer, commitAllowed) -> {
+        var container = new KafkaAssignConsumerContainer<>("test", "test", config, params.topic("test-topic"), new StringDeserializer(), new IntegerDeserializer(), telemetry, (observation, records, consumer, commitAllowed) -> {
             for (var record : records) {
                 try {
                     deque.offer(record);
