@@ -4,7 +4,7 @@ import io.opentelemetry.api.trace.Span;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 
-public class NoopKafkaConsumerPollObservation implements KafkaConsumerPollObservation {
+public final class NoopKafkaConsumerPollObservation implements KafkaConsumerPollObservation {
 
     @Override
     public Span span() {

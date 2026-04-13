@@ -177,8 +177,8 @@ final class KafkaPublisherGenerator {
             .addParameter(publisherTelemetryConfig, "telemetryConfig")
             .addParameter(ClassName.get(Properties.class), "driverProperties")
             .addParameter(topicConfigTypeName, "topicConfig")
-            .addStatement("var telemetry = telemetryFactory.get($S, telemetryConfig, driverProperties);", configPath)
-            .addStatement("super(driverProperties, telemetryConfig, telemetry)")
+            .addStatement("var telemetry = telemetryFactory.get($S, $S, telemetryConfig, driverProperties);", configPath, publisher.getQualifiedName().toString())
+            .addStatement("super($S, $S, driverProperties, telemetryConfig, telemetry)", configPath, publisher.getQualifiedName().toString())
             .addStatement("this.topicConfig = topicConfig");
         record TypeWithTag(TypeName typeName, String tag) {}
         var parameters = new HashMap<TypeWithTag, String>();
