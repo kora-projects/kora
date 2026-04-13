@@ -11,15 +11,19 @@ public final class TimeUtils {
         return System.nanoTime();
     }
 
-    public static Duration took(long started) {
-        return Duration.ofNanos(System.nanoTime() - started).truncatedTo(ChronoUnit.MILLIS);
+    public static Duration took(long startedNanos) {
+        return Duration.ofNanos(System.nanoTime() - startedNanos).truncatedTo(ChronoUnit.MILLIS);
     }
 
-    public static String tookForLogging(long started) {
-        return durationForLogging(System.nanoTime() - started);
+    public static String tookForLogging(long startedNanos) {
+        return durationForLogging(System.nanoTime() - startedNanos);
     }
 
-    public static String durationForLogging(long duration) {
-        return Duration.ofNanos(duration).truncatedTo(ChronoUnit.MILLIS).toString().substring(2).toLowerCase();
+    public static String durationForLogging(long durationNanos) {
+        return Duration.ofNanos(durationNanos).truncatedTo(ChronoUnit.MILLIS).toString().substring(2).toLowerCase();
+    }
+
+    public static String durationForLogging(Duration duration) {
+        return duration.truncatedTo(ChronoUnit.MILLIS).toString().substring(2).toLowerCase();
     }
 }

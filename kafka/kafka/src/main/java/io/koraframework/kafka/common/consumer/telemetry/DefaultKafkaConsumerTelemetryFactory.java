@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.Properties;
 
 public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumerTelemetryFactory {
+
     private final Tracer tracer;
     private final MeterRegistry meterRegistry;
 
@@ -18,13 +19,13 @@ public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumer
     }
 
     @Override
-    public KafkaConsumerTelemetry get(String consumerName, Properties driverProperties, KafkaConsumerTelemetryConfig config) {
+    public KafkaConsumerTelemetry get(String listenerName, String listenerImpl, Properties driverProperties, KafkaConsumerTelemetryConfig config) {
         if (!config.tracing().enabled() && !config.metrics().enabled() && !config.logging().enabled()) {
-            return new NoopKafkaConsumerTelemetry();
+            return NoopKafkaConsumerTelemetry.INSTANCE;
         }
+
         var tracer = config.tracing().enabled() ? this.tracer : TracerProvider.noop().get("kafka-consumer");
         var meterRegistry = config.metrics().enabled() ? this.meterRegistry : new CompositeMeterRegistry();
-
-        return new DefaultKafkaConsumerTelemetry(config, tracer, meterRegistry, consumerName, driverProperties);
+        return new DefaultKafkaConsumerTelemetry(config, tracer, meterRegistry, listenerName, listenerImpl, driverProperties);
     }
 }
