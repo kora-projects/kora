@@ -3,10 +3,11 @@ package io.koraframework.kafka.common.producer.telemetry;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.logging.common.MDC;
+import io.koraframework.telemetry.common.TimerMeter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Tags;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
@@ -20,18 +21,15 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTelemetry.KafkaPublisherRecordObservation {
 
-    protected final long start = System.nanoTime();
+    protected final long startedRecordSend = System.nanoTime();
     protected final String publisherName;
     protected final KafkaPublisherTelemetryConfig config;
     protected final String topic;
     protected final Span span;
-    protected final Meter.MeterProvider<Timer> durationProvider;
+    protected final TimerMeter recordDurationMeter;
     protected final Meter.MeterProvider<Counter> sentMessagesProvider;
     protected final Logger logger;
     protected final MDC mdc;
@@ -45,14 +43,14 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
                                                   KafkaPublisherTelemetryConfig config,
                                                   String topic,
                                                   Span span,
-                                                  Meter.MeterProvider<Timer> durationProvider,
+                                                  TimerMeter recordDurationMeter,
                                                   Meter.MeterProvider<Counter> sentMessagesProvider,
                                                   Logger logger) {
         this.publisherName = publisherName;
         this.config = config;
         this.topic = topic;
         this.span = span;
-        this.durationProvider = durationProvider;
+        this.recordDurationMeter = recordDurationMeter;
         this.sentMessagesProvider = sentMessagesProvider;
         this.logger = logger;
         this.mdc = MDC.get().fork();
@@ -104,16 +102,17 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
     @Override
     public void end() {
         if(!config.metrics().enabled()) {
-            var took = System.nanoTime() - start;
+            var took = System.nanoTime() - startedRecordSend;
 
             String errorValue = error == null ? "" : error.getClass().getCanonicalName();
             String partition = metadata == null ? "" : String.valueOf(metadata.partition());
-            List<Tag> metricDynamicCacheKeyTags = new ArrayList<>(3); // + topic in key cache provider
-            metricDynamicCacheKeyTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
-            metricDynamicCacheKeyTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), partition));
+            Tags metricDynamicCacheKeyTags = Tags.of(
+                Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue),
+                Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), partition)
+            );
 
-            this.durationProvider.withTags(metricDynamicCacheKeyTags)
-                .record(took, TimeUnit.NANOSECONDS);
+            this.recordDurationMeter.recordNanos(took, metricDynamicCacheKeyTags);
+
             this.sentMessagesProvider.withTags(metricDynamicCacheKeyTags)
                 .increment();
         }
@@ -121,7 +120,7 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
         if (error != null) {
             logger.warn("KafkaPublisher '{}' error sending record to topic {}",
                 publisherName, topic, error);
-        } else {
+        } else if(metadata != null) {
             logger.debug("KafkaPublisher '{}' success sending record to topic {} and partition {} and offset {}",
                 publisherName, topic, metadata.partition(), metadata.offset());
         }

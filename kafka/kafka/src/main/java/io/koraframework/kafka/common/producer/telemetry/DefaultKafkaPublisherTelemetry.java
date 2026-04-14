@@ -1,7 +1,7 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
 import io.koraframework.micrometer.api.NoopCounterMeterProvider;
-import io.koraframework.micrometer.api.NoopTimerMeterProvider;
+import io.koraframework.telemetry.common.TimerMeter;
 import io.micrometer.core.instrument.*;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -30,9 +30,9 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     protected final Tracer tracer;
     protected final Logger logger;
     protected final String clientId;
-    protected MeterRegistry meterRegistry;
+    protected final MeterRegistry meterRegistry;
+    protected final TimerMeter recordDurationMeter;
 
-    private final Map<Tags, Timer> recordDurationCache = new ConcurrentHashMap<>();
     private final Map<Tags, Counter> sentMessagesCache = new ConcurrentHashMap<>();
 
     public DefaultKafkaPublisherTelemetry(String publisherName,
@@ -49,10 +49,12 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         this.clientId = (driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String s) ? s : "";
         var logger = LoggerFactory.getLogger(publisherImpl);
 
-//        CachedMeterBuilder<Timer> recordDurationBuilder = new CachedMeterBuilder<>(
-//            _ -> createMetricRecordDuration().register(meterRegistry),
-//            Tags.of(createMetricRecordDurationStaticTags())
-//        );
+        this.recordDurationMeter = new TimerMeter(config,
+            createMetricRecordDurationStaticTags(),
+            tags -> createMetricRecordDuration()
+                .tags((Iterable<Tag>) tags)
+                .register(meterRegistry)
+        );
 
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
             ? logger
@@ -73,9 +75,8 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     @Override
     public KafkaPublisherRecordObservation observeSend(String topic) {
         var span = this.createSendSpan(topic);
-        var duration = this.createMetricRecordDurationBuilder(topic);
         var sentMessages = this.createMetricSentCounterBuilder(topic);
-        return new DefaultKafkaPublisherRecordObservation(publisherName, config, topic, span, duration, sentMessages, logger);
+        return new DefaultKafkaPublisherRecordObservation(publisherName, config, topic, span, recordDurationMeter, sentMessages, logger);
     }
 
     protected Timer.Builder createMetricRecordDuration() {
@@ -95,35 +96,6 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         }
 
         return staticTags;
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    protected Meter.MeterProvider<Timer> createMetricRecordDurationBuilder(String topic) {
-        if (!this.config.metrics().enabled()) {
-            return NoopTimerMeterProvider.INSTANCE;
-        }
-
-        return keyTags -> {
-            // cause if exception then no metadata for topic so add here 100%
-            final Tag topicDynamicTag = Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic);
-            final Tags finalKeyTags;
-            if (keyTags instanceof ArrayList ta) {
-                ta.add(topicDynamicTag);
-                finalKeyTags = Tags.of(ta);
-            } else {
-                finalKeyTags = Tags.of(keyTags).and(topicDynamicTag);
-            }
-
-            return recordDurationCache.computeIfAbsent(finalKeyTags, _ -> {
-                // static tags are not part of cache key cause not change
-                var staticTags = createMetricRecordDurationStaticTags();
-                var metricBuilder = createMetricRecordDuration();
-                return metricBuilder
-                    .tags(staticTags)
-                    .withRegistry(this.meterRegistry)
-                    .withTags(finalKeyTags); // provider accept only dynamic metric cache key tags
-            });
-        };
     }
 
     protected Counter.Builder createMetricSentCounter() {

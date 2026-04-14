@@ -1,35 +1,34 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.micrometer.api.MeterBuilder;
-import io.micrometer.core.instrument.Meter;
+import io.koraframework.telemetry.common.TimerMeter;
 import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.Tags;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
+import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecordObservation {
 
+    protected final ConsumerRecord<?, ?> record;
     protected final Span span;
-    protected final Meter.MeterProvider<Timer> durationBuilder;
+    protected final TimerMeter recordDurationMeter;
 
     private Throwable error;
-    private long handle;
+    private long startedRecordHandle;
 
-    public DefaultKafkaConsumerRecordObservation(Span span,
-                                                 Meter.MeterProvider<Timer> durationBuilder) {
+    public DefaultKafkaConsumerRecordObservation(ConsumerRecord<?, ?> record,
+                                                 Span span,
+                                                 TimerMeter recordDurationMeter) {
+        this.record = record;
         this.span = span;
-        this.durationBuilder = durationBuilder;
+        this.recordDurationMeter = recordDurationMeter;
     }
 
     @Override
     public void observeHandle() {
-        this.handle = System.nanoTime();
+        this.startedRecordHandle = System.nanoTime();
     }
 
     @Override
@@ -39,14 +38,12 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
 
     @Override
     public void end() {
-        var took = System.nanoTime() - handle;
-
-        List<Tag> metricDynamicCacheKeyTags = new ArrayList<>(3); // + topic in key cache provider
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        metricDynamicCacheKeyTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
-
-        this.durationBuilder.withTags(metricDynamicCacheKeyTags)
-            .record(took, TimeUnit.NANOSECONDS);
+        this.recordDurationMeter.recordNanos(this.startedRecordHandle, () -> Tags.of(
+            Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue),
+            Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), record.topic()),
+            Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), String.valueOf(record.partition()))
+        ));
 
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
