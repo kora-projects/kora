@@ -1,22 +1,28 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
 import io.koraframework.micrometer.api.MeterBuilder;
+import io.micrometer.core.instrument.Meter;
+import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecordObservation {
 
     protected final Span span;
-    protected final MeterBuilder<Timer> durationBuilder;
+    protected final Meter.MeterProvider<Timer> durationBuilder;
 
     private Throwable error;
     private long handle;
 
-    public DefaultKafkaConsumerRecordObservation(Span span, MeterBuilder<Timer> durationBuilder) {
+    public DefaultKafkaConsumerRecordObservation(Span span,
+                                                 Meter.MeterProvider<Timer> durationBuilder) {
         this.span = span;
         this.durationBuilder = durationBuilder;
     }
@@ -35,9 +41,12 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
     public void end() {
         var took = System.nanoTime() - handle;
 
+        List<Tag> metricDynamicCacheKeyTags = new ArrayList<>(3); // + topic in key cache provider
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        var timer = this.durationBuilder.tag(ErrorAttributes.ERROR_TYPE.getKey(), errorValue).build();
-        timer.record(took, TimeUnit.NANOSECONDS);
+        metricDynamicCacheKeyTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
+
+        this.durationBuilder.withTags(metricDynamicCacheKeyTags)
+            .record(took, TimeUnit.NANOSECONDS);
 
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);

@@ -1,8 +1,8 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.micrometer.api.DefaultMeterBuilder;
-import io.koraframework.micrometer.api.MeterBuilder;
+import io.koraframework.micrometer.api.NoopTimerMeterProvider;
 import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
@@ -18,10 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObservation {
@@ -34,7 +31,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
     protected final Tracer tracer;
     protected final MeterRegistry meterRegistry;
     protected final Span span;
-    protected final MeterBuilder<Timer> batchMetricBuilder;
+    protected final Meter.MeterProvider<Timer> batchMetricBuilder;
     protected final DefaultKafkaConsumerTelemetry.ConsumerMetadata consumerMetadata;
 
     private final Map<Tags, Timer> recordDurationCache;
@@ -46,7 +43,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
                                                Tracer tracer,
                                                MeterRegistry meterRegistry,
                                                Span span,
-                                               MeterBuilder<Timer> batchMetricBuilder,
+                                               Meter.MeterProvider<Timer> batchMetricBuilder,
                                                Map<Tags, Timer> recordDurationCache,
                                                DefaultKafkaConsumerTelemetry.ConsumerMetadata consumerMetadata) {
         this.config = config;
@@ -97,8 +94,8 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
         var took = System.nanoTime() - this.recordsTime;
 
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        var timer = this.batchMetricBuilder.tag(ErrorAttributes.ERROR_TYPE.getKey(), errorValue).build();
-        timer.record(took, TimeUnit.NANOSECONDS);
+        this.batchMetricBuilder.withTags(ErrorAttributes.ERROR_TYPE.getKey(), errorValue)
+            .record(took, TimeUnit.NANOSECONDS);
 
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
@@ -127,26 +124,47 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
             .serviceLevelObjectives(this.config.metrics().slo());
     }
 
-    protected MeterBuilder<Timer> createMetricRecordDurationBuilder(ConsumerRecord<?, ?> record) {
-        var baseTags = new ArrayList<Tag>(7 + this.config.metrics().tags().size());
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId()));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId()));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), record.topic()));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(record.partition())));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl()));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName()));
+    protected List<Tag> createMetricRecordDurationStaticTags() {
+        var staticTags = new ArrayList<Tag>(7 + this.config.metrics().tags().size());
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId()));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId()));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl()));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName()));
         for (var e : this.config.metrics().tags().entrySet()) {
-            baseTags.add(Tag.of(e.getKey(), e.getValue()));
+            staticTags.add(Tag.of(e.getKey(), e.getValue()));
+        }
+        return staticTags;
+    }
+
+    protected Meter.MeterProvider<Timer> createMetricRecordDurationBuilder(ConsumerRecord<?, ?> record) {
+        if (!this.config.metrics().enabled()) {
+            return NoopTimerMeterProvider.INSTANCE;
         }
 
-        var meterBuilder = new DefaultMeterBuilder<>(tags -> recordDurationCache.computeIfAbsent(tags, _ -> {
-            var builder = createMetricRecordDuration();
-            var provider = builder.withRegistry(this.meterRegistry);
-            return provider.withTags(tags);
-        }));
-        meterBuilder.tags(baseTags);
-        return meterBuilder;
+        return keyTags -> {
+            // cause if exception then no metadata for topic so add here 100%
+            final Tag topicDynamicTag = Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), record.topic());
+            final Tag partitionDynamicTag = Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(record.partition()));
+            final Tags finalKeyTags;
+            if (keyTags instanceof ArrayList ta) {
+                ta.add(topicDynamicTag);
+                ta.add(partitionDynamicTag);
+                finalKeyTags = Tags.of(ta);
+            } else {
+                finalKeyTags = Tags.of(keyTags).and(topicDynamicTag);
+            }
+
+            return recordDurationCache.computeIfAbsent(Tags.of(finalKeyTags), _ -> {
+                // static tags are not part of cache key cause not change
+                var staticTags = createMetricRecordDurationStaticTags();
+                var metricBuilder = createMetricRecordDuration();
+                return metricBuilder
+                    .tags(staticTags)
+                    .withRegistry(this.meterRegistry)
+                    .withTags(finalKeyTags); // provider accept only dynamic metric cache key tags
+            });
+        };
     }
 
     protected Span createSpan(ConsumerRecord<?, ?> record) {

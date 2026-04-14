@@ -1,12 +1,8 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
-import io.koraframework.micrometer.api.DefaultMeterBuilder;
-import io.koraframework.micrometer.api.MeterBuilder;
-import io.koraframework.micrometer.api.NoopCounterMeterBuilder;
-import io.koraframework.micrometer.api.NoopTimerMeterBuilder;
+import io.koraframework.micrometer.api.NoopCounterMeterProvider;
+import io.koraframework.micrometer.api.NoopTimerMeterProvider;
 import io.micrometer.core.instrument.*;
-import io.micrometer.core.instrument.noop.NoopCounter;
-import io.micrometer.core.instrument.noop.NoopTimer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
@@ -18,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.NOPLogger;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -51,6 +48,12 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         this.meterRegistry = meterRegistry;
         this.clientId = (driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String s) ? s : "";
         var logger = LoggerFactory.getLogger(publisherImpl);
+
+//        CachedMeterBuilder<Timer> recordDurationBuilder = new CachedMeterBuilder<>(
+//            _ -> createMetricRecordDuration().register(meterRegistry),
+//            Tags.of(createMetricRecordDurationStaticTags())
+//        );
+
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
             ? logger
             : NOPLogger.NOP_LOGGER;
@@ -72,7 +75,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         var span = this.createSendSpan(topic);
         var duration = this.createMetricRecordDurationBuilder(topic);
         var sentMessages = this.createMetricSentCounterBuilder(topic);
-        return new DefaultKafkaPublisherRecordObservation(publisherName, span, duration, sentMessages, logger);
+        return new DefaultKafkaPublisherRecordObservation(publisherName, config, topic, span, duration, sentMessages, logger);
     }
 
     protected Timer.Builder createMetricRecordDuration() {
@@ -80,57 +83,92 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
             .serviceLevelObjectives(this.config.metrics().slo());
     }
 
-    protected MeterBuilder<Timer> createMetricRecordDurationBuilder(String topic) {
-        if (!this.config.metrics().enabled()) {
-            return NoopTimerMeterBuilder.INSTANCE;
-        }
-
-        var baseTags = new ArrayList<Tag>(6 + this.config.metrics().tags().size());
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE.getKey(), MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_NAME, publisherName));
+    protected List<Tag> createMetricRecordDurationStaticTags() {
+        var staticTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE.getKey(), MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_NAME, publisherName));
         for (var e : this.config.metrics().tags().entrySet()) {
-            baseTags.add(Tag.of(e.getKey(), e.getValue()));
+            staticTags.add(Tag.of(e.getKey(), e.getValue()));
         }
 
-        var meterBuilder = new DefaultMeterBuilder<>(tags -> recordDurationCache.computeIfAbsent(tags, _ -> {
-            var builder = createMetricRecordDuration();
-            var provider = builder.withRegistry(this.meterRegistry);
-            return provider.withTags(tags);
-        }));
-        meterBuilder.tags(baseTags);
-        return meterBuilder;
+        return staticTags;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    protected Meter.MeterProvider<Timer> createMetricRecordDurationBuilder(String topic) {
+        if (!this.config.metrics().enabled()) {
+            return NoopTimerMeterProvider.INSTANCE;
+        }
+
+        return keyTags -> {
+            // cause if exception then no metadata for topic so add here 100%
+            final Tag topicDynamicTag = Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic);
+            final Tags finalKeyTags;
+            if (keyTags instanceof ArrayList ta) {
+                ta.add(topicDynamicTag);
+                finalKeyTags = Tags.of(ta);
+            } else {
+                finalKeyTags = Tags.of(keyTags).and(topicDynamicTag);
+            }
+
+            return recordDurationCache.computeIfAbsent(finalKeyTags, _ -> {
+                // static tags are not part of cache key cause not change
+                var staticTags = createMetricRecordDurationStaticTags();
+                var metricBuilder = createMetricRecordDuration();
+                return metricBuilder
+                    .tags(staticTags)
+                    .withRegistry(this.meterRegistry)
+                    .withTags(finalKeyTags); // provider accept only dynamic metric cache key tags
+            });
+        };
     }
 
     protected Counter.Builder createMetricSentCounter() {
         return Counter.builder("messaging.client.sent.messages");
     }
 
-    protected MeterBuilder<Counter> createMetricSentCounterBuilder(String topic) {
-        if (!this.config.metrics().enabled()) {
-            return NoopCounterMeterBuilder.INSTANCE;
-        }
-
-        var baseTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_NAME, publisherName));
+    protected List<Tag> createMetricSentCounterStaticTags() {
+        var staticTags = new ArrayList<Tag>(4 + this.config.metrics().tags().size());
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_PRODUCER_NAME, publisherName));
         for (var e : this.config.metrics().tags().entrySet()) {
-            baseTags.add(Tag.of(e.getKey(), e.getValue()));
+            staticTags.add(Tag.of(e.getKey(), e.getValue()));
+        }
+        return staticTags;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    protected Meter.MeterProvider<Counter> createMetricSentCounterBuilder(String topic) {
+        if (!this.config.metrics().enabled()) {
+            return NoopCounterMeterProvider.INSTANCE;
         }
 
-        var meterBuilder = new DefaultMeterBuilder<>(tags -> sentMessagesCache.computeIfAbsent(tags, _ -> {
-            var builder = createMetricSentCounter();
-            var provider = builder.withRegistry(this.meterRegistry);
-            return provider.withTags(tags);
-        }));
-        meterBuilder.tags(baseTags);
-        return meterBuilder;
+        return keyTags -> {
+            // cause if exception then no metadata for topic so add here 100%
+            final Tag topicDynamicTag = Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic);
+            final Tags finalKeyTags;
+            if (keyTags instanceof ArrayList ta) {
+                ta.add(topicDynamicTag);
+                finalKeyTags = Tags.of(ta);
+            } else {
+                finalKeyTags = Tags.of(keyTags).and(topicDynamicTag);
+            }
+
+            return sentMessagesCache.computeIfAbsent(finalKeyTags, _ -> {
+                // static tags are not part of cache key cause not change
+                var staticTags = createMetricSentCounterStaticTags();
+                var metricBuilder = createMetricSentCounter();
+                return metricBuilder
+                    .tags(staticTags)
+                    .withRegistry(this.meterRegistry)
+                    .withTags(finalKeyTags); // provider accept only dynamic metric cache key tags
+            });
+        };
     }
 
     protected Span createSendSpan(String topic) {

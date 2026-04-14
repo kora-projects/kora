@@ -1,7 +1,6 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.micrometer.api.DefaultMeterBuilder;
-import io.koraframework.micrometer.api.MeterBuilder;
+import io.koraframework.micrometer.api.NoopTimerMeterProvider;
 import io.micrometer.core.instrument.*;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -15,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.NOPLogger;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
@@ -52,6 +52,7 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
             driverProperties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG, ""),
             driverProperties.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "")
         );
+
         var logger = LoggerFactory.getLogger(listenerImpl);
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
             ? logger
@@ -77,13 +78,40 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
 
     @Override
     public void reportLag(TopicPartition partition, long lag) {
-        var counter = new AtomicLong();
-        var meterBuilder = createMetricLagBuilder(partition, counter);
+        if(!this.config.metrics().enabled()) {
+            return;
+        }
 
-        this.lagCache.computeIfAbsent(meterBuilder.getTags(), _ -> {
-            meterBuilder.build();
+        var dynamicMetricCacheKeyTags = Tags.of(
+            Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic()),
+            Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(partition.partition()))
+        );
+
+        var lagCounter = this.lagCache.computeIfAbsent(dynamicMetricCacheKeyTags, _ -> {
+            // static tags are not part of cache key cause not change
+            var staticTags = createMetricLagStaticTags();
+            var counter = new AtomicLong();
+            Gauge.builder("messaging.kafka.consumer.lag", counter, AtomicLong::get)
+                .tags(staticTags)
+                .tags(dynamicMetricCacheKeyTags) // provider accept only dynamic metric cache key tags
+                .register(meterRegistry);
             return counter;
-        }).set(lag);
+        });
+
+        lagCounter.set(lag);
+    }
+
+    protected List<Tag> createMetricLagStaticTags() {
+        var staticTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId()));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId()));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl()));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName()));
+        for (var e : this.config.metrics().tags().entrySet()) {
+            staticTags.add(Tag.of(e.getKey(), e.getValue()));
+        }
+        return staticTags;
     }
 
     protected Timer.Builder createMetricBatchDuration() {
@@ -91,47 +119,33 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
             .serviceLevelObjectives(this.config.metrics().slo());
     }
 
-    protected MeterBuilder<Timer> createMetricBatchDurationBuilder() {
-        var baseTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId()));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId()));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl()));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName()));
+    protected List<Tag> createMetricBatchDurationStaticTags() {
+        var staticTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId()));
+        staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId()));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl()));
+        staticTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName()));
         for (var e : this.config.metrics().tags().entrySet()) {
-            baseTags.add(Tag.of(e.getKey(), e.getValue()));
+            staticTags.add(Tag.of(e.getKey(), e.getValue()));
         }
-
-        var meterBuilder = new DefaultMeterBuilder<>(tags -> batchDurationCache.computeIfAbsent(tags, _ -> {
-            var builder = createMetricBatchDuration();
-            var provider = builder.withRegistry(this.meterRegistry);
-            return provider.withTags(tags);
-        }));
-        meterBuilder.tags(baseTags);
-        return meterBuilder;
+        return staticTags;
     }
 
-    protected MeterBuilder<Gauge> createMetricLagBuilder(TopicPartition partition, AtomicLong counter) {
-        var baseTags = new ArrayList<Tag>(7 + this.config.metrics().tags().size());
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId()));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId()));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic()));
-        baseTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(partition.partition())));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl()));
-        baseTags.add(Tag.of(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName()));
-        for (var e : this.config.metrics().tags().entrySet()) {
-            baseTags.add(Tag.of(e.getKey(), e.getValue()));
+    protected Meter.MeterProvider<Timer> createMetricBatchDurationBuilder() {
+        if (!this.config.metrics().enabled()) {
+            return NoopTimerMeterProvider.INSTANCE;
         }
 
-        var meterBuilder = new DefaultMeterBuilder<>(tags -> {
-            var builder = Gauge.builder("messaging.kafka.consumer.lag", counter, AtomicLong::get);
-            return builder
-                .tags(tags)
-                .register(meterRegistry);
+        return keyTags -> batchDurationCache.computeIfAbsent(Tags.of(keyTags), _ -> {
+            // static tags are not part of cache key cause not change
+            var staticTags = createMetricBatchDurationStaticTags();
+            var metricBuilder = createMetricBatchDuration();
+            return metricBuilder
+                .tags(staticTags)
+                .withRegistry(this.meterRegistry)
+                .withTags(keyTags); // provider accept only dynamic metric cache key tags
         });
-        meterBuilder.tags(baseTags);
-        return meterBuilder;
     }
 
     protected SpanBuilder createSpanPoll() {
