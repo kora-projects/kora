@@ -62,5 +62,11 @@ abstract class AbstractNestedPerClassTests {
             assertSame(prevComponent12, component12);
         }
     }
+
+    @AfterAll
+    static void cleanup() {
+        prevComponent1 = null;
+        prevComponent12 = null;
+    }
 }
 

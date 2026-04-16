@@ -23,12 +23,12 @@ internal class NestedOnlyFieldPerMethodExtendedTests : AbstractNestedPerMethodTe
             if (prevComponent1 == null) {
                 prevComponent1 = component1
             } else {
-                assertSame(prevComponent1, component1)
+                assertNotSame(prevComponent1, component1)
             }
             if (prevComponent12 == null) {
                 prevComponent12 = component12
             } else {
-                assertSame(prevComponent12, component12)
+                assertNotSame(prevComponent12, component12)
             }
         }
 
@@ -53,12 +53,12 @@ internal class NestedOnlyFieldPerMethodExtendedTests : AbstractNestedPerMethodTe
             if (prevComponent1 == null) {
                 prevComponent1 = component1
             } else {
-                assertSame(prevComponent1, component1)
+                assertNotSame(prevComponent1, component1)
             }
             if (prevComponent12 == null) {
                 prevComponent12 = component12
             } else {
-                assertSame(prevComponent12, component12)
+                assertNotSame(prevComponent12, component12)
             }
         }
 

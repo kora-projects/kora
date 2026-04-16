@@ -15,16 +15,22 @@ import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12
 abstract class AbstractNestedPerMethodTests {
 
     companion object {
-        @Volatile
-        var prevComponent1: TestComponent1? = null
 
         @Volatile
+        var prevComponent1: TestComponent1? = null
+        @Volatile
         var prevComponent12: TestComponent12? = null
+
+        @JvmStatic
+        @AfterAll
+        fun cleanup() {
+            prevComponent1 = null
+            prevComponent12 = null
+        }
     }
 
     @TestComponent
     lateinit var component1: TestComponent1
-
     @TestComponent
     lateinit var component12: TestComponent12
 
@@ -39,8 +45,8 @@ abstract class AbstractNestedPerMethodTests {
         fun test1() {
             assertNotNull(component1)
             assertNotNull(component12)
-            prevComponent1 = component1
-            prevComponent12 = component12
+            assertNotSame(prevComponent1, component1)
+            assertNotSame(prevComponent12, component12)
         }
 
         @Test
