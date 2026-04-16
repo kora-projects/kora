@@ -3,9 +3,8 @@ package io.koraframework.kafka.common.producer.telemetry;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.logging.common.MDC;
+import io.koraframework.telemetry.common.CounterMeter;
 import io.koraframework.telemetry.common.TimerMeter;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.opentelemetry.api.trace.Span;
@@ -30,7 +29,7 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
     protected final String topic;
     protected final Span span;
     protected final TimerMeter recordDurationMeter;
-    protected final Meter.MeterProvider<Counter> sentMessagesProvider;
+    protected final CounterMeter sentMessagesMeter;
     protected final Logger logger;
     protected final MDC mdc;
 
@@ -44,14 +43,14 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
                                                   String topic,
                                                   Span span,
                                                   TimerMeter recordDurationMeter,
-                                                  Meter.MeterProvider<Counter> sentMessagesProvider,
+                                                  CounterMeter sentMessagesMeter,
                                                   Logger logger) {
         this.publisherName = publisherName;
         this.config = config;
         this.topic = topic;
         this.span = span;
         this.recordDurationMeter = recordDurationMeter;
-        this.sentMessagesProvider = sentMessagesProvider;
+        this.sentMessagesMeter = sentMessagesMeter;
         this.logger = logger;
         this.mdc = MDC.get().fork();
     }
@@ -101,26 +100,23 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
 
     @Override
     public void end() {
-        if(!config.metrics().enabled()) {
-            var took = System.nanoTime() - startedRecordSend;
-
+        if (!config.metrics().enabled()) {
             String errorValue = error == null ? "" : error.getClass().getCanonicalName();
             String partition = metadata == null ? "" : String.valueOf(metadata.partition());
             Tags metricDynamicCacheKeyTags = Tags.of(
+                Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic),
                 Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue),
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), partition)
             );
 
-            this.recordDurationMeter.recordNanos(took, metricDynamicCacheKeyTags);
-
-            this.sentMessagesProvider.withTags(metricDynamicCacheKeyTags)
-                .increment();
+            this.recordDurationMeter.recordElapsedNanos(startedRecordSend, metricDynamicCacheKeyTags);
+            this.sentMessagesMeter.recordIncrement(1, metricDynamicCacheKeyTags);
         }
 
         if (error != null) {
             logger.warn("KafkaPublisher '{}' error sending record to topic {}",
                 publisherName, topic, error);
-        } else if(metadata != null) {
+        } else if (metadata != null) {
             logger.debug("KafkaPublisher '{}' success sending record to topic {} and partition {} and offset {}",
                 publisherName, topic, metadata.partition(), metadata.offset());
         }
