@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 @KoraAppTest(value = TestApplication.class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class NestedFieldPerMethodTests {
+class NestedOnlyFieldPerMethodTests {
 
     static volatile TestComponent1 prevComponent1;
     static volatile TestComponent12 prevComponent12;
@@ -23,25 +23,7 @@ class NestedFieldPerMethodTests {
     @TestComponent
     private TestComponent12 component12;
 
-    @Test
     @Order(1)
-    void test1() {
-        assertNotNull(component1);
-        assertNotNull(component12);
-        prevComponent1 = component1;
-        prevComponent12 = component12;
-    }
-
-    @Test
-    @Order(2)
-    void test2() {
-        assertNotNull(component1);
-        assertNotNull(component12);
-        assertNotSame(prevComponent1, component1);
-        assertNotSame(prevComponent12, component12);
-    }
-
-    @Order(3)
     @Nested
     class Nested1 {
 
@@ -52,9 +34,8 @@ class NestedFieldPerMethodTests {
         void test3() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertNotSame(prevComponent1, component1);
-            assertNotSame(prevComponent12, component12);
-            assertNotSame(prevComponent12, componentNested12);
+            prevComponent1 = component1;
+            prevComponent12 = component12;
         }
 
         @Test
@@ -67,7 +48,7 @@ class NestedFieldPerMethodTests {
         }
     }
 
-    @Order(4)
+    @Order(2)
     @Nested
     class Nested2 {
 
