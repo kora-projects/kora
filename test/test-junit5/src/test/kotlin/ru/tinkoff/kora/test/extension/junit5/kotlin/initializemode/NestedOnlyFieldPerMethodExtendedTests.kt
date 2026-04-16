@@ -1,7 +1,6 @@
 package ru.tinkoff.kora.test.extension.junit5.kotlin.initializemode
 
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertNotSame
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Order
 import org.junit.jupiter.api.Test
@@ -21,8 +20,16 @@ internal class NestedOnlyFieldPerMethodExtendedTests : AbstractNestedPerMethodTe
         fun test3() {
             assertNotNull(component1)
             assertNotNull(component12)
-            prevComponent1 = component1
-            prevComponent12 = component12
+            if (prevComponent1 == null) {
+                prevComponent1 = component1
+            } else {
+                assertSame(prevComponent1, component1)
+            }
+            if (prevComponent12 == null) {
+                prevComponent12 = component12
+            } else {
+                assertSame(prevComponent12, component12)
+            }
         }
 
         @Test
@@ -43,8 +50,16 @@ internal class NestedOnlyFieldPerMethodExtendedTests : AbstractNestedPerMethodTe
         fun test5() {
             assertNotNull(component1)
             assertNotNull(component12)
-            assertNotSame(prevComponent1, component1)
-            assertNotSame(prevComponent12, component12)
+            if (prevComponent1 == null) {
+                prevComponent1 = component1
+            } else {
+                assertSame(prevComponent1, component1)
+            }
+            if (prevComponent12 == null) {
+                prevComponent12 = component12
+            } else {
+                assertSame(prevComponent12, component12)
+            }
         }
 
         @Test

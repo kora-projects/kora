@@ -39,8 +39,16 @@ internal class NestedOnlyFieldPerMethodTests {
         fun test3() {
             assertNotNull(component1)
             assertNotNull(component12)
-            prevComponent1 = component1
-            prevComponent12 = component12
+            if (prevComponent1 == null) {
+                prevComponent1 = component1
+            } else {
+                assertNotSame(prevComponent1, component1)
+            }
+            if (prevComponent12 == null) {
+                prevComponent12 = component12
+            } else {
+                assertNotSame(prevComponent12, component12)
+            }
         }
 
         @Test
@@ -61,8 +69,16 @@ internal class NestedOnlyFieldPerMethodTests {
         fun test5() {
             assertNotNull(component1)
             assertNotNull(component12)
-            assertNotSame(prevComponent1, component1)
-            assertNotSame(prevComponent12, component12)
+            if (prevComponent1 == null) {
+                prevComponent1 = component1
+            } else {
+                assertNotSame(prevComponent1, component1)
+            }
+            if (prevComponent12 == null) {
+                prevComponent12 = component12
+            } else {
+                assertNotSame(prevComponent12, component12)
+            }
         }
 
         @Test

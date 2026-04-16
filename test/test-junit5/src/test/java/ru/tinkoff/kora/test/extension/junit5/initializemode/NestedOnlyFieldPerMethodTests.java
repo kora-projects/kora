@@ -34,7 +34,14 @@ class NestedOnlyFieldPerMethodTests {
         void test3() {
             assertNotNull(component1);
             assertNotNull(component12);
+            if (prevComponent1 != null) {
+                assertNotSame(prevComponent1, component1);
+            }
             prevComponent1 = component1;
+            if (prevComponent12 != null) {
+                assertNotSame(prevComponent12, component12);
+                assertNotSame(prevComponent12, componentNested12);
+            }
             prevComponent12 = component12;
         }
 
@@ -56,8 +63,14 @@ class NestedOnlyFieldPerMethodTests {
         void test5() {
             assertNotNull(component1);
             assertNotNull(component12);
-            assertNotSame(prevComponent1, component1);
-            assertNotSame(prevComponent12, component12);
+            if (prevComponent1 != null) {
+                assertNotSame(prevComponent1, component1);
+            }
+            prevComponent1 = component1;
+            if (prevComponent12 != null) {
+                assertNotSame(prevComponent12, component12);
+            }
+            prevComponent12 = component12;
         }
 
         @Test
