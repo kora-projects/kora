@@ -8,6 +8,7 @@ import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.jspecify.annotations.Nullable;
 
 public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecordObservation {
 
@@ -15,6 +16,7 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
     protected final Span span;
     protected final TimerMeter recordDurationMeter;
 
+    @Nullable
     private Throwable error;
     private long startedRecordHandle;
 
@@ -39,10 +41,10 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
     @Override
     public void end() {
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        this.recordDurationMeter.recordNanos(this.startedRecordHandle, () -> Tags.of(
-            Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue),
-            Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), record.topic()),
-            Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), String.valueOf(record.partition()))
+        this.recordDurationMeter.recordElapsedNanos(this.startedRecordHandle, () -> Tags.of(
+                Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue),
+                Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), record.topic()),
+                Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), String.valueOf(record.partition()))
         ));
 
         if (this.error == null) {

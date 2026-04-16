@@ -24,7 +24,7 @@ public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumer
             return NoopKafkaConsumerTelemetry.INSTANCE;
         }
 
-        var tracer = config.tracing().enabled() ? this.tracer : TracerProvider.noop().get("kafka-consumer");
+        var tracer = config.tracing().enabled() ? this.tracer : TracerProvider.noop().get("kafka-listener");
         var meterRegistry = config.metrics().enabled() ? this.meterRegistry : new CompositeMeterRegistry();
         return new DefaultKafkaConsumerTelemetry(config, tracer, meterRegistry, listenerName, listenerImpl, driverProperties);
     }
