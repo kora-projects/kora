@@ -1,8 +1,11 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
-import io.koraframework.micrometer.api.NoopCounterMeterProvider;
+import io.koraframework.telemetry.common.CounterMeter;
 import io.koraframework.telemetry.common.TimerMeter;
-import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
@@ -14,10 +17,7 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.NOPLogger;
 
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
 
@@ -32,8 +32,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     protected final String clientId;
     protected final MeterRegistry meterRegistry;
     protected final TimerMeter recordDurationMeter;
-
-    private final Map<Tags, Counter> sentMessagesCache = new ConcurrentHashMap<>();
+    protected final CounterMeter sentMessagesMeter;
 
     public DefaultKafkaPublisherTelemetry(String publisherName,
                                           String publisherImpl,
@@ -49,12 +48,15 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         this.clientId = (driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String s) ? s : "";
         var logger = LoggerFactory.getLogger(publisherImpl);
 
-        this.recordDurationMeter = new TimerMeter(config,
-            createMetricRecordDurationStaticTags(),
+        this.recordDurationMeter = new TimerMeter(config.metrics(),
             tags -> createMetricRecordDuration()
                 .tags((Iterable<Tag>) tags)
-                .register(meterRegistry)
-        );
+                .register(meterRegistry));
+
+        this.sentMessagesMeter = new CounterMeter(config.metrics(),
+            tags -> createMetricSentCounter()
+                .tags((Iterable<Tag>) tags)
+                .register(meterRegistry));
 
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
             ? logger
@@ -69,22 +71,19 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     @Override
     public KafkaPublisherTransactionObservation observeTx() {
         var span = this.createTxSpan();
-        return new DefaultKafkaPublisherTransactionObservation(span, logger);
+        return new DefaultKafkaPublisherTransactionObservation(publisherName, span, logger);
     }
 
     @Override
     public KafkaPublisherRecordObservation observeSend(String topic) {
         var span = this.createSendSpan(topic);
-        var sentMessages = this.createMetricSentCounterBuilder(topic);
-        return new DefaultKafkaPublisherRecordObservation(publisherName, config, topic, span, recordDurationMeter, sentMessages, logger);
+        return new DefaultKafkaPublisherRecordObservation(publisherName, config, topic, span, recordDurationMeter, sentMessagesMeter, logger);
     }
 
     protected Timer.Builder createMetricRecordDuration() {
-        return Timer.builder("messaging.client.operation.duration")
+        var meter = Timer.builder("messaging.client.operation.duration")
             .serviceLevelObjectives(this.config.metrics().slo());
-    }
 
-    protected List<Tag> createMetricRecordDurationStaticTags() {
         var staticTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
@@ -95,14 +94,12 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
             staticTags.add(Tag.of(e.getKey(), e.getValue()));
         }
 
-        return staticTags;
+        return meter.tags(staticTags);
     }
 
     protected Counter.Builder createMetricSentCounter() {
-        return Counter.builder("messaging.client.sent.messages");
-    }
+        var meter = Counter.builder("messaging.client.sent.messages");
 
-    protected List<Tag> createMetricSentCounterStaticTags() {
         var staticTags = new ArrayList<Tag>(4 + this.config.metrics().tags().size());
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
@@ -111,36 +108,8 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         for (var e : this.config.metrics().tags().entrySet()) {
             staticTags.add(Tag.of(e.getKey(), e.getValue()));
         }
-        return staticTags;
-    }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    protected Meter.MeterProvider<Counter> createMetricSentCounterBuilder(String topic) {
-        if (!this.config.metrics().enabled()) {
-            return NoopCounterMeterProvider.INSTANCE;
-        }
-
-        return keyTags -> {
-            // cause if exception then no metadata for topic so add here 100%
-            final Tag topicDynamicTag = Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic);
-            final Tags finalKeyTags;
-            if (keyTags instanceof ArrayList ta) {
-                ta.add(topicDynamicTag);
-                finalKeyTags = Tags.of(ta);
-            } else {
-                finalKeyTags = Tags.of(keyTags).and(topicDynamicTag);
-            }
-
-            return sentMessagesCache.computeIfAbsent(finalKeyTags, _ -> {
-                // static tags are not part of cache key cause not change
-                var staticTags = createMetricSentCounterStaticTags();
-                var metricBuilder = createMetricSentCounter();
-                return metricBuilder
-                    .tags(staticTags)
-                    .withRegistry(this.meterRegistry)
-                    .withTags(finalKeyTags); // provider accept only dynamic metric cache key tags
-            });
-        };
+        return meter.tags(staticTags);
     }
 
     protected Span createSendSpan(String topic) {

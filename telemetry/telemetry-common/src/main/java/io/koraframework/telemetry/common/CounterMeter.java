@@ -1,54 +1,51 @@
 package io.koraframework.telemetry.common;
 
+import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.Timer;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-public class TimerMeter {
+public class CounterMeter {
 
-    private final Map<Tags, Timer> meterCache = new ConcurrentHashMap<>();
+    private final Map<Tags, Counter> meterCache = new ConcurrentHashMap<>();
 
     private final TelemetryConfig.MetricsConfig metricsConfig;
-    private final Meter.MeterProvider<Timer> provider;
+    private final Meter.MeterProvider<Counter> provider;
 
-    public TimerMeter(TelemetryConfig.MetricsConfig metricsConfig,
-                      Meter.MeterProvider<Timer> provider) {
+    public CounterMeter(TelemetryConfig.MetricsConfig metricsConfig,
+                        Meter.MeterProvider<Counter> provider) {
         this.metricsConfig = metricsConfig;
         this.provider = provider;
     }
 
-    public void recordElapsedNanos(long started, Supplier<Iterable<Tag>> metricCacheKeyTags) {
+    public void recordIncrement(long increment, Supplier<Iterable<Tag>> metricCacheKeyTags) {
         if (!metricsConfig.enabled()) {
             return;
         }
 
-        var tookNanos = System.nanoTime() - started;
         var tags = metricCacheKeyTags.get();
         var keyTags = (tags == null || !tags.iterator().hasNext())
             ? Tags.empty()
             : Tags.of(tags);
 
         var meter = meterCache.computeIfAbsent(keyTags, _ -> provider.withTags(keyTags));
-        meter.record(tookNanos, TimeUnit.NANOSECONDS);
+        meter.increment(increment);
     }
 
-    public void recordElapsedNanos(long started, Iterable<Tag> metricCacheKeyTags) {
+    public void recordIncrement(long increment, Iterable<Tag> metricCacheKeyTags) {
         if (!metricsConfig.enabled()) {
             return;
         }
 
-        var tookNanos = System.nanoTime() - started;
         var keyTags = (metricCacheKeyTags == null || !metricCacheKeyTags.iterator().hasNext())
             ? Tags.empty()
             : Tags.of(metricCacheKeyTags);
 
         var meter = meterCache.computeIfAbsent(keyTags, _ -> provider.withTags(keyTags));
-        meter.record(tookNanos, TimeUnit.NANOSECONDS);
+        meter.increment(increment);
     }
 }

@@ -16,11 +16,15 @@ import java.util.stream.Collectors;
 
 public class DefaultKafkaPublisherTransactionObservation implements KafkaPublisherTelemetry.KafkaPublisherTransactionObservation {
 
+    private final String publisherName;
     private final Span span;
     private final Logger logger;
+
+    @Nullable
     private Throwable error;
 
-    public DefaultKafkaPublisherTransactionObservation(Span span, Logger logger) {
+    public DefaultKafkaPublisherTransactionObservation(String publisherName, Span span, Logger logger) {
+        this.publisherName = publisherName;
         this.span = span;
         this.logger = logger;
     }
@@ -42,20 +46,22 @@ public class DefaultKafkaPublisherTransactionObservation implements KafkaPublish
                     .collect(Collectors.joining("], [", "[", "]")))
                 .collect(Collectors.joining("], [", "[", "]"));
 
-            logger.trace("Kafka Producer success sending '{}' transaction records with meta: {}", offsets.size(), transactionMeta);
+            logger.trace("KafkaPublisher '{}' success sending '{}' transaction records with meta: {}",
+                publisherName, offsets.size(), transactionMeta);
         } else {
-            logger.debug("Kafka Producer success sending '{}' transaction records", offsets.size());
+            logger.debug("KafkaPublisher '{}' success sending '{}' transaction records",
+                publisherName, offsets.size());
         }
     }
 
     @Override
     public void observeCommit() {
-        logger.debug("Kafka Producer committing transaction...");
+        logger.debug("KafkaPublisher '{}' committing transaction...", publisherName);
     }
 
     @Override
     public void observeRollback(@Nullable Throwable e) {
-        logger.debug("Kafka Producer rollback transaction...");
+        logger.debug("KafkaPublisher '{}' rollback transaction...", publisherName);
     }
 
     @Override

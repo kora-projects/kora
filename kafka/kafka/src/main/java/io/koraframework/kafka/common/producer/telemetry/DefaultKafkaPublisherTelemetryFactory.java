@@ -23,7 +23,7 @@ public class DefaultKafkaPublisherTelemetryFactory implements KafkaPublisherTele
             return NoopKafkaPublisherTelemetry.INSTANCE;
         }
 
-        var tracer = config.tracing().enabled() ? this.tracer : TracerProvider.noop().get("kafka-producer");
+        var tracer = config.tracing().enabled() ? this.tracer : TracerProvider.noop().get("kafka-publisher");
         var meterRegistry = config.metrics().enabled() ? this.meterRegistry : new CompositeMeterRegistry();
         return new DefaultKafkaPublisherTelemetry(publisherName, publisherImpl, config, tracer, meterRegistry, properties);
     }

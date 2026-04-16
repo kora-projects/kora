@@ -1,7 +1,8 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
 import io.koraframework.telemetry.common.TimerMeter;
-import io.micrometer.core.instrument.*;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tags;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
@@ -17,7 +18,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.HashSet;
+import java.util.Objects;
 
 public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObservation {
 
@@ -58,7 +60,8 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
         if (this.config.logging().enabled()) {
             if (logger.isTraceEnabled()) {
                 if (records.isEmpty()) {
-                    logger.trace("KafkaListener '{}' polled '0' records");
+                    logger.trace("KafkaListener '{}' polled '0' records",
+                        consumerMetadata.listenerName());
                 } else {
                     var logTopics = new HashSet<String>(records.partitions().size());
                     var logPartitions = new HashSet<Integer>(records.partitions().size());
@@ -72,7 +75,8 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
                 }
             } else {
                 if (!records.isEmpty()) {
-                    logger.debug("KafkaListener '{}' polled '{}' records", records.count());
+                    logger.debug("KafkaListener '{}' polled '{}' records",
+                        consumerMetadata.listenerName(), records.count());
                 }
             }
         }
@@ -89,7 +93,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
     @Override
     public void end() {
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        this.batchDurationMeter.recordNanos(this.startedRecordsHandle, () -> Tags.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
+        this.batchDurationMeter.recordElapsedNanos(this.startedRecordsHandle, () -> Tags.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
 
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
