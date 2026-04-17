@@ -8,8 +8,11 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
 
-public class NoopKafkaPublisherTransactionObservation implements KafkaPublisherTelemetry.KafkaPublisherTransactionObservation {
+public final class NoopKafkaPublisherTransactionObservation implements KafkaPublisherTelemetry.KafkaPublisherTransactionObservation {
+
     public static final NoopKafkaPublisherTransactionObservation INSTANCE = new NoopKafkaPublisherTransactionObservation();
+
+    private NoopKafkaPublisherTransactionObservation() {}
 
     @Override
     public void observeOffsets(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) {
