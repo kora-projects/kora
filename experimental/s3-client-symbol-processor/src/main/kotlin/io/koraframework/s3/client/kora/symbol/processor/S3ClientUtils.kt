@@ -57,9 +57,9 @@ object S3ClientUtils {
         var foundParam: KSValueParameter? = null
         for (param in method.parameters) {
             val typeName = param.type.resolve().toTypeName()
-            if (S3ClassNames.awsCredentials == typeName) {
+            if (S3ClassNames.s3Credentials == typeName) {
                 if (foundParam != null) {
-                    throw ProcessingErrorException("Multiple AwsCredentials parameters found", method)
+                    throw ProcessingErrorException("Multiple S3Credentials parameters found", method)
                 }
                 foundParam = param
             }

@@ -7,6 +7,7 @@ import org.mockito.Mockito.*
 import io.koraframework.s3.client.kora.S3Credentials
 import io.koraframework.s3.client.kora.model.request.ListObjectsArgs
 import io.koraframework.s3.client.kora.model.response.ListBucketResult
+import io.koraframework.s3.client.kora.symbol.processor.AbstractS3ClientTest
 
 
 class S3ListTest : AbstractS3ClientTest() {
@@ -18,7 +19,7 @@ class S3ListTest : AbstractS3ClientTest() {
             @S3.Client
             interface Client {
                 @S3.List
-                fun getWithPrefix(creds: AwsCredentials, @Bucket bucket: String, prefix: String): List<String>
+                fun getWithPrefix(creds: S3Credentials, @Bucket bucket: String, prefix: String): List<String>
             }
             
             """.trimIndent()
@@ -54,7 +55,7 @@ class S3ListTest : AbstractS3ClientTest() {
             @S3.Client
             public interface Client {
                 @S3.List("const-")
-                fun listConst(creds: AwsCredentials, @Bucket bucket: String): ListBucketResult
+                fun listConst(creds: S3Credentials, @Bucket bucket: String): ListBucketResult
             }
             
             """.trimIndent()
@@ -88,7 +89,7 @@ class S3ListTest : AbstractS3ClientTest() {
             @S3.Client
             interface Client {
                 @S3.List
-                fun iteratorStrings(creds: AwsCredentials, @Bucket bucket: String, args: ListObjectsArgs): Iterator<String>
+                fun iteratorStrings(creds: S3Credentials, @Bucket bucket: String, args: ListObjectsArgs): Iterator<String>
             }
             
             """.trimIndent()
@@ -125,7 +126,7 @@ class S3ListTest : AbstractS3ClientTest() {
             @S3.Client
             interface Client {
                 @S3.List
-                fun iteratorItems(creds: AwsCredentials, @Bucket bucket: String, args: ListObjectsArgs): Iterator<ListBucketResult.ListBucketItem>
+                fun iteratorItems(creds: S3Credentials, @Bucket bucket: String, args: ListObjectsArgs): Iterator<ListBucketResult.ListBucketItem>
             }
             """.trimIndent()
         )
@@ -162,7 +163,7 @@ class S3ListTest : AbstractS3ClientTest() {
             @S3.Client
             interface Client {
                 @S3.List("pre-{prefix}")
-                fun items(creds: AwsCredentials, @Bucket bucket: String, prefix: String): List<ListBucketResult.ListBucketItem>
+                fun items(creds: S3Credentials, @Bucket bucket: String, prefix: String): List<ListBucketResult.ListBucketItem>
             }
             """.trimIndent()
         )

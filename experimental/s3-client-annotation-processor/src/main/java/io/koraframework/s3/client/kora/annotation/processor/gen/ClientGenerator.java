@@ -31,7 +31,7 @@ public class ClientGenerator {
         var configType = credsRequired
             ? S3ClassNames.CONFIG_WITH_CREDS
             : S3ClassNames.CONFIG;
-        var b = CommonUtils.extendsKeepAop(s3client, NameUtils.generatedType(s3client, "KoraS3ClientImpl"))
+        var b = CommonUtils.extendsKeepAop(s3client, NameUtils.generatedType(s3client, "S3ClientImpl"))
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))
             .addField(S3ClassNames.CLIENT, "client", Modifier.PRIVATE, Modifier.FINAL)
             .addField(configType, "config", Modifier.PRIVATE, Modifier.FINAL);
@@ -358,7 +358,7 @@ public class ClientGenerator {
             .filter(p -> {
                 var parameterTypeName = TypeName.get(p.asType());
                 return !AnnotationUtils.isAnnotationPresent(p, S3ClassNames.Annotation.BUCKET)
-                    && !S3ClassNames.AWS_CREDENTIALS.equals(parameterTypeName)
+                    && !S3ClassNames.S3_CREDENTIALS.equals(parameterTypeName)
                     && !S3ClassNames.ARGS.contains(parameterTypeName)
                     && !S3ClassNames.BODY_TYPES.contains(parameterTypeName)
                     ;

@@ -22,7 +22,7 @@ import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.s3.client.kora.symbol.processor.S3ClientUtils
-import io.koraframework.s3.client.symbol.processor.S3ClassNames
+import io.koraframework.s3.client.kora.symbol.processor.S3ClassNames
 import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -41,7 +41,7 @@ object ClientGenerator {
             S3ClassNames.configWithCreds
         else
             S3ClassNames.config
-        val b = s3client.extendsKeepAop(s3client.generatedClassName("ClientImpl"), resolver)
+        val b = s3client.extendsKeepAop(s3client.generatedClassName("S3ClientImpl"), resolver)
             .generated(ClientGenerator::class)
             .addProperty(
                 PropertySpec.Companion.builder("client", S3ClassNames.client, KModifier.PRIVATE)
@@ -375,7 +375,7 @@ object ClientGenerator {
         val keyMapping = annotation.findValueNoDefault<String>("value")
         val parameters = function.parameters.filter {
             val parameterTypeName = it.type.resolve().toTypeName()
-            !it.isAnnotationPresent(S3ClassNames.Annotation.bucket) && parameterTypeName != S3ClassNames.awsCredentials && !S3ClassNames.args.contains(parameterTypeName) && !S3ClassNames.bodyTypes.contains(
+            !it.isAnnotationPresent(S3ClassNames.Annotation.bucket) && parameterTypeName != S3ClassNames.s3Credentials && !S3ClassNames.args.contains(parameterTypeName) && !S3ClassNames.bodyTypes.contains(
                 parameterTypeName
             )
         }

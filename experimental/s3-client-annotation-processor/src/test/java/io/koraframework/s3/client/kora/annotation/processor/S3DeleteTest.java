@@ -57,7 +57,7 @@ class S3DeleteTest extends AbstractS3ClientTest {
             )
         ));
         var client = this.compile("""
-            import io.koraframework.s3.client.kora.S3Credentials;@S3.Client
+            @S3.Client
             @S3.Bucket(".bucket")
             public interface Client {
                 @S3.Delete
