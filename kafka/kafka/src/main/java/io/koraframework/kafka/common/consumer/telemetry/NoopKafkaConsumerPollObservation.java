@@ -6,6 +6,10 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 
 public final class NoopKafkaConsumerPollObservation implements KafkaConsumerPollObservation {
 
+    public static final NoopKafkaConsumerPollObservation INSTANCE = new NoopKafkaConsumerPollObservation();
+
+    private NoopKafkaConsumerPollObservation() { }
+
     @Override
     public Span span() {
         return Span.getInvalid();
@@ -23,7 +27,7 @@ public final class NoopKafkaConsumerPollObservation implements KafkaConsumerPoll
 
     @Override
     public KafkaConsumerRecordObservation observeRecord(ConsumerRecord<?, ?> record) {
-        return new NoopKafkaConsumerRecordObservation();
+        return NoopKafkaConsumerRecordObservation.INSTANCE;
     }
 
     @Override
