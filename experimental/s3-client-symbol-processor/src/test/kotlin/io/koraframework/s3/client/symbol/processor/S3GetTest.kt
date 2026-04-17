@@ -6,9 +6,9 @@ import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
 import io.koraframework.config.common.factory.MapConfigFactory
 import io.koraframework.http.common.body.HttpBodyInput
-import io.koraframework.s3.client.AwsCredentials
-import io.koraframework.s3.client.model.request.GetObjectArgs
-import io.koraframework.s3.client.model.response.GetObjectResult
+import io.koraframework.s3.client.kora.S3Credentials
+import io.koraframework.s3.client.kora.model.request.GetObjectArgs
+import io.koraframework.s3.client.kora.model.response.GetObjectResult
 import java.io.ByteArrayInputStream
 
 
@@ -125,7 +125,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
         )
 
         val getObjectResult = mock(GetObjectResult::class.java)
-        val creds = AwsCredentials.of("test", "test")
+        val creds = S3Credentials.of("test", "test")
         `when`(
             s3Client.getObject(
                 same(creds),
