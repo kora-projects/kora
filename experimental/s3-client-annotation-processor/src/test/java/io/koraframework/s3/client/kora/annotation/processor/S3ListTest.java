@@ -17,7 +17,7 @@ public class S3ListTest extends AbstractS3ClientTest {
     @Test
     public void testList() throws Exception {
         var client = this.compile("""
-            import io.koraframework.s3.client.kora.S3Credentials;@S3.Client
+            @S3.Client
             public interface Client {
                 @S3.List
                 List<String> getWithPrefix(S3Credentials creds, @Bucket String bucket, String prefix);
@@ -42,7 +42,7 @@ public class S3ListTest extends AbstractS3ClientTest {
     @Test
     public void testListReturnsListBucketResultWithConstPrefix() throws Exception {
         var client = this.compile("""
-            import io.koraframework.s3.client.kora.S3Credentials;@S3.Client
+            @S3.Client
             public interface Client {
                 @S3.List("const-")
                 ListBucketResult listConst(S3Credentials creds, @Bucket String bucket);
@@ -66,7 +66,7 @@ public class S3ListTest extends AbstractS3ClientTest {
     @Test
     public void testIteratorStringLazyPages() {
         var client = this.compile("""
-            import io.koraframework.s3.client.kora.S3Credentials;import io.koraframework.s3.client.kora.model.request.ListObjectsArgs;@S3.Client
+            @S3.Client
             public interface Client {
                 @S3.List
                 Iterator<String> iteratorStrings(S3Credentials creds, @Bucket String bucket, ListObjectsArgs args);
@@ -94,7 +94,7 @@ public class S3ListTest extends AbstractS3ClientTest {
     @Test
     public void testIteratorItemsLazyPages() {
         var client = this.compile("""
-            import io.koraframework.s3.client.kora.S3Credentials;import io.koraframework.s3.client.kora.model.request.ListObjectsArgs;@S3.Client
+            @S3.Client
             public interface Client {
                 @S3.List
                 Iterator<ListBucketResult.ListBucketItem> iteratorItems(S3Credentials creds, @Bucket String bucket, ListObjectsArgs args);
@@ -122,7 +122,7 @@ public class S3ListTest extends AbstractS3ClientTest {
     @Test
     public void testListItemsMappingWithTemplatePrefix() throws Exception {
         var client = this.compile("""
-            import io.koraframework.s3.client.kora.S3Credentials;@S3.Client
+            @S3.Client
             public interface Client {
                 @S3.List("pre-{prefix}")
                 List<ListBucketResult.ListBucketItem> items(S3Credentials creds, @Bucket String bucket, String prefix);

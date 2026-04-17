@@ -7,6 +7,7 @@ import org.mockito.Mockito.verify
 import org.mockito.Mockito.`when`
 import io.koraframework.http.common.header.HttpHeaders
 import io.koraframework.s3.client.kora.model.response.HeadObjectResult
+import io.koraframework.s3.client.kora.symbol.processor.AbstractS3ClientTest
 
 class S3HeadTest : AbstractS3ClientTest() {
     @Test

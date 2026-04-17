@@ -35,6 +35,6 @@ abstract class AbstractS3ClientTest : AbstractSymbolProcessorTest() {
         args.add(clientFactory)
         args.add(config)
         args.addAll(addArgs.map { if (it is GeneratedObject<*>) it() else it })
-        return newObject("\$Client_ClientImpl", *args.toTypedArray())
+        return newObject("\$Client_S3ClientImpl", *args.toTypedArray())
     }
 }
