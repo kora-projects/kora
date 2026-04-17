@@ -1,6 +1,6 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.telemetry.common.TimerMeter;
+import io.koraframework.micrometer.api.TimerMeter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.opentelemetry.api.trace.Span;
@@ -41,7 +41,7 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
     @Override
     public void end() {
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        this.recordDurationMeter.recordElapsedNanos(this.startedRecordHandle, () -> Tags.of(
+        this.recordDurationMeter.recordElapsedFromNanos(this.startedRecordHandle, () -> Tags.of(
                 Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue),
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), record.topic()),
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), String.valueOf(record.partition()))

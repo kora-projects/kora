@@ -1,11 +1,7 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
-import io.koraframework.telemetry.common.CounterMeter;
-import io.koraframework.telemetry.common.TimerMeter;
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Timer;
+import io.koraframework.micrometer.api.*;
+import io.micrometer.core.instrument.*;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
@@ -17,7 +13,9 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.NOPLogger;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
 
@@ -31,6 +29,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     protected final Logger logger;
     protected final String clientId;
     protected final MeterRegistry meterRegistry;
+
     protected final TimerMeter recordDurationMeter;
     protected final CounterMeter sentMessagesMeter;
 
@@ -46,21 +45,35 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.clientId = (driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String s) ? s : "";
+
+        this.recordDurationMeter = (config.metrics().enabled())
+                ? new CachedTimerMeter(tags -> createMetricRecordDuration()
+                .tags((Iterable<Tag>) tags)
+                .register(meterRegistry))
+                : NoopTimerMeter.INSTANCE;
+
+        this.sentMessagesMeter = (config.metrics().enabled())
+                ? new CachedCounterMeter(tags -> createMetricSentCounter()
+                .tags((Iterable<Tag>) tags)
+                .register(meterRegistry))
+                : NoopCounterMeter.INSTANCE;
+
+//        this.recordDurationMeter = (config.metrics().enabled())
+//                ? tags -> recordDurationCache.computeIfAbsent(Tags.of(tags), t -> createMetricRecordDuration()
+//                    .tags((Iterable<Tag>) tags)
+//                    .register(meterRegistry))
+//                : NoopTimerMeterProvider.INSTANCE;
+//
+//        this.sentMessagesMeter = (config.metrics().enabled())
+//                ? tags -> sentMessagesCache.computeIfAbsent(Tags.of(tags), t -> createMetricSentCounter()
+//                .tags((Iterable<Tag>) tags)
+//                .register(meterRegistry))
+//                : NoopCounterMeterProvider.INSTANCE;
+
         var logger = LoggerFactory.getLogger(publisherImpl);
-
-        this.recordDurationMeter = new TimerMeter(config.metrics(),
-            tags -> createMetricRecordDuration()
-                .tags((Iterable<Tag>) tags)
-                .register(meterRegistry));
-
-        this.sentMessagesMeter = new CounterMeter(config.metrics(),
-            tags -> createMetricSentCounter()
-                .tags((Iterable<Tag>) tags)
-                .register(meterRegistry));
-
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
-            ? logger
-            : NOPLogger.NOP_LOGGER;
+                ? logger
+                : NOPLogger.NOP_LOGGER;
     }
 
     @Override
@@ -82,7 +95,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
 
     protected Timer.Builder createMetricRecordDuration() {
         var meter = Timer.builder("messaging.client.operation.duration")
-            .serviceLevelObjectives(this.config.metrics().slo());
+                .serviceLevelObjectives(this.config.metrics().slo());
 
         var staticTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
@@ -118,12 +131,12 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         }
 
         var b = this.tracer.spanBuilder(topic + " send")
-            .setSpanKind(SpanKind.PRODUCER)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic)
-            .setAttribute(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl)
-            .setAttribute(MESSAGING_KAFKA_PRODUCER_NAME, publisherName);
+                .setSpanKind(SpanKind.PRODUCER)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic)
+                .setAttribute(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl)
+                .setAttribute(MESSAGING_KAFKA_PRODUCER_NAME, publisherName);
         for (var entry : this.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }
@@ -137,8 +150,8 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         }
 
         var b = this.tracer.spanBuilder("producer transaction")
-            .setSpanKind(SpanKind.INTERNAL)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA);
+                .setSpanKind(SpanKind.INTERNAL)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA);
         for (var entry : this.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }

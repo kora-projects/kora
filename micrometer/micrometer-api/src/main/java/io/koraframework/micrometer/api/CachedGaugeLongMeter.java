@@ -1,7 +1,6 @@
-package io.koraframework.telemetry.common;
+package io.koraframework.micrometer.api;
 
 import io.micrometer.core.instrument.Gauge;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 
 import java.util.Map;
@@ -10,28 +9,22 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class GaugeLongMeter {
+public final class CachedGaugeLongMeter implements GaugeLongMeter {
 
     private final Map<Tags, AtomicLong> meterCache = new ConcurrentHashMap<>();
 
-    private final TelemetryConfig.MetricsConfig metricsConfig;
     private final String gaugeName;
     private final Function<Gauge.Builder<AtomicLong>, Gauge> gaugeFunction;
 
-    public GaugeLongMeter(TelemetryConfig.MetricsConfig metricsConfig,
-                          String gaugeName,
-                          Function<Gauge.Builder<AtomicLong>, Gauge> gaugeFunction) {
+    public CachedGaugeLongMeter(String gaugeName,
+                                Function<Gauge.Builder<AtomicLong>, Gauge> gaugeFunction) {
 
-        this.metricsConfig = metricsConfig;
         this.gaugeName = gaugeName;
         this.gaugeFunction = gaugeFunction;
     }
 
-    public void recordValue(long value, Supplier<Iterable<Tag>> metricCacheKeyTags) {
-        if (!metricsConfig.enabled()) {
-            return;
-        }
-
+    @Override
+    public void recordValue(long value, Supplier<Tags> metricCacheKeyTags) {
         var tags = metricCacheKeyTags.get();
         var keyTags = (tags == null || !tags.iterator().hasNext())
             ? Tags.empty()
@@ -49,11 +42,8 @@ public class GaugeLongMeter {
         recorder.set(value);
     }
 
-    public void recordValue(long value, Iterable<Tag> metricCacheKeyTags) {
-        if (!metricsConfig.enabled()) {
-            return;
-        }
-
+    @Override
+    public void recordValue(long value, Tags metricCacheKeyTags) {
         var keyTags = (metricCacheKeyTags == null || !metricCacheKeyTags.iterator().hasNext())
             ? Tags.empty()
             : Tags.of(metricCacheKeyTags);

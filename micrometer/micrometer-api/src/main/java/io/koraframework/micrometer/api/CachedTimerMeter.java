@@ -1,7 +1,6 @@
-package io.koraframework.telemetry.common;
+package io.koraframework.micrometer.api;
 
 import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
 
@@ -10,25 +9,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-public class TimerMeter {
+public class CachedTimerMeter implements TimerMeter {
 
     private final Map<Tags, Timer> meterCache = new ConcurrentHashMap<>();
 
-    private final TelemetryConfig.MetricsConfig metricsConfig;
     private final Meter.MeterProvider<Timer> provider;
 
-    public TimerMeter(TelemetryConfig.MetricsConfig metricsConfig,
-                      Meter.MeterProvider<Timer> provider) {
-        this.metricsConfig = metricsConfig;
+    public CachedTimerMeter(Meter.MeterProvider<Timer> provider) {
         this.provider = provider;
     }
 
-    public void recordElapsedNanos(long started, Supplier<Iterable<Tag>> metricCacheKeyTags) {
-        if (!metricsConfig.enabled()) {
-            return;
-        }
-
-        var tookNanos = System.nanoTime() - started;
+    @Override
+    public void recordElapsedFromNanos(long startedInNanos, Supplier<Tags> metricCacheKeyTags) {
+        var tookNanos = System.nanoTime() - startedInNanos;
         var tags = metricCacheKeyTags.get();
         var keyTags = (tags == null || !tags.iterator().hasNext())
             ? Tags.empty()
@@ -38,12 +31,9 @@ public class TimerMeter {
         meter.record(tookNanos, TimeUnit.NANOSECONDS);
     }
 
-    public void recordElapsedNanos(long started, Iterable<Tag> metricCacheKeyTags) {
-        if (!metricsConfig.enabled()) {
-            return;
-        }
-
-        var tookNanos = System.nanoTime() - started;
+    @Override
+    public void recordElapsedFromNanos(long startedInNanos, Tags metricCacheKeyTags) {
+        var tookNanos = System.nanoTime() - startedInNanos;
         var keyTags = (metricCacheKeyTags == null || !metricCacheKeyTags.iterator().hasNext())
             ? Tags.empty()
             : Tags.of(metricCacheKeyTags);
