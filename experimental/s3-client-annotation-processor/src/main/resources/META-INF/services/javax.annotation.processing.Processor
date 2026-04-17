@@ -1,1 +1,1 @@
-io.koraframework.s3.client.annotation.processor.S3ClientAnnotationProcessor
+io.koraframework.s3.client.kora.annotation.processor.S3ClientAnnotationProcessor

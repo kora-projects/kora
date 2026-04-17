@@ -3,7 +3,7 @@ dependencies {
     implementation project(":kora-app-annotation-processor")
 
     testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation project(":experimental:s3-client")
+    testImplementation project(":experimental:s3-client-kora")
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
