@@ -1,32 +1,25 @@
-package io.koraframework.telemetry.common;
+package io.koraframework.micrometer.api;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
-public class CounterMeter {
+public final class CachedCounterMeter implements CounterMeter {
 
     private final Map<Tags, Counter> meterCache = new ConcurrentHashMap<>();
 
-    private final TelemetryConfig.MetricsConfig metricsConfig;
     private final Meter.MeterProvider<Counter> provider;
 
-    public CounterMeter(TelemetryConfig.MetricsConfig metricsConfig,
-                        Meter.MeterProvider<Counter> provider) {
-        this.metricsConfig = metricsConfig;
+    public CachedCounterMeter(Meter.MeterProvider<Counter> provider) {
         this.provider = provider;
     }
 
-    public void recordIncrement(long increment, Supplier<Iterable<Tag>> metricCacheKeyTags) {
-        if (!metricsConfig.enabled()) {
-            return;
-        }
-
+    @Override
+    public void recordIncrement(long increment, Supplier<Tags> metricCacheKeyTags) {
         var tags = metricCacheKeyTags.get();
         var keyTags = (tags == null || !tags.iterator().hasNext())
             ? Tags.empty()
@@ -36,11 +29,8 @@ public class CounterMeter {
         meter.increment(increment);
     }
 
-    public void recordIncrement(long increment, Iterable<Tag> metricCacheKeyTags) {
-        if (!metricsConfig.enabled()) {
-            return;
-        }
-
+    @Override
+    public void recordIncrement(long increment, Tags metricCacheKeyTags) {
         var keyTags = (metricCacheKeyTags == null || !metricCacheKeyTags.iterator().hasNext())
             ? Tags.empty()
             : Tags.of(metricCacheKeyTags);

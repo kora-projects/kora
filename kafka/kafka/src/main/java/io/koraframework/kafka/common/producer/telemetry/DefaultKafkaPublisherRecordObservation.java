@@ -3,8 +3,10 @@ package io.koraframework.kafka.common.producer.telemetry;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.logging.common.MDC;
-import io.koraframework.telemetry.common.CounterMeter;
-import io.koraframework.telemetry.common.TimerMeter;
+import io.koraframework.micrometer.api.CachedCounterMeter;
+import io.koraframework.micrometer.api.CachedTimerMeter;
+import io.koraframework.micrometer.api.CounterMeter;
+import io.koraframework.micrometer.api.TimerMeter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.opentelemetry.api.trace.Span;
@@ -109,7 +111,7 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), partition)
             );
 
-            this.recordDurationMeter.recordElapsedNanos(startedRecordSend, metricDynamicCacheKeyTags);
+            this.recordDurationMeter.recordElapsedFromNanos(startedRecordSend, metricDynamicCacheKeyTags);
             this.sentMessagesMeter.recordIncrement(1, metricDynamicCacheKeyTags);
         }
 
