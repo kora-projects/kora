@@ -5,8 +5,9 @@ import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
 import io.koraframework.s3.client.`$S3ClientConfig_UploadConfig_ConfigValueExtractor`
-import io.koraframework.s3.client.S3Client
-import io.koraframework.s3.client.model.response.UploadedPart
+import io.koraframework.s3.client.kora.S3Client
+import io.koraframework.s3.client.kora.S3Client
+import io.koraframework.s3.client.kora.model.response.UploadedPart
 import java.io.ByteArrayInputStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets

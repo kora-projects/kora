@@ -3,8 +3,8 @@ package io.koraframework.s3.client.symbol.processor
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
 import io.koraframework.config.common.factory.MapConfigFactory
-import io.koraframework.s3.client.AwsCredentials
-import io.koraframework.s3.client.model.request.DeleteObjectArgs
+import io.koraframework.s3.client.kora.S3Credentials
+import io.koraframework.s3.client.kora.model.request.DeleteObjectArgs
 
 
 internal class S3DeleteTest : AbstractS3ClientTest() {
@@ -74,7 +74,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
             """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)
         )
 
-        val creds = AwsCredentials.of("test", "test")
+        val creds = S3Credentials.of("test", "test")
         client.invoke<Any?>("deleteWithCreds", creds, "key")
 
         verify(s3Client).deleteObject(same(creds), eq("bucket_value"), eq("key"), isNull())

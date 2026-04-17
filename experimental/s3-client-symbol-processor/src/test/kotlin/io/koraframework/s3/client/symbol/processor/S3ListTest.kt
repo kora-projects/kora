@@ -4,9 +4,9 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
-import io.koraframework.s3.client.AwsCredentials
-import io.koraframework.s3.client.model.request.ListObjectsArgs
-import io.koraframework.s3.client.model.response.ListBucketResult
+import io.koraframework.s3.client.kora.S3Credentials
+import io.koraframework.s3.client.kora.model.request.ListObjectsArgs
+import io.koraframework.s3.client.kora.model.response.ListBucketResult
 
 
 class S3ListTest : AbstractS3ClientTest() {
@@ -24,7 +24,7 @@ class S3ListTest : AbstractS3ClientTest() {
             """.trimIndent()
         )
 
-        val creds = AwsCredentials.of("test", "test")
+        val creds = S3Credentials.of("test", "test")
         val list = listOf(ListBucketResult.ListBucketItem("test", "test1", "etag", null, null, null, 1L, null, null))
 
         val listBucketResult = ListBucketResult(null, 1, null, list)
@@ -60,7 +60,7 @@ class S3ListTest : AbstractS3ClientTest() {
             """.trimIndent()
         )
 
-        val creds = AwsCredentials.of("a", "b")
+        val creds = S3Credentials.of("a", "b")
         val items = listOf(ListBucketResult.ListBucketItem("b", "k1", "etag", null, null, null, 10L, null, null))
         val res = ListBucketResult(null, 1, null, items)
 
@@ -94,7 +94,7 @@ class S3ListTest : AbstractS3ClientTest() {
             """.trimIndent()
         )
 
-        val creds = AwsCredentials.of("x", "y")
+        val creds = S3Credentials.of("x", "y")
 
         val item1 = ListBucketResult.ListBucketItem("b", "k1", "etag", null, null, null, 1L, null, null)
         val item2 = ListBucketResult.ListBucketItem("b", "k2", "etag", null, null, null, 2L, null, null)
@@ -114,7 +114,7 @@ class S3ListTest : AbstractS3ClientTest() {
         assertThat(it!!.next()).isEqualTo("k1")
         assertThat(it.next()).isEqualTo("k2")
 
-        verify(s3Client).listObjectsV2Iterator(same<AwsCredentials?>(creds), eq<String?>("bucket"), any<ListObjectsArgs?>())
+        verify(s3Client).listObjectsV2Iterator(same<S3Credentials?>(creds), eq<String?>("bucket"), any<ListObjectsArgs?>())
         reset(s3Client)
     }
 
@@ -130,7 +130,7 @@ class S3ListTest : AbstractS3ClientTest() {
             """.trimIndent()
         )
 
-        val creds = AwsCredentials.of("x", "y")
+        val creds = S3Credentials.of("x", "y")
 
         val item1 = ListBucketResult.ListBucketItem("b", "k1", "etag", null, null, null, 1L, null, null)
         val item2 = ListBucketResult.ListBucketItem("b", "k2", "etag", null, null, null, 2L, null, null)
@@ -167,7 +167,7 @@ class S3ListTest : AbstractS3ClientTest() {
             """.trimIndent()
         )
 
-        val creds = AwsCredentials.of("u", "v")
+        val creds = S3Credentials.of("u", "v")
         val items = listOf(ListBucketResult.ListBucketItem("b", "item-key", "etag", null, null, null, 5L, null, null))
         val res = ListBucketResult(null, 1, null, items)
 

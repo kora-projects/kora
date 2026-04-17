@@ -1,10 +1,10 @@
-package io.koraframework.s3.client.symbol.processor
+package io.koraframework.s3.client.kora.symbol.processor
 
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
-import io.koraframework.s3.client.S3Client
-import io.koraframework.s3.client.S3ClientConfigWithCredentials
-import io.koraframework.s3.client.S3ClientFactory
+import io.koraframework.s3.client.kora.S3Client
+import io.koraframework.s3.client.kora.S3ClientConfigWithCredentials
+import io.koraframework.s3.client.kora.S3ClientFactory
 import org.intellij.lang.annotations.Language
 import org.mockito.Answers
 import org.mockito.Mockito
@@ -15,12 +15,12 @@ abstract class AbstractS3ClientTest : AbstractSymbolProcessorTest() {
         return super.commonImports() + """
             import java.nio.ByteBuffer
             import java.io.InputStream
-            import io.koraframework.s3.client.annotation.*
-            import io.koraframework.s3.client.annotation.S3.*
-            import io.koraframework.s3.client.model.request.*
-            import io.koraframework.s3.client.model.response.*
-            import io.koraframework.s3.client.*
-            import io.koraframework.s3.client.S3Client.*
+            import io.koraframework.s3.client.kora.annotation.*
+            import io.koraframework.s3.client.kora.annotation.S3.*
+            import io.koraframework.s3.client.kora.model.request.*
+            import io.koraframework.s3.client.kora.model.response.*
+            import io.koraframework.s3.client.kora.*
+            import io.koraframework.s3.client.kora.S3Client.*
             """.trimIndent()
     }
 
