@@ -17,11 +17,11 @@ object S3ClassNames {
         val operations = setOf(get, list, put, delete, head)
     }
 
-    val client = ClassName("io.koraframework.s3.client.kora.kora", "S3Client")
-    val awsCredentials = ClassName("io.koraframework.s3.client.kora.kora", "AwsCredentials")
-    val clientFactory = ClassName("io.koraframework.s3.client.kora.kora", "S3ClientFactory")
-    val config = ClassName("io.koraframework.s3.client.kora.kora", "S3ClientConfig")
-    val configWithCreds = ClassName("io.koraframework.s3.client.kora.kora", "S3ClientConfigWithCredentials")
+    val client = ClassName("io.koraframework.s3.client.kora", "S3Client")
+    val s3Credentials = ClassName("io.koraframework.s3.client.kora", "S3Credentials")
+    val clientFactory = ClassName("io.koraframework.s3.client.kora", "S3ClientFactory")
+    val config = ClassName("io.koraframework.s3.client.kora", "S3ClientConfig")
+    val configWithCreds = ClassName("io.koraframework.s3.client.kora", "S3ClientConfigWithCredentials")
 
     val contentWriter: ClassName = client.nestedClass("ContentWriter")
 

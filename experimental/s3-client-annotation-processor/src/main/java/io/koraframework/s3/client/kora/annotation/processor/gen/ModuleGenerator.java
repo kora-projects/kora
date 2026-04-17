@@ -21,8 +21,8 @@ public class ModuleGenerator {
     public static TypeSpec generate(ProcessingEnvironment processingEnv, TypeElement s3client) {
         var packageName = processingEnv.getElementUtils().getPackageOf(s3client).getQualifiedName().toString();
         var bucketsType = ClassName.get(packageName, NameUtils.generatedType(s3client, "BucketsConfig"));
-        var clientType = ClassName.get(packageName, NameUtils.generatedType(s3client, "ClientImpl"));
-        var b = TypeSpec.interfaceBuilder(NameUtils.generatedType(s3client, "KoraS3ClientModule"))
+        var clientType = ClassName.get(packageName, NameUtils.generatedType(s3client, "S3ClientImpl"));
+        var b = TypeSpec.interfaceBuilder(NameUtils.generatedType(s3client, "S3Module"))
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.module)
             .addAnnotation(AnnotationUtils.generated(S3ClientAnnotationProcessor.class))

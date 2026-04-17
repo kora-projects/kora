@@ -41,6 +41,6 @@ public class AbstractS3ClientTest extends AbstractAnnotationProcessorTest {
         args.add(clientFactory);
         args.add(config);
         args.addAll(List.of(addArgs));
-        return new AbstractAnnotationProcessorTest.TestObject(loadClass("$Client_ClientImpl"), args);
+        return new AbstractAnnotationProcessorTest.TestObject(loadClass("$Client_S3ClientImpl"), args);
     }
 }

@@ -5,6 +5,7 @@ import org.mockito.Mockito.*
 import io.koraframework.config.common.factory.MapConfigFactory
 import io.koraframework.s3.client.kora.S3Credentials
 import io.koraframework.s3.client.kora.model.request.DeleteObjectArgs
+import io.koraframework.s3.client.kora.symbol.processor.AbstractS3ClientTest
 
 
 internal class S3DeleteTest : AbstractS3ClientTest() {
@@ -54,7 +55,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
     }
 
     @Test
-    fun testDeleteWithAwsCredentials() {
+    fun testDeleteWithS3Credentials() {
         val bucketConfig = MapConfigFactory.fromMap(
             mapOf(
                 "Client" to mapOf(
@@ -68,7 +69,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
             @S3.Bucket(".bucket")
             interface Client {
                 @S3.Delete
-                fun deleteWithCreds(creds: AwsCredentials, key: String)
+                fun deleteWithCreds(creds: S3Credentials, key: String)
             }
             
             """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)

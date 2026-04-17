@@ -13,15 +13,15 @@ import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.s3.client.kora.symbol.processor.S3ClientUtils
-import io.koraframework.s3.client.symbol.processor.S3ClassNames
+import io.koraframework.s3.client.kora.symbol.processor.S3ClassNames
 
 
 object ModuleGenerator {
     fun generate(s3client: KSClassDeclaration): TypeSpec {
         val packageName = s3client.packageName.asString()
         val bucketsType = ClassName(packageName, s3client.generatedClassName("BucketsConfig"))
-        val clientType = ClassName(packageName, s3client.generatedClassName("ClientImpl"))
-        val b: TypeSpec.Builder = interfaceBuilder(s3client.generatedClassName("Module"))
+        val clientType = ClassName(packageName, s3client.generatedClassName("S3ClientImpl"))
+        val b: TypeSpec.Builder = interfaceBuilder(s3client.generatedClassName("S3Module"))
             .generated(ModuleGenerator::class)
             .addAnnotation(CommonClassNames.module)
 

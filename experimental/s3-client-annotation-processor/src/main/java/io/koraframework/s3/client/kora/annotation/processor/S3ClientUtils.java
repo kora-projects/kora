@@ -61,7 +61,7 @@ public class S3ClientUtils {
         VariableElement foundParam = null;
         for (var param : method.getParameters()) {
             var typeName = TypeName.get(param.asType());
-            if (S3ClassNames.AWS_CREDENTIALS.equals(typeName)) {
+            if (S3ClassNames.S3_CREDENTIALS.equals(typeName)) {
                 if (foundParam != null) {
                     throw new ProcessingErrorException("Multiple AwsCredentials parameters found", method, null);
                 }

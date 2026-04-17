@@ -8,7 +8,7 @@ import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.s3.client.kora.symbol.processor.S3ClientUtils
-import io.koraframework.s3.client.symbol.processor.S3ClassNames
+import io.koraframework.s3.client.kora.symbol.processor.S3ClassNames
 
 
 object BucketsConfigGenerator {

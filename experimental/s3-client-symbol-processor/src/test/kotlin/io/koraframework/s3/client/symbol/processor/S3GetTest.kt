@@ -9,6 +9,7 @@ import io.koraframework.http.common.body.HttpBodyInput
 import io.koraframework.s3.client.kora.S3Credentials
 import io.koraframework.s3.client.kora.model.request.GetObjectArgs
 import io.koraframework.s3.client.kora.model.response.GetObjectResult
+import io.koraframework.s3.client.kora.symbol.processor.AbstractS3ClientTest
 import java.io.ByteArrayInputStream
 
 
@@ -104,7 +105,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
     }
 
     @Test
-    fun testGetWithAwsCredentials() {
+    fun testGetWithS3Credentials() {
         val bucketConfig = MapConfigFactory.fromMap(
             mapOf(
                 "Client" to mapOf(
@@ -118,7 +119,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
             @S3.Bucket(".bucket")
             interface Client {
                 @S3.Get
-                fun getWithCreds(creds: AwsCredentials, key: String): GetObjectResult?
+                fun getWithCreds(creds: S3Credentials, key: String): GetObjectResult?
             }
             
             """.trimIndent(), newGenerated("\$Client_BucketsConfig", bucketConfig)

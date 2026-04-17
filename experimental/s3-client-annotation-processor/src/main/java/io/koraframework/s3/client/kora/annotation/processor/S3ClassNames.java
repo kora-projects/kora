@@ -23,7 +23,7 @@ public class S3ClassNames {
 
 
     public static final ClassName CLIENT = ClassName.get("io.koraframework.s3.client.kora", "S3Client");
-    public static final ClassName AWS_CREDENTIALS = ClassName.get("io.koraframework.s3.client.kora", "AwsCredentials");
+    public static final ClassName S3_CREDENTIALS = ClassName.get("io.koraframework.s3.client.kora", "S3Credentials");
     public static final ClassName CLIENT_FACTORY = ClassName.get("io.koraframework.s3.client.kora", "S3ClientFactory");
     public static final ClassName CONFIG = ClassName.get("io.koraframework.s3.client.kora", "S3ClientConfig");
     public static final ClassName CONFIG_WITH_CREDS = ClassName.get("io.koraframework.s3.client.kora", "S3ClientConfigWithCredentials");
