@@ -3,12 +3,17 @@ package io.koraframework.kafka.common.producer.telemetry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 
-public class NoopKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
-    public static final NoopKafkaPublisherTelemetry INSTANCE = new  NoopKafkaPublisherTelemetry();
+public final class NoopKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
+
+    public static final NoopKafkaPublisherTelemetry INSTANCE = new NoopKafkaPublisherTelemetry();
+
+    private final MeterRegistry meterRegistry = new CompositeMeterRegistry();
+
+    private NoopKafkaPublisherTelemetry() {}
 
     @Override
     public MeterRegistry meterRegistry() {
-        return new CompositeMeterRegistry();
+        return meterRegistry;
     }
 
     @Override

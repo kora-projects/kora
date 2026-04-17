@@ -337,11 +337,11 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 }
 
                 public void handle(ConsumerRecords<K, V> record) {
-                    moduleHandler.handle(consumer, new NoopKafkaConsumerPollObservation(), record);
+                    moduleHandler.handle(consumer, NoopKafkaConsumerPollObservation.INSTANCE, record);
                 }
 
                 public void handle(ConsumerRecord<K, V> record, ThrowingConsumer<InvocationAssertions<K, V>> verifier) {
-                    moduleHandler.handle(consumer, new NoopKafkaConsumerPollObservation(), new ConsumerRecords<>(Map.of(
+                    moduleHandler.handle(consumer, NoopKafkaConsumerPollObservation.INSTANCE, new ConsumerRecords<>(Map.of(
                         new TopicPartition("test", 1),
                         List.of(record)
                     )));
@@ -350,7 +350,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
                 public void handle(ConsumerRecord<K, V> record, Class<? extends Throwable> expectedError) {
                     assertThatThrownBy(() -> {
-                        moduleHandler.handle(consumer, new NoopKafkaConsumerPollObservation(), new ConsumerRecords<>(Map.of(
+                        moduleHandler.handle(consumer, NoopKafkaConsumerPollObservation.INSTANCE, new ConsumerRecords<>(Map.of(
                             new TopicPartition("test", 1),
                             List.of(record)
                         )));
