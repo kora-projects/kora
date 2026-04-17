@@ -1,6 +1,7 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.telemetry.common.TimerMeter;
+import io.koraframework.micrometer.api.CachedTimerMeter;
+import io.koraframework.micrometer.api.TimerMeter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import io.opentelemetry.api.trace.Span;
@@ -61,7 +62,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
             if (logger.isTraceEnabled()) {
                 if (records.isEmpty()) {
                     logger.trace("KafkaListener '{}' polled '0' records",
-                        consumerMetadata.listenerName());
+                            consumerMetadata.listenerName());
                 } else {
                     var logTopics = new HashSet<String>(records.partitions().size());
                     var logPartitions = new HashSet<Integer>(records.partitions().size());
@@ -71,12 +72,12 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
                     }
 
                     logger.trace("KafkaListener '{}' polled '{}' records from topics {} and partitions {}",
-                        consumerMetadata.listenerImpl(), records.count(), logTopics, logPartitions);
+                            consumerMetadata.listenerImpl(), records.count(), logTopics, logPartitions);
                 }
             } else {
                 if (!records.isEmpty()) {
                     logger.debug("KafkaListener '{}' polled '{}' records",
-                        consumerMetadata.listenerName(), records.count());
+                            consumerMetadata.listenerName(), records.count());
                 }
             }
         }
@@ -93,7 +94,8 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
     @Override
     public void end() {
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        this.batchDurationMeter.recordElapsedNanos(this.startedRecordsHandle, () -> Tags.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
+        this.batchDurationMeter.recordElapsedFromNanos(this.startedRecordsHandle,
+                () -> Tags.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
 
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
@@ -124,21 +126,22 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
         var parent = W3CTraceContextPropagator.getInstance().extract(root, record, ConsumerRecordTextMapGetter.INSTANCE);
 
         var recordSpanBuilder = this.tracer
-            .spanBuilder(record.topic() + " process record")
-            .setSpanKind(SpanKind.CONSUMER)
-            .setParent(parent)
-            .addLink(span.getSpanContext())
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId())
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId())
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic())
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(record.partition()))
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_OFFSET, record.offset())
-            .setAttribute(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName())
-            .setAttribute(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl());
+                .spanBuilder(record.topic() + " process record")
+                .setSpanKind(SpanKind.CONSUMER)
+                .setParent(parent)
+                .addLink(span.getSpanContext())
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId())
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId())
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic())
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(record.partition()))
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_OFFSET, record.offset())
+                .setAttribute(MESSAGING_KAFKA_CONSUMER_NAME, consumerMetadata.listenerName())
+                .setAttribute(MESSAGING_KAFKA_CONSUMER_IMPL, consumerMetadata.listenerImpl());
         try {
             recordSpanBuilder.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_KEY, Objects.toString(record.key()));
-        } catch (Exception ignore) {}
+        } catch (Exception ignore) {
+        }
         var span = recordSpanBuilder.startSpan();
         this.span.addLink(span.getSpanContext());
 

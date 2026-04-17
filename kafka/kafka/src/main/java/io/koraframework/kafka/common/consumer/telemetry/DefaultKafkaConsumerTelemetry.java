@@ -1,7 +1,6 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.telemetry.common.GaugeLongMeter;
-import io.koraframework.telemetry.common.TimerMeter;
+import io.koraframework.micrometer.api.*;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
@@ -54,21 +53,24 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
                 driverProperties.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "")
         );
 
-        this.batchDurationMeter = new TimerMeter(config.metrics(),
-                tags -> createMetricBatchDuration()
-                        .tags((Iterable<Tag>) tags)
-                        .register(meterRegistry));
+        this.batchDurationMeter = (config.metrics().enabled())
+                ? new CachedTimerMeter(tags -> createMetricBatchDuration()
+                .tags((Iterable<Tag>) tags)
+                .register(meterRegistry))
+                : NoopTimerMeter.INSTANCE;
 
-        this.recordDurationMeter = new TimerMeter(config.metrics(),
-                tags -> createMetricRecordDuration()
-                        .tags((Iterable<Tag>) tags)
-                        .register(meterRegistry));
+        this.recordDurationMeter = (config.metrics().enabled())
+                ? new CachedTimerMeter(tags -> createMetricRecordDuration()
+                .tags((Iterable<Tag>) tags)
+                .register(meterRegistry))
+                : NoopTimerMeter.INSTANCE;
 
-        this.lagGaugeMeter = new GaugeLongMeter(config.metrics(),
-                "messaging.kafka.consumer.lag",
-                builder -> builder
-                        .tags(createMetricLagStaticTags())
-                        .register(meterRegistry));
+        this.lagGaugeMeter = (config.metrics().enabled())
+                ? new CachedGaugeLongMeter("messaging.kafka.consumer.lag",
+                            builder -> builder
+                                    .tags(createMetricLagStaticTags())
+                                    .register(meterRegistry))
+                : NoopGaugeLongMeter.INSTANCE;
 
         var logger = LoggerFactory.getLogger(listenerImpl);
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
