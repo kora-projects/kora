@@ -1,10 +1,7 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.micrometer.api.*;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.Timer;
+import io.koraframework.micrometer.api.NoopTimerMeterProvider;
+import io.micrometer.core.instrument.*;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
@@ -18,7 +15,10 @@ import org.slf4j.helpers.NOPLogger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
 
@@ -32,9 +32,11 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
     protected final ConsumerMetadata consumerMetadata;
     protected final Properties driverProperties;
 
-    protected final TimerMeter batchDurationMeter;
-    protected final TimerMeter recordDurationMeter;
-    protected final GaugeLongMeter lagGaugeMeter;
+    protected final Map<Tags, Timer> batchDurationCache = new ConcurrentHashMap<>();
+    protected final Map<Tags, Timer> recordDurationCache = new ConcurrentHashMap<>();
+    protected final Map<Tags, AtomicLong> lagGaugeCache = new ConcurrentHashMap<>();
+    protected final Meter.MeterProvider<Timer> batchDurationMeter;
+    protected final Meter.MeterProvider<Timer> recordDurationMeter;
 
     public DefaultKafkaConsumerTelemetry(KafkaConsumerTelemetryConfig config,
                                          Tracer tracer,
@@ -46,7 +48,7 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.driverProperties = driverProperties;
-        consumerMetadata = new ConsumerMetadata(
+        this.consumerMetadata = new ConsumerMetadata(
                 listenerName,
                 listenerImpl,
                 driverProperties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG, ""),
@@ -54,23 +56,16 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
         );
 
         this.batchDurationMeter = (config.metrics().enabled())
-                ? new CachedTimerMeter(tags -> createMetricBatchDuration()
+                ? tags -> batchDurationCache.computeIfAbsent(Tags.of(tags), _ -> createMetricBatchDuration()
                 .tags((Iterable<Tag>) tags)
                 .register(meterRegistry))
-                : NoopTimerMeter.INSTANCE;
+                : NoopTimerMeterProvider.INSTANCE;
 
         this.recordDurationMeter = (config.metrics().enabled())
-                ? new CachedTimerMeter(tags -> createMetricRecordDuration()
+                ? tags -> recordDurationCache.computeIfAbsent(Tags.of(tags), _ -> createMetricRecordDuration()
                 .tags((Iterable<Tag>) tags)
                 .register(meterRegistry))
-                : NoopTimerMeter.INSTANCE;
-
-        this.lagGaugeMeter = (config.metrics().enabled())
-                ? new CachedGaugeLongMeter("messaging.kafka.consumer.lag",
-                            builder -> builder
-                                    .tags(createMetricLagStaticTags())
-                                    .register(meterRegistry))
-                : NoopGaugeLongMeter.INSTANCE;
+                : NoopTimerMeterProvider.INSTANCE;
 
         var logger = LoggerFactory.getLogger(listenerImpl);
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
@@ -97,10 +92,23 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
 
     @Override
     public void reportLag(TopicPartition partition, long lag) {
-        lagGaugeMeter.recordValue(lag, () -> Tags.of(
+        if (!this.config.metrics().enabled()) {
+            return;
+        }
+
+        var keyTags = Tags.of(
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic()),
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(partition.partition()))
-        ));
+        );
+
+        var lagCounter = this.lagGaugeCache.computeIfAbsent(keyTags, _ -> {
+            var counter = new AtomicLong();
+            Gauge.builder("messaging.kafka.consumer.lag", counter, AtomicLong::get)
+                    .tags(createMetricLagStaticTags())
+                    .register(meterRegistry);
+            return counter;
+        });
+        lagCounter.set(lag);
     }
 
     protected List<Tag> createMetricLagStaticTags() {

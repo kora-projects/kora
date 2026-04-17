@@ -1,9 +1,9 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.koraframework.micrometer.api.CachedTimerMeter;
-import io.koraframework.micrometer.api.TimerMeter;
+import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObservation {
 
@@ -32,8 +33,8 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
     protected final Tracer tracer;
     protected final MeterRegistry meterRegistry;
     protected final Span span;
-    protected final TimerMeter batchDurationMeter;
-    protected final TimerMeter recordMetric;
+    protected final Meter.MeterProvider<Timer> batchDurationMeter;
+    protected final Meter.MeterProvider<Timer> recordMetric;
     protected final DefaultKafkaConsumerTelemetry.ConsumerMetadata consumerMetadata;
 
     private Throwable error;
@@ -44,8 +45,8 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
                                                MeterRegistry meterRegistry,
                                                Tracer tracer,
                                                Span span,
-                                               TimerMeter batchDurationMeter,
-                                               TimerMeter recordMetric) {
+                                               Meter.MeterProvider<Timer> batchDurationMeter,
+                                               Meter.MeterProvider<Timer> recordMetric) {
         this.config = config;
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
@@ -94,8 +95,14 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
     @Override
     public void end() {
         var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-        this.batchDurationMeter.recordElapsedFromNanos(this.startedRecordsHandle,
-                () -> Tags.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
+
+        if (this.config.metrics().enabled()) {
+            var took = System.nanoTime() - this.startedRecordsHandle;
+            var metricDynamicCacheKeyTags = Tags.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue);
+
+            this.batchDurationMeter.withTags(metricDynamicCacheKeyTags)
+                    .record(took, TimeUnit.NANOSECONDS);
+        }
 
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
@@ -114,7 +121,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
     @Override
     public KafkaConsumerRecordObservation observeRecord(ConsumerRecord<?, ?> record) {
         var span = this.createSpan(record);
-        return new DefaultKafkaConsumerRecordObservation(record, span, recordMetric);
+        return new DefaultKafkaConsumerRecordObservation(config, record, span, recordMetric);
     }
 
     protected Span createSpan(ConsumerRecord<?, ?> record) {

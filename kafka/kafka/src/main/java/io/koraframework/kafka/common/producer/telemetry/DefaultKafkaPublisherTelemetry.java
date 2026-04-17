@@ -1,6 +1,7 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
-import io.koraframework.micrometer.api.*;
+import io.koraframework.micrometer.api.NoopCounterMeterProvider;
+import io.koraframework.micrometer.api.NoopTimerMeterProvider;
 import io.micrometer.core.instrument.*;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -30,8 +31,10 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
     protected final String clientId;
     protected final MeterRegistry meterRegistry;
 
-    protected final TimerMeter recordDurationMeter;
-    protected final CounterMeter sentMessagesMeter;
+    protected final Map<Tags, Timer> recordDurationCache = new ConcurrentHashMap<>();
+    protected final Map<Tags, Counter> sentMessagesCache = new ConcurrentHashMap<>();
+    protected final Meter.MeterProvider<Timer> recordDurationMeter;
+    protected final Meter.MeterProvider<Counter> sentMessagesMeter;
 
     public DefaultKafkaPublisherTelemetry(String publisherName,
                                           String publisherImpl,
@@ -47,28 +50,16 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         this.clientId = (driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String s) ? s : "";
 
         this.recordDurationMeter = (config.metrics().enabled())
-                ? new CachedTimerMeter(tags -> createMetricRecordDuration()
+                ? tags -> recordDurationCache.computeIfAbsent(Tags.of(tags), t -> createMetricRecordDuration()
                 .tags((Iterable<Tag>) tags)
                 .register(meterRegistry))
-                : NoopTimerMeter.INSTANCE;
+                : NoopTimerMeterProvider.INSTANCE;
 
         this.sentMessagesMeter = (config.metrics().enabled())
-                ? new CachedCounterMeter(tags -> createMetricSentCounter()
+                ? tags -> sentMessagesCache.computeIfAbsent(Tags.of(tags), t -> createMetricSentCounter()
                 .tags((Iterable<Tag>) tags)
                 .register(meterRegistry))
-                : NoopCounterMeter.INSTANCE;
-
-//        this.recordDurationMeter = (config.metrics().enabled())
-//                ? tags -> recordDurationCache.computeIfAbsent(Tags.of(tags), t -> createMetricRecordDuration()
-//                    .tags((Iterable<Tag>) tags)
-//                    .register(meterRegistry))
-//                : NoopTimerMeterProvider.INSTANCE;
-//
-//        this.sentMessagesMeter = (config.metrics().enabled())
-//                ? tags -> sentMessagesCache.computeIfAbsent(Tags.of(tags), t -> createMetricSentCounter()
-//                .tags((Iterable<Tag>) tags)
-//                .register(meterRegistry))
-//                : NoopCounterMeterProvider.INSTANCE;
+                : NoopCounterMeterProvider.INSTANCE;
 
         var logger = LoggerFactory.getLogger(publisherImpl);
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
