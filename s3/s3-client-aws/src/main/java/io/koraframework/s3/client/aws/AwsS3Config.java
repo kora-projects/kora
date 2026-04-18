@@ -26,8 +26,12 @@ public interface AwsS3Config {
         return Duration.ofSeconds(45);
     }
 
-    default boolean checksumValidationEnabled() {
-        return false;
+    default ChecksumCalculation checksumCalculationRequest() {
+        return ChecksumCalculation.WHEN_REQUIRED;
+    }
+
+    default ChecksumCalculation checksumValidationResponse() {
+        return ChecksumCalculation.WHEN_REQUIRED;
     }
 
     default boolean chunkedEncodingEnabled() {
@@ -44,5 +48,10 @@ public interface AwsS3Config {
         String accessKey();
 
         String secretKey();
+    }
+
+    enum ChecksumCalculation {
+        WHEN_SUPPORTED,
+        WHEN_REQUIRED
     }
 }
