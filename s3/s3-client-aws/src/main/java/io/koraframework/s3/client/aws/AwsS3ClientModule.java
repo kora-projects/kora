@@ -14,6 +14,8 @@ import org.jspecify.annotations.Nullable;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.awscore.AwsClient;
+import software.amazon.awssdk.core.checksums.RequestChecksumCalculation;
+import software.amazon.awssdk.core.checksums.ResponseChecksumValidation;
 import software.amazon.awssdk.core.interceptor.ExecutionInterceptor;
 import software.amazon.awssdk.http.SdkHttpClient;
 import software.amazon.awssdk.regions.Region;
@@ -44,7 +46,6 @@ public interface AwsS3ClientModule {
     @DefaultComponent
     default S3Configuration awsS3Configuration(AwsS3Config config) {
         return S3Configuration.builder()
-            .checksumValidationEnabled(config.checksumValidationEnabled())
             .chunkedEncodingEnabled(config.chunkedEncodingEnabled())
             .pathStyleAccessEnabled(config.addressStyle() == AwsS3Config.AddressStyle.PATH)
             .build();
@@ -67,7 +68,6 @@ public interface AwsS3ClientModule {
                                                   All<ExecutionInterceptor> interceptors) {
         return (config) -> {
             var configuration = s3Configuration.toBuilder()
-                .checksumValidationEnabled(config.checksumValidationEnabled())
                 .chunkedEncodingEnabled(config.chunkedEncodingEnabled())
                 .pathStyleAccessEnabled(config.addressStyle() == AwsS3Config.AddressStyle.PATH)
                 .build();
@@ -78,6 +78,8 @@ public interface AwsS3ClientModule {
                 .endpointOverride(URI.create(config.url()))
                 .serviceConfiguration(configuration)
                 .region(Region.of(config.region()))
+                .requestChecksumCalculation(RequestChecksumCalculation.fromValue(config.checksumCalculationRequest().name()))
+                .responseChecksumValidation(ResponseChecksumValidation.fromValue(config.checksumValidationResponse().name()))
                 .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(config.telemetry()))))
                 .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
                 .build();
