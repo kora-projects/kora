@@ -4,6 +4,7 @@ import io.koraframework.micrometer.api.NoopCounterMeterProvider;
 import io.koraframework.micrometer.api.NoopTimerMeterProvider;
 import io.micrometer.core.instrument.*;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
@@ -50,21 +51,21 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         this.clientId = (driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String s) ? s : "";
 
         this.recordDurationMeter = (config.metrics().enabled())
-                ? tags -> recordDurationCache.computeIfAbsent(Tags.of(tags), t -> createMetricRecordDuration()
-                .tags((Iterable<Tag>) tags)
-                .register(meterRegistry))
-                : NoopTimerMeterProvider.INSTANCE;
+            ? tags -> recordDurationCache.computeIfAbsent(Tags.of(tags), t -> createMetricRecordDuration()
+            .tags((Iterable<Tag>) tags)
+            .register(meterRegistry))
+            : NoopTimerMeterProvider.INSTANCE;
 
         this.sentMessagesMeter = (config.metrics().enabled())
-                ? tags -> sentMessagesCache.computeIfAbsent(Tags.of(tags), t -> createMetricSentCounter()
-                .tags((Iterable<Tag>) tags)
-                .register(meterRegistry))
-                : NoopCounterMeterProvider.INSTANCE;
+            ? tags -> sentMessagesCache.computeIfAbsent(Tags.of(tags), t -> createMetricSentCounter()
+            .tags((Iterable<Tag>) tags)
+            .register(meterRegistry))
+            : NoopCounterMeterProvider.INSTANCE;
 
         var logger = LoggerFactory.getLogger(publisherImpl);
         this.logger = this.config.logging().enabled() && logger.isWarnEnabled()
-                ? logger
-                : NOPLogger.NOP_LOGGER;
+            ? logger
+            : NOPLogger.NOP_LOGGER;
     }
 
     @Override
@@ -74,20 +75,21 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
 
     @Override
     public KafkaPublisherTransactionObservation observeTx() {
-        var span = this.createTxSpan();
+        var span = this.config.tracing().enabled()
+            ? createTxSpan().startSpan()
+            : Span.getInvalid();
         return new DefaultKafkaPublisherTransactionObservation(publisherName, span, logger);
     }
 
     @Override
     public KafkaPublisherRecordObservation observeSend(String topic) {
-        var span = this.createSendSpan(topic);
+        var span = this.config.tracing().enabled()
+            ? createSendSpan(topic).startSpan()
+            : Span.getInvalid();
         return new DefaultKafkaPublisherRecordObservation(publisherName, config, topic, span, recordDurationMeter, sentMessagesMeter, logger);
     }
 
     protected Timer.Builder createMetricRecordDuration() {
-        var meter = Timer.builder("messaging.client.operation.duration")
-                .serviceLevelObjectives(this.config.metrics().slo());
-
         var staticTags = new ArrayList<Tag>(5 + this.config.metrics().tags().size());
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
@@ -98,12 +100,12 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
             staticTags.add(Tag.of(e.getKey(), e.getValue()));
         }
 
-        return meter.tags(staticTags);
+        return Timer.builder("messaging.client.operation.duration")
+            .serviceLevelObjectives(this.config.metrics().slo())
+            .tags(staticTags);
     }
 
     protected Counter.Builder createMetricSentCounter() {
-        var meter = Counter.builder("messaging.client.sent.messages");
-
         var staticTags = new ArrayList<Tag>(4 + this.config.metrics().tags().size());
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingSystemIncubatingValues.KAFKA));
         staticTags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
@@ -113,41 +115,35 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
             staticTags.add(Tag.of(e.getKey(), e.getValue()));
         }
 
-        return meter.tags(staticTags);
+        return Counter.builder("messaging.client.sent.messages")
+            .tags(staticTags);
     }
 
-    protected Span createSendSpan(String topic) {
-        if (!this.config.tracing().enabled()) {
-            return Span.getInvalid();
-        }
-
+    protected SpanBuilder createSendSpan(String topic) {
         var b = this.tracer.spanBuilder(topic + " send")
-                .setSpanKind(SpanKind.PRODUCER)
-                .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
-                .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND)
-                .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic)
-                .setAttribute(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl)
-                .setAttribute(MESSAGING_KAFKA_PRODUCER_NAME, publisherName);
+            .setSpanKind(SpanKind.PRODUCER)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic)
+            .setAttribute(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl)
+            .setAttribute(MESSAGING_KAFKA_PRODUCER_NAME, publisherName);
         for (var entry : this.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }
 
-        return b.startSpan();
+        return b;
     }
 
-    protected Span createTxSpan() {
-        if (!this.config.tracing().enabled()) {
-            return Span.getInvalid();
-        }
-
+    protected SpanBuilder createTxSpan() {
         var b = this.tracer.spanBuilder("producer transaction")
-                .setSpanKind(SpanKind.INTERNAL)
-                .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA);
+            .setSpanKind(SpanKind.INTERNAL)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(MESSAGING_KAFKA_PRODUCER_IMPL, publisherImpl)
+            .setAttribute(MESSAGING_KAFKA_PRODUCER_NAME, publisherName);
         for (var entry : this.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }
 
-        return b.startSpan();
+        return b;
     }
-
 }
