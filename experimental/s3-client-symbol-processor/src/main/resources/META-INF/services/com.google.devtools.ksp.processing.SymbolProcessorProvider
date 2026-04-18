@@ -1,1 +1,1 @@
-io.koraframework.s3.client.symbol.processor.S3ClientSymbolProvider
+io.koraframework.s3.client.kora.symbol.processor.S3ClientSymbolProvider
