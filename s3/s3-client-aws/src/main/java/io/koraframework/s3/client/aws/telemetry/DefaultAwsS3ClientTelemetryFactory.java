@@ -6,7 +6,11 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public class DefaultAwsS3ClientTelemetryFactory implements AwsS3ClientTelemetryFactory {
+public final class DefaultAwsS3ClientTelemetryFactory implements AwsS3ClientTelemetryFactory {
+
+    private static final Tracer NOOP_TRACER = TracerProvider.noop().get("s3-client-aws");
+    private static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+
     @Nullable
     private final Tracer tracer;
     @Nullable
@@ -21,12 +25,12 @@ public class DefaultAwsS3ClientTelemetryFactory implements AwsS3ClientTelemetryF
     public AwsS3ClientTelemetry get(AwsS3ClientTelemetryConfig config) {
         var tracerEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
-        if (!config.logging().enabled() && !metricEnabled && !tracerEnabled) {
+        if (!tracerEnabled && !metricEnabled && !config.logging().enabled()) {
             return NoopAwsS3ClientTelemetry.INSTANCE;
         }
 
-        var tracer = !tracerEnabled ? TracerProvider.noop().get("s3-aws-client-telemetry") : this.tracer;
-        var meterRegistry = !metricEnabled ? new CompositeMeterRegistry() : this.meterRegistry;
+        var tracer = tracerEnabled ? this.tracer : NOOP_TRACER;
+        var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
         return new DefaultAwsS3ClientTelemetry(config, tracer, meterRegistry);
     }
 }
