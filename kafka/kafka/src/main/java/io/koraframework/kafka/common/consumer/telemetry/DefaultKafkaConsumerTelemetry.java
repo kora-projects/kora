@@ -73,8 +73,7 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
                 : NOPLogger.NOP_LOGGER;
     }
 
-    public record ConsumerMetadata(String listenerName, String listenerImpl, String clientId, String groupId) {
-    }
+    public record ConsumerMetadata(String listenerName, String listenerImpl, String clientId, String groupId) { }
 
     @Override
     public MeterRegistry meterRegistry() {
@@ -84,7 +83,7 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
     @Override
     public KafkaConsumerPollObservation observePoll() {
         var span = this.config.tracing().enabled()
-                ? this.createSpanPoll().startSpan()
+                ? createSpanPoll().startSpan()
                 : Span.getInvalid();
 
         return new DefaultKafkaConsumerPollObservation(consumerMetadata, config, meterRegistry, tracer, span, batchDurationMeter, recordDurationMeter);
@@ -92,23 +91,21 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
 
     @Override
     public void reportLag(TopicPartition partition, long lag) {
-        if (!this.config.metrics().enabled()) {
-            return;
-        }
-
-        var keyTags = Tags.of(
+        if (this.config.metrics().enabled()) {
+            var keyTags = Tags.of(
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic()),
                 Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(partition.partition()))
-        );
+            );
 
-        var lagCounter = this.lagGaugeCache.computeIfAbsent(keyTags, _ -> {
-            var counter = new AtomicLong();
-            Gauge.builder("messaging.kafka.consumer.lag", counter, AtomicLong::get)
+            var lagCounter = this.lagGaugeCache.computeIfAbsent(keyTags, _ -> {
+                var counter = new AtomicLong();
+                Gauge.builder("messaging.kafka.consumer.lag", counter, AtomicLong::get)
                     .tags(createMetricLagStaticTags())
                     .register(meterRegistry);
-            return counter;
-        });
-        lagCounter.set(lag);
+                return counter;
+            });
+            lagCounter.set(lag);
+        }
     }
 
     protected List<Tag> createMetricLagStaticTags() {
