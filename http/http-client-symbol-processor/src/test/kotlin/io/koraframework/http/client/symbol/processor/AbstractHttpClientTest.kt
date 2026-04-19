@@ -93,7 +93,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
         )
         val operationConfigCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, operationTelemetryCVE)
 
-        val configValueExtractor = new("\$\$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE) as ConfigValueExtractor<*>
+        val configValueExtractor = new("\$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE) as ConfigValueExtractor<*>
         val config = configValueExtractor.extract(
             MapConfigFactory.fromMap(
                 mapOf(

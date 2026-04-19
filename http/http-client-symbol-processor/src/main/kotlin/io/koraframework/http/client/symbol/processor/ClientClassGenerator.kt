@@ -651,6 +651,13 @@ class ClientClassGenerator(private val resolver: Resolver) {
         val packageName = declaration.packageName.asString()
         val configClassName = declaration.configName()
         val annotation = declaration.findAnnotation(httpClientAnnotation)!!
+        var configPath = declaration.findAnnotation(ClassName("io.koraframework.http.client.common.annotation", "HttpClient"))
+            ?.findValue<String>("value")!!
+        if (configPath.isBlank()) {
+            val lowercaseName = StringBuilder(declaration.simpleName.asString())
+            lowercaseName.setCharAt(0, lowercaseName[0].lowercaseChar())
+            configPath = "httpClient.$lowercaseName"
+        }
         val telemetryTag = annotation.findValueNoDefault<KSType>("telemetryTag")
         val httpClientTag = annotation.findValueNoDefault<KSType>("httpClientTag")
         val clientParameter = ParameterSpec.builder("httpClient", httpClient)
@@ -726,8 +733,9 @@ class ClientClassGenerator(private val resolver: Resolver) {
             }
             val name = method.simpleName.asString()
             builder.addCode(
-                "val %L = config.apply(httpClient, %T::class.java, %S, config.%L(), telemetryFactory, %S)\n",
+                "val %L = config.apply(httpClient, %S, %T::class.java, %S, config.%L(), telemetryFactory, %S)\n",
                 name,
+                configPath,
                 declaration.toClassName(),
                 name,
                 name,

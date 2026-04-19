@@ -2,10 +2,12 @@ package io.koraframework.http.client.common.interceptor;
 
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
+import io.koraframework.http.common.cookie.Cookie;
 
 import java.util.Objects;
 
 public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor {
+
     private final String parameterName;
     private final String secret;
     private final ApiKeyLocation parameterLocation;
@@ -25,7 +27,7 @@ public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor 
         var modifiedRequest = switch (this.parameterLocation) {
             case HEADER -> request.toBuilder().header(this.parameterName, this.secret);
             case QUERY -> request.toBuilder().queryParam(this.parameterName, this.secret);
-            case COOKIE -> throw new IllegalStateException("TODO: cookies");
+            case COOKIE -> request.toBuilder().header("Cookie", Cookie.of(this.parameterName, this.secret).toValue());
         };
 
         return chain.process(modifiedRequest.build());
