@@ -17,7 +17,7 @@ public interface DeclarativeHttpClientConfig {
     @Nullable
     Duration requestTimeout();
 
-    default DeclarativeHttpClientOperationData apply(HttpClient root, Class<?> clientClass, String operationName, HttpClientOperationConfig operationConfig, HttpClientTelemetryFactory telemetryFactory, String operationPath) {
+    default DeclarativeHttpClientOperationData apply(HttpClient root, String clientName, Class<?> clientClass, String operationName, HttpClientOperationConfig operationConfig, HttpClientTelemetryFactory telemetryFactory, String operationPath) {
         var builder = root;
         var url = this.url() + operationPath;
         var requestTimeout = (this.requestTimeout() == null)
@@ -29,7 +29,7 @@ public interface DeclarativeHttpClientConfig {
         }
         var telemetryConfig = new HttpClientOperationTelemetryConfig(telemetry(), operationConfig.telemetry());
 
-        var telemetry = telemetryFactory.get(telemetryConfig, clientClass.getCanonicalName() + "." + operationName);
+        var telemetry = telemetryFactory.get(clientName, clientClass.getCanonicalName() + "." + operationName, telemetryConfig);
         if (telemetry != null) {
             builder = builder.with(new TelemetryInterceptor(telemetry));
         }

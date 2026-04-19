@@ -5,16 +5,20 @@ import com.palantir.javapoet.ClassName;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 
-public class NameUtils {
+public final class NameUtils {
+
+    private NameUtils() { }
 
     public static String getOuterClassesAsPrefix(Element element) {
-        var prefix = new StringBuilder("$");
         var parent = element.getEnclosingElement();
+        var prefixBuilder = (element.getSimpleName().toString().startsWith("$"))
+            ? new StringBuilder()
+            : new StringBuilder("$");
         while (parent.getKind() != ElementKind.PACKAGE) {
-            prefix.insert(1, parent.getSimpleName().toString() + "_");
+            prefixBuilder.insert(1, parent.getSimpleName().toString() + "_");
             parent = parent.getEnclosingElement();
         }
-        return prefix.toString();
+        return prefixBuilder.toString();
     }
 
     public static String generatedType(Element from, String postfix) {
