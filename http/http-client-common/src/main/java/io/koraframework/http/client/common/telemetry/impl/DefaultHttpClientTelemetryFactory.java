@@ -8,6 +8,8 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.NOPLogger;
 
 public final class DefaultHttpClientTelemetryFactory implements HttpClientTelemetryFactory {
 
@@ -18,11 +20,15 @@ public final class DefaultHttpClientTelemetryFactory implements HttpClientTeleme
     private final Tracer tracer;
     @Nullable
     private final MeterRegistry meterRegistry;
+    @Nullable
+    private final DefaultHttpClientBodyLogger bodyLogger;
 
     public DefaultHttpClientTelemetryFactory(@Nullable Tracer tracer,
-                                             @Nullable MeterRegistry meterRegistry) {
+                                             @Nullable MeterRegistry meterRegistry,
+                                             @Nullable DefaultHttpClientBodyLogger bodyLogger) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
+        this.bodyLogger = bodyLogger;
     }
 
     @Override
@@ -38,8 +44,15 @@ public final class DefaultHttpClientTelemetryFactory implements HttpClientTeleme
             ? new DefaultHttpClientMetrics(clientName, clientImpl, meterRegistry, config.metrics())
             : NoopHttpClientMetrics.INSTANCE;
 
+        var requestLog = config.logging().enabled()
+            ? LoggerFactory.getLogger(clientImpl + ".request")
+            : NOPLogger.NOP_LOGGER;
+        var responseLog = config.logging().enabled()
+            ? LoggerFactory.getLogger(clientImpl + ".response")
+            : NOPLogger.NOP_LOGGER;
+
         var logger = (config.logging().enabled())
-            ? new DefaultHttpClientLogger(clientName, clientImpl, config.logging())
+            ? new DefaultHttpClientLogger(clientName, clientImpl, requestLog, responseLog, (this.bodyLogger != null) ? this.bodyLogger : new DefaultHttpClientBodyLogger(), config.logging())
             : NoopHttpClientLogger.INSTANCE;
 
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;

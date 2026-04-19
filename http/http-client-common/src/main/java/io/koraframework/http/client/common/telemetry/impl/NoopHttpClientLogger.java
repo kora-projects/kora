@@ -4,6 +4,7 @@ import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.telemetry.$HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.helpers.NOPLogger;
 
 import java.nio.ByteBuffer;
 
@@ -12,7 +13,7 @@ public final class NoopHttpClientLogger extends DefaultHttpClientLogger {
     public static final NoopHttpClientLogger INSTANCE = new NoopHttpClientLogger();
 
     private NoopHttpClientLogger() {
-        super("noop", "noop", new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Defaults());
+        super("noop", "noop", NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, new DefaultHttpClientBodyLogger(), new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Defaults());
     }
 
     @Override

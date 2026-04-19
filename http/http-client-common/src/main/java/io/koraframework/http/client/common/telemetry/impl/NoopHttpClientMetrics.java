@@ -8,7 +8,7 @@ public final class NoopHttpClientMetrics extends DefaultHttpClientMetrics {
     public static final NoopHttpClientMetrics INSTANCE = new NoopHttpClientMetrics();
 
     private NoopHttpClientMetrics() {
-        super(null, null, null, null);
+        super("noop", "noop", null, null);
     }
 
     @Override

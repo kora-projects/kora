@@ -6,6 +6,7 @@ import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule;
 import io.koraframework.http.client.common.request.mapper.HttpClientRequestMapperModule;
 import io.koraframework.http.client.common.response.HttpClientResponseMapperModule;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyLogger;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -19,7 +20,9 @@ public interface HttpClientModule extends HttpClientRequestMapperModule, HttpCli
     }
 
     @DefaultComponent
-    default DefaultHttpClientTelemetryFactory defaultHttpClientTelemetryFactory(@Nullable Tracer tracer, @Nullable MeterRegistry meterRegistry) {
-        return new DefaultHttpClientTelemetryFactory(tracer, meterRegistry);
+    default DefaultHttpClientTelemetryFactory defaultHttpClientTelemetryFactory(@Nullable Tracer tracer,
+                                                                                @Nullable MeterRegistry meterRegistry,
+                                                                                @Nullable DefaultHttpClientBodyLogger bodyLogger) {
+        return new DefaultHttpClientTelemetryFactory(tracer, meterRegistry, bodyLogger);
     }
 }
