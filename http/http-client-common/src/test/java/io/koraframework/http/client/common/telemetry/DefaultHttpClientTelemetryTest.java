@@ -8,7 +8,6 @@ import io.opentelemetry.api.trace.Tracer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import io.koraframework.config.common.extractor.*;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import io.koraframework.config.hocon.HoconConfigFactory;
 import io.koraframework.http.client.common.request.HttpClientRequest;
@@ -64,7 +63,7 @@ class DefaultHttpClientTelemetryTest {
             tracing.enabled = true
             metrics.enabled = true
             """);
-        var telemetry = new DefaultHttpClientTelemetry(config, tracer, logger, metrics);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, logger, metrics);
         var rq = HttpClientRequest.of("POST", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBody.plaintext("test"), Duration.ZERO);
 
         var observation = telemetry.observe(rq);
@@ -88,7 +87,7 @@ class DefaultHttpClientTelemetryTest {
             tracing.enabled = true
             metrics.enabled = true
             """);
-        var telemetry = new DefaultHttpClientTelemetry(config, tracer, logger, metrics);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, logger, metrics);
         var rq = HttpClientRequest.of("POST", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBodyOutput.of("text/plain", os -> os.write("test".getBytes(StandardCharsets.UTF_8))), Duration.ZERO);
 
         when(logger.logResponseBody()).thenReturn(true);

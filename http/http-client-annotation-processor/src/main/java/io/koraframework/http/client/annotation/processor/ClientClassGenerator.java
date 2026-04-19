@@ -498,6 +498,12 @@ public class ClientClassGenerator {
         var packageName = this.processingEnv.getElementUtils().getPackageOf(element).getQualifiedName().toString();
         var configClassName = HttpClientUtils.configName(element);
         var annotation = Objects.requireNonNull(AnnotationUtils.findAnnotation(element, httpClientAnnotation));
+        var configPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(AnnotationUtils.findAnnotation(element, httpClientAnnotation), "value");
+        if (configPath == null || configPath.isBlank()) {
+            var lowercaseName = new StringBuilder(element.getSimpleName());
+            lowercaseName.setCharAt(0, Character.toLowerCase(lowercaseName.charAt(0)));
+            configPath = "httpClient." + lowercaseName;
+        }
         var telemetryTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "telemetryTag");
         var httpClientTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(annotation, "httpClientTag");
         var clientParameter = ParameterSpec.builder(httpClient, "httpClient");
@@ -662,7 +668,7 @@ public class ClientClassGenerator {
             var name = method.getSimpleName();
             var httpRoute = AnnotationUtils.findAnnotation(method, HttpClientClassNames.httpRoute);
             var httpPath = AnnotationUtils.parseAnnotationValueWithoutDefault(httpRoute, "path");
-            builder.addCode("var $L = config.apply(httpClient, $T.class, $S, config.$L(), telemetryFactory, $S);\n", name, element, name, name, httpPath);
+            builder.addCode("var $L = config.apply(httpClient, $S, $T.class, $S, config.$L(), telemetryFactory, $S);\n", name, configPath, element, name, name, httpPath);
             builder.addCode("this.$LUriTemplate = $L.url();\n", name, name);
             var hasUriParameters = methodData.parameters().stream().anyMatch(p -> p instanceof Parameter.QueryParameter || p instanceof Parameter.PathParameter);
             if (!hasUriParameters) {

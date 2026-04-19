@@ -77,7 +77,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         );
         var operationConfigCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, operationTelemetryCVE);
 
-        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE);
+        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE);
         var config = configValueExtractor.extract(MapConfigFactory.fromMap(Map.of(
             "url", "http://test-url:8080"
         )).root());

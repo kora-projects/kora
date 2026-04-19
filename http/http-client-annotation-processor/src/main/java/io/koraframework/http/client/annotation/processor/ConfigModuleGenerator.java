@@ -24,7 +24,7 @@ public class ConfigModuleGenerator {
         lowercaseName.setCharAt(0, Character.toLowerCase(lowercaseName.charAt(0)));
         var packageName = this.elements.getPackageOf(element).getQualifiedName().toString();
 
-        var configPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(AnnotationUtils.findAnnotation(element, httpClientAnnotation), "configPath");
+        var configPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(AnnotationUtils.findAnnotation(element, httpClientAnnotation), "value");
         if (configPath == null || configPath.isBlank()) {
             configPath = "httpClient." + lowercaseName;
         }
