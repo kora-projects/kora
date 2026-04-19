@@ -32,7 +32,7 @@ public @interface HttpClient {
      * <hr>
      * <b>English</b>: Specifies the configuration path of the HTTP client
      */
-    String configPath() default "";
+    String value() default "";
 
     /**
      * @return <b>Русский</b>: Теги {@link Tag} для собственной телеметрии

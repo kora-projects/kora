@@ -17,7 +17,7 @@ class ConfigModuleGenerator(val resolver: Resolver) {
         lowercaseName.setCharAt(0, lowercaseName[0].lowercaseChar())
         val packageName = declaration.packageName.asString()
         var configPath = declaration.findAnnotation(ClassName("io.koraframework.http.client.common.annotation", "HttpClient"))
-            ?.findValue<String>("configPath")!!
+            ?.findValue<String>("value")!!
         if (configPath.isBlank()) {
             configPath = "httpClient.$lowercaseName"
         }

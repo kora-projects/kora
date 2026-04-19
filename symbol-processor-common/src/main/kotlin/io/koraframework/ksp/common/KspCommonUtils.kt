@@ -311,7 +311,10 @@ fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration
 }
 
 fun KSAnnotated.getOuterClassesAsPrefix(): String {
-    val prefix = StringBuilder("$")
+    val prefix = if(this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
+        StringBuilder()
+    else
+        StringBuilder("$")
     var parent = this.parent
     while (parent != null && parent is KSClassDeclaration) {
         prefix.insert(1, parent.simpleName.asString() + "_")
@@ -329,7 +332,10 @@ fun KSDeclaration.generatedClass(generatedType: ClassName): String {
 }
 
 fun KSClassDeclaration.generatedClassName(postfix: String): String {
-    val prefix = StringBuilder("$")
+    val prefix = if(this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
+        StringBuilder()
+    else
+        StringBuilder("$")
     var parent = this.parent
     while (parent != null && parent is KSClassDeclaration) {
         prefix.insert(1, parent.simpleName.asString() + "_")

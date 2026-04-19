@@ -20,6 +20,8 @@ import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
 import java.net.URI;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Set;
@@ -48,14 +50,15 @@ public class DefaultHttpClientLoggerTests {
     @MethodSource("getLogRequestTestsData")
     public void logRequestTests(Level level, String queryParams, HttpHeaders headers, String body, Boolean pathTemplate, Object... expectedArgs) throws IOException {
         var logger = new DefaultHttpClientLogger(
-            requestLogger, responseLogger, new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
+            "test", "test",
+            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
             MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, true
         ));
 
         expectLogLevel(requestLogger, level);
 
         var rq = HttpClientRequest.of("POST", URI.create("http://test/path/1?" + queryParams), "/path/{id}", headers.toMutable(), HttpBody.plaintext(body), Duration.ofMillis(100));
-        logger.logRequest(rq, body);
+        logger.logRequest(rq, ByteBuffer.wrap(body.getBytes(StandardCharsets.UTF_8)), "text/plain");
 
         var writerCaptor = ArgumentCaptor.forClass(StructuredArgumentWriter.class);
         verify(eventBuilder).addKeyValue(eq("httpRequest"), writerCaptor.capture());
@@ -81,7 +84,8 @@ public class DefaultHttpClientLoggerTests {
     @MethodSource("getLogResponseTestsData")
     public void logResponseTests(Level level, HttpHeaders headers, String body, Boolean pathTemplate, Object... expectedArgs) throws IOException {
         var logger = new DefaultHttpClientLogger(
-            requestLogger, responseLogger, new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
+            "test", "test",
+            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
             MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, true
         ));
 
@@ -94,7 +98,8 @@ public class DefaultHttpClientLoggerTests {
             rq,
             rs,
             100,
-            body
+            ByteBuffer.wrap(body.getBytes(StandardCharsets.UTF_8)),
+            "text/plain"
         );
 
         var writerCaptor = ArgumentCaptor.forClass(StructuredArgumentWriter.class);
