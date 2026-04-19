@@ -1,11 +1,14 @@
 package io.koraframework.http.client.common.telemetry;
 
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyLogger;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import org.slf4j.spi.DefaultLoggingEventBuilder;
 import org.slf4j.spi.LoggingEventBuilder;
@@ -41,16 +44,18 @@ public class DefaultHttpClientLoggerTests {
     private static final Set<String> MASKED_QUERY_PARAMS = Set.of("sessionId");
     private static final Set<String> MASKED_HEADERS = Set.of("authorization");
 
-    private final Logger requestLogger = mock(Logger.class);
-    private final Logger responseLogger = mock(Logger.class);
+    private final Logger requestLogger = Mockito.spy(LoggerFactory.getLogger("test"));
+    private final Logger responseLogger = Mockito.spy(LoggerFactory.getLogger("test"));
 
     private final LoggingEventBuilder eventBuilder = mock(DefaultLoggingEventBuilder.class, Mockito.RETURNS_SELF);
 
     @ParameterizedTest
     @MethodSource("getLogRequestTestsData")
-    public void logRequestTests(Level level, String queryParams, HttpHeaders headers, String body, Boolean pathTemplate, Object... expectedArgs) throws IOException {
+    public void logRequestTests(Level level, String queryParams, HttpHeaders headers, String body, @Nullable Boolean pathTemplate, Object... expectedArgs) throws IOException {
         var logger = new DefaultHttpClientLogger(
             "test", "test",
+            requestLogger, responseLogger,
+            new DefaultHttpClientBodyLogger(),
             new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
             MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, true
         ));
@@ -66,25 +71,28 @@ public class DefaultHttpClientLoggerTests {
         var gen = Mockito.mock(JsonGenerator.class);
         writer.writeTo(gen);
 
-        verify(gen).writeStringProperty("operation", (String) expectedArgs[0]);
-        if (expectedArgs.length > 1) {
-            verify(gen).writeStringProperty("queryParams", (String) expectedArgs[1]);
-        }
+        verify(gen).writeStringProperty("authority", (String) expectedArgs[0]);
+        verify(gen).writeStringProperty("operation", (String) expectedArgs[1]);
         if (expectedArgs.length > 2) {
-            verify(gen).writeStringProperty("headers", (String) expectedArgs[2]);
+            verify(gen).writeStringProperty("queryParams", (String) expectedArgs[2]);
         }
         if (expectedArgs.length > 3) {
-            verify(gen).writeStringProperty("body", (String) expectedArgs[3]);
+            verify(gen).writeStringProperty("headers", (String) expectedArgs[3]);
+        }
+        if (expectedArgs.length > 4) {
+            verify(gen).writeStringProperty("body", (String) expectedArgs[4]);
         }
 
-        verify(eventBuilder).log("HttpClient received request");
+        verify(eventBuilder).log("HttpClient request started");
     }
 
     @ParameterizedTest
     @MethodSource("getLogResponseTestsData")
-    public void logResponseTests(Level level, HttpHeaders headers, String body, Boolean pathTemplate, Object... expectedArgs) throws IOException {
+    public void logResponseTests(Level level, HttpHeaders headers, String body, @Nullable Boolean pathTemplate, Object... expectedArgs) throws IOException {
         var logger = new DefaultHttpClientLogger(
             "test", "test",
+            requestLogger, responseLogger,
+            new DefaultHttpClientBodyLogger(),
             new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
             MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, true
         ));
@@ -108,15 +116,15 @@ public class DefaultHttpClientLoggerTests {
         var gen = Mockito.mock(JsonGenerator.class);
         writer.writeTo(gen);
 
-        verify(eventBuilder).log("HttpClient received response");
+        verify(eventBuilder).log("HttpClient response received");
         verify(gen).writeNumberProperty("statusCode", (Integer) expectedArgs[0]);
-        if (expectedArgs.length > 1) {
+        if (expectedArgs.length > 2) {
             verify(gen).writeStringProperty("operation", (String) expectedArgs[1]);
         }
-        if (expectedArgs.length > 2) {
+        if (expectedArgs.length > 3) {
             verify(gen).writeStringProperty("headers", (String) expectedArgs[2]);
         }
-        if (expectedArgs.length > 3) {
+        if (expectedArgs.length > 4) {
             verify(gen).writeStringProperty("body", (String) expectedArgs[3]);
         }
     }
@@ -124,28 +132,28 @@ public class DefaultHttpClientLoggerTests {
     private static Stream<Arguments> getLogRequestTestsData() {
         return Stream.of(
             Arguments.of(Level.TRACE, QUERY_PARAMS_STR, HEADERS, BODY, false,
-                List.of("POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR, BODY).toArray()),
+                List.of("test", "POST /path/{id}", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR, BODY).toArray()),
             Arguments.of(Level.TRACE, QUERY_PARAMS_STR, HEADERS, BODY, true,
-                List.of("POST /path/{id}", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR, BODY).toArray()),
+                List.of("test", "POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR, BODY).toArray()),
             Arguments.of(Level.DEBUG, QUERY_PARAMS_STR, HEADERS, BODY, false,
-                List.of("POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
+                List.of("test", "POST /path/{id}", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.DEBUG, QUERY_PARAMS_STR, HEADERS, BODY, true,
-                List.of("POST /path/{id}", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
+                List.of("test", "POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.INFO, QUERY_PARAMS_STR, HEADERS, BODY, true,
-                List.of("POST /path/{id}").toArray())
+                List.of("test", "POST /path/1").toArray())
         );
     }
 
     private static Stream<Arguments> getLogResponseTestsData() {
         return Stream.of(
             Arguments.of(Level.TRACE, HEADERS, BODY, false,
-                List.of(200, "POST /path/1", MASKED_HEADERS_STR, BODY).toArray()),
-            Arguments.of(Level.TRACE, HEADERS, BODY, true,
                 List.of(200, "POST /path/{id}", MASKED_HEADERS_STR, BODY).toArray()),
+            Arguments.of(Level.TRACE, HEADERS, BODY, true,
+                List.of(200, "POST /path/1", MASKED_HEADERS_STR, BODY).toArray()),
             Arguments.of(Level.DEBUG, HEADERS, BODY, false,
-                List.of(200, "POST /path/1", MASKED_HEADERS_STR).toArray()),
+                List.of(200, "POST /path/{id}", MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.DEBUG, HEADERS, BODY, true,
-                List.of(200, "POST /path/{id}", MASKED_HEADERS_STR).toArray())
+                List.of(200, "POST /path/1", MASKED_HEADERS_STR).toArray())
         );
     }
 

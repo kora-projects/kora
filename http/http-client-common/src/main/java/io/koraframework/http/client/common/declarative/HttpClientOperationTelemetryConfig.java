@@ -1,6 +1,7 @@
 package io.koraframework.http.client.common.declarative;
 
 import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Map;
@@ -66,8 +67,9 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
             return Objects.requireNonNullElse(this.operation.mask(), this.client.mask());
         }
 
+        @Nullable
         @Override
-        public boolean pathTemplate() {
+        public Boolean pathTemplate() {
             var operation = this.operation.pathTemplate();
             if (operation != null) {
                 return operation;

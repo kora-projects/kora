@@ -2,6 +2,7 @@ package io.koraframework.http.client.common.telemetry;
 
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 import io.koraframework.telemetry.common.TelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Set;
@@ -32,9 +33,8 @@ public interface HttpClientTelemetryConfig extends TelemetryConfig {
             return "***";
         }
 
-        default boolean pathTemplate() {
-            return false;
-        }
+        @Nullable
+        Boolean pathTemplate();
     }
 
     @ConfigValueExtractor
