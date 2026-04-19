@@ -26,23 +26,24 @@ public class DefaultHttpClientLogger {
     protected final String clientImpl;
     protected final Logger requestLog;
     protected final Logger responseLog;
+    protected final DefaultHttpClientBodyLogger bodyLogger;
     protected final Set<String> maskedQueryParams;
     protected final Set<String> maskedHeaders;
     protected final String mask;
-    protected final boolean pathTemplate;
+    @Nullable
+    protected final Boolean pathTemplate;
 
     public DefaultHttpClientLogger(String clientName,
                                    String clientImpl,
+                                   Logger requestLog,
+                                   Logger responseLog,
+                                   DefaultHttpClientBodyLogger bodyLogger,
                                    HttpClientTelemetryConfig.HttpClientLoggerConfig config) {
         this.clientName = clientName;
         this.clientImpl = clientImpl;
-        this.requestLog = config.enabled()
-            ? LoggerFactory.getLogger(clientImpl + ".request")
-            : NOPLogger.NOP_LOGGER;
-        this.responseLog = config.enabled()
-            ? LoggerFactory.getLogger(clientImpl + ".response")
-            : NOPLogger.NOP_LOGGER;
-
+        this.bodyLogger = bodyLogger;
+        this.requestLog = requestLog;
+        this.responseLog = responseLog;
         this.maskedQueryParams = config.maskQueries().stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
@@ -86,7 +87,7 @@ public class DefaultHttpClientLogger {
         var finalHeaders = headers;
         var operation = getOperation(requestLog, rq.method(), rq.uri().getPath(), rq.uriTemplate());
         var finalBody = (body != null && body.remaining() > 0)
-            ? requestBodyString(body, contentType)
+            ? bodyLogger.convertRequestBody(body, contentType)
             : null;
         var arg = (StructuredArgumentWriter) gen -> {
             gen.writeStartObject();
@@ -134,7 +135,7 @@ public class DefaultHttpClientLogger {
         var finalHeaders = headers;
         var operation = getOperation(responseLog, rq.method(), rq.uri().getPath(), rq.uriTemplate());
         var finalBody = (body != null && body.remaining() > 0)
-            ? responseBodyString(body, contentType)
+            ? bodyLogger.convertResponseBody(body, contentType)
             : null;
         var statusCode = rs != null
             ? rs.code()
@@ -186,53 +187,11 @@ public class DefaultHttpClientLogger {
             .log("HttpClient received error");
     }
 
-    @Nullable
-    protected String responseBodyString(ByteBuffer body, @Nullable String contentType) {
-        var charset = detectCharset(contentType);
-        if (charset == null) {
-            return null;
-        }
-
-        return charset.decode(body).toString();
-    }
-
-    @Nullable
-    protected String requestBodyString(ByteBuffer body, @Nullable String contentType) {
-        var charset = detectCharset(contentType);
-        if (charset == null) {
-            return null;
-        }
-
-        return charset.decode(body).toString();
-    }
-
     protected boolean shouldWritePath(Logger logger) {
-        return !pathTemplate && logger.isTraceEnabled();
+        return pathTemplate != null ? pathTemplate : logger.isTraceEnabled();
     }
 
     protected String getOperation(Logger logger, String method, String path, String pathTemplate) {
         return method + ' ' + (shouldWritePath(logger) ? path : pathTemplate);
-    }
-
-    @Nullable
-    protected Charset detectCharset(String contentType) {
-        if (contentType == null) {
-            return null;
-        }
-
-        var split = contentType.split("; charset=", 2);
-        if (split.length == 2) {
-            return Charset.forName(split[1]);
-        }
-
-        var mimeType = split[0];
-        if (mimeType.contains("text") || mimeType.contains("json") || mimeType.contains("xml")) {
-            return StandardCharsets.UTF_8;
-        }
-
-        if (mimeType.contains("application/x-www-form-urlencoded")) {
-            return StandardCharsets.US_ASCII;
-        }
-        return null;
     }
 }
