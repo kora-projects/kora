@@ -1,31 +1,19 @@
 package io.koraframework.test.extension.junit5.initializemode;
 
-import org.junit.jupiter.api.*;
-import io.koraframework.test.extension.junit5.KoraAppTest;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.Test;
 import io.koraframework.test.extension.junit5.TestComponent;
-import io.koraframework.test.extension.junit5.testdata.TestApplication;
-import io.koraframework.test.extension.junit5.testdata.TestComponent1;
 import io.koraframework.test.extension.junit5.testdata.TestComponent12;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-@KoraAppTest(value = TestApplication.class)
-@TestInstance(TestInstance.Lifecycle.PER_METHOD)
-@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class NestedFieldPerMethodTests {
-
-    static volatile TestComponent1 prevComponent1;
-    static volatile TestComponent12 prevComponent12;
-
-    @TestComponent
-    private TestComponent1 component1;
-    @TestComponent
-    private TestComponent12 component12;
+class NestedFieldPerMethodExtendedTests extends AbstractNestedPerMethodTests {
 
     @Test
-    @Order(1)
-    void test1() {
+    @Order(3)
+    void test7() {
         assertNotNull(component1);
         assertNotNull(component12);
         prevComponent1 = component1;
@@ -33,17 +21,17 @@ class NestedFieldPerMethodTests {
     }
 
     @Test
-    @Order(2)
-    void test2() {
+    @Order(4)
+    void test8() {
         assertNotNull(component1);
         assertNotNull(component12);
         assertNotSame(prevComponent1, component1);
         assertNotSame(prevComponent12, component12);
     }
 
-    @Order(3)
+    @Order(5)
     @Nested
-    class Nested1 {
+    class Nested5 {
 
         @TestComponent
         private TestComponent12 componentNested12;
@@ -67,9 +55,9 @@ class NestedFieldPerMethodTests {
         }
     }
 
-    @Order(4)
+    @Order(6)
     @Nested
-    class Nested2 {
+    class Nested6 {
 
         @Test
         void test5() {
