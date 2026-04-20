@@ -1,61 +1,94 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
+import io.koraframework.kafka.common.producer.telemetry.DefaultKafkaPublisherTelemetry.TelemetryContext;
+import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.TreeSet;
-import java.util.stream.Collectors;
 
 public class DefaultKafkaPublisherTransactionObservation implements KafkaPublisherTelemetry.KafkaPublisherTransactionObservation {
 
-    private final Span span;
-    private final Logger logger;
+    protected final TelemetryContext context;
+    protected final Span span;
+
+    @Nullable
     private Throwable error;
 
-    public DefaultKafkaPublisherTransactionObservation(Span span, Logger logger) {
+    public DefaultKafkaPublisherTransactionObservation(TelemetryContext context,
+                                                       Span span) {
+        this.context = context;
         this.span = span;
-        this.logger = logger;
     }
 
     @Override
     public void observeOffsets(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) {
-        if (logger.isTraceEnabled()) {
-            var traceInfo = new HashMap<String, Map<Integer, Set<Long>>>();
-            for (var metadataEntry : offsets.entrySet()) {
-                var partitionInfo = traceInfo.computeIfAbsent(metadataEntry.getKey().topic(), k -> new HashMap<>());
-                var offsetInfo = partitionInfo.computeIfAbsent(metadataEntry.getKey().partition(), k -> new TreeSet<>());
-                offsetInfo.add(metadataEntry.getValue().offset());
+        if (context.logger().isTraceEnabled()) {
+            Map<String, List<Integer>> topicPartitionMap = new HashMap<>();
+            for (var entry : offsets.entrySet()) {
+                topicPartitionMap.computeIfAbsent(entry.getKey().topic(), _ -> new ArrayList<>())
+                    .add(entry.getKey().partition());
             }
-            var transactionMeta = traceInfo.entrySet().stream()
-                .map(ti -> "topic=" + ti.getKey() + ", partitions=" + ti.getValue().entrySet().stream()
-                    .map(pi -> "partition=" + pi.getKey() + ", offsets=" + pi.getValue().stream()
-                        .map(String::valueOf)
-                        .collect(Collectors.joining(", ", "[", "]")))
-                    .collect(Collectors.joining("], [", "[", "]")))
-                .collect(Collectors.joining("], [", "[", "]"));
 
-            logger.trace("Kafka Producer success sending '{}' transaction records with meta: {}", offsets.size(), transactionMeta);
+            var arg = (StructuredArgumentWriter) gen -> {
+                gen.writeStartObject();
+                topicPartitionMap.forEach((topic, partitions) -> {
+                    gen.writeName(topic);
+                    gen.writeStartArray();
+                    for (Integer partition : partitions) {
+                        gen.writeNumber(partition);
+                    }
+                    gen.writeEndArray();
+                });
+                gen.writeEndObject();
+            };
+
+            context.logger().atTrace()
+                .addKeyValue("publisherName", context.publisherName())
+                .addKeyValue("topics", arg)
+                .log("KafkaPublisher success transaction records sent");
         } else {
-            logger.debug("Kafka Producer success sending '{}' transaction records", offsets.size());
+            context.logger().atDebug()
+                .addKeyValue("publisherName", context.publisherName())
+                .log("KafkaPublisher success transaction records sent for '{}' topics and partitions",
+                    offsets.size());
         }
     }
 
     @Override
     public void observeCommit() {
-        logger.debug("Kafka Producer committing transaction...");
+        this.context.logger()
+            .atDebug()
+            .addKeyValue("publisherName", context.publisherName())
+            .log("KafkaPublisher starting transaction committing...");
     }
 
     @Override
     public void observeRollback(@Nullable Throwable e) {
-        logger.debug("Kafka Producer rollback transaction...");
+        this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, "rollback");
+        this.span.setStatus(StatusCode.ERROR);
+        if (e == null) {
+            this.context.logger()
+                .atDebug()
+                .addKeyValue("publisherName", context.publisherName())
+                .log("KafkaPublisher starting transaction rollback...");
+        } else {
+            var errorType = e.getClass().getCanonicalName();
+            this.span.recordException(e);
+            this.context.logger()
+                .atWarn()
+                .addKeyValue("errorType", errorType)
+                .addKeyValue("publisherName", context.publisherName())
+                .log("KafkaPublisher starting transaction rollback due to: {}", e.getMessage());
+        }
     }
 
     @Override
@@ -66,7 +99,19 @@ public class DefaultKafkaPublisherTransactionObservation implements KafkaPublish
     @Override
     public void end() {
         if (error == null) {
+            this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, "commit");
             this.span.setStatus(StatusCode.OK);
+            this.context.logger()
+                .atDebug()
+                .addKeyValue("publisherName", context.publisherName())
+                .log("KafkaPublisher starting transaction rollback due to: {}", error.getMessage());
+        } else {
+            var errorType = error.getClass().getCanonicalName();
+            this.context.logger()
+                .atWarn()
+                .addKeyValue("errorType", errorType)
+                .addKeyValue("publisherName", context.publisherName())
+                .log("KafkaPublisher failed transaction due to: {}", error.getMessage());
         }
         this.span.end();
     }

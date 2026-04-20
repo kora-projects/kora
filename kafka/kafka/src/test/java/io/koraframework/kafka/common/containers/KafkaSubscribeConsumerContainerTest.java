@@ -2,6 +2,7 @@ package io.koraframework.kafka.common.containers;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.telemetry.NoopKafkaConsumerTelemetry;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -51,13 +52,14 @@ class KafkaSubscribeConsumerContainerTest {
             List.of(testTopic),
             null,
             null,
-            Either.right("earliest"),
+            Either.right(KafkaListenerConfig.Offset.earliest),
             Duration.ofMillis(100),
             Duration.ofMillis(100),
             Integer.valueOf(1),
             Duration.ofMillis(10000),
             Duration.ofMillis(10000),
             true,
+            null,
             new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
                 new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
                 new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
@@ -65,7 +67,7 @@ class KafkaSubscribeConsumerContainerTest {
             )
         );
         var queue = new ArrayBlockingQueue<>(3);
-        var container = new KafkaSubscribeConsumerContainer<>("test", config, new StringDeserializer(), new IntegerDeserializer(), (observation, records, consumer, commitAllowed) -> {
+        var container = new KafkaSubscribeConsumerContainer<>("test", "test", config, new StringDeserializer(), new IntegerDeserializer(), (observation, records, consumer, commitAllowed) -> {
             for (var record : records) {
                 try {
                     var value = record.value();

@@ -1,44 +1,50 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
-import io.micrometer.core.instrument.Counter;
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Timer;
+import io.koraframework.common.telemetry.Observation;
+import io.koraframework.common.telemetry.OpentelemetryContext;
+import io.koraframework.kafka.common.producer.telemetry.DefaultKafkaPublisherMetricsFactory.DefaultKafkaPublisherMetrics;
+import io.koraframework.kafka.common.producer.telemetry.DefaultKafkaPublisherTelemetry.TelemetryContext;
+import io.koraframework.logging.common.MDC;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapSetter;
-import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.slf4j.Logger;
-import io.koraframework.common.telemetry.Observation;
-import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.logging.common.MDC;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTelemetry.KafkaPublisherRecordObservation {
 
-    protected final long start = System.nanoTime();
-    protected ProducerRecord<byte[], byte[]> record;
+    protected final long startedRecordSend = System.nanoTime();
+
+    protected final TelemetryContext context;
+    protected final DefaultKafkaPublisherMetrics metrics;
+    protected final String topic;
     protected final Span span;
-    protected final Meter.MeterProvider<Timer> durationProvider;
-    protected final Meter.MeterProvider<Counter> sentMessagesProvider;
-    protected final Logger logger;
     protected final MDC mdc;
+
+    @Nullable
+    protected Object key;
+    protected Object value;
+    @Nullable
+    protected ProducerRecord<byte[], byte[]> record;
+    @Nullable
     protected RecordMetadata metadata;
+    @Nullable
     protected Throwable error;
 
-    public DefaultKafkaPublisherRecordObservation(Span span, Meter.MeterProvider<Timer> durationProvider, Meter.MeterProvider<Counter> sentMessagesProvider, Logger logger) {
+    public DefaultKafkaPublisherRecordObservation(TelemetryContext context,
+                                                  DefaultKafkaPublisherMetrics metrics,
+                                                  String topic,
+                                                  Span span) {
+        this.context = context;
+        this.metrics = metrics;
+        this.topic = topic;
         this.span = span;
-        this.durationProvider = durationProvider;
-        this.sentMessagesProvider = sentMessagesProvider;
-        this.logger = logger;
         this.mdc = MDC.get().fork();
     }
 
@@ -49,11 +55,18 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
 
     @Override
     public void observeData(Object key, Object value) {
+        this.key = key;
+        this.value = value;
     }
 
     @Override
     public void observeRecord(ProducerRecord<byte[], byte[]> record) {
-        logger.debug("Kafka Producer sending record to topic {} and partition {}", record.topic(), record.partition());
+        this.record = record;
+        this.context.logger()
+            .atDebug()
+            .addKeyValue("topic", record.topic())
+            .addKeyValue("publisherName", context.publisherName())
+            .log("KafkaPublisher starting record sending...");
         W3CTraceContextPropagator.getInstance().inject(Context.root().with(span), record, ProducerRecordTextMapSetter.INSTANCE);
     }
 
@@ -85,19 +98,21 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
 
     @Override
     public void end() {
-        var took = System.nanoTime() - start;
-        var tags = List.of(
-            Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), error == null ? "" : error.getClass().getCanonicalName()),
-            Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), metadata == null ? "" : ("" + metadata.partition()))
-        );
-
-        this.durationProvider.withTags(tags).record(took, TimeUnit.NANOSECONDS);
-        this.sentMessagesProvider.withTags(tags).increment();
-
+        this.metrics.reportHandleRecordTook(topic, key, value, record, metadata, error, startedRecordSend);
         if (error != null) {
-            logger.warn("Kafka Producer error sending record to topic {} and partition {}", record.topic(), record.partition(), error);
-        } else {
-            logger.debug("Kafka Producer success sending record to topic {} and partition {} and offset {}", metadata.topic(), metadata.partition(), metadata.offset());
+            var errorType = error.getClass().getCanonicalName();
+            context.logger().atWarn()
+                .addKeyValue("errorType", errorType)
+                .addKeyValue("topic", topic)
+                .addKeyValue("publisherName", context.publisherName())
+                .log("KafkaPublisher failed record sending due to: {}", error.getMessage());
+        } else if (metadata != null) {
+            context.logger().atInfo()
+                .addKeyValue("topic", metadata.topic())
+                .addKeyValue("partition", metadata.partition())
+                .addKeyValue("offset", metadata.offset())
+                .addKeyValue("publisherName", context.publisherName())
+                .log("KafkaPublisher success record sent");
         }
 
         this.span.end();
@@ -111,5 +126,4 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
             carrier.headers().add(key, value.getBytes(StandardCharsets.UTF_8));
         }
     }
-
 }

@@ -1,94 +1,105 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.micrometer.core.instrument.*;
+import io.koraframework.kafka.common.consumer.telemetry.DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.NOPLogger;
 
-import java.util.ArrayList;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
-    private final KafkaConsumerTelemetryConfig config;
-    private final Tracer tracer;
-    private final MeterRegistry meterRegistry;
-    private final ConcurrentHashMap<Tags, Timer> batchDurationCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Tags, Timer> recordDurationCache = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Tags, AtomicLong> lagCache = new ConcurrentHashMap<>();
-    private final ConsumerMetadata consumerMetadata;
 
-    public DefaultKafkaConsumerTelemetry(KafkaConsumerTelemetryConfig config, Tracer tracer, MeterRegistry meterRegistry, String consumerName, Properties driverProperties) {
-        this.config = config;
-        this.tracer = tracer;
-        this.meterRegistry = meterRegistry;
-        this.consumerMetadata = new ConsumerMetadata(
-            consumerName,
+    public record TelemetryContext(KafkaConsumerTelemetryConfig config,
+                                   boolean isTraceEnabled,
+                                   boolean isMetricsEnabled,
+                                   MeterRegistry meterRegistry,
+                                   Tracer tracer,
+                                   Logger logger,
+                                   Properties driverProperties,
+                                   String listenerName,
+                                   String listenerImpl,
+                                   String clientId,
+                                   String groupId) {}
+
+    public static final String SYSTEM_NAME = "system.name";
+    public static final String SYSTEM_IMPL = "system.impl";
+
+    protected final TelemetryContext context;
+    protected final DefaultKafkaConsumerMetrics metrics;
+
+    public DefaultKafkaConsumerTelemetry(String listenerName,
+                                         String listenerImpl,
+                                         KafkaConsumerTelemetryConfig config,
+                                         Tracer tracer,
+                                         MeterRegistry meterRegistry,
+                                         DefaultKafkaConsumerMetricsFactory metricsFactory,
+                                         Properties driverProperties) {
+        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultKafkaConsumerTelemetryFactory.NOOP_TRACER;
+        var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultKafkaConsumerTelemetryFactory.NOOP_METER_REGISTRY;
+
+        var logger = config.logging().enabled()
+            ? LoggerFactory.getLogger(listenerImpl)
+            : NOPLogger.NOP_LOGGER;
+
+        this.context = new TelemetryContext(config,
+            isTraceEnabled,
+            isMetricsEnabled,
+            meterRegistry,
+            tracer,
+            logger,
+            driverProperties,
+            listenerName,
+            listenerImpl,
             driverProperties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG, ""),
             driverProperties.getProperty(ConsumerConfig.GROUP_ID_CONFIG, "")
         );
-    }
 
-    public record ConsumerMetadata(String consumerName, String clientId, String groupId) {}
+        this.metrics = metricsFactory.create(this.context);
+    }
 
     @Override
     public MeterRegistry meterRegistry() {
-        return this.meterRegistry;
+        return this.context.meterRegistry;
     }
 
     @Override
     public KafkaConsumerPollObservation observePoll() {
-        var span = this.createSpan();
-        var duration = this.createDuration();
+        context.logger.atTrace()
+            .addKeyValue("listenerName", context.listenerName)
+            .log("KafkaListener starting polling...");
 
-        return new DefaultKafkaConsumerPollObservation(this.config, this.recordDurationCache, this.tracer, this.meterRegistry, span, duration, this.consumerMetadata);
-    }
+        var span = context.isTraceEnabled
+            ? createSpanPoll().startSpan()
+            : Span.getInvalid();
 
-    protected Meter.MeterProvider<Timer> createDuration() {
-        var builder = Timer.builder("messaging.process.batch.duration")
-            .serviceLevelObjectives(this.config.metrics().slo())
-            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
-            .tag(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), this.consumerMetadata.clientId())
-            .tag(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), this.consumerMetadata.groupId())
-            .tag("messaging.kafka.consumer.name", consumerMetadata.consumerName());
-        for (var e : this.config.metrics().tags().entrySet()) {
-            builder.tag(e.getKey(), e.getValue());
-        }
-        var provider = builder.withRegistry(this.meterRegistry);
-        return tags -> batchDurationCache.computeIfAbsent(Tags.of(tags), provider::withTags);
+        return new DefaultKafkaConsumerPollObservation(context, metrics, span);
     }
 
     @Override
     public void reportLag(TopicPartition partition, long lag) {
-        var tags = new ArrayList<Tag>(7);
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), partition.topic()));
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(partition.partition())));
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), this.consumerMetadata.clientId()));
-        tags.add(Tag.of("messaging.kafka.consumer.name", this.consumerMetadata.consumerName()));
-
-        this.lagCache.computeIfAbsent(Tags.of(tags), t -> {
-            var l = new AtomicLong(0);
-            Gauge.builder("messaging.kafka.consumer.lag", l, AtomicLong::get)
-                .tags(t)
-                .register(meterRegistry);
-            return l;
-        }).set(lag);
+        this.metrics.reportTopicLag(partition, lag);
     }
 
-    protected Span createSpan() {
-        var span = this.tracer.spanBuilder("kafka.poll")
+    protected SpanBuilder createSpanPoll() {
+        var span = context.tracer.spanBuilder("kafka.poll")
             .setSpanKind(SpanKind.CONSUMER)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId)
+            .setAttribute(SYSTEM_NAME, context.listenerName)
+            .setAttribute(SYSTEM_IMPL, context.listenerImpl)
             .setNoParent();
-        for (var e : this.config.tracing().attributes().entrySet()) {
+        for (var e : context.config.tracing().attributes().entrySet()) {
             span.setAttribute(e.getKey(), e.getValue());
         }
-        return span.startSpan();
+        return span;
     }
-
 }

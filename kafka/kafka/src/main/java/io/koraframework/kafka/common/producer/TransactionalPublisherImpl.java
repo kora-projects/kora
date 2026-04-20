@@ -1,8 +1,8 @@
 package io.koraframework.kafka.common.producer;
 
+import io.koraframework.application.graph.Lifecycle;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.errors.TimeoutException;
-import io.koraframework.application.graph.Lifecycle;
 
 import java.util.Objects;
 import java.util.concurrent.BlockingDeque;

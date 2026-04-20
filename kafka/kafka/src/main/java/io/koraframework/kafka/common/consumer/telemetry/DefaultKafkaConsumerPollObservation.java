@@ -1,78 +1,86 @@
 package io.koraframework.kafka.common.consumer.telemetry;
 
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.Timer;
+import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
+import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+
+import static io.koraframework.kafka.common.consumer.telemetry.DefaultKafkaConsumerTelemetry.SYSTEM_IMPL;
+import static io.koraframework.kafka.common.consumer.telemetry.DefaultKafkaConsumerTelemetry.SYSTEM_NAME;
 
 public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObservation {
-    private final KafkaConsumerTelemetryConfig config;
-    private final ConcurrentHashMap<Tags, Timer> recordDurationCache;
-    private final Tracer tracer;
-    private final Meter.MeterProvider<Timer> duration;
-    private final MeterRegistry meterRegistry;
-    private final Span span;
 
-    private final Logger logger;
-    private final DefaultKafkaConsumerTelemetry.ConsumerMetadata consumerMetadata;
+    protected final DefaultKafkaConsumerTelemetry.TelemetryContext context;
+    protected final DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics metrics;
+    protected final Span span;
+
+    private ConsumerRecords<?, ?> records;
+    private long startedRecordsHandle;
+    @Nullable
     private Throwable error;
-    private long recordsTime;
 
-    public DefaultKafkaConsumerPollObservation(KafkaConsumerTelemetryConfig config, ConcurrentHashMap<Tags, Timer> recordDurationCache, Tracer tracer, MeterRegistry meterRegistry, Span span, Meter.MeterProvider<Timer> duration, DefaultKafkaConsumerTelemetry.ConsumerMetadata consumerMetadata) {
-        this.config = config;
-        this.recordDurationCache = recordDurationCache;
-        this.meterRegistry = meterRegistry;
+    public DefaultKafkaConsumerPollObservation(DefaultKafkaConsumerTelemetry.TelemetryContext context,
+                                               DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics metrics,
+                                               Span span) {
+        this.context = context;
+        this.metrics = metrics;
         this.span = span;
-        this.tracer = tracer;
-        this.duration = duration;
-        this.consumerMetadata = consumerMetadata;
-        this.logger = LoggerFactory.getLogger(consumerMetadata.consumerName());
     }
 
     @Override
     public void observeRecords(ConsumerRecords<?, ?> records) {
-        span.setAttribute(MessagingIncubatingAttributes.MESSAGING_BATCH_MESSAGE_COUNT, (long) records.count());
-        if (this.config.logging().enabled()) {
-            if (logger.isTraceEnabled()) {
-                if (records.isEmpty()) {
-                    logger.trace("Kafka Consumer '{}' polled '0' records", consumerMetadata.consumerName());
-                } else {
-                    var logTopics = new HashSet<String>(records.partitions().size());
-                    var logPartitions = new HashSet<Integer>(records.partitions().size());
-                    for (TopicPartition partition : records.partitions()) {
-                        logPartitions.add(partition.partition());
-                        logTopics.add(partition.topic());
-                    }
+        this.startedRecordsHandle = System.nanoTime();
+        this.records = records;
+        this.span.setAttribute(MessagingIncubatingAttributes.MESSAGING_BATCH_MESSAGE_COUNT, (long) records.count());
 
-                    logger.trace("Kafka Consumer '{}' polled '{}' records from topics {} and partitions {}",
-                        consumerMetadata.consumerName(), records.count(), logTopics, logPartitions);
-                }
+        if (context.logger().isTraceEnabled()) {
+            if (records.isEmpty()) {
+                context.logger().atTrace()
+                    .addKeyValue("listenerName", context.listenerName())
+                    .log("{} polled '0' records", context.listenerName());
             } else {
-                if (!records.isEmpty()) {
-                    logger.debug("Kafka Consumer '{}' polled '{}' records", consumerMetadata.consumerName(), records.count());
+                Map<String, List<Integer>> topicPartitionMap = new HashMap<>();
+                for (TopicPartition partition : records.partitions()) {
+                    topicPartitionMap.computeIfAbsent(partition.topic(), _ -> new ArrayList<>())
+                        .add(partition.partition());
                 }
+
+                var arg = (StructuredArgumentWriter) gen -> {
+                    gen.writeStartObject();
+                    topicPartitionMap.forEach((topic, partitions) -> {
+                        gen.writeName(topic);
+                        gen.writeStartArray();
+                        for (Integer partition : partitions) {
+                            gen.writeNumber(partition);
+                        }
+                        gen.writeEndArray();
+                    });
+                    gen.writeEndObject();
+                };
+
+                context.logger().atTrace()
+                    .addKeyValue("listenerName", context.listenerName())
+                    .addKeyValue("topics", arg)
+                    .log("KafkaListener polled '{}' records, starting handling records...", records.count());
             }
+        } else if (!records.isEmpty()) {
+            context.logger().atDebug()
+                .addKeyValue("listenerName", context.listenerName())
+                .log("KafkaListener polled '{}' records, starting handling records...", records.count());
         }
-        this.recordsTime = System.nanoTime();
     }
 
     @Override
@@ -82,13 +90,23 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
 
     @Override
     public void end() {
+        this.metrics.reportHandleRecordsBatchTook(records, startedRecordsHandle, error);
+
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
+            this.context.logger().atInfo()
+                .addKeyValue("listenerName", context.listenerName())
+                .log("KafkaListener success '{}' records handled",
+                    records.count());
+        } else {
+            var errorType = error.getClass().getCanonicalName();
+            this.span.setAttribute(ErrorAttributes.ERROR_TYPE.getKey(), errorType);
+            this.context.logger().atWarn()
+                .addKeyValue("listenerName", context.listenerName())
+                .log("KafkaListener failed '{}' records handling due to: {}",
+                    records.count(), error.getMessage());
         }
-        var took = System.nanoTime() - this.recordsTime;
         this.span.addEvent("result");
-        this.duration.withTag(ErrorAttributes.ERROR_TYPE.getKey(), error == null ? "" : error.getClass().getCanonicalName())
-            .record(took, TimeUnit.NANOSECONDS);
         this.span.end();
     }
 
@@ -100,48 +118,38 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
 
     @Override
     public KafkaConsumerRecordObservation observeRecord(ConsumerRecord<?, ?> record) {
-        var span = this.createSpan(record);
-        var duration = this.createRecordDuration(record);
-
-        return new DefaultKafkaConsumerRecordObservation(span, duration);
-    }
-
-    protected Meter.MeterProvider<Timer> createRecordDuration(ConsumerRecord<?, ?> record) {
-        var builder = Timer.builder("messaging.process.batch.duration")
-            .serviceLevelObjectives(this.config.metrics().slo())
-            .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
-            .tag(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), consumerMetadata.clientId())
-            .tag(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), consumerMetadata.groupId())
-            .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), record.topic())
-            .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID.getKey(), Integer.toString(record.partition()))
-            .tag("messaging.kafka.consumer.name", consumerMetadata.consumerName());
-        for (var e : this.config.metrics().tags().entrySet()) {
-            builder.tag(e.getKey(), e.getValue());
+        Span span;
+        if (context.isTraceEnabled()) {
+            span = createSpan(record).startSpan();
+            this.span.addLink(span.getSpanContext());
+        } else {
+            span = Span.getInvalid();
         }
-        var provider = builder.withRegistry(this.meterRegistry);
-        return tags -> recordDurationCache.computeIfAbsent(Tags.of(tags), provider::withTags);
+
+        return new DefaultKafkaConsumerRecordObservation(context, metrics, span, record);
     }
 
-    protected Span createSpan(ConsumerRecord<?, ?> record) {
-        var root = io.opentelemetry.context.Context.root();
+    protected SpanBuilder createSpan(ConsumerRecord<?, ?> record) {
+        var root = Context.root();
         var parent = W3CTraceContextPropagator.getInstance().extract(root, record, ConsumerRecordTextMapGetter.INSTANCE);
 
-        var recordSpanBuilder = this.tracer
-            .spanBuilder(record.topic() + " process")
+        var spanBuilder = context.tracer()
+            .spanBuilder(record.topic() + " process record")
             .setSpanKind(SpanKind.CONSUMER)
             .setParent(parent)
             .addLink(span.getSpanContext())
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, "kafka")
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId())
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(record.partition()))
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_OFFSET, record.offset());
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_OFFSET, record.offset())
+            .setAttribute(SYSTEM_NAME, context.listenerName())
+            .setAttribute(SYSTEM_IMPL, context.listenerImpl());
         try {
-            recordSpanBuilder.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_KEY, Objects.toString(record.key()));
+            spanBuilder.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_KEY, Objects.toString(record.key()));
         } catch (Exception ignore) {}
-        var span = recordSpanBuilder.startSpan();
-        this.span.addLink(span.getSpanContext());
-
-        return span;
+        return spanBuilder;
     }
 
     private enum ConsumerRecordTextMapGetter implements TextMapGetter<ConsumerRecord<?, ?>> {
