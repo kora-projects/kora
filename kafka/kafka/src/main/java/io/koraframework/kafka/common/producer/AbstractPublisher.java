@@ -53,7 +53,9 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
             return;
         }
         try {
-            logger.debug("KafkaPublisher '{}' starting...", publisherName);
+            logger.atDebug()
+                .addKeyValue("publisherName", this.publisherName)
+                .log("KafkaPublisher starting...");
             final long started = TimeUtils.started();
 
             var producer = new KafkaProducer<>(driverProperties, new ByteArraySerializer(), new ByteArraySerializer());
@@ -63,7 +65,9 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
                 this.micrometerMetrics.bindTo(this.telemetry.meterRegistry());
             }
 
-            logger.debug("KafkaPublisher '{}' started in {}", publisherName, TimeUtils.tookForLogging(started));
+            logger.atInfo()
+                .addKeyValue("publisherName", this.publisherName)
+                .log("KafkaPublisher started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
             throw new RuntimeException("KafkaPublisher '" + publisherName + "' failed to start, due to: " + e.getMessage(), e);
         }
@@ -75,7 +79,9 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
             return;
         }
 
-        logger.debug("KafkaPublisher '{}' stopping...", publisherName);
+        logger.atDebug()
+            .addKeyValue("publisherName", this.publisherName)
+            .log("KafkaPublisher stopping...");
         final long started = TimeUtils.started();
 
         var delegate = this.delegate;
@@ -84,6 +90,8 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
         this.micrometerMetrics = null;
         try (delegate; micrometerMetrics) {}
 
-        logger.info("KafkaPublisher '{}' stopped in {}", publisherName, TimeUtils.tookForLogging(started));
+        logger.atInfo()
+            .addKeyValue("publisherName", this.publisherName)
+            .log("KafkaPublisher stopped in {}", TimeUtils.tookForLogging(started));
     }
 }
