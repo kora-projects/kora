@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @KoraAppTest(value = TestApplication.class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 abstract class AbstractPerMethodTests {
 
     static volatile KoraAppGraph prevGraph = null;

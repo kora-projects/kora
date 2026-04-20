@@ -8,7 +8,6 @@ import ru.tinkoff.kora.test.extension.junit5.TestComponent
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestApplication
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent1
 import ru.tinkoff.kora.test.extension.junit5.testdata.TestComponent12
-import kotlin.concurrent.Volatile
 
 @KoraAppTest(value = TestApplication::class)
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)

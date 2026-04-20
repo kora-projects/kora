@@ -391,7 +391,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
                 if (!fieldsForInjection.isEmpty()) {
                     throw new ExtensionConfigurationException("@KoraAppTest can't use @Nested class field injection when outer class lifecycle is 'PER_CLASS', " +
-                                                              "cause graph is already initialized on the top level");
+                                                              "cause graph is already initialized on the top level test class and initialization context is sources from top level test class only, use 'PER_METHOD' lifecycle instead");
                 }
             }
         }
@@ -448,7 +448,9 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         var koraTestContext = getKoraTestContext(context);
         if (koraTestContext.lifecycle == TestInstance.Lifecycle.PER_CLASS) {
             // check if created graph test class equal current test class (so nested class won't close upper class lifecycle graph)
-            if (koraTestContext.graph != null && koraTestContext.metadata.testClass().equals(context.getRequiredTestClass())) {
+            if (koraTestContext.graph != null
+                && (koraTestContext.metadata.outerTestClass == null && !context.getRequiredTestClass().isAnnotationPresent(Nested.class))
+                && koraTestContext.metadata.testClass().equals(context.getRequiredTestClass())) {
                 var lock = koraTestContext.graph;
                 synchronized (lock) {
                     if (koraTestContext.graph.status() == TestGraph.Status.INITIALIZED) {
