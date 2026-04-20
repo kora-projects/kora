@@ -1,12 +1,12 @@
 package io.koraframework.kafka.common.producer;
 
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.TopicPartition;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
@@ -52,11 +52,8 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
     public void abort(@Nullable Throwable t) {
         if (this.compareAndSet(TxState.INIT, TxState.ABORT)) {
             try {
-                this.publisher.producer().abortTransaction();
-                if (t != null) {
-                    observation.observeError(t);
-                }
                 observation.observeRollback(t);
+                this.publisher.producer().abortTransaction();
             } catch (KafkaException e) {
                 if (t != null) {
                     e.addSuppressed(t);
@@ -87,8 +84,8 @@ public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicR
     public void close() {
         if (this.compareAndSet(TxState.INIT, TxState.COMMIT)) {
             try {
-                this.publisher.producer().commitTransaction();
                 observation.observeCommit();
+                this.publisher.producer().commitTransaction();
             } catch (KafkaException e) {
                 this.observation.observeError(e);
                 this.pool.deleteFromPool(this.publisher);
