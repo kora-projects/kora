@@ -4,10 +4,7 @@ import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
-import com.google.devtools.ksp.symbol.ClassKind
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.Modifier
+import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -112,23 +109,32 @@ class CacheSymbolProcessor(
     }
 
     private fun getCacheSuperType(candidate: KSClassDeclaration): ParameterizedTypeName? {
-        val supertypes = candidate.superTypes.toList()
-        if (supertypes.size != 1) {
+        val supertypes = candidate.getAllSuperTypes().toList()
+        val cacheSuperinterfaces = mutableListOf<KSType>()
+
+        supertypes.forEach {
+            if (it.toClassName() == CAFFEINE_CACHE) {
+                cacheSuperinterfaces.add(it)
+            } else if (it.toClassName() == REDIS_CACHE) {
+                cacheSuperinterfaces.add(it)
+            }
+        }
+
+        if (supertypes.isEmpty()) {
             environment.logger.error(
-                "@Cache annotated interface should implement one one interface and it should be one of: ${REDIS_CACHE},${CAFFEINE_CACHE}",
+                "@Cache annotated interface should implement one interface and it should be one of: ${REDIS_CACHE},${CAFFEINE_CACHE}",
+                candidate
+            )
+            return null
+        } else if (cacheSuperinterfaces.size > 1) {
+            environment.logger.error(
+                "@Cache annotated interface implemented more than one interface: ${cacheSuperinterfaces.joinToString(", ")}",
                 candidate
             )
             return null
         }
-        val supertype = supertypes[0].toTypeName() as ParameterizedTypeName
-        return when (supertype.rawType) {
-            CAFFEINE_CACHE -> supertype
-            REDIS_CACHE -> supertype
-            else -> {
-                this.environment.logger.error("@Cache is expected to be known super type $REDIS_CACHE or $CAFFEINE_CACHE, but was $supertype")
-                null
-            }
-        }
+
+        return cacheSuperinterfaces[0].toTypeName() as ParameterizedTypeName
     }
 
     private fun getCacheImplBase(cacheType: ParameterizedTypeName): TypeName {

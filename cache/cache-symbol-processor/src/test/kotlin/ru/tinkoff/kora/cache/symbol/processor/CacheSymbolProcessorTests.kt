@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.assertDoesNotThrow
 import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
+import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCacheInheritted
 import ru.tinkoff.kora.cache.symbol.processor.testcache.DummyCacheTagged
 import ru.tinkoff.kora.cache.symbol.processor.testdata.*
 import ru.tinkoff.kora.cache.symbol.processor.testdata.reactive.flux.CacheableGetFlux
@@ -28,6 +29,11 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
     @Test
     fun cacheKeyMapper() {
         assertDoesNotThrow { symbolProcess(CacheableMapper::class, AopSymbolProcessorProvider()) }
+    }
+
+    @Test
+    fun cacheInherrited() {
+        assertDoesNotThrow { symbolProcess(DummyCacheInheritted::class, AopSymbolProcessorProvider()) }
     }
 
     @Test
@@ -110,7 +116,8 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun testInnerTypeCache() {
-        compile0("""
+        compile0(
+            """
         interface OuterType {
           @ru.tinkoff.kora.cache.annotation.Cache("test")
           interface MyCache : ru.tinkoff.kora.cache.caffeine.CaffeineCache<String, String>

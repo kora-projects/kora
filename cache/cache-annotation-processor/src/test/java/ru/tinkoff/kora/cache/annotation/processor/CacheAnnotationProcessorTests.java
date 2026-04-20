@@ -5,6 +5,7 @@ import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTe
 import ru.tinkoff.kora.annotation.processor.common.TestUtils;
 import ru.tinkoff.kora.annotation.processor.common.TestUtils.CompilationErrorException;
 import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
+import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCacheInheritted;
 import ru.tinkoff.kora.cache.annotation.processor.testcache.DummyCacheTagged;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.flux.CacheableFluxWrongGet;
 import ru.tinkoff.kora.cache.annotation.processor.testdata.reactive.flux.CacheableWrongFluxPut;
@@ -34,6 +35,11 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
     @Test
     void cacheKeyMapper() {
         assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableSyncMapper.class, new AopAnnotationProcessor()));
+    }
+
+    @Test
+    void cacheInherrited() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyCacheInheritted.class, new CacheAnnotationProcessor()));
     }
 
     @Test
