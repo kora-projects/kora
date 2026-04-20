@@ -11,6 +11,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.*;
@@ -108,27 +109,49 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         }
     }
 
+    private List<DeclaredType> getAllSuperInterfaces(TypeElement candidate) {
+        var interfaces = new ArrayList<>(candidate.getInterfaces());
+
+        var result = new ArrayList<DeclaredType>();
+        for (TypeMirror mirror : interfaces) {
+            if (mirror instanceof DeclaredType dt) {
+                if (dt.asElement() instanceof TypeElement te) {
+                    result.add(dt);
+                    var innerTypes = getAllSuperInterfaces(te);
+                    result.addAll(innerTypes);
+                }
+            }
+        }
+
+        return result;
+    }
+
     @Nullable
     private ParameterizedTypeName getCacheSuperType(TypeElement candidate) {
-        var interfaces = candidate.getInterfaces();
-        if (interfaces.size() != 1) {
+        var interfaces = getAllSuperInterfaces(candidate);
+
+        var cacheInterfaces = new ArrayList<DeclaredType>();
+        for (var dt : interfaces) {
+            if (((TypeElement) dt.asElement()).getQualifiedName().contentEquals(CAFFEINE_CACHE.canonicalName())) {
+                cacheInterfaces.add(dt);
+            } else if (((TypeElement) dt.asElement()).getQualifiedName().contentEquals(REDIS_CACHE.canonicalName())) {
+                cacheInterfaces.add(dt);
+            }
+        }
+
+        if (cacheInterfaces.isEmpty()) {
             messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotated interface should implement one one interface and it should be one of: %s, %s".formatted(
                 REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()
             ));
             return null;
+        } else if (cacheInterfaces.size() > 1) {
+            messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotated interface implemented more than one interface of cache: %s".formatted(
+                cacheInterfaces.stream().map(Object::toString).toList()
+            ));
+            return null;
         }
-        var superinterface = (DeclaredType) interfaces.get(0);
-        var superinterfaceElement = (TypeElement) superinterface.asElement();
-        if (superinterfaceElement.getQualifiedName().contentEquals(CAFFEINE_CACHE.canonicalName())) {
-            return (ParameterizedTypeName) TypeName.get(superinterface);
-        }
-        if (superinterfaceElement.getQualifiedName().contentEquals(REDIS_CACHE.canonicalName())) {
-            return (ParameterizedTypeName) TypeName.get(superinterface);
-        }
-        messager.printMessage(Diagnostic.Kind.ERROR, "@Cache is expected to be known super type %s or %s, but was %s".formatted(
-            REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName(), superinterface
-        ));
-        return null;
+
+        return (ParameterizedTypeName) TypeName.get(cacheInterfaces.get(0));
     }
 
     private TypeName getCacheImplBase(TypeElement cacheContract, ParameterizedTypeName cacheType) {
