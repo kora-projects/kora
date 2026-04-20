@@ -146,7 +146,9 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     @Override
     public void init() {
         if (config.threads() > 0 && this.isActive.compareAndSet(false, true)) {
-            logger.debug("KafkaListener '{}' starting in subscribe mode...", listenerName);
+            logger.atDebug()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("KafkaListener starting in subscribe mode...");
             final long started = TimeUtils.started();
 
             executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(listenerName));
@@ -184,7 +186,9 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     @Override
     public void release() {
         if (isActive.compareAndSet(true, false)) {
-            logger.debug("KafkaListener '{}' stopping...", listenerName);
+            logger.atDebug()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("KafkaListener stopping...");
             final long started = TimeUtils.started();
 
             for (var consumer : consumers) {
@@ -193,12 +197,15 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             consumers.clear();
             if (executorService != null) {
                 if (!shutdownExecutorService(executorService, config.shutdownWait())) {
-                    logger.warn("KafkaListener '{}' failed completing graceful shutdown in {}",
-                        listenerName, config.shutdownWait());
+                    logger.atWarn()
+                        .addKeyValue("listenerName", this.listenerName)
+                        .log("KafkaListener failed completing graceful shutdown in {}", config.shutdownWait());
                 }
             }
 
-            logger.info("KafkaListener '{}' stopped in {}", listenerName, TimeUtils.tookForLogging(started));
+            logger.atInfo()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("KafkaListener stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
 
@@ -207,7 +214,9 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         if (!terminated) {
             executorService.shutdown();
             try {
-                logger.debug("KafkaListener '{}' awaiting graceful shutdown...", listenerName);
+                logger.atDebug()
+                    .addKeyValue("listenerName", this.listenerName)
+                    .log("KafkaListener awaiting graceful shutdown...");
                 terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
                 if (!terminated) {
                     executorService.shutdownNow();
@@ -227,12 +236,15 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         try {
             return this.buildConsumer();
         } catch (Exception e) {
-            logger.error("KafkaListener '{}' failed to start in subscribe mode, due to: {}",
-                listenerName, e.getMessage(), e);
+            logger.atError()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("KafkaListener failed to start in subscribe mode, due to: {}", e.getMessage(), e);
             try {
                 Thread.sleep(250);
             } catch (InterruptedException ie) {
-                logger.error("KafkaListener '{}' error interrupting thread", listenerName, ie);
+                logger.atError()
+                    .addKeyValue("listenerName", this.listenerName)
+                    .log("KafkaListener error interrupting thread", ie);
             }
             return null;
         }
