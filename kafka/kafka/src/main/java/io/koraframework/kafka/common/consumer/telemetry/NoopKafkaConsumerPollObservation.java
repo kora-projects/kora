@@ -8,7 +8,7 @@ public final class NoopKafkaConsumerPollObservation implements KafkaConsumerPoll
 
     public static final NoopKafkaConsumerPollObservation INSTANCE = new NoopKafkaConsumerPollObservation();
 
-    private NoopKafkaConsumerPollObservation() { }
+    private NoopKafkaConsumerPollObservation() {}
 
     @Override
     public Span span() {

@@ -10,18 +10,22 @@ import java.util.Properties;
 
 public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumerTelemetryFactory {
 
-    private static final Tracer NOOP_TRACER = TracerProvider.noop().get("kafka-listener");
-    private static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final Tracer NOOP_TRACER = TracerProvider.noop().get("kafka-listener");
+    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
 
     @Nullable
     private final Tracer tracer;
     @Nullable
     private final MeterRegistry meterRegistry;
+    @Nullable
+    private final DefaultKafkaConsumerMetricsFactory metricsFactory;
 
     public DefaultKafkaConsumerTelemetryFactory(@Nullable Tracer tracer,
-                                                @Nullable MeterRegistry meterRegistry) {
+                                                @Nullable MeterRegistry meterRegistry,
+                                                @Nullable DefaultKafkaConsumerMetricsFactory metricsFactory) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
+        this.metricsFactory = metricsFactory;
     }
 
     @Override
@@ -34,6 +38,14 @@ public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumer
 
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
         var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
-        return new DefaultKafkaConsumerTelemetry(config, tracer, meterRegistry, listenerName, listenerImpl, driverProperties);
+        DefaultKafkaConsumerMetricsFactory enabledMetricsFactory;
+        if (metricEnabled) {
+            enabledMetricsFactory = this.metricsFactory != null
+                ? this.metricsFactory
+                : DefaultKafkaConsumerMetricsFactory.INSTANCE;
+        } else {
+            enabledMetricsFactory = NoopKafkaConsumerMetricsFactory.INSTANCE;
+        }
+        return new DefaultKafkaConsumerTelemetry(listenerName, listenerImpl, config, tracer, meterRegistry, enabledMetricsFactory, driverProperties);
     }
 }

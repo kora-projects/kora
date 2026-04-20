@@ -6,7 +6,7 @@ public final class NoopKafkaConsumerRecordObservation implements KafkaConsumerRe
 
     public static final NoopKafkaConsumerRecordObservation INSTANCE = new NoopKafkaConsumerRecordObservation();
 
-    private NoopKafkaConsumerRecordObservation() { }
+    private NoopKafkaConsumerRecordObservation() {}
 
     @Override
     public Span span() {

@@ -6,13 +6,11 @@ import io.koraframework.kafka.common.KafkaUtils.NamedThreadFactory;
 import io.koraframework.kafka.common.consumer.ConsumerAwareRebalanceListener;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerPollObservation;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.clients.consumer.Consumer;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.WakeupException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
@@ -85,34 +83,50 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             : NOPLogger.NOP_LOGGER;
     }
 
-    public void launchPollLoop(Consumer<K, V> consumer, String listenerName, long started) {
+    public void launchPollLoop(Consumer<K, V> consumer, String listenerLogName, long started, Runnable initializeConfirmer) {
         try (consumer) {
             consumers.add(consumer);
-            logger.info("{} started in {}", listenerName, TimeUtils.tookForLogging(started));
+            logger.atInfo()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("{} started in {}", listenerLogName, TimeUtils.tookForLogging(started));
 
             boolean isFirstPoll = true;
+            KafkaConsumerPollObservation observation = null;
             while (isActive.get()) {
                 try {
-                    logger.trace("{} polling...", listenerName);
-
-                    var observation = this.telemetry.observePoll();
-                    var records = consumer.poll(config.pollTimeout());
+                    observation = this.telemetry.observePoll();
+                    final ConsumerRecords<K, V> records;
                     if (isFirstPoll) {
-                        logger.info("{} first poll for '{}' records in {}",
-                            listenerName, records.count(), TimeUtils.tookForLogging(started));
+                        records = consumer.poll(Duration.ofMillis(10));
+                        logger.atInfo()
+                            .addKeyValue("listenerName", this.listenerName)
+                            .log("{} first poll for '{}' records in {}",
+                            listenerLogName, records.count(), TimeUtils.tookForLogging(started));
+
                         isFirstPoll = false;
+                        initializeConfirmer.run();
+                    } else {
+                        records = consumer.poll(config.pollTimeout());
                     }
 
                     handler.handle(observation, records, consumer, this.commitAllowed);
                     backoffTimeout.set(config.backoffTimeout().toMillis());
                 } catch (WakeupException ignore) {
                 } catch (Exception e) {
-                    logger.error("{} got unhandled exception", listenerName, e);
+                    if (observation != null) {
+                        observation.observeError(e);
+                        observation.end();
+                    }
+
                     try {
-                        logger.debug("{} backing off for {}ms...", listenerName, backoffTimeout.get());
+                        logger.atDebug()
+                            .addKeyValue("listenerName", this.listenerName)
+                            .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
                         Thread.sleep(backoffTimeout.get());
                     } catch (InterruptedException ie) {
-                        logger.error("{} error interrupting thread", listenerName, ie);
+                        logger.atError()
+                            .addKeyValue("listenerName", this.listenerName)
+                            .log("{} error interrupting thread", listenerLogName, ie);
                     }
                     if (backoffTimeout.get() < 60000) {
                         backoffTimeout.set(backoffTimeout.get() * 2);
@@ -121,7 +135,9 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                 }
             }
         } catch (Exception e) {
-            logger.error("{} poll loop got unhandled exception", listenerName, e);
+            logger.atError()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("{} poll loop got unhandled exception", listenerLogName, e);
         } finally {
             consumers.remove(consumer);
         }
@@ -143,20 +159,18 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                     while (isActive.get()) {
                         var consumer = initializeConsumer();
                         if (consumer != null) {
-                            initLatch.countDown();
-
                             var listenerName = (config.threads() == 1)
-                                ? "KafkaListener '" + this.listenerName + "'"
-                                : "KafkaListener-" + number + " '" + this.listenerName + "'";
-                            launchPollLoop(consumer, listenerName, started);
+                                ? "KafkaListener"
+                                : "KafkaListener-" + number;
+                            launchPollLoop(consumer, listenerName, started, initLatch::countDown);
                         }
                     }
                 });
             }
 
-            if(config.initializationFailTimeout() != null) {
+            if (config.initializationFailTimeout() != null) {
                 try {
-                    if(!initLatch.await(config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
+                    if (!initLatch.await(config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
                         throw new RuntimeException("KafkaListener '{}' failed to start, due to timeout in {}ms".formatted(
                             listenerName, TimeUtils.durationForLogging(config.initializationFailTimeout())));
                     }
