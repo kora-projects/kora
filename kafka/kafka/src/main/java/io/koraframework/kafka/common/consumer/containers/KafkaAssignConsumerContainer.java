@@ -301,11 +301,15 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             }
             return new ConsumerWrapper<>(realConsumer, driverMetrics, keyDeserializer, valueDeserializer);
         } catch (Exception e) {
-            logger.error("KafkaListener '{}' failed to start in assign mode, due to: {}", listenerName, e.getMessage(), e);
+            logger.atError()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("KafkaListener failed to start in assign mode, due to: {}", e.getMessage(), e);
             try {
                 Thread.sleep(250);
             } catch (InterruptedException ie) {
-                logger.error("KafkaListener '{}' error interrupting thread", listenerName, ie);
+                logger.atError()
+                    .addKeyValue("listenerName", this.listenerName)
+                    .log("KafkaListener error interrupting thread", ie);
             }
             return null;
         }
@@ -316,7 +320,9 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
         var threads = this.threads;
         if (threads > 0) {
             if (this.topic != null) {
-                logger.debug("KafkaListener '{}' starting in assign mode...", listenerName);
+                logger.atDebug()
+                    .addKeyValue("listenerName", this.listenerName)
+                    .log("KafkaListener starting in assign mode...", listenerName);
                 final long started = TimeUtils.started();
 
                 executorService = Executors.newFixedThreadPool(threads, new NamedThreadFactory(listenerName));
@@ -355,7 +361,9 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
     @Override
     public void release() {
         if (isActive.compareAndSet(true, false)) {
-            logger.debug("KafkaListener '{}' stopping...", listenerName);
+            logger.atDebug()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("KafkaListener stopping...");
             var started = System.nanoTime();
 
             for (var consumer : consumers) {
@@ -364,11 +372,15 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
             consumers.clear();
             if (executorService != null) {
                 if (!shutdownExecutorService(executorService, config.shutdownWait())) {
-                    logger.warn("KafkaListener '{}' failed completing graceful shutdown in {}", listenerName, config.shutdownWait());
+                    logger.atWarn()
+                        .addKeyValue("listenerName", this.listenerName)
+                        .log("KafkaListener failed completing graceful shutdown in {}", config.shutdownWait());
                 }
             }
 
-            logger.info("KafkaListener '{}' stopped in {}", listenerName, TimeUtils.tookForLogging(started));
+            logger.atInfo()
+                .addKeyValue("listenerName", this.listenerName)
+                .log("KafkaListener stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
 
@@ -377,7 +389,9 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
         if (!terminated) {
             executorService.shutdown();
             try {
-                logger.debug("KafkaListener '{}' awaiting graceful shutdown...", listenerName);
+                logger.atDebug()
+                    .addKeyValue("listenerName", this.listenerName)
+                    .log("KafkaListener awaiting graceful shutdown...");
                 terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
                 if (!terminated) {
                     executorService.shutdownNow();
