@@ -4,7 +4,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import org.apache.kafka.common.TopicPartition;
 
-public final class NoopKafkaConsumerTelemetry implements KafkaConsumerTelemetry{
+public final class NoopKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
 
     public static final NoopKafkaConsumerTelemetry INSTANCE = new NoopKafkaConsumerTelemetry();
 

@@ -10,18 +10,22 @@ import java.util.Properties;
 
 public final class DefaultKafkaPublisherTelemetryFactory implements KafkaPublisherTelemetryFactory {
 
-    private static final Tracer NOOP_TRACER = TracerProvider.noop().get("kafka-publisher");
-    private static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final Tracer NOOP_TRACER = TracerProvider.noop().get("kafka-publisher");
+    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
 
     @Nullable
     private final Tracer tracer;
     @Nullable
     private final MeterRegistry meterRegistry;
+    @Nullable
+    private final DefaultKafkaPublisherMetricsFactory metricsFactory;
 
     public DefaultKafkaPublisherTelemetryFactory(@Nullable Tracer tracer,
-                                                 @Nullable MeterRegistry meterRegistry) {
+                                                 @Nullable MeterRegistry meterRegistry,
+                                                 @Nullable DefaultKafkaPublisherMetricsFactory metricsFactory) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
+        this.metricsFactory = metricsFactory;
     }
 
     @Override
@@ -34,6 +38,15 @@ public final class DefaultKafkaPublisherTelemetryFactory implements KafkaPublish
 
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
         var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
-        return new DefaultKafkaPublisherTelemetry(publisherName, publisherImpl, config, tracer, meterRegistry, properties);
+        DefaultKafkaPublisherMetricsFactory enabledMetricsFactory;
+        if (metricEnabled) {
+            enabledMetricsFactory = this.metricsFactory != null
+                ? this.metricsFactory
+                : DefaultKafkaPublisherMetricsFactory.INSTANCE;
+        } else {
+            enabledMetricsFactory = NoopKafkaPublisherMetricsFactory.INSTANCE;
+        }
+
+        return new DefaultKafkaPublisherTelemetry(publisherName, publisherImpl, config, tracer, meterRegistry, enabledMetricsFactory, properties);
     }
 }
