@@ -14,12 +14,21 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.aopAnnotation
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 
 object CommonAopUtils {
 
     fun KSClassDeclaration.extendsKeepAop(newName: String, resolver: Resolver): TypeSpec.Builder {
+        return extendsKeepAopInternal(newName, resolver, false)
+    }
+
+    fun KSClassDeclaration.extendsKeepAopAll(newName: String, resolver: Resolver): TypeSpec.Builder {
+        return extendsKeepAopInternal(newName, resolver, true)
+    }
+
+    private fun KSClassDeclaration.extendsKeepAopInternal(newName: String, resolver: Resolver, allMethods: Boolean): TypeSpec.Builder {
         val type = this
         val b: TypeSpec.Builder = TypeSpec.classBuilder(newName)
             .addOriginatingKSFile(type)
@@ -30,7 +39,11 @@ object CommonAopUtils {
         }
 
         var hasAop = hasAopAnnotation(type)
-        val methods = findMethods(type) { f -> f.isPublic() || f.isProtected() }
+        val methods = if (allMethods)
+            findAllMethods(type) { f -> f.isPublic() || f.isProtected() }
+        else
+            findMethods(type) { f -> f.isPublic() || f.isProtected() }
+
         for (method in methods) {
             var isMethodAop = hasAopAnnotation(method)
 
@@ -42,9 +55,11 @@ object CommonAopUtils {
 
             if (isMethodAop && !method.isAbstract) {
                 val superParameters = method.parameters.joinToString(", ") { p -> p.name!!.asString() }
+
+                val call = if (method.isVoid()) "super.%L(%L)" else "return super.%L(%L)"
                 b.addFunction(
                     method.overridingKeepAop(resolver)
-                        .addCode("return super.%L(%L)", method.simpleName.asString(), superParameters)
+                        .addCode(call, method.simpleName.asString(), superParameters)
                         .build()
                 )
             }
@@ -127,9 +142,7 @@ object CommonAopUtils {
         if (hasAopAnnotation(ksAnnotated)) {
             return true
         }
-        val methods = findMethods(ksAnnotated) { f ->
-            f.isPublic() || f.isProtected()
-        }
+        val methods = findMethods(ksAnnotated) { f -> f.isPublic() || f.isProtected() }
         for (method in methods) {
             if (hasAopAnnotation(method)) {
                 return true

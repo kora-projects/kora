@@ -292,6 +292,20 @@ fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration
     return result
 }
 
+fun findAllMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration) -> Boolean): List<KSFunctionDeclaration> {
+    if (ksAnnotated !is KSClassDeclaration) {
+        return emptyList()
+    }
+    val result = ArrayList<KSFunctionDeclaration>()
+    for (function in ksAnnotated.getAllFunctions().toList()) {
+        if (!functionFilter(function)) {
+            continue
+        }
+        result.add(function)
+    }
+    return result
+}
+
 fun KSClassDeclaration.getNameConverter(default: NameConverter): NameConverter {
     return getNameConverter() ?: default
 }

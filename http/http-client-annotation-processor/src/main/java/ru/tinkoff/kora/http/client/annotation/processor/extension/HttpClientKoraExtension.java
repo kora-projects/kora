@@ -55,7 +55,7 @@ public class HttpClientKoraExtension implements KoraExtension {
                 // annotation processor will handle it
                 return ExtensionResult.nextRound();
             }
-            if (CommonUtils.hasAopAnnotations(typeElement)) {
+            if (CommonUtils.hasAopAnnotationsInParents(elements, typeElement)) {
                 var aopProxy = NameUtils.generatedType(maybeGenerated, "_AopProxy");
                 var aopProxyElement = this.elements.getTypeElement(packageName + "." + aopProxy);
                 if (aopProxyElement == null) {

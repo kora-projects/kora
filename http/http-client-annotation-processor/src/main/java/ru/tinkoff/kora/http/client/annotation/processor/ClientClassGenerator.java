@@ -41,7 +41,7 @@ public class ClientClassGenerator {
     public TypeSpec generate(TypeElement element) {
         var typeName = HttpClientUtils.clientName(element);
         var methods = this.parseMethods(element);
-        var builder = CommonUtils.extendsKeepAop(element, typeName)
+        var builder = CommonUtils.extendsKeepAop(elements, element, typeName)
             .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class));
 
         builder.addMethod(this.buildConstructor(builder, element, methods));
@@ -922,7 +922,9 @@ public class ClientClassGenerator {
             var responseCodeMappers = this.parseMapperData(method);
 
             var responseMapper = CommonUtils.parseMapping(method).getMapping(httpClientResponseMapper);
-            result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
+            if (result.stream().noneMatch(n -> n.element().equals(method))) {
+                result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
+            }
         }
         return result;
     }

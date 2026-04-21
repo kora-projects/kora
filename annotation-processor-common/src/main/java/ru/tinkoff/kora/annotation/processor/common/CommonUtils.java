@@ -8,6 +8,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
+import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -124,6 +125,32 @@ public class CommonUtils {
             }
             result.add((ExecutableElement) element);
         }
+        return result;
+    }
+
+    public static List<ExecutableElement> findAllMethods(Elements elements, TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {
+        var result = new ArrayList<ExecutableElement>();
+        for (var enclosedElement : elements.getAllMembers(typeElement)) {
+            if (enclosedElement.getKind() != ElementKind.METHOD) {
+                continue;
+            }
+
+            var method = (ExecutableElement) enclosedElement;
+            if (method.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+
+            if (method.getEnclosingElement().toString().equals("java.lang.Object")) {
+                continue;
+            }
+
+            if (!modifiersFilter.test(method.getModifiers())) {
+                continue;
+            }
+
+            result.add(method);
+        }
+
         return result;
     }
 
@@ -307,6 +334,14 @@ public class CommonUtils {
     }
 
     public static TypeSpec.Builder extendsKeepAop(TypeElement type, String newName) {
+        return extendsKeepAopInternal(null, type, newName);
+    }
+
+    public static TypeSpec.Builder extendsKeepAop(Elements elements, TypeElement type, String newName) {
+        return extendsKeepAopInternal(elements, type, newName);
+    }
+
+    private static TypeSpec.Builder extendsKeepAopInternal(@Nullable Elements elements, TypeElement type, String newName) {
         var b = TypeSpec.classBuilder(newName)
             .addModifiers(Modifier.PUBLIC)
             .addOriginatingElement(type);
@@ -328,7 +363,9 @@ public class CommonUtils {
             hasAop = true;
         }
 
-        var methods = CommonUtils.findMethods(type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+        var methods = (elements == null)
+            ? CommonUtils.findMethods(type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED))
+            : CommonUtils.findAllMethods(elements, type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
         for (var method : methods) {
             boolean isMethodAop = hasAopAnnotation(method);
             for (var parameter : method.getParameters()) {
@@ -342,8 +379,9 @@ public class CommonUtils {
                     .map(p -> p.getSimpleName().toString())
                     .collect(Collectors.joining(", "));
 
+                var call = MethodUtils.isVoid(method) ? "$T.super.$L($L);" : "return $T.super.$L($L);";
                 b.addMethod(overridingKeepAop(method)
-                    .addCode("return $T.super.$L($L);", type, method.getSimpleName().toString(), superParameters)
+                    .addCode(call, type, method.getSimpleName().toString(), superParameters)
                     .build());
             }
 
@@ -421,6 +459,21 @@ public class CommonUtils {
             return true;
         }
         var methods = CommonUtils.findMethods(typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+        for (var method : methods) {
+            if (hasAopAnnotation(method)) {
+                return true;
+            }
+            for (var parameter : method.getParameters()) {
+                if (hasAopAnnotation(parameter)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasAopAnnotationsInParents(Elements elements, TypeElement typeElement) {
+        var methods = CommonUtils.findAllMethods(elements, typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
         for (var method : methods) {
             if (hasAopAnnotation(method)) {
                 return true;
