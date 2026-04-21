@@ -901,7 +901,7 @@ public class ClientClassGenerator {
     }
 
     static Set<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {
-        var result = new HashSet<TypeElement>();
+        var result = new LinkedHashSet<TypeElement>();
         collectInterfaces(types, result, typeElement);
         return result;
     }
@@ -942,7 +942,9 @@ public class ClientClassGenerator {
                 var responseCodeMappers = this.parseMapperData(method);
 
                 var responseMapper = CommonUtils.parseMapping(method).getMapping(httpClientResponseMapper);
-                result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
+                if (result.stream().noneMatch(n -> n.element().equals(method))) {
+                    result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
+                }
             }
         }
         return result;
