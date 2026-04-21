@@ -8,6 +8,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.AnnotatedConstruct;
 import javax.lang.model.element.*;
 import javax.lang.model.type.*;
+import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -127,36 +128,29 @@ public class CommonUtils {
         return result;
     }
 
-    private static Set<TypeElement> getAllInterfaces(Types types, TypeElement typeElement) {
-        var interfaces = new LinkedHashSet<TypeElement>();
-        interfaces.add(typeElement);
-        for (TypeMirror anInterface : typeElement.getInterfaces()) {
-            if (anInterface.getKind() == TypeKind.DECLARED) {
-                var anInterfaceElement = (TypeElement) types.asElement(anInterface);
-                interfaces.add(anInterfaceElement);
-                var innerInterfaces = getAllInterfaces(types, anInterfaceElement);
-                interfaces.addAll(innerInterfaces);
-            }
-        }
-        return interfaces;
-    }
-
-    public static List<ExecutableElement> findAllMethodsFromInterfaces(Types types, TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {
+    public static List<ExecutableElement> findAllMethods(Elements elements, TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {
         var result = new ArrayList<ExecutableElement>();
-        var allInterfaces = getAllInterfaces(types, typeElement);
-        for (TypeElement anInterface : allInterfaces) {
-            for (var element : anInterface.getEnclosedElements()) {
-                if (element.getKind() != ElementKind.METHOD) {
-                    continue;
-                }
-                if (!modifiersFilter.test(element.getModifiers())) {
-                    continue;
-                }
-                if (result.stream().noneMatch(e -> e.equals(element))) {
-                    result.add((ExecutableElement) element);
-                }
+        for (var enclosedElement : elements.getAllMembers(typeElement)) {
+            if (enclosedElement.getKind() != ElementKind.METHOD) {
+                continue;
             }
+
+            var method = (ExecutableElement) enclosedElement;
+            if (method.getModifiers().contains(Modifier.STATIC)) {
+                continue;
+            }
+
+            if (method.getEnclosingElement().toString().equals("java.lang.Object")) {
+                continue;
+            }
+
+            if (!modifiersFilter.test(method.getModifiers())) {
+                continue;
+            }
+
+            result.add(method);
         }
+
         return result;
     }
 
@@ -343,11 +337,11 @@ public class CommonUtils {
         return extendsKeepAopInternal(null, type, newName);
     }
 
-    public static TypeSpec.Builder extendsKeepAop(Types types, TypeElement type, String newName) {
-        return extendsKeepAopInternal(types, type, newName);
+    public static TypeSpec.Builder extendsKeepAop(Elements elements, TypeElement type, String newName) {
+        return extendsKeepAopInternal(elements, type, newName);
     }
 
-    private static TypeSpec.Builder extendsKeepAopInternal(@Nullable Types types, TypeElement type, String newName) {
+    private static TypeSpec.Builder extendsKeepAopInternal(@Nullable Elements elements, TypeElement type, String newName) {
         var b = TypeSpec.classBuilder(newName)
             .addModifiers(Modifier.PUBLIC)
             .addOriginatingElement(type);
@@ -369,9 +363,9 @@ public class CommonUtils {
             hasAop = true;
         }
 
-        var methods = (types == null)
+        var methods = (elements == null)
             ? CommonUtils.findMethods(type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED))
-            : CommonUtils.findAllMethodsFromInterfaces(types, type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+            : CommonUtils.findAllMethods(elements, type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
         for (var method : methods) {
             boolean isMethodAop = hasAopAnnotation(method);
             for (var parameter : method.getParameters()) {
@@ -385,8 +379,9 @@ public class CommonUtils {
                     .map(p -> p.getSimpleName().toString())
                     .collect(Collectors.joining(", "));
 
+                var call = MethodUtils.isVoid(method) ? "$T.super.$L($L);" : "return $T.super.$L($L);";
                 b.addMethod(overridingKeepAop(method)
-                    .addCode("return $T.super.$L($L);", type, method.getSimpleName().toString(), superParameters)
+                    .addCode(call, type, method.getSimpleName().toString(), superParameters)
                     .build());
             }
 
@@ -477,8 +472,8 @@ public class CommonUtils {
         return false;
     }
 
-    public static boolean hasAopAnnotationsInParents(Types types, TypeElement typeElement) {
-        var methods = CommonUtils.findAllMethodsFromInterfaces(types, typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+    public static boolean hasAopAnnotationsInParents(Elements elements, TypeElement typeElement) {
+        var methods = CommonUtils.findAllMethods(elements, typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
         for (var method : methods) {
             if (hasAopAnnotation(method)) {
                 return true;

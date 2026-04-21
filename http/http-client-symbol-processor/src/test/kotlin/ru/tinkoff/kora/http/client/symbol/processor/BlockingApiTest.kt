@@ -447,4 +447,33 @@ class BlockingApiTest : AbstractHttpClientTest() {
         client.invoke<Unit>("request1")
     }
 
+    @Test
+    fun testSuperOverrideInterfacesSupported() {
+        val client = compile(
+            listOf<Any>(), """
+            @HttpClient
+            interface TestClient: TestBase {
+              @HttpRoute(method = "POST", path = "/test")
+              fun request()
+              
+              @HttpRoute(method = "POST", path = "/test2")
+              override fun request1()
+            }
+            
+            """.trimIndent(), """
+            interface TestBase {
+              @HttpRoute(method = "POST", path = "/test1")
+              fun request1()
+            }
+            
+            """.trimIndent()
+        )
+
+        onRequest("POST", "http://test-url:8080/test") { rs -> rs.withCode(200) }
+        client.invoke<Unit>("request")
+        reset(httpClient)
+
+        onRequest("POST", "http://test-url:8080/test2") { rs -> rs.withCode(200) }
+        client.invoke<Unit>("request1")
+    }
 }

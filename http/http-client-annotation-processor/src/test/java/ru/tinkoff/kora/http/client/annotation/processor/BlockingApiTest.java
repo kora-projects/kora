@@ -420,4 +420,30 @@ public class BlockingApiTest extends AbstractHttpClientTest {
         onRequest("POST", "http://test-url:8080/test1", rs -> rs.withCode(200));
         client.invoke("request1");
     }
+
+    @Test
+    public void testSuperOverridesInterfacesSupported() {
+        var client = compileClient(List.of(), """
+            @HttpClient
+            public interface TestClient extends TestBase {
+              @HttpRoute(method = "POST", path = "/test")
+              void request();
+              @Override
+              @HttpRoute(method = "POST", path = "/test2")
+              void request1();
+            }
+            """, """
+            public interface TestBase {
+              @HttpRoute(method = "POST", path = "/test1")
+              void request1();
+            }
+            """);
+
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
+        client.invoke("request");
+        reset(httpClient);
+
+        onRequest("POST", "http://test-url:8080/test2", rs -> rs.withCode(200));
+        client.invoke("request1");
+    }
 }

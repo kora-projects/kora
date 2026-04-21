@@ -14,6 +14,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames.aopAnnotation
+import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 
@@ -54,9 +55,11 @@ object CommonAopUtils {
 
             if (isMethodAop && !method.isAbstract) {
                 val superParameters = method.parameters.joinToString(", ") { p -> p.name!!.asString() }
+
+                val call = if (method.isVoid()) "super.%L(%L)" else "return super.%L(%L)"
                 b.addFunction(
                     method.overridingKeepAop(resolver)
-                        .addCode("return super.%L(%L)", method.simpleName.asString(), superParameters)
+                        .addCode(call, method.simpleName.asString(), superParameters)
                         .build()
                 )
             }

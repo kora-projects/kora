@@ -12,7 +12,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
-import javax.lang.model.util.Types;
+import javax.lang.model.util.Elements;
 import java.util.List;
 
 import static ru.tinkoff.kora.annotation.processor.common.TagUtils.makeAnnotationSpec;
@@ -20,11 +20,11 @@ import static ru.tinkoff.kora.annotation.processor.common.TagUtils.parseTagValue
 
 public class RepositoryBuilder {
 
-    private final Types types;
+    private final Elements elements;
     private final List<RepositoryGenerator> queryMethodGenerators;
 
-    public RepositoryBuilder(Types types, ProcessingEnvironment processingEnv) {
-        this.types = types;
+    public RepositoryBuilder(Elements elements, ProcessingEnvironment processingEnv) {
+        this.elements = elements;
         this.queryMethodGenerators = List.of(
             new JdbcRepositoryGenerator(processingEnv),
             new VertxRepositoryGenerator(processingEnv),
@@ -36,7 +36,7 @@ public class RepositoryBuilder {
     @Nullable
     public TypeSpec build(TypeElement repositoryElement) throws ProcessingErrorException {
         var name = NameUtils.generatedType(repositoryElement, "Impl");
-        var builder = CommonUtils.extendsKeepAop(types, repositoryElement, name)
+        var builder = CommonUtils.extendsKeepAop(elements, repositoryElement, name)
             .addAnnotation(AnnotationUtils.generated(RepositoryAnnotationProcessor.class));
 
         if (AnnotationUtils.findAnnotation(repositoryElement, CommonClassNames.root) != null) {
