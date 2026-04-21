@@ -310,6 +310,54 @@ fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration
     return result
 }
 
+fun findAllMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration) -> Boolean): List<KSFunctionDeclaration> {
+    if (ksAnnotated !is KSClassDeclaration) {
+        return emptyList()
+    }
+    val result = ArrayList<KSFunctionDeclaration>()
+    for (function in ksAnnotated.getAllFunctions().toList()) {
+        if (!functionFilter(function)) {
+            continue
+        }
+        result.add(function)
+    }
+    return result
+}
+
+fun KSClassDeclaration.getNameConverter(default: NameConverter): NameConverter {
+    return getNameConverter() ?: default
+}
+
+fun KSClassDeclaration.getNameConverter(): NameConverter? {
+    val namingStrategy = this.findAnnotation(CommonClassNames.namingStrategy)
+    return if (namingStrategy != null) {
+        val namingStrategyClass = getNamingStrategyConverterClass(this)
+        return if (namingStrategyClass != null) {
+            try {
+                val inst = namingStrategyClass.constructors.firstOrNull()?.call() as NameConverter?
+                inst
+            } catch (e: Exception) {
+                throw ProcessingErrorException("Error on calling name converter constructor $this", this)
+            }
+        } else null
+    } else null
+}
+
+fun getNamingStrategyConverterClass(declaration: KSClassDeclaration): KClass<*>? {
+    val annotationValues = parseAnnotationClassValue(declaration, CommonClassNames.namingStrategy.canonicalName)
+    if (annotationValues.isEmpty()) return null
+    val type = annotationValues[0]
+    if (type.declaration is KSClassDeclaration) {
+        val className = (type.declaration as KSClassDeclaration).qualifiedName!!.asString()
+        return try {
+            Class.forName(className).kotlin
+        } catch (e: ClassNotFoundException) {
+            throw ProcessingErrorException("Class $className not found in classpath", declaration)
+        }
+    }
+    return null
+}
+
 fun KSAnnotated.getOuterClassesAsPrefix(): String {
     val prefix = if(this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
         StringBuilder()

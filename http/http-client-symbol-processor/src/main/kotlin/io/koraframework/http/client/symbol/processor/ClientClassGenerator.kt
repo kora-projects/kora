@@ -34,7 +34,7 @@ import io.koraframework.http.client.symbol.processor.HttpClientClassNames.uriQue
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
-import io.koraframework.ksp.common.CommonAopUtils.extendsKeepAop
+import io.koraframework.ksp.common.CommonAopUtils.extendsKeepAopAll
 import io.koraframework.ksp.common.CommonAopUtils.overridingKeepAop
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.CommonClassNames.isCollection
@@ -64,7 +64,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
         val methods = this.parseMethods(declaration)
-        val builder = declaration.extendsKeepAop(typeName, resolver)
+        val builder = declaration.extendsKeepAopAll(typeName, resolver)
             .generated(ClientClassGenerator::class)
 
         declaration.findAnnotation(CommonClassNames.root)
