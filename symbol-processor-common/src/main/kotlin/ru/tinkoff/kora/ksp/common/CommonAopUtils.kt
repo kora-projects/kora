@@ -20,6 +20,14 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.resolveToUnderlying
 object CommonAopUtils {
 
     fun KSClassDeclaration.extendsKeepAop(newName: String, resolver: Resolver): TypeSpec.Builder {
+        return extendsKeepAopInternal(newName, resolver, false)
+    }
+
+    fun KSClassDeclaration.extendsKeepAopAll(newName: String, resolver: Resolver): TypeSpec.Builder {
+        return extendsKeepAopInternal(newName, resolver, true)
+    }
+
+    private fun KSClassDeclaration.extendsKeepAopInternal(newName: String, resolver: Resolver, allMethods: Boolean): TypeSpec.Builder {
         val type = this
         val b: TypeSpec.Builder = TypeSpec.classBuilder(newName)
             .addOriginatingKSFile(type)
@@ -30,7 +38,11 @@ object CommonAopUtils {
         }
 
         var hasAop = hasAopAnnotation(type)
-        val methods = findMethods(type) { f -> f.isPublic() || f.isProtected() }
+        val methods = if (allMethods)
+            findAllMethods(type) { f -> f.isPublic() || f.isProtected() }
+        else
+            findMethods(type) { f -> f.isPublic() || f.isProtected() }
+
         for (method in methods) {
             var isMethodAop = hasAopAnnotation(method)
 

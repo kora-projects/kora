@@ -55,7 +55,7 @@ public class RepositoryKoraExtension implements KoraExtension {
                 // annotation processor will handle it
                 return ExtensionResult.nextRound();
             }
-            if (!CommonUtils.hasAopAnnotations(repositoryElement)) {
+            if (!CommonUtils.hasAopAnnotationsInParents(types, repositoryElement)) {
                 return CommonUtils.findConstructors(repositoryElement, m -> m.contains(Modifier.PUBLIC)).stream().map(ExtensionResult::fromExecutable).findFirst().orElseThrow();
             }
             var aopProxy = NameUtils.generatedType(repositoryElement, "_AopProxy");

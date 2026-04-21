@@ -34,7 +34,7 @@ import ru.tinkoff.kora.http.client.symbol.processor.HttpClientClassNames.uriQuer
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValue
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findValueNoDefault
-import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAop
+import ru.tinkoff.kora.ksp.common.CommonAopUtils.extendsKeepAopAll
 import ru.tinkoff.kora.ksp.common.CommonAopUtils.overridingKeepAop
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.CommonClassNames.await
@@ -65,7 +65,7 @@ class ClientClassGenerator(private val resolver: Resolver) {
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val typeName = declaration.clientName()
         val methods = this.parseMethods(declaration)
-        val builder = declaration.extendsKeepAop(typeName, resolver)
+        val builder = declaration.extendsKeepAopAll(typeName, resolver)
             .generated(ClientClassGenerator::class)
 
         declaration.findAnnotation(CommonClassNames.root)

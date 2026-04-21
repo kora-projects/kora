@@ -297,7 +297,7 @@ fun findAllMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclarat
         return emptyList()
     }
     val result = ArrayList<KSFunctionDeclaration>()
-    for (function in ksAnnotated.getDeclaredFunctions().toList()) {
+    for (function in ksAnnotated.getAllFunctions().toList()) {
         if (!functionFilter(function)) {
             continue
         }

@@ -41,7 +41,7 @@ public class ClientClassGenerator {
     public TypeSpec generate(TypeElement element) {
         var typeName = HttpClientUtils.clientName(element);
         var methods = this.parseMethods(element);
-        var builder = CommonUtils.extendsKeepAop(element, typeName)
+        var builder = CommonUtils.extendsKeepAop(types, element, typeName)
             .addAnnotation(AnnotationUtils.generated(ClientClassGenerator.class));
 
         builder.addMethod(this.buildConstructor(builder, element, methods));

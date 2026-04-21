@@ -127,6 +127,39 @@ public class CommonUtils {
         return result;
     }
 
+    private static Set<TypeElement> getAllInterfaces(Types types, TypeElement typeElement) {
+        var interfaces = new LinkedHashSet<TypeElement>();
+        interfaces.add(typeElement);
+        for (TypeMirror anInterface : typeElement.getInterfaces()) {
+            if (anInterface.getKind() == TypeKind.DECLARED) {
+                var anInterfaceElement = (TypeElement) types.asElement(anInterface);
+                interfaces.add(anInterfaceElement);
+                var innerInterfaces = getAllInterfaces(types, anInterfaceElement);
+                interfaces.addAll(innerInterfaces);
+            }
+        }
+        return interfaces;
+    }
+
+    public static List<ExecutableElement> findAllMethodsFromInterfaces(Types types, TypeElement typeElement, Predicate<Set<Modifier>> modifiersFilter) {
+        var result = new ArrayList<ExecutableElement>();
+        var allInterfaces = getAllInterfaces(types, typeElement);
+        for (TypeElement anInterface : allInterfaces) {
+            for (var element : anInterface.getEnclosedElements()) {
+                if (element.getKind() != ElementKind.METHOD) {
+                    continue;
+                }
+                if (!modifiersFilter.test(element.getModifiers())) {
+                    continue;
+                }
+                if (result.stream().noneMatch(e -> e.equals(element))) {
+                    result.add((ExecutableElement) element);
+                }
+            }
+        }
+        return result;
+    }
+
     public record MappersData(@Nullable List<TypeMirror> mapperClasses, Set<String> mapperTags) {
         @Nullable
         public MappingData getMapping(Types types, TypeMirror type) {
@@ -307,6 +340,14 @@ public class CommonUtils {
     }
 
     public static TypeSpec.Builder extendsKeepAop(TypeElement type, String newName) {
+        return extendsKeepAopInternal(null, type, newName);
+    }
+
+    public static TypeSpec.Builder extendsKeepAop(Types types, TypeElement type, String newName) {
+        return extendsKeepAopInternal(types, type, newName);
+    }
+
+    private static TypeSpec.Builder extendsKeepAopInternal(@Nullable Types types, TypeElement type, String newName) {
         var b = TypeSpec.classBuilder(newName)
             .addModifiers(Modifier.PUBLIC)
             .addOriginatingElement(type);
@@ -328,7 +369,9 @@ public class CommonUtils {
             hasAop = true;
         }
 
-        var methods = CommonUtils.findMethods(type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+        var methods = (types == null)
+            ? CommonUtils.findMethods(type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED))
+            : CommonUtils.findAllMethodsFromInterfaces(types, type, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
         for (var method : methods) {
             boolean isMethodAop = hasAopAnnotation(method);
             for (var parameter : method.getParameters()) {
@@ -421,6 +464,21 @@ public class CommonUtils {
             return true;
         }
         var methods = CommonUtils.findMethods(typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
+        for (var method : methods) {
+            if (hasAopAnnotation(method)) {
+                return true;
+            }
+            for (var parameter : method.getParameters()) {
+                if (hasAopAnnotation(parameter)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public static boolean hasAopAnnotationsInParents(Types types, TypeElement typeElement) {
+        var methods = CommonUtils.findAllMethodsFromInterfaces(types, typeElement, m -> m.contains(Modifier.PUBLIC) || m.contains(Modifier.PROTECTED));
         for (var method : methods) {
             if (hasAopAnnotation(method)) {
                 return true;

@@ -31,7 +31,7 @@ public class RepositoryAnnotationProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        this.repositoryBuilder = new RepositoryBuilder(processingEnv);
+        this.repositoryBuilder = new RepositoryBuilder(types, processingEnv);
     }
 
     @Override
