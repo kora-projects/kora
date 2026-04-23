@@ -93,13 +93,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
         if (targetType == interceptedType.makeNotNullable()) {
             return true
         } else if (interceptedType.isAssignableFrom(targetType)) {
-            val aopProxyAnnotation = targetType.declaration.findAnnotation(CommonClassNames.aopProxy)
-            val proxyDeclaration = interceptedType.declaration
-            if (aopProxyAnnotation != null && proxyDeclaration.parentDeclaration != null) {
-                val aopProxyName = proxyDeclaration.getOuterClassesAsPrefix() + proxyDeclaration.simpleName.asString() + "__AopProxy"
-                val aopProxyCanonical = proxyDeclaration.packageName.asString() + "." + aopProxyName
-                return aopProxyCanonical == targetType.declaration.qualifiedName!!.asString()
-            }
+            return true
         }
 
         return false

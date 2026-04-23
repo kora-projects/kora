@@ -70,15 +70,7 @@ public class ServiceTypesHelper {
         if (this.types.isSameType(interceptedType, targetType)) {
             return true;
         } else if (this.types.isAssignable(targetType, interceptedType)) {
-            // Check if is AopProxy
-            var typeMirrorElement = types.asElement(targetType);
-            var annotation = AnnotationUtils.findAnnotation(typeMirrorElement, CommonClassNames.aopProxy);
-            if (annotation != null) {
-                var interceptedTypeElement = types.asElement(interceptedType);
-                var aopProxyName = NameUtils.generatedType(interceptedTypeElement, "_AopProxy");
-                var expectedAopProxyCanonicalName = elements.getPackageOf(interceptedTypeElement).toString() + "." + aopProxyName;
-                return expectedAopProxyCanonicalName.equals(typeMirrorElement.toString());
-            }
+            return true;
         }
 
         return false;
