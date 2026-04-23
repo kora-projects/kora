@@ -13,6 +13,6 @@ public class TestComponent3 implements LifecycleComponent {
 
     @Override
     public void init() {
-        throw new IllegalStateException("OPS");
+        // do nothing
     }
 }
