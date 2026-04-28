@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
 public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     private final RedisCacheClient redisClient;
     private final RedisCacheTelemetry telemetry;
+
+    @Nullable
     private final byte[] keyPrefix;
 
     private final RedisCacheKeyMapper<K> keyMapper;
@@ -44,7 +46,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
             ? null
             : config.expireAfterWrite().toMillis();
 
-        if (config.keyPrefix().isEmpty()) {
+        if (config.keyPrefix().isBlank()) {
             this.keyPrefix = null;
         } else {
             var prefixRaw = config.keyPrefix().getBytes(StandardCharsets.UTF_8);
@@ -135,6 +137,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
         if (key == null || value == null) {
             return null;
         }
+
         var observation = this.telemetry.observe("PUT");
         return ScopedValue
             .where(Observation.VALUE, observation)
@@ -205,8 +208,9 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     @Override
     public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
         if (key == null) {
-            return null;
+            return mappingFunction.apply(key);
         }
+
         var observation = this.telemetry.observe("COMPUTE_IF_ABSENT");
         return ScopedValue
             .where(Observation.VALUE, observation)
@@ -228,10 +232,12 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
                     } catch (Exception e) {
                         observation.observeError(e);
                     }
+
                     V value = mappingFunction.apply(key);
                     if (value == null) {
                         return null;
                     }
+
                     try {
                         final byte[] keyAsBytes = mapKey(key);
                         final byte[] valueAsBytes = valueMapper.write(value);
@@ -259,8 +265,9 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     @Override
     public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
-            return Collections.emptyMap();
+            return mappingFunction.apply(Collections.emptySet());
         }
+
         var observation = this.telemetry.observe("COMPUTE_IF_ABSENT_MANY");
         return ScopedValue
             .where(Observation.VALUE, observation)
@@ -289,13 +296,16 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
                     } catch (Exception e) {
                         observation.observeError(e);
                     }
+
                     if (fromCache.size() == keys.size()) {
                         return fromCache;
                     }
+
                     var missingKeys = keys.stream()
                         .filter(k -> !fromCache.containsKey(k))
                         .collect(Collectors.toSet());
                     var values = mappingFunction.apply(missingKeys);
+
                     if (!values.isEmpty()) {
                         try {
                             var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
@@ -334,6 +344,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
         if (key == null) {
             return;
         }
+
         var observation = this.telemetry.observe("INVALIDATE");
         ScopedValue
             .where(Observation.VALUE, observation)
@@ -358,6 +369,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
         if (keys == null || keys.isEmpty()) {
             return;
         }
+
         var observation = this.telemetry.observe("INVALIDATE_MANY");
         ScopedValue
             .where(Observation.VALUE, observation)
@@ -389,7 +401,9 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
             .run(() -> {
                 try {
                     observation.observeKeys(List.of());
-                    List<byte[]> keys = redisClient.scan(keyPrefix).toCompletableFuture().join();
+                    List<byte[]> keys = (keyPrefix == null)
+                        ? redisClient.scan("".getBytes(StandardCharsets.UTF_8)).toCompletableFuture().join()
+                        : redisClient.scan(keyPrefix).toCompletableFuture().join();
                     if (keys.isEmpty()) {
                         return;
                     }
