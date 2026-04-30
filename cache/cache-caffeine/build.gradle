@@ -2,9 +2,9 @@ dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
     api project(":cache:cache-common")
-
-    implementation project(":config:config-common")
-    implementation libs.caffeine
+    api project(":config:config-common")
+    api project(":telemetry:telemetry-common")
+    api libs.caffeine
 
     testImplementation testFixtures(project(":annotation-processor-common"))
     testImplementation project(":annotation-processor-common")

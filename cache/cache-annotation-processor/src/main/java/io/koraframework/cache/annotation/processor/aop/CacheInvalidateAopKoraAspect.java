@@ -12,20 +12,15 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
 import java.util.Set;
 
-public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
+import static io.koraframework.cache.annotation.processor.CacheOperationUtils.ANNOTATION_CACHE_INVALIDATE;
+import static io.koraframework.cache.annotation.processor.CacheOperationUtils.ANNOTATION_CACHE_INVALIDATES;
 
-    private static final ClassName ANNOTATION_CACHE_INVALIDATE = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidate");
-    private static final ClassName ANNOTATION_CACHE_INVALIDATES = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidates");
+public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
 
     private final ProcessingEnvironment env;
 
     public CacheInvalidateAopKoraAspect(ProcessingEnvironment env) {
         this.env = env;
-    }
-
-    @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_CACHE_INVALIDATE.canonicalName(), ANNOTATION_CACHE_INVALIDATES.canonicalName());
     }
 
     @Override
@@ -36,18 +31,13 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@CacheInvalidate can't be applied for type " + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHE_INVALIDATE.simpleName()) + CommonClassNames.publisher, method);
+        } else if (MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHE_INVALIDATE) + method.getReturnType().toString(), method);
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);
-
-        final CodeBlock body;
-        if (operation.type() == CacheOperation.Type.EVICT_ALL) {
-            body = buildBodySyncAll(method, operation, superCall);
-        } else {
-            body = buildBodySync(method, operation, superCall);
-        }
-
+        final CodeBlock body = buildBodySync(method, operation, superCall);
         return new ApplyResult.MethodBody(body);
     }
 
@@ -113,34 +103,5 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
         }
 
         return builder.build();
-    }
-
-    private CodeBlock buildBodySyncAll(ExecutableElement method,
-                                       CacheOperation operation,
-                                       String superCall) {
-        final String superMethod = getSuperMethod(method, superCall);
-
-        // cache variables
-        final StringBuilder builder = new StringBuilder();
-
-        // cache super method
-        if (MethodUtils.isVoid(method)) {
-            builder.append(superMethod).append(";\n");
-        } else {
-            builder.append("var _value = ").append(superMethod).append(";\n");
-        }
-
-        // cache invalidate
-        for (var cache : operation.executions()) {
-            builder.append(cache.field()).append(".invalidateAll();\n");
-        }
-
-        if (!MethodUtils.isVoid(method)) {
-            builder.append("return _value;");
-        }
-
-        return CodeBlock.builder()
-            .add(builder.toString())
-            .build();
     }
 }

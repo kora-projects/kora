@@ -13,7 +13,7 @@ open class CacheableArgumentWrongOrderMapper {
         return value
     }
 
-    @CachePut(value = DummyCache21::class, parameters = ["arg2", "arg1"])
+    @CachePut(value = DummyCache21::class, args = ["arg2", "arg1"])
     open fun putValue(arg2: BigDecimal?, arg3: String?, arg1: String?): String {
         return value
     }

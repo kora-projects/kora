@@ -4,13 +4,16 @@ import io.koraframework.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryCon
 import io.koraframework.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor;
 import io.koraframework.cache.caffeine.CaffeineCacheConfig;
 import io.koraframework.cache.redis.*;
+import io.koraframework.cache.redis.RedisCacheClient;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_ConfigValueExtractor;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor;
 import org.jspecify.annotations.NullMarked;
 import org.mockito.Mockito;
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionStage;
 
 import static org.mockito.Mockito.when;
 
@@ -33,10 +36,10 @@ final class CacheRunner {
     public static RedisCacheConfig getRedisConfig() {
         var config = Mockito.mock(RedisCacheConfig.class);
         when(config.keyPrefix()).thenReturn("pref");
-        when(config.telemetry()).thenReturn(new $RedisCacheConfig_RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
-            new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
-            new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
-            new $RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
+        when(config.telemetry()).thenReturn(new $RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
+            new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
         ));
         return config;
     }
@@ -45,88 +48,80 @@ final class CacheRunner {
     public static RedisCacheClient lettuceClient(final Map<ByteBuffer, ByteBuffer> cache) {
         return new RedisCacheClient() {
             @Override
-            public CompletionStage<List<byte[]>> scan(byte[] prefix) {
+            public List<byte[]> scan(byte[] prefix) {
                 List<byte[]> keys = new ArrayList<>();
                 for (ByteBuffer buffer : cache.keySet()) {
                     if (Arrays.equals(Arrays.copyOf(buffer.array(), prefix.length), prefix)) {
                         keys.add(buffer.array());
                     }
                 }
-                return CompletableFuture.completedFuture(keys);
+                return keys;
             }
 
             @Override
-            public RedisCacheClientConfig config() {
-                return Mockito.mock(RedisCacheClientConfig.class);
-            }
-
-            @Override
-            public CompletionStage<byte[]> get(byte[] key) {
+            public byte[] get(byte[] key) {
                 var r = cache.get(ByteBuffer.wrap(key));
                 return (r == null)
-                    ? CompletableFuture.completedFuture(null)
-                    : CompletableFuture.completedFuture(r.array());
+                    ? null
+                    : r.array();
             }
 
             @Override
-            public CompletionStage<Map<byte[], byte[]>> mget(byte[][] keys) {
+            public Map<byte[], byte[]> mget(byte[][] keys) {
                 final Map<byte[], byte[]> result = new HashMap<>();
                 for (byte[] key : keys) {
                     Optional.ofNullable(cache.get(ByteBuffer.wrap(key))).ifPresent(r -> result.put(key, r.array()));
                 }
-                return CompletableFuture.completedFuture(result);
+                return result;
             }
 
             @Override
-            public CompletionStage<byte[]> getex(byte[] key, long expireAfterMillis) {
+            public byte[] getex(byte[] key, long expireAfterMillis) {
                 return get(key);
             }
 
             @Override
-            public CompletionStage<Map<byte[], byte[]>> getex(byte[][] keys, long expireAfterMillis) {
+            public Map<byte[], byte[]> getex(byte[][] keys, long expireAfterMillis) {
                 return mget(keys);
             }
 
             @Override
-            public CompletionStage<Boolean> set(byte[] key, byte[] value) {
+            public void set(byte[] key, byte[] value) {
                 cache.put(ByteBuffer.wrap(key), ByteBuffer.wrap(value));
-                return CompletableFuture.completedFuture(true);
             }
 
             @Override
-            public CompletionStage<Boolean> mset(Map<byte[], byte[]> keyAndValue) {
+            public void mset(Map<byte[], byte[]> keyAndValue) {
                 keyAndValue.forEach((k, v) -> cache.put(ByteBuffer.wrap(k), ByteBuffer.wrap(v)));
-                return CompletableFuture.completedFuture(true);
             }
 
             @Override
-            public CompletionStage<Boolean> psetex(Map<byte[], byte[]> keyAndValue, long expireAfterMillis) {
-                return mset(keyAndValue);
+            public void psetex(Map<byte[], byte[]> keyAndValue, long expireAfterMillis) {
+                mset(keyAndValue);
             }
 
             @Override
-            public CompletionStage<Boolean> psetex(byte[] key, byte[] value, long expireAfterMillis) {
-                return set(key, value);
+            public void psetex(byte[] key, byte[] value, long expireAfterMillis) {
+                set(key, value);
             }
 
             @Override
-            public CompletionStage<Long> del(byte[] key) {
-                return CompletableFuture.completedFuture(cache.remove(ByteBuffer.wrap(key)) == null ? 0L : 1L);
+            public long del(byte[] key) {
+                return cache.remove(ByteBuffer.wrap(key)) == null ? 0L : 1L;
             }
 
             @Override
-            public CompletionStage<Long> del(byte[][] keys) {
+            public long del(byte[][] keys) {
                 int counter = 0;
                 for (byte[] key : keys) {
-                    counter += del(key).toCompletableFuture().join();
+                    counter += del(key);
                 }
-                return CompletableFuture.completedFuture((long) counter);
+                return counter;
             }
 
             @Override
-            public CompletionStage<Boolean> flushAll() {
+            public void flushAll() {
                 cache.clear();
-                return CompletableFuture.completedFuture(true);
             }
         };
     }

@@ -9,6 +9,7 @@ import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.ksp.toTypeName
 
 interface KoraAspect {
+
     fun getSupportedAnnotationTypes(): Set<String>
 
     interface FieldFactory {

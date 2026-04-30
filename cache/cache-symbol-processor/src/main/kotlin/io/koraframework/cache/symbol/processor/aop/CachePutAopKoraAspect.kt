@@ -3,16 +3,16 @@ package io.koraframework.cache.symbol.processor.aop
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
-import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.cache.symbol.processor.CacheOperation
 import io.koraframework.cache.symbol.processor.CacheOperationUtils
+import io.koraframework.cache.symbol.processor.CacheOperationUtils.Companion.ANNOTATION_CACHE_PUT
+import io.koraframework.cache.symbol.processor.CacheOperationUtils.Companion.ANNOTATION_CACHE_PUTS
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
-import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
-import io.koraframework.ksp.common.FunctionUtils.isMono
+import io.koraframework.ksp.common.FunctionUtils.isPublisher
 import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
@@ -21,24 +21,19 @@ import java.util.concurrent.Future
 @KspExperimental
 class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAspect() {
 
-    private val ANNOTATION_CACHE_PUT = ClassName("io.koraframework.cache.annotation", "CachePut")
-    private val ANNOTATION_CACHE_PUTS = ClassName("io.koraframework.cache.annotation", "CachePuts")
-
     override fun getSupportedAnnotationTypes(): Set<String> {
         return setOf(ANNOTATION_CACHE_PUT.canonicalName, ANNOTATION_CACHE_PUTS.canonicalName)
     }
 
     override fun apply(ksFunction: KSFunctionDeclaration, superCall: String, aspectContext: KoraAspect.AspectContext): KoraAspect.ApplyResult {
         if (ksFunction.isFuture()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Future::class.java}", ksFunction)
+            throw ProcessingErrorException("@${ANNOTATION_CACHE_PUT.simpleName} can't be applied for types assignable from ${Future::class.java}", ksFunction)
         } else if (ksFunction.isCompletionStage()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
-        } else if (ksFunction.isMono()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.mono}", ksFunction)
-        } else if (ksFunction.isFlux()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
+            throw ProcessingErrorException("@${ANNOTATION_CACHE_PUT.simpleName} can't be applied for types assignable from ${CompletionStage::class.java}", ksFunction)
+        } else if (ksFunction.isPublisher()) {
+            throw ProcessingErrorException("@${ANNOTATION_CACHE_PUT.simpleName} can't be applied for types assignable from ${CommonClassNames.publisher}", ksFunction)
         } else if (ksFunction.isVoid()) {
-            throw ProcessingErrorException("@CachePut can't be applied for types assignable from ${Void::class}", ksFunction)
+            throw ProcessingErrorException("@${ANNOTATION_CACHE_PUT.simpleName} can't be applied for types assignable from ${Void::class.java}", ksFunction)
         }
 
         val operation = CacheOperationUtils.Companion.getCacheOperation(ksFunction, aspectContext)

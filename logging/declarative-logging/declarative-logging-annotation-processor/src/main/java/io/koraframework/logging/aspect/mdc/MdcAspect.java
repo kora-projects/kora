@@ -2,6 +2,7 @@ package io.koraframework.logging.aspect.mdc;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.aop.annotation.processor.KoraAspect;
@@ -16,6 +17,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 
 import static io.koraframework.annotation.processor.common.AnnotationUtils.*;
+import static io.koraframework.logging.aspect.LogAspectClassNames.log;
 import static io.koraframework.logging.aspect.mdc.MdcAspectClassNames.*;
 
 public class MdcAspect implements KoraAspect {
@@ -23,28 +25,31 @@ public class MdcAspect implements KoraAspect {
     private static final String MDC_CONTEXT_VAR_NAME = "__mdcContext";
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(mdcAnnotation.canonicalName(), mdcContainerAnnotation.canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(mdcAnnotation, mdcContainerAnnotation);
     }
 
     @Override
-    public ApplyResult apply(ExecutableElement executableElement, String superCall, AspectContext aspectContext) {
-        final List<AnnotationMirror> methodAnnotations = findAnnotations(executableElement, mdcAnnotation, mdcContainerAnnotation);
+    public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(mdcAnnotation.simpleName()) + CommonClassNames.publisher, method);
+        } else if(MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(mdcAnnotation) + method.getReturnType().toString(), method);
+        }
 
-        final List<? extends VariableElement> parametersWithAnnotation = executableElement.getParameters()
+        final List<AnnotationMirror> methodAnnotations = findAnnotations(method, mdcAnnotation, mdcContainerAnnotation);
+
+        final List<? extends VariableElement> parametersWithAnnotation = method.getParameters()
             .stream()
             .filter(param -> isAnnotationPresent(param, mdcAnnotation))
             .toList();
 
         if (methodAnnotations.isEmpty() && parametersWithAnnotation.isEmpty()) {
             final CodeBlock code = CodeBlock.builder()
-                .add(MethodUtils.isVoid(executableElement) ? "" : "return ")
-                .addStatement(KoraAspect.callSuper(executableElement, superCall))
+                .add(MethodUtils.isVoid(method) ? "" : "return ")
+                .addStatement(KoraAspect.callSuper(method, superCall))
                 .build();
             return new ApplyResult.MethodBody(code);
-        }
-        if (MethodUtils.isFuture(executableElement)) {
-            throw new ProcessingErrorException("@Mdc can't be applied for types assignable from " + ClassName.get(Future.class), executableElement);
         }
 
         final CodeBlock.Builder currentContextBuilder = CodeBlock.builder();
@@ -60,8 +65,8 @@ public class MdcAspect implements KoraAspect {
             .add(currentContextBuilder.build())
             .beginControlFlow("try")
             .add(fillMdcBuilder.build())
-            .add(MethodUtils.isVoid(executableElement) ? "" : "return ")
-            .addStatement(KoraAspect.callSuper(executableElement, superCall))
+            .add(MethodUtils.isVoid(method) ? "" : "return ")
+            .addStatement(KoraAspect.callSuper(method, superCall))
             .nextControlFlow("finally")
             .add(clearMdcBuilder.build())
             .endControlFlow()

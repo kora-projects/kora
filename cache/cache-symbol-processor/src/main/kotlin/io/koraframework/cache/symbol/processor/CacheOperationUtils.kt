@@ -45,18 +45,21 @@ class CacheOperationUtils {
         private val KEY_MAPPER_8 = ClassName("io.koraframework.cache", "CacheKeyMapper", "CacheKeyMapper8")
         private val KEY_MAPPER_9 = ClassName("io.koraframework.cache", "CacheKeyMapper", "CacheKeyMapper9")
 
-        private val REDIS_CACHE = ClassName("io.koraframework.cache.redis", "RedisCache")
-        private val ANNOTATION_CACHEABLE = ClassName("io.koraframework.cache.annotation", "Cacheable")
-        private val ANNOTATION_CACHEABLES = ClassName("io.koraframework.cache.annotation", "Cacheables")
-        private val ANNOTATION_CACHE_PUT = ClassName("io.koraframework.cache.annotation", "CachePut")
-        private val ANNOTATION_CACHE_PUTS = ClassName("io.koraframework.cache.annotation", "CachePuts")
-        private val ANNOTATION_CACHE_INVALIDATE = ClassName("io.koraframework.cache.annotation", "CacheInvalidate")
-        private val ANNOTATION_CACHE_INVALIDATES = ClassName("io.koraframework.cache.annotation", "CacheInvalidates")
+        val REDIS_CACHE = ClassName("io.koraframework.cache.redis", "RedisCache")
+        val ANNOTATION_CACHEABLE = ClassName("io.koraframework.cache.annotation", "Cacheable")
+        val ANNOTATION_CACHEABLES = ClassName("io.koraframework.cache.annotation", "Cacheables")
+        val ANNOTATION_CACHE_PUT = ClassName("io.koraframework.cache.annotation", "CachePut")
+        val ANNOTATION_CACHE_PUTS = ClassName("io.koraframework.cache.annotation", "CachePuts")
+        val ANNOTATION_CACHE_INVALIDATE = ClassName("io.koraframework.cache.annotation", "CacheInvalidate")
+        val ANNOTATION_CACHE_INVALIDATES = ClassName("io.koraframework.cache.annotation", "CacheInvalidates")
+        val ANNOTATION_CACHE_INVALIDATE_ALL = ClassName("io.koraframework.cache.annotation", "CacheInvalidateAll")
+        val ANNOTATION_CACHE_INVALIDATE_ALLS = ClassName("io.koraframework.cache.annotation", "CacheInvalidateAlls")
 
         private val ANNOTATIONS = setOf(
             ANNOTATION_CACHEABLE.canonicalName, ANNOTATION_CACHEABLES.canonicalName,
             ANNOTATION_CACHE_PUT.canonicalName, ANNOTATION_CACHE_PUTS.canonicalName,
-            ANNOTATION_CACHE_INVALIDATE.canonicalName, ANNOTATION_CACHE_INVALIDATES.canonicalName
+            ANNOTATION_CACHE_INVALIDATE.canonicalName, ANNOTATION_CACHE_INVALIDATES.canonicalName,
+            ANNOTATION_CACHE_INVALIDATE_ALL.canonicalName, ANNOTATION_CACHE_INVALIDATE_ALLS.canonicalName
         )
 
         fun getCacheOperation(
@@ -70,11 +73,13 @@ class CacheOperationUtils {
             val cacheables = getCacheableAnnotations(method)
             val puts = getCachePutAnnotations(method)
             val invalidates = getCacheInvalidateAnnotations(method)
+            val invalidateAlls = getCacheInvalidateAllAnnotations(method)
 
             val annotations = mutableSetOf<String>()
             cacheables.asSequence().forEach { a -> annotations.add(a.javaClass.canonicalName) }
             puts.asSequence().forEach { a -> annotations.add(a.javaClass.canonicalName) }
             invalidates.asSequence().forEach { a -> annotations.add(a.javaClass.canonicalName) }
+            invalidateAlls.asSequence().forEach { a -> annotations.add(a.javaClass.canonicalName) }
 
             if (annotations.size > 1) {
                 throw ProcessingErrorException(
@@ -91,27 +96,11 @@ class CacheOperationUtils {
             } else if (puts.isNotEmpty()) {
                 return getCacheOperation(method, CacheOperation.Type.PUT, puts, aspectContext)
             } else if (invalidates.isNotEmpty()) {
-                val invalidateAlls = invalidates.asSequence()
-                    .flatMap { a -> a.arguments.asSequence() }
-                    .filter { a -> a.name!!.getShortName() == "invalidateAll" }
-                    .map { a -> a.value as Boolean }
-                    .toList()
-
-                val anyInvalidateAll = invalidateAlls.any { v -> v }
-                val allInvalidateAll = invalidateAlls.all { v -> v }
-
-                if (anyInvalidateAll && !allInvalidateAll) {
-                    throw ProcessingErrorException(
-                        ProcessingError(
-                            "${ANNOTATION_CACHE_INVALIDATE.canonicalName} not all annotations are marked 'invalidateAll' out of all for " + origin,
-                            method,
-                            Diagnostic.Kind.ERROR,
-                        )
-                    )
-                }
-
-                val type = if (allInvalidateAll) CacheOperation.Type.EVICT_ALL else CacheOperation.Type.EVICT
+                val type = CacheOperation.Type.EVICT
                 return getCacheOperation(method, type, invalidates, aspectContext)
+            } else if (invalidateAlls.isNotEmpty()) {
+                val type = CacheOperation.Type.EVICT_ALL
+                return getCacheOperation(method, type, invalidateAlls, aspectContext)
             }
 
             throw IllegalStateException("None of $ANNOTATIONS cache annotations found")
@@ -127,22 +116,12 @@ class CacheOperationUtils {
             val methodName = method.qualifiedName.toString()
             val origin = CacheOperation.Origin(className, methodName)
 
-            if (type == CacheOperation.Type.GET || type == CacheOperation.Type.PUT) {
-                if (method.isVoid()) {
-                    throw IllegalArgumentException("@${annotations[0].shortName.getShortName()} annotation can't return Void type, but was for $origin")
-                }
-            }
-
-            if (method.isMono() || method.isFlux() || method.isPublisher() || method.isFuture() || method.isCompletionStage() || method.isFlow()) {
-                throw IllegalArgumentException("@${annotations[0].shortName.getShortName()} annotation doesn't support return type ${method.returnType} in $origin")
-            }
-
             val cacheExecs = mutableListOf<CacheOperation.CacheExecution>()
             val allParameters = mutableListOf<List<String>>()
             for (i in annotations.indices) {
                 val annotation = annotations[i]
 
-                val parameters: List<String> = annotation.arguments.filter { a -> a.name!!.asString() == "parameters" }
+                val parameters: List<String> = annotation.arguments.filter { a -> a.name!!.asString() == "args" }
                     .map { it.value as List<*> }
                     .firstOrNull { it.isNotEmpty() }
                     ?.map { it as String }
@@ -255,6 +234,15 @@ class CacheOperationUtils {
             }
 
             return method.findAnnotations(ANNOTATION_CACHE_INVALIDATE).toList()
+        }
+
+        private fun getCacheInvalidateAllAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {
+            val annotationAggregate = method.findRepeatableAnnotation(ANNOTATION_CACHE_INVALIDATE_ALL, ANNOTATION_CACHE_INVALIDATE_ALLS)
+            if (annotationAggregate.isNotEmpty()) {
+                return annotationAggregate
+            }
+
+            return method.findAnnotations(ANNOTATION_CACHE_INVALIDATE_ALL).toList()
         }
 
         private fun getSuitableMapper(mappers: MappersData): MappingData? {

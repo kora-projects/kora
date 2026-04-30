@@ -26,7 +26,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -67,8 +67,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -109,7 +109,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value;
                     }
                     
-                    @CachePut(value = DummyCache.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache.class, args = {"arg1"})
                     public String putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return value;
                     }
@@ -150,8 +150,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value;
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public String putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return value;
                     }
@@ -192,7 +192,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -233,8 +233,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -279,8 +279,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -325,8 +325,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value;
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public String putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return value;
                     }

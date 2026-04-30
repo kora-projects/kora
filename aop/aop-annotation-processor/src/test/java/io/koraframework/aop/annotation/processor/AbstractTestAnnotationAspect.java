@@ -12,11 +12,12 @@ import java.util.Objects;
 import java.util.Set;
 
 public abstract class AbstractTestAnnotationAspect implements KoraAspect {
+
     protected abstract ClassName testAnnotation();
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(testAnnotation().canonicalName());
+    public Set<ClassName> getSupportedAnnotationClassNames() {
+        return Set.of(testAnnotation());
     }
 
     @Override

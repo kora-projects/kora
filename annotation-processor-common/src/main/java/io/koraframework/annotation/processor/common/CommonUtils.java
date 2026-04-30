@@ -533,9 +533,21 @@ public class CommonUtils {
         }
 
         final String name = dt.asElement().toString();
+        return name.equals(Future.class.getCanonicalName());
+    }
+
+    public static boolean isCompletableStage(TypeMirror type) {
+        if (type.getKind() != TypeKind.DECLARED) {
+            return false;
+        }
+
+        if (!(type instanceof DeclaredType dt)) {
+            return false;
+        }
+
+        final String name = dt.asElement().toString();
         return name.equals(CompletableFuture.class.getCanonicalName())
-            || name.equals(CompletionStage.class.getCanonicalName())
-            || name.equals(Future.class.getCanonicalName());
+               || name.equals(CompletionStage.class.getCanonicalName());
     }
 
     public static CodeBlock observe(String observationName, String observationMethod, Consumer<CodeBlock.Builder> body) {

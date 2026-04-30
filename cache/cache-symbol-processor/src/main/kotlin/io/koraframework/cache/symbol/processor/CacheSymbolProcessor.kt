@@ -53,29 +53,29 @@ class CacheSymbolProcessor(
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val symbols = resolver.getSymbolsWithAnnotation(ANNOTATION_CACHE.canonicalName).toList()
         val symbolsToProcess = symbols.filter { it.validateAll() }.filterIsInstance<KSClassDeclaration>()
-        for (cacheContract in symbolsToProcess) {
-            if (cacheContract.classKind != ClassKind.INTERFACE) {
+        for (cacheImpl in symbolsToProcess) {
+            if (cacheImpl.classKind != ClassKind.INTERFACE) {
                 environment.logger.error(
-                    "@Cache annotation is intended to be used on interfaces, but was: ${cacheContract.classKind}",
-                    cacheContract
+                    "@Cache annotation is intended to be used on interfaces, but was: ${cacheImpl.classKind}",
+                    cacheImpl
                 )
                 continue
             }
 
-            val cacheContractType = getCacheSuperType(cacheContract) ?: continue
+            val cacheContractType = getCacheSuperType(cacheImpl) ?: continue
 
-            val packageName = cacheContract.packageName.asString()
-            val cacheImplName = cacheContract.toClassName()
+            val packageName = cacheImpl.packageName.asString()
+            val cacheImplName = cacheImpl.toClassName()
 
             val cacheImplBase = getCacheImplBase(cacheContractType)
-            val implSpec = cacheContract.extendsKeepAop(getCacheImpl(cacheContract).simpleName, resolver)
+            val implSpec = cacheImpl.extendsKeepAop(getCacheImpl(cacheImpl).simpleName, resolver)
                 .generated(CacheSymbolProcessor::class)
                 .primaryConstructor(getCacheConstructor(cacheContractType))
-                .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheContract, cacheContractType))
+                .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheImpl, cacheContractType))
                 .superclass(cacheImplBase)
                 .build()
 
-            val fileImplSpec = FileSpec.builder(cacheContract.packageName.asString(), implSpec.name.toString())
+            val fileImplSpec = FileSpec.builder(cacheImpl.packageName.asString(), implSpec.name.toString())
                 .addType(implSpec)
                 .build()
             fileImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
@@ -83,13 +83,13 @@ class CacheSymbolProcessor(
             val moduleSpecBuilder =
                 TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
                     .generated(CacheSymbolProcessor::class)
-                    .addOriginatingKSFile(cacheContract)
+                    .addOriginatingKSFile(cacheImpl)
                     .addAnnotation(CommonClassNames.module)
-                    .addFunction(getCacheMethodImpl(cacheContract, cacheContractType))
-                    .addFunction(getCacheMethodConfig(cacheContract, cacheContractType, resolver))
+                    .addFunction(getCacheMethodImpl(cacheImpl, cacheContractType))
+                    .addFunction(getCacheMethodConfig(cacheImpl, cacheContractType, resolver))
 
             if (cacheContractType.rawType == REDIS_CACHE) {
-                val superTypes = cacheContract.superTypes.toList()
+                val superTypes = cacheImpl.superTypes.toList()
                 val superType = superTypes[superTypes.size - 1]
 
                 val keyType = superType.resolve().arguments[0]
@@ -101,7 +101,7 @@ class CacheSymbolProcessor(
 
             val moduleSpec = moduleSpecBuilder.build()
 
-            val fileModuleSpec = FileSpec.builder(cacheContract.packageName.asString(), moduleSpec.name.toString())
+            val fileModuleSpec = FileSpec.builder(cacheImpl.packageName.asString(), moduleSpec.name.toString())
                 .addType(moduleSpec)
                 .build()
             fileModuleSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
@@ -341,15 +341,15 @@ class CacheSymbolProcessor(
     }
 
     private fun getCacheSuperConstructorCall(
-        cacheContract: KSClassDeclaration,
+        cacheImpl: KSClassDeclaration,
         cacheType: ParameterizedTypeName
     ): CodeBlock {
-        val configPath = cacheContract.findAnnotation(ANNOTATION_CACHE)
+        val configPath = cacheImpl.findAnnotation(ANNOTATION_CACHE)
             ?.findValueNoDefault<String>("value")!!
 
         return when (cacheType.rawType) {
-            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory", configPath)
-            REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetryFactory, keyMapper, valueMapper", configPath)
+            CAFFEINE_CACHE -> CodeBlock.of("%S, %S, config, factory", configPath, cacheImpl.qualifiedName!!.asString())
+            REDIS_CACHE -> CodeBlock.of("%S, %S, config, redisClient, telemetryFactory, keyMapper, valueMapper", configPath, cacheImpl.qualifiedName!!.asString())
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
     }
