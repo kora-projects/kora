@@ -6,5 +6,4 @@ module kora.cache.common {
 
     exports io.koraframework.cache;
     exports io.koraframework.cache.annotation;
-    exports io.koraframework.cache.telemetry;
 }

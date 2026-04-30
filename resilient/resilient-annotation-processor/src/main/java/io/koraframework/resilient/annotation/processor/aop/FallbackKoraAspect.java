@@ -2,6 +2,7 @@ package io.koraframework.resilient.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.aop.annotation.processor.KoraAspect;
@@ -28,11 +29,6 @@ public class FallbackKoraAspect implements KoraAspect {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_TYPE.canonicalName());
-    }
-
-    @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(ANNOTATION_TYPE);
     }
@@ -40,8 +36,11 @@ public class FallbackKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("Publisher methods are not supported", method);
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+        } else if(MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
         }
+
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
         final FallbackMeta fallback = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("method"))
@@ -61,8 +60,8 @@ public class FallbackKoraAspect implements KoraAspect {
             fallbackType, CodeBlock.of("$L.get($S)", fieldManager, name));
 
         final CodeBlock body;
-        if (MethodUtils.isFuture(method)) {
-            body = buildBodyFuture(method, fallback, superCall, fieldFallback);
+        if (MethodUtils.isCompletableStage(method)) {
+            body = buildBodyCompletableStage(method, fallback, superCall, fieldFallback);
         } else {
             body = buildBodySync(method, fallback, superCall, fieldFallback);
         }
@@ -101,7 +100,7 @@ public class FallbackKoraAspect implements KoraAspect {
         }
     }
 
-    private CodeBlock buildBodyFuture(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
+    private CodeBlock buildBodyCompletableStage(ExecutableElement method, FallbackMeta fallbackCall, String superCall, String fieldFallback) {
         final String fallbackMethod = fallbackCall.call();
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 

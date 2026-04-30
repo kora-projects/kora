@@ -37,11 +37,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(VALIDATE_TYPE.canonicalName());
-    }
-
-    @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(VALIDATE_TYPE);
     }
@@ -49,10 +44,13 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("Publisher methods are not supported", method);
+            throw new ProcessingErrorException("@Mdc can't be applied for type " + CommonClassNames.publisher, method);
+        } else if(MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@Mdc can't be applied for type " + method.getReturnType().toString(), method);
         }
-        final boolean isFuture = MethodUtils.isFuture(method);
-        final TypeMirror returnType = isFuture
+
+        final boolean isCompletableStage = MethodUtils.isCompletableStage(method);
+        final TypeMirror returnType = isCompletableStage
             ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
             : method.getReturnType();
 
@@ -67,7 +65,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 throw new ProcessingErrorException("@Validate for Return Value can't be applied for types assignable from " + Void.class, method);
             }
 
-            if (isFuture) {
+            if (isCompletableStage) {
                 if (MethodUtils.getGenericType(method.getReturnType()).filter(CommonUtils::isVoid).isPresent()) {
                     throw new ProcessingErrorException("@Validate for Return Value can't be applied for types assignable from " + Void.class, method);
                 }
@@ -75,7 +73,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         final CodeBlock body;
-        if (isFuture) {
+        if (isCompletableStage) {
             body = buildBodyFuture(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
         } else {
             body = buildBodySync(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
@@ -89,9 +87,9 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             return Optional.empty();
         }
 
-        final boolean isFuture = MethodUtils.isFuture(method);
-
+        final boolean isCompletableStage = MethodUtils.isCompletableStage(method);
         final boolean isValid = method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()));
+
         final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
         final List<Validated> validates = (isValid)
             ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(returnType), returnType)))
@@ -99,7 +97,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         var isPrimitive = returnType instanceof PrimitiveType;
         final boolean isNullable;
-        if (isFuture) {
+        if (isCompletableStage) {
             isNullable = MethodUtils.getGenericType(method.getReturnType())
                 .map(CommonUtils::isNullable)
                 .orElse(false)
@@ -109,7 +107,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         final boolean isNotNull;
-        if (isFuture) {
+        if (isCompletableStage) {
             isNotNull = MethodUtils.getGenericType(method.getReturnType())
                 .map(ValidUtils::isNotNull)
                 .orElse(false) || isNotNull(method);
@@ -145,7 +143,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 builder.beginControlFlow("if (_result == null)");
             }
             builder.add(resultCtxBlock);
-            if (MethodUtils.isFuture(method)) {
+            if (MethodUtils.isCompletableStage(method)) {
                 builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
             } else {
                 builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
@@ -193,7 +191,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.addStatement("var $N = $N.validate($L, _returnCtx)", constraintResultField, constraintField, resultAccessor);
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
-                if (MethodUtils.isFuture(method)) {
+                if (MethodUtils.isCompletableStage(method)) {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
                 } else {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
@@ -217,7 +215,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.addStatement("var $N = $N.validate($L, _returnCtx)", validatedResultField, validatorField, resultAccessor);
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField);
-                if (MethodUtils.isFuture(method)) {
+                if (MethodUtils.isCompletableStage(method)) {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatedResultField);
                 } else {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatedResultField);
@@ -236,7 +234,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         if (haveValidators && !isFailFast) {
             builder.add("\n");
             builder.beginControlFlow("if (!_returnViolations.isEmpty())");
-            if (MethodUtils.isFuture(method)) {
+            if (MethodUtils.isCompletableStage(method)) {
                 builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
             } else {
                 builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
@@ -305,7 +303,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 if ((isJsonNullable && isNotNull) || isNotNullable) {
                     builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
                     if (isFailFast) {
-                        if (MethodUtils.isFuture(method)) {
+                        if (MethodUtils.isCompletableStage(method)) {
                             builder.addStatement("return $T.failedFuture(new $T($L.violates(\"Parameter '$L' must be non null, but was null\")))", CompletableFuture.class, ValidTypes.violationException, argumentContext, paramName);
                         } else {
                             builder.addStatement("throw new $T($L.violates(\"Parameter '$L' must be non null, but was null\"))", ValidTypes.violationException, argumentContext, paramName);
@@ -352,7 +350,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         constraintResultField, constraintField, paramAccessor, argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
-                        if (MethodUtils.isFuture(method)) {
+                        if (MethodUtils.isCompletableStage(method)) {
                             builder.addStatement("return $T.failedFuture(new $T($N))", CompletableFuture.class, EXCEPTION_TYPE, constraintResultField);
                         } else {
                             builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
@@ -381,7 +379,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         validatorResultField, validatorField, paramAccessor, argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", validatorResultField);
-                        if (MethodUtils.isFuture(method)) {
+                        if (MethodUtils.isCompletableStage(method)) {
                             builder.addStatement("return $T.failedFuture(new $T($N))", CompletableFuture.class, EXCEPTION_TYPE, validatorResultField);
                         } else {
                             builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatorResultField);
@@ -411,7 +409,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         if (!isFailFast) {
             builder.add("\n");
             builder.beginControlFlow("if (!_argViolations.isEmpty())");
-            if (MethodUtils.isFuture(method)) {
+            if (MethodUtils.isCompletableStage(method)) {
                 builder.addStatement("return $T.failedFuture(new $T(_argViolations))", CompletableFuture.class, EXCEPTION_TYPE);
             } else {
                 builder.addStatement("throw new $T(_argViolations)", EXCEPTION_TYPE);

@@ -10,7 +10,11 @@ public final class MethodUtils {
     private MethodUtils() {}
 
     public static boolean isFuture(ExecutableElement method) {
-        return CommonUtils.isFuture(method.getReturnType());
+        return CommonUtils.doesImplement(method.getReturnType(), CommonClassNames.future);
+    }
+
+    public static boolean isCompletableStage(ExecutableElement method) {
+        return CommonUtils.doesImplement(method.getReturnType(), CommonClassNames.completionStage);
     }
 
     public static boolean isPublisher(ExecutableElement method) {

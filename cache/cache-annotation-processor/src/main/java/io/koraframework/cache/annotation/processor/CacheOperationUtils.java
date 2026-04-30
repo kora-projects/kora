@@ -28,17 +28,20 @@ public final class CacheOperationUtils {
     private static final ClassName KEY_MAPPER_8 = ClassName.get("io.koraframework.cache", "CacheKeyMapper", "CacheKeyMapper8");
     private static final ClassName KEY_MAPPER_9 = ClassName.get("io.koraframework.cache", "CacheKeyMapper", "CacheKeyMapper9");
 
-    private static final ClassName ANNOTATION_CACHEABLE = ClassName.get("io.koraframework.cache.annotation", "Cacheable");
-    private static final ClassName ANNOTATION_CACHEABLES = ClassName.get("io.koraframework.cache.annotation", "Cacheables");
-    private static final ClassName ANNOTATION_CACHE_PUT = ClassName.get("io.koraframework.cache.annotation", "CachePut");
-    private static final ClassName ANNOTATION_CACHE_PUTS = ClassName.get("io.koraframework.cache.annotation", "CachePuts");
-    private static final ClassName ANNOTATION_CACHE_INVALIDATE = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidate");
-    private static final ClassName ANNOTATION_CACHE_INVALIDATES = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidates");
+    public static final ClassName ANNOTATION_CACHEABLE = ClassName.get("io.koraframework.cache.annotation", "Cacheable");
+    public static final ClassName ANNOTATION_CACHEABLES = ClassName.get("io.koraframework.cache.annotation", "Cacheables");
+    public static final ClassName ANNOTATION_CACHE_PUT = ClassName.get("io.koraframework.cache.annotation", "CachePut");
+    public static final ClassName ANNOTATION_CACHE_PUTS = ClassName.get("io.koraframework.cache.annotation", "CachePuts");
+    public static final ClassName ANNOTATION_CACHE_INVALIDATE = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidate");
+    public static final ClassName ANNOTATION_CACHE_INVALIDATES = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidates");
+    public static final ClassName ANNOTATION_CACHE_INVALIDATE_ALL = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidateAll");
+    public static final ClassName ANNOTATION_CACHE_INVALIDATE_ALLS = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidateAlls");
 
     private static final Set<String> CACHE_ANNOTATIONS = Set.of(
         ANNOTATION_CACHEABLE.canonicalName(), ANNOTATION_CACHEABLES.canonicalName(),
         ANNOTATION_CACHE_PUT.canonicalName(), ANNOTATION_CACHE_PUTS.canonicalName(),
-        ANNOTATION_CACHE_INVALIDATE.canonicalName(), ANNOTATION_CACHE_INVALIDATES.canonicalName()
+        ANNOTATION_CACHE_INVALIDATE.canonicalName(), ANNOTATION_CACHE_INVALIDATES.canonicalName(),
+        ANNOTATION_CACHE_INVALIDATE_ALL.canonicalName(), ANNOTATION_CACHE_INVALIDATE_ALLS.canonicalName()
     );
 
     private CacheOperationUtils() {}
@@ -47,42 +50,37 @@ public final class CacheOperationUtils {
         final List<AnnotationMirror> cacheables = getRepeatedAnnotations(method, ANNOTATION_CACHEABLE.canonicalName(), ANNOTATION_CACHEABLES.canonicalName());
         final List<AnnotationMirror> puts = getRepeatedAnnotations(method, ANNOTATION_CACHE_PUT.canonicalName(), ANNOTATION_CACHE_PUTS.canonicalName());
         final List<AnnotationMirror> invalidates = getRepeatedAnnotations(method, ANNOTATION_CACHE_INVALIDATE.canonicalName(), ANNOTATION_CACHE_INVALIDATES.canonicalName());
+        final List<AnnotationMirror> invalidateAlls = getRepeatedAnnotations(method, ANNOTATION_CACHE_INVALIDATE_ALL.canonicalName(), ANNOTATION_CACHE_INVALIDATE_ALLS.canonicalName());
 
         final String className = method.getEnclosingElement().getSimpleName().toString();
         final String methodName = method.getSimpleName().toString();
         final CacheOperation.Origin origin = new CacheOperation.Origin(className, methodName);
 
         if (!cacheables.isEmpty()) {
-            if (!puts.isEmpty() || !invalidates.isEmpty()) {
+            if (!puts.isEmpty() || !invalidates.isEmpty() || !invalidateAlls.isEmpty()) {
                 throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
                     "Method must have Cache annotations with same operation type, but got multiple different operation types for " + origin, method));
             }
 
             return getOperation(method, cacheables, CacheOperation.Type.GET, env, aspectContext);
         } else if (!puts.isEmpty()) {
-            if (!invalidates.isEmpty()) {
+            if (!invalidates.isEmpty() || !invalidateAlls.isEmpty()) {
                 throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
                     "Method must have Cache annotations with same operation type, but got multiple different operation types for " + origin, method));
             }
 
             return getOperation(method, puts, CacheOperation.Type.PUT, env, aspectContext);
         } else if (!invalidates.isEmpty()) {
-            var invalidateAlls = invalidates.stream()
-                .flatMap(a -> a.getElementValues().entrySet().stream())
-                .filter(e -> e.getKey().getSimpleName().contentEquals("invalidateAll"))
-                .map(e -> ((boolean) e.getValue().getValue()))
-                .toList();
-
-            final boolean anyInvalidateAll = !invalidateAlls.isEmpty() && invalidateAlls.stream().anyMatch(v -> v);
-            final boolean allInvalidateAll = !invalidateAlls.isEmpty() && invalidateAlls.stream().allMatch(v -> v);
-
-            if (anyInvalidateAll && !allInvalidateAll) {
+            if (!invalidateAlls.isEmpty()) {
                 throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
-                    ANNOTATION_CACHE_INVALIDATE.canonicalName() + " not all annotations are marked 'invalidateAll' out of all for " + origin, method));
+                    ANNOTATION_CACHE_INVALIDATE.canonicalName() + " not all annotations are marked 'invalidate' out of all for " + origin, method));
             }
 
-            final CacheOperation.Type type = (allInvalidateAll) ? CacheOperation.Type.EVICT_ALL : CacheOperation.Type.EVICT;
+            final CacheOperation.Type type = CacheOperation.Type.EVICT;
             return getOperation(method, invalidates, type, env, aspectContext);
+        } else if (!invalidateAlls.isEmpty()) {
+            final CacheOperation.Type type = CacheOperation.Type.EVICT_ALL;
+            return getOperation(method, invalidateAlls, type, env, aspectContext);
         }
 
         throw new ProcessingErrorException(new ProcessingError(Diagnostic.Kind.ERROR,
@@ -102,7 +100,7 @@ public final class CacheOperationUtils {
         final List<CacheOperation.CacheExecution> cacheExecutions = new ArrayList<>();
         for (var annotation : cacheAnnotations) {
             var parameters = annotation.getElementValues().entrySet().stream()
-                .filter(e -> e.getKey().getSimpleName().contentEquals("parameters"))
+                .filter(e -> e.getKey().getSimpleName().contentEquals("args"))
                 .map(e -> ((List<?>) (e.getValue()).getValue()).stream()
                     .filter(a -> a instanceof AnnotationValue)
                     .map(a -> ((AnnotationValue) a).getValue().toString())

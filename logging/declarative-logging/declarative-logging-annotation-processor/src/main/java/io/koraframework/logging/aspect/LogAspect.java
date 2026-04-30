@@ -36,18 +36,19 @@ public class LogAspect implements KoraAspect {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(log.canonicalName(), logIn.canonicalName(), logOut.canonicalName());
-    }
-
-    @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(log, logIn, logOut);
     }
 
     @Override
-    public ApplyResult apply(ExecutableElement executableElement, String superCall, AspectContext aspectContext) {
-        var loggerName = executableElement.getEnclosingElement() + "." + executableElement.getSimpleName();
+    public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(log.simpleName()) + CommonClassNames.publisher, method);
+        } else if(MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(log) + method.getReturnType().toString(), method);
+        }
+
+        var loggerName = method.getEnclosingElement() + "." + method.getSimpleName();
         var loggerFactoryFieldName = aspectContext.fieldFactory().constructorParam(
             loggerFactory,
             List.of()
@@ -57,13 +58,10 @@ public class LogAspect implements KoraAspect {
             CodeBlock.builder().add("$N.getLogger($S)", loggerFactoryFieldName, loggerName).build()
         );
 
-        if (MethodUtils.isPublisher(executableElement)) {
-            throw new ProcessingErrorException("Publisher methods are not supported", executableElement);
-        }
-        if (MethodUtils.isFuture(executableElement)) {
-            return this.futureBody(aspectContext, executableElement, superCall, loggerFieldName);
+        if (MethodUtils.isCompletableStage(method)) {
+            return this.futureBody(aspectContext, method, superCall, loggerFieldName);
         } else {
-            return this.blockingBody(aspectContext, executableElement, superCall, loggerFieldName);
+            return this.blockingBody(aspectContext, method, superCall, loggerFieldName);
         }
     }
 

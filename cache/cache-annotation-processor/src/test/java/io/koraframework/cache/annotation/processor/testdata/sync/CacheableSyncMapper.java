@@ -31,7 +31,7 @@ public class CacheableSyncMapper {
     }
 
     @Mapping(CacheMapper.class)
-    @CachePut(value = DummyCache11.class, parameters = {"arg1", "arg2"})
+    @CachePut(value = DummyCache11.class, args = {"arg1", "arg2"})
     public String putValue(BigDecimal arg2, String arg3, String arg1) {
         return value;
     }

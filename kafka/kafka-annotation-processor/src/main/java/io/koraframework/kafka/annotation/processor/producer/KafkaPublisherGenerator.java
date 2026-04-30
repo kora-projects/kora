@@ -270,7 +270,7 @@ final class KafkaPublisherGenerator {
                 b.addStatement("var _record = new $T<>(_topic, _partition, null, _key, _value, _headers)", producerRecord);
             }
             b.addStatement("_observation.observeRecord(_record)");
-            if (CommonUtils.isFuture(publishMethod.getReturnType())) {
+            if (CommonUtils.isCompletableStage(publishMethod.getReturnType())) {
                 b.addStatement("var _future = new $T<$T>()", CompletableFuture.class, KafkaClassNames.recordMetadata);
                 b.add("this.delegate.send(_record, (_meta, _ex) -> {$>\n");
                 b.addStatement("_observation.onCompletion(_meta, _ex)");

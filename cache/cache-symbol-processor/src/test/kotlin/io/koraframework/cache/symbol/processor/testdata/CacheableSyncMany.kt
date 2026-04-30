@@ -1,6 +1,7 @@
 package io.koraframework.cache.symbol.processor.testdata
 
 import io.koraframework.cache.annotation.CacheInvalidate
+import io.koraframework.cache.annotation.CacheInvalidateAll
 import io.koraframework.cache.annotation.CachePut
 import io.koraframework.cache.annotation.Cacheable
 import io.koraframework.cache.annotation.Cacheables
@@ -19,19 +20,19 @@ open class CacheableSyncMany {
         return value
     }
 
-    @CachePut(value = DummyCache21::class, parameters = ["arg1", "arg2"])
-    @CachePut(value = DummyCache22::class, parameters = ["arg1", "arg2"])
+    @CachePut(value = DummyCache21::class, args = ["arg1", "arg2"])
+    @CachePut(value = DummyCache22::class, args = ["arg1", "arg2"])
     open fun putValue(arg2: BigDecimal?, arg3: String?, arg1: String?): String {
         return value
     }
 
-    @CacheInvalidate(value = DummyCache21::class)
-    @CacheInvalidate(value = DummyCache22::class)
+    @CacheInvalidate(DummyCache21::class)
+    @CacheInvalidate(DummyCache22::class)
     open fun evictValue(arg1: String?, arg2: BigDecimal?) {
     }
 
-    @CacheInvalidate(value = DummyCache21::class, invalidateAll = true)
-    @CacheInvalidate(value = DummyCache22::class, invalidateAll = true)
+    @CacheInvalidateAll(DummyCache21::class)
+    @CacheInvalidateAll(DummyCache22::class)
     open fun evictAll() {
     }
 }

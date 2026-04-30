@@ -8,7 +8,6 @@ public interface CaffeineCacheModule {
 
     @DefaultComponent
     default CaffeineCacheFactory caffeineCacheFactory(@Nullable MeterRegistry meterRegistry) {
-        return new DefaultCaffeineCacheFactory(meterRegistry);
+        return new CaffeineFactory(meterRegistry);
     }
-
 }
