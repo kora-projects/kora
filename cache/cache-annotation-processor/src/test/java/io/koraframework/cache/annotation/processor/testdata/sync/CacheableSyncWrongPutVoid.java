@@ -15,7 +15,7 @@ public class CacheableSyncWrongPutVoid {
         return value;
     }
 
-    @CachePut(value = DummyCache21.class, parameters = {"arg1", "arg2"})
+    @CachePut(value = DummyCache21.class, args = {"arg1", "arg2"})
     public void putValue(String arg1, BigDecimal arg2) {
 
     }

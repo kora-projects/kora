@@ -58,8 +58,8 @@ public class LogAspect implements KoraAspect {
             CodeBlock.builder().add("$N.getLogger($S)", loggerFactoryFieldName, loggerName).build()
         );
 
-        if (MethodUtils.isCompletionStage(method)) {
-            return this.completionStageBody(aspectContext, method, superCall, loggerFieldName);
+        if (MethodUtils.isCompletableStage(method)) {
+            return this.futureBody(aspectContext, method, superCall, loggerFieldName);
         } else {
             return this.blockingBody(aspectContext, method, superCall, loggerFieldName);
         }
@@ -150,7 +150,7 @@ public class LogAspect implements KoraAspect {
         return new ApplyResult.MethodBody(b.build());
     }
 
-    private ApplyResult completionStageBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {
+    private ApplyResult futureBody(AspectContext aspectContext, ExecutableElement executableElement, String superCall, String loggerFieldName) {
         var logInLevel = logInLevel(executableElement, env);
         var logOutLevel = logOutLevel(executableElement, env);
 

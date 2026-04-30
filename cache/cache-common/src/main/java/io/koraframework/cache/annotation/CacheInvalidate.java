@@ -16,17 +16,12 @@ import java.lang.annotation.*;
 public @interface CacheInvalidate {
 
     /**
-     * @return cache name (correlate with name in configuration file)
+     * @return cache implementation
      */
     Class<? extends Cache<?, ?>> value();
 
     /**
      * @return The parameter names that make up the key.
      */
-    String[] parameters() default {};
-
-    /**
-     * @return Whether all values within the cache should be evicted or only those for the generated key
-     */
-    boolean invalidateAll() default false;
+    String[] args() default {};
 }

@@ -2,6 +2,7 @@ package io.koraframework.cache.caffeine;
 
 
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.telemetry.common.TelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -33,16 +34,13 @@ public interface CaffeineCacheConfig {
         CaffeineLoggingConfig logging();
 
         @ConfigValueExtractor
-        interface CaffeineLoggingConfig {
-            default boolean enabled() {
-                return false;
-            }
-        }
+        interface CaffeineLoggingConfig extends TelemetryConfig.LogConfig { }
 
         @ConfigValueExtractor
         interface CaffeineMetricsConfig {
+
             default boolean enabled() {
-                return true;
+                return false;
             }
 
             default Map<String, String> tags() {
@@ -50,5 +48,4 @@ public interface CaffeineCacheConfig {
             }
         }
     }
-
 }
