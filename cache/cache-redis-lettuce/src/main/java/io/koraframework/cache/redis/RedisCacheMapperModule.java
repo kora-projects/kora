@@ -14,7 +14,7 @@ public interface RedisCacheMapperModule extends JsonModule {
 
     @Json
     @DefaultComponent
-    default <V> RedisCacheValueMapper<V> jsonRedisValueMapper(JsonWriter<V> jsonWriter, JsonReader<V> jsonReader) {
+    default <V> RedisCacheValueMapper<V> cacheRedisValueJsonMapper(JsonWriter<V> jsonWriter, JsonReader<V> jsonReader) {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(V value) {
@@ -29,7 +29,7 @@ public interface RedisCacheMapperModule extends JsonModule {
     }
 
     @DefaultComponent
-    default RedisCacheValueMapper<String> stringRedisValueMapper() {
+    default RedisCacheValueMapper<String> cacheRedisValueStringMapper() {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(String value) {
@@ -44,7 +44,7 @@ public interface RedisCacheMapperModule extends JsonModule {
     }
 
     @DefaultComponent
-    default RedisCacheValueMapper<byte[]> bytesRedisValueMapper() {
+    default RedisCacheValueMapper<byte[]> cacheRedisValueBytesMapper() {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(byte[] value) {
@@ -59,7 +59,7 @@ public interface RedisCacheMapperModule extends JsonModule {
     }
 
     @DefaultComponent
-    default RedisCacheValueMapper<Integer> intRedisValueMapper(RedisCacheKeyMapper<Integer> keyMapper) {
+    default RedisCacheValueMapper<Integer> cacheRedisValueIntMapper(RedisCacheKeyMapper<Integer> keyMapper) {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(Integer value) {
@@ -78,7 +78,7 @@ public interface RedisCacheMapperModule extends JsonModule {
     }
 
     @DefaultComponent
-    default RedisCacheValueMapper<Long> longRedisValueMapper(RedisCacheKeyMapper<Long> keyMapper) {
+    default RedisCacheValueMapper<Long> cacheRedisValueLongMapper(RedisCacheKeyMapper<Long> keyMapper) {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(Long value) {
@@ -97,7 +97,7 @@ public interface RedisCacheMapperModule extends JsonModule {
     }
 
     @DefaultComponent
-    default RedisCacheValueMapper<BigInteger> bigIntRedisValueMapper(RedisCacheKeyMapper<BigInteger> keyMapper) {
+    default RedisCacheValueMapper<BigInteger> cacheRedisValueBigIntMapper(RedisCacheKeyMapper<BigInteger> keyMapper) {
         return new RedisCacheValueMapper<>() {
             @Override
             public byte[] write(BigInteger value) {
@@ -116,7 +116,7 @@ public interface RedisCacheMapperModule extends JsonModule {
     }
 
     @DefaultComponent
-    default RedisCacheValueMapper<UUID> uuidRedisValueMapper(RedisCacheKeyMapper<UUID> keyMapper) {
+    default RedisCacheValueMapper<UUID> cacheRedisValueUuidMapper(RedisCacheKeyMapper<UUID> keyMapper) {
         return new RedisCacheValueMapper<>() {
 
             @Override
@@ -132,27 +132,27 @@ public interface RedisCacheMapperModule extends JsonModule {
     }
 
     @DefaultComponent
-    default RedisCacheKeyMapper<Integer> intRedisKeyMapper() {
+    default RedisCacheKeyMapper<Integer> cacheRedisKeyIntMapper() {
         return c -> String.valueOf(c).getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
-    default RedisCacheKeyMapper<Long> longRedisKeyMapper() {
+    default RedisCacheKeyMapper<Long> cacheRedisKeyLongMapper() {
         return c -> String.valueOf(c).getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
-    default RedisCacheKeyMapper<BigInteger> bigIntRedisKeyMapper() {
+    default RedisCacheKeyMapper<BigInteger> cacheRedisKeyBigIntMapper() {
         return c -> c.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
-    default RedisCacheKeyMapper<UUID> uuidRedisKeyMapper() {
+    default RedisCacheKeyMapper<UUID> cacheRedisKeyUuidMapper() {
         return c -> c.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
-    default RedisCacheKeyMapper<String> stringRedisKeyMapper() {
+    default RedisCacheKeyMapper<String> cacheRedisKeyStringMapper() {
         return c -> c.getBytes(StandardCharsets.UTF_8);
     }
 }

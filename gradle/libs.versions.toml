@@ -4,14 +4,14 @@ micrometer = "1.12.13"
 kotlin-stdlib = "2.3.0" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
 jackson = "3.0.2"
 mockserver = "5.15.0"
-netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
+netty = "4.2.12.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
 kafka = "4.2.0"
 testcontainers = "2.0.2"
-cassandra = "4.19.0"
-grpc-java = "1.74.0"
-grpc-kotlin = "1.4.3"
+cassandra = "4.19.2"
+grpc-java = "1.81.0"
+grpc-kotlin = "1.5.0"
 ksp = "2.3.4"
-kotlinpoet = "2.2.0"
+kotlinpoet = "2.3.0"
 jetbrains-annotations = "24.1.0"
 swagger = "2.2.35"
 opentelemetry = "1.54.0"
@@ -81,6 +81,7 @@ netty-transports = { module = "io.netty:netty-transport", version.ref = "netty" 
 netty-transport-unix = { module = "io.netty:netty-transport-native-unix-common", version.ref = "netty" }
 netty-transport-kqueue = { module = "io.netty:netty-transport-native-kqueue", version.ref = "netty" }
 netty-transport-epoll = { module = "io.netty:netty-transport-native-epoll", version.ref = "netty" }
+netty-transport-uring = { module = "io.netty:netty-transport-native-io_uring", version.ref = "netty" }
 netty-handlers = { module = "io.netty:netty-handler", version.ref = "netty" }
 netty-handler-proxy = { module = "io.netty:netty-handler-proxy", version.ref = "netty" }
 netty-codec-http = { module = "io.netty:netty-codec-http", version.ref = "netty" }

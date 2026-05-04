@@ -7,17 +7,18 @@ import io.koraframework.config.common.annotation.ConfigValueExtractor;
 @ConfigValueExtractor
 public interface NettyTransportConfig {
 
-    enum EventLoop {
+    enum EventLoopType {
         NIO,
         EPOLL,
-        KQUEUE
+        KQUEUE,
+        URING
     }
 
     /**
      * @return Preferred Netty transport to use, if not available then first available is used by order (EPOLL / KQUEUE / NIO)
      */
     @Nullable
-    EventLoop transport();
+    EventLoopType transport();
 
     default int threads() {
         return NettyRuntime.availableProcessors() * 2;
