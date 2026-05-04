@@ -112,7 +112,7 @@ class CacheSymbolProcessor(
     fun findTypedInterface(candidate: KSClassDeclaration, targetFqn: ClassName): KSType? {
         val queue = ArrayDeque<KSType>()
         val visited = mutableSetOf<String>()
-        var visitedTypes = mutableSetOf<KSType>()
+        val visitedTypes = mutableSetOf<KSType>()
 
         candidate.superTypes.forEach { typeRef ->
             val resolved = typeRef.resolve()

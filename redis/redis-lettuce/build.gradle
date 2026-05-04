@@ -10,6 +10,7 @@ dependencies {
     }
 
     api project(":common")
+    api project(":netty-common")
     api project(":telemetry:telemetry-common")
     api project(":logging:logging-common")
 

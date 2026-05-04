@@ -63,7 +63,7 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
                         .put(k2)
                         .array()
                 },
-                stringRedisValueMapper()
+                cacheRedisValueStringMapper()
             ) as DummyCache22
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")

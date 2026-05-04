@@ -70,7 +70,7 @@ class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
                         .put(RedisCacheKeyMapper.DELIMITER)
                         .put(_key2)
                         .array();
-                }, stringRedisValueMapper());
+                }, cacheRedisValueStringMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {
