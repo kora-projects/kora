@@ -19,8 +19,8 @@ import java.nio.ByteBuffer
 @KspExperimental
 class SyncCacheOneManyAopTests : CaffeineCacheModule, RedisCacheModule {
 
-    private val CACHE1_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache11Impl"
-    private val CACHE2_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache12Impl"
+    private val CACHE1_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache11_Impl"
+    private val CACHE2_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache12_Impl"
     private val SERVICE_CLASS = "io.koraframework.cache.symbol.processor.testdata.\$CacheableSyncOneMany__AopProxy"
 
     private var cache1: DummyCache11? = null

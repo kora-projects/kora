@@ -16,7 +16,7 @@ import java.math.BigDecimal
 @KspExperimental
 class SyncCacheOneAopTests : CaffeineCacheModule {
 
-    private val CACHE_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache11Impl"
+    private val CACHE_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache11_Impl"
     private val SERVICE_CLASS = "io.koraframework.cache.symbol.processor.testdata.\$CacheableSyncOne__AopProxy"
 
     private var cache: DummyCache11? = null

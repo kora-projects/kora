@@ -2,6 +2,8 @@ package io.koraframework.cache.symbol.processor
 
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.cache.symbol.processor.testcache.DummyCacheTagged
+import io.koraframework.cache.symbol.processor.testcache.DummyInheritFinal
+import io.koraframework.cache.symbol.processor.testcache.DummyInheritMediator
 import io.koraframework.cache.symbol.processor.testdata.*
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.CompilationErrorException
@@ -12,7 +14,8 @@ import org.junit.jupiter.api.assertDoesNotThrow
 import kotlin.reflect.KClass
 
 class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
-    fun processClass(clazz: KClass<*>) = symbolProcess(listOf(AopSymbolProcessorProvider()), listOf(clazz))
+
+    fun processClass(clazz: KClass<*>) = symbolProcess(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), listOf(clazz))
 
     @Test
     fun cacheKeyArgumentMissing() {
@@ -29,6 +32,16 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
     @Test
     fun cacheRedisKeyMapperTagged() {
         assertDoesNotThrow { processClass(DummyCacheTagged::class) }
+    }
+
+    @Test
+    fun cacheInheritFinalCacheScanner() {
+        assertDoesNotThrow { processClass(DummyInheritFinal::class) }
+    }
+
+    @Test
+    fun cacheInheritMediatorCacheScanner() {
+        assertDoesNotThrow { processClass(DummyInheritMediator::class) }
     }
 
     @Test

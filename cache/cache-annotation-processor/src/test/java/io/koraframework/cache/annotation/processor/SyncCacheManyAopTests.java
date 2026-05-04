@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
 
-    private static final String CACHED_IMPL_1 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache21Impl";
-    private static final String CACHED_IMPL_2 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache22Impl";
+    private static final String CACHED_IMPL_1 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache21_Impl";
+    private static final String CACHED_IMPL_2 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache22_Impl";
     private static final String CACHED_SERVICE = "io.koraframework.cache.annotation.processor.testdata.sync.$CacheableSyncMany__AopProxy";
 
     private DummyCache21 cache1 = null;
