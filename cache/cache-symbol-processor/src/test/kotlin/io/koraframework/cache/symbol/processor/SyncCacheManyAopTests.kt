@@ -22,8 +22,8 @@ import java.nio.charset.StandardCharsets
 @KspExperimental
 class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
 
-    private val CACHE1_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache21Impl"
-    private val CACHE2_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache22Impl"
+    private val CACHE1_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache21_Impl"
+    private val CACHE2_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache22_Impl"
     private val SERVICE_CLASS = "io.koraframework.cache.symbol.processor.testdata.\$CacheableSyncMany__AopProxy"
 
     private var cache1: DummyCache21? = null
