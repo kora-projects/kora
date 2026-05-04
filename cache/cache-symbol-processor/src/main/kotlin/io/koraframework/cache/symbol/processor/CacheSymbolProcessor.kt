@@ -4,10 +4,7 @@ import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
-import com.google.devtools.ksp.symbol.ClassKind
-import com.google.devtools.ksp.symbol.KSAnnotated
-import com.google.devtools.ksp.symbol.KSClassDeclaration
-import com.google.devtools.ksp.symbol.Modifier
+import com.google.devtools.ksp.symbol.*
 import com.google.devtools.ksp.validate
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
@@ -28,6 +25,10 @@ import io.koraframework.ksp.common.KspCommonUtils.toTypeName
 import io.koraframework.ksp.common.TagUtils.addTag
 import io.koraframework.ksp.common.TagUtils.parseTag
 import io.koraframework.ksp.common.TagUtils.toTagAnnotation
+import io.koraframework.ksp.common.exception.ProcessingErrorException
+import io.koraframework.ksp.common.generatedClass
+import io.koraframework.ksp.common.getOuterClassesAsPrefix
+import java.util.*
 
 class CacheSymbolProcessor(
     private val environment: SymbolProcessorEnvironment
@@ -55,20 +56,17 @@ class CacheSymbolProcessor(
         val symbolsToProcess = symbols.filter { it.validateAll() }.filterIsInstance<KSClassDeclaration>()
         for (cacheImpl in symbolsToProcess) {
             if (cacheImpl.classKind != ClassKind.INTERFACE) {
-                environment.logger.error(
+                throw ProcessingErrorException(
                     "@Cache annotation is intended to be used on interfaces, but was: ${cacheImpl.classKind}",
                     cacheImpl
                 )
-                continue
             }
 
             val cacheContractType = getCacheSuperType(cacheImpl) ?: continue
 
-            val packageName = cacheImpl.packageName.asString()
-            val cacheImplName = cacheImpl.toClassName()
-
             val cacheImplBase = getCacheImplBase(cacheContractType)
-            val implSpec = cacheImpl.extendsKeepAop(getCacheImpl(cacheImpl).simpleName, resolver)
+            val cacheImplName = getCacheImplName(cacheImpl)
+            val implSpec = cacheImpl.extendsKeepAop(cacheImplName.simpleName, resolver)
                 .generated(CacheSymbolProcessor::class)
                 .primaryConstructor(getCacheConstructor(cacheContractType))
                 .addSuperclassConstructorParameter(getCacheSuperConstructorCall(cacheImpl, cacheContractType))
@@ -80,8 +78,9 @@ class CacheSymbolProcessor(
                 .build()
             fileImplSpec.writeTo(codeGenerator = environment.codeGenerator, aggregating = false)
 
+            val cacheModuleName = getCacheModuleName(cacheImpl)
             val moduleSpecBuilder =
-                TypeSpec.interfaceBuilder(ClassName(packageName, "$${cacheImplName.simpleName}Module"))
+                TypeSpec.interfaceBuilder(cacheModuleName)
                     .generated(CacheSymbolProcessor::class)
                     .addOriginatingKSFile(cacheImpl)
                     .addAnnotation(CommonClassNames.module)
@@ -95,7 +94,7 @@ class CacheSymbolProcessor(
                 val keyType = superType.resolve().arguments[0]
                 val declaration = keyType.type!!.resolve()
                 if (declaration.declaration is KSClassDeclaration && declaration.declaration.modifiers.contains(Modifier.DATA)) {
-                    moduleSpecBuilder.addFunction(getCacheRedisKeyMapperForData(declaration.declaration as KSClassDeclaration))
+                    moduleSpecBuilder.addFunction(getCacheRedisKeyMapperForData(cacheImpl, declaration.declaration as KSClassDeclaration))
                 }
             }
 
@@ -110,47 +109,97 @@ class CacheSymbolProcessor(
         return symbols.filterNot { it.validate() }.toList()
     }
 
-    private fun getCacheSuperType(candidate: KSClassDeclaration): ParameterizedTypeName? {
-        val supertypes = candidate.superTypes.toList()
-        if (supertypes.size != 1) {
-            environment.logger.error(
-                "@Cache annotated interface should implement one one interface and it should be one of: ${REDIS_CACHE},${CAFFEINE_CACHE}",
-                candidate
-            )
-            return null
-        }
-        val supertype = supertypes[0].toTypeName() as ParameterizedTypeName
-        return when (supertype.rawType) {
-            CAFFEINE_CACHE -> supertype
-            REDIS_CACHE -> supertype
-            else -> {
-                this.environment.logger.error("@Cache is expected to be known super type $REDIS_CACHE or $CAFFEINE_CACHE, but was $supertype")
-                null
+    fun findTypedInterface(candidate: KSClassDeclaration, targetFqn: ClassName): KSType? {
+        val queue = ArrayDeque<KSType>()
+        val visited = mutableSetOf<String>()
+        var visitedTypes = mutableSetOf<KSType>()
+
+        candidate.superTypes.forEach { typeRef ->
+            val resolved = typeRef.resolve()
+            if (resolved.declaration is KSClassDeclaration) {
+                queue.add(resolved)
             }
         }
+
+        while (queue.isNotEmpty()) {
+            val currentType = queue.removeFirst()
+            val currentDecl = currentType.declaration as? KSClassDeclaration ?: continue
+
+            val signature = currentType.toString()
+            if (visited.contains(signature)) {
+                continue
+            }
+
+            if (currentDecl.toClassName() == targetFqn) {
+                return if (visitedTypes.isEmpty()) {
+                    currentType
+                } else {
+                    currentType.replace(visitedTypes.asSequence().flatMap { it.arguments }.toList())
+                }
+            }
+
+            visited.add(signature)
+            visitedTypes.add(currentType)
+            currentDecl.superTypes.forEach { superTypeRef ->
+                val resolvedSuper = try {
+                    superTypeRef.resolve()
+                } catch (e: Exception) {
+                    null
+                }
+
+                if (resolvedSuper != null && resolvedSuper.declaration is KSClassDeclaration) {
+                    queue.add(resolvedSuper)
+                }
+            }
+        }
+
+        return null
+    }
+
+    private fun getCacheSuperType(candidate: KSClassDeclaration): ParameterizedTypeName? {
+        val caffeineCache = findTypedInterface(candidate, CAFFEINE_CACHE)
+        val redisCache = findTypedInterface(candidate, REDIS_CACHE)
+
+        if (caffeineCache != null && redisCache != null) {
+            throw ProcessingErrorException(
+                "@Cache annotated interface can't implement both: $REDIS_CACHE and $CAFFEINE_CACHE interfaces",
+                candidate
+            )
+        }
+
+        if (caffeineCache != null) {
+            return caffeineCache.toTypeName() as ParameterizedTypeName
+        } else if (redisCache != null) {
+            return redisCache.toTypeName() as ParameterizedTypeName
+        }
+
+        throw ProcessingErrorException(
+            "@Cache is expected to be known super type $REDIS_CACHE or $CAFFEINE_CACHE",
+            candidate
+        )
     }
 
     private fun getCacheImplBase(cacheType: ParameterizedTypeName): TypeName {
-        if (cacheType.rawType == CAFFEINE_CACHE) {
-            return CAFFEINE_CACHE_IMPL.parameterizedBy(cacheType.typeArguments)
-        } else if (cacheType.rawType == REDIS_CACHE) {
-            return REDIS_CACHE_IMPL.parameterizedBy(cacheType.typeArguments)
-        } else {
-            throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
+        return when (cacheType.rawType) {
+            CAFFEINE_CACHE -> CAFFEINE_CACHE_IMPL.parameterizedBy(cacheType.typeArguments)
+            REDIS_CACHE -> REDIS_CACHE_IMPL.parameterizedBy(cacheType.typeArguments)
+            else ->
+                throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
     }
 
     private fun getCacheMethodConfig(
-        cacheContract: KSClassDeclaration,
+        cacheImpl: KSClassDeclaration,
         cacheType: ParameterizedTypeName,
         resolver: Resolver
     ): FunSpec {
-        val configPath = cacheContract.findAnnotations(ANNOTATION_CACHE)
+        val prefix = cacheImpl.getOuterClassesAsPrefix().substring(1) + cacheImpl.simpleName.asString()
+        val methodName = "${prefix.replaceFirstChar { it.lowercaseChar() }}_Config"
+
+        val configPath = cacheImpl.findAnnotations(ANNOTATION_CACHE)
             .mapNotNull { a -> a.findValue<String>("value") }
             .first()
 
-        val cacheContractName = cacheContract.toClassName()
-        val methodName = "${cacheContractName.simpleName}Config"
         val returnType = when (cacheType.rawType) {
             CAFFEINE_CACHE -> resolver.getClassDeclarationByName(CAFFEINE_CACHE_CONFIG.canonicalName)!!
             REDIS_CACHE -> resolver.getClassDeclarationByName(REDIS_CACHE_CONFIG.canonicalName)!!
@@ -159,7 +208,7 @@ class CacheSymbolProcessor(
         val extractorType = configValueExtractor.parameterizedBy(returnType.asType(listOf()).toTypeName())
 
         return FunSpec.builder(methodName)
-            .addAnnotation(cacheContractName.toTagAnnotation())
+            .addAnnotation(cacheImpl.toClassName().toTagAnnotation())
             .addModifiers(KModifier.PUBLIC)
             .addParameter("config", CommonClassNames.config)
             .addParameter("extractor", extractorType)
@@ -168,15 +217,24 @@ class CacheSymbolProcessor(
             .build()
     }
 
-    private fun getCacheImpl(cacheContract: KSClassDeclaration): ClassName {
-        val cacheImplName = cacheContract.toClassName()
-        return ClassName(cacheImplName.packageName, "$${cacheImplName.simpleName}Impl")
+    private fun getCacheImplName(cacheImpl: KSClassDeclaration): ClassName {
+        val cacheImplName = cacheImpl.toClassName()
+        return ClassName(cacheImplName.packageName, cacheImpl.generatedClass("Impl"))
     }
 
-    private fun getCacheMethodImpl(cacheClass: KSClassDeclaration, cacheContract: ParameterizedTypeName): FunSpec {
-        val cacheImplName = getCacheImpl(cacheClass)
-        val cacheTypeName = cacheClass.toTypeName()
-        val methodName = "${cacheImplName.simpleName}Impl"
+    private fun getCacheModuleName(cacheImpl: KSClassDeclaration): ClassName {
+        val cacheImplName = cacheImpl.toClassName()
+        return ClassName(cacheImplName.packageName, cacheImpl.generatedClass("Module"))
+    }
+
+    private fun getCacheMethodImpl(
+        cacheImpl: KSClassDeclaration,
+        cacheContract: ParameterizedTypeName
+    ): FunSpec {
+        val cacheImplName = getCacheImplName(cacheImpl)
+        val cacheTypeName = cacheImpl.toTypeName()
+        val prefix = cacheImpl.getOuterClassesAsPrefix().substring(1) + cacheImpl.simpleName.asString()
+        val methodName = "${prefix.replaceFirstChar { it.lowercaseChar() }}_Impl"
         return when (cacheContract.rawType) {
             CAFFEINE_CACHE -> {
                 FunSpec.builder(methodName)
@@ -198,7 +256,7 @@ class CacheSymbolProcessor(
                 val keyMapperType = REDIS_CACHE_MAPPER_KEY.parameterizedBy(keyType)
                 val valueMapperType = REDIS_CACHE_MAPPER_VALUE.parameterizedBy(valueType)
 
-                val cacheContractType = cacheClass.getAllSuperTypes()
+                val cacheContractType = cacheImpl.getAllSuperTypes()
                     .filter { i -> i.toTypeName() == cacheContract }
                     .first()
 
@@ -261,9 +319,13 @@ class CacheSymbolProcessor(
         }
     }
 
-    private fun getCacheRedisKeyMapperForData(keyType: KSClassDeclaration): FunSpec {
-        val prefix = keyType.toClassName().simpleNames.joinToString("_")
-        val methodName = "${prefix}_RedisKeyMapper"
+    private fun getCacheRedisKeyMapperForData(cacheImpl: KSClassDeclaration, keyType: KSClassDeclaration): FunSpec {
+        val cachePrefix = cacheImpl.simpleName.asString()
+        var prefix = keyType.getOuterClassesAsPrefix().substring(1) + keyType.simpleName.asString()
+        if (!prefix.startsWith(cachePrefix)) {
+            prefix = cachePrefix + "_" + prefix
+        }
+        val methodName = "${prefix.replaceFirstChar { it.lowercaseChar() }}_RedisKeyMapper"
         val methodBuilder = FunSpec.builder(methodName)
             .addModifiers(KModifier.PUBLIC)
             .addAnnotation(CommonClassNames.defaultComponent)
@@ -284,7 +346,7 @@ class CacheSymbolProcessor(
             )
 
             val keyName = "_key" + (i + 1)
-            keyBuilder.addStatement("val %L = %L.apply(key.%L)!!", keyName, mapperName, recordField.simpleName.asString())
+            keyBuilder.addStatement("val %L = %L.apply(key.%L!!)!!", keyName, mapperName, recordField.simpleName.asString())
             if (i == 0) {
                 compositeKeyBuilder.add("val _compositeKey = %T(", ByteArray::class)
                 for (j in recordFields.indices) {

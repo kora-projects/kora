@@ -39,7 +39,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
+        var cache = newObject("$DummyCache_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
@@ -82,10 +82,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -122,7 +122,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
+        var cache = newObject("$DummyCache_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
@@ -165,10 +165,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -205,7 +205,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
+        var cache = newObject("$DummyCache_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
@@ -248,10 +248,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -294,10 +294,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -340,10 +340,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
