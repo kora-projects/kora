@@ -9,13 +9,19 @@ import io.lettuce.core.cluster.RedisClusterURIUtil;
 import io.lettuce.core.metrics.CommandLatencyRecorder;
 import io.lettuce.core.protocol.ProtocolVersion;
 import io.lettuce.core.resource.DefaultClientResources;
+import io.lettuce.core.resource.EventLoopGroupProvider;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.netty.channel.EventLoopGroup;
+import io.netty.util.concurrent.EventExecutorGroup;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.GlobalEventExecutor;
+import io.netty.util.concurrent.SucceededFuture;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class LettuceFactory {
 
@@ -101,7 +107,29 @@ public class LettuceFactory {
             .commandLatencyRecorder(recorder);
 
         if (eventLoopGroup != null) {
-            clientResourcesBuilder = clientResourcesBuilder.eventExecutorGroup(eventLoopGroup);
+            clientResourcesBuilder = clientResourcesBuilder
+                .eventExecutorGroup(eventLoopGroup)
+                .eventLoopGroupProvider(new EventLoopGroupProvider() {
+                    @Override
+                    public <T extends EventLoopGroup> T allocate(Class<T> type) {
+                        return (T) eventLoopGroup;
+                    }
+
+                    @Override
+                    public int threadPoolSize() {
+                        return Runtime.getRuntime().availableProcessors() * 2;
+                    }
+
+                    @Override
+                    public Future<Boolean> release(EventExecutorGroup eventLoopGroup, long quietPeriod, long timeout, TimeUnit unit) {
+                        return new SucceededFuture<>(GlobalEventExecutor.INSTANCE, true);
+                    }
+
+                    @Override
+                    public Future<Boolean> shutdown(long quietPeriod, long timeout, TimeUnit timeUnit) {
+                        return new SucceededFuture<>(GlobalEventExecutor.INSTANCE, true);
+                    }
+                });
         }
         if (resourcesConfigurer != null) {
             clientResourcesBuilder = resourcesConfigurer.configure(clientResourcesBuilder);
@@ -165,7 +193,29 @@ public class LettuceFactory {
             .commandLatencyRecorder(recorder);
 
         if (eventLoopGroup != null) {
-            clientResourcesBuilder = clientResourcesBuilder.eventExecutorGroup(eventLoopGroup);
+            clientResourcesBuilder = clientResourcesBuilder
+                .eventExecutorGroup(eventLoopGroup)
+                .eventLoopGroupProvider(new EventLoopGroupProvider() {
+                    @Override
+                    public <T extends EventLoopGroup> T allocate(Class<T> type) {
+                        return (T) eventLoopGroup;
+                    }
+
+                    @Override
+                    public int threadPoolSize() {
+                        return Runtime.getRuntime().availableProcessors() * 2;
+                    }
+
+                    @Override
+                    public Future<Boolean> release(EventExecutorGroup eventLoopGroup, long quietPeriod, long timeout, TimeUnit unit) {
+                        return new SucceededFuture<>(GlobalEventExecutor.INSTANCE, true);
+                    }
+
+                    @Override
+                    public Future<Boolean> shutdown(long quietPeriod, long timeout, TimeUnit timeUnit) {
+                        return new SucceededFuture<>(GlobalEventExecutor.INSTANCE, true);
+                    }
+                });
         }
         if (resourcesConfigurer != null) {
             clientResourcesBuilder = resourcesConfigurer.configure(clientResourcesBuilder);
