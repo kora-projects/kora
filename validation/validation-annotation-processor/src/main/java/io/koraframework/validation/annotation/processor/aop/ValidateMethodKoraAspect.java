@@ -44,9 +44,9 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@Validate can't be applied for type " + CommonClassNames.publisher, method);
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(VALIDATE_TYPE.simpleName()) + CommonClassNames.publisher, method);
         } else if (MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@Validate can't be applied for type " + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(VALIDATE_TYPE) + method.getReturnType().toString(), method);
         }
 
         final boolean isCompletableStage = MethodUtils.isCompletionStage(method);

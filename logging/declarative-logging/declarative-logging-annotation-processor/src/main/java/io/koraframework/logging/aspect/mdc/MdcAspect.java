@@ -14,10 +14,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.Future;
 
 import static io.koraframework.annotation.processor.common.AnnotationUtils.*;
-import static io.koraframework.logging.aspect.LogAspectClassNames.log;
 import static io.koraframework.logging.aspect.mdc.MdcAspectClassNames.*;
 
 public class MdcAspect implements KoraAspect {
@@ -33,7 +31,9 @@ public class MdcAspect implements KoraAspect {
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
             throw new ProcessingErrorException("@%s can't be applied for type ".formatted(mdcAnnotation.simpleName()) + CommonClassNames.publisher, method);
-        } else if(MethodUtils.isFuture(method)) {
+        } else if (MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(mdcAnnotation) + method.getReturnType().toString(), method);
+        } else if (MethodUtils.isCompletionStage(method)) {
             throw new ProcessingErrorException("@%s can't be applied for type ".formatted(mdcAnnotation) + method.getReturnType().toString(), method);
         }
 
