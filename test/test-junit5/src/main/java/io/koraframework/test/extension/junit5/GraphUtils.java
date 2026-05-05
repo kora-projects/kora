@@ -59,7 +59,7 @@ final class GraphUtils {
         return findNodeByTypeOrAssignable(graph, candidate.type(), candidate.tag());
     }
 
-    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, Class<?> tag) {
+    static Set<Node<?>> findNodeByTypeOrAssignable(ApplicationGraphDraw graph, Type type, @Nullable Class<?> tag) {
         if (tag == null || Objects.equals(Tag.Any.class, tag)) {
             final Set<Node<?>> nodes = new HashSet<>();
             for (var graphNode : graph.getNodes()) {

@@ -3,6 +3,7 @@ package io.koraframework.test.extension.junit5.testdata;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.LifecycleWrapper;
 import io.koraframework.application.graph.Wrapped;
+import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.KoraApp;
 import io.koraframework.common.Tag;
 import io.koraframework.common.annotation.Root;
@@ -75,12 +76,7 @@ public interface TestApplication extends TestExtendModule {
             public void release() {}
 
             @Override
-            public String generic() {
-                return "1";
-            }
-
-            @Override
-            public ComplexWrapped value() {
+            public ComplexWrappedGeneric<String> value() {
                 return () -> "1";
             }
 
@@ -146,13 +142,17 @@ public interface TestApplication extends TestExtendModule {
         }
     }
 
-    interface ComplexInterfaceHolder<T> extends Wrapped<ComplexWrapped>, Lifecycle, ComplexOther {
+    interface ComplexInterfaceHolder<T> extends Wrapped<ComplexWrappedGeneric<T>>, Lifecycle, ComplexOther {
 
-        T generic();
     }
 
     interface ComplexWrapped {
         String wrapped();
+    }
+
+    interface ComplexWrappedGeneric<T> {
+
+        T generic();
     }
 
     interface ComplexOther {
