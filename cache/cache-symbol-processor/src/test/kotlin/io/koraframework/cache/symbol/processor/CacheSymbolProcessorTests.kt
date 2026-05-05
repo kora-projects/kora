@@ -77,7 +77,7 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
 
     @Test
     fun testInnerTypeCache() {
-        compile0(listOf(AopSymbolProcessorProvider()), """
+        compile0(listOf(AopSymbolProcessorProvider(), CacheSymbolProcessorProvider()), """
         interface OuterType {
           @io.koraframework.cache.annotation.Cache("test")
           interface MyCache : io.koraframework.cache.caffeine.CaffeineCache<String, String>
