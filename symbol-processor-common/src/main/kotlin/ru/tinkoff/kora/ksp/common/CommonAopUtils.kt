@@ -161,10 +161,15 @@ object CommonAopUtils {
     }
 
     fun isAopAnnotation(annotation: KSAnnotation): Boolean {
-        return annotation.annotationType.resolveToUnderlying().declaration.isAnnotationPresent(aopAnnotation)
+        val resolved = annotation.annotationType.resolveToUnderlying()
+        return resolved.declaration.isAnnotationPresent(aopAnnotation)
+            || resolved.toClassName() == CommonClassNames.logOff
+            || resolved.toClassName() == CommonClassNames.logResult
     }
 
     fun isAopAnnotation(annotation: KSType): Boolean {
         return annotation.declaration.isAnnotationPresent(aopAnnotation)
+            || annotation.toClassName() == CommonClassNames.logOff
+            || annotation.toClassName() == CommonClassNames.logResult
     }
 }

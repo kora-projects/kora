@@ -20,8 +20,6 @@ public @interface Mdc {
 
     String value() default "";
 
-
-
     boolean global() default false;
 
     @AopAnnotation
