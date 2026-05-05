@@ -1,5 +1,6 @@
 package io.koraframework.test.extension.junit5.mockito;
 
+import io.koraframework.test.extension.junit5.testdata.TestApplicationOps;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
