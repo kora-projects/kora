@@ -55,7 +55,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             CodeBlock.of("$L.get($S)", fieldManager, circuitBreakerName));
 
         final CodeBlock body;
-        if (MethodUtils.isCompletableStage(method)) {
+        if (MethodUtils.isCompletionStage(method)) {
             body = buildBodyCompletableStage(method, superCall, fieldCircuit);
         } else {
             body = buildBodySync(method, superCall, fieldCircuit);

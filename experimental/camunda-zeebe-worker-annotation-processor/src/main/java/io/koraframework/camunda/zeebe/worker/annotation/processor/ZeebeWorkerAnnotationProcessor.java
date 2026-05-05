@@ -58,7 +58,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_WORKER.simpleName()) + CommonClassNames.publisher, method);
             } else if(MethodUtils.isFuture(method)) {
                 throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_WORKER) + method.getReturnType().toString(), method);
-            } else if(MethodUtils.isCompletableStage(method)) {
+            } else if(MethodUtils.isCompletionStage(method)) {
                 throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_WORKER) + method.getReturnType().toString(), method);
             }
 
@@ -82,7 +82,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             var specBuilder = implSpecBuilder
                 .addMethod(methodConstructor)
                 .addMethod(getMethodType(method));
-            if (MethodUtils.isFuture(method) || MethodUtils.isCompletableStage(method) || MethodUtils.isPublisher(method)) {
+            if (MethodUtils.isFuture(method) || MethodUtils.isCompletionStage(method) || MethodUtils.isPublisher(method)) {
                 throw new ProcessingErrorException("Async invocation is not supported", method);
             }
 

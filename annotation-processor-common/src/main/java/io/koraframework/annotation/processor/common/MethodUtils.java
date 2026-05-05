@@ -10,11 +10,11 @@ public final class MethodUtils {
     private MethodUtils() {}
 
     public static boolean isFuture(ExecutableElement method) {
-        return CommonUtils.doesImplement(method.getReturnType(), CommonClassNames.future);
+        return CommonUtils.isFuture(method.getReturnType());
     }
 
-    public static boolean isCompletableStage(ExecutableElement method) {
-        return CommonUtils.doesImplement(method.getReturnType(), CommonClassNames.completionStage);
+    public static boolean isCompletionStage(ExecutableElement method) {
+        return CommonUtils.isCompletionStage(method.getReturnType());
     }
 
     public static boolean isCompletionStage(ExecutableElement method) {
