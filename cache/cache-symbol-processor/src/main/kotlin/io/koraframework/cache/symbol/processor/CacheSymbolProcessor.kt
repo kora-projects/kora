@@ -134,7 +134,18 @@ class CacheSymbolProcessor(
                 return if (visitedTypes.isEmpty()) {
                     currentType
                 } else {
-                    currentType.replace(visitedTypes.asSequence().flatMap { it.arguments }.toList())
+                    val visitedReplaceTypes = visitedTypes.asSequence()
+                        .flatMap { it.arguments }
+                        .filterNot { it.type!!.resolve().declaration is KSTypeParameter }
+                        .toMutableList()
+                    if (visitedReplaceTypes.isEmpty()) {
+                        currentType
+                    } else {
+                        val replaceTypes = (visitedReplaceTypes + currentType.arguments)
+                            .filterNot { it.type!!.resolve().declaration is KSTypeParameter }
+                            .toList()
+                        currentType.replace(replaceTypes)
+                    }
                 }
             }
 
