@@ -85,7 +85,8 @@ addDependencies(tasksPostgres, "experimental:camunda-engine-bpmn")
 addDependencies(tasksCassandra, "database:database-cassandra")
 
 // Redis
-addDependencies(tasksRedis, "cache:cache-redis")
+addDependencies(tasksRedis, "redis:redis-lettuce")
+addDependencies(tasksRedis, "cache:cache-redis-lettuce")
 
 // Kafka
 addDependencies(tasksKafka, "kafka:kafka")
