@@ -227,7 +227,7 @@ final class QueryMacrosParser {
             }
 
             if (CommonUtils.isFuture(methodType.getReturnType())
-                || CommonUtils.isCompletableStage(methodType.getReturnType())
+                || CommonUtils.isCompletionStage(methodType.getReturnType())
                 || CommonUtils.isMono(methodType.getReturnType())
                 || CommonUtils.isFlux(methodType.getReturnType())
                 || CommonUtils.isOptional(methodType.getReturnType())

@@ -4,6 +4,7 @@ import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Future;
 
@@ -18,6 +19,7 @@ public class CommonClassNames {
     public static final ClassName contextOpentelemetry = ClassName.get("io.opentelemetry.context", "Context");
     public static final ClassName publisher = ClassName.get("org.reactivestreams", "Publisher");
     public static final ClassName completionStage = ClassName.get(CompletionStage.class);
+    public static final ClassName completableFuture = ClassName.get(CompletableFuture.class);
     public static final ClassName future = ClassName.get(Future.class);
     public static final ClassName mono = ClassName.get("reactor.core.publisher", "Mono");
     public static final ClassName flux = ClassName.get("reactor.core.publisher", "Flux");

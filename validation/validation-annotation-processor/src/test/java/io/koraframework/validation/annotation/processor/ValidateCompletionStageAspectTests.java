@@ -9,12 +9,12 @@ import io.koraframework.validation.common.ViolationException;
 import java.util.concurrent.CompletionException;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class ValidateFutureAspectTests extends ValidateRunner {
+class ValidateCompletionStageAspectTests extends ValidateRunner {
 
     @Test
     void validateInputFutureSuccess() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         assertDoesNotThrow(() -> service.validatedInput(1, "1", new ValidTaz("1")).toCompletableFuture().join());
@@ -26,7 +26,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateInputFutureFails() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         var e1 = assertThrows(CompletionException.class, () -> service.validatedInput(0, "1", new ValidTaz("1")).toCompletableFuture().join());
@@ -43,7 +43,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateOutputFutureSuccess() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         assertDoesNotThrow(() -> service.validatedOutput(new ValidTaz("1"), null).toCompletableFuture().join());
@@ -54,7 +54,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateOutputFutureFails() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         assertThrows(CompletionException.class, () -> service.validatedOutput(new ValidTaz("A"), null).toCompletableFuture().join());
@@ -66,7 +66,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateInputOutputFutureSuccess() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         assertDoesNotThrow(() -> service.validatedInputAndOutput(1, "1", new ValidTaz("1"), null).toCompletableFuture().join());
@@ -75,7 +75,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateInputOutputFutureFailsForInput() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         assertThrows(CompletionException.class, () -> service.validatedInput(0, "1", new ValidTaz("1")).toCompletableFuture().join());
@@ -89,7 +89,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateInputOutputFutureFailsForOutput() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         var outputViolations = assertThrows(CompletionException.class, () -> service.validatedInputAndOutput(1, "1", new ValidTaz("1"), new ValidTaz("1")).toCompletableFuture().join());
@@ -99,7 +99,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateInputOutputFutureFailFastForInput() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         var inputViolations = assertThrows(CompletionException.class, () -> service.validatedInputAndOutputAndFailFast(0, "", new ValidTaz("A"), new ValidTaz("1")).toCompletableFuture().join());
@@ -109,7 +109,7 @@ class ValidateFutureAspectTests extends ValidateRunner {
     @Test
     void validateInputOutputFutureFailFastForOutput() {
         // given
-        var service = getValidateFuture();
+        var service = getValidateCompletionStage();
 
         // then
         var outputViolations = assertThrows(CompletionException.class, () -> service.validatedInputAndOutputAndFailFast(1, "1", new ValidTaz("A"), new ValidTaz("1")).toCompletableFuture().join());

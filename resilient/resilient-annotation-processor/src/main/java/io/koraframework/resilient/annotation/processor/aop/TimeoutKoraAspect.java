@@ -61,7 +61,7 @@ public class TimeoutKoraAspect implements KoraAspect {
             CodeBlock.of("$L.get($S)", fieldManager, timeoutName));
 
         final CodeBlock body;
-        if (MethodUtils.isCompletableStage(method)) {
+        if (MethodUtils.isCompletionStage(method)) {
             body = buildBodyCompletableStage(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
         } else {
             body = buildBodySync(method, superCall, fieldTimeout);
