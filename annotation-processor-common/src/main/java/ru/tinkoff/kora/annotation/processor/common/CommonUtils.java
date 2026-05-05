@@ -492,7 +492,9 @@ public class CommonUtils {
     }
 
     private static boolean isAopAnnotation(AnnotationMirror am) {
-        return AnnotationUtils.isAnnotationPresent(am.getAnnotationType().asElement(), CommonClassNames.aopAnnotation);
+        return AnnotationUtils.isAnnotationPresent(am.getAnnotationType().asElement(), CommonClassNames.aopAnnotation)
+               || ClassName.get(am.getAnnotationType()).equals(CommonClassNames.logOff)
+               || ClassName.get(am.getAnnotationType()).equals(CommonClassNames.logResult);
     }
 
     public static boolean isVoid(TypeMirror returnType) {

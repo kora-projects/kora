@@ -23,6 +23,9 @@ object CommonClassNames {
     val await = MemberName("kotlinx.coroutines.future", "await")
     val flowBuilder = MemberName("kotlinx.coroutines.flow", "flow")
 
+    val logOff = ClassName("ru.tinkoff.kora.logging.common.annotation", "Log", "off")
+    val logResult = ClassName("ru.tinkoff.kora.logging.common.annotation", "Log", "result")
+
     val context = ClassName("ru.tinkoff.kora.common", "Context")
     val contextReactor = ClassName("ru.tinkoff.kora.common", "Context", "Reactor")
     val aopAnnotation = ClassName("ru.tinkoff.kora.common", "AopAnnotation")
