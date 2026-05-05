@@ -2,7 +2,6 @@ package io.koraframework.validation.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.MethodUtils;
@@ -11,6 +10,7 @@ import io.koraframework.aop.annotation.processor.KoraAspect;
 import io.koraframework.validation.annotation.processor.ValidMeta;
 import io.koraframework.validation.annotation.processor.ValidTypes;
 import io.koraframework.validation.annotation.processor.ValidUtils;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ExecutableElement;
@@ -44,12 +44,12 @@ public class ValidateMethodKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@Mdc can't be applied for type " + CommonClassNames.publisher, method);
-        } else if(MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@Mdc can't be applied for type " + method.getReturnType().toString(), method);
+            throw new ProcessingErrorException("@Validate can't be applied for type " + CommonClassNames.publisher, method);
+        } else if (MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@Validate can't be applied for type " + method.getReturnType().toString(), method);
         }
 
-        final boolean isCompletableStage = MethodUtils.isCompletableStage(method);
+        final boolean isCompletableStage = MethodUtils.isCompletionStage(method);
         final TypeMirror returnType = isCompletableStage
             ? MethodUtils.getGenericType(method.getReturnType()).orElseThrow()
             : method.getReturnType();
@@ -74,7 +74,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
 
         final CodeBlock body;
         if (isCompletableStage) {
-            body = buildBodyFuture(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
+            body = buildBodyCompletionStage(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
         } else {
             body = buildBodySync(method, superCall, validationReturnCode.orElse(null), validationArgumentCode.orElse(null));
         }
@@ -87,7 +87,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             return Optional.empty();
         }
 
-        final boolean isCompletableStage = MethodUtils.isCompletableStage(method);
+        final boolean isCompletableStage = MethodUtils.isCompletionStage(method);
         final boolean isValid = method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()));
 
         final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
@@ -99,9 +99,9 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         final boolean isNullable;
         if (isCompletableStage) {
             isNullable = MethodUtils.getGenericType(method.getReturnType())
-                .map(CommonUtils::isNullable)
-                .orElse(false)
-                || CommonUtils.isNullable(method);
+                             .map(CommonUtils::isNullable)
+                             .orElse(false)
+                         || CommonUtils.isNullable(method);
         } else {
             isNullable = CommonUtils.isNullable(method) && !isPrimitive;
         }
@@ -109,8 +109,8 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         final boolean isNotNull;
         if (isCompletableStage) {
             isNotNull = MethodUtils.getGenericType(method.getReturnType())
-                .map(ValidUtils::isNotNull)
-                .orElse(false) || isNotNull(method);
+                            .map(ValidUtils::isNotNull)
+                            .orElse(false) || isNotNull(method);
         } else {
             isNotNull = isNotNull(method);
         }
@@ -143,7 +143,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 builder.beginControlFlow("if (_result == null)");
             }
             builder.add(resultCtxBlock);
-            if (MethodUtils.isCompletableStage(method)) {
+            if (MethodUtils.isCompletionStage(method)) {
                 builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
             } else {
                 builder.addStatement("throw new $T(_returnCtx.violates(\"Result must be non null, but was null\"))", ValidTypes.violationException);
@@ -191,7 +191,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.addStatement("var $N = $N.validate($L, _returnCtx)", constraintResultField, constraintField, resultAccessor);
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
-                if (MethodUtils.isCompletableStage(method)) {
+                if (MethodUtils.isCompletionStage(method)) {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
                 } else {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
@@ -215,7 +215,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             builder.addStatement("var $N = $N.validate($L, _returnCtx)", validatedResultField, validatorField, resultAccessor);
             if (isFailFast) {
                 builder.beginControlFlow("if (!$N.isEmpty())", validatedResultField);
-                if (MethodUtils.isCompletableStage(method)) {
+                if (MethodUtils.isCompletionStage(method)) {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatedResultField);
                 } else {
                     builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatedResultField);
@@ -234,7 +234,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         if (haveValidators && !isFailFast) {
             builder.add("\n");
             builder.beginControlFlow("if (!_returnViolations.isEmpty())");
-            if (MethodUtils.isCompletableStage(method)) {
+            if (MethodUtils.isCompletionStage(method)) {
                 builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
             } else {
                 builder.addStatement("throw new $T(_returnViolations)", EXCEPTION_TYPE);
@@ -303,7 +303,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                 if ((isJsonNullable && isNotNull) || isNotNullable) {
                     builder.addStatement("var $N = _argCtx.addPath($S)", argumentContext, paramName);
                     if (isFailFast) {
-                        if (MethodUtils.isCompletableStage(method)) {
+                        if (MethodUtils.isCompletionStage(method)) {
                             builder.addStatement("return $T.failedFuture(new $T($L.violates(\"Parameter '$L' must be non null, but was null\")))", CompletableFuture.class, ValidTypes.violationException, argumentContext, paramName);
                         } else {
                             builder.addStatement("throw new $T($L.violates(\"Parameter '$L' must be non null, but was null\"))", ValidTypes.violationException, argumentContext, paramName);
@@ -350,7 +350,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         constraintResultField, constraintField, paramAccessor, argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", constraintResultField);
-                        if (MethodUtils.isCompletableStage(method)) {
+                        if (MethodUtils.isCompletionStage(method)) {
                             builder.addStatement("return $T.failedFuture(new $T($N))", CompletableFuture.class, EXCEPTION_TYPE, constraintResultField);
                         } else {
                             builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, constraintResultField);
@@ -379,7 +379,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
                         validatorResultField, validatorField, paramAccessor, argumentContext);
                     if (isFailFast) {
                         builder.beginControlFlow("if (!$N.isEmpty())", validatorResultField);
-                        if (MethodUtils.isCompletableStage(method)) {
+                        if (MethodUtils.isCompletionStage(method)) {
                             builder.addStatement("return $T.failedFuture(new $T($N))", CompletableFuture.class, EXCEPTION_TYPE, validatorResultField);
                         } else {
                             builder.addStatement("throw new $T($N)", EXCEPTION_TYPE, validatorResultField);
@@ -409,7 +409,7 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         if (!isFailFast) {
             builder.add("\n");
             builder.beginControlFlow("if (!_argViolations.isEmpty())");
-            if (MethodUtils.isCompletableStage(method)) {
+            if (MethodUtils.isCompletionStage(method)) {
                 builder.addStatement("return $T.failedFuture(new $T(_argViolations))", CompletableFuture.class, EXCEPTION_TYPE);
             } else {
                 builder.addStatement("throw new $T(_argViolations)", EXCEPTION_TYPE);
@@ -474,10 +474,10 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
     }
 
-    private CodeBlock buildBodyFuture(ExecutableElement method,
-                                      String superCall,
-                                      @Nullable CodeBlock validationReturnCode,
-                                      @Nullable CodeBlock validationArgumentCode) {
+    private CodeBlock buildBodyCompletionStage(ExecutableElement method,
+                                               String superCall,
+                                               @Nullable CodeBlock validationReturnCode,
+                                               @Nullable CodeBlock validationArgumentCode) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         var builder = CodeBlock.builder();
@@ -495,44 +495,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         return builder.build();
-    }
-
-    private CodeBlock buildBodyMono(ExecutableElement method,
-                                    String superCall,
-                                    ClassName reactorName,
-                                    @Nullable CodeBlock validationReturnCode,
-                                    @Nullable CodeBlock validationArgumentCode) {
-        final CodeBlock superMethod = buildMethodCall(method, superCall);
-
-        var builder = CodeBlock.builder();
-        if (validationArgumentCode != null) {
-            builder.beginControlFlow("return $T.defer(() -> ", reactorName);
-            builder.add(validationArgumentCode);
-        }
-
-        if (validationReturnCode != null) {
-            builder.add("return $L.handle((_result, _sink) -> {\n", superMethod.toString());
-            builder.indent().indent().indent().indent()
-                .add(validationReturnCode)
-                .add("_sink.next(_result);")
-                .unindent().unindent().unindent().unindent()
-                .add("\n\n});\n");
-        } else {
-            builder.addStatement("return $L", superMethod.toString());
-        }
-
-        if (validationArgumentCode != null) {
-            builder.endControlFlow(")");
-        }
-
-        return builder.build();
-    }
-
-    private CodeBlock buildBodyFlux(ExecutableElement method,
-                                    String superCall,
-                                    @Nullable CodeBlock validationReturnCode,
-                                    @Nullable CodeBlock validationArgumentCode) {
-        return buildBodyMono(method, superCall, CommonClassNames.flux, validationReturnCode, validationArgumentCode);
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

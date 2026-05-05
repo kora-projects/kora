@@ -60,7 +60,7 @@ public class FallbackKoraAspect implements KoraAspect {
             fallbackType, CodeBlock.of("$L.get($S)", fieldManager, name));
 
         final CodeBlock body;
-        if (MethodUtils.isCompletableStage(method)) {
+        if (MethodUtils.isCompletionStage(method)) {
             body = buildBodyCompletableStage(method, fallback, superCall, fieldFallback);
         } else {
             body = buildBodySync(method, fallback, superCall, fieldFallback);

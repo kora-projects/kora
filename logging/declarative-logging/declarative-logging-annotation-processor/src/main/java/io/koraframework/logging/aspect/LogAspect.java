@@ -58,7 +58,7 @@ public class LogAspect implements KoraAspect {
             CodeBlock.builder().add("$N.getLogger($S)", loggerFactoryFieldName, loggerName).build()
         );
 
-        if (MethodUtils.isCompletableStage(method)) {
+        if (MethodUtils.isCompletionStage(method)) {
             return this.futureBody(aspectContext, method, superCall, loggerFieldName);
         } else {
             return this.blockingBody(aspectContext, method, superCall, loggerFieldName);

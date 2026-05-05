@@ -50,7 +50,7 @@ public class RetryKoraAspect implements KoraAspect {
             .orElseThrow();
 
         final CodeBlock body;
-        if (MethodUtils.isCompletableStage(method)) {
+        if (MethodUtils.isCompletionStage(method)) {
             var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.retry.RetryManager"));
             var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
             var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.retry.Retry"));
