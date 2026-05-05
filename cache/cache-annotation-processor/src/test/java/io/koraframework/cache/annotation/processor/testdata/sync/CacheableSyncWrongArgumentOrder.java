@@ -15,7 +15,7 @@ public class CacheableSyncWrongArgumentOrder {
         return value;
     }
 
-    @CachePut(value = DummyCache21.class, parameters = {"arg2", "arg1"})
+    @CachePut(value = DummyCache21.class, args = {"arg2", "arg1"})
     public String putValue(BigDecimal arg2, String arg3, String arg1) {
         return value;
     }

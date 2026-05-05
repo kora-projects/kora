@@ -25,8 +25,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
 
-    private static final String CACHED_IMPL_1 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache21Impl";
-    private static final String CACHED_IMPL_2 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache22Impl";
+    private static final String CACHED_IMPL_1 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache21_Impl";
+    private static final String CACHED_IMPL_2 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache22_Impl";
     private static final String CACHED_SERVICE = "io.koraframework.cache.annotation.processor.testdata.sync.$CacheableSyncMany__AopProxy";
 
     private DummyCache21 cache1 = null;
@@ -61,7 +61,7 @@ class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
             cacheConstructor2.setAccessible(true);
             final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
             cache2 = (DummyCache22) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
-                CacheRunner.lettuceClient(cache), redisCacheTelemetryFactory(null, null),
+                CacheRunner.lettuceClient(cache), redisCacheTelemetryFactory(null, null, null),
                 (RedisCacheKeyMapper<DummyCache22.Key>) key -> {
                     var _key1 = key.k1().getBytes(StandardCharsets.UTF_8);
                     var _key2 = key.k2().toString().getBytes(StandardCharsets.UTF_8);
@@ -70,7 +70,7 @@ class SyncCacheManyAopTests implements CaffeineCacheModule, RedisCacheModule {
                         .put(RedisCacheKeyMapper.DELIMITER)
                         .put(_key2)
                         .array();
-                }, stringRedisValueMapper());
+                }, cacheRedisValueStringMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {

@@ -1,0 +1,158 @@
+package io.koraframework.cache.redis;
+
+import io.koraframework.common.DefaultComponent;
+import io.koraframework.json.common.JsonModule;
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonWriter;
+import io.koraframework.json.common.annotation.Json;
+
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.util.UUID;
+
+public interface RedisCacheMapperModule extends JsonModule {
+
+    @Json
+    @DefaultComponent
+    default <V> RedisCacheValueMapper<V> cacheRedisValueJsonMapper(JsonWriter<V> jsonWriter, JsonReader<V> jsonReader) {
+        return new RedisCacheValueMapper<>() {
+            @Override
+            public byte[] write(V value) {
+                return jsonWriter.toByteArray(value);
+            }
+
+            @Override
+            public V read(byte[] serializedValue) {
+                return (serializedValue == null) ? null : jsonReader.read(serializedValue);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default RedisCacheValueMapper<String> cacheRedisValueStringMapper() {
+        return new RedisCacheValueMapper<>() {
+            @Override
+            public byte[] write(String value) {
+                return value.getBytes(StandardCharsets.UTF_8);
+            }
+
+            @Override
+            public String read(byte[] serializedValue) {
+                return (serializedValue == null) ? null : new String(serializedValue, StandardCharsets.UTF_8);
+            }
+        };
+    }
+
+    @DefaultComponent
+    default RedisCacheValueMapper<byte[]> cacheRedisValueBytesMapper() {
+        return new RedisCacheValueMapper<>() {
+            @Override
+            public byte[] write(byte[] value) {
+                return value;
+            }
+
+            @Override
+            public byte[] read(byte[] serializedValue) {
+                return serializedValue;
+            }
+        };
+    }
+
+    @DefaultComponent
+    default RedisCacheValueMapper<Integer> cacheRedisValueIntMapper(RedisCacheKeyMapper<Integer> keyMapper) {
+        return new RedisCacheValueMapper<>() {
+            @Override
+            public byte[] write(Integer value) {
+                return keyMapper.apply(value);
+            }
+
+            @Override
+            public Integer read(byte[] serializedValue) {
+                if (serializedValue == null) {
+                    return null;
+                } else {
+                    return Integer.valueOf(new String(serializedValue, StandardCharsets.UTF_8));
+                }
+            }
+        };
+    }
+
+    @DefaultComponent
+    default RedisCacheValueMapper<Long> cacheRedisValueLongMapper(RedisCacheKeyMapper<Long> keyMapper) {
+        return new RedisCacheValueMapper<>() {
+            @Override
+            public byte[] write(Long value) {
+                return keyMapper.apply(value);
+            }
+
+            @Override
+            public Long read(byte[] serializedValue) {
+                if (serializedValue == null) {
+                    return null;
+                } else {
+                    return Long.valueOf(new String(serializedValue, StandardCharsets.UTF_8));
+                }
+            }
+        };
+    }
+
+    @DefaultComponent
+    default RedisCacheValueMapper<BigInteger> cacheRedisValueBigIntMapper(RedisCacheKeyMapper<BigInteger> keyMapper) {
+        return new RedisCacheValueMapper<>() {
+            @Override
+            public byte[] write(BigInteger value) {
+                return keyMapper.apply(value);
+            }
+
+            @Override
+            public BigInteger read(byte[] serializedValue) {
+                if (serializedValue == null) {
+                    return null;
+                } else {
+                    return new BigInteger(new String(serializedValue, StandardCharsets.UTF_8));
+                }
+            }
+        };
+    }
+
+    @DefaultComponent
+    default RedisCacheValueMapper<UUID> cacheRedisValueUuidMapper(RedisCacheKeyMapper<UUID> keyMapper) {
+        return new RedisCacheValueMapper<>() {
+
+            @Override
+            public byte[] write(UUID value) {
+                return keyMapper.apply(value);
+            }
+
+            @Override
+            public UUID read(byte[] serializedValue) {
+                return UUID.fromString(new String(serializedValue, StandardCharsets.UTF_8));
+            }
+        };
+    }
+
+    @DefaultComponent
+    default RedisCacheKeyMapper<Integer> cacheRedisKeyIntMapper() {
+        return c -> String.valueOf(c).getBytes(StandardCharsets.UTF_8);
+    }
+
+    @DefaultComponent
+    default RedisCacheKeyMapper<Long> cacheRedisKeyLongMapper() {
+        return c -> String.valueOf(c).getBytes(StandardCharsets.UTF_8);
+    }
+
+    @DefaultComponent
+    default RedisCacheKeyMapper<BigInteger> cacheRedisKeyBigIntMapper() {
+        return c -> c.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @DefaultComponent
+    default RedisCacheKeyMapper<UUID> cacheRedisKeyUuidMapper() {
+        return c -> c.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
+    @DefaultComponent
+    default RedisCacheKeyMapper<String> cacheRedisKeyStringMapper() {
+        return c -> c.getBytes(StandardCharsets.UTF_8);
+    }
+}

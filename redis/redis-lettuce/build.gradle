@@ -1,0 +1,21 @@
+dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
+    api libs.netty.transports
+    api libs.apache.pool
+    api libs.bundles.netty
+    api libs.netty.resolver.dns
+    api(libs.lettuce.core) {
+        exclude group: 'io.netty'
+    }
+
+    api project(":common")
+    api project(":netty-common")
+    api project(":telemetry:telemetry-common")
+    api project(":logging:logging-common")
+
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":internal:test-redis")
+}
+
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

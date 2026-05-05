@@ -11,6 +11,9 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import java.io.IOException;
 import java.util.*;
@@ -53,26 +56,26 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotation is intended to be used on interfaces, but was: " + element.getKind().name(), element);
                 continue;
             }
-            var cacheContract = (TypeElement) element;
-            var cacheContractType = getCacheSuperType(cacheContract);
+            var cacheImpl = (TypeElement) element;
+            var cacheContractType = getCacheSuperType(cacheImpl);
             if (cacheContractType == null) {
                 continue;
             }
 
-            var packageName = getPackage(cacheContract);
-            var cacheContractClassName = ClassName.get(cacheContract);
+            var packageName = getPackage(cacheImpl);
+            var cacheContractClassName = ClassName.get(cacheImpl);
 
-            var configPath = getCacheTypeConfigPath(cacheContract);
+            var configPath = getCacheTypeConfigPath(cacheImpl);
             if (!NAME_PATTERN.matcher(configPath).find()) {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Cache config path doesn't match pattern: " + NAME_PATTERN, cacheContract);
+                messager.printMessage(Diagnostic.Kind.ERROR, "Cache config path doesn't match pattern: " + NAME_PATTERN, cacheImpl);
                 continue;
             }
 
-            var cacheImplBase = getCacheImplBase(cacheContract, cacheContractType);
-            var implSpec = CommonUtils.extendsKeepAop(cacheContract, getCacheImpl(cacheContract).simpleName())
+            var cacheImplBase = getCacheImplBase(cacheImpl, cacheContractType);
+            var implSpec = CommonUtils.extendsKeepAop(cacheImpl, getCacheImpl(cacheImpl).simpleName())
                 .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
                 .addModifiers(Modifier.FINAL)
-                .addMethod(getCacheConstructor(configPath, cacheContractType))
+                .addMethod(getCacheConstructor(cacheImpl, configPath, cacheContractType))
                 .superclass(cacheImplBase)
                 .build();
 
@@ -80,20 +83,21 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 var implFile = JavaFile.builder(cacheContractClassName.packageName(), implSpec).build();
                 implFile.writeTo(processingEnv.getFiler());
 
-                var moduleSpecBuilder = TypeSpec.interfaceBuilder(ClassName.get(packageName, "$%sModule".formatted(cacheContractClassName.simpleName())))
-                    .addOriginatingElement(cacheContract)
+                var name = NameUtils.generatedType(cacheImpl, "Module");
+                var moduleSpecBuilder = TypeSpec.interfaceBuilder(ClassName.get(packageName, name))
+                    .addOriginatingElement(cacheImpl)
                     .addAnnotation(AnnotationUtils.generated(CacheAnnotationProcessor.class))
                     .addModifiers(Modifier.PUBLIC)
                     .addAnnotation(CommonClassNames.module)
-                    .addMethod(getCacheMethodImpl(cacheContract, cacheContractType))
-                    .addMethod(getCacheMethodConfig(cacheContract, cacheContractType));
+                    .addMethod(getCacheMethodImpl(cacheImpl, cacheContractType))
+                    .addMethod(getCacheMethodConfig(cacheImpl, cacheContractType));
 
                 if (cacheContractType.rawType().equals(REDIS_CACHE)) {
-                    var superTypes = processingEnv.getTypeUtils().directSupertypes(cacheContract.asType());
+                    var superTypes = processingEnv.getTypeUtils().directSupertypes(cacheImpl.asType());
                     var superType = superTypes.get(superTypes.size() - 1);
                     var keyType = ((DeclaredType) superType).getTypeArguments().get(0);
                     if (keyType instanceof DeclaredType dt && dt.asElement().getKind() == ElementKind.RECORD) {
-                        moduleSpecBuilder.addMethod(getCacheRedisKeyMapperForRecord(dt));
+                        moduleSpecBuilder.addMethod(getCacheRedisKeyMapperForRecord(cacheImpl, dt));
                     }
                 }
 
@@ -107,26 +111,79 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         }
     }
 
+    private static List<TypeElement> collectInterfaces(Types types, TypeElement typeElement) {
+        var result = new LinkedHashSet<TypeElement>();
+        collectInterfaces(types, result, typeElement);
+        return new ArrayList<>(result);
+    }
+
+    private static void collectInterfaces(Types types, Set<TypeElement> collectedElements, TypeElement typeElement) {
+        if (collectedElements.add(typeElement)) {
+            if (typeElement.asType().getKind() == TypeKind.ERROR) {
+                throw new ProcessingErrorException("Element is error: %s".formatted(typeElement.toString()), typeElement);
+            }
+            for (var directlyImplementedInterface : typeElement.getInterfaces()) {
+                var interfaceElement = (TypeElement) types.asElement(directlyImplementedInterface);
+                collectInterfaces(types, collectedElements, interfaceElement);
+            }
+        }
+    }
+
+    @Nullable
+    public DeclaredType findTypedInterface(TypeElement startElement, ClassName targetFqn) {
+        Queue<DeclaredType> queue = new LinkedList<>();
+        Set<String> visited = new HashSet<>();
+
+        if (startElement.asType().getKind() == TypeKind.DECLARED) {
+            queue.add((DeclaredType) startElement.asType());
+        }
+
+        while (!queue.isEmpty()) {
+            DeclaredType currentType = queue.poll();
+            TypeElement currentElement = (TypeElement) currentType.asElement();
+
+            String signature = currentType.toString();
+            if (visited.contains(signature)) {
+                continue;
+            }
+            visited.add(signature);
+
+            if (currentElement.getQualifiedName().contentEquals(targetFqn.canonicalName())) {
+                return currentType;
+            }
+
+            List<? extends TypeMirror> supertypes = types.directSupertypes(currentType);
+            for (TypeMirror superType : supertypes) {
+                if (superType.getKind() == TypeKind.DECLARED) {
+                    queue.add((DeclaredType) superType);
+                }
+            }
+        }
+
+        return null;
+    }
+
     @Nullable
     private ParameterizedTypeName getCacheSuperType(TypeElement candidate) {
-        var interfaces = candidate.getInterfaces();
-        if (interfaces.size() != 1) {
-            messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotated interface should implement one one interface and it should be one of: %s, %s".formatted(
+        var redisCache = findTypedInterface(candidate, REDIS_CACHE);
+        var caffeineCache = findTypedInterface(candidate, CAFFEINE_CACHE);
+
+        if (redisCache != null && caffeineCache != null) {
+            messager.printMessage(Diagnostic.Kind.ERROR, "@Cache annotated interface can't implement both: %s and %s interfaces".formatted(
                 REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()
-            ));
+            ), candidate);
             return null;
         }
-        var superinterface = (DeclaredType) interfaces.get(0);
-        var superinterfaceElement = (TypeElement) superinterface.asElement();
-        if (superinterfaceElement.getQualifiedName().contentEquals(CAFFEINE_CACHE.canonicalName())) {
-            return (ParameterizedTypeName) TypeName.get(superinterface);
+
+        if (redisCache != null) {
+            return (ParameterizedTypeName) TypeName.get(redisCache);
+        } else if (caffeineCache != null) {
+            return (ParameterizedTypeName) TypeName.get(caffeineCache);
         }
-        if (superinterfaceElement.getQualifiedName().contentEquals(REDIS_CACHE.canonicalName())) {
-            return (ParameterizedTypeName) TypeName.get(superinterface);
-        }
-        messager.printMessage(Diagnostic.Kind.ERROR, "@Cache is expected to be known super type %s or %s, but was %s".formatted(
-            REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName(), superinterface
-        ));
+
+        messager.printMessage(Diagnostic.Kind.ERROR, "@Cache is expected to implement any super type: %s or %s".formatted(
+            REDIS_CACHE.canonicalName(), CAFFEINE_CACHE.canonicalName()
+        ), candidate);
         return null;
     }
 
@@ -145,10 +202,12 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         return Objects.requireNonNull(AnnotationUtils.<String>parseAnnotationValueWithoutDefault(cacheAnnotation, "value"));
     }
 
-    private MethodSpec getCacheMethodConfig(TypeElement cacheContract, ParameterizedTypeName cacheType) {
-        final String configPath = getCacheTypeConfigPath(cacheContract);
-        final ClassName cacheContractName = ClassName.get(cacheContract);
-        final String methodName = "%s_Config".formatted(cacheContractName.simpleName());
+    private MethodSpec getCacheMethodConfig(TypeElement cacheImpl, ParameterizedTypeName cacheType) {
+        final String configPath = getCacheTypeConfigPath(cacheImpl);
+        final ClassName cacheContractName = ClassName.get(cacheImpl);
+        var prefix = NameUtils.getOuterClassesAsPrefix(cacheImpl).substring(1) + cacheImpl.getSimpleName();
+        var methodName = CommonUtils.decapitalize(prefix) + "_Config";
+
         final TypeName returnType;
         if (cacheType.rawType().equals(CAFFEINE_CACHE)) {
             returnType = CAFFEINE_CACHE_CONFIG;
@@ -169,23 +228,20 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             .build();
     }
 
-    private MethodSpec getCacheRedisKeyMapperForRecord(DeclaredType keyType) {
-        var methodNameBuilder = new ArrayList<String>();
-        var nextType = keyType.asElement();
-        while (nextType.getKind() != ElementKind.PACKAGE) {
-            methodNameBuilder.add(nextType.getSimpleName().toString());
-            nextType = nextType.getEnclosingElement();
+    private MethodSpec getCacheRedisKeyMapperForRecord(TypeElement cacheImpl, DeclaredType keyType) {
+        var keyElement = keyType.asElement();
+        var cachePrefix = cacheImpl.getSimpleName().toString();
+        var prefix = NameUtils.getOuterClassesAsPrefix(keyElement).substring(1) + keyElement.getSimpleName();
+        if (!prefix.startsWith(cachePrefix)) {
+            prefix = cachePrefix + "_" + prefix;
         }
-
-        Collections.reverse(methodNameBuilder);
-        final String prefix = String.join("_", methodNameBuilder);
-        final String methodName = "%s_RedisKeyMapper".formatted(prefix);
+        var methodName = CommonUtils.decapitalize(prefix) + "_RedisKeyMapper";
 
         var methodBuilder = MethodSpec.methodBuilder(methodName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.defaultComponent);
 
-        var recordFields = keyType.asElement().getEnclosedElements().stream()
+        var recordFields = keyElement.getEnclosedElements().stream()
             .filter(e -> e.getKind() == ElementKind.RECORD_COMPONENT)
             .toList();
 
@@ -201,7 +257,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             var keyName = "_key" + (i + 1);
             keyBuilder.addStatement("var $L = $L.apply($T.requireNonNull(key.$L(), $S))",
                 keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
-                "Cache key '%s' field '%s' must be non null".formatted(keyType.asElement().toString(), recordField.getSimpleName().toString()));
+                "Cache key '%s' field '%s' must be non null".formatted(keyElement.toString(), recordField.getSimpleName().toString()));
 
             if (i == 0) {
                 compositeKeyBuilder.add("var _compositeKey = new byte[");
@@ -243,22 +299,24 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     }
 
     private static ClassName getCacheImpl(TypeElement cacheContract) {
+        var name = NameUtils.generatedType(cacheContract, "Impl");
         final ClassName cacheImplName = ClassName.get(cacheContract);
-        return ClassName.get(cacheImplName.packageName(), "$%sImpl".formatted(cacheImplName.simpleName()));
+        return ClassName.get(cacheImplName.packageName(), name);
     }
 
-    private MethodSpec getCacheMethodImpl(TypeElement cacheContract, ParameterizedTypeName cacheType) {
-        var cacheImplName = getCacheImpl(cacheContract);
-        var methodName = "%s_Impl".formatted(cacheImplName.simpleName());
+    private MethodSpec getCacheMethodImpl(TypeElement cacheImpl, ParameterizedTypeName cacheType) {
+        var cacheImplName = getCacheImpl(cacheImpl);
+        var prefix = NameUtils.getOuterClassesAsPrefix(cacheImpl).substring(1) + cacheImpl.getSimpleName();
+        var methodName = CommonUtils.decapitalize(prefix) + "_Impl";
         if (cacheType.rawType().equals(CAFFEINE_CACHE)) {
             return MethodSpec.methodBuilder(methodName)
                 .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(CAFFEINE_CACHE_CONFIG, "config")
-                    .addAnnotation(TagUtils.makeAnnotationSpec(ClassName.get(cacheContract)))
+                    .addAnnotation(TagUtils.makeAnnotationSpec(ClassName.get(cacheImpl)))
                     .build())
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
                 .addStatement("return new $T(config, factory)", cacheImplName)
-                .returns(TypeName.get(cacheContract.asType()))
+                .returns(TypeName.get(cacheImpl.asType()))
                 .build();
         }
         if (cacheType.rawType().equals(REDIS_CACHE)) {
@@ -267,7 +325,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
             var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
 
-            final DeclaredType cacheDeclaredType = cacheContract.getInterfaces().stream()
+            final DeclaredType cacheDeclaredType = cacheImpl.getInterfaces().stream()
                 .filter(i -> ClassName.get(i).equals(cacheType))
                 .map(i -> (DeclaredType) i)
                 .findFirst()
@@ -288,25 +346,26 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             return MethodSpec.methodBuilder(methodName)
                 .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
                 .addParameter(ParameterSpec.builder(REDIS_CACHE_CONFIG, "config")
-                    .addAnnotation(TagUtils.makeAnnotationSpec(cacheContract))
+                    .addAnnotation(TagUtils.makeAnnotationSpec(cacheImpl))
                     .build())
                 .addParameter(REDIS_CACHE_CLIENT, "redisClient")
                 .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")
                 .addParameter(keyParamBuilder.build())
                 .addParameter(valueParamBuilder.build())
                 .addStatement("return new $T(config, redisClient, telemetryFactory, keyMapper, valueMapper)", cacheImplName)
-                .returns(TypeName.get(cacheContract.asType()))
+                .returns(TypeName.get(cacheImpl.asType()))
                 .build();
         }
         throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType());
     }
 
-    private MethodSpec getCacheConstructor(String configPath, ParameterizedTypeName cacheContract) {
+    private MethodSpec getCacheConstructor(TypeElement cacheImpl, String configPath, ParameterizedTypeName cacheContract) {
         if (cacheContract.rawType().equals(CAFFEINE_CACHE)) {
             return MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
                 .addParameter(CAFFEINE_CACHE_CONFIG, "config")
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addStatement("super($S, config, factory)", configPath)
+                .addStatement("super($S, $S, config, factory)", configPath, ClassName.get(cacheImpl).canonicalName())
                 .build();
         }
 
@@ -316,12 +375,13 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             var keyMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, keyType);
             var valueMapperType = ParameterizedTypeName.get(REDIS_CACHE_MAPPER_VALUE, valueType);
             return MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
                 .addParameter(REDIS_CACHE_CONFIG, "config")
                 .addParameter(REDIS_CACHE_CLIENT, "redisClient")
                 .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")
                 .addParameter(keyMapperType, "keyMapper")
                 .addParameter(valueMapperType, "valueMapper")
-                .addStatement("super($S, config, redisClient, telemetryFactory, keyMapper, valueMapper)", configPath)
+                .addStatement("super($S, $S, config, redisClient, telemetryFactory, keyMapper, valueMapper)", configPath, ClassName.get(cacheImpl).canonicalName())
                 .build();
         }
 

@@ -10,7 +10,7 @@ dependencies {
     testImplementation libs.prometheus.collector.caffeine
     testImplementation project(":internal:test-logging")
     testImplementation project(":cache:cache-caffeine")
-    testImplementation project(":cache:cache-redis")
+    testImplementation project(":cache:cache-redis-lettuce")
     testImplementation project(":json:json-common")
     testImplementation project(":config:config-common")
     testImplementation testFixtures(project(":symbol-processor-common"))

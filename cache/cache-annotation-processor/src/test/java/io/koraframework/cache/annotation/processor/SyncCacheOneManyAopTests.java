@@ -23,8 +23,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule {
 
-    private static final String CACHED_IMPL_1 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache11Impl";
-    private static final String CACHED_IMPL_2 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache12Impl";
+    private static final String CACHED_IMPL_1 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache11_Impl";
+    private static final String CACHED_IMPL_2 = "io.koraframework.cache.annotation.processor.testcache.$DummyCache12_Impl";
     private static final String CACHED_SERVICE = "io.koraframework.cache.annotation.processor.testdata.sync.$CacheableSyncOneMany__AopProxy";
 
     private DummyCache11 cache1 = null;
@@ -59,8 +59,8 @@ class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule 
             cacheConstructor2.setAccessible(true);
             final Map<ByteBuffer, ByteBuffer> cache = new HashMap<>();
             cache2 = (DummyCache12) cacheConstructor2.newInstance(CacheRunner.getRedisConfig(),
-                CacheRunner.lettuceClient(cache), redisCacheTelemetryFactory(null, null),
-                stringRedisKeyMapper(), stringRedisValueMapper());
+                CacheRunner.lettuceClient(cache), redisCacheTelemetryFactory(null, null, null),
+                cacheRedisKeyStringMapper(), cacheRedisValueStringMapper());
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {

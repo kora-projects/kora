@@ -1,6 +1,7 @@
 package io.koraframework.cache.annotation.processor.testdata.sync;
 
 import io.koraframework.cache.annotation.CacheInvalidate;
+import io.koraframework.cache.annotation.CacheInvalidateAll;
 import io.koraframework.cache.annotation.CachePut;
 import io.koraframework.cache.annotation.Cacheable;
 import io.koraframework.cache.annotation.processor.testcache.DummyCache21;
@@ -25,14 +26,14 @@ public class CacheableSyncMany {
         return value.describeConstable();
     }
 
-    @CachePut(value = DummyCache21.class, parameters = {"arg1", "arg2"})
-    @CachePut(value = DummyCache22.class, parameters = {"arg1", "arg2"})
+    @CachePut(value = DummyCache21.class, args = {"arg1", "arg2"})
+    @CachePut(value = DummyCache22.class, args = {"arg1", "arg2"})
     public String putValue(BigDecimal arg2, String arg3, String arg1) {
         return value;
     }
 
-    @CachePut(value = DummyCache21.class, parameters = {"arg1", "arg2"})
-    @CachePut(value = DummyCache22.class, parameters = {"arg1", "arg2"})
+    @CachePut(value = DummyCache21.class, args = {"arg1", "arg2"})
+    @CachePut(value = DummyCache22.class, args = {"arg1", "arg2"})
     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
         return Optional.ofNullable(value);
     }
@@ -43,8 +44,8 @@ public class CacheableSyncMany {
 
     }
 
-    @CacheInvalidate(value = DummyCache21.class, invalidateAll = true)
-    @CacheInvalidate(value = DummyCache22.class, invalidateAll = true)
+    @CacheInvalidateAll(DummyCache21.class)
+    @CacheInvalidateAll(DummyCache22.class)
     public void evictAll() {
 
     }

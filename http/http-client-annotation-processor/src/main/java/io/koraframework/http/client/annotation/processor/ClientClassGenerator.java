@@ -350,7 +350,7 @@ public class ClientClassGenerator {
 
         b.addCode("\n");
         b.addStatement("var _request = $T.of($S, _uri, _uriTemplate, _headers, _body, _requestTimeout)", httpClientRequest, httpMethod);
-        if (CommonUtils.isMono(method.getReturnType()) || CommonUtils.isFuture(method.getReturnType())) {
+        if (CommonUtils.isMono(method.getReturnType()) || CommonUtils.isCompletionStage(method.getReturnType())) {
             this.processingEnv.getMessager().printWarning("Method has async signature, this might not work correctly", method);
         }
         b.beginControlFlow("try (var _response = _client.execute(_request))");
@@ -594,14 +594,14 @@ public class ClientClassGenerator {
                     tb.addField(responseMapperField);
                 } else {
                     var isVoid = method.getReturnType().getKind() == TypeKind.VOID;
-                    var isFutureOfVoid = (CommonUtils.isFuture(method.getReturnType()) || CommonUtils.isMono(method.getReturnType()))
+                    var isFutureOfVoid = (CommonUtils.isCompletionStage(method.getReturnType()) || CommonUtils.isMono(method.getReturnType()))
                                          && method.getReturnType() instanceof DeclaredType dt
                                          && dt.getTypeArguments().get(0).toString().equals("java.lang.Void");
                     if (!isVoid && !isFutureOfVoid) {
                         final TypeName responseMapperType;
                         if (methodData.responseMapper() != null && methodData.responseMapper().mapperClass() != null) {
                             responseMapperType = TypeName.get(methodData.responseMapper().mapperClass());
-                        } else if (CommonUtils.isMono(methodData.element.getReturnType()) || CommonUtils.isFuture(methodData.element.getReturnType())) {
+                        } else if (CommonUtils.isMono(methodData.element.getReturnType()) || CommonUtils.isCompletionStage(methodData.element.getReturnType())) {
                             responseMapperType = ParameterizedTypeName.get(
                                 httpClientResponseMapper,
                                 ParameterizedTypeName.get(
@@ -643,7 +643,7 @@ public class ClientClassGenerator {
                         tb.addField(responseMapperField);
                     } else {
                         var returnType = method.getReturnType();
-                        var responseMapperType = CommonUtils.isMono(returnType) || CommonUtils.isFuture(returnType)
+                        var responseMapperType = CommonUtils.isMono(returnType) || CommonUtils.isCompletionStage(returnType)
                             ? codeMapper.futureResponseMapperType(((DeclaredType) returnType).getTypeArguments().get(0))
                             : codeMapper.responseMapperType(returnType);
                         var responseMapperParameter = ParameterSpec.builder(responseMapperType, responseMapperName);
@@ -713,7 +713,7 @@ public class ClientClassGenerator {
         }
         var responseMapperType = TypeUtils.findSupertype(processingEnv, mappingMapper, httpClientResponseMapper);
         var typeArg = responseMapperType.getTypeArguments().get(0);
-        if (CommonUtils.isFuture(typeArg)) {
+        if (CommonUtils.isCompletionStage(typeArg)) {
             typeArg = ((DeclaredType) typeArg).getTypeArguments().get(0);
         }
         return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(resultType, typeArg);

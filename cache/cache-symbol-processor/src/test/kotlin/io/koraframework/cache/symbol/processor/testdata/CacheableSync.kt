@@ -1,6 +1,7 @@
 package io.koraframework.cache.symbol.processor.testdata
 
 import io.koraframework.cache.annotation.CacheInvalidate
+import io.koraframework.cache.annotation.CacheInvalidateAll
 import io.koraframework.cache.annotation.CachePut
 import io.koraframework.cache.annotation.Cacheable
 import io.koraframework.cache.symbol.processor.testcache.DummyCache21
@@ -14,7 +15,7 @@ open class CacheableSync {
         return value
     }
 
-    @CachePut(value = DummyCache21::class, parameters = ["arg1", "arg2"])
+    @CachePut(value = DummyCache21::class, args = ["arg1", "arg2"])
     open fun putValue(arg2: BigDecimal?, arg3: String?, arg1: String?): String {
         return value
     }
@@ -23,7 +24,7 @@ open class CacheableSync {
     open fun evictValue(arg1: String?, arg2: BigDecimal?) {
     }
 
-    @CacheInvalidate(value = DummyCache21::class, invalidateAll = true)
+    @CacheInvalidateAll(DummyCache21::class)
     open fun evictAll() {
     }
 
@@ -31,7 +32,7 @@ open class CacheableSync {
     // Should compile normally.
     // Method is not used in tests, only in processing
     @Throws
-    @CacheInvalidate(value = DummyCache21::class, invalidateAll = true)
+    @CacheInvalidateAll(DummyCache21::class)
     open fun throws1() {
     }
 
@@ -39,7 +40,7 @@ open class CacheableSync {
     // Should compile normally.
     // Method is not used in tests, only in processing
     @Throws
-    @CachePut(value = DummyCache21::class, parameters = ["arg1", "arg2"])
+    @CachePut(value = DummyCache21::class, args = ["arg1", "arg2"])
     open fun throws2(arg2: BigDecimal?, arg3: String?, arg1: String?): String {
         return value
     }

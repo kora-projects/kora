@@ -22,8 +22,8 @@ import java.nio.charset.StandardCharsets
 @KspExperimental
 class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
 
-    private val CACHE1_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache21Impl"
-    private val CACHE2_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache22Impl"
+    private val CACHE1_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache21_Impl"
+    private val CACHE2_CLASS = "io.koraframework.cache.symbol.processor.testcache.\$DummyCache22_Impl"
     private val SERVICE_CLASS = "io.koraframework.cache.symbol.processor.testdata.\$CacheableSyncMany__AopProxy"
 
     private var cache1: DummyCache21? = null
@@ -53,7 +53,7 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
             cache2 = cache2Class.constructors[0].newInstance(
                 CacheRunner.getRedisConfig(),
                 CacheRunner.lettuceClient(cache),
-                redisCacheTelemetryFactory(null, null),
+                redisCacheTelemetryFactory(null, null, null),
                 RedisCacheKeyMapper<DummyCache22.Key> { key ->
                     val k1 = key.k1.toByteArray(StandardCharsets.UTF_8)
                     val k2 = key.k2.toString().toByteArray(StandardCharsets.UTF_8)
@@ -63,7 +63,7 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
                         .put(k2)
                         .array()
                 },
-                stringRedisValueMapper()
+                cacheRedisValueStringMapper()
             ) as DummyCache22
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")

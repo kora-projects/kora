@@ -16,12 +16,12 @@ import java.lang.annotation.*;
 public @interface Cacheable {
 
     /**
-     * @return cache name (correlate with name in configuration file)
+     * @return cache implementation
      */
     Class<? extends Cache<?, ?>> value();
 
     /**
      * @return The parameter names that make up the key.
      */
-    String[] parameters() default {};
+    String[] args() default {};
 }

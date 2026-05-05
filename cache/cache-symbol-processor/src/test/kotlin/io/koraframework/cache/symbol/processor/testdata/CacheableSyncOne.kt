@@ -1,6 +1,7 @@
 package io.koraframework.cache.symbol.processor.testdata
 
 import io.koraframework.cache.annotation.CacheInvalidate
+import io.koraframework.cache.annotation.CacheInvalidateAll
 import io.koraframework.cache.annotation.CachePut
 import io.koraframework.cache.annotation.Cacheable
 import io.koraframework.cache.symbol.processor.testcache.DummyCache11
@@ -14,7 +15,7 @@ open class CacheableSyncOne {
         return value
     }
 
-    @CachePut(value = DummyCache11::class, parameters = ["arg1"])
+    @CachePut(value = DummyCache11::class, args = ["arg1"])
     open fun putValue(arg2: BigDecimal?, arg3: String?, arg1: String): String {
         return value
     }
@@ -23,7 +24,7 @@ open class CacheableSyncOne {
     open fun evictValue(arg1: String) {
     }
 
-    @CacheInvalidate(value = DummyCache11::class, invalidateAll = true)
+    @CacheInvalidateAll(DummyCache11::class)
     open fun evictAll() {
     }
 }
