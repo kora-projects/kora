@@ -1,44 +1,45 @@
 package io.koraframework.http.client.common.telemetry.impl;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.body.HttpBodyInput;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper extends AtomicBoolean implements HttpBodyInput {
+
     private final DefaultHttpClientLogger logger;
-    private final HttpClientRequest rq;
-    private final HttpClientResponse rs;
-    private final long processingTime;
-    private final Charset charset;
+    private final HttpClientRequest request;
+    private final HttpClientResponse response;
+    private final long processingTookNanos;
 
     private volatile InputStream is;
 
-    public DefaultHttpClientTelemetryCollectingResponseBodyWrapper(DefaultHttpClientLogger logger, HttpClientRequest rq, HttpClientResponse rs, long processingTime, Charset charset) {
+    public DefaultHttpClientTelemetryCollectingResponseBodyWrapper(DefaultHttpClientLogger logger,
+                                                                   HttpClientRequest request,
+                                                                   HttpClientResponse response,
+                                                                   long processingTookNanos) {
         this.logger = logger;
-        this.rq = rq;
-        this.rs = rs;
-        this.processingTime = processingTime;
-        this.charset = charset;
+        this.request = request;
+        this.response = response;
+        this.processingTookNanos = processingTookNanos;
     }
 
     @Override
     public long contentLength() {
-        return rs.body().contentLength();
+        return response.body().contentLength();
     }
 
     @Nullable
     @Override
     public String contentType() {
-        return rs.body().contentType();
+        return response.body().contentType();
     }
 
     @Override
@@ -48,7 +49,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
             return is;
         }
         if (this.compareAndSet(false, true)) {
-            is = new WrappedInputStream(logger, rs, rs.body().asInputStream());
+            is = new WrappedInputStream(logger, response.body().asInputStream());
             return this.is = is;
         } else {
             throw new IllegalStateException("Body was already subscribed");
@@ -57,14 +58,22 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
 
     @Override
     public void close() throws IOException {
-        try (var body = this.rs.body(); var _ = this.is) {
+        try (var body = this.response.body(); var _ = this.is) {
             if (this.compareAndSet(false, true)) {
                 // input stream was never requested, so we should just collect body here
                 try {
-                    var buf = body.asInputStream().readAllBytes();
-                    logger.logResponse(rq, rs, processingTime, new String(buf, charset));
+                    if (logger.logResponseBody()) {
+                        var buf = body.asInputStream().readAllBytes();
+                        if (buf.length > 0) {
+                            logger.logResponse(request, response, processingTookNanos, ByteBuffer.wrap(buf), body.contentType());
+                        } else {
+                            logger.logResponse(request, response, processingTookNanos, null, body.contentType());
+                        }
+                    } else {
+                        logger.logResponse(request, response, processingTookNanos, null, body.contentType());
+                    }
                 } catch (IOException e) {
-                    logger.logError(rq, processingTime, e);
+                    logger.logError(request, processingTookNanos, e);
                     throw e;
                 }
             }
@@ -72,16 +81,18 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
     }
 
     private class WrappedInputStream extends InputStream {
+
+        private static final byte[] EMPTY = new byte[]{};
+
         private final InputStream is;
         private final DefaultHttpClientLogger logger;
-        private final HttpClientResponse response;
         private final List<ByteBuffer> body = new ArrayList<>();
+
         private boolean closed = false;
 
-        public WrappedInputStream(DefaultHttpClientLogger logger, HttpClientResponse response, InputStream inputStream) {
+        public WrappedInputStream(DefaultHttpClientLogger logger, InputStream inputStream) {
             this.is = inputStream;
             this.logger = logger;
-            this.response = response;
         }
 
         @Override
@@ -100,9 +111,17 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
                 var read = is.read(b, off, len);
                 if (read < 0) {
                     closed = true;
-                    logger.logResponse(rq, rs, processingTime, bodyToString(body));
-                }
-                if (read > 0) {
+                    if (logger.logResponseBody()) {
+                        var bodyArray = bodyToByteArray(body);
+                        if (bodyArray.length > 0) {
+                            logger.logResponse(request, response, processingTookNanos, ByteBuffer.wrap(bodyArray), contentType());
+                        } else {
+                            logger.logResponse(request, response, processingTookNanos, null, contentType());
+                        }
+                    } else {
+                        logger.logResponse(request, response, processingTookNanos, null, contentType());
+                    }
+                } else if (read > 0) {
                     var copy = ByteBuffer.allocate(read);
                     copy.put(b, off, read);
                     copy.rewind();
@@ -112,7 +131,7 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
             } catch (IOException e) {
                 try {
                     closed = true;
-                    logger.logError(rq, processingTime, e);
+                    logger.logError(request, processingTookNanos, e);
                 } catch (Throwable t) {
                     e.addSuppressed(t);
                 }
@@ -137,16 +156,43 @@ public final class DefaultHttpClientTelemetryCollectingResponseBodyWrapper exten
                             }
                         }
                     } finally {
-                        logger.logResponse(rq, rs, processingTime, bodyToString(body));
+                        if (logger.logResponseBody()) {
+                            var bodyArray = bodyToByteArray(body);
+                            if (bodyArray.length > 0) {
+                                logger.logResponse(request, response, processingTookNanos, ByteBuffer.wrap(bodyArray), contentType());
+                            } else {
+                                logger.logResponse(request, response, processingTookNanos, null, contentType());
+                            }
+                        } else {
+                            logger.logResponse(request, response, processingTookNanos, null, contentType());
+                        }
                     }
                 }
             }
         }
 
-        private String bodyToString(List<ByteBuffer> body) {
+        private byte[] bodyToByteArray(List<ByteBuffer> body) {
+            int totalSize = 0;
+            for (ByteBuffer b : body) {
+                totalSize += b.remaining(); // remaining() = limit - position
+            }
 
-            // TODO
-            return null;
+            if (totalSize == 0) {
+                return EMPTY;
+            }
+
+            byte[] result = new byte[totalSize];
+            int offset = 0;
+
+            for (ByteBuffer b : body) {
+                int length = b.remaining();
+                if (length > 0) {
+                    b.get(result, offset, length);
+                    offset += length;
+                }
+            }
+
+            return result;
         }
     }
 }

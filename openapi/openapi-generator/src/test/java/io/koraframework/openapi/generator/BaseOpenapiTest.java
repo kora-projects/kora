@@ -48,6 +48,17 @@ public abstract class BaseOpenapiTest {
                 this.defaultDelegate = defaultDelegate;
                 return this;
             }
+
+            @Override
+            public String toString() {
+                return "Options{" +
+                       "authAsArg=" + authAsArg +
+                       ", includeServerRequest=" + includeServerRequest +
+                       ", implicitHeaders=" + implicitHeaders +
+                       ", implicitHeadersRegex=" + implicitHeadersRegex +
+                       ", defaultDelegate=" + defaultDelegate +
+                       '}';
+            }
         }
     }
 

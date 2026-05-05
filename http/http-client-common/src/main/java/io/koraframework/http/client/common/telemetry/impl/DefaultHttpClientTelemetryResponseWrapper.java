@@ -7,6 +7,7 @@ import io.koraframework.http.common.header.HttpHeaders;
 import java.io.IOException;
 
 public class DefaultHttpClientTelemetryResponseWrapper implements HttpClientResponse {
+
     private final HttpClientResponse delegate;
     private final HttpBodyInput wrappedBody;
 
@@ -42,8 +43,8 @@ public class DefaultHttpClientTelemetryResponseWrapper implements HttpClientResp
     @Override
     public String toString() {
         return "HttpClientResponse{code=" + code() +
-               ", bodyLength=" + delegate.body().contentLength() +
-               ", bodyType=" + delegate.body().contentType() +
+               ", contentLength=" + delegate.body().contentLength() +
+               ", contentType=" + delegate.body().contentType() +
                '}';
     }
 }

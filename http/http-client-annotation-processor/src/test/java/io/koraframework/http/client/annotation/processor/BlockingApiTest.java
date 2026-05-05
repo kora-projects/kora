@@ -26,7 +26,7 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     @Test
     public void testComponentAnnotationPreserved() {
         var client = compileClient(List.of(), """
-            import io.koraframework.common.Component;@Component
+            @Component
             @HttpClient
             public interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
