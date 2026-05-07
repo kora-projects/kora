@@ -10,6 +10,7 @@ import io.koraframework.http.client.common.HttpClientModule;
 import java.net.http.HttpClient;
 
 public interface JdkHttpClientModule extends HttpClientModule {
+
     default JdkHttpClient jdkHttpClient(HttpClient client) {
         return new JdkHttpClient(client);
     }

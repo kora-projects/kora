@@ -11,10 +11,6 @@ public interface JdkHttpClientConfig {
         return true;
     }
 
-    default int threads() {
-        return Runtime.getRuntime().availableProcessors() * 2;
-    }
-
     default HttpClient.Version httpVersion() {
         return HttpClient.Version.HTTP_1_1;
     }
