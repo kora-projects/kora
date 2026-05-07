@@ -56,7 +56,7 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
 
         // Connection manager for pooling
         var connectionPoolBuilder = PoolingHttpClientConnectionManagerBuilder.create()
-                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.LAX)
+                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.OFFLOCK)
                 .setMaxConnTotal(apacheConfig.maxConnections())
                 .setMaxConnPerRoute(apacheConfig.maxConnections())
                 .setDefaultConnectionConfig(ConnectionConfig.custom()
