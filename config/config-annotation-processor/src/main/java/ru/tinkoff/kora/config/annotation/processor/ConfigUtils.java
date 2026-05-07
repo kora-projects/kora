@@ -111,10 +111,10 @@ public class ConfigUtils {
                     name, TypeName.get(methodType.getReturnType()), isNullable, method.getModifiers().contains(Modifier.DEFAULT), mapping
                 ));
             }
-            for (var superinterface : te.getInterfaces()) {
-                var superinterfaceElement = (TypeElement) types.asElement(superinterface);
-                parseInterface(types, (DeclaredType) superinterface, superinterfaceElement, fields, errors, seen);
-            }
+        }
+        for (var superinterface : te.getInterfaces()) {
+            var superinterfaceElement = (TypeElement) types.asElement(superinterface);
+            parseInterface(types, (DeclaredType) superinterface, superinterfaceElement, fields, errors, seen);
         }
     }
 
