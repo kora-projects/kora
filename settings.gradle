@@ -60,6 +60,7 @@ include(
     'http:http-client-common',
     'http:http-client-ok',
     'http:http-client-jdk',
+    'http:http-client-apache',
     'http:http-server-annotation-processor',
     'http:http-server-symbol-processor',
     'http:http-client-annotation-processor',
