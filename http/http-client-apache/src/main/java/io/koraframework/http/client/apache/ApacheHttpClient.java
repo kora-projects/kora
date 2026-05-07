@@ -45,8 +45,8 @@ public class ApacheHttpClient implements HttpClient {
         var apacheRequest = new HttpUriRequestBase(request.method(), request.uri());
         if (request.requestTimeout() != null) {
             apacheRequest.setConfig(RequestConfig.custom()
-                .setResponseTimeout(request.requestTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                .build());
+                    .setResponseTimeout(request.requestTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                    .build());
         }
 
         for (var header : request.headers()) {
