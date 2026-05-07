@@ -13,4 +13,8 @@ public interface ApacheHttpClientConfig extends HttpClientConfig {
     default int maxRedirects() {
         return 3;
     }
+
+    default int maxConnections() {
+        return Runtime.getRuntime().availableProcessors() * 250;
+    }
 }

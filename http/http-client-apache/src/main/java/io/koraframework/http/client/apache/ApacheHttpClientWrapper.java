@@ -14,6 +14,7 @@ import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.pool.PoolConcurrencyPolicy;
+import org.apache.hc.core5.util.TimeValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc.client5.http.classic.HttpClient> {
 
     private static final Logger logger = LoggerFactory.getLogger(ApacheHttpClientWrapper.class);
+
     private final HttpClientConfig baseConfig;
     private final ApacheHttpClientConfig apacheConfig;
 
@@ -44,31 +46,35 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
         }
 
         requestConfigBuilder = requestConfigBuilder.setAuthenticationEnabled(false)
-            .setCircularRedirectsAllowed(false)
-            .setContentCompressionEnabled(false)
-            .setHardCancellationEnabled(true)
-            .setExpectContinueEnabled(false)
-            .setProtocolUpgradeEnabled(true)
-            .setRedirectsEnabled(apacheConfig.followRedirects())
-            .setMaxRedirects(apacheConfig.maxRedirects());
+                .setCircularRedirectsAllowed(false)
+                .setContentCompressionEnabled(false)
+                .setHardCancellationEnabled(true)
+                .setExpectContinueEnabled(false)
+                .setProtocolUpgradeEnabled(true)
+                .setRedirectsEnabled(apacheConfig.followRedirects())
+                .setMaxRedirects(apacheConfig.maxRedirects());
 
         // Connection manager for pooling
         var connectionPoolBuilder = PoolingHttpClientConnectionManagerBuilder.create()
-            .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.LAX)
-            .setDefaultConnectionConfig(ConnectionConfig.custom()
-                .setConnectTimeout(apacheConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                .setIdleTimeout(30, TimeUnit.SECONDS)
-                .setValidateAfterInactivity(30, TimeUnit.SECONDS)
-                .build());
+                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.LAX)
+                .setMaxConnTotal(apacheConfig.maxConnections())
+                .setMaxConnPerRoute(apacheConfig.maxConnections())
+                .setDefaultConnectionConfig(ConnectionConfig.custom()
+                        .setConnectTimeout(apacheConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                        .setIdleTimeout(30, TimeUnit.SECONDS)
+                        .setValidateAfterInactivity(30, TimeUnit.SECONDS)
+                        .build());
 
         // Build the client
         var clientBuilder = HttpClients.custom()
-            .setDefaultRequestConfig(requestConfigBuilder.build())
-            .setConnectionManager(connectionPoolBuilder.build())
-            .disableDefaultUserAgent()
-            .disableAuthCaching()
-            .disableConnectionState()
-            .disableAutomaticRetries();
+                .setDefaultRequestConfig(requestConfigBuilder.build())
+                .setConnectionManager(connectionPoolBuilder.build())
+                .evictExpiredConnections()
+                .evictIdleConnections(TimeValue.ofSeconds(30))
+                .disableDefaultUserAgent()
+                .disableAuthCaching()
+                .disableConnectionState()
+                .disableAutomaticRetries();
 
         var proxyConfig = this.baseConfig.proxy();
         if (this.baseConfig.useEnvProxy()) {
