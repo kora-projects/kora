@@ -11,4 +11,8 @@ public interface TestConfigApplication extends HoconConfigModule {
     default Object root(Config config) {
         return config;
     }
+
+    default TestComponent3 testComponent3() {
+        return new TestComponent3();
+    }
 }
