@@ -36,8 +36,8 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 new $CamundaEngineBpmnConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineBpmnConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
                     new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO),
-                    true
+                    true,
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
                 )
             );
 
@@ -105,8 +105,8 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 new $CamundaEngineBpmnConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineBpmnConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
                     new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO),
-                    true
+                    true,
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
                 )
             );
 
