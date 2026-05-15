@@ -34,5 +34,6 @@ import io.koraframework.http.server.common.request.HttpServerRequest;
  * @see Principal
  */
 public interface HttpServerPrincipalExtractor<T, P extends Principal> {
+    @Nullable
     P extract(HttpServerRequest request, @Nullable T token);
 }
