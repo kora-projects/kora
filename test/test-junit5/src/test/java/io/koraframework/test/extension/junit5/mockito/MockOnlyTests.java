@@ -1,5 +1,6 @@
 package io.koraframework.test.extension.junit5.mockito;
 
+import io.koraframework.test.extension.junit5.testdata.TestApplicationOps;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
@@ -11,7 +12,7 @@ import io.koraframework.test.extension.junit5.testdata.TestComponent3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@KoraAppTest(TestApplication.class)
+@KoraAppTest(TestApplicationOps.class)
 public class MockOnlyTests {
 
     @Mock

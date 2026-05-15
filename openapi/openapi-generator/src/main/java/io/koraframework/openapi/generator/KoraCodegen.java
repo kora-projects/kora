@@ -89,28 +89,6 @@ public class KoraCodegen extends DefaultCodegen {
         supportsInheritance = false;
         hideGenerationTimestamp = true;
 
-        setReservedWordsLowerCase(
-            Arrays.asList(
-                // special words
-                "object",
-                // used as internal variables, can collide with parameter names
-                "error",
-                "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
-                "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
-                "localVarAccepts", "localVarAccept", "localVarContentTypes",
-                "localVarContentType", "localVarAuthNames", "localReturnType",
-                //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
-
-                // language reserved words
-                "abstract", "continue", "for", "new", "switch", "assert",
-                "default", "if", "package", "synchronized", "boolean", "do", "goto", "private",
-                "this", "break", "double", "implements", "protected", "throw", "byte", "else",
-                "import", "public", "throws", "case", "enum", "instanceof", "return", "transient",
-                "catch", "extends", "int", "short", "try", "char", "final", "interface", "static",
-                "void", "class", "finally", "long", "strictfp", "volatile", "const", "float",
-                "native", "super", "while", "null")
-        );
-
         cliOptions.add(new CliOption(CodegenConstants.INVOKER_PACKAGE, CodegenConstants.INVOKER_PACKAGE_DESC));
         cliOptions.add(new CliOption(CodegenConstants.MODEL_PACKAGE, CodegenConstants.MODEL_PACKAGE_DESC));
         cliOptions.add(new CliOption(CodegenConstants.API_PACKAGE, CodegenConstants.API_PACKAGE_DESC));
@@ -195,6 +173,47 @@ public class KoraCodegen extends DefaultCodegen {
                     "byte[]")
             );
         }
+
+        final Stream<String> languageReservedWords;
+        if (params.codegenMode.isJava()) {
+            languageReservedWords = Stream.of(
+                    // Java Reserved Words
+                    "abstract", "assert", "boolean", "break", "byte", "case", "catch", "char",
+                    "class", "const", "continue", "default", "do", "double", "else", "enum",
+                    "extends", "final", "finally", "float", "for", "goto", "if", "implements",
+                    "import", "instanceof", "int", "interface", "long", "native", "new", "package",
+                    "private", "protected", "public", "return", "short", "static", "strictfp",
+                    "super", "switch", "synchronized", "this", "throw", "throws", "transient",
+                    "try", "void", "volatile", "while", "var", "record", "yield", "sealed", "null", "when");
+        } else {
+            languageReservedWords = Stream.of(
+                    // Kotlin Reserved Words
+                    "abstract", "actual", "annotation", "as", "break", "by", "catch", "class",
+                    "companion", "const", "constructor", "continue", "data", "do", "dynamic",
+                    "else", "enum", "expect", "external", "false", "final", "finally", "for",
+                    "fun", "if", "import", "in", "inline", "interface", "internal", "is", "lateinit",
+                    "native", "null", "object", "open", "operator", "out", "override", "package",
+                    "private", "protected", "public", "reified", "return", "sealed", "set", "super",
+                    "suspend", "this", "throw", "true", "try", "typealias", "typeof", "val", "var",
+                    "when", "where", "while");
+        }
+
+        setReservedWordsLowerCase(
+                Stream.concat(
+                        Stream.of(
+                                // special words
+                                "object",
+                                // used as internal variables, can collide with parameter names
+                                "error",
+                                "localVarPath", "localVarQueryParams", "localVarCollectionQueryParams",
+                                "localVarHeaderParams", "localVarCookieParams", "localVarFormParams", "localVarPostBody",
+                                "localVarAccepts", "localVarAccept", "localVarContentTypes",
+                                "localVarContentType", "localVarAuthNames", "localReturnType"
+                                //  "ApiClient", "ApiException", "ApiResponse", "Configuration", "StringUtil",
+                        ),
+                        languageReservedWords
+                ).distinct().toList()
+        );
 
         if (!additionalProperties.containsKey(CodegenConstants.MODEL_PACKAGE)) {
             additionalProperties.put(CodegenConstants.MODEL_PACKAGE, modelPackage);
