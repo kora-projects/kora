@@ -8,7 +8,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.net.Authenticator;
+import java.net.InetAddress;
 import java.net.PasswordAuthentication;
+import java.net.URL;
 import java.net.http.HttpClient;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
@@ -51,8 +53,11 @@ public final class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient
                 var proxyPasswordCharArray = proxyPassword.toCharArray();
                 builder.authenticator(new Authenticator() {
                     @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(proxyUser, proxyPasswordCharArray);
+                    public PasswordAuthentication requestPasswordAuthenticationInstance(String host, InetAddress addr, int port, String protocol, String prompt, String scheme, URL url, RequestorType reqType) {
+                        if (reqType == RequestorType.PROXY) {
+                            return new PasswordAuthentication(proxyUser, proxyPasswordCharArray);
+                        }
+                        return null;
                     }
                 });
             }
