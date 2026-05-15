@@ -16,6 +16,7 @@ import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetry;
 import ru.tinkoff.kora.http.client.common.telemetry.HttpClientTelemetryFactory;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -97,8 +98,8 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
 
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
         var durationCVE = new DurationConfigValueExtractor();
-        @SuppressWarnings("enchecked")
-        var telemetryCVE = (ConfigValueExtractor) new $HttpClientTelemetryConfig_ConfigValueExtractor(
+        @SuppressWarnings("unchecked")
+        var telemetryCVE = (ConfigValueExtractor<TelemetryConfig>) (ConfigValueExtractor) new $HttpClientTelemetryConfig_ConfigValueExtractor(
             new $HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
             new $TelemetryConfig_TracingConfig_ConfigValueExtractor(),
             new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new DoubleArrayConfigValueExtractor(c -> c.asNumber().doubleValue()))
@@ -106,7 +107,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         @SuppressWarnings("enchecked")
         var configCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, telemetryCVE);
 
-        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", telemetryCVE, durationCVE, configCVE);
+        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", telemetryCVE, configCVE, durationCVE);
         var config = configValueExtractor.extract(MapConfigFactory.fromMap(Map.of(
             "url", "http://test-url:8080"
         )).root());
