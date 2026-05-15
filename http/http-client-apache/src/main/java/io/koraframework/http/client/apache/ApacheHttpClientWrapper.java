@@ -2,6 +2,7 @@ package io.koraframework.http.client.apache;
 
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
+import io.koraframework.common.util.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.client.common.HttpClientConfig;
 import org.apache.hc.client5.http.auth.AuthScope;
@@ -10,11 +11,13 @@ import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.core5.io.CloseMode;
 import org.apache.hc.core5.pool.PoolConcurrencyPolicy;
 import org.apache.hc.core5.util.TimeValue;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,13 +29,21 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
 
     private final HttpClientConfig baseConfig;
     private final ApacheHttpClientConfig apacheConfig;
+    @Nullable
+    private final Configurer<RequestConfig.Builder> requestConfigurer;
+    @Nullable
+    private final Configurer<HttpClientBuilder> clientConfigurer;
 
     private volatile CloseableHttpClient httpClient;
 
     public ApacheHttpClientWrapper(HttpClientConfig baseConfig,
-                                   ApacheHttpClientConfig apacheConfig) {
+                                   ApacheHttpClientConfig apacheConfig,
+                                   @Nullable Configurer<RequestConfig.Builder> requestConfigurer,
+                                   @Nullable Configurer<HttpClientBuilder> clientConfigurer) {
         this.baseConfig = baseConfig;
         this.apacheConfig = apacheConfig;
+        this.requestConfigurer = requestConfigurer;
+        this.clientConfigurer = clientConfigurer;
     }
 
     private CloseableHttpClient createApacheHttpClient() {
@@ -45,36 +56,41 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
             requestConfigBuilder.setResponseTimeout(apacheConfig.readTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
 
-        requestConfigBuilder = requestConfigBuilder.setAuthenticationEnabled(false)
-                .setCircularRedirectsAllowed(false)
-                .setContentCompressionEnabled(false)
-                .setHardCancellationEnabled(true)
-                .setExpectContinueEnabled(false)
-                .setProtocolUpgradeEnabled(true)
-                .setRedirectsEnabled(apacheConfig.followRedirects())
-                .setMaxRedirects(apacheConfig.maxRedirects());
+        requestConfigBuilder = requestConfigBuilder
+            .setAuthenticationEnabled(false)
+            .setCircularRedirectsAllowed(false)
+            .setContentCompressionEnabled(false)
+            .setHardCancellationEnabled(true)
+            .setExpectContinueEnabled(false)
+            .setProtocolUpgradeEnabled(true)
+            .setRedirectsEnabled(apacheConfig.followRedirects())
+            .setMaxRedirects(apacheConfig.maxRedirects());
 
         // Connection manager for pooling
         var connectionPoolBuilder = PoolingHttpClientConnectionManagerBuilder.create()
-                .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.OFFLOCK)
-                .setMaxConnTotal(apacheConfig.maxConnections())
-                .setMaxConnPerRoute(apacheConfig.maxConnections())
-                .setDefaultConnectionConfig(ConnectionConfig.custom()
-                        .setConnectTimeout(apacheConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS)
-                        .setIdleTimeout(30, TimeUnit.SECONDS)
-                        .setValidateAfterInactivity(30, TimeUnit.SECONDS)
-                        .build());
+            .setPoolConcurrencyPolicy(PoolConcurrencyPolicy.OFFLOCK)
+            .setMaxConnTotal(apacheConfig.maxConnections())
+            .setMaxConnPerRoute(apacheConfig.maxConnections())
+            .setDefaultConnectionConfig(ConnectionConfig.custom()
+                .setConnectTimeout(apacheConfig.connectTimeout().toMillis(), TimeUnit.MILLISECONDS)
+                .setIdleTimeout(30, TimeUnit.SECONDS)
+                .setValidateAfterInactivity(30, TimeUnit.SECONDS)
+                .build());
 
         // Build the client
+        if (requestConfigurer != null) {
+            requestConfigBuilder = requestConfigurer.configure(requestConfigBuilder);
+        }
+
         var clientBuilder = HttpClients.custom()
-                .setDefaultRequestConfig(requestConfigBuilder.build())
-                .setConnectionManager(connectionPoolBuilder.build())
-                .evictExpiredConnections()
-                .evictIdleConnections(TimeValue.ofSeconds(30))
-                .disableDefaultUserAgent()
-                .disableAuthCaching()
-                .disableConnectionState()
-                .disableAutomaticRetries();
+            .setDefaultRequestConfig(requestConfigBuilder.build())
+            .setConnectionManager(connectionPoolBuilder.build())
+            .evictExpiredConnections()
+            .evictIdleConnections(TimeValue.ofSeconds(30))
+            .disableDefaultUserAgent()
+            .disableAuthCaching()
+            .disableConnectionState()
+            .disableAutomaticRetries();
 
         var proxyConfig = this.baseConfig.proxy();
         if (this.baseConfig.useEnvProxy()) {
@@ -93,21 +109,25 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
             }
         }
 
+        if (clientConfigurer != null) {
+            clientBuilder = clientConfigurer.configure(clientBuilder);
+        }
+
         return clientBuilder.build();
     }
 
     @Override
-    public void init() throws Exception {
-        logger.debug("JdkHttpClient starting...");
+    public void init() {
+        logger.debug("ApacheHttpClient starting...");
         var started = System.nanoTime();
 
         this.httpClient = createApacheHttpClient();
-        logger.info("JdkHttpClient started in {}", TimeUtils.tookForLogging(started));
+        logger.info("ApacheHttpClient started in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
-    public void release() throws Exception {
-        logger.debug("JdkHttpClient stopping...");
+    public void release() {
+        logger.debug("ApacheHttpClient stopping...");
         var started = System.nanoTime();
 
         if (this.httpClient != null) {
@@ -115,7 +135,7 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
         }
         this.httpClient = null;
 
-        logger.info("JdkHttpClient stopped in {}", TimeUtils.tookForLogging(started));
+        logger.info("ApacheHttpClient stopped in {}", TimeUtils.tookForLogging(started));
     }
 
     @Override
