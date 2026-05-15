@@ -1,7 +1,10 @@
 package ru.tinkoff.kora.http.server.common;
 
 import jakarta.annotation.Nullable;
-import okhttp3.*;
+import okhttp3.ConnectionPool;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
 import okio.BufferedSink;
 import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.*;
@@ -1110,7 +1113,7 @@ public abstract class HttpServerTestKit {
             false,
             Duration.ofMillis(1),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, true, Collections.emptySet(), Collections.emptySet(), "***", false),
+                new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, Collections.emptySet(), Collections.emptySet(), "***", true, false),
                 new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
                 new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
             ),
