@@ -10,6 +10,7 @@ import io.koraframework.kafka.symbol.processor.KafkaClassNames
 import io.koraframework.kafka.symbol.processor.KafkaUtils.consumerTag
 import io.koraframework.kafka.symbol.processor.KafkaUtils.containerFunName
 import io.koraframework.kafka.symbol.processor.consumer.KafkaHandlerGenerator.HandlerFunction
+import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.TagUtils.addTag
@@ -36,8 +37,10 @@ class KafkaContainerGenerator {
             .addTag(consumerTag)
             .returns(CommonClassNames.lifecycle)
 
+        val configPath = listenerAnnotation.findValueNoDefault<String>("value")!!
         val consumerName = functionDeclaration.parentDeclaration?.qualifiedName?.asString() + "." + functionDeclaration.simpleName.asString()
-        funBuilder.addStatement("val telemetry = telemetryFactory.get(%S, config.driverProperties(), config.telemetry())", consumerName)
+        funBuilder.addStatement("val telemetry = telemetryFactory.get(%S, %S, config.driverProperties(), config.telemetry())",
+            configPath, consumerName)
         if (handlerType.rawType == KafkaClassNames.recordHandler) {
             funBuilder.addStatement("val wrappedHandler = %T.wrapHandlerRecord(%L, handler)", KafkaClassNames.handlerWrapper, consumerParameter == null)
         } else {
@@ -47,11 +50,11 @@ class KafkaContainerGenerator {
             addStatement("val topics = config.topics()")
             addStatement("require(topics != null)")
             addStatement("require(topics.size == 1)")
-            addStatement("return %T(%S, config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)",
-                KafkaClassNames.kafkaAssignConsumerContainer, consumerName)
+            addStatement("return %T(%S, %S, config, topics[0], keyDeserializer, valueDeserializer, telemetry, wrappedHandler)",
+                KafkaClassNames.kafkaAssignConsumerContainer, configPath, consumerName)
             nextControlFlow("else")
-            addStatement("return %T(%S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener)",
-                KafkaClassNames.kafkaSubscribeConsumerContainer, consumerName)
+            addStatement("return %T(%S, %S, config, keyDeserializer, valueDeserializer, wrappedHandler, telemetry, rebalanceListener)",
+                KafkaClassNames.kafkaSubscribeConsumerContainer, configPath, consumerName)
         }
         return funBuilder.build()
     }

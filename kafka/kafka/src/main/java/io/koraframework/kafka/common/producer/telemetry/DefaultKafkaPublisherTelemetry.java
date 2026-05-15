@@ -1,125 +1,115 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
-import io.micrometer.core.instrument.*;
-import io.micrometer.core.instrument.noop.NoopCounter;
-import io.micrometer.core.instrument.noop.NoopTimer;
+import io.koraframework.kafka.common.producer.telemetry.DefaultKafkaPublisherMetricsFactory.DefaultKafkaPublisherMetrics;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
-import org.apache.kafka.clients.producer.ProducerConfig;
+import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MessagingSystemIncubatingValues;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.helpers.NOPLogger;
 
-import java.util.ArrayList;
 import java.util.Properties;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
-    private static final Meter.Id emptyTimerId = new Meter.Id("empty", Tags.empty(), null, null, Meter.Type.TIMER);
-    private static final Meter.Id emptyCounterId = new Meter.Id("empty", Tags.empty(), null, null, Meter.Type.COUNTER);
-    protected final KafkaPublisherTelemetryConfig config;
-    protected final Tracer tracer;
-    protected final Logger logger;
-    protected final String clientId;
-    protected MeterRegistry meterRegistry;
 
-    protected ConcurrentHashMap<String, ConcurrentHashMap<Iterable<? extends Tag>, Timer>> durationCache;
-    protected ConcurrentHashMap<String, ConcurrentHashMap<Iterable<? extends Tag>, Counter>> sentMessagesCache;
+    public record TelemetryContext(KafkaPublisherTelemetryConfig config,
+                                   boolean isTraceEnabled,
+                                   boolean isMetricsEnabled,
+                                   MeterRegistry meterRegistry,
+                                   Tracer tracer,
+                                   Logger logger,
+                                   Properties driverProperties,
+                                   String publisherName,
+                                   String publisherImpl,
+                                   String clientId) {}
 
-    public DefaultKafkaPublisherTelemetry(String publisherName, KafkaPublisherTelemetryConfig config, Tracer tracer, MeterRegistry meterRegistry, Properties driverProperties) {
-        this.config = config;
-        this.tracer = tracer;
-        this.meterRegistry = meterRegistry;
-        this.logger = LoggerFactory.getLogger("io.koraframework.kafka.publisher." + publisherName);
-        this.clientId = (driverProperties.get(ProducerConfig.CLIENT_ID_CONFIG) instanceof String s) ? s : "";
+    public static final String SYSTEM_NAME = "system.name";
+    public static final String SYSTEM_IMPL = "system.impl";
+
+    protected final TelemetryContext context;
+    protected final DefaultKafkaPublisherMetrics metrics;
+
+    public DefaultKafkaPublisherTelemetry(String publisherName,
+                                          String publisherImpl,
+                                          KafkaPublisherTelemetryConfig config,
+                                          Tracer tracer,
+                                          MeterRegistry meterRegistry,
+                                          DefaultKafkaPublisherMetricsFactory metricsFactory,
+                                          Properties driverProperties) {
+        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultKafkaPublisherTelemetryFactory.NOOP_TRACER;
+        var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultKafkaPublisherTelemetryFactory.NOOP_METER_REGISTRY;
+
+        var logger = config.logging().enabled()
+            ? LoggerFactory.getLogger(publisherImpl)
+            : NOPLogger.NOP_LOGGER;
+
+        this.context = new TelemetryContext(
+            config,
+            isTraceEnabled,
+            isMetricsEnabled,
+            meterRegistry,
+            tracer,
+            logger,
+            driverProperties,
+            publisherName,
+            publisherImpl,
+            driverProperties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG, "")
+        );
+
+        this.metrics = metricsFactory.create(context);
     }
 
     @Override
     public MeterRegistry meterRegistry() {
-        return this.meterRegistry;
+        return this.context.meterRegistry;
     }
 
     @Override
     public KafkaPublisherTransactionObservation observeTx() {
-        var span = this.createTxSpan();
-        var logger = this.config.logging().enabled() ? this.logger : NOPLogger.NOP_LOGGER;
-
-        return new DefaultKafkaPublisherTransactionObservation(span, logger);
+        var span = this.context.isTraceEnabled
+            ? createTxSpan().startSpan()
+            : Span.getInvalid();
+        return new DefaultKafkaPublisherTransactionObservation(context, span);
     }
 
     @Override
     public KafkaPublisherRecordObservation observeSend(String topic) {
-        var span = this.createSendSpan(topic);
-        var duration = this.duration(topic);
-        var sentMessages = this.sentMessages(topic);
-        var logger = this.config.logging().enabled() ? this.logger : NOPLogger.NOP_LOGGER;
-        return new DefaultKafkaPublisherRecordObservation(span, duration, sentMessages, logger);
+        var span = this.context.isTraceEnabled
+            ? createSendSpan(topic).startSpan()
+            : Span.getInvalid();
+        return new DefaultKafkaPublisherRecordObservation(context, metrics, topic, span);
     }
 
-    protected Meter.MeterProvider<Timer> duration(String topic) {
-        if (!this.config.metrics().enabled()) {
-            return _ -> new NoopTimer(emptyTimerId);
-        }
-        var b = Timer.builder("messaging.client.operation.duration")
-            .serviceLevelObjectives(this.config.metrics().slo())
-            .tag(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE.getKey(), MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND);
-        var tags = new ArrayList<Tag>(3 + this.config.metrics().tags().size());
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic));
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
-        for (var entry : this.config.metrics().tags().entrySet()) {
-            tags.add(Tag.of(entry.getKey(), entry.getValue()));
-        }
-        var provider = b.tags(tags).withRegistry(this.meterRegistry);
-        var durationCache = this.durationCache.computeIfAbsent(topic, k -> new ConcurrentHashMap<>());
-        return additionalTags -> durationCache.computeIfAbsent(additionalTags, provider::withTags);
-    }
-
-    protected Meter.MeterProvider<Counter> sentMessages(String topic) {
-        if (!this.config.metrics().enabled()) {
-            return _ -> new NoopCounter(emptyCounterId);
-        }
-        var b = Counter.builder("messaging.client.sent.messages");
-        var tags = new ArrayList<Tag>(3 + this.config.metrics().tags().size());
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), topic));
-        tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), clientId));
-        for (var entry : this.config.metrics().tags().entrySet()) {
-            tags.add(Tag.of(entry.getKey(), entry.getValue()));
-        }
-        var provider = b.tags(tags).withRegistry(this.meterRegistry);
-        var durationCache = this.sentMessagesCache.computeIfAbsent(topic, k -> new ConcurrentHashMap<>());
-        return additionalTags -> durationCache.computeIfAbsent(additionalTags, provider::withTags);
-    }
-
-    protected Span createSendSpan(String topic) {
-        if (!this.config.tracing().enabled()) {
-            return Span.getInvalid();
-        }
-        var b = this.tracer.spanBuilder(topic + " send")
+    protected SpanBuilder createSendSpan(String topic) {
+        var b = this.context.tracer.spanBuilder(topic + " send")
             .setSpanKind(SpanKind.PRODUCER)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, "kafka")
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic);
-        for (var entry : this.config.tracing().attributes().entrySet()) {
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic)
+            .setAttribute(SYSTEM_NAME, context.publisherName)
+            .setAttribute(SYSTEM_IMPL, context.publisherImpl);
+        for (var entry : this.context.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }
 
-        return b.startSpan();
+        return b;
     }
 
-
-    protected Span createTxSpan() {
-        var b = this.tracer.spanBuilder("producer transaction")
+    protected SpanBuilder createTxSpan() {
+        var b = this.context.tracer.spanBuilder("producer transaction")
             .setSpanKind(SpanKind.INTERNAL)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, "kafka");
-        for (var entry : this.config.tracing().attributes().entrySet()) {
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
+            .setAttribute(SYSTEM_NAME, context.publisherName)
+            .setAttribute(SYSTEM_IMPL, context.publisherImpl);
+        for (var entry : this.context.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }
 
-        return b.startSpan();
+        return b;
     }
-
 }
