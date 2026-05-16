@@ -13,7 +13,7 @@ public final class NoopHttpClientLogger extends DefaultHttpClientLogger {
     public static final NoopHttpClientLogger INSTANCE = new NoopHttpClientLogger();
 
     private NoopHttpClientLogger() {
-        super("noop", "noop", NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, new DefaultHttpClientBodyLogger(), new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Defaults());
+        super("noop", "noop", NOPLogger.NOP_LOGGER, NOPLogger.NOP_LOGGER, new DefaultHttpClientBodyConverter(), new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Defaults());
     }
 
     @Override

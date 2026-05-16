@@ -71,7 +71,7 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
             `$HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor`(
                 SetConfigValueExtractor(
                     StringConfigValueExtractor()
-                )
+                ), SizeConfigValueExtractor()
             ),
             `$HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor`(
                 MapConfigValueExtractor(

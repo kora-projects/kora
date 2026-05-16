@@ -6,6 +6,7 @@ import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
 
 public final class OkHttpResponse implements HttpClientResponse {
+
     private final Response response;
 
     public OkHttpResponse(Response response) {
@@ -37,6 +38,7 @@ public final class OkHttpResponse implements HttpClientResponse {
         return "HttpClientResponse{code=" + code() +
                ", bodyLength=" + response.body().contentLength() +
                ", bodyType=" + response.body().contentType() +
+               ", headers=" + this.response.headers().size() +
                '}';
     }
 }

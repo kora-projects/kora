@@ -1,9 +1,9 @@
 package io.koraframework.http.client.jdk;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,9 +44,10 @@ public class JdkHttpClientResponse implements HttpClientResponse {
     @Override
     public String toString() {
         return "HttpClientResponse{code=" + code() +
-            ", bodyLength=" + body.contentLength() +
-            ", bodyType=" + body.contentType() +
-            '}';
+               ", bodyLength=" + body.contentLength() +
+               ", bodyType=" + body.contentType() +
+               ", headers=" + headers.size() +
+               '}';
     }
 
     private static final class BodyPublisher implements HttpBodyInput {

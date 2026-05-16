@@ -1,9 +1,9 @@
 package io.koraframework.http.client.common.request;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.HttpMethod;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.MutableHttpHeaders;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.time.Duration;
@@ -27,12 +27,12 @@ public interface HttpClientRequest {
         return new HttpClientRequestBuilderImpl(this);
     }
 
-    static HttpClientRequest of(String method, URI uri, String uriTemplate, MutableHttpHeaders headers, HttpBodyOutput body, Duration requestTimeout) {
-        return new DefaultHttpClientRequest(method, uri, uriTemplate, headers, body, requestTimeout);
+    static HttpClientRequest of(String method, URI uri, String uriTemplate, MutableHttpHeaders headers, HttpBodyOutput body, @Nullable Duration requestTimeout) {
+        return new SimpleHttpClientRequest(method, uri, uriTemplate, headers, body, requestTimeout);
     }
 
-    static HttpClientRequestBuilder get(String path) {
-        return new HttpClientRequestBuilderImpl(HttpMethod.GET, path);
+    static HttpClientRequestBuilder get(String uriTemplate) {
+        return new HttpClientRequestBuilderImpl(HttpMethod.GET, uriTemplate);
     }
 
     static HttpClientRequestBuilder head(String uriTemplate) {

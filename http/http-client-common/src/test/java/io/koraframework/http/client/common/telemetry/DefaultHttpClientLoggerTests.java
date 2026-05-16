@@ -1,6 +1,14 @@
 package io.koraframework.http.client.common.telemetry;
 
-import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyLogger;
+import io.koraframework.common.util.Size;
+import io.koraframework.http.client.common.request.HttpClientRequest;
+import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyConverter;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLogger;
+import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.header.HttpHeaders;
+import io.koraframework.http.common.header.MutableHttpHeaders;
+import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -12,13 +20,6 @@ import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 import org.slf4j.spi.DefaultLoggingEventBuilder;
 import org.slf4j.spi.LoggingEventBuilder;
-import io.koraframework.http.client.common.request.HttpClientRequest;
-import io.koraframework.http.client.common.response.HttpClientResponse;
-import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLogger;
-import io.koraframework.http.common.body.HttpBody;
-import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.common.header.MutableHttpHeaders;
-import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
@@ -55,9 +56,9 @@ public class DefaultHttpClientLoggerTests {
         var logger = new DefaultHttpClientLogger(
             "test", "test",
             requestLogger, responseLogger,
-            new DefaultHttpClientBodyLogger(),
+            new DefaultHttpClientBodyConverter(),
             new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
-            MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, true
+            MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
         ));
 
         expectLogLevel(requestLogger, level);
@@ -92,15 +93,15 @@ public class DefaultHttpClientLoggerTests {
         var logger = new DefaultHttpClientLogger(
             "test", "test",
             requestLogger, responseLogger,
-            new DefaultHttpClientBodyLogger(),
+            new DefaultHttpClientBodyConverter(),
             new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
-            MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, true
+            MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
         ));
 
         expectLogLevel(responseLogger, level);
 
         var rq = HttpClientRequest.of("POST", URI.create("/path/1"), "/path/{id}", headers.toMutable(), HttpBody.plaintext(body), Duration.ofMillis(100));
-        var rs = new HttpClientResponse.Default(200, headers, HttpBody.plaintext(body), null);
+        var rs = new SimpleHttpClientResponse(200, headers, HttpBody.plaintext(body));
 
         logger.logResponse(
             rq,

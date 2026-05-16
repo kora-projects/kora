@@ -47,7 +47,7 @@ public class HttpClientRequestBuilderImpl implements HttpClientRequestBuilder {
     public HttpClientRequest build() {
         var resolved = resolveUri(this.fromUri, this.uriTemplate, this.pathParams, this.queryParams);
 
-        return new DefaultHttpClientRequest(
+        return new SimpleHttpClientRequest(
             this.method,
             resolved.uri,
             resolved.uriTemplate,
