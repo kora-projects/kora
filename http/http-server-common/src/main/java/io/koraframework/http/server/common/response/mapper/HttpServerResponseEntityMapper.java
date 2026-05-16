@@ -1,13 +1,13 @@
 package io.koraframework.http.server.common.response.mapper;
 
-import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.response.HttpServerResponseMapper;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.http.server.common.response.HttpServerResponseMapper;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -15,6 +15,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapper<HttpResponseEntity<T>> {
+
     private final HttpServerResponseMapper<T> delegate;
 
     public HttpServerResponseEntityMapper(HttpServerResponseMapper<T> delegate) {
@@ -57,16 +58,7 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
         return HttpServerResponse.of(result.code(), headers, body);
     }
 
-    private static class HttpBodyWithDelegate implements HttpBodyOutput {
-        private final String contentType;
-        private final long len;
-        private final HttpBodyOutput delegate;
-
-        private HttpBodyWithDelegate(String contentType, long len, HttpBodyOutput delegate) {
-            this.contentType = contentType;
-            this.len = len;
-            this.delegate = delegate;
-        }
+    private record HttpBodyWithDelegate(String contentType, long len, HttpBodyOutput delegate) implements HttpBodyOutput {
 
         @Override
         public long contentLength() {
@@ -75,14 +67,8 @@ public class HttpServerResponseEntityMapper<T> implements HttpServerResponseMapp
 
         @Nullable
         @Override
-        public String contentType() {
-            return contentType;
-        }
-
-        @Nullable
-        @Override
         public ByteBuffer getFullContentIfAvailable() {
-            return HttpBodyOutput.super.getFullContentIfAvailable();
+            return delegate.getFullContentIfAvailable();
         }
 
         @Override

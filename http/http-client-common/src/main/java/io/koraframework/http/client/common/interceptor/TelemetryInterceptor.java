@@ -1,11 +1,11 @@
 package io.koraframework.http.client.common.interceptor;
 
-import io.opentelemetry.context.Context;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.telemetry.HttpClientTelemetry;
+import io.opentelemetry.context.Context;
 
 public class TelemetryInterceptor implements HttpClientInterceptor {
 

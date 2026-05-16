@@ -8,13 +8,9 @@ import io.koraframework.http.common.telemetry.MaskingUtils;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
-import org.slf4j.helpers.NOPLogger;
 
 import java.nio.ByteBuffer;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -22,25 +18,25 @@ import java.util.stream.Collectors;
 public class DefaultHttpClientLogger {
 
     protected final HttpClientTelemetryConfig.HttpClientLoggerConfig config;
-    protected final String clientName;
-    protected final String clientImpl;
+    protected final String clientConfigPath;
+    protected final String clientCanonicalName;
     protected final Logger requestLog;
     protected final Logger responseLog;
-    protected final DefaultHttpClientBodyLogger bodyLogger;
+    protected final DefaultHttpClientBodyConverter bodyLogger;
     protected final Set<String> maskedQueryParams;
     protected final Set<String> maskedHeaders;
     protected final String mask;
     @Nullable
     protected final Boolean pathTemplate;
 
-    public DefaultHttpClientLogger(String clientName,
-                                   String clientImpl,
+    public DefaultHttpClientLogger(String clientConfigPath,
+                                   String clientCanonicalName,
                                    Logger requestLog,
                                    Logger responseLog,
-                                   DefaultHttpClientBodyLogger bodyLogger,
+                                   DefaultHttpClientBodyConverter bodyLogger,
                                    HttpClientTelemetryConfig.HttpClientLoggerConfig config) {
-        this.clientName = clientName;
-        this.clientImpl = clientImpl;
+        this.clientConfigPath = clientConfigPath;
+        this.clientCanonicalName = clientCanonicalName;
         this.bodyLogger = bodyLogger;
         this.requestLog = requestLog;
         this.responseLog = responseLog;
@@ -87,7 +83,7 @@ public class DefaultHttpClientLogger {
         var finalHeaders = headers;
         var operation = getOperation(requestLog, rq.method(), rq.uri().getPath(), rq.uriTemplate());
         var finalBody = (body != null && body.remaining() > 0)
-            ? bodyLogger.convertRequestBody(body, contentType)
+            ? bodyLogger.convertRequestBody(clientConfigPath, clientCanonicalName, rq, body, contentType)
             : null;
         var arg = (StructuredArgumentWriter) gen -> {
             gen.writeStartObject();
@@ -107,7 +103,7 @@ public class DefaultHttpClientLogger {
 
         requestLog.atLevel(level)
             .addKeyValue("httpRequest", arg)
-            .addKeyValue("clientName", clientName)
+            .addKeyValue("clientConfigPath", clientConfigPath)
             .log("HttpClient request started");
     }
 
@@ -135,7 +131,7 @@ public class DefaultHttpClientLogger {
         var finalHeaders = headers;
         var operation = getOperation(responseLog, rq.method(), rq.uri().getPath(), rq.uriTemplate());
         var finalBody = (body != null && body.remaining() > 0)
-            ? bodyLogger.convertResponseBody(body, contentType)
+            ? bodyLogger.convertResponseBody(clientConfigPath, clientCanonicalName, rs, body, contentType)
             : null;
         var statusCode = rs != null
             ? rs.code()
@@ -160,7 +156,7 @@ public class DefaultHttpClientLogger {
         };
         responseLog.atLevel(level)
             .addKeyValue("httpResponse", arg)
-            .addKeyValue("clientName", clientName)
+            .addKeyValue("clientConfigPath", clientConfigPath)
             .log("HttpClient response received");
     }
 
@@ -183,7 +179,7 @@ public class DefaultHttpClientLogger {
         };
         requestLog.atWarn()
             .addKeyValue("httpResponse", arg)
-            .addKeyValue("clientName", clientName)
+            .addKeyValue("clientConfigPath", clientConfigPath)
             .log("HttpClient received error");
     }
 

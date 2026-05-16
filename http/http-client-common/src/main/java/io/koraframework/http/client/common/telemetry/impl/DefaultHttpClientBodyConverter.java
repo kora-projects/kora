@@ -1,5 +1,7 @@
 package io.koraframework.http.client.common.telemetry.impl;
 
+import io.koraframework.http.client.common.request.HttpClientRequest;
+import io.koraframework.http.client.common.response.HttpClientResponse;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.ByteBuffer;
@@ -9,15 +11,23 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 
-public class DefaultHttpClientBodyLogger {
+public class DefaultHttpClientBodyConverter {
 
     @Nullable
-    public String convertResponseBody(ByteBuffer body, @Nullable String contentType) {
+    public String convertRequestBody(String clientConfigPath,
+                                     String clientCanonicalName,
+                                     HttpClientRequest request,
+                                     ByteBuffer body,
+                                     @Nullable String contentType) {
         return convertBody(body, contentType);
     }
 
     @Nullable
-    public String convertRequestBody(ByteBuffer body, @Nullable String contentType) {
+    public String convertResponseBody(String clientConfigPath,
+                                      String clientCanonicalName,
+                                      HttpClientResponse response,
+                                      ByteBuffer body,
+                                      @Nullable String contentType) {
         return convertBody(body, contentType);
     }
 
@@ -69,9 +79,9 @@ public class DefaultHttpClientBodyLogger {
         }
 
         var mimeType = split[0].strip();
-        if (mimeType.contains("text/")
-            || mimeType.contains("json")
-            || mimeType.contains("xml")) {
+        if (mimeType.startsWith("text/")
+            || mimeType.contains("/json")
+            || mimeType.contains("/xml")) {
             return StandardCharsets.UTF_8;
         }
 

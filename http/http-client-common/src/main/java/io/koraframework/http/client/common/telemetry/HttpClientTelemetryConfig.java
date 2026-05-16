@@ -1,5 +1,6 @@
 package io.koraframework.http.client.common.telemetry;
 
+import io.koraframework.common.util.Size;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 import io.koraframework.telemetry.common.TelemetryConfig;
 import org.jspecify.annotations.Nullable;
@@ -9,6 +10,7 @@ import java.util.Set;
 
 @ConfigValueExtractor
 public interface HttpClientTelemetryConfig extends TelemetryConfig {
+
     @Override
     HttpClientLoggerConfig logging();
 
@@ -35,14 +37,19 @@ public interface HttpClientTelemetryConfig extends TelemetryConfig {
 
         @Nullable
         Boolean pathTemplate();
+
+        default Size maxRequestBodyLogSize() {
+            return Size.of(2, Size.Type.MiB);
+        }
+
+        default Size maxResponseBodyLogSize() {
+            return Size.of(2, Size.Type.MiB);
+        }
     }
 
     @ConfigValueExtractor
-    interface HttpClientTracingConfig extends TelemetryConfig.TracingConfig {
-    }
+    interface HttpClientTracingConfig extends TelemetryConfig.TracingConfig {}
 
     @ConfigValueExtractor
-    interface HttpClientMetricsConfig extends TelemetryConfig.MetricsConfig {
-    }
-
+    interface HttpClientMetricsConfig extends TelemetryConfig.MetricsConfig {}
 }

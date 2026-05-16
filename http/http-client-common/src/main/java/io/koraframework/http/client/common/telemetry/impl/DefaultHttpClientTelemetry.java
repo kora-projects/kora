@@ -17,26 +17,27 @@ import java.net.URISyntaxException;
 
 public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
-    protected static final String SYSTEM_CONFIG = "system.name";
-    protected static final String SYSTEM_IMPL = "system.impl";
+    protected static final String SYSTEM_CONFIG_PATH = "system.config.path";
+    protected static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
+    protected static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
-    protected final String clientName;
-    protected final String clientImpl;
-    protected final String clientSimpleImpl;
+    protected final String clientConfigPath;
+    protected final String clientCanonicalName;
+    protected final String clientSimpleName;
     protected final HttpClientTelemetryConfig config;
     protected final Tracer tracer;
     protected final DefaultHttpClientLogger logger;
     protected final DefaultHttpClientMetrics metrics;
 
-    public DefaultHttpClientTelemetry(String clientName,
-                                      String clientImpl,
+    public DefaultHttpClientTelemetry(String clientConfigPath,
+                                      String clientCanonicalName,
                                       HttpClientTelemetryConfig config,
                                       Tracer tracer,
                                       DefaultHttpClientLogger logger,
                                       DefaultHttpClientMetrics metrics) {
-        this.clientName = clientName;
-        this.clientImpl = clientImpl;
-        this.clientSimpleImpl = clientImpl.substring(clientImpl.lastIndexOf('.') + 1);
+        this.clientConfigPath = clientConfigPath;
+        this.clientCanonicalName = clientCanonicalName;
+        this.clientSimpleName = clientCanonicalName.substring(clientCanonicalName.lastIndexOf('.') + 1);
         this.config = config;
         this.tracer = tracer;
         this.logger = logger;
@@ -80,8 +81,9 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 .setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme())
                 .setAttribute(UrlAttributes.URL_FULL, targetUri.toString());
         }
-        builder.setAttribute(SYSTEM_CONFIG, clientName)
-            .setAttribute(SYSTEM_IMPL, clientSimpleImpl);
+        builder.setAttribute(SYSTEM_CONFIG_PATH, clientConfigPath)
+            .setAttribute(SYSTEM_NAME_SIMPLE, clientSimpleName)
+            .setAttribute(SYSTEM_NAME_CANONICAL, clientCanonicalName);
 
         for (var entry : this.config.tracing().attributes().entrySet()) {
             builder.setAttribute(entry.getKey(), entry.getValue());

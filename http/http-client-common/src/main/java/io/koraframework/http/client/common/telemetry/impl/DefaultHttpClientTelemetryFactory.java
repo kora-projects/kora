@@ -9,7 +9,6 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.NOPLogger;
 
 public final class DefaultHttpClientTelemetryFactory implements HttpClientTelemetryFactory {
 
@@ -21,41 +20,41 @@ public final class DefaultHttpClientTelemetryFactory implements HttpClientTeleme
     @Nullable
     private final MeterRegistry meterRegistry;
     @Nullable
-    private final DefaultHttpClientBodyLogger bodyLogger;
+    private final DefaultHttpClientBodyConverter bodyLogger;
 
     public DefaultHttpClientTelemetryFactory(@Nullable Tracer tracer,
                                              @Nullable MeterRegistry meterRegistry,
-                                             @Nullable DefaultHttpClientBodyLogger bodyLogger) {
+                                             @Nullable DefaultHttpClientBodyConverter bodyLogger) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.bodyLogger = bodyLogger;
     }
 
     @Override
-    public HttpClientTelemetry get(String clientName, String clientImpl, HttpClientTelemetryConfig config) {
+    public HttpClientTelemetry get(String clientConfigPath, String clientCanonicalName, HttpClientTelemetryConfig config) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
             return NoopHttpClientTelemetry.INSTANCE;
         }
 
-        var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
-        var metrics = (metricEnabled)
-            ? new DefaultHttpClientMetrics(clientName, clientImpl, meterRegistry, config.metrics())
-            : NoopHttpClientMetrics.INSTANCE;
+        final DefaultHttpClientMetrics metrics;
+        if (metricEnabled) {
+            metrics = new DefaultHttpClientMetrics(clientConfigPath, clientCanonicalName, this.meterRegistry, config.metrics());
+        } else {
+            metrics = NoopHttpClientMetrics.INSTANCE;
+        }
 
-        var requestLog = config.logging().enabled()
-            ? LoggerFactory.getLogger(clientImpl + ".request")
-            : NOPLogger.NOP_LOGGER;
-        var responseLog = config.logging().enabled()
-            ? LoggerFactory.getLogger(clientImpl + ".response")
-            : NOPLogger.NOP_LOGGER;
-
-        var logger = (config.logging().enabled())
-            ? new DefaultHttpClientLogger(clientName, clientImpl, requestLog, responseLog, (this.bodyLogger != null) ? this.bodyLogger : new DefaultHttpClientBodyLogger(), config.logging())
-            : NoopHttpClientLogger.INSTANCE;
+        final DefaultHttpClientLogger logger;
+        if (config.logging().enabled()) {
+            var requestLog = LoggerFactory.getLogger(clientCanonicalName + ".request");
+            var responseLog = LoggerFactory.getLogger(clientCanonicalName + ".response");
+            logger = new DefaultHttpClientLogger(clientConfigPath, clientCanonicalName, requestLog, responseLog, (this.bodyLogger != null) ? this.bodyLogger : new DefaultHttpClientBodyConverter(), config.logging());
+        } else {
+            logger = NoopHttpClientLogger.INSTANCE;
+        }
 
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
-        return new DefaultHttpClientTelemetry(clientName, clientImpl, config, tracer, logger, metrics);
+        return new DefaultHttpClientTelemetry(clientConfigPath, clientCanonicalName, config, tracer, logger, metrics);
     }
 }

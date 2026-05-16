@@ -1,10 +1,10 @@
 package io.koraframework.http.client.common.declarative;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.http.client.common.interceptor.TelemetryInterceptor;
 import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
 import io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 

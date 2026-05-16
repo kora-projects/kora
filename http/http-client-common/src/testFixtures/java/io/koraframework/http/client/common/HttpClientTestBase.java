@@ -3,6 +3,9 @@ package io.koraframework.http.client.common;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.http.client.common.request.HttpClientRequest;
+import io.koraframework.logging.common.MDC;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.MethodOrderer;
@@ -13,10 +16,6 @@ import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.mockserver.integration.ClientAndServer;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.http.client.common.request.DefaultHttpClientRequest;
-import io.koraframework.http.client.common.request.HttpClientRequest;
-import io.koraframework.logging.common.MDC;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -61,7 +60,7 @@ public abstract class HttpClientTestBase {
 
     private final HttpClient baseClient = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(ofMillis(100), ofMillis(500000), null, false));
     private final HttpClient client = this.baseClient
-        .with((chain, request) -> chain.process(new DefaultHttpClientRequest(
+        .with((chain, request) -> chain.process(HttpClientRequest.of(
             request.method(),
             URI.create("http://localhost:" + server.getPort() + request.uri().toString()),
             request.uriTemplate(),

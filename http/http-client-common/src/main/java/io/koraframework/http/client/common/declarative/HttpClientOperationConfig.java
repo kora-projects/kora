@@ -1,7 +1,7 @@
 package io.koraframework.http.client.common.declarative;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Map;
