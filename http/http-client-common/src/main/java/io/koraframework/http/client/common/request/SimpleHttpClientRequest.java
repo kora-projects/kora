@@ -1,23 +1,21 @@
 package io.koraframework.http.client.common.request;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.MutableHttpHeaders;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.time.Duration;
 import java.util.Objects;
 
-public record DefaultHttpClientRequest(
-    String method,
-    URI uri,
-    String uriTemplate,
-    MutableHttpHeaders headers,
-    HttpBodyOutput body,
-    @Nullable Duration requestTimeout
-) implements HttpClientRequest {
+record SimpleHttpClientRequest(String method,
+                               URI uri,
+                               String uriTemplate,
+                               MutableHttpHeaders headers,
+                               HttpBodyOutput body,
+                               @Nullable Duration requestTimeout) implements HttpClientRequest {
 
-    public DefaultHttpClientRequest {
+    public SimpleHttpClientRequest {
         Objects.requireNonNull(method);
         Objects.requireNonNull(uri);
         Objects.requireNonNull(headers);

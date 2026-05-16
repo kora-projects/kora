@@ -8,6 +8,7 @@ import io.koraframework.http.server.common.response.HttpServerResponseMapper;
 import io.koraframework.json.common.JsonWriter;
 
 public class JsonWriterHttpServerResponseMapper<T> implements HttpServerResponseMapper<T> {
+
     private final JsonWriter<T> writer;
 
     public JsonWriterHttpServerResponseMapper(JsonWriter<T> writer) {

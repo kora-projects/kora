@@ -20,7 +20,6 @@ import io.koraframework.http.server.common.request.HttpServerRequestMapper;
 import io.koraframework.http.server.common.request.mapper.HttpServerRequestMapperModule;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
-import io.koraframework.http.server.common.response.SimpleHttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.system.$HttpServerSystemConfig_ConfigValueExtractor;
 import io.koraframework.http.server.common.system.LivenessHandler;
@@ -409,7 +408,7 @@ public abstract class HttpServerTestKit {
     void serverWithBigResponse() throws IOException {
         var data = new byte[10 * 1024 * 1024];
         ThreadLocalRandom.current().nextBytes(data);
-        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 10 * 1024 * 1024, os -> os.write(data)));
+        var httpResponse = HttpServerResponse.of(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 10 * 1024 * 1024, os -> os.write(data)));
         var handler = handler(GET, "/", (_) -> {
             Thread.sleep(Duration.ofMillis(ThreadLocalRandom.current().nextInt(100, 500)));
             return httpResponse;
@@ -485,7 +484,7 @@ public abstract class HttpServerTestKit {
             System.arraycopy(bytes, 0, data, i * 1024, 1024);
         }
 
-        var httpResponse = new SimpleHttpServerResponse(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 102400, os -> {
+        var httpResponse = HttpServerResponse.of(200, HttpHeaders.of(), HttpBodyOutput.of("text/plain", 102400, os -> {
             for (var bytes : dataList) {
                 os.write(bytes);
             }
@@ -732,7 +731,7 @@ public abstract class HttpServerTestKit {
         var handler = handler(POST, "/", (request) -> {
             try (var body = request.body(); var is = body.asInputStream()) {
                 is.readAllBytes();
-                return new SimpleHttpServerResponse(
+                return HttpServerResponse.of(
                     200,
                     HttpHeaders.of(),
                     null

@@ -13,7 +13,7 @@ public final class MultipartWriterUtils {
 
     private static final byte[] RN_BUF = "\r\n".getBytes(StandardCharsets.US_ASCII);
 
-    private MultipartWriterUtils() { }
+    private MultipartWriterUtils() {}
 
     public static HttpBodyOutput write(List<? extends FormMultipart.FormPart> parts) {
         return write("blob:" + UUID.randomUUID(), parts);

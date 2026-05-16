@@ -1,87 +1,152 @@
 package io.koraframework.http.client.common.telemetry.impl;
 
+import io.koraframework.http.client.common.exception.HttpClientDecoderException;
+import io.koraframework.http.client.common.exception.HttpClientEncoderException;
+import io.koraframework.http.client.common.request.HttpClientRequest;
+import io.koraframework.http.client.common.response.HttpClientResponse;
+import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
+import io.koraframework.http.client.common.telemetry.HttpClientObservation;
+import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
+import io.koraframework.http.common.HttpResultCode;
+import io.koraframework.http.common.body.EmptyHttpBody;
+import io.koraframework.http.common.body.HttpBody;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.HttpAttributes;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.http.client.common.request.HttpClientRequest;
-import io.koraframework.http.client.common.response.HttpClientResponse;
-import io.koraframework.http.client.common.telemetry.HttpClientObservation;
-import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
-import io.koraframework.http.common.HttpResultCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public class DefaultHttpClientObservation implements HttpClientObservation {
-    private final HttpClientTelemetryConfig config;
-    private final DefaultHttpClientLogger logger;
-    private final DefaultHttpClientMetrics metrics;
-    private final HttpClientRequest rq;
-    private final Span span;
 
-    private int statusCode = -1;
-    private final long startNanos = System.nanoTime();
+    private static final Logger log = LoggerFactory.getLogger(DefaultHttpClientObservation.class);
+
+    protected final HttpClientTelemetryConfig config;
+    protected final DefaultHttpClientLogger logger;
+    protected final DefaultHttpClientMetrics metrics;
+    protected final HttpClientRequest request;
+    protected final Span span;
+
+    protected final long startNanos = System.nanoTime();
 
     @Nullable
-    private HttpClientResponse rs;
+    protected HttpClientResponse response;
     @Nullable
-    private Throwable exception;
-    private HttpResultCode resultCode;
-    private long processingTime;
+    protected Throwable exception;
 
-    public DefaultHttpClientObservation(HttpClientTelemetryConfig config, DefaultHttpClientLogger logger, DefaultHttpClientMetrics metrics, HttpClientRequest rq, Span span) {
+    protected int statusCode = -1;
+    protected HttpResultCode resultCode;
+    protected long processingTookNanos;
+
+    public DefaultHttpClientObservation(HttpClientTelemetryConfig config,
+                                        DefaultHttpClientLogger logger,
+                                        DefaultHttpClientMetrics metrics,
+                                        HttpClientRequest request,
+                                        Span span) {
         this.config = config;
         this.logger = logger;
         this.metrics = metrics;
-        this.rq = rq;
+        this.request = request;
         this.span = span;
     }
 
     @Override
     public HttpClientRequest observeRequest(HttpClientRequest request) {
-        if (logger.logRequestBody()) {
-            var charset = detectCharset(request.body().contentType());
-            if (charset != null) {
-                var body = request.body();
-                var full = body.getFullContentIfAvailable();
-                if (full != null) {
-                    logger.logRequest(request, charset.decode(full).toString());
-                    return request;
-                }
-
-                return request.toBuilder()
-                    .body(new DefaultHttpClientTelemetryRequestBodyWrapper(request, body, charset, logger))
-                    .build();
-            }
+        if (!logger.logRequestBody()) {
+            logger.logRequest(request, null, request.body().contentType());
+            return request;
         }
-        logger.logRequest(request, null);
-        return request;
+
+        var body = request.body();
+        if (EmptyHttpBody.INSTANCE == body || body.contentLength() == 0L) {
+            logger.logRequest(request, null, null);
+            return request;
+        }
+
+        var full = body.getFullContentIfAvailable();
+        if (full != null) {
+            var lenInBytes = full.remaining();
+            if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
+                log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body...", config.logging().maxResponseBodyLogSize());
+                logger.logRequest(request, null, body.contentType());
+            } else {
+                logger.logRequest(request, full, body.contentType());
+            }
+            full.rewind();
+            return request;
+        }
+
+        // todo we better have some kind of config for max bytes to log and log part (and return input stream concatenation as body)
+        var lenInBytes = body.contentLength();
+        if (lenInBytes > config.logging().maxRequestBodyLogSize().toBytes()) {
+            log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body...", config.logging().maxRequestBodyLogSize());
+            logger.logRequest(request, null, body.contentType());
+            return request;
+        }
+
+        try (body; var baos = new ByteArrayOutputStream(lenInBytes > 0 ? (int) lenInBytes : 1024)) {
+            body.write(baos);
+
+            var fullBody = baos.toByteArray();
+            logger.logRequest(request, ByteBuffer.wrap(fullBody), body.contentType());
+
+            return request.toBuilder()
+                .body(HttpBody.of(body.contentType(), ByteBuffer.wrap(fullBody)))
+                .build();
+        } catch (IOException e) {
+            throw new HttpClientEncoderException(e);
+        }
     }
 
     @Override
     public HttpClientResponse observeResponse(HttpClientResponse response) {
+        this.processingTookNanos = System.nanoTime() - startNanos;
+
         this.statusCode = response.code();
-        this.rs = response;
+        this.response = response;
         this.resultCode = HttpResultCode.fromStatusCode(response.code());
-        this.processingTime = System.nanoTime() - startNanos;
-        if (logger.logResponseBody()) {
-            var charset = detectCharset(response.body().contentType());
-            if (charset != null) {
-                var body = response.body();
-                var full = body.getFullContentIfAvailable();
-                if (full != null) {
-                    logger.logResponse(rq, response, processingTime, charset.decode(full).toString());
-                    return response;
-                }
-                var rsBody = new DefaultHttpClientTelemetryCollectingResponseBodyWrapper(logger, rq, response, processingTime, charset);
-                return new DefaultHttpClientTelemetryResponseWrapper(response, rsBody);
-            }
+        if (!logger.logResponseBody()) {
+            logger.logResponse(request, response, processingTookNanos, null, response.body().contentType());
+            return response;
         }
-        logger.logResponse(rq, response, processingTime, null);
-        return response;
+
+        var body = response.body();
+        var full = body.getFullContentIfAvailable();
+        if (full != null) {
+            var lenInBytes = full.remaining();
+            if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
+                log.warn("Can't log response body bigger than {}, change config value if require logging, logging response without body...", config.logging().maxResponseBodyLogSize());
+                logger.logResponse(request, response, processingTookNanos, null, body.contentType());
+            } else {
+                logger.logResponse(request, response, processingTookNanos, full, body.contentType());
+            }
+            full.rewind();
+            return response;
+        }
+
+        // todo we better have some kind of config for max bytes to log and log part (and return input stream concatenation as body)
+        var lenInBytes = body.contentLength();
+        if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
+            log.warn("Can't log response body bigger than {}, change config value if require logging, now logging response without body...", config.logging().maxResponseBodyLogSize());
+            logger.logResponse(request, response, processingTookNanos, null, body.contentType());
+            return response;
+        }
+
+        try (response; body; var is = body.asInputStream()) {
+            var bytes = is.readAllBytes();
+            logger.logResponse(request, response, processingTookNanos, ByteBuffer.wrap(bytes), body.contentType());
+
+            var bufferedBody = HttpBody.of(body.contentType(), ByteBuffer.wrap(bytes));
+            return new SimpleHttpClientResponse(response.code(), response.headers(), bufferedBody);
+        } catch (IOException e) {
+            throw new HttpClientDecoderException(e);
+        }
     }
 
     @Override
@@ -99,16 +164,17 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
     public void observeError(Throwable e) {
         this.exception = e;
         this.span.recordException(e);
-        this.processingTime = System.nanoTime() - startNanos;
+        this.processingTookNanos = System.nanoTime() - startNanos;
         this.resultCode = HttpResultCode.CONNECTION_ERROR;
-        logger.logError(rq, processingTime, exception);
+
+        this.logger.logError(request, processingTookNanos, exception);
     }
 
     protected void recordMetrics() {
-        if (rs == null) {
-            this.metrics.recordFailure(rq, Objects.requireNonNull(exception), processingTime);
+        if (response == null) {
+            this.metrics.recordFailure(request, exception, processingTookNanos);
         } else {
-            this.metrics.recordSuccess(rq, Objects.requireNonNull(rs), processingTime);
+            this.metrics.recordSuccess(request, response, processingTookNanos);
         }
     }
 
@@ -117,31 +183,14 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
         var resultCode = Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR);
         if (statusCode >= 400 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
             span.setStatus(StatusCode.ERROR);
+        } else {
+            span.setStatus(StatusCode.OK);
         }
+
         span.setAttribute("http.response.result_code", resultCode.string());
-        if (statusCode != 0) {
+        if (statusCode != -1) {
             span.setAttribute(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, statusCode);
         }
         span.end(end, TimeUnit.NANOSECONDS);
     }
-
-    @Nullable
-    protected Charset detectCharset(String contentType) {
-        if (contentType == null) {
-            return null;
-        }
-        var split = contentType.split("; charset=", 2);
-        if (split.length == 2) {
-            return Charset.forName(split[1]);
-        }
-        var mimeType = split[0];
-        if (mimeType.contains("text") || mimeType.contains("json") || mimeType.contains("xml")) {
-            return StandardCharsets.UTF_8;
-        }
-        if (mimeType.contains("application/x-www-form-urlencoded")) {
-            return StandardCharsets.US_ASCII;
-        }
-        return null;
-    }
-
 }

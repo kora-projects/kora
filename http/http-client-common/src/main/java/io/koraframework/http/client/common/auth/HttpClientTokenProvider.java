@@ -1,7 +1,7 @@
 package io.koraframework.http.client.common.auth;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.client.common.request.HttpClientRequest;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <b>Русский</b>: Интерфейс для предоставление токена авторизации при запроса HTTP клиента

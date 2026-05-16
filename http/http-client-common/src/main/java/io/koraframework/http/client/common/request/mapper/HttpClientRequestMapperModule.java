@@ -12,33 +12,33 @@ import java.nio.ByteBuffer;
 public interface HttpClientRequestMapperModule {
 
     @DefaultComponent
-    default HttpClientRequestMapper<byte[]> byteArrayHttpClientRequestMapper() {
+    default HttpClientRequestMapper<byte[]> httpClientRequestByteArrayMapper() {
         return (body) -> HttpBody.octetStream(body);
     }
 
     @DefaultComponent
-    default HttpClientRequestMapper<ByteBuffer> byteBufferHttpClientRequestMapper() {
+    default HttpClientRequestMapper<ByteBuffer> httpClientRequestByteBufferMapper() {
         return (body) -> HttpBody.octetStream(body);
     }
 
     @DefaultComponent
-    default HttpClientRequestMapper<String> stringHttpClientRequestMapper() {
+    default HttpClientRequestMapper<String> httpClientRequestStringMapper() {
         return (body) -> HttpBody.plaintext(body);
     }
 
     @DefaultComponent
-    default FormUrlEncodedClientRequestMapper formUrlEncodedHttpClientRequestMapper() {
+    default FormUrlEncodedClientRequestMapper httpClientRequestFormUrlEncodedMapper() {
         return new FormUrlEncodedClientRequestMapper();
     }
 
     @DefaultComponent
-    default FormMultipartClientRequestMapper formMultipartHttpClientRequestMapper() {
+    default FormMultipartClientRequestMapper httpClientRequestFormMultipartMapper() {
         return new FormMultipartClientRequestMapper();
     }
 
     @Tag(Json.class)
     @DefaultComponent
-    default <T> JsonHttpClientRequestMapper<T> jsonHttpClientRequestMapper(JsonWriter<T> writer) {
+    default <T> JsonHttpClientRequestMapper<T> httpClientRequestJsonMapper(JsonWriter<T> writer) {
         return new JsonHttpClientRequestMapper<>(writer);
     }
 }

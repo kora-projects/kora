@@ -70,6 +70,7 @@ public class HttpServerResponseException extends RuntimeException implements Htt
         return "HttpServerResponseException{code=" + code() +
                ", bodyLength=" + body.position() +
                ", bodyType=" + contentType +
+               ", headers=" + headers.size() +
                '}';
     }
 }
