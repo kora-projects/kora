@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.cache.redis;
 
+import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.cache.CacheKeyMapper;
 
 import java.nio.charset.StandardCharsets;
@@ -14,4 +15,7 @@ public interface RedisCacheKeyMapper<K> extends Function<K, byte[]> {
      * Is used to delimiter composite key such as {@link CacheKeyMapper}
      */
     byte[] DELIMITER = ":".getBytes(StandardCharsets.UTF_8);
+
+    @Override
+    byte[] apply(@Nullable K key);
 }
