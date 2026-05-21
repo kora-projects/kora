@@ -1,8 +1,8 @@
 {
   "resources": {
     "includes": [
-      { "pattern": "application.conf" },
-      { "pattern": "reference.conf" }
+      { "pattern": "\\Qapplication.conf\\E" },
+      { "pattern": "\\Qreference.conf\\E" }
     ]
   }
 }

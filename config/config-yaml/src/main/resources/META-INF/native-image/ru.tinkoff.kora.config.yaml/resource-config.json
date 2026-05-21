@@ -1,10 +1,10 @@
 {
   "resources": {
     "includes": [
-      { "pattern": "application.yaml" },
-      { "pattern": "application.yml" },
-      { "pattern": "reference.yaml" },
-      { "pattern": "reference.yml" }
+      { "pattern": "\\Qapplication.yaml\\E" },
+      { "pattern": "\\Qapplication.yml\\E" },
+      { "pattern": "\\Qreference.yaml\\E" },
+      { "pattern": "\\Qreference.yml\\E" }
     ]
   }
 }

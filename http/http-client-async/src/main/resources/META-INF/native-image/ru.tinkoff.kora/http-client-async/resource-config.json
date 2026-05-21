@@ -2,7 +2,7 @@
     "resources": {
         "includes": [
             {
-                "pattern": "org/asynchttpclient/config/ahc-default.properties"
+                "pattern": "\\Qorg/asynchttpclient/config/ahc-default.properties\\E"
             }
         ]
     }
