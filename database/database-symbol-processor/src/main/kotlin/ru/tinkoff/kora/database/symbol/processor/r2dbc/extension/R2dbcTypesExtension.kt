@@ -114,15 +114,15 @@ class R2dbcTypesExtension(val resolver: Resolver, val kspLogger: KSPLogger, val 
         }
     }
 
-    private fun generateRowMapper(resolver: Resolver, rowKSType: KSType): (() -> ExtensionResult)? {
-        val rowType = rowKSType.arguments[0]
-        val entity = DbEntity.parseEntity(rowType.type!!.resolve())
+    private fun generateRowMapper(resolver: Resolver, rowMapperKsType: KSType): (() -> ExtensionResult)? {
+        val rowType = rowMapperKsType.arguments[0].type!!.resolve()
+        val entity = DbEntity.parseEntity(rowType)
         if (entity == null) {
             return null
         }
-        val typeName = rowType.type!!.resolve().declaration.let { it as KSClassDeclaration }.toClassName().simpleName
-        val mapperName = rowKSType.declaration.getOuterClassesAsPrefix() + "${typeName}_R2dbcRowMapper"
-        val packageName = rowKSType.declaration.packageName.asString()
+        val typeName = rowType.declaration.let { it as KSClassDeclaration }.toClassName().simpleName
+        val mapperName = rowType.declaration.getOuterClassesAsPrefix() + "${typeName}_R2dbcRowMapper"
+        val packageName = rowType.declaration.packageName.asString()
 
         return lambda@{
             val maybeGenerated = resolver.getClassDeclarationByName("$packageName.$mapperName")
