@@ -14,6 +14,9 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
         for (var operation : ctx.getOperations().getOperation()) {
+            if (Boolean.TRUE.equals(operation.vendorExtensions.get("plainResponse"))) {
+                continue;
+            }
             var responseClassName = className.nestedClass(capitalize(operation.operationId) + "ApiResponse");
             if (operation.responses.size() == 1) {
                 b.addType(response(ctx, responseClassName, operation.responses.getFirst()));

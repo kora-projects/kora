@@ -23,6 +23,7 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String implicitHeadersRegex;
             public boolean defaultDelegate;
+            public boolean plainResponse;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -46,6 +47,11 @@ public abstract class BaseOpenapiTest {
 
             public Options setDefaultDelegate(boolean defaultDelegate) {
                 this.defaultDelegate = defaultDelegate;
+                return this;
+            }
+
+            public Options setPlainResponse(boolean plainResponse) {
+                this.plainResponse = plainResponse;
                 return this;
             }
         }
@@ -76,6 +82,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
+            "/example/petstoreV3_plain_response.yaml",
         };
 
         for (var fileName : files) {
@@ -97,6 +104,10 @@ public abstract class BaseOpenapiTest {
 
             if (name.equals("petstoreV3")) {
                 result.add(new SwaggerParams(fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
+            }
+
+            if (name.equals("petstoreV3_plain_response")) {
+                result.add(new SwaggerParams(fileName, name + "_plain", new SwaggerParams.Options().setPlainResponse(true)));
             }
         }
 
@@ -149,6 +160,10 @@ public abstract class BaseOpenapiTest {
 
         if (options.implicitHeadersRegex != null) {
             configurator.addAdditionalProperty("implicitHeadersRegex", options.implicitHeadersRegex);
+        }
+
+        if (options.plainResponse) {
+            configurator.addAdditionalProperty("response", "plain");
         }
 
         if (spec.contains("_filter")) {
