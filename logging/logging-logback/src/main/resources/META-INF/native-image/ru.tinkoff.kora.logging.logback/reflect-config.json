@@ -51,4 +51,23 @@
   "allDeclaredConstructors": true,
   "allDeclaredFields": true,
   "allDeclaredMethods": true
-}]
+},
+{
+  "name": "ru.tinkoff.kora.logging.logback.ConsoleTextRecordEncoder",
+  "allDeclaredConstructors": true,
+  "allDeclaredFields": true,
+  "allDeclaredMethods": true
+},
+{
+  "name": "ru.tinkoff.kora.logging.logback.KoraLoggingMarkerConverter",
+  "allDeclaredConstructors": true,
+  "allDeclaredFields": true,
+  "allDeclaredMethods": true
+},
+{
+  "name": "ru.tinkoff.kora.logging.logback.KoraMdcConverter",
+  "allDeclaredConstructors": true,
+  "allDeclaredFields": true,
+  "allDeclaredMethods": true
+}
+]

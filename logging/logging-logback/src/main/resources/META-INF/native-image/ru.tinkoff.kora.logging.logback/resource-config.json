@@ -1,8 +1,8 @@
 {
   "resources": {
     "includes": [
-      { "pattern": "logback-test.xml" },
-      { "pattern": "logback.xml" }
+      { "pattern": "\\Qlogback-test.xml\\E" },
+      { "pattern": "\\Qlogback.xml\\E" }
     ]
   }
 }
