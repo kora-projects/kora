@@ -1,5 +1,6 @@
 package ru.tinkoff.kora.cache.redis;
 
+import jakarta.annotation.Nonnull;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.cache.CacheKeyMapper;
 
@@ -16,6 +17,7 @@ public interface RedisCacheKeyMapper<K> extends Function<K, byte[]> {
      */
     byte[] DELIMITER = ":".getBytes(StandardCharsets.UTF_8);
 
+    @Nonnull
     @Override
     byte[] apply(@Nullable K key);
 }

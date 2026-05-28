@@ -159,10 +159,18 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
         try {
             var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
             keyAndValues.forEach((k, v) -> {
-                final byte[] keyAsBytes = mapKey(k);
-                final byte[] valueAsBytes = valueMapper.write(v);
-                keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
+                if (k != null && v != null) {
+                    final byte[] keyAsBytes = mapKey(k);
+                    final byte[] valueAsBytes = valueMapper.write(v);
+                    keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
+                } else {
+                    logger.warn("Key or value is null for 'PUT_MANY' operation, skipping...");
+                }
             });
+
+            if (keyAndValuesAsBytes.isEmpty()) {
+                return Collections.emptyMap();
+            }
 
             if (expireAfterWriteMillis == null) {
                 redisClient.mset(keyAndValuesAsBytes).toCompletableFuture().join();
@@ -473,10 +481,18 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
         var telemetryContext = telemetry.create("PUT_MANY", name);
         var keyAndValuesAsBytes = new HashMap<byte[], byte[]>();
         keyAndValues.forEach((k, v) -> {
-            final byte[] keyAsBytes = mapKey(k);
-            final byte[] valueAsBytes = valueMapper.write(v);
-            keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
+            if (k != null && v != null) {
+                final byte[] keyAsBytes = mapKey(k);
+                final byte[] valueAsBytes = valueMapper.write(v);
+                keyAndValuesAsBytes.put(keyAsBytes, valueAsBytes);
+            } else {
+                logger.warn("Key or value is null for 'PUT_MANY' operation, skipping...");
+            }
         });
+
+        if (keyAndValuesAsBytes.isEmpty()) {
+            return CompletableFuture.completedFuture(Collections.emptyMap());
+        }
 
         var responseCompletionStage = (expireAfterWriteMillis == null)
             ? redisClient.mset(keyAndValuesAsBytes)
