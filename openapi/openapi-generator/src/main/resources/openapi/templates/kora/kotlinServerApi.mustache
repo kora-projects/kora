@@ -49,7 +49,9 @@ import ru.tinkoff.kora.http.server.common.HttpServerRequest
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}::class), value = HttpServerInterceptor::class)
     {{/hasAuthMethods}}
     {{#vendorExtensions.x-validate}}
+    {{#vendorExtensions.x-validate-intercept}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor::class)
+    {{/vendorExtensions.x-validate-intercept}}
     {{/vendorExtensions.x-validate}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
