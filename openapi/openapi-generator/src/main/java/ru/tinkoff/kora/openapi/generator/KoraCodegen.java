@@ -159,6 +159,7 @@ public class KoraCodegen extends DefaultCodegen {
         Mode codegenMode,
         String jsonAnnotation,
         boolean enableValidation,
+        boolean enableValidationInterceptor,
         boolean authAsMethodArgument,
         boolean authAllowMultiple,
         @Nullable String primaryAuth,
@@ -187,6 +188,7 @@ public class KoraCodegen extends DefaultCodegen {
             cliOptions.add(CliOption.newString(CLIENT_TAGS, "Json containing http client tags configuration for apis"));
             cliOptions.add(CliOption.newString(INTERCEPTORS, "Json containing interceptors for HTTP server/client"));
             cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION, "Generate validation related annotation on models and controllers"));
+            cliOptions.add(CliOption.newBoolean(ENABLE_VALIDATION_INTERCEPTOR, "Generate server validation interceptor on controllers for mapping validation errors to HTTP response"));
             cliOptions.add(CliOption.newBoolean(REQUEST_DELEGATE_PARAMS, "Generate HttpServerRequest parameter in delegate methods"));
             cliOptions.add(CliOption.newString(ADDITIONAL_CONTRACT_ANNOTATIONS, "Additional annotations for HTTP client/server methods"));
             cliOptions.add(CliOption.newBoolean(AUTH_AS_METHOD_ARGUMENT, "HTTP client authorization as method argument"));
@@ -203,6 +205,7 @@ public class KoraCodegen extends DefaultCodegen {
             var codegenMode = Mode.JAVA_CLIENT;
             var jsonAnnotation = "ru.tinkoff.kora.json.common.annotation.Json";
             var enableServerValidation = false;
+            var enableServerValidationInterceptor = false;
             var authAsMethodArgument = false;
             var authAllowMultiple = false;
             var primaryAuth = (String) null;
@@ -272,6 +275,10 @@ public class KoraCodegen extends DefaultCodegen {
             }
             if (additionalProperties.containsKey(ENABLE_VALIDATION) && codegenMode.isServer()) {
                 enableServerValidation = Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION).toString());
+                enableServerValidationInterceptor = enableServerValidation;
+            }
+            if (additionalProperties.containsKey(ENABLE_VALIDATION_INTERCEPTOR) && codegenMode.isServer()) {
+                enableServerValidationInterceptor = enableServerValidation && Boolean.parseBoolean(additionalProperties.get(ENABLE_VALIDATION_INTERCEPTOR).toString());
             }
             if (additionalProperties.containsKey(REQUEST_DELEGATE_PARAMS) && codegenMode.isServer()) {
                 requestInDelegateParams = Boolean.parseBoolean(additionalProperties.get(REQUEST_DELEGATE_PARAMS).toString());
@@ -304,7 +311,7 @@ public class KoraCodegen extends DefaultCodegen {
                 forceIncludeNonRequired = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_NON_REQUIRED).toString());
             }
 
-            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, authAsMethodArgument, authAllowMultiple, primaryAuth, clientConfigPrefix,
+            return new CodegenParams(codegenMode, jsonAnnotation, enableServerValidation, enableServerValidationInterceptor, authAsMethodArgument, authAllowMultiple, primaryAuth, clientConfigPrefix,
                 securityConfigPrefix, clientTags, interceptors, additionalContractAnnotations, requestInDelegateParams, enableJsonNullable,
                 filterWithModels, prefixPath, delegateMethodBodyMode, implicitHeaders, implicitHeadersRegex, forceIncludeOptional, forceIncludeNonRequired);
         }
@@ -352,6 +359,7 @@ public class KoraCodegen extends DefaultCodegen {
     public static final String CODEGEN_MODE = "mode";
     public static final String JSON_ANNOTATION = "jsonAnnotation";
     public static final String ENABLE_VALIDATION = "enableServerValidation";
+    public static final String ENABLE_VALIDATION_INTERCEPTOR = "enableServerValidationInterceptor";
     public static final String OBJECT_TYPE = "objectType";
     public static final String DISABLE_HTML_ESCAPING = "disableHtmlEscaping";
     public static final String IGNORE_ANYOF_IN_ENUM = "ignoreAnyOfInEnum";
@@ -2725,6 +2733,9 @@ public class KoraCodegen extends DefaultCodegen {
                     if (validation) {
                         p.vendorExtensions.put("x-validate", true);
                         op.vendorExtensions.put("x-validate", true);
+                        if (params.enableValidationInterceptor) {
+                            op.vendorExtensions.put("x-validate-intercept", true);
+                        }
                         var type = p.getSchema() != null ? p.getSchema().openApiType : null;
                         visitVariableValidation(p, type, p.dataFormat, p.vendorExtensions);
                     }

@@ -62,7 +62,9 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(tag = @ru.tinkoff.kora.common.Tag(ApiSecurity.{{vendorExtensions.authInterceptorTag}}.class), value = ru.tinkoff.kora.http.server.common.HttpServerInterceptor.class)
     {{/hasAuthMethods}}
     {{#vendorExtensions.x-validate}}
+    {{#vendorExtensions.x-validate-intercept}}
     @ru.tinkoff.kora.http.common.annotation.InterceptWith(ru.tinkoff.kora.validation.module.http.server.ValidationHttpServerInterceptor.class)
+    {{/vendorExtensions.x-validate-intercept}}
     {{/vendorExtensions.x-validate}}
     {{#koraInterceptors}}
     {{#interceptorTags}}
