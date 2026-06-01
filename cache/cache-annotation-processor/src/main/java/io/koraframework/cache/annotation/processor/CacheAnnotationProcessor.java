@@ -255,9 +255,9 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
             methodBuilder.addParameter(ParameterizedTypeName.get(REDIS_CACHE_MAPPER_KEY, TypeName.get(recordField.asType())), mapperName);
 
             var keyName = "_key" + (i + 1);
-            keyBuilder.addStatement("var $L = $L.apply($T.requireNonNull(key.$L(), $S))",
-                keyName, mapperName, Objects.class, recordField.getSimpleName().toString(),
-                "Cache key '%s' field '%s' must be non null".formatted(keyElement.toString(), recordField.getSimpleName().toString()));
+            keyBuilder.addStatement("var $L = $T.requireNonNull($L.apply(key.$L()), $S)",
+                keyName, Objects.class, mapperName, recordField.getSimpleName().toString(),
+                "Redis cache key '%s' field '%s' must be non null after mapping".formatted(keyElement.toString(), recordField.getSimpleName().toString()));
 
             if (i == 0) {
                 compositeKeyBuilder.add("var _compositeKey = new byte[");
