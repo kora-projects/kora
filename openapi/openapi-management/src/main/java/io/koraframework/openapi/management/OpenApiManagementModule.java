@@ -13,20 +13,27 @@ public interface OpenApiManagementModule {
     }
 
     default HttpServerRequestHandler openApiManagementController(OpenApiManagementConfig config) {
-        var handler = new OpenApiHttpServerHandler(config.file(), f -> f);
-        final String path = (config.file().size() == 1) ? config.endpoint() : config.endpoint() + "/{file}";
+        var handler = new OpenApiHttpServerHandler(config.files(), f -> f);
+        final String path = (config.files().size() == 1) ? config.path() : config.path() + "/{file}";
         return HttpServerRequestHandlerImpl.of(HttpMethod.GET, path, handler, config.enabled());
     }
 
     default HttpServerRequestHandler swaggerUIManagementController(OpenApiManagementConfig config) {
         boolean enabled = config.swaggerui() != null && config.swaggerui().enabled();
-        var handler = new SwaggerUIHttpServerHandler(config.endpoint(), config.swaggerui().endpoint(), config.file());
-        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.swaggerui().endpoint(), handler, enabled);
+        var handler = new SwaggerUIHttpServerHandler(config.path(), config.swaggerui(), config.files());
+        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.swaggerui().path(), handler, enabled);
+    }
+
+    default HttpServerRequestHandler swaggerOauthManagementController(OpenApiManagementConfig config) {
+        boolean enabled = config.swaggerui() != null && config.swaggerui().enabled();
+        var handler = new SwaggerOauthHttpServerHandler();
+        var path = config.swaggerui().path() + SwaggerOauthHttpServerHandler.PATH;
+        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, path, handler, enabled);
     }
 
     default HttpServerRequestHandler rapidocManagementController(OpenApiManagementConfig config) {
         boolean enabled = config.rapidoc() != null && config.rapidoc().enabled();
-        var handler = new RapidocHttpServerHandler(config.endpoint(), config.rapidoc().endpoint(), config.file());
-        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.rapidoc().endpoint(), handler, enabled);
+        var handler = new RapidocHttpServerHandler(config.path(), config.rapidoc().path(), config.files());
+        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.rapidoc().path(), handler, enabled);
     }
 }
