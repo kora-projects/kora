@@ -1,5 +1,8 @@
 package io.koraframework.cache.redis;
 
+import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
+
 /**
  * Converts cache value into serializer value to store in cache.
  */
@@ -9,11 +12,13 @@ public interface RedisCacheValueMapper<V> {
      * @param value to serialize
      * @return value serialized
      */
-    byte[] write(V value);
+    @Nonnull
+    byte[] write(@Nonnull V value);
 
     /**
      * @param serializedValue to deserialize
      * @return value deserialized
      */
-    V read(byte[] serializedValue);
+    @Nullable
+    V read(@Nullable byte[] serializedValue);
 }
