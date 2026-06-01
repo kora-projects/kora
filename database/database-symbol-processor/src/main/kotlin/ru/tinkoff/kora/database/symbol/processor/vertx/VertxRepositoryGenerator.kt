@@ -154,7 +154,7 @@ class VertxRepositoryGenerator(private val resolver: Resolver, private val kspLo
             b.addCode("return _future.%M()", CommonClassNames.await)
         } else if (!isFlow) {
             b.addCode("return _future.toCompletableFuture().join()")
-            if (function.returnType!!.isMarkedNullable) {
+            if (!function.returnType!!.isMarkedNullable) {
                 b.addCode("!!")
             }
         }
