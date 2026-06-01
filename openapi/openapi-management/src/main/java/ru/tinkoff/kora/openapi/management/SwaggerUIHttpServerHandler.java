@@ -46,6 +46,13 @@ public final class SwaggerUIHttpServerHandler implements HttpServerRequestHandle
     private byte[] loadSwagger() {
         return ResourceUtils.getFileAsString(FILE_PATH)
             .map(file -> {
+                // replace oauth redirect path
+                var replacement = swaggeruiPath + SwaggerOauthHttpServerHandler.PATH;
+                var tagSwagger = "${swaggerOauthPath}";
+                int ri = file.lastIndexOf(tagSwagger);
+                return file.substring(0, ri) + replacement + file.substring(ri + tagSwagger.length());
+            })
+            .map(file -> {
                 if (openapiFiles.size() == 1) {
                     String replacement = """
                         url: window.location.href.substring(0, window.location.href.lastIndexOf("#") === -1 ? window.location.href.length : window.location.href.lastIndexOf("#")).replace("%s", "%s")

@@ -24,6 +24,13 @@ public interface OpenApiManagementModule {
         return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.swaggerui().endpoint(), handler, enabled);
     }
 
+    default HttpServerRequestHandler swaggerOauthManagementController(OpenApiManagementConfig config) {
+        boolean enabled = config.swaggerui() != null && config.swaggerui().enabled();
+        var handler = new SwaggerOauthHttpServerHandler();
+        var path = config.swaggerui().endpoint() + SwaggerOauthHttpServerHandler.PATH;
+        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, path, handler, enabled);
+    }
+
     default HttpServerRequestHandler rapidocManagementController(OpenApiManagementConfig config) {
         boolean enabled = config.rapidoc() != null && config.rapidoc().enabled();
         var handler = new RapidocHttpServerHandler(config.endpoint(), config.rapidoc().endpoint(), config.file());
