@@ -3,7 +3,6 @@ package ru.tinkoff.kora.opentelemetry.module.db;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.incubating.DbIncubatingAttributes;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.common.Context;
@@ -11,7 +10,7 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
-import java.net.URI;
+import java.util.Map;
 
 public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
 
@@ -19,53 +18,19 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
     private final String dbSystem;
     @Nullable
     private final String connectionString;
-    private final String host;
-    private final int port;
     private final String user;
+    private final Map<String, String> attrs;
 
     public OpentelemetryDataBaseTracer(Tracer tracer, String dbType, @Nullable String connectionString, String user) {
-        this(tracer, dbType, connectionString, user, false);
+        this(tracer, dbType, connectionString, user, Map.of());
     }
 
-    public OpentelemetryDataBaseTracer(Tracer tracer, String dbType, @Nullable String connectionString, String user, boolean addConnectionURI) {
+    public OpentelemetryDataBaseTracer(Tracer tracer, String dbType, @Nullable String connectionString, String user, Map<String, String> attrs) {
         this.tracer = tracer;
         this.dbSystem = toDbSystem(dbType);
         this.user = user;
-
-        String host = null;
-        int port = -1;
-        String resultConnectionString = null;
-        if (addConnectionURI) {
-            resultConnectionString = connectionString;
-        }
-        if (addConnectionURI && connectionString != null) {
-            try {
-                URI originalUri = URI.create(connectionString);
-
-                // Construct a new URI without the query component
-                URI uriWithoutParams = new URI(
-                    originalUri.getScheme(),
-                    originalUri.getUserInfo(),
-                    originalUri.getHost(),
-                    originalUri.getPort(),
-                    originalUri.getPath(),
-                    null,
-                    originalUri.getFragment()
-                );
-
-                host = originalUri.getHost();
-                port = originalUri.getPort();
-                resultConnectionString = uriWithoutParams.toString();
-            } catch (Exception e) {
-                // ignore
-                host = null;
-                port = -1;
-            }
-        }
-
-        this.host = host;
-        this.port = port;
-        this.connectionString = resultConnectionString;
+        this.connectionString = connectionString;
+        this.attrs = attrs;
     }
 
     private static String toDbSystem(String type) {
@@ -98,21 +63,14 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         var builder = this.tracer.spanBuilder(queryContext.operation())
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext())
-            .setAttribute(DbIncubatingAttributes.DB_SYSTEM_NAME, this.dbSystem)
+            .setAttribute(DbIncubatingAttributes.DB_SYSTEM, this.dbSystem)
             .setAttribute(DbIncubatingAttributes.DB_USER, this.user)
-            .setAttribute(DbIncubatingAttributes.DB_STATEMENT, queryContext.queryId())
-            .setAttribute(DbIncubatingAttributes.DB_QUERY_TEXT, queryContext.queryId());
-
+            .setAttribute(DbIncubatingAttributes.DB_STATEMENT, queryContext.queryId());
         if (this.connectionString != null) {
+            @SuppressWarnings("deprecation")
             var ignore = builder.setAttribute(DbIncubatingAttributes.DB_CONNECTION_STRING, this.connectionString);
         }
-        if (this.host != null) {
-            builder.setAttribute(ServerAttributes.SERVER_ADDRESS, this.host);
-        }
-        if (this.port != -1) {
-            builder.setAttribute(ServerAttributes.SERVER_PORT, this.port);
-        }
-
+        attrs.forEach(builder::setAttribute);
         var span = builder.startSpan();
         OpentelemetryContext.set(ctx, otctx.add(span));
         return (ex) -> {
@@ -134,20 +92,16 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
         var builder = this.tracer.spanBuilder(queryContext.operation())
             .setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext())
-            .setAttribute(DbIncubatingAttributes.DB_SYSTEM_NAME, this.dbSystem)
+            .setAttribute(DbIncubatingAttributes.DB_SYSTEM, this.dbSystem)
             .setAttribute(DbIncubatingAttributes.DB_USER, this.user)
-            .setAttribute(DbIncubatingAttributes.DB_STATEMENT, queryContext.queryId())
-            .setAttribute(DbIncubatingAttributes.DB_QUERY_TEXT, queryContext.queryId());
+            .setAttribute(DbIncubatingAttributes.DB_STATEMENT, queryContext.queryId());
 
         if (this.connectionString != null) {
+            @SuppressWarnings("deprecation")
             var ignore = builder.setAttribute(DbIncubatingAttributes.DB_CONNECTION_STRING, this.connectionString);
         }
-        if (this.host != null) {
-            builder.setAttribute(ServerAttributes.SERVER_ADDRESS, this.host);
-        }
-        if (this.port != -1) {
-            builder.setAttribute(ServerAttributes.SERVER_PORT, this.port);
-        }
+
+        attrs.forEach(builder::setAttribute);
 
         var span = builder.startSpan();
         OpentelemetryContext.set(ctx, otctx.add(span));

@@ -8,4 +8,7 @@ public interface DatabaseTelemetryConfig extends TelemetryConfig {
 
     @Override
     DatabaseTracingConfig tracing();
+
+    @Override
+    DatabaseMetricsConfig metrics();
 }

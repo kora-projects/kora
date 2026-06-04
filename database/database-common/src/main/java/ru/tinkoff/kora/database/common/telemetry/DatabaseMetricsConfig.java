@@ -6,9 +6,9 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import java.util.Map;
 
 @ConfigValueExtractor
-public interface DatabaseTracingConfig extends TelemetryConfig.TracingConfig {
+public interface DatabaseMetricsConfig extends TelemetryConfig.MetricsConfig {
 
-    default Map<String, String> attributes() {
+    default Map<String, String> tags() {
         return Map.of();
     }
 }
