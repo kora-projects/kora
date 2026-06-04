@@ -6,6 +6,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.verify
 import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.database.common.telemetry.`$DatabaseMetricsConfig_ConfigValueExtractor`.DatabaseMetricsConfig_Impl
 import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_ConfigValueExtractor`.DatabaseTelemetryConfig_Impl
 import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTracingConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTracingConfig_ConfigValueExtractor`.DatabaseTracingConfig_Impl
@@ -60,9 +61,9 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             false,
             Properties(),
             DatabaseTelemetryConfig_Impl(
-                DatabaseTracingConfig_Impl(true, false),
+                DatabaseTracingConfig_Impl(mapOf(), false),
+                DatabaseMetricsConfig_Impl(mapOf(), null, null),
                 LogConfig_Impl(true),
-                MetricsConfig_Impl(null, null)
             )
         )
         val repository = compileForArgs(

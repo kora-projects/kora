@@ -6,6 +6,7 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseMetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
@@ -24,6 +25,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
@@ -57,9 +59,9 @@ class JdbcDatabaseTest {
             false,
             new Properties(),
             new DatabaseTelemetryConfig_Impl(
-                new DatabaseTracingConfig_Impl(true, false),
-                new LogConfig_Impl(true),
-                new MetricsConfig_Impl(null, null)
+                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(Map.of(), false),
+                new $DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(Map.of(), false, null),
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true)
             )
         );
         var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));

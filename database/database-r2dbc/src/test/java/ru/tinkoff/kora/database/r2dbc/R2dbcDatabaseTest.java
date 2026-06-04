@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.test.StepVerifier;
 import ru.tinkoff.kora.database.common.QueryContext;
+import ru.tinkoff.kora.database.common.telemetry.$DatabaseMetricsConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
@@ -24,6 +25,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -48,9 +50,9 @@ class R2dbcDatabaseTest {
             false,
             Collections.emptyMap(),
             new DatabaseTelemetryConfig_Impl(
-                new DatabaseTracingConfig_Impl(true, false),
-                new LogConfig_Impl(true),
-                new MetricsConfig_Impl(null, null)
+                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(Map.of(), false),
+                new $DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(Map.of(), false, null),
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true)
             )
         );
         var db = new R2dbcDatabase(config, List.of(), new DefaultDataBaseTelemetryFactory(null, null, null));

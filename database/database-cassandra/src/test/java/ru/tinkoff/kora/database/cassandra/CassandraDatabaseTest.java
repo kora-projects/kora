@@ -5,10 +5,7 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import ru.tinkoff.kora.database.common.QueryContext;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.DatabaseTracingConfig;
-import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
+import ru.tinkoff.kora.database.common.telemetry.*;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
@@ -19,6 +16,7 @@ import ru.tinkoff.kora.test.cassandra.CassandraTestContainer;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 @ExtendWith(CassandraTestContainer.class)
@@ -61,9 +59,9 @@ class CassandraDatabaseTest {
                 params.password()
             ),
             new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
-                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(false,  false),
-                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
+                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(Map.of(), false),
+                new $DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(Map.of(), false, null),
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true)
             )
         );
         return new CassandraDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
