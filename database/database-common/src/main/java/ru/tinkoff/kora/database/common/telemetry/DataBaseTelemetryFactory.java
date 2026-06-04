@@ -21,12 +21,5 @@ public interface DataBaseTelemetryFactory {
         }
     };
 
-    @Deprecated
-    default DataBaseTelemetry get(TelemetryConfig config, String name, String driverType, String dbType, String username) {
-        return EMPTY;
-    }
-
-    default DataBaseTelemetry get(TelemetryConfig config, String name, String driverType, String dbType, String username, @Nullable String connectionString) {
-        return get(config, name, driverType, dbType, username);
-    }
+    DataBaseTelemetry get(TelemetryConfig config, String name, String driverType, String dbType, String username);
 }

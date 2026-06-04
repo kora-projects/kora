@@ -60,8 +60,7 @@ public class VertxDatabase implements Lifecycle, Wrapped<Pool>, VertxConnectionF
                 vertxDatabaseConfig.poolName(),
                 "vertx",
                 "postgres",
-                vertxDatabaseConfig.username(),
-                vertxDatabaseConfig.connectionUri()),
+                vertxDatabaseConfig.username()),
             DataBaseTelemetryFactory.EMPTY
         );
     }

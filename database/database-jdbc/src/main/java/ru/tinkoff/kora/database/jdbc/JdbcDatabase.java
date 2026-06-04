@@ -64,8 +64,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
             config.poolName(),
             "jdbc",
             jdbcDatabase,
-            config.username(),
-            jdbcUrl
+            config.username()
         );
         return Objects.requireNonNullElse(telemetry, DataBaseTelemetryFactory.EMPTY);
     }
