@@ -63,6 +63,8 @@ public final class Opentelemetry123HttpServerMetrics implements HttpServerMetric
             .baseUnit("s")
             .tags(this.httpServerTagsProvider.getDurationTags(key));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.meterRegistry);
     }
 }

@@ -33,24 +33,35 @@ public final class MicrometerGrpcServerMetricsFactory implements GrpcServerMetri
     }
 
     private GrpcServerMetrics buildMetrics(TelemetryConfig.MetricsConfig config, MetricsKey metricsKey) {
-        var duration = (Function<Integer, DistributionSummary>) code -> DistributionSummary.builder("rpc.server.duration")
-            .serviceLevelObjectives(config.slo(metricsConfig.opentelemetrySpec()))
-            .baseUnit(switch (metricsConfig.opentelemetrySpec()) {
-                case V120 -> "milliseconds";
-                case V123 -> "s";
-            })
-            .tags(this.grpcServerTagsProvider.getDurationTags(code, metricsKey))
-            .register(this.meterRegistry);
+        var duration = (Function<Integer, DistributionSummary>) code -> {
+            var builder = DistributionSummary.builder("rpc.server.duration")
+                .serviceLevelObjectives(config.slo(metricsConfig.opentelemetrySpec()))
+                .baseUnit(switch (metricsConfig.opentelemetrySpec()) {
+                    case V120 -> "milliseconds";
+                    case V123 -> "s";
+                })
+                .tags(this.grpcServerTagsProvider.getDurationTags(code, metricsKey));
 
-        var requestsPerRpc = Counter.builder("rpc.server.requests_per_rpc")
-            .baseUnit("messages")
-            .tags(this.grpcServerTagsProvider.getRequestsTags(metricsKey))
-            .register(this.meterRegistry);
+            config.tags().forEach(builder::tag);
 
-        var responsesPerRpc = Counter.builder("rpc.server.responses_per_rpc")
+            return builder.register(this.meterRegistry);
+        };
+
+        var requestsPerRpcBuilder = Counter.builder("rpc.server.requests_per_rpc")
             .baseUnit("messages")
-            .tags(this.grpcServerTagsProvider.getResponsesTags(metricsKey))
-            .register(this.meterRegistry);
+            .tags(this.grpcServerTagsProvider.getRequestsTags(metricsKey));
+
+        config.tags().forEach(requestsPerRpcBuilder::tag);
+
+        var requestsPerRpc = requestsPerRpcBuilder.register(this.meterRegistry);
+
+        var responsesPerRpcBuilder = Counter.builder("rpc.server.responses_per_rpc")
+            .baseUnit("messages")
+            .tags(this.grpcServerTagsProvider.getResponsesTags(metricsKey));
+
+        config.tags().forEach(responsesPerRpcBuilder::tag);
+
+        var responsesPerRpc = responsesPerRpcBuilder.register(this.meterRegistry);
 
         return switch (metricsConfig.opentelemetrySpec()) {
             case V120 -> new Opentelemetry120GrpcServerMetrics(duration, requestsPerRpc, responsesPerRpc);

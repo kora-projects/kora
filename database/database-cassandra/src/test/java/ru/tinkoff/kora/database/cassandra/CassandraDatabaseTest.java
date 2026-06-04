@@ -58,7 +58,7 @@ class CassandraDatabaseTest {
                 params.username(),
                 params.password()
             ),
-            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
+            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                 new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(Map.of(), false),
                 new $DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(Map.of(), false, null),
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true)

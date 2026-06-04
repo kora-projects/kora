@@ -18,8 +18,8 @@ import org.junit.jupiter.api.extension.ExtendWith
 import org.slf4j.LoggerFactory
 import ru.tinkoff.kora.common.Context
 import ru.tinkoff.kora.database.common.telemetry.`$DatabaseMetricsConfig_ConfigValueExtractor`.DatabaseMetricsConfig_Impl
-import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTelemetryConfig_ConfigValueExtractor`.DatabaseTelemetryConfig_Impl
+import ru.tinkoff.kora.database.common.telemetry.`$TelemetryConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.database.common.telemetry.`$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl
 import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTracingConfig_ConfigValueExtractor`
 import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTracingConfig_ConfigValueExtractor`.DatabaseTracingConfig_Impl
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory
@@ -297,7 +297,7 @@ internal class SuspendJdbcDatabaseTest {
                 Duration.ofMillis(1000L),
                 false,
                 Properties(),
-                DatabaseTelemetryConfig_Impl(
+                TelemetryConfig_Impl(
                     DatabaseTracingConfig_Impl(mapOf(), false),
                     DatabaseMetricsConfig_Impl(mapOf(), null, null),
                     LogConfig_Impl(true),

@@ -19,7 +19,7 @@ public final class OpentelemetryHttpClientTracerFactory implements HttpClientTra
     @Nullable
     public HttpClientTracer get(TelemetryConfig.TracingConfig config, String clientName) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryHttpClientTracer(this.tracer);
+            return new OpentelemetryHttpClientTracer(this.tracer, config.attributes());
         } else {
             return null;
         }

@@ -70,7 +70,7 @@ public final class Micrometer123CamundaRestMetrics implements CamundaRestMetrics
             ? ""
             : key.errorType().getCanonicalName();
 
-        return DistributionSummary.builder("camunda.rest.server.request.duration")
+        var builder = DistributionSummary.builder("camunda.rest.server.request.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
             .tags(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method())
@@ -78,7 +78,10 @@ public final class Micrometer123CamundaRestMetrics implements CamundaRestMetrics
             .tags(HttpAttributes.HTTP_ROUTE.getKey(), key.route())
             .tags(UrlAttributes.URL_SCHEME.getKey(), key.scheme())
             .tags(ServerAttributes.SERVER_ADDRESS.getKey(), key.host())
-            .tag(ErrorAttributes.ERROR_TYPE.getKey(), errorType)
-            .register(this.meterRegistry);
+            .tag(ErrorAttributes.ERROR_TYPE.getKey(), errorType);
+
+        config.tags().forEach(builder::tag);
+
+        return builder.register(this.meterRegistry);
     }
 }

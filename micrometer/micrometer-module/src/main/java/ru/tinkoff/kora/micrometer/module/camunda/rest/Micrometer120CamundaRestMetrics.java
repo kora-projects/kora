@@ -71,7 +71,7 @@ public final class Micrometer120CamundaRestMetrics implements CamundaRestMetrics
 
     @SuppressWarnings("deprecation")
     private DistributionSummary requestDuration(DurationKey key) {
-        return DistributionSummary.builder("camunda.rest.server.duration")
+        var builder = DistributionSummary.builder("camunda.rest.server.duration")
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
             .baseUnit("milliseconds")
             .tags(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), key.method())
@@ -81,7 +81,10 @@ public final class Micrometer120CamundaRestMetrics implements CamundaRestMetrics
             .tags(UrlAttributes.URL_SCHEME.getKey(), key.scheme())
             .tags(HttpIncubatingAttributes.HTTP_TARGET.getKey(), key.route())
             .tags(HttpIncubatingAttributes.HTTP_METHOD.getKey(), key.method())
-            .tags(HttpIncubatingAttributes.HTTP_STATUS_CODE.getKey(), Integer.toString(key.statusCode()))
-            .register(this.meterRegistry);
+            .tags(HttpIncubatingAttributes.HTTP_STATUS_CODE.getKey(), Integer.toString(key.statusCode()));
+
+        config.tags().forEach(builder::tag);
+
+        return builder.register(this.meterRegistry);
     }
 }

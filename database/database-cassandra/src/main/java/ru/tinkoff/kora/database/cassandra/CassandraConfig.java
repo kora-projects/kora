@@ -4,9 +4,7 @@ import com.datastax.oss.driver.api.core.metrics.DefaultNodeMetric;
 import com.datastax.oss.driver.api.core.metrics.DefaultSessionMetric;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.DatabaseTelemetryConfig;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +32,7 @@ public interface CassandraConfig {
     @Nullable
     CassandraCredentials auth();
 
-    DatabaseTelemetryConfig telemetry();
+    TelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface CassandraCredentials {

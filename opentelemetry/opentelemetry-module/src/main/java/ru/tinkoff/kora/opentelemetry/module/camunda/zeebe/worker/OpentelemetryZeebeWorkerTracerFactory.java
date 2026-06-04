@@ -20,7 +20,7 @@ public final class OpentelemetryZeebeWorkerTracerFactory implements ZeebeWorkerT
     @Override
     public ZeebeWorkerTracer get(TelemetryConfig.TracingConfig config) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryZeebeWorkerTracer(this.tracer);
+            return new OpentelemetryZeebeWorkerTracer(this.tracer, config.attributes());
         } else {
             return null;
         }

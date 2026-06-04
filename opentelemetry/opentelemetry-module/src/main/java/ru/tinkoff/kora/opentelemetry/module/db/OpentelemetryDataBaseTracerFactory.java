@@ -4,10 +4,8 @@ import io.opentelemetry.api.trace.Tracer;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracer;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracerFactory;
-import ru.tinkoff.kora.database.common.telemetry.DatabaseTracingConfig;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
-import java.util.Map;
 import java.util.Objects;
 
 
@@ -18,14 +16,11 @@ public final class OpentelemetryDataBaseTracerFactory implements DataBaseTracerF
         this.tracer = tracer;
     }
 
-    @Override
     @Nullable
+    @Override
     public DataBaseTracer get(TelemetryConfig.TracingConfig config, String dbType, @Nullable String connectionString, String user) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            Map<String, String> attrs = (config instanceof DatabaseTracingConfig db)
-                ? db.attributes()
-                : Map.of();
-            return new OpentelemetryDataBaseTracer(this.tracer, dbType, connectionString, user, attrs);
+            return new OpentelemetryDataBaseTracer(this.tracer, dbType, connectionString, user, config.attributes());
         } else {
             return null;
         }

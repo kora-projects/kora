@@ -19,7 +19,7 @@ public final class OpentelemetryHttpServerTracerFactory implements HttpServerTra
     @Override
     public HttpServerTracer get(TelemetryConfig.TracingConfig config) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryHttpServerTracer(this.tracer);
+            return new OpentelemetryHttpServerTracer(this.tracer, config.attributes());
         } else {
             return null;
         }

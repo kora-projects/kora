@@ -51,6 +51,8 @@ public final class Opentelemetry123HttpClientMetrics implements HttpClientMetric
             .baseUnit("s")
             .tags(tagsProvider.getDurationTags(key, resultCode, headers));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(meterRegistry);
     }
 }

@@ -23,9 +23,11 @@ import static io.opentelemetry.context.Context.root;
 
 public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
     private final Tracer tracer;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryHttpServerTracer(Tracer tracer) {
+    public OpentelemetryHttpServerTracer(Tracer tracer, Map<String, String> attrs) {
         this.tracer = tracer;
+        this.attrs = attrs;
     }
 
     @Override
@@ -42,7 +44,7 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
 
         var context = Context.current();
         var parentCtx = W3CTraceContextPropagator.getInstance().extract(root(), routerRequest, PublicApiRequestTextMapGetter.INSTANCE);
-        var span = this.tracer
+        var spanBuilder = this.tracer
             .spanBuilder(routerRequest.method() + " " + template)
             .setSpanKind(SpanKind.SERVER)
             .setParent(parentCtx)
@@ -50,8 +52,11 @@ public final class OpentelemetryHttpServerTracer implements HttpServerTracer {
             .setAttribute(UrlAttributes.URL_SCHEME, routerRequest.scheme())
             .setAttribute(ServerAttributes.SERVER_ADDRESS, routerRequest.hostName())
             .setAttribute(UrlAttributes.URL_PATH, routerRequest.path())
-            .setAttribute(HttpAttributes.HTTP_ROUTE, template)
-            .startSpan();
+            .setAttribute(HttpAttributes.HTTP_ROUTE, template);
+
+        attrs.forEach(spanBuilder::setAttribute);
+
+        var span = spanBuilder.startSpan();
 
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 

@@ -53,6 +53,8 @@ public class Opentelemetry123S3ClientMetrics implements S3ClientMetrics {
             .tag(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(key.statusCode()))
             .tag(ERROR_CODE.getKey(), Objects.requireNonNullElse(key.errorCode(), ""));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(meterRegistry);
     }
 

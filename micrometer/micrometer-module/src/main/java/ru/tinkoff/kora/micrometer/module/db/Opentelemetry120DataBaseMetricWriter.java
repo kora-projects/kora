@@ -13,24 +13,14 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class Opentelemetry120DataBaseMetricWriter implements DataBaseMetricWriter {
 
     private final String poolName;
-    private final Map<String, String> tags;
     private final ConcurrentHashMap<DbKey, DbMetrics> metrics = new ConcurrentHashMap<>();
     private final MeterRegistry meterRegistry;
     private final TelemetryConfig.MetricsConfig config;
 
-    @Deprecated
     public Opentelemetry120DataBaseMetricWriter(MeterRegistry meterRegistry, TelemetryConfig.MetricsConfig config, String poolName) {
-        this(meterRegistry, config, poolName, Map.of());
-    }
-
-    public Opentelemetry120DataBaseMetricWriter(MeterRegistry meterRegistry,
-                                                TelemetryConfig.MetricsConfig config,
-                                                String poolName,
-                                                Map<String, String> tags) {
         this.poolName = poolName;
         this.meterRegistry = meterRegistry;
         this.config = config;
-        this.tags = tags;
     }
 
     @Override
@@ -64,7 +54,7 @@ public final class Opentelemetry120DataBaseMetricWriter implements DataBaseMetri
             builder.tag("error", "");
         }
 
-        tags.forEach(builder::tag);
+        config.tags().forEach(builder::tag);
 
         return new DbMetrics(builder.register(this.meterRegistry));
     }

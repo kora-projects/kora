@@ -23,6 +23,8 @@ public class MicrometerJmsConsumerMetricsFactory implements JmsConsumerMetricsFa
             .tag(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.JMS)
             .tag(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME.getKey(), queueName);
 
+        config.tags().forEach(builder::tag);
+
         var distributionSummary = builder.register(this.meterRegistry);
         return new MicrometerJmsConsumerMetrics(distributionSummary);
     }

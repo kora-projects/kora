@@ -3,9 +3,7 @@ package ru.tinkoff.kora.database.jdbc;
 import com.zaxxer.hikari.HikariConfig;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.DatabaseTelemetryConfig;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
-
 import java.time.Duration;
 import java.util.Properties;
 
@@ -68,7 +66,7 @@ public interface JdbcDatabaseConfig {
         return new Properties();
     }
 
-    DatabaseTelemetryConfig telemetry();
+    TelemetryConfig telemetry();
 
     static HikariConfig toHikariConfig(JdbcDatabaseConfig config) {
         var hikariConfig = new HikariConfig();

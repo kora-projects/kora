@@ -50,6 +50,8 @@ public class Opentelemetry120S3KoraClientMetrics implements S3KoraClientMetrics 
             .tag("aws.operation.name", key.operation())
             .tag(ERROR_CODE.getKey(), Objects.requireNonNullElse(key.errorCode(), ""));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(meterRegistry);
     }
 

@@ -62,6 +62,8 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
             .baseUnit("s")
             .tags(tagsProvider.getRecordDurationTags(clientId, groupId, driverProperties, key));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.meterRegistry);
     }
 
@@ -70,6 +72,8 @@ public final class Opentelemetry123KafkaConsumerMetrics implements KafkaConsumer
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
             .baseUnit("s")
             .tags(tagsProvider.getRecordsDurationTags(clientId, groupId, driverProperties, key));
+
+        config.tags().forEach(builder::tag);
 
         return builder.register(this.meterRegistry);
     }

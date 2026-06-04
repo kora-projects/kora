@@ -78,17 +78,20 @@ public final class Micrometer120ZeebeWorkerMetrics implements ZeebeWorkerMetrics
     }
 
     private Metrics buildMetrics(JobContext jobContext) {
-        var durationSuccess = DistributionSummary.builder("zeebe.worker.handler")
+        var durationSuccessBuilder = DistributionSummary.builder("zeebe.worker.handler")
             .tags(List.of(
                 Tag.of("job.name", jobContext.jobName()),
                 Tag.of("job.type", jobContext.jobType()),
                 Tag.of("status", STATUS_COMPLETE)
             ))
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("s")
-            .register(this.registry);
+            .baseUnit("s");
 
-        var durationFailedUser = DistributionSummary.builder("zeebe.worker.handler")
+        config.tags().forEach(durationSuccessBuilder::tag);
+
+        var durationSuccess = durationSuccessBuilder.register(this.registry);
+
+        var durationFailedUserBuilder = DistributionSummary.builder("zeebe.worker.handler")
             .tags(List.of(
                 Tag.of("job.name", jobContext.jobName()),
                 Tag.of("job.type", jobContext.jobType()),
@@ -96,10 +99,13 @@ public final class Micrometer120ZeebeWorkerMetrics implements ZeebeWorkerMetrics
                 Tag.of("error", ERROR_USER)
             ))
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("s")
-            .register(this.registry);
+            .baseUnit("s");
 
-        var durationFailedSystem = DistributionSummary.builder("zeebe.worker.handler")
+        config.tags().forEach(durationFailedUserBuilder::tag);
+
+        var durationFailedUser = durationFailedUserBuilder.register(this.registry);
+
+        var durationFailedSystemBuilder = DistributionSummary.builder("zeebe.worker.handler")
             .tags(List.of(
                 Tag.of("job.name", jobContext.jobName()),
                 Tag.of("job.type", jobContext.jobType()),
@@ -107,8 +113,11 @@ public final class Micrometer120ZeebeWorkerMetrics implements ZeebeWorkerMetrics
                 Tag.of("error", ERROR_SYSTEM)
             ))
             .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V120))
-            .baseUnit("s")
-            .register(this.registry);
+            .baseUnit("s");
+
+        config.tags().forEach(durationFailedSystemBuilder::tag);
+
+        var durationFailedSystem = durationFailedSystemBuilder.register(this.registry);
 
         return new Metrics(durationSuccess, durationFailedUser, durationFailedSystem, new ConcurrentHashMap<>());
     }

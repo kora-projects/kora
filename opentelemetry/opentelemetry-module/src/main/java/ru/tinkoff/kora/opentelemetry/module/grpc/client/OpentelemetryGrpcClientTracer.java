@@ -12,6 +12,7 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import java.net.URI;
+import java.util.Map;
 import java.util.Objects;
 
 public final class OpentelemetryGrpcClientTracer implements GrpcClientTracer {
@@ -19,23 +20,28 @@ public final class OpentelemetryGrpcClientTracer implements GrpcClientTracer {
     private final Tracer tracer;
     private final ServiceDescriptor descriptor;
     private final URI uri;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryGrpcClientTracer(Tracer tracer, ServiceDescriptor descriptor, URI uri) {
+    public OpentelemetryGrpcClientTracer(Tracer tracer, ServiceDescriptor descriptor, URI uri, Map<String, String> attrs) {
         this.tracer = tracer;
         this.descriptor = descriptor;
         this.uri = uri;
+        this.attrs = attrs;
     }
 
     @Override
     public <RespT, ReqT> GrpcClientSpan callSpan(Context ctx, MethodDescriptor<ReqT, RespT> method, URI uri, ClientCall<ReqT, RespT> call, Metadata headers) {
         var otctx = OpentelemetryContext.get(ctx);
-        var span = this.tracer.spanBuilder(method.getFullMethodName())
+        var spanBuilder = this.tracer.spanBuilder(method.getFullMethodName())
             .setAttribute("rpc.method", Objects.requireNonNullElse(method.getBareMethodName(), "unknownMethod"))
             .setAttribute("rpc.service", this.descriptor.getName())
             .setAttribute("rpc.system", "grpc")
             .setAttribute("server.address", this.uri.getHost())
-            .setAttribute("server.port", this.uri.getPort())
-            .setSpanKind(SpanKind.CLIENT)
+            .setAttribute("server.port", this.uri.getPort());
+
+        attrs.forEach(spanBuilder::setAttribute);
+
+        var span = spanBuilder.setSpanKind(SpanKind.CLIENT)
             .setParent(otctx.getContext())
             .startSpan();
 

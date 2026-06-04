@@ -6,8 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.test.StepVerifier;
 import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseMetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl;
+import ru.tinkoff.kora.database.common.telemetry.$TelemetryConfig_ConfigValueExtractor;
+import ru.tinkoff.kora.database.common.telemetry.$TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
@@ -49,7 +49,7 @@ class R2dbcDatabaseTest {
             0,
             false,
             Collections.emptyMap(),
-            new DatabaseTelemetryConfig_Impl(
+            new TelemetryConfig_Impl(
                 new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(Map.of(), false),
                 new $DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(Map.of(), false, null),
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true)

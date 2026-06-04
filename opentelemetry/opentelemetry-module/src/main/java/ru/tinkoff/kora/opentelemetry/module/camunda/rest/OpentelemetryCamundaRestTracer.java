@@ -20,15 +20,18 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map;
 
 import static io.opentelemetry.context.Context.root;
 
 public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
 
     private final Tracer tracer;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryCamundaRestTracer(Tracer tracer) {
+    public OpentelemetryCamundaRestTracer(Tracer tracer, Map<String, String> attrs) {
         this.tracer = tracer;
+        this.attrs = attrs;
     }
 
     @Override
@@ -51,7 +54,7 @@ public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
                                HttpBodyInput body) {
         var context = Context.current();
         var parentCtx = W3CTraceContextPropagator.getInstance().extract(root(), headers, HttpHeadersTextMapGetter.INSTANCE);
-        var span = this.tracer
+        var spanBuilder = this.tracer
             .spanBuilder(method + " " + pathTemplate)
             .setSpanKind(SpanKind.SERVER)
             .setParent(parentCtx)
@@ -59,8 +62,11 @@ public final class OpentelemetryCamundaRestTracer implements CamundaRestTracer {
             .setAttribute(UrlAttributes.URL_SCHEME, scheme)
             .setAttribute(ServerAttributes.SERVER_ADDRESS, host)
             .setAttribute(UrlAttributes.URL_PATH, path)
-            .setAttribute(HttpAttributes.HTTP_ROUTE, pathTemplate)
-            .startSpan();
+            .setAttribute(HttpAttributes.HTTP_ROUTE, pathTemplate);
+
+        attrs.forEach(spanBuilder::setAttribute);
+
+        var span = spanBuilder.startSpan();
 
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 

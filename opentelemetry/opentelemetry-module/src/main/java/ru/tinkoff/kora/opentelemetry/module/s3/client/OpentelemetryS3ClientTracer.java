@@ -12,6 +12,8 @@ import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import ru.tinkoff.kora.s3.client.S3Exception;
 import ru.tinkoff.kora.s3.client.telemetry.S3ClientTracer;
 
+import java.util.Map;
+
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
 public final class OpentelemetryS3ClientTracer implements S3ClientTracer {
@@ -21,10 +23,12 @@ public final class OpentelemetryS3ClientTracer implements S3ClientTracer {
 
     private final Class<?> client;
     private final Tracer tracer;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryS3ClientTracer(Class<?> client, Tracer tracer) {
+    public OpentelemetryS3ClientTracer(Class<?> client, Tracer tracer, Map<String, String> attrs) {
         this.client = client;
         this.tracer = tracer;
+        this.attrs = attrs;
     }
 
     @Override
@@ -32,10 +36,13 @@ public final class OpentelemetryS3ClientTracer implements S3ClientTracer {
         var ctx = ru.tinkoff.kora.common.Context.current();
         var tctx = OpentelemetryContext.get(ctx);
 
-        var span = this.tracer.spanBuilder("S3 " + client)
+        var spanBuilder = this.tracer.spanBuilder("S3 " + client)
             .setSpanKind(SpanKind.CLIENT)
-            .setParent(tctx.getContext())
-            .startSpan();
+            .setParent(tctx.getContext());
+
+        attrs.forEach(spanBuilder::setAttribute);
+
+        var span = spanBuilder.startSpan();
 
         return new S3ClientSpan() {
             @Override

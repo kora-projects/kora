@@ -21,6 +21,7 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
     private final String user;
     private final Map<String, String> attrs;
 
+    @Deprecated
     public OpentelemetryDataBaseTracer(Tracer tracer, String dbType, @Nullable String connectionString, String user) {
         this(tracer, dbType, connectionString, user, Map.of());
     }

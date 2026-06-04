@@ -91,13 +91,14 @@ public final class Opentelemetry123GrpcClientMetrics implements GrpcClientMetric
      * @see <a href="https://opentelemetry.io/docs/specs/semconv/rpc/rpc-metrics/#rpc-client">rpc-client</a>
      */
     private DistributionSummary buildDurationMetrics(MethodDurationKey method, @Nullable Metadata metadata) {
-        var duration = DistributionSummary.builder("rpc.client.duration")
+        var builder = DistributionSummary.builder("rpc.client.duration")
             .tags(tagsProvider.getMethodDurationTags(this.uri, method, metadata))
             .baseUnit("s")
-            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123))
-            .register(this.registry);
+            .serviceLevelObjectives(this.config.slo(TelemetryConfig.MetricsConfig.OpentelemetrySpec.V123));
 
-        return duration;
+        config.tags().forEach(builder::tag);
+
+        return builder.register(this.registry);
     }
 
     private Counter buildSendMetrics(MessageSendKey key, Object request) {
