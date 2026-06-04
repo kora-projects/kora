@@ -5,17 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import reactor.test.StepVerifier;
 import ru.tinkoff.kora.database.common.QueryContext;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseMetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$TelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl;
 import ru.tinkoff.kora.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.test.postgres.PostgresParams;
 import ru.tinkoff.kora.test.postgres.PostgresTestContainer;
@@ -49,10 +42,10 @@ class R2dbcDatabaseTest {
             0,
             false,
             Collections.emptyMap(),
-            new TelemetryConfig_Impl(
-                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(Map.of(), false),
-                new $DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(Map.of(), false, null),
-                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true)
+            new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, null, Map.of())
             )
         );
         var db = new R2dbcDatabase(config, List.of(), new DefaultDataBaseTelemetryFactory(null, null, null));

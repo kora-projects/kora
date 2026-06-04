@@ -41,6 +41,7 @@ import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicReference;
@@ -289,8 +290,8 @@ class WebServiceClientAnnotationProcessorTest {
             public TelemetryConfig telemetry() {
                 return new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                     new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null, Map.of())
                 );
             }
         });

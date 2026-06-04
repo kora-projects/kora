@@ -173,8 +173,8 @@ class PublicApiHandlerProcessTests {
             Duration.ofMillis(100),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
                 new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Defaults(),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null, Map.of())
             ),
             Size.ofBytesBinary(1024)
         );

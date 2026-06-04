@@ -9,11 +9,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.fail
 import ru.tinkoff.kora.common.Context
-import ru.tinkoff.kora.database.common.telemetry.`$DatabaseMetricsConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.database.common.telemetry.`$DatabaseMetricsConfig_ConfigValueExtractor`.DatabaseMetricsConfig_Impl
-import ru.tinkoff.kora.database.common.telemetry.`$TelemetryConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.database.common.telemetry.`$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl
-import ru.tinkoff.kora.database.common.telemetry.`$DatabaseTracingConfig_ConfigValueExtractor`.DatabaseTracingConfig_Impl
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory
 import ru.tinkoff.kora.database.r2dbc.`$R2dbcDatabaseConfig_ConfigValueExtractor`.R2dbcDatabaseConfig_Impl
 import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl
@@ -115,9 +110,9 @@ class R2dbcDatabaseExtensionTest {
                 false,
                 mapOf<String, String>(),
                 TelemetryConfig_Impl(
-                    DatabaseTracingConfig_Impl(mapOf(), false),
-                    DatabaseMetricsConfig_Impl(mapOf(), null, null),
                     LogConfig_Impl(true),
+                    TracingConfig_Impl(false, mapOf()),
+                    MetricsConfig_Impl(null, null, mapOf()),
                 )
             )
             val db = R2dbcDatabase(

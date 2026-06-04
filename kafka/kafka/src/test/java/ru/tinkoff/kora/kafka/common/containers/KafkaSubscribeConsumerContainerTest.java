@@ -27,6 +27,7 @@ import ru.tinkoff.kora.test.kafka.KafkaTestContainer;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -66,8 +67,8 @@ class KafkaSubscribeConsumerContainerTest {
             true,
             new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null, Map.of())
             )
         );
         var queue = new ArrayBlockingQueue<>(3);

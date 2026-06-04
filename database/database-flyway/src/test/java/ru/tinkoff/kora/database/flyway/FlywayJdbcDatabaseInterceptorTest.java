@@ -3,9 +3,6 @@ package ru.tinkoff.kora.database.flyway;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseMetricsConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$TelemetryConfig_ConfigValueExtractor;
-import ru.tinkoff.kora.database.common.telemetry.$DatabaseTracingConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.common.telemetry.DefaultDataBaseTelemetryFactory;
 import ru.tinkoff.kora.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import ru.tinkoff.kora.database.jdbc.JdbcDatabase;
@@ -44,9 +41,9 @@ public class FlywayJdbcDatabaseInterceptorTest {
             false,
             new Properties(),
             new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
-                new $DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(Map.of(), false),
-                new $DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(Map.of(), false, null),
-                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true)
+                new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, null, Map.of())
             )
         );
         var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(null, null, null));
