@@ -92,8 +92,23 @@ public interface {{classname}} {
     */
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam({{#formParams}}
-      {{^required}}@Nullable {{/required}}{{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{^isFile}}{{{dataType}}} {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{/formParams}}
-    ) {}
+      {{^required}}{{^isArray}}@Nullable {{/isArray}}{{/required}}{{#isFile}}{{#isArray}}java.util.List<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart> {{paramName}}All{{/isArray}}{{^isArray}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart {{paramName}}{{/isArray}}{{^-last}},{{/-last}}{{/isFile}}{{^isFile}}{{{dataType}}} {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{/formParams}}
+    ) { {{#vendorExtensions.hasFileArrayFormParams}}
+
+      public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam {
+        {{#formParams}}{{#isFile}}{{#isArray}}{{paramName}}All = {{paramName}}All == null ? java.util.List.of() : java.util.Collections.unmodifiableList({{paramName}}All);
+        {{/isArray}}{{/isFile}}{{/formParams}}
+      }
+
+      public {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam({{#formParams}}{{^required}}@Nullable {{/required}}{{#isFile}}{{#isArray}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart {{paramName}}{{/isArray}}{{^isArray}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart {{paramName}}{{/isArray}}{{/isFile}}{{^isFile}}{{{dataType}}} {{paramName}}{{/isFile}}{{^-last}}, {{/-last}}{{/formParams}}) {
+        this({{#formParams}}{{#isFile}}{{#isArray}}{{paramName}} == null ? java.util.List.of() : java.util.List.of({{paramName}}){{/isArray}}{{^isArray}}{{paramName}}{{/isArray}}{{/isFile}}{{^isFile}}{{paramName}}{{/isFile}}{{^-last}}, {{/-last}}{{/formParams}});
+      }{{/vendorExtensions.hasFileArrayFormParams}}{{#formParams}}{{#isFile}}{{#isArray}}
+
+      {{^required}}@Nullable
+      {{/required}}public ru.tinkoff.kora.http.common.form.FormMultipart.FormPart {{paramName}}() {
+        return this.{{paramName}}All == null || this.{{paramName}}All.isEmpty() ? null : this.{{paramName}}All.get(this.{{paramName}}All.size() - 1);
+      }{{/isArray}}{{/isFile}}{{/formParams}}
+    }
     {{/hasFormParams}}
 {{/operation}}
 }

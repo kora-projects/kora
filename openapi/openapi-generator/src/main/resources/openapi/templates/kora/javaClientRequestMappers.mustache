@@ -43,16 +43,20 @@ public interface {{classname}}ClientRequestMappers {
       }{{/formParams}}
       return b.write();{{/vendorExtensions.urlEncodedForm}}{{#vendorExtensions.multipartForm}}
       var l = new java.util.ArrayList<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>();{{#formParams}}
-      if (value.{{paramName}}() != null) {
       {{#isFile}}
+      {{#isArray}}if (value.{{paramName}}All() != null) {
+          l.addAll(value.{{paramName}}All());
+      }{{/isArray}}{{^isArray}}if (value.{{paramName}}() != null) {
           var file = value.{{paramName}}();
-          l.add(file);{{/isFile}}{{^isFile}}
+          l.add(file);
+      }{{/isArray}}{{/isFile}}{{^isFile}}
+      if (value.{{paramName}}() != null) {
           var buf = java.nio.charset.StandardCharsets.UTF_8.encode(java.util.Objects.toString(value.{{paramName}}()));
           var part = ru.tinkoff.kora.http.common.form.FormMultipart.data(
           "{{baseName}}",
             java.util.Objects.toString(value.{{paramName}}())
-          );{{/isFile}}
-      }{{/formParams}}
+          );
+      }{{/isFile}}{{/formParams}}
       return MultipartWriter.write(l);{{/vendorExtensions.multipartForm}}
     }
   }
