@@ -1,28 +1,28 @@
 ["versions"]
-slf4j = "2.0.17"
+slf4j = "2.0.18"
 micrometer = "1.12.13"
 reactor = "3.6.18"
-kotlin-stdlib = "1.9.10" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
+kotlin-stdlib = "1.9.25" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
 kotlin-coroutines = "1.7.3"
-jackson = "2.19.2"
+jackson = "2.19.4"
 mockserver = "5.15.0"
 netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
-kafka = "3.9.1"
+kafka = "3.9.2"
 vertx = "4.3.8"
-testcontainers = "1.18.3"
-cassandra = "4.19.0"
+testcontainers = "1.21.4"
+cassandra = "4.19.3"
 grpc-java = "1.74.0"
 grpc-kotlin = "1.4.3"
 kotlin-testing = "1.5.0"
-ksp = "1.9.10-1.0.13"
+ksp = "1.9.25-1.0.20"
 kotlinpoet = "1.18.1"
 jetbrains-annotations = "24.1.0"
 swagger = "2.2.35"
 opentelemetry = "1.53.0"
-undertow = "2.3.18.Final"
-resteasy = "6.2.12.Final"
+undertow = "2.3.24.Final"
+resteasy = "6.2.16.Final"
 camunda7 = "7.21.0"
-zeebe = "8.7.10"
+zeebe = "8.7.25"
 jakarta = "2.1.1"
 junit-jupiter = "5.12.2"
 junit-platform = "1.12.2"
@@ -34,7 +34,7 @@ jakarta-annotations = { module = "jakarta.annotation:jakarta.annotation-api", ve
 
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-jul = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.34" }
 
 micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
@@ -82,13 +82,13 @@ liquibase = { module = "org.liquibase:liquibase-core", version = "4.29.2" }
 
 jms-api = { module = "javax.jms:javax.jms-api", version = "2.0.1" }
 
-jboss-threads = { module = "org.jboss.threads:jboss-threads", version = "3.9.1" }
-jboss-logging = { module = "org.jboss.logging:jboss-logging", version = "3.6.1.Final" }
+jboss-threads = { module = "org.jboss.threads:jboss-threads", version = "3.9.2" }
+jboss-logging = { module = "org.jboss.logging:jboss-logging", version = "3.6.3.Final" }
 undertow-core = { module = "io.undertow:undertow-core", version.ref = "undertow" }
 undertow-servlet = { module = "io.undertow:undertow-servlet", version.ref = "undertow" }
-async-http-client = { module = "org.asynchttpclient:async-http-client", version = "2.12.4" }
-okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.0.0-alpha.14" } # Cant up cause Kotlin 2.0+ in newer versions
-okhttp-jvm = { module = "com.squareup.okhttp3:okhttp-jvm", version = "5.0.0-alpha.12" } # Cant up cause Kotlin 2.0+ in newer versions
+async-http-client = { module = "org.asynchttpclient:async-http-client", version = "2.15.0" }
+okhttp = { module = "com.squareup.okhttp3:okhttp", version = "5.0.0-alpha.17" } # Cant up cause Kotlin 2.0+ in newer versions
+okhttp-jvm = { module = "com.squareup.okhttp3:okhttp-jvm", version = "5.0.0-alpha.17" } # Cant up cause Kotlin 2.0+ in newer versions
 okio = { module = "com.squareup.okio:okio", version = "3.9.1" }
 
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "netty" }
@@ -119,11 +119,11 @@ r2dbc-postgres = { module = "org.postgresql:r2dbc-postgresql", version = "1.0.7.
 javapoet = { module = "com.squareup:javapoet", version = "1.13.0" }
 classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.181" }
 
-lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.0.RELEASE" }
+lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.2.RELEASE" }
 apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.12.1" }
 quartz = { module = "org.quartz-scheduler:quartz", version = "2.4.0" }
 
-caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.4" }
 
 awaitility = { module = "org.awaitility:awaitility", version = "4.2.2" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
@@ -131,7 +131,7 @@ junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher
 mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
 mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "5.4.0" }
 mockk = { module = "io.mockk:mockk", version = "1.13.11" }
-assertj = { module = "org.assertj:assertj-core", version = "3.27.4" }
+assertj = { module = "org.assertj:assertj-core", version = "3.27.7" }
 mockserver-netty = { module = "org.mock-server:mockserver-netty", version.ref = "mockserver" }
 mockserver-client = { module = "org.mock-server:mockserver-client-java", version.ref = "mockserver" }
 
