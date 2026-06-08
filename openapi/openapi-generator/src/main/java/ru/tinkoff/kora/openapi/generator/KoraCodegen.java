@@ -538,19 +538,19 @@ public class KoraCodegen extends DefaultCodegen {
                 // Kotlin Reserved Words
 
                 // Kotlin Reserved Keywords but available for field name/class name/func name cause naming is more general
-                // "native", "actual", "annotation", "companion", "const", "expect", "operator", "out", "reified", "protected", "final",
+                // "native", "actual", "annotation", "companion", "const", "expect", "operator", "out", "reified", "protected", "final", "tailrec",
 
                 // Kotlin Reserved Words available but restricted cause naming is too close to Kotlin general usage words
-                "enum", "suspend", "tailrec", "abstract", "lateinit", "override", "private", "public", "sealed", "open",
+                "enum", "suspend", "abstract", "lateinit", "override", "private", "public", "sealed",
 
                 "as", "break", "by", "catch", "class",
                 "constructor", "continue", "data", "do", "dynamic",
                 "else", "enum", "external", "false", "finally", "for",
                 "fun", "if", "import", "in", "inline", "interface", "internal", "is",
-                "null", "object", "open", "package",
+                "null", "object", "package",
                 "public", "return", "set", "super",
-                "this", "throw", "true", "try", "typealias", "typeof", "val", "var",
-                "when", "where", "while", "");
+                "this", "throw", "true", "try", "typealias", "typeof",
+                "val", "var", "when", "where", "while");
         }
 
         setReservedWordsLowerCase(
