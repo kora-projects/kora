@@ -23,6 +23,6 @@ class QueryFromResourceTest {
             .newInstance(executor) as QueryFromResourceRepository
         repository.test()
 
-        Mockito.verify(executor.mockConnection).prepareStatement("SELECT 1;\n")
+        Mockito.verify(executor.mockConnection).prepareStatement("SELECT 1;")
     }
 }
