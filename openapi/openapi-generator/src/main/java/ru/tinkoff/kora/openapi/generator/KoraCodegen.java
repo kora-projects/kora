@@ -2442,7 +2442,11 @@ public class KoraCodegen extends DefaultCodegen {
                 }
             }
             var formParamsWithMappers = new ArrayList<Map<String, Object>>();
+            var hasFileArrayFormParams = false;
             for (var formParam : op.formParams) {
+                if (formParam.isFile && Boolean.TRUE.equals(formParam.isArray)) {
+                    hasFileArrayFormParams = true;
+                }
                 boolean isEnum = formParam.isEnum || (formParam.allowableValues != null && !formParam.allowableValues.isEmpty());
                 if (formParam.isModel || isEnum) {
                     formParam.vendorExtensions.put("requiresMapper", true);
@@ -2506,6 +2510,9 @@ public class KoraCodegen extends DefaultCodegen {
                 formParamsWithMappers.get(formParamsWithMappers.size() - 1).put("last", true);
                 op.vendorExtensions.put("requiresFormParamMappers", true);
                 op.vendorExtensions.put("formParamMappers", formParamsWithMappers);
+            }
+            if (hasFileArrayFormParams) {
+                op.vendorExtensions.put("hasFileArrayFormParams", true);
             }
             for (var response : op.responses) {
                 if (isContentJson(response.getContent())) {

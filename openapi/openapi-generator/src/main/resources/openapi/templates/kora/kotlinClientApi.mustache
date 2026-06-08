@@ -67,8 +67,14 @@ interface {{classname}} {
     */
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora client")
     data class {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam({{#formParams}}
-        val {{paramName}}: {{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart{{/isFile}}{{^isFile}}{{{dataType}}}{{/isFile}}{{^required}}?{{/required}}{{^-last}},{{/-last}}{{/formParams}}
-    ) {}
+        val {{#isFile}}{{#isArray}}{{paramName}}All: List<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart>{{/isArray}}{{^isArray}}{{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart{{^required}}?{{/required}}{{/isArray}}{{/isFile}}{{^isFile}}{{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{/isFile}}{{^-last}},{{/-last}}{{/formParams}}
+    ) { {{#vendorExtensions.hasFileArrayFormParams}}
+
+      constructor({{#formParams}}{{#isFile}}{{#isArray}}{{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart{{^required}}?{{/required}}{{/isArray}}{{^isArray}}{{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart{{^required}}?{{/required}}{{/isArray}}{{/isFile}}{{^isFile}}{{paramName}}: {{{dataType}}}{{^required}}?{{/required}}{{/isFile}}{{^-last}}, {{/-last}}{{/formParams}}): this({{#formParams}}{{#isFile}}{{#isArray}}{{#required}}listOf({{paramName}}){{/required}}{{^required}}if ({{paramName}} == null) emptyList() else listOf({{paramName}}){{/required}}{{/isArray}}{{^isArray}}{{paramName}}{{/isArray}}{{/isFile}}{{^isFile}}{{paramName}}{{/isFile}}{{^-last}}, {{/-last}}{{/formParams}}){{/vendorExtensions.hasFileArrayFormParams}}{{#formParams}}{{#isFile}}{{#isArray}}
+
+      val {{paramName}}: ru.tinkoff.kora.http.common.form.FormMultipart.FormPart{{^required}}?{{/required}}
+        get() = {{#required}}this.{{paramName}}All.last(){{/required}}{{^required}}this.{{paramName}}All.lastOrNull(){{/required}}{{/isArray}}{{/isFile}}{{/formParams}}
+    }
     {{/hasFormParams}}
 {{/operation}}
 }
