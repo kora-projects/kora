@@ -27,7 +27,14 @@ public interface OpenApiManagementModule {
     default HttpServerRequestHandler swaggerOauthManagementController(OpenApiManagementConfig config) {
         boolean enabled = config.swaggerui() != null && config.swaggerui().enabled();
         var handler = new SwaggerOauthHttpServerHandler();
-        var path = config.swaggerui().endpoint() + SwaggerOauthHttpServerHandler.PATH;
+        var path = config.swaggerui().endpoint();
+        if (path.endsWith("/")) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (path.indexOf("/") != path.lastIndexOf("/")) {
+            path = path.substring(path.lastIndexOf("/"));
+        }
+        path += SwaggerOauthHttpServerHandler.PATH;
         return HttpServerRequestHandlerImpl.of(HttpMethod.GET, path, handler, enabled);
     }
 
