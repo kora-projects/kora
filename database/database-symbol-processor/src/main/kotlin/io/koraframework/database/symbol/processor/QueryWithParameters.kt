@@ -101,7 +101,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
                     )
                 }
 
-            return QueryWithParameters(rawSql, processedParams)
+            return QueryWithParameters(rawSql.trim(), processedParams)
         }
 
         private fun parseSimpleParameter(rawSql: String, methodParameterNumber: Int, sqlParameterName: String): QueryParameter {
