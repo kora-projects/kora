@@ -92,8 +92,14 @@ public{{^vendorExtensions.allowAspects}} final{{/vendorExtensions.allowAspects}}
     */
     @ru.tinkoff.kora.common.annotation.Generated("openapi generator kora server")
     public record {{#lambda.titlecase}}{{operationId}}{{/lambda.titlecase}}FormParam({{#formParams}}
-      {{^required}}@Nullable {{/required}}{{#isFile}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{^isFile}}{{{dataType}}} {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{/formParams}}
-    ) {}
+      {{^required}}{{^isArray}}@Nullable {{/isArray}}{{/required}}{{#isFile}}{{#isArray}}java.util.List<ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile> {{paramName}}All{{/isArray}}{{^isArray}}ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}}{{/isArray}}{{^-last}},{{/-last}}{{/isFile}}{{^isFile}}{{{dataType}}} {{paramName}}{{^-last}},{{/-last}}{{/isFile}}{{/formParams}}
+    ) { {{#formParams}}{{#isFile}}{{#isArray}}
+
+      {{^required}}@Nullable
+      {{/required}}public ru.tinkoff.kora.http.common.form.FormMultipart.FormPart.MultipartFile {{paramName}}() {
+        return this.{{paramName}}All.isEmpty() ? null : this.{{paramName}}All.get(this.{{paramName}}All.size() - 1);
+      }{{/isArray}}{{/isFile}}{{/formParams}}
+    }
     {{/hasFormParams}}
 {{/operation}}
 }
