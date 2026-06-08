@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import ru.tinkoff.kora.application.graph.Lifecycle;
 import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.util.TimeUtils;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.ContainerConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
@@ -48,6 +49,7 @@ public class ConfigWatcher implements Lifecycle {
         } else if (this.isStarted.compareAndSet(false, true)) {
             this.thread = new Thread(this::watchJob);
             this.thread.setName("config-reload");
+            this.thread.setDaemon(true);
             this.thread.start();
         }
     }
@@ -79,7 +81,7 @@ public class ConfigWatcher implements Lifecycle {
                 var lastModifiedTime = Files.getLastModifiedTime(configPath).toInstant();
                 return new State(configPath, lastModifiedTime);
             } catch (IOException e) {
-                log.warn("Can't locate config file or ", e);
+                log.warn("Can't locate config file for: {}", configuredPath, e);
                 return null;
             }
         };
@@ -97,7 +99,7 @@ public class ConfigWatcher implements Lifecycle {
                     continue;
                 }
                 if (entry.getValue() == null) {
-                    log.debug("New config symlink target");
+                    log.debug("Config Watcher config new symlink target found: {}", newState.configPath);
                     changed.put(entry.getKey(), newState);
                     continue;
                 }
@@ -106,23 +108,41 @@ public class ConfigWatcher implements Lifecycle {
                 var currentConfigPath = newState.configPath;
                 var currentLastModifiedTime = newState.lastModifiedTime;
                 if (!currentConfigPath.equals(configPath)) {
-                    log.debug("New config symlink target");
+                    log.debug("Config Watcher config change symlink target found: {}", newState.configPath);
                     changed.put(entry.getKey(), newState);
                 } else if (currentLastModifiedTime.isAfter(lastModifiedTime)) {
-                    log.debug("Config modified");
+                    log.debug("Config Watcher config state modified: {}", newState.configPath);
                     changed.put(entry.getKey(), newState);
                 }
             }
             try {
                 if (!changed.isEmpty()) {
+                    log.debug("Config Watcher refresh started for paths: {} ...", changed.keySet());
+                    var started = TimeUtils.started();
                     this.applicationConfig.get().refresh();
-                    log.info("Config refreshed");
+                    var took = TimeUtils.tookForLogging(started);
+                    log.info("Config Watcher refresh for paths {} took: {}", changed.keySet(), took);
                     state.putAll(changed);
+
+                    // Recalculate watched files after refresh
+                    var refreshedConfig = this.applicationConfig.get().get();
+                    var refreshedOrigins = this.parseOrigin(refreshedConfig);
+                    var refreshedPaths = new java.util.HashSet<Path>();
+                    for (var origin : refreshedOrigins) {
+                        refreshedPaths.add(origin.path());
+                        if (!state.containsKey(origin.path())) {
+                            var newFileState = stateExtractor.apply(origin.path());
+                            state.put(origin.path(), newFileState);
+                            log.debug("Config Watcher added new config file to watch: {}", origin.path());
+                        }
+                    }
+                    // Remove files no longer in config
+                    state.keySet().removeIf(path -> !refreshedPaths.contains(path));
                 }
                 Thread.sleep(this.checkTime);
             } catch (InterruptedException ignore) {
             } catch (Exception e) {
-                log.warn("Error on checking config for changes", e);
+                log.warn("Error on checking config for changes: {}", changed.keySet(), e);
                 try {
                     Thread.sleep(this.checkTime);
                 } catch (InterruptedException ignore) {
@@ -130,7 +150,6 @@ public class ConfigWatcher implements Lifecycle {
             }
         }
     }
-
 
     private List<FileConfigOrigin> parseOrigin(ConfigOrigin origin) {
         if (origin instanceof FileConfigOrigin o) {

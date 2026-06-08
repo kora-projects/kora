@@ -1,8 +1,10 @@
 package ru.tinkoff.kora.config.hocon;
 
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigRenderOptions;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.ConfigValue;
@@ -12,9 +14,13 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
 import jakarta.annotation.Nullable;
+import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+
+import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
 
 public class HoconConfigFactory {
     public static Config fromHocon(ConfigOrigin origin, com.typesafe.config.Config config) {
@@ -60,5 +66,20 @@ public class HoconConfigFactory {
             result.add(toValue(origin, configValue, path.child(i)));
         }
         return new ConfigValue.ArrayValue(new SimpleConfigValueOrigin(origin, path), List.copyOf(result));
+    }
+
+    static HoconConfigOrigin fileOrigin(Path path) {
+        var includer = new TrackingConfigIncluder();
+        var options = ConfigParseOptions.defaults().setIncluder(includer);
+        ConfigFactory.parseFile(path.toFile(), options);
+        var includedFiles = new ArrayList<FileConfigOrigin>();
+        for (var includedFile : includer.getIncludedFiles()) {
+            includedFiles.add(new FileConfigOrigin(includedFile));
+        }
+        return new HoconConfigOrigin(path, includedFiles);
+    }
+
+    static HoconConfigOrigin resourceOrigin(URL url) {
+        return new HoconConfigOrigin(url);
     }
 }

@@ -7,14 +7,11 @@ import ru.tinkoff.kora.config.common.CommonConfigModule;
 import ru.tinkoff.kora.config.common.Config;
 import ru.tinkoff.kora.config.common.annotation.ApplicationConfig;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
-import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
-import ru.tinkoff.kora.config.common.origin.ResourceConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
 import java.io.InputStreamReader;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 public interface HoconConfigModule extends CommonConfigModule {
@@ -43,29 +40,21 @@ public interface HoconConfigModule extends CommonConfigModule {
                 return new SimpleConfigOrigin("empty");
             }
             if (resourceUrl.getProtocol().equals("file")) {
-                return new FileConfigOrigin(Path.of(resourceUrl.toURI()));
+                var path = Path.of(resourceUrl.toURI());
+                return HoconConfigFactory.fileOrigin(path);
             }
-            return new ResourceConfigOrigin(resourceUrl);
+            return HoconConfigFactory.resourceOrigin(resourceUrl);
         } else {
-            return new FileConfigOrigin(Path.of(file));
+            var path = Path.of(file);
+            return HoconConfigFactory.fileOrigin(path);
         }
     }
 
     @ApplicationConfig
     default com.typesafe.config.Config applicationUnresolved(@ApplicationConfig ConfigOrigin origin) throws Exception {
-        if (origin instanceof FileConfigOrigin file) {
-            try (var reader = Files.newBufferedReader(file.path(), StandardCharsets.UTF_8)) {
+        if (origin instanceof HoconConfigOrigin hocon) {
+            try (var reader = new InputStreamReader(hocon.openInputStream(), StandardCharsets.UTF_8)) {
                 return ConfigFactory.parseReader(reader);
-            }
-        } else if (origin instanceof ResourceConfigOrigin resource) {
-            var connection = resource.url().openConnection();
-            connection.connect();
-            try (var reader = new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)) {
-                return ConfigFactory.parseReader(reader);
-            } finally {
-                if (connection instanceof AutoCloseable closeable) {
-                    closeable.close();
-                }
             }
         } else {
             return ConfigFactory.empty();
