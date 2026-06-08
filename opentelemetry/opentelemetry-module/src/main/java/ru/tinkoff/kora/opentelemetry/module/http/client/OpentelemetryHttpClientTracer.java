@@ -17,13 +17,16 @@ import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Map;
 
 public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
 
     private final Tracer tracer;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryHttpClientTracer(Tracer tracer) {
+    public OpentelemetryHttpClientTracer(Tracer tracer, Map<String, String> attrs) {
         this.tracer = tracer;
+        this.attrs = attrs;
     }
 
     @Override
@@ -57,6 +60,8 @@ public final class OpentelemetryHttpClientTracer implements HttpClientTracer {
             builder.setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme());
             builder.setAttribute(UrlAttributes.URL_FULL, targetUri.toString());
         }
+        attrs.forEach(builder::setAttribute);
+
         var span = builder.startSpan();
 
         var newCtx = otctx.add(span);

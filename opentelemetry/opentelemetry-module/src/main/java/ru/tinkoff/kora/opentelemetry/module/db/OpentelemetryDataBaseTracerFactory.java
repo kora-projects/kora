@@ -8,6 +8,7 @@ import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 import java.util.Objects;
 
+
 public final class OpentelemetryDataBaseTracerFactory implements DataBaseTracerFactory {
     private final Tracer tracer;
 
@@ -15,11 +16,11 @@ public final class OpentelemetryDataBaseTracerFactory implements DataBaseTracerF
         this.tracer = tracer;
     }
 
-    @Override
     @Nullable
+    @Override
     public DataBaseTracer get(TelemetryConfig.TracingConfig config, String dbType, @Nullable String connectionString, String user) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryDataBaseTracer(this.tracer, dbType, connectionString, user);
+            return new OpentelemetryDataBaseTracer(this.tracer, dbType, connectionString, user, config.attributes());
         } else {
             return null;
         }

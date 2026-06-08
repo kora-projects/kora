@@ -27,6 +27,7 @@ import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -73,8 +74,8 @@ class VertxConnectionFactoryTest {
             Duration.ofMillis(1000),
             new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(null, null)
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, null, Map.of())
             )
         );
         var db = new VertxDatabase(config, eventLoopGroup, nettyChannelFactory, new DefaultDataBaseTelemetryFactory(null, null, null));

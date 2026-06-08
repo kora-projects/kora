@@ -101,8 +101,8 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         @SuppressWarnings("unchecked")
         var telemetryCVE = (ConfigValueExtractor<TelemetryConfig>) (ConfigValueExtractor) new $HttpClientTelemetryConfig_ConfigValueExtractor(
             new $HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
-            new $TelemetryConfig_TracingConfig_ConfigValueExtractor(),
-            new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new DoubleArrayConfigValueExtractor(c -> c.asNumber().doubleValue()))
+            new $TelemetryConfig_TracingConfig_ConfigValueExtractor(new MapConfigKeyValueExtractor<>(new StringConfigValueExtractor(), new StringConfigValueExtractor())),
+            new $TelemetryConfig_MetricsConfig_ConfigValueExtractor(new DoubleArrayConfigValueExtractor(c -> c.asNumber().doubleValue()), new MapConfigKeyValueExtractor<>(new StringConfigValueExtractor(), new StringConfigValueExtractor()))
         );
         @SuppressWarnings("enchecked")
         var configCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, telemetryCVE);

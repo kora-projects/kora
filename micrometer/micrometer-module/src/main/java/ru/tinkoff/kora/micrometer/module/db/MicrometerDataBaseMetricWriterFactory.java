@@ -20,11 +20,11 @@ public final class MicrometerDataBaseMetricWriterFactory implements DataBaseMetr
 
     @Override
     @Nullable
-    public DataBaseMetricWriter get(TelemetryConfig.MetricsConfig metrics, String poolName) {
-        if (Objects.requireNonNullElse(metrics.enabled(), true)) {
+    public DataBaseMetricWriter get(TelemetryConfig.MetricsConfig config, String poolName) {
+        if (Objects.requireNonNullElse(config.enabled(), true)) {
             return switch (metricsConfig.opentelemetrySpec()) {
-                case V120 -> new Opentelemetry120DataBaseMetricWriter(this.meterRegistry, metrics, poolName);
-                case V123 -> new Opentelemetry123DataBaseMetricWriter(this.meterRegistry, metrics, poolName);
+                case V120 -> new Opentelemetry120DataBaseMetricWriter(this.meterRegistry, config, poolName);
+                case V123 -> new Opentelemetry123DataBaseMetricWriter(this.meterRegistry, config, poolName);
             };
         } else {
             return null;

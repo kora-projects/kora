@@ -16,25 +16,31 @@ import ru.tinkoff.kora.kafka.common.producer.telemetry.KafkaProducerTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 public class OpentelemetryKafkaProducerTracer implements KafkaProducerTracer {
     private final Tracer tracer;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryKafkaProducerTracer(Tracer tracer) {
+    public OpentelemetryKafkaProducerTracer(Tracer tracer, Map<String, String> attrs) {
         this.tracer = tracer;
+        this.attrs = attrs;
     }
 
     @Override
     public KafkaProducerRecordSpan get(ProducerRecord<?, ?> record) {
         var ctx = Context.current();
         var otctx = OpentelemetryContext.get(ctx);
-        var span = this.tracer.spanBuilder(record.topic() + " send")
+        var spanBuilder = this.tracer.spanBuilder(record.topic() + " send")
             .setSpanKind(SpanKind.PRODUCER)
             .setParent(otctx.getContext())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, "kafka")
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.PUBLISH)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic())
-            .startSpan();
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic());
+
+        attrs.forEach(spanBuilder::setAttribute);
+
+        var span = spanBuilder.startSpan();
         W3CTraceContextPropagator.getInstance().inject(otctx.getContext().with(span), record, ProducerRecordTextMapSetter.INSTANCE);
 
         return new OpentelemetryKafkaProducerRecordSpan(span);

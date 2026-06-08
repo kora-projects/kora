@@ -8,27 +8,34 @@ import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import ru.tinkoff.kora.scheduling.common.telemetry.SchedulingTracer;
 
+import java.util.Map;
+
 public class OpentelemetrySchedulingTracer implements SchedulingTracer {
     private final Tracer tracer;
     private final String className;
     private final String methodName;
+    private final Map<String, String> attrs;
 
-    public OpentelemetrySchedulingTracer(Tracer tracer, String className, String methodName) {
+    public OpentelemetrySchedulingTracer(Tracer tracer, String className, String methodName, Map<String, String> attrs) {
         this.tracer = tracer;
         this.className = className;
         this.methodName = methodName;
+        this.attrs = attrs;
     }
 
 
     @Override
     public SchedulingSpan createSpan(Context ctx) {
         var context = Context.current();
-        var span = this.tracer
+        var spanBuilder = this.tracer
             .spanBuilder(this.className + " " + this.methodName)
             .setSpanKind(SpanKind.INTERNAL)
             .setAttribute(CodeIncubatingAttributes.CODE_FUNCTION, this.methodName)
-            .setAttribute(CodeIncubatingAttributes.CODE_FILEPATH, this.className)
-            .startSpan();
+            .setAttribute(CodeIncubatingAttributes.CODE_FILEPATH, this.className);
+
+        attrs.forEach(spanBuilder::setAttribute);
+
+        var span = spanBuilder.startSpan();
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 
         return (exception) -> {

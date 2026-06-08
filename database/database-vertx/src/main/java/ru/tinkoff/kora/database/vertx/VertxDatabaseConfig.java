@@ -5,7 +5,6 @@ import io.vertx.sqlclient.SqlConnectOptions;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
-
 import java.time.Duration;
 import java.util.Objects;
 

@@ -15,6 +15,9 @@ public class Opentelemetry120SchedulingMetrics implements SchedulingMetrics {
             .baseUnit("milliseconds")
             .tag("code.function", methodName)
             .tag("code.class", className);
+
+        config.tags().forEach(builder::tag);
+
         this.successDuration = builder.register(meterRegistry);
     }
 

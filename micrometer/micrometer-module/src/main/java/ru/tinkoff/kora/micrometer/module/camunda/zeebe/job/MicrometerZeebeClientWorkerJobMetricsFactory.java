@@ -20,7 +20,7 @@ public final class MicrometerZeebeClientWorkerJobMetricsFactory implements Zeebe
     @Override
     public JobWorkerMetrics get(String jobType, TelemetryConfig.MetricsConfig config) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new MicrometerZeebeClientWorkerJobMetrics(this.meterRegistry, jobType);
+            return new MicrometerZeebeClientWorkerJobMetrics(this.meterRegistry, jobType, config);
         } else {
             return null;
         }

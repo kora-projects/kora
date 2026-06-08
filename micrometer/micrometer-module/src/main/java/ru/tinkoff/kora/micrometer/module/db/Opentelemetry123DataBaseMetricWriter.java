@@ -10,6 +10,7 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseMetricWriter;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class Opentelemetry123DataBaseMetricWriter implements DataBaseMetricWriter {
@@ -55,6 +56,8 @@ public final class Opentelemetry123DataBaseMetricWriter implements DataBaseMetri
         } else {
             builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), "");
         }
+
+        config.tags().forEach(builder::tag);
 
         return new DbMetrics(builder.register(this.meterRegistry));
     }

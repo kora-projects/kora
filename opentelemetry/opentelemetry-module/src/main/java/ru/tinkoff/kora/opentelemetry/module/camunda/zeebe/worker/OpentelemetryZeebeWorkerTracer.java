@@ -9,18 +9,22 @@ import ru.tinkoff.kora.camunda.zeebe.worker.telemetry.ZeebeWorkerTracer;
 import ru.tinkoff.kora.common.Context;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
+import java.util.Map;
+
 public final class OpentelemetryZeebeWorkerTracer implements ZeebeWorkerTracer {
 
     private final Tracer tracer;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryZeebeWorkerTracer(Tracer tracer) {
+    public OpentelemetryZeebeWorkerTracer(Tracer tracer, Map<String, String> attrs) {
         this.tracer = tracer;
+        this.attrs = attrs;
     }
 
     @Override
     public ZeebeWorkerSpan createSpan(String workerType, JobContext jobContext) {
         var context = Context.current();
-        var span = this.tracer
+        var spanBuilder = this.tracer
             .spanBuilder("Zeebe Worker " + workerType)
             .setSpanKind(SpanKind.INTERNAL)
             .setAttribute("jobType", jobContext.jobType())
@@ -28,8 +32,11 @@ public final class OpentelemetryZeebeWorkerTracer implements ZeebeWorkerTracer {
             .setAttribute("jobKey", jobContext.jobKey())
             .setAttribute("jobWorker", jobContext.jobWorker())
             .setAttribute("processKey", jobContext.processDefinitionKey())
-            .setAttribute("elementId", jobContext.elementId())
-            .startSpan();
+            .setAttribute("elementId", jobContext.elementId());
+
+        attrs.forEach(spanBuilder::setAttribute);
+
+        var span = spanBuilder.startSpan();
 
         OpentelemetryContext.set(context, OpentelemetryContext.get(context).add(span));
 

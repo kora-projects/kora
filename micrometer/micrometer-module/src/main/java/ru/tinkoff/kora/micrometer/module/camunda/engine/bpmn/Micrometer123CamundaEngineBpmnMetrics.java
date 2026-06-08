@@ -85,6 +85,8 @@ public final class Micrometer123CamundaEngineBpmnMetrics implements CamundaEngin
             .baseUnit("s")
             .tags(list);
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.meterRegistry);
     }
 }

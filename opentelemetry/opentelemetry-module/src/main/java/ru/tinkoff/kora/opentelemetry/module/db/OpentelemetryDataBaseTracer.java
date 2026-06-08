@@ -10,18 +10,28 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.database.common.telemetry.DataBaseTracer;
 import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 
+import java.util.Map;
+
 public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
+
     private final Tracer tracer;
     private final String dbSystem;
     @Nullable
     private final String connectionString;
     private final String user;
+    private final Map<String, String> attrs;
 
+    @Deprecated
     public OpentelemetryDataBaseTracer(Tracer tracer, String dbType, @Nullable String connectionString, String user) {
+        this(tracer, dbType, connectionString, user, Map.of());
+    }
+
+    public OpentelemetryDataBaseTracer(Tracer tracer, String dbType, @Nullable String connectionString, String user, Map<String, String> attrs) {
         this.tracer = tracer;
         this.dbSystem = toDbSystem(dbType);
-        this.connectionString = connectionString;
         this.user = user;
+        this.connectionString = connectionString;
+        this.attrs = attrs;
     }
 
     private static String toDbSystem(String type) {
@@ -61,6 +71,7 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
             @SuppressWarnings("deprecation")
             var ignore = builder.setAttribute(DbIncubatingAttributes.DB_CONNECTION_STRING, this.connectionString);
         }
+        attrs.forEach(builder::setAttribute);
         var span = builder.startSpan();
         OpentelemetryContext.set(ctx, otctx.add(span));
         return (ex) -> {
@@ -90,6 +101,9 @@ public final class OpentelemetryDataBaseTracer implements DataBaseTracer {
             @SuppressWarnings("deprecation")
             var ignore = builder.setAttribute(DbIncubatingAttributes.DB_CONNECTION_STRING, this.connectionString);
         }
+
+        attrs.forEach(builder::setAttribute);
+
         var span = builder.startSpan();
         OpentelemetryContext.set(ctx, otctx.add(span));
         return (ex) -> {

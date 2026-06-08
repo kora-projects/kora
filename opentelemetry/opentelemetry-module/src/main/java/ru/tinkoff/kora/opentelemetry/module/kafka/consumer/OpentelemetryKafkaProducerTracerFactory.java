@@ -21,7 +21,7 @@ public class OpentelemetryKafkaProducerTracerFactory implements KafkaProducerTra
     @Nullable
     public KafkaProducerTracer get(TelemetryConfig.TracingConfig config, Producer<?, ?> producer, Properties properties) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryKafkaProducerTracer(tracer);
+            return new OpentelemetryKafkaProducerTracer(tracer, config.attributes());
         } else {
             return null;
         }

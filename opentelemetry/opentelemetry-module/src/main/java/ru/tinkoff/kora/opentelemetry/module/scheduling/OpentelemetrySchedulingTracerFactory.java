@@ -19,7 +19,7 @@ public class OpentelemetrySchedulingTracerFactory implements SchedulingTracerFac
     @Nullable
     public SchedulingTracer get(TelemetryConfig.TracingConfig tracing, Class<?> jobClass, String jobMethod) {
         if (Objects.requireNonNullElse(tracing.enabled(), true)) {
-            return new OpentelemetrySchedulingTracer(this.tracer, jobClass.getCanonicalName(), jobMethod);
+            return new OpentelemetrySchedulingTracer(this.tracer, jobClass.getCanonicalName(), jobMethod, tracing.attributes());
         } else {
             return null;
         }

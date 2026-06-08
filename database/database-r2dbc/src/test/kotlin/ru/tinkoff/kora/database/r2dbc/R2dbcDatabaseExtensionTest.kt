@@ -111,8 +111,8 @@ class R2dbcDatabaseExtensionTest {
                 mapOf<String, String>(),
                 TelemetryConfig_Impl(
                     LogConfig_Impl(true),
-                    TracingConfig_Impl(true),
-                    MetricsConfig_Impl(null, null)
+                    TracingConfig_Impl(false, mapOf()),
+                    MetricsConfig_Impl(null, null, mapOf()),
                 )
             )
             val db = R2dbcDatabase(

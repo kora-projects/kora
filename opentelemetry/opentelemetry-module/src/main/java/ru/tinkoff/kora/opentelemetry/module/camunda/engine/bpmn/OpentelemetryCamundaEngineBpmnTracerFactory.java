@@ -20,7 +20,7 @@ public final class OpentelemetryCamundaEngineBpmnTracerFactory implements Camund
     @Override
     public CamundaEngineBpmnTracer get(TelemetryConfig.TracingConfig config) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryCamundaEngineBpmnTracer(this.tracer);
+            return new OpentelemetryCamundaEngineBpmnTracer(this.tracer, config.attributes());
         } else {
             return null;
         }

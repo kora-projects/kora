@@ -11,7 +11,9 @@ public class DefaultDataBaseTelemetryFactory implements DataBaseTelemetryFactory
     @Nullable
     private final DataBaseTracerFactory tracingFactory;
 
-    public DefaultDataBaseTelemetryFactory(@Nullable DataBaseLoggerFactory loggerFactory, @Nullable DataBaseMetricWriterFactory metricWriterFactory, @Nullable DataBaseTracerFactory tracingFactory) {
+    public DefaultDataBaseTelemetryFactory(@Nullable DataBaseLoggerFactory loggerFactory,
+                                           @Nullable DataBaseMetricWriterFactory metricWriterFactory,
+                                           @Nullable DataBaseTracerFactory tracingFactory) {
         this.loggerFactory = loggerFactory;
         this.metricWriterFactory = metricWriterFactory;
         this.tracingFactory = tracingFactory;

@@ -98,6 +98,8 @@ public class Opentelemetry123KafkaProducerMetrics implements KafkaProducerMetric
             .baseUnit("s")
             .tags(tagsProvider.getTopicPartitionTags(this.clientId, this.driverProperties, key));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.meterRegistry);
     }
 }

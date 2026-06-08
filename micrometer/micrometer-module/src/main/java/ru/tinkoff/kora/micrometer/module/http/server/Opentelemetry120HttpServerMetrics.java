@@ -64,6 +64,8 @@ public final class Opentelemetry120HttpServerMetrics implements HttpServerMetric
             .baseUnit("milliseconds")
             .tags(this.httpServerTagsProvider.getDurationTags(key));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.meterRegistry);
     }
 }

@@ -9,6 +9,7 @@ import ru.tinkoff.kora.config.common.extractor.BooleanConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.DoubleArrayConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.DurationConfigValueExtractor
+import ru.tinkoff.kora.config.common.extractor.MapConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.SetConfigValueExtractor
 import ru.tinkoff.kora.config.common.extractor.StringConfigValueExtractor
 import ru.tinkoff.kora.config.common.factory.MapConfigFactory
@@ -88,8 +89,8 @@ abstract class AbstractHttpClientTest : AbstractSymbolProcessorTest() {
         val durationCVE = DurationConfigValueExtractor()
         val telemetryCVE = `$HttpClientTelemetryConfig_ConfigValueExtractor`(
             `$HttpClientLoggerConfig_ConfigValueExtractor`(SetConfigValueExtractor(StringConfigValueExtractor())),
-            `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(),
-            `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(DoubleArrayConfigValueExtractor { it.asNumber()!!.toDouble() })
+            `$TelemetryConfig_TracingConfig_ConfigValueExtractor`(MapConfigValueExtractor(StringConfigValueExtractor())),
+            `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`(DoubleArrayConfigValueExtractor { it.asNumber()!!.toDouble() }, MapConfigValueExtractor(StringConfigValueExtractor()))
         ) as ConfigValueExtractor<TelemetryConfig>
         val configCVE = `$HttpClientOperationConfig_ConfigValueExtractor`(durationCVE, telemetryCVE)
 

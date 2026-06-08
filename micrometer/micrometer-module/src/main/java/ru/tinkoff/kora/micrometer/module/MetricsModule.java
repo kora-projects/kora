@@ -28,6 +28,7 @@ import ru.tinkoff.kora.micrometer.module.grpc.server.MicrometerGrpcServerMetrics
 import ru.tinkoff.kora.micrometer.module.grpc.server.tag.DefaultMicrometerGrpcServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.grpc.server.tag.MicrometerGrpcServerTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.client.MicrometerHttpClientMetricsFactory;
+import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 import ru.tinkoff.kora.micrometer.module.http.client.tag.MicrometerHttpClientTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.client.tag.Opentelemetry120MicrometerHttpClientTagsProvider;
 import ru.tinkoff.kora.micrometer.module.http.client.tag.Opentelemetry123MicrometerHttpClientTagsProvider;

@@ -18,6 +18,7 @@ import javax.sql.DataSource;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.function.Consumer;
@@ -35,9 +36,9 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 new $CamundaEngineBpmnConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineBpmnConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineBpmnConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
                     true,
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
                 )
             );
 
@@ -104,9 +105,9 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
                 new $CamundaEngineBpmnConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
                 new $CamundaEngineBpmnConfig_CamundaTelemetryConfig_ConfigValueExtractor.CamundaTelemetryConfig_Impl(
                     $CamundaEngineBpmnConfig_CamundaEngineLogConfig_ConfigValueExtractor.DEFAULTS,
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
+                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
                     true,
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
+                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
                 )
             );
 
@@ -176,8 +177,8 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
             new Properties(),
             new $TelemetryConfig_ConfigValueExtractor.TelemetryConfig_Impl(
                 new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Impl(true),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(false, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(false, null, Map.of())
             )
         );
 

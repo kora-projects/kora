@@ -20,7 +20,7 @@ public final class OpentelemetryCamundaRestTracerFactory implements CamundaRestT
     @Override
     public CamundaRestTracer get(TelemetryConfig.TracingConfig config) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryCamundaRestTracer(this.tracer);
+            return new OpentelemetryCamundaRestTracer(this.tracer, config.attributes());
         } else {
             return null;
         }

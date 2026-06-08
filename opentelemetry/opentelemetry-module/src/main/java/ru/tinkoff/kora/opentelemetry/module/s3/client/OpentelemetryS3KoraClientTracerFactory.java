@@ -20,7 +20,7 @@ public final class OpentelemetryS3KoraClientTracerFactory implements S3KoraClien
     @Override
     public S3KoraClientTracer get(TelemetryConfig.TracingConfig config, Class<?> client) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryS3KoraClientTracer(client, tracer);
+            return new OpentelemetryS3KoraClientTracer(client, tracer, config.attributes());
         } else {
             return null;
         }

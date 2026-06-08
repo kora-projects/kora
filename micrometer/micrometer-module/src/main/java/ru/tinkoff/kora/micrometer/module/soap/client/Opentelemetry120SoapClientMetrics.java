@@ -27,6 +27,8 @@ public class Opentelemetry120SoapClientMetrics implements SoapClientMetrics {
             .tag("net.peer.name", host)
             .tag("net.peer.port", Integer.toString(port));
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(meterRegistry);
     }
 

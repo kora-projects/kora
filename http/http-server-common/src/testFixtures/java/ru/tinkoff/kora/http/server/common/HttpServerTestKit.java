@@ -49,10 +49,7 @@ import java.io.OutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.function.Function;
 import java.util.function.LongSupplier;
@@ -1111,8 +1108,8 @@ public abstract class HttpServerTestKit {
             Duration.ofMillis(1),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
                 new $HttpServerLoggerConfig_ConfigValueExtractor.HttpServerLoggerConfig_Impl(true, Collections.emptySet(), Collections.emptySet(), "***", true, false),
-                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true),
-                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO)
+                new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
+                new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
             ),
             Size.ofBytesBinary(1024*1024*1024)
         );

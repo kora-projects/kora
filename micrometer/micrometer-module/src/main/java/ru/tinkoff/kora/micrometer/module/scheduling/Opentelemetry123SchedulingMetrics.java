@@ -40,6 +40,8 @@ public class Opentelemetry123SchedulingMetrics implements SchedulingMetrics {
             builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), "");
         }
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.meterRegistry);
     }
 

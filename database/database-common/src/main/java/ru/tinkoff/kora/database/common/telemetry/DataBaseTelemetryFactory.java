@@ -6,6 +6,7 @@ import ru.tinkoff.kora.database.common.QueryContext;
 import ru.tinkoff.kora.telemetry.common.TelemetryConfig;
 
 public interface DataBaseTelemetryFactory {
+
     DataBaseTelemetry.DataBaseTelemetryContext EMPTY_CTX = exception -> {};
     DataBaseTelemetry EMPTY = new DataBaseTelemetry() {
         @Nullable

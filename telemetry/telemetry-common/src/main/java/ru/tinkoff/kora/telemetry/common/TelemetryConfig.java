@@ -3,6 +3,8 @@ package ru.tinkoff.kora.telemetry.common;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
 
+import java.util.Map;
+
 @ConfigValueExtractor
 public interface TelemetryConfig {
     LogConfig logging();
@@ -21,6 +23,10 @@ public interface TelemetryConfig {
     interface TracingConfig {
         @Nullable
         Boolean enabled();
+
+        default Map<String, String> attributes() {
+            return Map.of();
+        }
     }
 
     @ConfigValueExtractor
@@ -47,6 +53,10 @@ public interface TelemetryConfig {
                 case V120 -> DEFAULT_SLO;
                 case V123 -> DEFAULT_SLO_V123;
             };
+        }
+
+        default Map<String, String> tags() {
+            return Map.of();
         }
     }
 }

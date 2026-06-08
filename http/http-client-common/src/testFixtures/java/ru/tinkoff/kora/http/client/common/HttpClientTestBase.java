@@ -27,6 +27,7 @@ import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
 import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientTracer;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import static java.time.Duration.ofMillis;
@@ -48,7 +49,7 @@ public abstract class HttpClientTestBase {
 
     private final HttpClient client = this.baseClient
         .with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(
-            new OpentelemetryHttpClientTracer(tracer),
+            new OpentelemetryHttpClientTracer(tracer, Map.of()),
             this.metrics,
             this.logger
         )))

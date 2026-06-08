@@ -22,6 +22,6 @@ public final class OpentelemetryGrpcClientTracerFactory implements GrpcClientTra
         if (config.enabled() != null && !config.enabled()) {
             return null;
         }
-        return new OpentelemetryGrpcClientTracer(this.tracer, service, uri);
+        return new OpentelemetryGrpcClientTracer(this.tracer, service, uri, config.attributes());
     }
 }

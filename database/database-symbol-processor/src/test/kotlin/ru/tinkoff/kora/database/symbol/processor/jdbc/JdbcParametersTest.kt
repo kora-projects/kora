@@ -9,10 +9,10 @@ import ru.tinkoff.kora.common.Tag
 import ru.tinkoff.kora.database.jdbc.`$JdbcDatabaseConfig_ConfigValueExtractor`.JdbcDatabaseConfig_Impl
 import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
 import ru.tinkoff.kora.database.symbol.processor.entity.TestEntity
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`
-import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_LogConfig_ConfigValueExtractor`.LogConfig_Impl
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.MetricsConfig_Impl
+import ru.tinkoff.kora.telemetry.common.`$TelemetryConfig_TracingConfig_ConfigValueExtractor`.TracingConfig_Impl
 import java.time.Duration
 import java.util.*
 import kotlin.reflect.full.findAnnotations
@@ -54,10 +54,10 @@ class JdbcParametersTest : AbstractJdbcRepositoryTest() {
             Duration.ofMillis(1000L),
             false,
             Properties(),
-            `$TelemetryConfig_ConfigValueExtractor`.TelemetryConfig_Impl(
-                `$TelemetryConfig_LogConfig_ConfigValueExtractor`.LogConfig_Impl(true),
-                `$TelemetryConfig_TracingConfig_ConfigValueExtractor`.TracingConfig_Impl(true),
-                `$TelemetryConfig_MetricsConfig_ConfigValueExtractor`.MetricsConfig_Impl(null, null)
+            TelemetryConfig_Impl(
+                LogConfig_Impl(true),
+                TracingConfig_Impl(false, mapOf()),
+                MetricsConfig_Impl(null, null, mapOf()),
             )
         )
         val repository = compileForArgs(

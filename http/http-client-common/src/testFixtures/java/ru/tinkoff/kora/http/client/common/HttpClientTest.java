@@ -24,6 +24,7 @@ import ru.tinkoff.kora.opentelemetry.module.http.client.OpentelemetryHttpClientT
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
@@ -237,7 +238,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         var base = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(Duration.ofMillis(100), Duration.ofMillis(100), null, false));
         var client = base
             .with(new TelemetryInterceptor(new DefaultHttpClientTelemetry(
-                new OpentelemetryHttpClientTracer(this.tracer),
+                new OpentelemetryHttpClientTracer(this.tracer, Map.of()),
                 this.metrics,
                 this.logger
             )));

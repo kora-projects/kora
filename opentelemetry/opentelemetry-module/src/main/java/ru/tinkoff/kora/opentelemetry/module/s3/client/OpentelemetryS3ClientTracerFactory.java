@@ -20,7 +20,7 @@ public final class OpentelemetryS3ClientTracerFactory implements S3ClientTracerF
     @Override
     public S3ClientTracer get(TelemetryConfig.TracingConfig config, Class<?> client) {
         if (Objects.requireNonNullElse(config.enabled(), true)) {
-            return new OpentelemetryS3ClientTracer(client, tracer);
+            return new OpentelemetryS3ClientTracer(client, tracer, config.attributes());
         } else {
             return null;
         }

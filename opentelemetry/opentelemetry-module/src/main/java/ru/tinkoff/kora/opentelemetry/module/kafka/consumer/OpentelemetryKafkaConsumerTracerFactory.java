@@ -20,7 +20,7 @@ public final class OpentelemetryKafkaConsumerTracerFactory implements KafkaConsu
     @Override
     public KafkaConsumerTracer get(Properties driverProperties, TelemetryConfig.TracingConfig tracing) {
         if (Objects.requireNonNullElse(tracing.enabled(), true)) {
-            return new OpentelemetryKafkaConsumerTracer(this.tracer);
+            return new OpentelemetryKafkaConsumerTracer(this.tracer, tracing.attributes());
         }
         return null;
     }

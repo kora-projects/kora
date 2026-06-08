@@ -85,6 +85,8 @@ public final class Micrometer120CamundaEngineBpmnMetrics implements CamundaEngin
             .baseUnit("milliseconds")
             .tags(list);
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.meterRegistry);
     }
 }

@@ -14,6 +14,8 @@ import ru.tinkoff.kora.soap.client.common.envelope.SoapEnvelope;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTelemetry;
 import ru.tinkoff.kora.soap.client.common.telemetry.SoapClientTracer;
 
+import java.util.Map;
+
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
 public class OpentelemetrySoapClientTracer implements SoapClientTracer {
@@ -26,12 +28,14 @@ public class OpentelemetrySoapClientTracer implements SoapClientTracer {
     private final String serviceName;
     private final String soapMethod;
     private final String url;
+    private final Map<String, String> attrs;
 
-    public OpentelemetrySoapClientTracer(Tracer tracer, String serviceName, String soapMethod, String url) {
+    public OpentelemetrySoapClientTracer(Tracer tracer, String serviceName, String soapMethod, String url, Map<String, String> attrs) {
         this.tracer = tracer;
         this.serviceName = serviceName;
         this.soapMethod = soapMethod;
         this.url = url;
+        this.attrs = attrs;
     }
 
     @Override
@@ -45,6 +49,8 @@ public class OpentelemetrySoapClientTracer implements SoapClientTracer {
         builder.setAttribute(RpcIncubatingAttributes.RPC_SERVICE, serviceName);
         builder.setAttribute(RpcIncubatingAttributes.RPC_METHOD, soapMethod);
         builder.setAttribute(RpcIncubatingAttributes.RPC_SYSTEM, url);
+
+        attrs.forEach(builder::setAttribute);
 
         var span = builder.startSpan();
 

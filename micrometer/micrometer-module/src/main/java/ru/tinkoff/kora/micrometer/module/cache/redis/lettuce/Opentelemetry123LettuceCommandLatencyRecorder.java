@@ -81,6 +81,8 @@ public class Opentelemetry123LettuceCommandLatencyRecorder implements CommandLat
             builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), "");
         }
 
+        config.tags().forEach(builder::tag);
+
         return builder.register(this.registry);
     }
 
@@ -99,6 +101,8 @@ public class Opentelemetry123LettuceCommandLatencyRecorder implements CommandLat
         } else {
             builder.tag(ErrorAttributes.ERROR_TYPE.getKey(), "");
         }
+
+        config.tags().forEach(builder::tag);
 
         return builder.register(this.registry);
     }

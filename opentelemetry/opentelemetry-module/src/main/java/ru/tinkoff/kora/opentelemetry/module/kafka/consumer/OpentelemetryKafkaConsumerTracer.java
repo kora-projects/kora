@@ -23,9 +23,11 @@ import java.util.Objects;
 
 public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTracer {
     private final Tracer tracer;
+    private final Map<String, String> attrs;
 
-    public OpentelemetryKafkaConsumerTracer(Tracer tracer) {
+    public OpentelemetryKafkaConsumerTracer(Tracer tracer, Map<String, String> attrs) {
         this.tracer = tracer;
+        this.attrs = attrs;
     }
 
     @Override
@@ -34,15 +36,18 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
         var otctx = OpentelemetryContext.get(ctx);
         var partitions = records.partitions();
         var spans = new HashMap<TopicPartition, Span>(partitions.size());
-        var rootSpan = this.tracer.spanBuilder("kafka.poll")
+        var rootSpanBuilder = this.tracer.spanBuilder("kafka.poll")
             .setSpanKind(SpanKind.CONSUMER)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
-            .setNoParent()
-            .startSpan();
+            .setNoParent();
+
+        attrs.forEach(rootSpanBuilder::setAttribute);
+
+        var rootSpan = rootSpanBuilder.startSpan();
         var rootCtx = otctx.add(rootSpan);
         for (var topicPartition : partitions) {
             @SuppressWarnings("deprecation")
-            var partitionSpan = this.tracer
+            var partitionSpanBuilder = this.tracer
                 .spanBuilder(topicPartition.topic() + " receive")
                 .setParent(rootCtx.getContext())
                 .setSpanKind(SpanKind.CONSUMER)
@@ -51,13 +56,16 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
                 .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topicPartition.topic())
                 .setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_DESTINATION_PARTITION, (long) topicPartition.partition())
                 .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(topicPartition.partition()))
-                .setAttribute(MessagingIncubatingAttributes.MESSAGING_BATCH_MESSAGE_COUNT, (long) records.count())
-                .startSpan();
+                .setAttribute(MessagingIncubatingAttributes.MESSAGING_BATCH_MESSAGE_COUNT, (long) records.count());
+
+            attrs.forEach(partitionSpanBuilder::setAttribute);
+
+            var partitionSpan = partitionSpanBuilder.startSpan();
             spans.put(topicPartition, partitionSpan);
         }
         OpentelemetryContext.set(ctx, rootCtx);
 
-        return new OpentelemetryKafkaConsumerRecordsSpan(this.tracer, rootCtx, rootSpan, spans);
+        return new OpentelemetryKafkaConsumerRecordsSpan(this.tracer, rootCtx, rootSpan, spans, this.attrs);
     }
 
     private static final class OpentelemetryKafkaConsumerRecordsSpan implements KafkaConsumerRecordsSpan {
@@ -65,12 +73,14 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
         private final OpentelemetryContext rootCtx;
         private final Span rootSpan;
         private final Map<TopicPartition, Span> spans;
+        private final Map<String, String> attrs;
 
-        public OpentelemetryKafkaConsumerRecordsSpan(Tracer tracer, OpentelemetryContext rootCtx, Span rootSpan, Map<TopicPartition, Span> spans) {
+        public OpentelemetryKafkaConsumerRecordsSpan(Tracer tracer, OpentelemetryContext rootCtx, Span rootSpan, Map<TopicPartition, Span> spans, Map<String, String> attrs) {
             this.tracer = tracer;
             this.rootCtx = rootCtx;
             this.rootSpan = rootSpan;
             this.spans = spans;
+            this.attrs = attrs;
         }
 
         @Override
@@ -93,6 +103,9 @@ public final class OpentelemetryKafkaConsumerTracer implements KafkaConsumerTrac
             try {
                 recordSpanBuilder.setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_MESSAGE_KEY, Objects.toString(record.key()));
             } catch (Exception ignore) {}
+
+            attrs.forEach(recordSpanBuilder::setAttribute);
+
             var recordSpan = recordSpanBuilder.startSpan();
             OpentelemetryContext.set(Context.current(), this.rootCtx.add(recordSpan));
 
