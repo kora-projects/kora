@@ -536,14 +536,21 @@ public class KoraCodegen extends DefaultCodegen {
         } else {
             languageReservedWords = Stream.of(
                 // Kotlin Reserved Words
-                "abstract", "actual", "annotation", "as", "break", "by", "catch", "class",
-                "companion", "const", "constructor", "continue", "data", "do", "dynamic",
-                "else", "enum", "expect", "external", "false", "final", "finally", "for",
-                "fun", "if", "import", "in", "inline", "interface", "internal", "is", "lateinit",
-                "native", "null", "object", "open", "operator", "out", "override", "package",
-                "private", "protected", "public", "reified", "return", "sealed", "set", "super",
-                "suspend", "this", "throw", "true", "try", "typealias", "typeof", "val", "var",
-                "when", "where", "while");
+
+                // Kotlin Reserved Keywords but available for field name/class name/func name cause naming is more general
+                // "native", "actual", "annotation", "companion", "const", "expect", "operator", "out", "reified", "protected", "final",
+
+                // Kotlin Reserved Words available but restricted cause naming is too close to Kotlin general usage words
+                "enum", "suspend", "tailrec", "abstract", "lateinit", "override", "private", "public", "sealed", "open",
+
+                "as", "break", "by", "catch", "class",
+                "constructor", "continue", "data", "do", "dynamic",
+                "else", "enum", "external", "false", "finally", "for",
+                "fun", "if", "import", "in", "inline", "interface", "internal", "is",
+                "null", "object", "open", "package",
+                "public", "return", "set", "super",
+                "this", "throw", "true", "try", "typealias", "typeof", "val", "var",
+                "when", "where", "while", "");
         }
 
         setReservedWordsLowerCase(
