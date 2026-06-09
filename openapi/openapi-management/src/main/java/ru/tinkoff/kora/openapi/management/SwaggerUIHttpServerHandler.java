@@ -47,7 +47,15 @@ public final class SwaggerUIHttpServerHandler implements HttpServerRequestHandle
         return ResourceUtils.getFileAsString(FILE_PATH)
             .map(file -> {
                 // replace oauth redirect path
-                var replacement = swaggeruiPath + SwaggerOauthHttpServerHandler.PATH;
+                var replacement = swaggeruiPath;
+                if (replacement.endsWith("/")) {
+                    replacement = replacement.substring(0, replacement.length() - 1);
+                }
+                if (replacement.indexOf("/") != replacement.lastIndexOf("/")) {
+                    replacement = replacement.substring(replacement.lastIndexOf("/"));
+                }
+                replacement += SwaggerOauthHttpServerHandler.PATH;
+
                 var tagSwagger = "${swaggerOauthPath}";
                 int ri = file.lastIndexOf(tagSwagger);
                 return file.substring(0, ri) + replacement + file.substring(ri + tagSwagger.length());
