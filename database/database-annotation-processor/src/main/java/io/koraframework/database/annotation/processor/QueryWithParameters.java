@@ -118,7 +118,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             ))
             .toList();
 
-        return new QueryWithParameters(sql.strip(), params);
+        return new QueryWithParameters(sql, params);
     }
 
 
