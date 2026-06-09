@@ -73,6 +73,8 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             }
         }
 
+        rawSql = rawSql.strip();
+
         var sql = new QueryMacrosParser(types).parse(rawSql, repositoryType, method);
         List<QueryParameter> params = new ArrayList<>();
 
@@ -115,7 +117,7 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
             ))
             .toList();
 
-        return new QueryWithParameters(sql.strip(), params);
+        return new QueryWithParameters(sql, params);
     }
 
 
