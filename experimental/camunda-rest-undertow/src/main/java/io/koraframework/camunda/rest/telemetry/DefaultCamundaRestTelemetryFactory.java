@@ -28,6 +28,6 @@ public final class DefaultCamundaRestTelemetryFactory implements CamundaRestTele
             return NoopCamundaRestTelemetry.INSTANCE;
         }
 
-        return new DefaultCamundaRestTelemetry(config, tracer, new DefaultHttpServerLogger(config.logging()), meterRegistry);
+        return new DefaultCamundaRestTelemetry(config, tracer, new DefaultCamundaRestLogger(config.logging()), meterRegistry);
     }
 }

@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class DefaultHttpServerLogger {
+public class DefaultCamundaRestLogger {
 
     private static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
 
@@ -27,7 +27,7 @@ public class DefaultHttpServerLogger {
     private final String mask;
     private final Boolean pathTemplate;
 
-    public DefaultHttpServerLogger(HttpServerTelemetryConfig.HttpServerLoggingConfig config) {
+    public DefaultCamundaRestLogger(HttpServerTelemetryConfig.HttpServerLoggingConfig config) {
         this.logStacktrace = config.stacktrace();
         this.maskedQueryParams = config.maskQueries().stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
