@@ -13,6 +13,7 @@ import io.opentelemetry.semconv.UrlAttributes;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.List;
 
 public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
@@ -76,7 +77,8 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
     }
 
     protected SpanBuilder startSpan(HttpClientRequest request) {
-        var builder = this.context.tracer.spanBuilder(operation(request.method(), request.uriTemplate(), request.uri()))
+        var pathTemplate = getPathTemplate(request.uriTemplate(), request.uri());
+        var builder = this.context.tracer.spanBuilder(request.method() + ' ' + pathTemplate)
             .setSpanKind(SpanKind.CLIENT)
             .setParent(io.opentelemetry.context.Context.current());
 
@@ -97,13 +99,27 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
             }
         }
 
-        builder.setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method());
+        builder.setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method())
+            .setAttribute(HttpAttributes.HTTP_ROUTE, pathTemplate);
         if (targetUri != null) {
             builder.setAttribute(ServerAttributes.SERVER_ADDRESS, targetUri.getHost())
                 .setAttribute(ServerAttributes.SERVER_PORT, (long) targetUri.getPort())
-                .setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme())
-                .setAttribute(UrlAttributes.URL_FULL, targetUri.toString());
+                .setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme());
+
+            if (this.context.config.tracing().urlFull()) {
+                var path = targetUri.getPath();
+                if (path != null) {
+                    builder.setAttribute(UrlAttributes.URL_PATH, path);
+                }
+                builder.setAttribute(UrlAttributes.URL_FULL, targetUri.toString());
+            }
         }
+
+        if (request.body().contentLength() != -1) {
+            var contentLength = String.valueOf(request.body().contentLength());
+            builder.setAttribute(HttpAttributes.HTTP_REQUEST_HEADER.getAttributeKey("content-length"), List.of(contentLength));
+        }
+
         builder.setAttribute(SYSTEM_CONFIG_PATH, this.context.clientConfigPath)
             .setAttribute(SYSTEM_NAME_SIMPLE, this.context.clientSimpleName)
             .setAttribute(SYSTEM_NAME_CANONICAL, this.context.clientCanonicalName);
@@ -115,7 +131,7 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         return builder;
     }
 
-    protected String operation(String method, String uriTemplate, URI uri) {
+    protected String getPathTemplate(String uriTemplate, URI uri) {
         if (uri.getAuthority() != null) {
             if (uri.getScheme() != null) {
                 uriTemplate = uriTemplate.replace(uri.getScheme() + "://" + uri.getAuthority(), "");
@@ -125,6 +141,6 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         if (questionMark >= 0) {
             uriTemplate = uriTemplate.substring(0, questionMark);
         }
-        return method + " " + uriTemplate;
+        return uriTemplate;
     }
 }

@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -188,6 +189,16 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
             span.setStatus(StatusCode.ERROR);
         } else {
             span.setStatus(StatusCode.OK);
+        }
+        if (response != null && response.body() != null) {
+            var contentType = response.body().contentType();
+            if (contentType != null) {
+                span.setAttribute(HttpAttributes.HTTP_RESPONSE_HEADER.getAttributeKey("content-type"), List.of(contentType));
+            }
+            if (response.body().contentLength() != -1) {
+                var contentLength = String.valueOf(response.body().contentLength());
+                span.setAttribute(HttpAttributes.HTTP_RESPONSE_HEADER.getAttributeKey("content-length"), List.of(contentLength));
+            }
         }
 
         span.setAttribute("http.response.result_code", resultCode.string());

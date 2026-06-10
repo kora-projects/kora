@@ -183,13 +183,13 @@ public class DefaultHttpClientLoggerFactory {
                 .log("HttpClient received error");
         }
 
-        protected boolean shouldWritePath(Logger logger) {
-            var pathTemplate = context.config().logging().pathTemplate();
-            return pathTemplate != null ? pathTemplate : logger.isTraceEnabled();
+        protected boolean shouldWritePathFull(Logger logger) {
+            var pathFull = context.config().logging().pathFull();
+            return pathFull != null ? pathFull : logger.isTraceEnabled();
         }
 
         protected String getOperation(Logger logger, String method, String path, String pathTemplate) {
-            return method + ' ' + (shouldWritePath(logger) ? path : pathTemplate);
+            return method + ' ' + (shouldWritePathFull(logger) ? path : pathTemplate);
         }
     }
 }
