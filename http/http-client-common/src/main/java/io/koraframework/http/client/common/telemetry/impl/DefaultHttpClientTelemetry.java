@@ -33,7 +33,7 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         ), false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none");
     }
 
-    protected static final String SYSTEM_CONFIG_PATH = "system.this.context.config().path";
+    protected static final String SYSTEM_CONFIG_PATH = "system.path";
     protected static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     protected static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
