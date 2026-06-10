@@ -19,6 +19,8 @@ import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.system.*;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerBodyConverter;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLoggerFactory;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerMetricsFactory;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerTelemetryFactory;
 import io.koraframework.telemetry.common.MetricsScraper;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -47,8 +49,10 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
     @DefaultComponent
     default HttpServerTelemetryFactory defaultHttpServerTelemetryFactory(@Nullable MeterRegistry meterRegistry,
                                                                         @Nullable Tracer tracer,
+                                                                        @Nullable DefaultHttpServerLoggerFactory loggerFactory,
+                                                                        @Nullable DefaultHttpServerMetricsFactory metricsFactory,
                                                                         @Nullable DefaultHttpServerBodyConverter bodyLogger) {
-        return new DefaultHttpServerTelemetryFactory(meterRegistry, tracer, bodyLogger);
+        return new DefaultHttpServerTelemetryFactory(meterRegistry, tracer, loggerFactory, metricsFactory, bodyLogger);
     }
 
     @SystemApi

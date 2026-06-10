@@ -7,7 +7,6 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.HttpAttributes;
@@ -37,20 +36,20 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
     protected String responseContentType;
     @Nullable
     protected Throwable exception;
-    protected final HttpServerTelemetryConfig config;
+    protected final DefaultHttpServerTelemetry.TelemetryContext context;
     protected final HttpServerRequest request;
     protected final long requestStartTimeInNanos;
     protected final Span span;
-    protected final DefaultHttpServerLogger logger;
-    protected final DefaultHttpServerMetrics metrics;
+    protected final DefaultHttpServerLoggerFactory.DefaultHttpServerLogger logger;
+    protected final DefaultHttpServerMetricsFactory.DefaultHttpServerMetrics metrics;
 
-    public DefaultHttpServerObservation(HttpServerTelemetryConfig config,
-                                        DefaultHttpServerLogger logger,
-                                        DefaultHttpServerMetrics metrics,
+    public DefaultHttpServerObservation(DefaultHttpServerTelemetry.TelemetryContext context,
+                                        DefaultHttpServerLoggerFactory.DefaultHttpServerLogger logger,
+                                        DefaultHttpServerMetricsFactory.DefaultHttpServerMetrics metrics,
                                         HttpServerRequest request,
                                         long requestStartTimeInNanos,
                                         Span span) {
-        this.config = config;
+        this.context = context;
         this.logger = logger;
         this.metrics = metrics;
         this.request = request;
@@ -88,9 +87,9 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             var lenInBytes = full.remaining();
-            if (lenInBytes > config.logging().maxRequestBodyLogSize().toBytes()) {
+            if (lenInBytes > context.config().logging().maxRequestBodyLogSize().toBytes()) {
                 log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body cause content length is {}...",
-                    config.logging().maxRequestBodyLogSize(), lenInBytes);
+                    context.config().logging().maxRequestBodyLogSize(), lenInBytes);
                 logger.logRequest(request, null, body.contentType());
             } else {
                 logger.logRequest(request, full, body.contentType());
@@ -100,9 +99,9 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
         }
 
         var lenInBytes = body.contentLength();
-        if (lenInBytes > config.logging().maxRequestBodyLogSize().toBytes()) {
+        if (lenInBytes > context.config().logging().maxRequestBodyLogSize().toBytes()) {
             log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body cause content length is {}...",
-                config.logging().maxRequestBodyLogSize(), lenInBytes);
+                context.config().logging().maxRequestBodyLogSize(), lenInBytes);
             logger.logRequest(request, null, body.contentType());
             return request;
         }
@@ -141,9 +140,9 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             var lenInBytes = full.remaining();
-            if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
+            if (lenInBytes > context.config().logging().maxResponseBodyLogSize().toBytes()) {
                 log.warn("Can't log response body bigger than {}, change config value if require logging, logging response without body cause content length is {}...",
-                    config.logging().maxResponseBodyLogSize(), lenInBytes);
+                    context.config().logging().maxResponseBodyLogSize(), lenInBytes);
             } else {
                 this.responseBody = full;
                 this.responseContentType = body.contentType();
@@ -153,9 +152,9 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
         }
 
         var lenInBytes = body.contentLength();
-        if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
+        if (lenInBytes > context.config().logging().maxResponseBodyLogSize().toBytes()) {
             log.warn("Can't log response body bigger than {}, change config value if require logging, now logging response without body cause content length is {}...",
-                config.logging().maxResponseBodyLogSize(), lenInBytes);
+                context.config().logging().maxResponseBodyLogSize(), lenInBytes);
             return response;
         }
 
@@ -185,7 +184,10 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
     }
 
     protected void recordMetrics(long processingTime) {
-        this.metrics.recordEnd(request, exception, processingTime);
+        var response = this.response != null
+            ? this.response
+            : HttpServerResponse.of(statusCode, httpHeaders);
+        this.metrics.recordEnd(request, response, exception, processingTime);
     }
 
     protected void writeLog(long processingTime) {

@@ -1,30 +1,39 @@
 package io.koraframework.http.server.common.telemetry.impl;
 
-import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.LoggerFactory;
 
 public final class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFactory {
-    private static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-server");
+
+    public static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-server");
+    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
 
     @Nullable
     private final MeterRegistry meterRegistry;
     @Nullable
     private final Tracer tracer;
     @Nullable
+    private final DefaultHttpServerLoggerFactory loggerFactory;
+    @Nullable
+    private final DefaultHttpServerMetricsFactory metricsFactory;
+    @Nullable
     private final DefaultHttpServerBodyConverter bodyLogger;
 
     public DefaultHttpServerTelemetryFactory(@Nullable MeterRegistry meterRegistry,
                                              @Nullable Tracer tracer,
+                                             @Nullable DefaultHttpServerLoggerFactory loggerFactory,
+                                             @Nullable DefaultHttpServerMetricsFactory metricsFactory,
                                              @Nullable DefaultHttpServerBodyConverter bodyLogger) {
         this.meterRegistry = meterRegistry;
         this.tracer = tracer;
+        this.loggerFactory = loggerFactory;
+        this.metricsFactory = metricsFactory;
         this.bodyLogger = bodyLogger;
     }
 
@@ -36,23 +45,27 @@ public final class DefaultHttpServerTelemetryFactory implements HttpServerTeleme
             return NoopHttpServerTelemetry.INSTANCE;
         }
 
-        final DefaultHttpServerMetrics metrics;
-        if (metricEnabled) {
-            metrics = new DefaultHttpServerMetrics(this.meterRegistry, config.metrics());
-        } else {
-            metrics = NoopHttpServerMetrics.INSTANCE;
-        }
-
-        final DefaultHttpServerLogger logger;
-        if (config.logging().enabled()) {
-            var requestLog = LoggerFactory.getLogger(HttpServer.class.getCanonicalName() + ".request");
-            var responseLog = LoggerFactory.getLogger(HttpServer.class.getCanonicalName() + ".response");
-            logger = new DefaultHttpServerLogger(requestLog, responseLog, this.bodyLogger != null ? this.bodyLogger : new DefaultHttpServerBodyConverter(), config.logging());
-        } else {
-            logger = NoopHttpServerLogger.INSTANCE;
-        }
-
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
-        return new DefaultHttpServerTelemetry(config, tracer, logger, metrics);
+        var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
+
+        final DefaultHttpServerMetricsFactory enabledMetricsFactory;
+        if (metricEnabled) {
+            enabledMetricsFactory = this.metricsFactory != null
+                ? this.metricsFactory
+                : DefaultHttpServerMetricsFactory.INSTANCE;
+        } else {
+            enabledMetricsFactory = NoopHttpServerMetricsFactory.INSTANCE;
+        }
+
+        final DefaultHttpServerLoggerFactory enabledLoggerFactory;
+        if (config.logging().enabled()) {
+            enabledLoggerFactory = this.loggerFactory != null
+                ? this.loggerFactory
+                : DefaultHttpServerLoggerFactory.INSTANCE;
+        } else {
+            enabledLoggerFactory = NoopHttpServerLoggerFactory.INSTANCE;
+        }
+
+        return new DefaultHttpServerTelemetry(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, bodyLogger != null ? bodyLogger : new DefaultHttpServerBodyConverter());
     }
 }

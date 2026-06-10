@@ -27,7 +27,10 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
 import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerBodyConverter;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLoggerFactory;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerTelemetry;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerTelemetryFactory;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import tools.jackson.core.JsonGenerator;
 
@@ -98,7 +101,7 @@ public class DefaultHttpServerLoggerTests {
     public void logStartTests(Level level, Map<String, List<String>> queryParams, HttpHeaders headers, Boolean pathTemplate, Object... expectedArgs) throws IOException {
         expectLogLevel(level);
         var config = pathTemplate == null ? config("") : config("pathTemplate = " + pathTemplate);
-        var logger = new DefaultHttpServerLogger(config);
+        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logStart(request("POST", "/path/1", "/path/{id}", queryParams, headers));
 
@@ -139,7 +142,7 @@ public class DefaultHttpServerLoggerTests {
         expectLogLevel(level);
 
         var config = pathTemplate == null ? config("") : config("pathTemplate = " + pathTemplate);
-        var logger = new DefaultHttpServerLogger(config);
+        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, headers, null);
 
@@ -188,7 +191,7 @@ public class DefaultHttpServerLoggerTests {
 
         var configStr = "stacktrace = " + stacktrace + "\n";
         var config = pathTemplate == null ? config(configStr) : config(configStr + "pathTemplate = " + pathTemplate);
-        var logger = new DefaultHttpServerLogger(config);
+        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, rsHeaders, EXCEPTION);
 
@@ -219,6 +222,21 @@ public class DefaultHttpServerLoggerTests {
         verify(mockAppender).doAppend(captor.capture());
         final LoggingEvent event = captor.getValue();
         return event;
+    }
+
+    private DefaultHttpServerTelemetry.TelemetryContext context(HttpServerTelemetryConfig.HttpServerLoggingConfig loggingConfig) {
+        return new DefaultHttpServerTelemetry.TelemetryContext(
+            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
+                loggingConfig,
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            ),
+            false,
+            false,
+            DefaultHttpServerTelemetryFactory.NOOP_METER_REGISTRY,
+            DefaultHttpServerTelemetryFactory.NOOP_TRACER,
+            new DefaultHttpServerBodyConverter()
+        );
     }
 
     private void expectLogLevel(Level level) {
