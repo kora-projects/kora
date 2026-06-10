@@ -50,7 +50,7 @@ public interface HttpClientTelemetryConfig extends TelemetryConfig {
     @ConfigValueExtractor
     interface HttpClientTracingConfig extends TelemetryConfig.TracingConfig {
 
-        default boolean urlFull() {
+        default boolean pathFull() {
             return true;
         }
     }

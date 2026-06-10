@@ -166,12 +166,12 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
         }
 
         @Override
-        public @Nullable Boolean urlFull() {
+        public boolean pathFull() {
             var operation = this.operation.pathFull();
             if (operation != null) {
                 return operation;
             }
-            return this.client.urlFull();
+            return this.client.pathFull();
         }
     }
 }

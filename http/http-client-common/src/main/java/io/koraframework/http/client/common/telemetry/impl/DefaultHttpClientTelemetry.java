@@ -106,7 +106,7 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                 .setAttribute(ServerAttributes.SERVER_PORT, (long) targetUri.getPort())
                 .setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme());
 
-            if (this.context.config.tracing().urlFull()) {
+            if (this.context.config.tracing().pathFull()) {
                 var path = targetUri.getPath();
                 if (path != null) {
                     builder.setAttribute(UrlAttributes.URL_PATH, path);
