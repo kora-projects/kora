@@ -1,10 +1,6 @@
 package io.koraframework.http.server.common.telemetry.impl;
 
 import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_ConfigValueExtractor;
-import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor;
-import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor;
-import io.koraframework.http.server.common.telemetry.$HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
@@ -26,11 +22,22 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
                                    Tracer tracer,
                                    DefaultHttpServerBodyConverter bodyLogger) {
 
-        public static final TelemetryContext EMPTY = new TelemetryContext(new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-            new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
-            new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
-            new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
-        ), false, false, DefaultHttpServerTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpServerTelemetryFactory.NOOP_TRACER, new DefaultHttpServerBodyConverter());
+        public static final TelemetryContext EMPTY = new TelemetryContext(new HttpServerTelemetryConfig() {
+            @Override
+            public HttpServerLoggingConfig logging() {
+                return () -> null;
+            }
+
+            @Override
+            public HttpServerMetricsConfig metrics() {
+                return new HttpServerMetricsConfig() {};
+            }
+
+            @Override
+            public HttpServerTracingConfig tracing() {
+                return new HttpServerTracingConfig() {};
+            }
+        }, false, false, DefaultHttpServerTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpServerTelemetryFactory.NOOP_TRACER, new DefaultHttpServerBodyConverter());
     }
 
     protected final TelemetryContext context;
