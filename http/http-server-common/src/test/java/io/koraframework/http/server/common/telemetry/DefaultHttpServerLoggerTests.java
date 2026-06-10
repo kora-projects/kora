@@ -98,9 +98,9 @@ public class DefaultHttpServerLoggerTests {
 
     @ParameterizedTest
     @MethodSource("getLogStartTestsData")
-    public void logStartTests(Level level, Map<String, List<String>> queryParams, HttpHeaders headers, Boolean pathTemplate, Object... expectedArgs) throws IOException {
+    public void logStartTests(Level level, Map<String, List<String>> queryParams, HttpHeaders headers, Boolean pathFull, Object... expectedArgs) throws IOException {
         expectLogLevel(level);
-        var config = pathTemplate == null ? config("") : config("pathTemplate = " + pathTemplate);
+        var config = pathFull == null ? config("") : config("pathFull = " + pathFull);
         var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logStart(request("POST", "/path/1", "/path/{id}", queryParams, headers));
@@ -138,10 +138,10 @@ public class DefaultHttpServerLoggerTests {
 
     @ParameterizedTest
     @MethodSource("getLogEndNoExceptionTestsData")
-    public void logEndNoExceptionTests(Level level, HttpHeaders headers, Boolean pathTemplate, String expectedOperation, @Nullable String expectedHeaders) throws IOException {
+    public void logEndNoExceptionTests(Level level, HttpHeaders headers, Boolean pathFull, String expectedOperation, @Nullable String expectedHeaders) throws IOException {
         expectLogLevel(level);
 
-        var config = pathTemplate == null ? config("") : config("pathTemplate = " + pathTemplate);
+        var config = pathFull == null ? config("") : config("pathFull = " + pathFull);
         var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, headers, null);
@@ -183,14 +183,14 @@ public class DefaultHttpServerLoggerTests {
     public void logEndWithExceptionTests(
         boolean stacktrace,
         HttpHeaders rsHeaders,
-        Boolean pathTemplate,
+        Boolean pathFull,
         String expectedOperation,
         @Nullable String expectedHeaders
     ) throws IOException {
         expectLogLevel(Level.DEBUG);
 
         var configStr = "stacktrace = " + stacktrace + "\n";
-        var config = pathTemplate == null ? config(configStr) : config(configStr + "pathTemplate = " + pathTemplate);
+        var config = pathFull == null ? config(configStr) : config(configStr + "pathFull = " + pathFull);
         var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, rsHeaders, EXCEPTION);
