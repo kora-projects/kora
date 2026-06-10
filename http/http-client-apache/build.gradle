@@ -1,0 +1,16 @@
+plugins {
+    id "java-library"
+    id "maven-publish"
+}
+
+description = "Kora HTTP Client implementation based on Apache HttpClient 5"
+
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    api project(":http:http-client-common")
+    api libs.apache.httpclient
+
+    testImplementation(testFixtures(project(":http:http-client-common")))
+    testImplementation("com.github.fge:jackson-coreutils:1.8")
+}
