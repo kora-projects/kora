@@ -4,9 +4,7 @@ import io.koraframework.common.util.Size;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyConverter;
-import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLoggerFactory;
-import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetry;
-import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetryFactory;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLogger;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
@@ -44,7 +42,7 @@ public class DefaultHttpClientLoggerTests {
     private static final String MASKED_HEADERS_STR = "authorization: ***\notherheader: val";
     private static final String MASKED_QUERY_PARAMS_STR = "a=5&sessionid=***";
 
-    private static final Set<String> MASKED_QUERY_PARAMS = Set.of("sessionid");
+    private static final Set<String> MASKED_QUERY_PARAMS = Set.of("sessionId");
     private static final Set<String> MASKED_HEADERS = Set.of("authorization");
 
     private final Logger requestLogger = Mockito.spy(LoggerFactory.getLogger("test"));
@@ -55,19 +53,13 @@ public class DefaultHttpClientLoggerTests {
     @ParameterizedTest
     @MethodSource("getLogRequestTestsData")
     public void logRequestTests(Level level, String queryParams, HttpHeaders headers, String body, @Nullable Boolean pathTemplate, Object... expectedArgs) throws IOException {
-        var logger = new DefaultHttpClientLoggerFactory.DefaultHttpClientLogger(
+        var logger = new DefaultHttpClientLogger(
+            "test", "test",
             requestLogger, responseLogger,
-            MASKED_QUERY_PARAMS, MASKED_HEADERS,
-            new DefaultHttpClientTelemetry.TelemetryContext(
-                new $HttpClientTelemetryConfig_ConfigValueExtractor.HttpClientTelemetryConfig_Impl(
-                    new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
-                        MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
-                    ),
-                    new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor.HttpClientTracingConfig_Defaults(),
-                    new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor.HttpClientMetricsConfig_Defaults()
-                ),
-                false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none"
-            ));
+            new DefaultHttpClientBodyConverter(),
+            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
+            MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
+        ));
 
         expectLogLevel(requestLogger, level);
 
@@ -98,19 +90,13 @@ public class DefaultHttpClientLoggerTests {
     @ParameterizedTest
     @MethodSource("getLogResponseTestsData")
     public void logResponseTests(Level level, HttpHeaders headers, String body, @Nullable Boolean pathTemplate, Object... expectedArgs) throws IOException {
-        var logger = new DefaultHttpClientLoggerFactory.DefaultHttpClientLogger(
+        var logger = new DefaultHttpClientLogger(
+            "test", "test",
             requestLogger, responseLogger,
-            MASKED_QUERY_PARAMS, MASKED_HEADERS,
-            new DefaultHttpClientTelemetry.TelemetryContext(
-                new $HttpClientTelemetryConfig_ConfigValueExtractor.HttpClientTelemetryConfig_Impl(
-                    new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
-                        MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
-                    ),
-                    new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor.HttpClientTracingConfig_Defaults(),
-                    new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor.HttpClientMetricsConfig_Defaults()
-                ),
-                false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none"
-            ));
+            new DefaultHttpClientBodyConverter(),
+            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
+            MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
+        ));
 
         expectLogLevel(responseLogger, level);
 
