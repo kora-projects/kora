@@ -17,6 +17,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 
 public class DefaultHttpServerObservation implements HttpServerObservation {
@@ -201,11 +202,17 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
         if (request.pathTemplate() != null) {
             resultCode = Objects.requireNonNullElse(resultCode, HttpResultCode.SERVER_ERROR);
             span.setAttribute("http.response.result_code", resultCode.string());
+            if (response != null && response.body() != null && response.body().contentLength() != -1) {
+                var contentLength = String.valueOf(response.body().contentLength());
+                span.setAttribute(HttpAttributes.HTTP_RESPONSE_HEADER.getAttributeKey("content-length"), List.of(contentLength));
+            }
+
             if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
                 span.setStatus(StatusCode.ERROR);
             } else {
                 span.setStatus(StatusCode.OK);
             }
+
             if (statusCode != 0) {
                 span.setAttribute(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, statusCode);
             }

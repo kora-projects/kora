@@ -25,7 +25,8 @@ public class DefaultCamundaRestLogger {
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
     private final String mask;
-    private final Boolean pathTemplate;
+    @Nullable
+    private final Boolean pathFull;
 
     public DefaultCamundaRestLogger(HttpServerTelemetryConfig.HttpServerLoggingConfig config) {
         this.logStacktrace = config.stacktrace();
@@ -36,7 +37,7 @@ public class DefaultCamundaRestLogger {
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
         this.mask = config.mask();
-        this.pathTemplate = config.pathTemplate();
+        this.pathFull = config.pathFull();
     }
 
     public boolean isEnabled() {
@@ -118,11 +119,17 @@ public class DefaultCamundaRestLogger {
         }
     }
 
-    private boolean shouldWritePath() {
-        return pathTemplate != null ? !pathTemplate : logger.isTraceEnabled();
+    private boolean shouldWritePathFull() {
+        return pathFull != null ? pathFull : logger.isTraceEnabled();
     }
 
-    private String getOperation(String method, String path, String pathTemplate) {
-        return method + ' ' + (shouldWritePath() ? path : pathTemplate);
+    protected String getOperation(String method, String path, @Nullable String pathTemplate) {
+        if (shouldWritePathFull()) {
+            return method + ' ' + path;
+        } else if (pathTemplate != null) {
+            return method + ' ' + pathTemplate;
+        } else {
+            return method;
+        }
     }
 }

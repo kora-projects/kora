@@ -188,13 +188,13 @@ public class DefaultHttpServerLoggerFactory {
             this.logResponse(request, HttpServerResponse.of(statusCode, headers), resultCode, processingTime, null, null, exception);
         }
 
-        protected boolean shouldWritePath(Logger logger) {
-            var pathTemplate = context.config().logging().pathTemplate();
-            return pathTemplate != null ? pathTemplate : logger.isTraceEnabled();
+        protected boolean shouldWritePathFull(Logger logger) {
+            var pathFull = context.config().logging().pathFull();
+            return pathFull != null ? pathFull : logger.isTraceEnabled();
         }
 
         protected String getOperation(Logger logger, String method, String path, @Nullable String pathTemplate) {
-            if (shouldWritePath(logger)) {
+            if (shouldWritePathFull(logger)) {
                 return method + ' ' + path;
             } else if (pathTemplate != null) {
                 return method + ' ' + pathTemplate;

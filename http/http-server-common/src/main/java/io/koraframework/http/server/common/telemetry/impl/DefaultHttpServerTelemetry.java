@@ -13,6 +13,9 @@ import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
 
+import java.util.List;
+import java.util.Objects;
+
 public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
     public record TelemetryContext(HttpServerTelemetryConfig config,
@@ -79,11 +82,25 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
             .spanBuilder(request.method() + " " + request.pathTemplate())
             .setSpanKind(SpanKind.SERVER)
             .setParent(io.opentelemetry.context.Context.current())
-            .setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method())
             .setAttribute(UrlAttributes.URL_SCHEME, request.scheme())
+            .setAttribute(HttpAttributes.HTTP_ROUTE, request.pathTemplate())
             .setAttribute(ServerAttributes.SERVER_ADDRESS, request.host())
-            .setAttribute(UrlAttributes.URL_PATH, request.path())
-            .setAttribute(HttpAttributes.HTTP_ROUTE, request.pathTemplate()); // if unknown tracing is disabled
+            .setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method()); // if unknown tracing is disabled
+
+        if (request.body().contentType() != null) {
+            var contentType = Objects.requireNonNullElse(request.body().contentType(), "UNKNOWN");
+            span.setAttribute(HttpAttributes.HTTP_REQUEST_HEADER.getAttributeKey("content-type"), List.of(contentType));
+        }
+
+        if (request.body().contentLength() != -1) {
+            var contentLength = String.valueOf(request.body().contentLength());
+            span.setAttribute(HttpAttributes.HTTP_REQUEST_HEADER.getAttributeKey("content-length"), List.of(contentLength));
+        }
+
+        if (context.config().tracing().tracePathFull()) {
+            span.setAttribute(UrlAttributes.URL_PATH, request.path());
+        }
+
         for (var attribute : context.config().tracing().attributes().entrySet()) {
             span.setAttribute(attribute.getKey(), attribute.getValue());
         }
