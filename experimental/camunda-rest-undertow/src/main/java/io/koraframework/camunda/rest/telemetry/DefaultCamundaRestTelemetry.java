@@ -11,7 +11,6 @@ import io.opentelemetry.semconv.UrlAttributes;
 import io.undertow.server.HttpServerExchange;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 
 import java.util.ArrayList;
 import java.util.Objects;

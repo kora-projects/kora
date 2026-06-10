@@ -6,7 +6,6 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 
 public final class DefaultCamundaRestTelemetryFactory implements CamundaRestTelemetryFactory {
     private final MeterRegistry meterRegistry;

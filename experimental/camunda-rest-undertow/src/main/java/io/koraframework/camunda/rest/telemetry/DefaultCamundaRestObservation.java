@@ -14,7 +14,6 @@ import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.RouterHttpServerRequest;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 
 import java.util.Map;
 import java.util.Objects;
