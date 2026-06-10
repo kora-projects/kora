@@ -1,7 +1,8 @@
-package io.koraframework.http.server.common.telemetry;
+package io.koraframework.http.server.common.telemetry.impl;
 
 import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerObservation;
+import io.koraframework.http.server.common.telemetry.HttpServerObservation;
+import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 
 public final class NoopHttpServerTelemetry implements HttpServerTelemetry {
 

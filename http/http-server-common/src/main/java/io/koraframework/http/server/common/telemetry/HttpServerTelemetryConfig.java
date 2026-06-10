@@ -1,9 +1,11 @@
 package io.koraframework.http.server.common.telemetry;
 
-import org.jspecify.annotations.Nullable;
+import io.koraframework.common.util.Size;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 import io.koraframework.telemetry.common.TelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
+import java.util.Collections;
 import java.util.Set;
 
 @ConfigValueExtractor
@@ -24,7 +26,7 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
         }
 
         default Set<String> maskQueries() {
-            return Set.of();
+            return Collections.emptySet();
         }
 
         default Set<String> maskHeaders() {
@@ -37,6 +39,14 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
 
         @Nullable
         Boolean pathTemplate();
+
+        default Size maxRequestBodyLogSize() {
+            return Size.of(2, Size.Type.MiB);
+        }
+
+        default Size maxResponseBodyLogSize() {
+            return Size.of(2, Size.Type.MiB);
+        }
     }
 
     @ConfigValueExtractor

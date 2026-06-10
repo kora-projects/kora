@@ -1,49 +1,61 @@
 package io.koraframework.http.server.common.telemetry.impl;
 
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.Timer;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.StatusCode;
-import io.opentelemetry.semconv.ErrorAttributes;
-import io.opentelemetry.semconv.HttpAttributes;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.common.HttpResultCode;
+import io.koraframework.http.common.body.EmptyHttpBody;
+import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.semconv.HttpAttributes;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 
 public class DefaultHttpServerObservation implements HttpServerObservation {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultHttpServerObservation.class);
+
     protected int statusCode = 0;
     @Nullable
     protected HttpResultCode resultCode;
     @Nullable
     protected HttpHeaders httpHeaders;
     @Nullable
+    protected HttpServerResponse response;
+    @Nullable
+    protected ByteBuffer responseBody;
+    @Nullable
+    protected String responseContentType;
+    @Nullable
     protected Throwable exception;
     protected final HttpServerTelemetryConfig config;
     protected final HttpServerRequest request;
-    protected final long requestStartTime;
+    protected final long requestStartTimeInNanos;
     protected final Span span;
     protected final DefaultHttpServerLogger logger;
-    protected final Meter.MeterProvider<Timer> requestDuration;
-    protected Function<Tags, AtomicLong> activeRequests;
+    protected final DefaultHttpServerMetrics metrics;
 
-    public DefaultHttpServerObservation(HttpServerTelemetryConfig config, HttpServerRequest request, long requestStartTime, Span span, DefaultHttpServerLogger logger, Meter.MeterProvider<Timer> requestDuration, Function<Tags, AtomicLong> activeRequests) {
+    public DefaultHttpServerObservation(HttpServerTelemetryConfig config,
+                                        DefaultHttpServerLogger logger,
+                                        DefaultHttpServerMetrics metrics,
+                                        HttpServerRequest request,
+                                        long requestStartTimeInNanos,
+                                        Span span) {
         this.config = config;
-        this.request = request;
-        this.requestStartTime = requestStartTime;
-        this.span = span;
         this.logger = logger;
-        this.requestDuration = requestDuration;
-        this.activeRequests = activeRequests;
+        this.metrics = metrics;
+        this.request = request;
+        this.requestStartTimeInNanos = requestStartTimeInNanos;
+        this.span = span;
     }
 
     @Override
@@ -60,24 +72,102 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
 
     @Override
     public HttpServerRequest observeRequest(HttpServerRequest request) {
-        var logger = this.logger;
-        if (this.config.metrics().enabled()) {
-            this.activeRequests.apply(Tags.empty()).decrementAndGet();
+        this.metrics.recordStart(request);
+
+        if (!logger.logRequestBody() || this.request.pathTemplate() == null) {
+            logger.logRequest(request, null, request.body().contentType());
+            return request;
         }
-        if (this.request.pathTemplate() != null && this.config.logging().enabled()) {
-            logger.logStart(this.request);
+
+        var body = request.body();
+        if (EmptyHttpBody.INSTANCE == body || body.contentLength() == 0L) {
+            logger.logRequest(request, null, null);
+            return request;
         }
-        return request;
+
+        var full = body.getFullContentIfAvailable();
+        if (full != null) {
+            var lenInBytes = full.remaining();
+            if (lenInBytes > config.logging().maxRequestBodyLogSize().toBytes()) {
+                log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body cause content length is {}...",
+                    config.logging().maxRequestBodyLogSize(), lenInBytes);
+                logger.logRequest(request, null, body.contentType());
+            } else {
+                logger.logRequest(request, full, body.contentType());
+            }
+            full.rewind();
+            return request;
+        }
+
+        var lenInBytes = body.contentLength();
+        if (lenInBytes > config.logging().maxRequestBodyLogSize().toBytes()) {
+            log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body cause content length is {}...",
+                config.logging().maxRequestBodyLogSize(), lenInBytes);
+            logger.logRequest(request, null, body.contentType());
+            return request;
+        }
+
+        try (body; var is = body.asInputStream()) {
+            var bytes = is.readAllBytes();
+            logger.logRequest(request, ByteBuffer.wrap(bytes), body.contentType());
+            return request.toBuilder()
+                .body(HttpBody.of(body.contentType(), ByteBuffer.wrap(bytes)))
+                .build();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Override
     public HttpServerResponse observeResponse(HttpServerResponse response) {
+        this.response = response;
         this.httpHeaders = response.headers();
         if (this.statusCode == 0) {
             this.resultCode = HttpResultCode.fromStatusCode(response.code());
         }
         this.statusCode = response.code();
-        return response;
+        if (this.request.pathTemplate() == null) {
+            return response;
+        }
+
+        var body = response.body();
+        if (body == null || EmptyHttpBody.INSTANCE == body) {
+            return response;
+        }
+        if (!logger.logResponseBody()) {
+            return response;
+        }
+
+        var full = body.getFullContentIfAvailable();
+        if (full != null) {
+            var lenInBytes = full.remaining();
+            if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
+                log.warn("Can't log response body bigger than {}, change config value if require logging, logging response without body cause content length is {}...",
+                    config.logging().maxResponseBodyLogSize(), lenInBytes);
+            } else {
+                this.responseBody = full;
+                this.responseContentType = body.contentType();
+            }
+            full.rewind();
+            return response;
+        }
+
+        var lenInBytes = body.contentLength();
+        if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
+            log.warn("Can't log response body bigger than {}, change config value if require logging, now logging response without body cause content length is {}...",
+                config.logging().maxResponseBodyLogSize(), lenInBytes);
+            return response;
+        }
+
+        try (body; var baos = new ByteArrayOutputStream(lenInBytes > 0 ? (int) lenInBytes : 1024)) {
+            body.write(baos);
+            var bytes = baos.toByteArray();
+            this.responseBody = ByteBuffer.wrap(bytes);
+            this.responseContentType = body.contentType();
+            return HttpServerResponse.of(response.code(), response.headers(), HttpBody.of(body.contentType(), ByteBuffer.wrap(bytes)));
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 
     @Override
@@ -88,32 +178,31 @@ public class DefaultHttpServerObservation implements HttpServerObservation {
     @Override
     public void end() {
         var end = System.nanoTime();
-        var processingTime = end - requestStartTime;
+        var processingTime = end - requestStartTimeInNanos;
         this.recordMetrics(processingTime);
         this.writeLog(processingTime);
         this.closeSpan(resultCode);
     }
 
     protected void recordMetrics(long processingTime) {
-        if (this.config.metrics().enabled()) {
-            var tags = Tags.of(ErrorAttributes.ERROR_TYPE.getKey(), exception == null ? "" : exception.getClass().getCanonicalName());
-            this.requestDuration.withTags(tags)
-                .record(processingTime, TimeUnit.NANOSECONDS);
-            this.activeRequests.apply(Tags.empty()).decrementAndGet();
-        }
+        this.metrics.recordEnd(request, exception, processingTime);
     }
 
     protected void writeLog(long processingTime) {
-        if (request.pathTemplate() != null && this.config.logging().enabled()) {
-            this.logger.logEnd(request, statusCode, Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR), processingTime, httpHeaders, exception);
-        }
+        var response = this.response != null
+            ? this.response
+            : HttpServerResponse.of(statusCode, httpHeaders);
+        this.logger.logResponse(request, response, Objects.requireNonNullElse(this.resultCode, HttpResultCode.SERVER_ERROR), processingTime, responseBody, responseContentType, exception);
     }
 
-    protected void closeSpan(HttpResultCode resultCode) {
+    protected void closeSpan(@Nullable HttpResultCode resultCode) {
         if (request.pathTemplate() != null) {
+            resultCode = Objects.requireNonNullElse(resultCode, HttpResultCode.SERVER_ERROR);
             span.setAttribute("http.response.result_code", resultCode.string());
             if (statusCode >= 500 || resultCode == HttpResultCode.CONNECTION_ERROR || exception != null) {
                 span.setStatus(StatusCode.ERROR);
+            } else {
+                span.setStatus(StatusCode.OK);
             }
             if (statusCode != 0) {
                 span.setAttribute(HttpAttributes.HTTP_RESPONSE_STATUS_CODE, statusCode);

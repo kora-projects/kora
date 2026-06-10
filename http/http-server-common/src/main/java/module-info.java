@@ -18,4 +18,5 @@ module kora.http.server.common {
     exports io.koraframework.http.server.common.request.form;
     exports io.koraframework.http.server.common.response;
     exports io.koraframework.http.server.common.response.mapper;
+    exports io.koraframework.http.server.common.telemetry.impl;
 }
