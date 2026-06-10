@@ -18,7 +18,7 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
     public void testMethodAopAnnotationPreserved() {
         var mapper = mock(HttpClientResponseMapper.class);
         var client = compileClient(List.of(mapper), """
-            import io.koraframework.common.Component;@Component
+            @Component
             @HttpClient
             public interface TestClient {
             
@@ -37,7 +37,7 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
         var requestMapper = mock(HttpClientRequestMapper.class);
         var responseMapper = mock(HttpClientResponseMapper.class);
         var client = compileClient(List.of(requestMapper, responseMapper), """
-            import io.koraframework.common.Component;@Component
+            @Component
             @HttpClient
             public interface TestClient {
             

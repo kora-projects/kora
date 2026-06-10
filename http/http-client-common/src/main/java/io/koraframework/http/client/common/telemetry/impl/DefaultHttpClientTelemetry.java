@@ -1,26 +1,43 @@
 package io.koraframework.http.client.common.telemetry.impl;
 
+import io.koraframework.http.client.common.request.HttpClientRequest;
+import io.koraframework.http.client.common.telemetry.HttpClientObservation;
+import io.koraframework.http.client.common.telemetry.HttpClientTelemetry;
+import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
 import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.UrlAttributes;
-import io.koraframework.http.client.common.request.HttpClientRequest;
-import io.koraframework.http.client.common.telemetry.HttpClientObservation;
-import io.koraframework.http.client.common.telemetry.HttpClientTelemetry;
-import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
 
 import java.net.URI;
 import java.net.URISyntaxException;
 
 public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
-    private final HttpClientTelemetryConfig config;
-    private final Tracer tracer;
-    private final DefaultHttpClientLogger logger;
-    private final DefaultHttpClientMetrics metrics;
 
-    public DefaultHttpClientTelemetry(HttpClientTelemetryConfig config, Tracer tracer, DefaultHttpClientLogger logger, DefaultHttpClientMetrics metrics) {
+    protected static final String SYSTEM_CONFIG_PATH = "system.config.path";
+    protected static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
+    protected static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
+
+    protected final String clientConfigPath;
+    protected final String clientCanonicalName;
+    protected final String clientSimpleName;
+    protected final HttpClientTelemetryConfig config;
+    protected final Tracer tracer;
+    protected final DefaultHttpClientLogger logger;
+    protected final DefaultHttpClientMetrics metrics;
+
+    public DefaultHttpClientTelemetry(String clientConfigPath,
+                                      String clientCanonicalName,
+                                      HttpClientTelemetryConfig config,
+                                      Tracer tracer,
+                                      DefaultHttpClientLogger logger,
+                                      DefaultHttpClientMetrics metrics) {
+        this.clientConfigPath = clientConfigPath;
+        this.clientCanonicalName = clientCanonicalName;
+        this.clientSimpleName = clientCanonicalName.substring(clientCanonicalName.lastIndexOf('.') + 1);
         this.config = config;
         this.tracer = tracer;
         this.logger = logger;
@@ -29,14 +46,13 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
     @Override
     public HttpClientObservation observe(HttpClientRequest request) {
-        var span = startSpan(request);
+        var span = config.tracing().enabled()
+            ? startSpan(request).startSpan()
+            : Span.getInvalid();
         return new DefaultHttpClientObservation(this.config, this.logger, this.metrics, request, span);
     }
 
-    private Span startSpan(HttpClientRequest request) {
-        if (tracer == null || !config.tracing().enabled()) {
-            return Span.getInvalid();
-        }
+    protected SpanBuilder startSpan(HttpClientRequest request) {
         var builder = this.tracer.spanBuilder(operation(request.method(), request.uriTemplate(), request.uri()))
             .setSpanKind(SpanKind.CLIENT)
             .setParent(io.opentelemetry.context.Context.current());
@@ -60,19 +76,23 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
         builder.setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method());
         if (targetUri != null) {
-            builder.setAttribute(ServerAttributes.SERVER_ADDRESS, targetUri.getHost());
-            builder.setAttribute(ServerAttributes.SERVER_PORT, (long) targetUri.getPort());
-            builder.setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme());
-            builder.setAttribute(UrlAttributes.URL_FULL, targetUri.toString());
+            builder.setAttribute(ServerAttributes.SERVER_ADDRESS, targetUri.getHost())
+                .setAttribute(ServerAttributes.SERVER_PORT, (long) targetUri.getPort())
+                .setAttribute(UrlAttributes.URL_SCHEME, targetUri.getScheme())
+                .setAttribute(UrlAttributes.URL_FULL, targetUri.toString());
         }
+        builder.setAttribute(SYSTEM_CONFIG_PATH, clientConfigPath)
+            .setAttribute(SYSTEM_NAME_SIMPLE, clientSimpleName)
+            .setAttribute(SYSTEM_NAME_CANONICAL, clientCanonicalName);
+
         for (var entry : this.config.tracing().attributes().entrySet()) {
             builder.setAttribute(entry.getKey(), entry.getValue());
         }
 
-        return builder.startSpan();
+        return builder;
     }
 
-    private static String operation(String method, String uriTemplate, URI uri) {
+    protected String operation(String method, String uriTemplate, URI uri) {
         if (uri.getAuthority() != null) {
             if (uri.getScheme() != null) {
                 uriTemplate = uriTemplate.replace(uri.getScheme() + "://" + uri.getAuthority(), "");

@@ -1,12 +1,15 @@
 package io.koraframework.http.client.common.telemetry.impl;
 
-import io.opentelemetry.api.trace.Span;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.telemetry.HttpClientObservation;
+import io.opentelemetry.api.trace.Span;
 
-public class NoopHttpClientObservation implements HttpClientObservation {
+public final class NoopHttpClientObservation implements HttpClientObservation {
+
     public static final NoopHttpClientObservation INSTANCE = new NoopHttpClientObservation();
+
+    private NoopHttpClientObservation() {}
 
     @Override
     public HttpClientRequest observeRequest(HttpClientRequest request) {

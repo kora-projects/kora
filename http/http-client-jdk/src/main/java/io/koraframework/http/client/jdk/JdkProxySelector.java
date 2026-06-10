@@ -8,7 +8,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
-public class JdkProxySelector extends ProxySelector {
+public final class JdkProxySelector extends ProxySelector {
     private final HttpClientConfig.HttpClientProxyConfig proxyConfig;
     private final HashSet<String> noProxyHosts;
     private final Proxy proxy;

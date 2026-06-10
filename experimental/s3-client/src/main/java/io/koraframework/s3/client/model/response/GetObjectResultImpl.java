@@ -71,4 +71,13 @@ public class GetObjectResultImpl implements GetObjectResult {
 
         return new ContentRange(firstPosition, lastPosition, completeLength);
     }
+
+    @Override
+    public String toString() {
+        return "HttpClientResponseS3{code=" + code() +
+               ", bodyLength=" + ((rs.body() != null) ? rs.body().contentLength() : -1) +
+               ", bodyType=" + ((rs.body() != null) ? rs.body().contentType() : -1) +
+               ", headers=" + rs.headers().size() +
+               '}';
+    }
 }

@@ -19,6 +19,7 @@ public interface JdkHttpClientModule extends HttpClientModule {
         return extractor.extract(config.get("httpClient.jdk"));
     }
 
+    @DefaultComponent
     default ConfigValueExtractor<HttpClient.Version> jdkHttpClientVersionExtractor() {
         return value -> {
             if (value instanceof ConfigValue.NullValue) {

@@ -2,17 +2,10 @@ package io.koraframework.http.client.common.telemetry;
 
 import com.typesafe.config.ConfigFactory;
 import io.koraframework.config.common.extractor.*;
-import io.opentelemetry.api.trace.Span;
-import io.opentelemetry.api.trace.SpanBuilder;
-import io.opentelemetry.api.trace.Tracer;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import io.koraframework.config.common.extractor.*;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import io.koraframework.config.hocon.HoconConfigFactory;
 import io.koraframework.http.client.common.request.HttpClientRequest;
-import io.koraframework.http.client.common.response.HttpClientResponse;
+import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLogger;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientMetrics;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetry;
@@ -20,6 +13,12 @@ import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.body.StreamingHttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.SpanBuilder;
+import io.opentelemetry.api.trace.Tracer;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -37,7 +36,7 @@ class DefaultHttpClientTelemetryTest {
     private HttpClientTelemetryConfig config(String str) {
         var config = HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(str));
         var extractor = new $HttpClientTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
             new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
             new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
         );
@@ -64,14 +63,14 @@ class DefaultHttpClientTelemetryTest {
             tracing.enabled = true
             metrics.enabled = true
             """);
-        var telemetry = new DefaultHttpClientTelemetry(config, tracer, logger, metrics);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, logger, metrics);
         var rq = HttpClientRequest.of("POST", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBody.plaintext("test"), Duration.ZERO);
 
         var observation = telemetry.observe(rq);
         try (var trqBody = observation.observeRequest(rq).body()) {
             trqBody.write(new ByteArrayOutputStream());
         }
-        var rs = new HttpClientResponse.Default(200, HttpHeaders.of(), HttpBody.plaintext("test"), () -> {});
+        var rs = new SimpleHttpClientResponse(200, HttpHeaders.of(), HttpBody.plaintext("test"));
         try (var trs = observation.observeResponse(rs)) {
             assertThat(trs).isSameAs(rs);
             trs.body().asInputStream().readAllBytes();
@@ -88,7 +87,7 @@ class DefaultHttpClientTelemetryTest {
             tracing.enabled = true
             metrics.enabled = true
             """);
-        var telemetry = new DefaultHttpClientTelemetry(config, tracer, logger, metrics);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, logger, metrics);
         var rq = HttpClientRequest.of("POST", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBodyOutput.of("text/plain", os -> os.write("test".getBytes(StandardCharsets.UTF_8))), Duration.ZERO);
 
         when(logger.logResponseBody()).thenReturn(true);
@@ -97,7 +96,7 @@ class DefaultHttpClientTelemetryTest {
         try (var trqBody = observation.observeRequest(rq).body()) {
             trqBody.write(new ByteArrayOutputStream());
         }
-        var rs = new HttpClientResponse.Default(200, HttpHeaders.of(), new StreamingHttpBodyInput("text/plain", 4, new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8))), () -> {});
+        var rs = new SimpleHttpClientResponse(200, HttpHeaders.of(), new StreamingHttpBodyInput("text/plain", 4, new ByteArrayInputStream("test".getBytes(StandardCharsets.UTF_8))));
         try (var trs = observation.observeResponse(rs)) {
             assertThat(trs).isNotSameAs(rs); // wraped telemetry
             trs.body().asInputStream().readAllBytes();

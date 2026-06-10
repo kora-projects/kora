@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets;
 public interface HttpClientResponseMapperModule {
 
     @DefaultComponent
-    default HttpClientResponseMapper<String> stringHttpClientResponseMapper() {
+    default HttpClientResponseMapper<String> httpClientResponseStringMapper() {
         return response -> {
             try (var body = response.body()) {
                 return new String(body.asInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -22,7 +22,7 @@ public interface HttpClientResponseMapperModule {
     }
 
     @DefaultComponent
-    default HttpClientResponseMapper<byte[]> byteArrayHttpClientResponseMapper() {
+    default HttpClientResponseMapper<byte[]> httpClientResponseByteArrayMapper() {
         return response -> {
             try (var body = response.body()) {
                 return body.asInputStream().readAllBytes();
@@ -31,7 +31,7 @@ public interface HttpClientResponseMapperModule {
     }
 
     @DefaultComponent
-    default HttpClientResponseMapper<ByteBuffer> byteBufferHttpClientResponseMapper() {
+    default HttpClientResponseMapper<ByteBuffer> httpClientResponseByteBufferMapper() {
         return response -> {
             try (var body = response.body()) {
                 return ByteBuffer.wrap(body.asInputStream().readAllBytes());
@@ -40,19 +40,19 @@ public interface HttpClientResponseMapperModule {
     }
 
     @DefaultComponent
-    default <T> HttpClientResponseMapper<HttpResponseEntity<T>> entityResponseHttpClientResponseMapper(HttpClientResponseMapper<T> mapper) {
+    default <T> HttpClientResponseMapper<HttpResponseEntity<T>> httpClientResponsEentityResponseMapper(HttpClientResponseMapper<T> mapper) {
         return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), mapper.apply(response));
     }
 
     @DefaultComponent
-    default <T> HttpClientResponseMapper<HttpResponseEntity<T>> jsonEntityResponseHttpClientResponseMapper(JsonReader<T> reader) {
+    default <T> HttpClientResponseMapper<HttpResponseEntity<T>> httpClientResponseJsonEntityResponseMapper(JsonReader<T> reader) {
         var delegate = new JsonHttpClientResponseMapper<>(reader);
         return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
     }
 
     @Tag(Json.class)
     @DefaultComponent
-    default <T> JsonHttpClientResponseMapper<T> jsonHttpClientResponseMapper(JsonReader<T> reader) {
+    default <T> JsonHttpClientResponseMapper<T> httpClientResponseJsonMapper(JsonReader<T> reader) {
         return new JsonHttpClientResponseMapper<>(reader);
     }
 }

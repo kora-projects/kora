@@ -66,7 +66,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
         var durationCVE = new DurationConfigValueExtractor();
         var telemetryCVE = new $HttpClientTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
             new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
             new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
         );
@@ -77,7 +77,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         );
         var operationConfigCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, operationTelemetryCVE);
 
-        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE);
+        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE);
         var config = configValueExtractor.extract(MapConfigFactory.fromMap(Map.of(
             "url", "http://test-url:8080"
         )).root());

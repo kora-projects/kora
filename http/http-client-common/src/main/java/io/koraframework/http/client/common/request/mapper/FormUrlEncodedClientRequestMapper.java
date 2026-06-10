@@ -11,7 +11,7 @@ import java.io.UncheckedIOException;
 public final class FormUrlEncodedClientRequestMapper implements HttpClientRequestMapper<FormUrlEncoded> {
     @Override
     public HttpBodyOutput apply(FormUrlEncoded form) {
-        try(var writer = new FormUrlEncodedWriter()) {
+        try (var writer = new FormUrlEncodedWriter()) {
             for (var part : form) {
                 for (var value : part.values()) {
                     writer.add(part.name(), value);
