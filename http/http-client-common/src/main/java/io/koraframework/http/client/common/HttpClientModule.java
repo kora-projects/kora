@@ -7,6 +7,8 @@ import io.koraframework.http.client.common.request.mapper.HttpClientParameterWri
 import io.koraframework.http.client.common.request.mapper.HttpClientRequestMapperModule;
 import io.koraframework.http.client.common.response.HttpClientResponseMapperModule;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyConverter;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLoggerFactory;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientMetricsFactory;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -22,7 +24,9 @@ public interface HttpClientModule extends HttpClientRequestMapperModule, HttpCli
     @DefaultComponent
     default DefaultHttpClientTelemetryFactory defaultHttpClientTelemetryFactory(@Nullable Tracer tracer,
                                                                                 @Nullable MeterRegistry meterRegistry,
-                                                                                @Nullable DefaultHttpClientBodyConverter bodyLogger) {
-        return new DefaultHttpClientTelemetryFactory(tracer, meterRegistry, bodyLogger);
+                                                                                @Nullable DefaultHttpClientLoggerFactory loggerFactory,
+                                                                                @Nullable DefaultHttpClientMetricsFactory metricsFactory,
+                                                                                @Nullable DefaultHttpClientBodyConverter loggerBodyConverter) {
+        return new DefaultHttpClientTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory, loggerBodyConverter);
     }
 }

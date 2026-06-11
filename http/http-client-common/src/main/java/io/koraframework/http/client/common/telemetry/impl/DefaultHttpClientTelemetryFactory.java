@@ -8,26 +8,33 @@ import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.LoggerFactory;
 
 public final class DefaultHttpClientTelemetryFactory implements HttpClientTelemetryFactory {
 
-    private static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-client");
-    private static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
+    public static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-client");
+    public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
 
     @Nullable
     private final Tracer tracer;
     @Nullable
     private final MeterRegistry meterRegistry;
     @Nullable
-    private final DefaultHttpClientBodyConverter bodyLogger;
+    private final DefaultHttpClientLoggerFactory loggerFactory;
+    @Nullable
+    private final DefaultHttpClientMetricsFactory metricsFactory;
+    @Nullable
+    private final DefaultHttpClientBodyConverter loggerBodyConverter;
 
     public DefaultHttpClientTelemetryFactory(@Nullable Tracer tracer,
                                              @Nullable MeterRegistry meterRegistry,
-                                             @Nullable DefaultHttpClientBodyConverter bodyLogger) {
+                                             @Nullable DefaultHttpClientLoggerFactory loggerFactory,
+                                             @Nullable DefaultHttpClientMetricsFactory metricsFactory,
+                                             @Nullable DefaultHttpClientBodyConverter loggerBodyConverter) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
-        this.bodyLogger = bodyLogger;
+        this.loggerFactory = loggerFactory;
+        this.metricsFactory = metricsFactory;
+        this.loggerBodyConverter = loggerBodyConverter;
     }
 
     @Override
@@ -38,23 +45,27 @@ public final class DefaultHttpClientTelemetryFactory implements HttpClientTeleme
             return NoopHttpClientTelemetry.INSTANCE;
         }
 
-        final DefaultHttpClientMetrics metrics;
-        if (metricEnabled) {
-            metrics = new DefaultHttpClientMetrics(clientConfigPath, clientCanonicalName, this.meterRegistry, config.metrics());
-        } else {
-            metrics = NoopHttpClientMetrics.INSTANCE;
-        }
-
-        final DefaultHttpClientLogger logger;
-        if (config.logging().enabled()) {
-            var requestLog = LoggerFactory.getLogger(clientCanonicalName + ".request");
-            var responseLog = LoggerFactory.getLogger(clientCanonicalName + ".response");
-            logger = new DefaultHttpClientLogger(clientConfigPath, clientCanonicalName, requestLog, responseLog, (this.bodyLogger != null) ? this.bodyLogger : new DefaultHttpClientBodyConverter(), config.logging());
-        } else {
-            logger = NoopHttpClientLogger.INSTANCE;
-        }
-
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
-        return new DefaultHttpClientTelemetry(clientConfigPath, clientCanonicalName, config, tracer, logger, metrics);
+        var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
+
+        final DefaultHttpClientMetricsFactory enabledMetricsFactory;
+        if (metricEnabled) {
+            enabledMetricsFactory = this.metricsFactory != null
+                ? this.metricsFactory
+                : DefaultHttpClientMetricsFactory.INSTANCE;
+        } else {
+            enabledMetricsFactory = NoopHttpClientMetricsFactory.INSTANCE;
+        }
+
+        final DefaultHttpClientLoggerFactory enabledLoggerFactory;
+        if (config.logging().enabled()) {
+            enabledLoggerFactory = this.loggerFactory != null
+                ? this.loggerFactory
+                : DefaultHttpClientLoggerFactory.INSTANCE;
+        } else {
+            enabledLoggerFactory = NoopHttpClientLoggerFactory.INSTANCE;
+        }
+
+        return new DefaultHttpClientTelemetry(clientConfigPath, clientCanonicalName, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, loggerBodyConverter);
     }
 }

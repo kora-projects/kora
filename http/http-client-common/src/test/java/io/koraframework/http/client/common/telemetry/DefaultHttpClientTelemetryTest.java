@@ -6,13 +6,15 @@ import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import io.koraframework.config.hocon.HoconConfigFactory;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
-import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLogger;
-import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientMetrics;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyConverter;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLoggerFactory;
+import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientMetricsFactory;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientTelemetry;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.body.StreamingHttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
 import io.opentelemetry.api.trace.Tracer;
@@ -44,17 +46,21 @@ class DefaultHttpClientTelemetryTest {
     }
 
     private Tracer tracer = Mockito.mock(Tracer.class);
+    private MeterRegistry meterRegistry = Mockito.mock(MeterRegistry.class);
     private SpanBuilder spanBuilder = Mockito.mock(SpanBuilder.class, Mockito.RETURNS_SELF);
     private Span span = Mockito.mock(Span.class, Mockito.RETURNS_SELF);
-    private DefaultHttpClientLogger logger = Mockito.mock(DefaultHttpClientLogger.class);
-    private DefaultHttpClientMetrics metrics = Mockito.mock(DefaultHttpClientMetrics.class);
+    private DefaultHttpClientLoggerFactory loggerFactory = Mockito.mock(DefaultHttpClientLoggerFactory.class);
+    private DefaultHttpClientLoggerFactory.DefaultHttpClientLogger logger = Mockito.mock(DefaultHttpClientLoggerFactory.DefaultHttpClientLogger.class);
+    private DefaultHttpClientMetricsFactory metricsFactory = Mockito.mock(DefaultHttpClientMetricsFactory.class);
+    private DefaultHttpClientMetricsFactory.DefaultHttpClientMetrics metrics = Mockito.mock(DefaultHttpClientMetricsFactory.DefaultHttpClientMetrics.class);
 
     @BeforeEach
     void setUp() {
         when(tracer.spanBuilder(any())).thenReturn(spanBuilder);
+        when(loggerFactory.create(any())).thenReturn(logger);
         when(spanBuilder.startSpan()).thenReturn(span);
+        when(metricsFactory.create(any())).thenReturn(metrics);
     }
-
 
     @Test
     void testMetricsWithFullBody() throws IOException {
@@ -63,7 +69,7 @@ class DefaultHttpClientTelemetryTest {
             tracing.enabled = true
             metrics.enabled = true
             """);
-        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, logger, metrics);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, meterRegistry, metricsFactory, loggerFactory, new DefaultHttpClientBodyConverter());
         var rq = HttpClientRequest.of("POST", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBody.plaintext("test"), Duration.ZERO);
 
         var observation = telemetry.observe(rq);
@@ -87,7 +93,7 @@ class DefaultHttpClientTelemetryTest {
             tracing.enabled = true
             metrics.enabled = true
             """);
-        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, logger, metrics);
+        var telemetry = new DefaultHttpClientTelemetry("test", "test", config, tracer, meterRegistry, metricsFactory, loggerFactory, new DefaultHttpClientBodyConverter());
         var rq = HttpClientRequest.of("POST", URI.create("http://localhost:8080/"), "/", HttpHeaders.of(), HttpBodyOutput.of("text/plain", os -> os.write("test".getBytes(StandardCharsets.UTF_8))), Duration.ZERO);
 
         when(logger.logResponseBody()).thenReturn(true);

@@ -36,7 +36,7 @@ public interface HttpClientTelemetryConfig extends TelemetryConfig {
         }
 
         @Nullable
-        Boolean pathTemplate();
+        Boolean pathFull();
 
         default Size maxRequestBodyLogSize() {
             return Size.of(2, Size.Type.MiB);
@@ -48,7 +48,12 @@ public interface HttpClientTelemetryConfig extends TelemetryConfig {
     }
 
     @ConfigValueExtractor
-    interface HttpClientTracingConfig extends TelemetryConfig.TracingConfig {}
+    interface HttpClientTracingConfig extends TelemetryConfig.TracingConfig {
+
+        default boolean pathFull() {
+            return true;
+        }
+    }
 
     @ConfigValueExtractor
     interface HttpClientMetricsConfig extends TelemetryConfig.MetricsConfig {}

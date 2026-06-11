@@ -71,7 +71,7 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
             new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
         );
         var operationTelemetryCVE = new $HttpClientOperationConfig_OperationTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientOperationConfig_OperationTelemetryConfig_LoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $HttpClientOperationConfig_OperationTelemetryConfig_LoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
             new $HttpClientOperationConfig_OperationTelemetryConfig_TracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
             new $HttpClientOperationConfig_OperationTelemetryConfig_MetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
         );

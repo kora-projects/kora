@@ -6,7 +6,6 @@ import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.http.client.common.response.SimpleHttpClientResponse;
 import io.koraframework.http.client.common.telemetry.HttpClientObservation;
-import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.body.EmptyHttpBody;
 import io.koraframework.http.common.body.HttpBody;
@@ -20,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
@@ -27,9 +27,9 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultHttpClientObservation.class);
 
-    protected final HttpClientTelemetryConfig config;
-    protected final DefaultHttpClientLogger logger;
-    protected final DefaultHttpClientMetrics metrics;
+    protected final DefaultHttpClientTelemetry.TelemetryContext context;
+    protected final DefaultHttpClientLoggerFactory.DefaultHttpClientLogger logger;
+    protected final DefaultHttpClientMetricsFactory.DefaultHttpClientMetrics metrics;
     protected final HttpClientRequest request;
     protected final Span span;
 
@@ -44,12 +44,12 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
     protected HttpResultCode resultCode;
     protected long processingTookNanos;
 
-    public DefaultHttpClientObservation(HttpClientTelemetryConfig config,
-                                        DefaultHttpClientLogger logger,
-                                        DefaultHttpClientMetrics metrics,
+    public DefaultHttpClientObservation(DefaultHttpClientTelemetry.TelemetryContext context,
+                                        DefaultHttpClientLoggerFactory.DefaultHttpClientLogger logger,
+                                        DefaultHttpClientMetricsFactory.DefaultHttpClientMetrics metrics,
                                         HttpClientRequest request,
                                         Span span) {
-        this.config = config;
+        this.context = context;
         this.logger = logger;
         this.metrics = metrics;
         this.request = request;
@@ -72,8 +72,9 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             var lenInBytes = full.remaining();
-            if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
-                log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body...", config.logging().maxResponseBodyLogSize());
+            if (lenInBytes > this.context.config().logging().maxResponseBodyLogSize().toBytes()) {
+                log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body cause content length is {}...",
+                    this.context.config().logging().maxResponseBodyLogSize(), lenInBytes);
                 logger.logRequest(request, null, body.contentType());
             } else {
                 logger.logRequest(request, full, body.contentType());
@@ -84,8 +85,9 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
 
         // todo we better have some kind of config for max bytes to log and log part (and return input stream concatenation as body)
         var lenInBytes = body.contentLength();
-        if (lenInBytes > config.logging().maxRequestBodyLogSize().toBytes()) {
-            log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body...", config.logging().maxRequestBodyLogSize());
+        if (lenInBytes > this.context.config().logging().maxRequestBodyLogSize().toBytes()) {
+            log.warn("Can't log request body bigger than {}, change config value if require logging, logging request without body cause content length is {}...",
+                this.context.config().logging().maxRequestBodyLogSize(), lenInBytes);
             logger.logRequest(request, null, body.contentType());
             return request;
         }
@@ -120,8 +122,9 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
         var full = body.getFullContentIfAvailable();
         if (full != null) {
             var lenInBytes = full.remaining();
-            if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
-                log.warn("Can't log response body bigger than {}, change config value if require logging, logging response without body...", config.logging().maxResponseBodyLogSize());
+            if (lenInBytes > this.context.config().logging().maxResponseBodyLogSize().toBytes()) {
+                log.warn("Can't log response body bigger than {}, change config value if require logging, logging response without body cause content length is {}...",
+                    this.context.config().logging().maxResponseBodyLogSize(), lenInBytes);
                 logger.logResponse(request, response, processingTookNanos, null, body.contentType());
             } else {
                 logger.logResponse(request, response, processingTookNanos, full, body.contentType());
@@ -132,8 +135,9 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
 
         // todo we better have some kind of config for max bytes to log and log part (and return input stream concatenation as body)
         var lenInBytes = body.contentLength();
-        if (lenInBytes > config.logging().maxResponseBodyLogSize().toBytes()) {
-            log.warn("Can't log response body bigger than {}, change config value if require logging, now logging response without body...", config.logging().maxResponseBodyLogSize());
+        if (lenInBytes > this.context.config().logging().maxResponseBodyLogSize().toBytes()) {
+            log.warn("Can't log response body bigger than {}, change config value if require logging, now logging response without body cause content length is {}...",
+                this.context.config().logging().maxResponseBodyLogSize(), lenInBytes);
             logger.logResponse(request, response, processingTookNanos, null, body.contentType());
             return response;
         }
@@ -185,6 +189,16 @@ public class DefaultHttpClientObservation implements HttpClientObservation {
             span.setStatus(StatusCode.ERROR);
         } else {
             span.setStatus(StatusCode.OK);
+        }
+        if (response != null && response.body() != null) {
+            var contentType = response.body().contentType();
+            if (contentType != null) {
+                span.setAttribute(HttpAttributes.HTTP_RESPONSE_HEADER.getAttributeKey("content-type"), List.of(contentType));
+            }
+            if (response.body().contentLength() != -1) {
+                var contentLength = String.valueOf(response.body().contentLength());
+                span.setAttribute(HttpAttributes.HTTP_RESPONSE_HEADER.getAttributeKey("content-length"), List.of(contentLength));
+            }
         }
 
         span.setAttribute("http.response.result_code", resultCode.string());

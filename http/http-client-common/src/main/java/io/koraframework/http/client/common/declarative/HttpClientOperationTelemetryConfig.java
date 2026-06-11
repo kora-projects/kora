@@ -1,5 +1,6 @@
 package io.koraframework.http.client.common.declarative;
 
+import io.koraframework.common.util.Size;
 import io.koraframework.http.client.common.telemetry.HttpClientTelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
@@ -9,6 +10,7 @@ import java.util.Objects;
 import java.util.Set;
 
 public final class HttpClientOperationTelemetryConfig implements HttpClientTelemetryConfig {
+
     private final OperationLogConfig logging;
     private final OperationMetricConfig metrics;
     private final OperationTracingConfig tracing;
@@ -35,6 +37,7 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
     }
 
     private static class OperationLogConfig implements HttpClientLoggerConfig {
+
         private final HttpClientLoggerConfig client;
         private final HttpClientOperationConfig.OperationTelemetryConfig.LoggingConfig operation;
 
@@ -69,20 +72,39 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
 
         @Nullable
         @Override
-        public Boolean pathTemplate() {
-            var operation = this.operation.pathTemplate();
+        public Boolean pathFull() {
+            var operation = this.operation.pathFull();
             if (operation != null) {
                 return operation;
             }
-            return this.client.pathTemplate();
+            return this.client.pathFull();
+        }
+
+        @Override
+        public Size maxRequestBodyLogSize() {
+            var operation = this.operation.maxRequestBodyLogSize();
+            if (operation != null) {
+                return operation;
+            }
+            return this.client.maxRequestBodyLogSize();
+        }
+
+        @Override
+        public Size maxResponseBodyLogSize() {
+            var operation = this.operation.maxResponseBodyLogSize();
+            if (operation != null) {
+                return operation;
+            }
+            return this.client.maxResponseBodyLogSize();
         }
     }
 
     private static class OperationMetricConfig implements HttpClientMetricsConfig {
-        private final MetricsConfig client;
+
+        private final HttpClientMetricsConfig client;
         private final HttpClientOperationConfig.OperationTelemetryConfig.MetricsConfig operation;
 
-        private OperationMetricConfig(MetricsConfig client, HttpClientOperationConfig.OperationTelemetryConfig.MetricsConfig operation) {
+        private OperationMetricConfig(HttpClientMetricsConfig client, HttpClientOperationConfig.OperationTelemetryConfig.MetricsConfig operation) {
             this.client = Objects.requireNonNull(client);
             this.operation = Objects.requireNonNull(operation);
         }
@@ -116,10 +138,11 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
     }
 
     private static class OperationTracingConfig implements HttpClientTracingConfig {
-        private final TracingConfig client;
+
+        private final HttpClientTracingConfig client;
         private final HttpClientOperationConfig.OperationTelemetryConfig.TracingConfig operation;
 
-        private OperationTracingConfig(TracingConfig client, HttpClientOperationConfig.OperationTelemetryConfig.TracingConfig operation) {
+        private OperationTracingConfig(HttpClientTracingConfig client, HttpClientOperationConfig.OperationTelemetryConfig.TracingConfig operation) {
             this.client = client;
             this.operation = operation;
         }
@@ -140,6 +163,15 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
                 return operation;
             }
             return this.client.attributes();
+        }
+
+        @Override
+        public boolean pathFull() {
+            var operation = this.operation.pathFull();
+            if (operation != null) {
+                return operation;
+            }
+            return this.client.pathFull();
         }
     }
 }
