@@ -1,6 +1,7 @@
 package io.koraframework.http.server.common.router;
 
 import io.koraframework.http.server.common.telemetry.*;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

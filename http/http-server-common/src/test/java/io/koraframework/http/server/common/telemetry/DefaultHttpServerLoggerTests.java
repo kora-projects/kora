@@ -15,6 +15,7 @@ import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.config.common.extractor.SetConfigValueExtractor;
+import io.koraframework.config.common.extractor.SizeConfigValueExtractor;
 import io.koraframework.config.common.extractor.StringConfigValueExtractor;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import io.koraframework.config.hocon.HoconConfigFactory;
@@ -26,7 +27,10 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
 import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.request.HttpServerRequest;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerBodyConverter;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLoggerFactory;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerTelemetry;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerTelemetryFactory;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import tools.jackson.core.JsonGenerator;
 
@@ -54,7 +58,8 @@ public class DefaultHttpServerLoggerTests {
     private final Appender<ILoggingEvent> mockAppender = mock(Appender.class);
 
     private static final ConfigValueExtractor<HttpServerTelemetryConfig.HttpServerLoggingConfig> logConfigExtractor = new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor(
-        new SetConfigValueExtractor<>(new StringConfigValueExtractor())
+        new SetConfigValueExtractor<>(new StringConfigValueExtractor()),
+        new SizeConfigValueExtractor()
     );
 
     private static HttpServerTelemetryConfig.HttpServerLoggingConfig config(String hocon) {
@@ -69,34 +74,34 @@ public class DefaultHttpServerLoggerTests {
     private static Stream<Arguments> getLogStartTestsData() {
         return Stream.of(
             Arguments.of(Level.DEBUG, QUERY_PARAMS, HEADERS, false,
-                List.of("POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
-            Arguments.of(Level.DEBUG, QUERY_PARAMS, HEADERS, true,
                 List.of("POST /path/{id}", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
+            Arguments.of(Level.DEBUG, QUERY_PARAMS, HEADERS, true,
+                List.of("POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.DEBUG, QUERY_PARAMS, HEADERS, null,
                 List.of("POST /path/{id}", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.TRACE, QUERY_PARAMS, HEADERS, null,
                 List.of("POST /path/1", MASKED_QUERY_PARAMS_STR, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.INFO, QUERY_PARAMS, HEADERS, false,
-                List.of("POST /path/1").toArray()),
-            Arguments.of(Level.INFO, QUERY_PARAMS, HEADERS, true,
                 List.of("POST /path/{id}").toArray()),
+            Arguments.of(Level.INFO, QUERY_PARAMS, HEADERS, true,
+                List.of("POST /path/1").toArray()),
             Arguments.of(Level.INFO, QUERY_PARAMS, HEADERS, null,
                 List.of("POST /path/{id}").toArray()),
             Arguments.of(Level.DEBUG, Map.of(), HEADERS, true,
-                Arrays.asList("POST /path/{id}", null, MASKED_HEADERS_STR).toArray()),
+                Arrays.asList("POST /path/1", null, MASKED_HEADERS_STR).toArray()),
             Arguments.of(Level.DEBUG, QUERY_PARAMS, null, true,
-                List.of("POST /path/{id}", MASKED_QUERY_PARAMS_STR).toArray()),
+                List.of("POST /path/1", MASKED_QUERY_PARAMS_STR).toArray()),
             Arguments.of(Level.DEBUG, Map.of(), null, true,
-                List.of("POST /path/{id}").toArray())
+                List.of("POST /path/1").toArray())
         );
     }
 
     @ParameterizedTest
     @MethodSource("getLogStartTestsData")
-    public void logStartTests(Level level, Map<String, List<String>> queryParams, HttpHeaders headers, Boolean pathTemplate, Object... expectedArgs) throws IOException {
+    public void logStartTests(Level level, Map<String, List<String>> queryParams, HttpHeaders headers, Boolean pathFull, Object... expectedArgs) throws IOException {
         expectLogLevel(level);
-        var config = pathTemplate == null ? config("") : config("pathTemplate = " + pathTemplate);
-        var logger = new DefaultHttpServerLogger(config);
+        var config = pathFull == null ? config("") : config("pathFull = " + pathFull);
+        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logStart(request("POST", "/path/1", "/path/{id}", queryParams, headers));
 
@@ -119,12 +124,12 @@ public class DefaultHttpServerLoggerTests {
 
     private static Stream<Arguments> getLogEndNoExceptionTestsData() {
         return Stream.of(
-            Arguments.of(Level.DEBUG, HEADERS, false, "POST /path/1", MASKED_HEADERS_STR),
-            Arguments.of(Level.DEBUG, HEADERS, true, "POST /path/{id}", MASKED_HEADERS_STR),
+            Arguments.of(Level.DEBUG, HEADERS, false, "POST /path/{id}", MASKED_HEADERS_STR),
+            Arguments.of(Level.DEBUG, HEADERS, true, "POST /path/1", MASKED_HEADERS_STR),
             Arguments.of(Level.DEBUG, HEADERS, null, "POST /path/{id}", MASKED_HEADERS_STR),
             Arguments.of(Level.TRACE, HEADERS, null, "POST /path/1", MASKED_HEADERS_STR),
-            Arguments.of(Level.INFO, HEADERS, false, "POST /path/1", null),
-            Arguments.of(Level.INFO, HEADERS, true, "POST /path/{id}", null),
+            Arguments.of(Level.INFO, HEADERS, false, "POST /path/{id}", null),
+            Arguments.of(Level.INFO, HEADERS, true, "POST /path/1", null),
             Arguments.of(Level.INFO, HEADERS, null, "POST /path/{id}", null),
             Arguments.of(Level.DEBUG, HEADERS, null, "POST /path/{id}", MASKED_HEADERS_STR),
             Arguments.of(Level.DEBUG, null, null, "POST /path/{id}", null)
@@ -133,11 +138,11 @@ public class DefaultHttpServerLoggerTests {
 
     @ParameterizedTest
     @MethodSource("getLogEndNoExceptionTestsData")
-    public void logEndNoExceptionTests(Level level, HttpHeaders headers, Boolean pathTemplate, String expectedOperation, @Nullable String expectedHeaders) throws IOException {
+    public void logEndNoExceptionTests(Level level, HttpHeaders headers, Boolean pathFull, String expectedOperation, @Nullable String expectedHeaders) throws IOException {
         expectLogLevel(level);
 
-        var config = pathTemplate == null ? config("") : config("pathTemplate = " + pathTemplate);
-        var logger = new DefaultHttpServerLogger(config);
+        var config = pathFull == null ? config("") : config("pathFull = " + pathFull);
+        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, headers, null);
 
@@ -162,12 +167,12 @@ public class DefaultHttpServerLoggerTests {
 
     private static Stream<Arguments> getLogEndWithExceptionTestsData() {
         return Stream.of(
-            Arguments.of(false, HEADERS, false, "POST /path/1", MASKED_HEADERS_STR),
-            Arguments.of(false, HEADERS, true, "POST /path/{id}", MASKED_HEADERS_STR),
+            Arguments.of(false, HEADERS, false, "POST /path/{id}", MASKED_HEADERS_STR),
+            Arguments.of(false, HEADERS, true, "POST /path/1", MASKED_HEADERS_STR),
             Arguments.of(false, HEADERS, null, "POST /path/{id}", MASKED_HEADERS_STR),
             Arguments.of(false, null, null, "POST /path/{id}", null),
-            Arguments.of(true, HEADERS, false, "POST /path/1", MASKED_HEADERS_STR),
-            Arguments.of(true, HEADERS, true, "POST /path/{id}", MASKED_HEADERS_STR),
+            Arguments.of(true, HEADERS, false, "POST /path/{id}", MASKED_HEADERS_STR),
+            Arguments.of(true, HEADERS, true, "POST /path/1", MASKED_HEADERS_STR),
             Arguments.of(true, HEADERS, null, "POST /path/{id}", MASKED_HEADERS_STR),
             Arguments.of(true, null, null, "POST /path/{id}", null)
         );
@@ -178,15 +183,15 @@ public class DefaultHttpServerLoggerTests {
     public void logEndWithExceptionTests(
         boolean stacktrace,
         HttpHeaders rsHeaders,
-        Boolean pathTemplate,
+        Boolean pathFull,
         String expectedOperation,
         @Nullable String expectedHeaders
     ) throws IOException {
         expectLogLevel(Level.DEBUG);
 
         var configStr = "stacktrace = " + stacktrace + "\n";
-        var config = pathTemplate == null ? config(configStr) : config(configStr + "pathTemplate = " + pathTemplate);
-        var logger = new DefaultHttpServerLogger(config);
+        var config = pathFull == null ? config(configStr) : config(configStr + "pathFull = " + pathFull);
+        var logger = DefaultHttpServerLoggerFactory.INSTANCE.create(context(config));
 
         logger.logEnd(request("POST", "/path/1", "/path/{id}", Map.of(), HttpHeaders.empty()), 200, HttpResultCode.SUCCESS, 100, rsHeaders, EXCEPTION);
 
@@ -217,6 +222,21 @@ public class DefaultHttpServerLoggerTests {
         verify(mockAppender).doAppend(captor.capture());
         final LoggingEvent event = captor.getValue();
         return event;
+    }
+
+    private DefaultHttpServerTelemetry.TelemetryContext context(HttpServerTelemetryConfig.HttpServerLoggingConfig loggingConfig) {
+        return new DefaultHttpServerTelemetry.TelemetryContext(
+            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
+                loggingConfig,
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            ),
+            false,
+            false,
+            DefaultHttpServerTelemetryFactory.NOOP_METER_REGISTRY,
+            DefaultHttpServerTelemetryFactory.NOOP_TRACER,
+            new DefaultHttpServerBodyConverter()
+        );
     }
 
     private void expectLogLevel(Level level) {

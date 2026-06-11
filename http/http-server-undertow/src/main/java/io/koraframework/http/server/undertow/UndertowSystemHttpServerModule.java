@@ -9,7 +9,7 @@ import io.koraframework.http.server.common.HttpServerModule;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.system.HttpServerSystemConfig;
 import io.koraframework.http.server.common.system.SystemApi;
-import io.koraframework.http.server.common.telemetry.NoopHttpServerTelemetry;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import org.jspecify.annotations.Nullable;

@@ -14,7 +14,6 @@ import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.RouterHttpServerRequest;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 
 import java.util.Map;
 import java.util.Objects;
@@ -35,7 +34,7 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
     protected final HttpServerTelemetryConfig config;
     protected final long requestStartTime;
     protected final Span span;
-    protected final DefaultHttpServerLogger logger;
+    protected final DefaultCamundaRestLogger logger;
     protected final Meter.MeterProvider<io.micrometer.core.instrument.Timer> requestDuration;
     protected Function<Tags, AtomicLong> activeRequests;
     @Nullable
@@ -43,7 +42,7 @@ public class DefaultCamundaRestObservation implements CamundaRestObservation {
     @Nullable
     private Map<String, String> pathParams;
 
-    public DefaultCamundaRestObservation(HttpServerExchange exchange, HttpServerTelemetryConfig config, long requestStartTime, Span span, DefaultHttpServerLogger logger, Meter.MeterProvider<Timer> requestDuration, Function<Tags, AtomicLong> activeRequests) {
+    public DefaultCamundaRestObservation(HttpServerExchange exchange, HttpServerTelemetryConfig config, long requestStartTime, Span span, DefaultCamundaRestLogger logger, Meter.MeterProvider<Timer> requestDuration, Function<Tags, AtomicLong> activeRequests) {
         this.exchange = exchange;
         this.config = config;
         this.requestStartTime = requestStartTime;

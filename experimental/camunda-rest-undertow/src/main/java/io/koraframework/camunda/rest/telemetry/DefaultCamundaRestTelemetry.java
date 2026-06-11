@@ -11,7 +11,6 @@ import io.opentelemetry.semconv.UrlAttributes;
 import io.undertow.server.HttpServerExchange;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLogger;
 
 import java.util.ArrayList;
 import java.util.Objects;
@@ -24,10 +23,10 @@ public final class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
 
     private final HttpServerTelemetryConfig config;
     private final Tracer tracer;
-    private final DefaultHttpServerLogger logger;
+    private final DefaultCamundaRestLogger logger;
     private final MeterRegistry meterRegistry;
 
-    public DefaultCamundaRestTelemetry(HttpServerTelemetryConfig config, Tracer tracer, DefaultHttpServerLogger logger, MeterRegistry meterRegistry) {
+    public DefaultCamundaRestTelemetry(HttpServerTelemetryConfig config, Tracer tracer, DefaultCamundaRestLogger logger, MeterRegistry meterRegistry) {
         this.config = config;
         this.tracer = tracer;
         this.logger = logger;

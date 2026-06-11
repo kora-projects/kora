@@ -26,6 +26,7 @@ import io.koraframework.http.server.common.system.LivenessHandler;
 import io.koraframework.http.server.common.system.MetricsHandler;
 import io.koraframework.http.server.common.system.ReadinessHandler;
 import io.koraframework.http.server.common.telemetry.*;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import io.koraframework.telemetry.common.MetricsScraper;
 import io.opentelemetry.api.trace.Span;
 import okhttp3.ConnectionPool;

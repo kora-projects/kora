@@ -1,4 +1,4 @@
-package io.koraframework.http.server.common.telemetry.impl;
+package io.koraframework.camunda.rest.telemetry;
 
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.header.HttpHeaders;
@@ -17,7 +17,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-public class DefaultHttpServerLogger {
+public class DefaultCamundaRestLogger {
 
     private static final Logger logger = LoggerFactory.getLogger(HttpServer.class);
 
@@ -25,9 +25,10 @@ public class DefaultHttpServerLogger {
     private final Set<String> maskedQueryParams;
     private final Set<String> maskedHeaders;
     private final String mask;
-    private final Boolean pathTemplate;
+    @Nullable
+    private final Boolean pathFull;
 
-    public DefaultHttpServerLogger(HttpServerTelemetryConfig.HttpServerLoggingConfig config) {
+    public DefaultCamundaRestLogger(HttpServerTelemetryConfig.HttpServerLoggingConfig config) {
         this.logStacktrace = config.stacktrace();
         this.maskedQueryParams = config.maskQueries().stream()
             .map(e -> e.toLowerCase(Locale.ROOT))
@@ -36,7 +37,7 @@ public class DefaultHttpServerLogger {
             .map(e -> e.toLowerCase(Locale.ROOT))
             .collect(Collectors.toSet());
         this.mask = config.mask();
-        this.pathTemplate = config.pathTemplate();
+        this.pathFull = config.pathFull();
     }
 
     public boolean isEnabled() {
@@ -118,11 +119,17 @@ public class DefaultHttpServerLogger {
         }
     }
 
-    private boolean shouldWritePath() {
-        return pathTemplate != null ? !pathTemplate : logger.isTraceEnabled();
+    private boolean shouldWritePathFull() {
+        return pathFull != null ? pathFull : logger.isTraceEnabled();
     }
 
-    private String getOperation(String method, String path, String pathTemplate) {
-        return method + ' ' + (shouldWritePath() ? path : pathTemplate);
+    protected String getOperation(String method, String path, @Nullable String pathTemplate) {
+        if (shouldWritePathFull()) {
+            return method + ' ' + path;
+        } else if (pathTemplate != null) {
+            return method + ' ' + pathTemplate;
+        } else {
+            return method;
+        }
     }
 }
