@@ -4,6 +4,7 @@ import io.camunda.zeebe.client.api.command.FinalCommandStep;
 import io.camunda.zeebe.client.api.response.ActivatedJob;
 import io.camunda.zeebe.client.api.worker.JobClient;
 import io.koraframework.camunda.zeebe.worker.annotation.JobWorker;
+import io.koraframework.camunda.zeebe.worker.exception.JobWorkerException;
 
 import java.util.Collections;
 import java.util.List;
