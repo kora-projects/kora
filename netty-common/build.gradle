@@ -3,6 +3,7 @@ dependencies {
 
     compileOnly libs.netty.transport.epoll
     compileOnly libs.netty.transport.kqueue
+    compileOnly libs.netty.transport.uring
 
     api project(":common")
     api project(":config:config-common")
