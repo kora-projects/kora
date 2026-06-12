@@ -5,7 +5,7 @@ import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBui
 import io.koraframework.common.util.Configurer;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
-import io.koraframework.database.common.telemetry.DataBaseTelemetryFactory;
+import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
 
 public interface CassandraDatabaseModule extends CassandraModule {
@@ -14,7 +14,7 @@ public interface CassandraDatabaseModule extends CassandraModule {
         return extractor.extract(value);
     }
 
-    default CassandraDatabase cassandraDatabase(CassandraConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
+    default CassandraDatabase cassandraDatabase(CassandraConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
         return new CassandraDatabase(config, loaderConfigurer, sessionBuilderConfigurer, telemetryFactory);
     }
 }

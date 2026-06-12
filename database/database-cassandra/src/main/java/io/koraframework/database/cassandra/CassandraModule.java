@@ -3,7 +3,7 @@ package io.koraframework.database.cassandra;
 import io.koraframework.common.DefaultComponent;
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraRowMapper;
-import io.koraframework.database.common.DataBaseModule;
+import io.koraframework.database.common.DatabaseModule;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -12,7 +12,7 @@ import java.time.*;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface CassandraModule extends DataBaseModule {
+public interface CassandraModule extends DatabaseModule {
 
     default <T> CassandraResultSetMapper<Optional<T>> cassandraOptionalResultSetMapper(CassandraRowMapper<T> rowMapper) {
         return CassandraResultSetMapper.optionalResultSetMapper(rowMapper);

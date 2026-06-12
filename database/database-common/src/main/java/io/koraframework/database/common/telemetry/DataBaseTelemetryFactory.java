@@ -1,7 +1,6 @@
 package io.koraframework.database.common.telemetry;
 
-public interface DataBaseTelemetryFactory {
-    DataBaseTelemetryFactory NOOP = (_, _, _) -> NoopDatabaseTelemetry.INSTANCE;
+public interface DatabaseTelemetryFactory {
 
-    DataBaseTelemetry get(DatabaseTelemetryConfig config, String name, String dbType);
+    DatabaseTelemetry get(DatabaseTelemetryConfig config, String name, String dbType);
 }

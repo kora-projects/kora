@@ -2,6 +2,8 @@ package io.koraframework.database.jdbc;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
@@ -9,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import io.koraframework.database.common.telemetry.*;
+import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
 
@@ -55,7 +58,7 @@ class JdbcDatabaseTest {
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
             )
         );
-        var db = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), null);
+        var db = new JdbcDatabase(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
         db.init();
         try {
             consumer.accept(db);
