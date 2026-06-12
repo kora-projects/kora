@@ -1,6 +1,7 @@
-package io.koraframework.grpc.client.config;
+package io.koraframework.grpc.client.interceptor;
 
 import io.grpc.*;
+import io.koraframework.grpc.client.GrpcClientConfig;
 
 import java.util.concurrent.TimeUnit;
 

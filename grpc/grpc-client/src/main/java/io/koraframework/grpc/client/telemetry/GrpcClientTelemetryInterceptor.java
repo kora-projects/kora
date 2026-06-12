@@ -1,6 +1,7 @@
 package io.koraframework.grpc.client.telemetry;
 
 import io.grpc.*;
+import io.koraframework.grpc.client.telemetry.impl.NoopGrpcClientObservation;
 import io.opentelemetry.context.Context;
 
 public final class GrpcClientTelemetryInterceptor implements ClientInterceptor {

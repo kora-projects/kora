@@ -1,11 +1,15 @@
-package io.koraframework.grpc.client.telemetry;
+package io.koraframework.grpc.client.telemetry.impl;
 
 import io.grpc.Metadata;
 import io.grpc.Status;
+import io.koraframework.grpc.client.telemetry.GrpcClientObservation;
 import io.opentelemetry.api.trace.Span;
 
-public class NoopGrpcClientObservation implements GrpcClientObservation {
+public final class NoopGrpcClientObservation implements GrpcClientObservation {
+
     public static final NoopGrpcClientObservation INSTANCE = new NoopGrpcClientObservation();
+
+    private NoopGrpcClientObservation() {}
 
     @Override
     public void observeStart(Metadata headers) {

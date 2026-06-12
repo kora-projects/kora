@@ -5,6 +5,7 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 
 @ConfigValueExtractor
 public interface GrpcClientTelemetryConfig extends TelemetryConfig {
+
     @Override
     GrpcClientLoggingConfig logging();
 
@@ -15,17 +16,11 @@ public interface GrpcClientTelemetryConfig extends TelemetryConfig {
     GrpcClientTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface GrpcClientLoggingConfig extends TelemetryConfig.LogConfig {
-
-    }
+    interface GrpcClientLoggingConfig extends TelemetryConfig.LogConfig { }
 
     @ConfigValueExtractor
-    interface GrpcClientMetricsConfig extends TelemetryConfig.MetricsConfig {
-
-    }
+    interface GrpcClientMetricsConfig extends TelemetryConfig.MetricsConfig { }
 
     @ConfigValueExtractor
-    interface GrpcClientTracingConfig extends TelemetryConfig.TracingConfig {
-
-    }
+    interface GrpcClientTracingConfig extends TelemetryConfig.TracingConfig { }
 }

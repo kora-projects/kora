@@ -11,15 +11,16 @@ import io.koraframework.common.annotation.Root;
 import io.koraframework.common.util.Configurer;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
-import io.koraframework.grpc.server.config.GrpcServerConfig;
+import io.koraframework.grpc.server.handler.DynamicBindableService;
+import io.koraframework.grpc.server.handler.VirtualThreadExecutorTransportFilter;
+import io.koraframework.grpc.server.interceptors.DynamicServerInterceptor;
 import io.koraframework.grpc.server.interceptors.TelemetryInterceptor;
-import io.koraframework.grpc.server.telemetry.DefaultGrpcServerTelemetry;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetry;
-import io.koraframework.grpc.server.telemetry.NoopGrpcServerTelemetry;
+import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerLoggerFactory;
+import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerMetricsFactory;
+import io.koraframework.grpc.server.telemetry.impl.DefaultGrpcServerTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
-import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -33,32 +34,27 @@ public interface GrpcServerModule {
     }
 
     @Root
-    default GrpcServer grpcNettyServer(ValueOf<ForwardingServerBuilder<?>> serverBuilder,
-                                       ValueOf<GrpcServerConfig> config) {
+    default GrpcServer grpcServer(ValueOf<ForwardingServerBuilder<?>> serverBuilder,
+                                  ValueOf<GrpcServerConfig> config) {
         return new GrpcServer(serverBuilder, config);
     }
 
     @DefaultComponent
-    default GrpcServerTelemetry defaultGrpcServerTelemetry(GrpcServerConfig config, @Nullable Tracer tracer, @Nullable MeterRegistry meterRegistry) {
-        if (!config.telemetry().metrics().enabled() && !config.telemetry().logging().enabled() && !config.telemetry().tracing().enabled()) {
-            return NoopGrpcServerTelemetry.INSTANCE;
-        }
-        if (tracer == null || !config.telemetry().tracing().enabled()) {
-            tracer = TracerProvider.noop().get("grpc-server");
-        }
-        if (meterRegistry == null || !config.telemetry().metrics().enabled()) {
-            meterRegistry = new CompositeMeterRegistry();
-        }
-        return new DefaultGrpcServerTelemetry(config.telemetry(), tracer, meterRegistry);
+    default GrpcServerTelemetry defaultGrpcServerTelemetry(GrpcServerConfig config,
+                                                           @Nullable Tracer tracer,
+                                                           @Nullable MeterRegistry meterRegistry,
+                                                           @Nullable DefaultGrpcServerLoggerFactory loggerFactory,
+                                                           @Nullable DefaultGrpcServerMetricsFactory metricsFactory) {
+        return new DefaultGrpcServerTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory).get(config.telemetry());
     }
 
-    default ForwardingServerBuilder<?> grpcNettyServerBuilder(
-        ValueOf<GrpcServerConfig> config,
-        List<DynamicBindableService> services,
-        List<DynamicServerInterceptor> interceptors,
-        @Nullable ServerCredentials serverCredentials,
-        @Nullable Configurer<ForwardingServerBuilder<?>> configurer,
-        ValueOf<GrpcServerTelemetry> telemetry) {
+    @DefaultComponent
+    default ForwardingServerBuilder<?> grpcServerBuilder(ValueOf<GrpcServerConfig> config,
+                                                         List<DynamicBindableService> services,
+                                                         List<DynamicServerInterceptor> interceptors,
+                                                         @Nullable ServerCredentials serverCredentials,
+                                                         @Nullable Configurer<ForwardingServerBuilder<?>> configurer,
+                                                         ValueOf<GrpcServerTelemetry> telemetry) {
         if (serverCredentials == null) {
             serverCredentials = InsecureServerCredentials.create();
         }
@@ -72,26 +68,21 @@ public interface GrpcServerModule {
         if (grpcServerConfig.maxConnectionAge() != null) {
             builder.maxConnectionAge(grpcServerConfig.maxConnectionAge().toMillis(), TimeUnit.MILLISECONDS);
         }
-
         if (grpcServerConfig.maxConnectionAgeGrace() != null) {
             builder.maxConnectionAgeGrace(grpcServerConfig.maxConnectionAgeGrace().toMillis(), TimeUnit.MILLISECONDS);
         }
-
         if (grpcServerConfig.keepAliveTime() != null) {
             builder.keepAliveTime(grpcServerConfig.keepAliveTime().toMillis(), TimeUnit.MILLISECONDS);
         }
-
         if (grpcServerConfig.keepAliveTimeout() != null) {
             builder.keepAliveTimeout(grpcServerConfig.keepAliveTimeout().toMillis(), TimeUnit.MILLISECONDS);
         }
-
         if (grpcServerConfig.reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.ProtoReflectionServiceV1")) {
             builder.addService(ProtoReflectionServiceV1.newInstance());
         }
 
         interceptors.forEach(builder::intercept);
-        builder
-            .intercept(new TelemetryInterceptor(telemetry));
+        builder.intercept(new TelemetryInterceptor(telemetry));
 
         services.forEach(builder::addService);
 
