@@ -15,10 +15,10 @@ public final class NoopRedisCacheMetricsFactory extends DefaultRedisCacheMetrics
 
     private static final class NoopRedisCacheMetrics extends DefaultRedisCacheMetrics {
 
-        public static final NoopRedisCacheMetrics INSTANCE = new NoopRedisCacheMetrics(null);
+        public static final NoopRedisCacheMetrics INSTANCE = new NoopRedisCacheMetrics();
 
-        private NoopRedisCacheMetrics(DefaultRedisCacheTelemetry.TelemetryContext context) {
-            super(context);
+        private NoopRedisCacheMetrics() {
+            super(DefaultRedisCacheTelemetry.TelemetryContext.EMPTY);
         }
 
         @Override

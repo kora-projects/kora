@@ -1,6 +1,7 @@
 package io.koraframework.cache.redis;
 
 import io.koraframework.cache.redis.lettuce.LettuceCacheModule;
+import io.koraframework.cache.redis.telemetry.DefaultRedisCacheLoggerFactory;
 import io.koraframework.cache.redis.telemetry.DefaultRedisCacheMetricsFactory;
 import io.koraframework.cache.redis.telemetry.DefaultRedisCacheTelemetryFactory;
 import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryFactory;
@@ -14,7 +15,8 @@ public interface RedisCacheModule extends RedisCacheMapperModule, LettuceCacheMo
     @DefaultComponent
     default RedisCacheTelemetryFactory redisCacheTelemetryFactory(@Nullable Tracer tracer,
                                                                   @Nullable MeterRegistry meterRegistry,
+                                                                  @Nullable DefaultRedisCacheLoggerFactory loggerFactory,
                                                                   @Nullable DefaultRedisCacheMetricsFactory metricsFactory) {
-        return new DefaultRedisCacheTelemetryFactory(tracer, meterRegistry, metricsFactory);
+        return new DefaultRedisCacheTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }

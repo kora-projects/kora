@@ -1,6 +1,5 @@
 package io.koraframework.cache.redis;
 
-import io.koraframework.cache.Cache;
 import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
 import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryFactory;
 import io.koraframework.common.telemetry.Observation;
@@ -16,7 +15,7 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
+public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisCache.class);
 
@@ -26,8 +25,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
     private final RedisCacheKeyMapper<K> keyMapper;
     private final RedisCacheValueMapper<V> valueMapper;
 
-    @Nullable
-    private final byte[] keyPrefix;
+    private final byte @Nullable [] keyPrefix;
     @Nullable
     private final Long expireAfterAccessMillis;
     @Nullable
@@ -134,6 +132,8 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
                 } catch (Exception e) {
                     observation.observeError(e);
                     return Collections.emptyMap();
+                } finally {
+                    observation.end();
                 }
             });
     }
@@ -415,9 +415,7 @@ public abstract class AbstractRedisCache<K, V> implements Cache<K, V> {
                         logger.warn("Redis Cache key prefix is empty! Initiating flushAll for invalidateAll command.");
                         redisClient.flushAll();
                     } else {
-                        keys = (keyPrefix == null)
-                        ? redisClient.scan("".getBytes(StandardCharsets.UTF_8)).toCompletableFuture().join()
-                        : redisClient.scan(keyPrefix);
+                        keys = redisClient.scan(keyPrefix);
                         if (keys.isEmpty()) {
                             return;
                         }
