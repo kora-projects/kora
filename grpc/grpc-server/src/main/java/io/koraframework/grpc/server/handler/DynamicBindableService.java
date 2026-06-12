@@ -1,4 +1,4 @@
-package io.koraframework.grpc.server;
+package io.koraframework.grpc.server.handler;
 
 import io.grpc.BindableService;
 import io.grpc.ServerMethodDefinition;
@@ -9,8 +9,9 @@ import io.koraframework.application.graph.ValueOf;
 import java.util.HashMap;
 
 public final class DynamicBindableService implements BindableService, RefreshListener {
-    final ValueOf<BindableService> service;
-    final HashMap<String, DynamicServerCall<?, ?>> methods = new HashMap<>();
+
+    private final ValueOf<BindableService> service;
+    private final HashMap<String, DynamicServerCall<?, ?>> methods = new HashMap<>();
 
     public DynamicBindableService(ValueOf<BindableService> service) {
         this.service = service;

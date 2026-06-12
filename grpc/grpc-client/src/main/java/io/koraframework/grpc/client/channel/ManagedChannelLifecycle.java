@@ -1,4 +1,4 @@
-package io.koraframework.grpc.client;
+package io.koraframework.grpc.client.channel;
 
 import io.grpc.*;
 import io.koraframework.application.graph.All;
@@ -6,8 +6,8 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.util.Configurer;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.grpc.client.config.GrpcClientConfig;
-import io.koraframework.grpc.client.config.GrpcClientConfigInterceptor;
+import io.koraframework.grpc.client.GrpcClientConfig;
+import io.koraframework.grpc.client.interceptor.GrpcClientConfigInterceptor;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryInterceptor;
 import org.jspecify.annotations.Nullable;
@@ -96,8 +96,8 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         }
 
         var defaultServiceConfig = this.config.defaultServiceConfig();
-        if (defaultServiceConfig != null && !defaultServiceConfig.content.isEmpty()) {
-            builder.defaultServiceConfig(defaultServiceConfig.content);
+        if (defaultServiceConfig != null && !defaultServiceConfig.content().isEmpty()) {
+            builder.defaultServiceConfig(defaultServiceConfig.content());
         }
         if (this.configurer != null) {
             builder = this.configurer.configure(builder);

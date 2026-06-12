@@ -11,7 +11,7 @@ import io.grpc.ManagedChannel;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.grpc.client.GrpcClientChannelFactory;
+import io.koraframework.grpc.client.channel.GrpcClientChannelFactory;
 import io.koraframework.grpc.client.GrpcClientModule;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.koraframework.application.graph.All;
