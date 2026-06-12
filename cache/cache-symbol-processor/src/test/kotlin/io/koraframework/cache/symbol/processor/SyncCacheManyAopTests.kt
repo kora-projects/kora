@@ -53,9 +53,9 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
             cache2 = cache2Class.constructors[0].newInstance(
                 CacheRunner.getRedisConfig(),
                 CacheRunner.lettuceClient(cache),
-                redisCacheTelemetryFactory(null, null, null),
+                redisCacheTelemetryFactory(null, null, null, null),
                 RedisCacheKeyMapper<DummyCache22.Key> { key ->
-                    val k1 = key.k1.toByteArray(StandardCharsets.UTF_8)
+                    val k1 = key!!.k1.toByteArray(StandardCharsets.UTF_8)
                     val k2 = key.k2.toString().toByteArray(StandardCharsets.UTF_8)
                     ByteBuffer.allocate(k1.size + RedisCacheKeyMapper.DELIMITER.size + k2.size)
                         .put(k1)
