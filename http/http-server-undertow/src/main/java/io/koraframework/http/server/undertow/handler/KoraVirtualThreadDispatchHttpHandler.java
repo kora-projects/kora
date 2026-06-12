@@ -7,14 +7,14 @@ import io.undertow.util.AttachmentKey;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class KoraVirtualThreadHttpHandler implements HttpHandler {
+public final class KoraVirtualThreadDispatchHttpHandler implements HttpHandler {
 
     private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
 
     private final String name;
     private final HttpHandler delegate;
 
-    public KoraVirtualThreadHttpHandler(String name, HttpHandler delegate) {
+    public KoraVirtualThreadDispatchHttpHandler(String name, HttpHandler delegate) {
         this.name = name;
         this.delegate = delegate;
     }

@@ -8,9 +8,9 @@ import io.koraframework.camunda.rest.undertow.UndertowPathMatcher.HttpMethodPath
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.http.server.undertow.handler.KoraRequestHttpHandler;
+import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
 import io.koraframework.http.server.undertow.UndertowContext;
-import io.koraframework.http.server.undertow.handler.KoraVirtualThreadHttpHandler;
+import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.PathHandler;
@@ -108,7 +108,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
 
         var restHandler = deploymentManager.start();
         root.addPrefixPath(camundaRestConfig.path(), exchange -> {
-            var rootCtx = W3CTraceContextPropagator.getInstance().extract(io.opentelemetry.context.Context.root(), exchange.getRequestHeaders(), KoraRequestHttpHandler.HttpServerExchangeMapGetter.INSTANCE);
+            var rootCtx = W3CTraceContextPropagator.getInstance().extract(io.opentelemetry.context.Context.root(), exchange.getRequestHeaders(), KoraRequestProcessingHttpHandler.HttpServerExchangeMapGetter.INSTANCE);
             ScopedValue
                 .where(UndertowContext.VALUE, new UndertowContext(exchange))
                 .where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())
@@ -129,7 +129,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
                     W3CTraceContextPropagator.getInstance().inject(
                         ctx,
                         exchange.getResponseHeaders(),
-                        KoraRequestHttpHandler.HttpServerExchangeMapGetter.INSTANCE
+                        KoraRequestProcessingHttpHandler.HttpServerExchangeMapGetter.INSTANCE
                     );
 
                     ScopedValue
@@ -149,7 +149,7 @@ final class UndertowCamundaRestHttpHandler implements Lifecycle, Wrapped<HttpHan
         });
 
         root.addPrefixPath("/", new OpenApiHttpHandler(camundaRestConfig));
-        this.realhttpHandler = new KoraVirtualThreadHttpHandler("camunda-rest", root);
+        this.realhttpHandler = new KoraVirtualThreadDispatchHttpHandler("camunda-rest", root);
 
         logger.info("Camunda Rest Handler (Undertow) configured in {}", TimeUtils.tookForLogging(started));
     }
