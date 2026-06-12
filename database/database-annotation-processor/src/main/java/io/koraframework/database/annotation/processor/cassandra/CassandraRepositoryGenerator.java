@@ -113,7 +113,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
             profile = null;
         }
         var returnType = methodType.getReturnType();
-        var isFuture = CommonUtils.isFuture(returnType);
+        var isFuture = CommonUtils.isCompletionStage(returnType);
         mb.addStatement("var _observation = this._connectionFactory.telemetry().observe(_query)");
         mb.addStatement("var _session = this._connectionFactory.currentSession()");
         if (isFuture) {
@@ -189,7 +189,7 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         var mappings = CommonUtils.parseMapping(method);
         var resultSetMapper = mappings.getMapping(CassandraTypes.RESULT_SET_MAPPER);
         var rowMapper = mappings.getMapping(CassandraTypes.ROW_MAPPER);
-        if (CommonUtils.isFuture(returnType)) {
+        if (CommonUtils.isCompletionStage(returnType)) {
             var futureParam = Visitors.visitDeclaredType(returnType, dt -> dt.getTypeArguments().get(0));
             if (CommonUtils.isVoid(futureParam)) {
                 return Optional.empty();

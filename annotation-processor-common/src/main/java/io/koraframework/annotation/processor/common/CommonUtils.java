@@ -520,22 +520,23 @@ public class CommonUtils {
     public static boolean isPublisher(TypeMirror type) {
         return type.getKind() == TypeKind.DECLARED
             && type instanceof DeclaredType dt
-            && dt.asElement().toString().equals(CommonClassNames.publisher.canonicalName());
+            && (dt.asElement().toString().equals(CommonClassNames.publisher.canonicalName())
+            || CommonUtils.doesImplement(type, CommonClassNames.publisher));
     }
 
     public static boolean isFuture(TypeMirror type) {
-        if (type.getKind() != TypeKind.DECLARED) {
-            return false;
-        }
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && (dt.asElement().toString().startsWith(CommonClassNames.future.canonicalName())
+            || (!isCompletionStage(type) && CommonUtils.doesImplement(type, CommonClassNames.future)));
+    }
 
-        if (!(type instanceof DeclaredType dt)) {
-            return false;
-        }
-
-        final String name = dt.asElement().toString();
-        return name.equals(CompletableFuture.class.getCanonicalName())
-            || name.equals(CompletionStage.class.getCanonicalName())
-            || name.equals(Future.class.getCanonicalName());
+    public static boolean isCompletionStage(TypeMirror type) {
+        return type.getKind() == TypeKind.DECLARED
+            && type instanceof DeclaredType dt
+            && (dt.asElement().toString().startsWith(CommonClassNames.completionStage.canonicalName())
+            || dt.asElement().toString().startsWith(CommonClassNames.completableFuture.canonicalName())
+            || CommonUtils.doesImplement(type, CommonClassNames.completionStage));
     }
 
     public static CodeBlock observe(String observationName, String observationMethod, Consumer<CodeBlock.Builder> body) {
