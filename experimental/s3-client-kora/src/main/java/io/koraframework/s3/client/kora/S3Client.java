@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Objects;
 
 public interface S3Client {
+
     /**
      * The HEAD operation retrieves metadata from an object without returning the object itself. This operation is useful if you're interested only in an object's metadata.
      *
@@ -305,6 +306,7 @@ public interface S3Client {
     }
 
     interface ContentWriter extends Closeable {
+
         void write(OutputStream os) throws IOException;
 
         long length();
@@ -312,5 +314,4 @@ public interface S3Client {
         @Override
         default void close() throws IOException {}
     }
-
 }

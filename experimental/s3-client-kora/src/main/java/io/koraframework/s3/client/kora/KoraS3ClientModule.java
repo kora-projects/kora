@@ -7,17 +7,22 @@ import io.koraframework.config.common.extractor.ConfigValueExtractionException;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.s3.client.kora.impl.KoraS3Client;
-import io.koraframework.s3.client.kora.telemetry.DefaultS3ClientTelemetryFactory;
 import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetryFactory;
+import io.koraframework.s3.client.kora.telemetry.impl.DefaultS3ClientLoggerFactory;
+import io.koraframework.s3.client.kora.telemetry.impl.DefaultS3ClientMetricsFactory;
+import io.koraframework.s3.client.kora.telemetry.impl.DefaultS3ClientTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
 
 public interface KoraS3ClientModule {
 
+    @DefaultComponent
     default S3ClientTelemetryFactory defaultKoraS3ClientTelemetryFactory(@Nullable Tracer tracer,
-                                                                         @Nullable MeterRegistry meterRegistry) {
-        return new DefaultS3ClientTelemetryFactory(tracer, meterRegistry);
+                                                                         @Nullable MeterRegistry meterRegistry,
+                                                                         @Nullable DefaultS3ClientLoggerFactory loggerFactory,
+                                                                         @Nullable DefaultS3ClientMetricsFactory metricsFactory) {
+        return new DefaultS3ClientTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
     @Tag(S3Client.class)
@@ -26,6 +31,7 @@ public interface KoraS3ClientModule {
         return client;
     }
 
+    @DefaultComponent
     default S3ClientFactory defaultKoraS3ClientFactory(@Tag(S3Client.class) HttpClient client,
                                                        S3ClientTelemetryFactory telemetryFactory) {
         return config -> {
@@ -34,6 +40,7 @@ public interface KoraS3ClientModule {
         };
     }
 
+    @DefaultComponent
     default ConfigValueExtractor<S3Credentials> koraS3CredentialsValueExtractor() {
         return src -> {
             if (src instanceof ConfigValue.NullValue) {

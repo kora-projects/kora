@@ -1,4 +1,7 @@
-package io.koraframework.s3.client.kora.telemetry;
+package io.koraframework.s3.client.kora.telemetry.impl;
+
+import io.koraframework.s3.client.kora.telemetry.S3ClientObservation;
+import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetry;
 
 public final class NoopS3ClientTelemetry implements S3ClientTelemetry {
 

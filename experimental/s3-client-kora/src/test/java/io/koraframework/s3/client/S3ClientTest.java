@@ -24,7 +24,7 @@ import io.koraframework.s3.client.kora.impl.xml.DeleteObjectsResult;
 import io.koraframework.s3.client.kora.model.Range;
 import io.koraframework.s3.client.kora.model.request.ListObjectsArgs;
 import io.koraframework.s3.client.kora.model.response.ListBucketResult;
-import io.koraframework.s3.client.kora.telemetry.NoopS3ClientTelemetry;
+import io.koraframework.s3.client.kora.telemetry.impl.NoopS3ClientTelemetry;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

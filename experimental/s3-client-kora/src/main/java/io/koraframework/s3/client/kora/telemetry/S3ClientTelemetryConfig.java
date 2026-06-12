@@ -16,17 +16,11 @@ public interface S3ClientTelemetryConfig extends TelemetryConfig {
     S3ClientTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface S3ClientLoggingConfig extends LoggingConfig {
-
-    }
+    interface S3ClientLoggingConfig extends LoggingConfig { }
 
     @ConfigValueExtractor
-    interface S3ClientTracingConfig extends TelemetryConfig.TracingConfig {
-
-    }
+    interface S3ClientTracingConfig extends TelemetryConfig.TracingConfig { }
 
     @ConfigValueExtractor
-    interface S3ClientMetricsConfig extends TelemetryConfig.MetricsConfig {
-
-    }
+    interface S3ClientMetricsConfig extends TelemetryConfig.MetricsConfig { }
 }

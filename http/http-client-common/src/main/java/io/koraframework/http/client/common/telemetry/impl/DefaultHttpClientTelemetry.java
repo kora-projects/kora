@@ -70,7 +70,7 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
     @Override
     public HttpClientObservation observe(HttpClientRequest request) {
-        var span = this.context.config().tracing().enabled()
+        var span = context.isTraceEnabled
             ? startSpan(request).startSpan()
             : Span.getInvalid();
         return new DefaultHttpClientObservation(this.context, this.logger, this.metrics, request, span);
