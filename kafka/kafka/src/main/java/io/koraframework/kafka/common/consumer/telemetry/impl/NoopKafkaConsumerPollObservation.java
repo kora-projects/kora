@@ -1,5 +1,7 @@
-package io.koraframework.kafka.common.consumer.telemetry;
+package io.koraframework.kafka.common.consumer.telemetry.impl;
 
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerPollObservation;
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerRecordObservation;
 import io.opentelemetry.api.trace.Span;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;

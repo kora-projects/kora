@@ -1,6 +1,6 @@
 package io.koraframework.kafka.common.producer;
 
-import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTransactionObservation;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.producer.Producer;
@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class TransactionImpl<P extends GeneratedPublisher> extends AtomicReference<TransactionImpl.TxState> implements TransactionalPublisher.Transaction<P> {
     private final P publisher;
     private final TransactionalPublisherImpl<P> pool;
-    private final KafkaPublisherTelemetry.KafkaPublisherTransactionObservation observation;
+    private final KafkaPublisherTransactionObservation observation;
 
     public enum TxState {
         INIT, COMMIT, ABORT

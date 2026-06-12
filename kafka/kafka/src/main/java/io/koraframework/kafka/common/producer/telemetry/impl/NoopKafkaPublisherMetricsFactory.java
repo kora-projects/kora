@@ -1,4 +1,4 @@
-package io.koraframework.kafka.common.producer.telemetry;
+package io.koraframework.kafka.common.producer.telemetry.impl;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
@@ -10,7 +10,7 @@ public final class NoopKafkaPublisherMetricsFactory extends DefaultKafkaPublishe
 
     private NoopKafkaPublisherMetricsFactory() {}
 
-    private static final DefaultKafkaPublisherMetrics NOOP_METRICS = new DefaultKafkaPublisherMetrics(null) {
+    private static final DefaultKafkaPublisherMetrics NOOP_METRICS = new DefaultKafkaPublisherMetrics(DefaultKafkaPublisherTelemetry.TelemetryContext.EMPTY) {
 
         @Override
         public void reportHandleRecordTook(String topic, @Nullable Object recordKey, Object recordValue, @Nullable ProducerRecord<byte[], byte[]> record, @Nullable RecordMetadata metadata, @Nullable Throwable error, long startedRecordHandleInNanos) {

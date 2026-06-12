@@ -3,7 +3,7 @@ package io.koraframework.kafka.common.containers;
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
-import io.koraframework.kafka.common.consumer.telemetry.NoopKafkaConsumerTelemetry;
+import io.koraframework.kafka.common.consumer.telemetry.impl.NoopKafkaConsumerTelemetry;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.IntegerDeserializer;

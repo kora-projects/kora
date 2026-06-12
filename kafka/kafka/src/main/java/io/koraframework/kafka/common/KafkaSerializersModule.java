@@ -14,6 +14,7 @@ import java.util.UUID;
  * Default Kafka serializes provided by module for base types
  */
 public interface KafkaSerializersModule {
+
     @DefaultComponent
     default Serializer<String> stringSerializer() {
         return new StringSerializer();

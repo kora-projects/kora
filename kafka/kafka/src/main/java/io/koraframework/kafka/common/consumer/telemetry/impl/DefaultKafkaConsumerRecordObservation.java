@@ -1,5 +1,6 @@
-package io.koraframework.kafka.common.consumer.telemetry;
+package io.koraframework.kafka.common.consumer.telemetry.impl;
 
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerRecordObservation;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
@@ -9,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecordObservation {
 
     protected final DefaultKafkaConsumerTelemetry.TelemetryContext context;
+    protected final DefaultKafkaConsumerLoggerFactory.DefaultKafkaConsumerLogger logger;
     protected final DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics metrics;
     protected final Span span;
     protected final ConsumerRecord<?, ?> record;
@@ -18,10 +20,12 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
     private long startedRecordHandle;
 
     public DefaultKafkaConsumerRecordObservation(DefaultKafkaConsumerTelemetry.TelemetryContext context,
+                                                 DefaultKafkaConsumerLoggerFactory.DefaultKafkaConsumerLogger logger,
                                                  DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics metrics,
                                                  Span span,
                                                  ConsumerRecord<?, ?> record) {
         this.context = context;
+        this.logger = logger;
         this.metrics = metrics;
         this.record = record;
         this.span = span;
@@ -31,12 +35,7 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
     public void observeHandle() {
         this.startedRecordHandle = System.nanoTime();
 
-        context.logger().atDebug()
-            .addKeyValue("listenerName", context.listenerName())
-            .addKeyValue("topic", record.topic())
-            .addKeyValue("offset", record.offset())
-            .addKeyValue("partition", record.partition())
-            .log("KafkaListener starting handling record...");
+        logger.logRecordStart(record);
     }
 
     @Override
@@ -49,24 +48,11 @@ public class DefaultKafkaConsumerRecordObservation implements KafkaConsumerRecor
         this.metrics.reportHandleRecordTook(record, startedRecordHandle, error);
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
-
-            context.logger().atDebug()
-                .addKeyValue("listenerName", context.listenerName())
-                .addKeyValue("topic", record.topic())
-                .addKeyValue("offset", record.offset())
-                .addKeyValue("partition", record.partition())
-                .log("KafkaListener success record handled");
         } else {
             var errorValue = error.getClass().getCanonicalName();
             this.span.setAttribute(ErrorAttributes.ERROR_TYPE.getKey(), errorValue);
-
-            context.logger().atWarn()
-                .addKeyValue("listenerName", context.listenerName())
-                .addKeyValue("topic", record.topic())
-                .addKeyValue("offset", record.offset())
-                .addKeyValue("partition", record.partition())
-                .log("KafkaListener failed record handled due to: {}", error.getMessage());
         }
+        logger.logRecordEnd(record, error);
         this.span.end();
     }
 
