@@ -1,15 +1,15 @@
 package io.koraframework.validation.annotation.processor.testdata;
 
+import io.koraframework.common.Component;
 import io.koraframework.validation.common.annotation.*;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.Component;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 
 @Component
-public class ValidateFuture {
+public class ValidateCompletionStage {
 
     public static final String IGNORED = "ops";
 
@@ -37,7 +37,7 @@ public class ValidateFuture {
 
     @Range(from = 1, to = 2)
     @Validate
-    public CompletionStage<@org.jetbrains.annotations.Nullable Integer> validatedOutputNull(@Nullable ValidTaz c4) {
+    public CompletionStage<Integer> validatedOutputNull(@Nullable ValidTaz c4) {
         return (c4 == null)
                 ? CompletableFuture.completedFuture(null)
                 : CompletableFuture.completedFuture(1);
