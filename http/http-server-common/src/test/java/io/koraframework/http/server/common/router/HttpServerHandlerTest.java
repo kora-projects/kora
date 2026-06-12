@@ -1,5 +1,6 @@
 package io.koraframework.http.server.common.router;
 
+import io.koraframework.http.server.common.$HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor;
 import io.koraframework.http.server.common.telemetry.*;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -147,13 +148,16 @@ class HttpServerHandlerTest {
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             false,
+            false,
+            true,
             Duration.ofMillis(1),
+            Size.ofBytesBinary(1024),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
                 new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
             ),
-            Size.ofBytesBinary(1024)
+            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor.HttpServerCorsConfig_Defaults()
         );
     }
 

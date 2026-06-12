@@ -3,13 +3,7 @@ package io.koraframework.http.server.undertow;
 import io.undertow.server.HttpServerExchange;
 import org.jspecify.annotations.Nullable;
 
-public final class UndertowContext {
-
-    public final HttpServerExchange exchange;
-
-    public UndertowContext(HttpServerExchange exchange) {
-        this.exchange = exchange;
-    }
+public record UndertowContext(HttpServerExchange exchange) {
 
     public static final ScopedValue<UndertowContext> VALUE = ScopedValue.newInstance();
 
