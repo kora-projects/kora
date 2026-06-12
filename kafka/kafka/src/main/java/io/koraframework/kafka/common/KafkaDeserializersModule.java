@@ -14,6 +14,7 @@ import java.util.UUID;
  * Default Kafka deserializes provided by module for base types
  */
 public interface KafkaDeserializersModule {
+
     @DefaultComponent
     default Deserializer<String> stringDeserializer() {
         return new StringDeserializer();

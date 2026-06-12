@@ -4,5 +4,5 @@ import java.util.Properties;
 
 public interface KafkaConsumerTelemetryFactory {
 
-    KafkaConsumerTelemetry get(String listenerName, String listenerImpl, Properties driverProperties, KafkaConsumerTelemetryConfig config);
+    KafkaConsumerTelemetry get(String listenerConfig, String listenerCanonicalName, Properties driverProperties, KafkaConsumerTelemetryConfig config);
 }

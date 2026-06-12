@@ -1,6 +1,10 @@
-package io.koraframework.kafka.common.producer.telemetry;
+package io.koraframework.kafka.common.producer.telemetry.impl;
 
-import io.koraframework.kafka.common.producer.telemetry.DefaultKafkaPublisherMetricsFactory.DefaultKafkaPublisherMetrics;
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherRecordObservation;
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig;
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTransactionObservation;
+import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherMetricsFactory.DefaultKafkaPublisherMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -9,9 +13,6 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes;
 import io.opentelemetry.semconv.incubating.MessagingIncubatingAttributes.MessagingSystemIncubatingValues;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.NOPLogger;
 
 import java.util.Properties;
 
@@ -22,31 +23,48 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
-                                   Logger logger,
                                    Properties driverProperties,
-                                   String publisherName,
-                                   String publisherImpl,
-                                   String clientId) {}
+                                   String publisherConfig,
+                                   String publisherCanonicalName,
+                                   String publisherSimpleName,
+                                   String clientId) {
 
-    public static final String SYSTEM_NAME = "system.name";
-    public static final String SYSTEM_IMPL = "system.impl";
+        public static final TelemetryContext EMPTY = new TelemetryContext(new KafkaPublisherTelemetryConfig() {
+            @Override
+            public KafkaProducerLoggingConfig logging() {
+                return new KafkaProducerLoggingConfig() {};
+            }
+
+            @Override
+            public KafkaProducerMetricsConfig metrics() {
+                return new KafkaProducerMetricsConfig() {};
+            }
+
+            @Override
+            public KafkaProducerTracingConfig tracing() {
+                return new KafkaProducerTracingConfig() {};
+            }
+        }, false, false, DefaultKafkaPublisherTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaPublisherTelemetryFactory.NOOP_TRACER, new Properties(), "none", "none", "none", "");
+    }
+
+    public static final String SYSTEM_CONFIG = "system.path";
+    public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
+    public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
     protected final TelemetryContext context;
+    protected final DefaultKafkaPublisherLoggerFactory.DefaultKafkaPublisherLogger logger;
     protected final DefaultKafkaPublisherMetrics metrics;
 
-    public DefaultKafkaPublisherTelemetry(String publisherName,
-                                          String publisherImpl,
+    public DefaultKafkaPublisherTelemetry(String publisherConfig,
+                                          String publisherCanonicalName,
                                           KafkaPublisherTelemetryConfig config,
                                           Tracer tracer,
                                           MeterRegistry meterRegistry,
                                           DefaultKafkaPublisherMetricsFactory metricsFactory,
+                                          DefaultKafkaPublisherLoggerFactory loggerFactory,
                                           Properties driverProperties) {
         var isTraceEnabled = config.tracing().enabled() && tracer != DefaultKafkaPublisherTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultKafkaPublisherTelemetryFactory.NOOP_METER_REGISTRY;
-
-        var logger = config.logging().enabled()
-            ? LoggerFactory.getLogger(publisherImpl)
-            : NOPLogger.NOP_LOGGER;
 
         this.context = new TelemetryContext(
             config,
@@ -54,14 +72,15 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
             isMetricsEnabled,
             meterRegistry,
             tracer,
-            logger,
             driverProperties,
-            publisherName,
-            publisherImpl,
+            publisherConfig,
+            publisherCanonicalName,
+            publisherCanonicalName.substring(publisherCanonicalName.lastIndexOf('.') + 1),
             driverProperties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG, "")
         );
 
         this.metrics = metricsFactory.create(context);
+        this.logger = loggerFactory.create(context);
     }
 
     @Override
@@ -74,7 +93,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         var span = this.context.isTraceEnabled
             ? createTxSpan().startSpan()
             : Span.getInvalid();
-        return new DefaultKafkaPublisherTransactionObservation(context, span);
+        return new DefaultKafkaPublisherTransactionObservation(context, logger, span);
     }
 
     @Override
@@ -82,7 +101,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         var span = this.context.isTraceEnabled
             ? createSendSpan(topic).startSpan()
             : Span.getInvalid();
-        return new DefaultKafkaPublisherRecordObservation(context, metrics, topic, span);
+        return new DefaultKafkaPublisherRecordObservation(context, logger, metrics, topic, span);
     }
 
     protected SpanBuilder createSendSpan(String topic) {
@@ -91,8 +110,9 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE, MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, topic)
-            .setAttribute(SYSTEM_NAME, context.publisherName)
-            .setAttribute(SYSTEM_IMPL, context.publisherImpl);
+            .setAttribute(SYSTEM_CONFIG, context.publisherConfig)
+            .setAttribute(SYSTEM_NAME_SIMPLE, context.publisherSimpleName)
+            .setAttribute(SYSTEM_NAME_CANONICAL, context.publisherCanonicalName);
         for (var entry : this.context.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }
@@ -104,8 +124,9 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
         var b = this.context.tracer.spanBuilder("producer transaction")
             .setSpanKind(SpanKind.INTERNAL)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingSystemIncubatingValues.KAFKA)
-            .setAttribute(SYSTEM_NAME, context.publisherName)
-            .setAttribute(SYSTEM_IMPL, context.publisherImpl);
+            .setAttribute(SYSTEM_CONFIG, context.publisherConfig)
+            .setAttribute(SYSTEM_NAME_SIMPLE, context.publisherSimpleName)
+            .setAttribute(SYSTEM_NAME_CANONICAL, context.publisherCanonicalName);
         for (var entry : this.context.config.tracing().attributes().entrySet()) {
             b.setAttribute(entry.getKey(), entry.getValue());
         }

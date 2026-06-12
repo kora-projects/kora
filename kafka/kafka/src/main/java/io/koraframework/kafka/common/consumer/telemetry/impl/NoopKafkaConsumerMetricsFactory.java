@@ -1,4 +1,4 @@
-package io.koraframework.kafka.common.consumer.telemetry;
+package io.koraframework.kafka.common.consumer.telemetry.impl;
 
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
@@ -11,7 +11,7 @@ public final class NoopKafkaConsumerMetricsFactory extends DefaultKafkaConsumerM
 
     private NoopKafkaConsumerMetricsFactory() {}
 
-    private static final DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics NOOP_METRICS = new DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics(null) {
+    private static final DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics NOOP_METRICS = new DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics(DefaultKafkaConsumerTelemetry.TelemetryContext.EMPTY) {
 
         @Override
         public void reportHandleRecordTook(ConsumerRecord<?, ?> record, long startedRecordHandleInNanos, @Nullable Throwable error) {

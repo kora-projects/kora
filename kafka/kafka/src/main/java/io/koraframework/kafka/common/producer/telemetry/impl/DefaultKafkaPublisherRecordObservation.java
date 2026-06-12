@@ -1,9 +1,10 @@
-package io.koraframework.kafka.common.producer.telemetry;
+package io.koraframework.kafka.common.producer.telemetry.impl;
 
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
-import io.koraframework.kafka.common.producer.telemetry.DefaultKafkaPublisherMetricsFactory.DefaultKafkaPublisherMetrics;
-import io.koraframework.kafka.common.producer.telemetry.DefaultKafkaPublisherTelemetry.TelemetryContext;
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherRecordObservation;
+import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherMetricsFactory.DefaultKafkaPublisherMetrics;
+import io.koraframework.kafka.common.producer.telemetry.impl.DefaultKafkaPublisherTelemetry.TelemetryContext;
 import io.koraframework.logging.common.MDC;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
@@ -17,11 +18,12 @@ import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 
-public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTelemetry.KafkaPublisherRecordObservation {
+public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherRecordObservation {
 
     protected final long startedRecordSend = System.nanoTime();
 
     protected final TelemetryContext context;
+    protected final DefaultKafkaPublisherLoggerFactory.DefaultKafkaPublisherLogger logger;
     protected final DefaultKafkaPublisherMetrics metrics;
     protected final String topic;
     protected final Span span;
@@ -38,10 +40,12 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
     protected Throwable error;
 
     public DefaultKafkaPublisherRecordObservation(TelemetryContext context,
+                                                  DefaultKafkaPublisherLoggerFactory.DefaultKafkaPublisherLogger logger,
                                                   DefaultKafkaPublisherMetrics metrics,
                                                   String topic,
                                                   Span span) {
         this.context = context;
+        this.logger = logger;
         this.metrics = metrics;
         this.topic = topic;
         this.span = span;
@@ -62,11 +66,7 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
     @Override
     public void observeRecord(ProducerRecord<byte[], byte[]> record) {
         this.record = record;
-        this.context.logger()
-            .atDebug()
-            .addKeyValue("topic", record.topic())
-            .addKeyValue("publisherName", context.publisherName())
-            .log("KafkaPublisher starting record sending...");
+        this.logger.logRecordStart(record);
         W3CTraceContextPropagator.getInstance().inject(Context.root().with(span), record, ProducerRecordTextMapSetter.INSTANCE);
     }
 
@@ -99,21 +99,7 @@ public class DefaultKafkaPublisherRecordObservation implements KafkaPublisherTel
     @Override
     public void end() {
         this.metrics.reportHandleRecordTook(topic, key, value, record, metadata, error, startedRecordSend);
-        if (error != null) {
-            var errorType = error.getClass().getCanonicalName();
-            context.logger().atWarn()
-                .addKeyValue("errorType", errorType)
-                .addKeyValue("topic", topic)
-                .addKeyValue("publisherName", context.publisherName())
-                .log("KafkaPublisher failed record sending due to: {}", error.getMessage());
-        } else if (metadata != null) {
-            context.logger().atInfo()
-                .addKeyValue("topic", metadata.topic())
-                .addKeyValue("partition", metadata.partition())
-                .addKeyValue("offset", metadata.offset())
-                .addKeyValue("publisherName", context.publisherName())
-                .log("KafkaPublisher success record sent");
-        }
+        this.logger.logRecordEnd(topic, metadata, error);
 
         this.span.end();
     }

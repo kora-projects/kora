@@ -1,5 +1,8 @@
-package io.koraframework.kafka.common.consumer.telemetry;
+package io.koraframework.kafka.common.consumer.telemetry.impl;
 
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryConfig;
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -18,18 +21,22 @@ public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumer
     @Nullable
     private final MeterRegistry meterRegistry;
     @Nullable
+    private final DefaultKafkaConsumerLoggerFactory loggerFactory;
+    @Nullable
     private final DefaultKafkaConsumerMetricsFactory metricsFactory;
 
     public DefaultKafkaConsumerTelemetryFactory(@Nullable Tracer tracer,
                                                 @Nullable MeterRegistry meterRegistry,
+                                                @Nullable DefaultKafkaConsumerLoggerFactory loggerFactory,
                                                 @Nullable DefaultKafkaConsumerMetricsFactory metricsFactory) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
+        this.loggerFactory = loggerFactory;
         this.metricsFactory = metricsFactory;
     }
 
     @Override
-    public KafkaConsumerTelemetry get(String listenerName, String listenerImpl, Properties driverProperties, KafkaConsumerTelemetryConfig config) {
+    public KafkaConsumerTelemetry get(String listenerConfig, String listenerCanonicalName, Properties driverProperties, KafkaConsumerTelemetryConfig config) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -38,7 +45,7 @@ public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumer
 
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
         var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
-        DefaultKafkaConsumerMetricsFactory enabledMetricsFactory;
+        final DefaultKafkaConsumerMetricsFactory enabledMetricsFactory;
         if (metricEnabled) {
             enabledMetricsFactory = this.metricsFactory != null
                 ? this.metricsFactory
@@ -46,6 +53,15 @@ public final class DefaultKafkaConsumerTelemetryFactory implements KafkaConsumer
         } else {
             enabledMetricsFactory = NoopKafkaConsumerMetricsFactory.INSTANCE;
         }
-        return new DefaultKafkaConsumerTelemetry(listenerName, listenerImpl, config, tracer, meterRegistry, enabledMetricsFactory, driverProperties);
+
+        final DefaultKafkaConsumerLoggerFactory enabledLoggerFactory;
+        if (config.logging().enabled()) {
+            enabledLoggerFactory = this.loggerFactory != null
+                ? this.loggerFactory
+                : DefaultKafkaConsumerLoggerFactory.INSTANCE;
+        } else {
+            enabledLoggerFactory = NoopKafkaConsumerLoggerFactory.INSTANCE;
+        }
+        return new DefaultKafkaConsumerTelemetry(listenerConfig, listenerCanonicalName, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, driverProperties);
     }
 }
