@@ -28,7 +28,6 @@ include(
     'json:jackson-module',
     'json:json-annotation-processor',
     'json:json-symbol-processor',
-    'micrometer:micrometer-api',
     'micrometer:micrometer-module',
     'opentelemetry:opentelemetry-common',
     'opentelemetry:opentelemetry-tracing',
