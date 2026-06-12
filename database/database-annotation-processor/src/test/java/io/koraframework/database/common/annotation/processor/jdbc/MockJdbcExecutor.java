@@ -1,8 +1,8 @@
 package io.koraframework.database.common.annotation.processor.jdbc;
 
 import org.mockito.Mockito;
-import io.koraframework.database.common.telemetry.DataBaseTelemetry;
-import io.koraframework.database.common.telemetry.NoopDatabaseTelemetry;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext;
 import io.koraframework.database.jdbc.JdbcConnectionFactory;
 import io.koraframework.database.jdbc.JdbcHelper;
@@ -61,8 +61,8 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
     }
 
     @Override
-    public DataBaseTelemetry telemetry() {
-        return new NoopDatabaseTelemetry();
+    public DatabaseTelemetry telemetry() {
+        return NoopDatabaseTelemetry.INSTANCE;
     }
 
 }

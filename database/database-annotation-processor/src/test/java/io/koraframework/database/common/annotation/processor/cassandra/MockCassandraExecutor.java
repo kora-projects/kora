@@ -6,8 +6,8 @@ import com.datastax.oss.driver.api.core.cql.*;
 import io.opentelemetry.api.trace.Span;
 import org.mockito.Mockito;
 import io.koraframework.database.cassandra.CassandraConnectionFactory;
-import io.koraframework.database.common.telemetry.DataBaseObservation;
-import io.koraframework.database.common.telemetry.DataBaseTelemetry;
+import io.koraframework.database.common.telemetry.DatabaseObservation;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
@@ -27,8 +27,8 @@ public class MockCassandraExecutor implements CassandraConnectionFactory {
     public final CqlSession mockSession = Mockito.mock(CqlSession.class);
     public final Iterator<Row> iterator = Mockito.mock(Iterator.class);
     public final Row row = Mockito.mock(Row.class);
-    public final DataBaseTelemetry telemetry = Mockito.mock(DataBaseTelemetry.class);
-    public final DataBaseObservation telemetryCtx = Mockito.mock(DataBaseObservation.class);
+    public final DatabaseTelemetry telemetry = Mockito.mock(DatabaseTelemetry.class);
+    public final DatabaseObservation telemetryCtx = Mockito.mock(DatabaseObservation.class);
 
     public MockCassandraExecutor() {
         reset();
@@ -60,7 +60,7 @@ public class MockCassandraExecutor implements CassandraConnectionFactory {
     }
 
     @Override
-    public DataBaseTelemetry telemetry() {
+    public DatabaseTelemetry telemetry() {
         return this.telemetry;
     }
 }

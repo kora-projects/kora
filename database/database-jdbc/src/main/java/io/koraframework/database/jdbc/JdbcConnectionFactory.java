@@ -5,7 +5,7 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.database.common.QueryContext;
-import io.koraframework.database.common.telemetry.DataBaseTelemetry;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext.PostCommitAction;
 import io.koraframework.database.jdbc.ConnectionContext.PostRollbackAction;
 
@@ -34,7 +34,7 @@ public interface JdbcConnectionFactory {
 
     Connection newConnection();
 
-    DataBaseTelemetry telemetry();
+    DatabaseTelemetry telemetry();
 
     default <T> T query(QueryContext queryContext, JdbcHelper.SqlFunction1<PreparedStatement, T> callback) {
         var observation = this.telemetry().observe(queryContext);

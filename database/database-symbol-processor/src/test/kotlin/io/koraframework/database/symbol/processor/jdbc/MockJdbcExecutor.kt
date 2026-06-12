@@ -5,8 +5,8 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-import io.koraframework.database.common.telemetry.DataBaseObservation
-import io.koraframework.database.common.telemetry.DataBaseTelemetry
+import io.koraframework.database.common.telemetry.DatabaseObservation
+import io.koraframework.database.common.telemetry.DatabaseTelemetry
 import io.koraframework.database.jdbc.ConnectionContext
 import io.koraframework.database.jdbc.JdbcConnectionFactory
 import io.koraframework.database.jdbc.JdbcHelper.SqlFunction1
@@ -18,8 +18,8 @@ class MockJdbcExecutor : JdbcConnectionFactory {
 
     val preparedStatement = Mockito.mock(PreparedStatement::class.java)!!
     val callableStatement = Mockito.mock(CallableStatement::class.java)!!
-    val telemetry = Mockito.mock(DataBaseTelemetry::class.java)!!
-    val telemetryCtx = Mockito.mock(DataBaseObservation::class.java)!!
+    val telemetry = Mockito.mock(DatabaseTelemetry::class.java)!!
+    val telemetryCtx = Mockito.mock(DatabaseObservation::class.java)!!
     val mockConnection = Mockito.mock(Connection::class.java)!!
     val mockConnectionContext = ConnectionContext(mockConnection)
 

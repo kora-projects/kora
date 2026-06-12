@@ -11,8 +11,8 @@ import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
 import io.koraframework.common.util.Configurer;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.common.telemetry.DataBaseTelemetry;
-import io.koraframework.database.common.telemetry.DataBaseTelemetryFactory;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
+import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -24,10 +24,10 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
 
     private final JdbcDatabaseConfig databaseConfig;
     private final HikariDataSource dataSource;
-    private final DataBaseTelemetry telemetry;
+    private final DatabaseTelemetry telemetry;
     private final ScopedValue<ConnectionContext> connectionContext = ScopedValue.newInstance();
 
-    public JdbcDatabase(JdbcDatabaseConfig config, DataBaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {
+    public JdbcDatabase(JdbcDatabaseConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {
         this.databaseConfig = Objects.requireNonNull(config);
         var jdbcUrl = config.jdbcUrl();
         var jdbcDatabase = jdbcUrl.substring(5, jdbcUrl.indexOf(":", 5));
@@ -88,7 +88,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     }
 
     @Override
-    public DataBaseTelemetry telemetry() {
+    public DatabaseTelemetry telemetry() {
         return this.telemetry;
     }
 
