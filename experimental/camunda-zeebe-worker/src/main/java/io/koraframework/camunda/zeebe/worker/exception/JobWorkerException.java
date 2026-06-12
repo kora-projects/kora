@@ -1,4 +1,4 @@
-package io.koraframework.camunda.zeebe.worker;
+package io.koraframework.camunda.zeebe.worker.exception;
 
 import org.jspecify.annotations.Nullable;
 
