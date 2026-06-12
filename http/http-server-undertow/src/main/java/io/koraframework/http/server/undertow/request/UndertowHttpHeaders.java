@@ -1,4 +1,4 @@
-package io.koraframework.http.server.undertow;
+package io.koraframework.http.server.undertow.request;
 
 import io.undertow.util.HeaderMap;
 import org.jspecify.annotations.NullMarked;
@@ -9,8 +9,13 @@ import io.koraframework.http.common.header.HttpHeaders;
 import java.util.*;
 
 @NullMarked
-public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHeaders {
+public final class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHeaders {
+
     private final HeaderMap headerMap;
+    @Nullable
+    private volatile Set<String> names;
+    @Nullable
+    private volatile List<Map.Entry<String, List<String>>> entries;
 
     public UndertowHttpHeaders(HeaderMap headerMap) {
         this.headerMap = headerMap;
@@ -49,28 +54,33 @@ public class UndertowHttpHeaders extends AbstractHttpHeaders implements HttpHead
 
     @Override
     public Set<String> names() {
-        var names = new HashSet<String>();
+        var names = this.names;
+        if (names != null) {
+            return names;
+        }
+        names = new LinkedHashSet<>();
         for (var headerName : this.headerMap.getHeaderNames()) {
             names.add(headerName.toString().toLowerCase());
         }
-        return names;
+        return this.names = Collections.unmodifiableSet(names);
     }
 
     @Override
     @Nullable
     public Iterator<Map.Entry<String, List<String>>> iterator() {
-        var i = this.headerMap.iterator();
-        return new Iterator<>() {
-            @Override
-            public boolean hasNext() {
-                return i.hasNext();
-            }
+        var entries = this.entries;
+        if (entries != null) {
+            return entries.iterator();
+        }
+        entries = new ArrayList<>(this.headerMap.size());
+        for (var header : this.headerMap) {
+            entries.add(Map.entry(header.getHeaderName().toString().toLowerCase(), Collections.unmodifiableList(header)));
+        }
+        return (this.entries = Collections.unmodifiableList(entries)).iterator();
+    }
 
-            @Override
-            public Map.Entry<String, List<String>> next() {
-                var next = i.next();
-                return Map.entry(next.getHeaderName().toString().toLowerCase(), next);
-            }
-        };
+    @Override
+    public String toString() {
+        return headerMap.toString();
     }
 }

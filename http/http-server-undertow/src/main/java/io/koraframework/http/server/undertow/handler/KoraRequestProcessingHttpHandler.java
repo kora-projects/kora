@@ -1,15 +1,15 @@
-package io.koraframework.http.server.undertow;
+package io.koraframework.http.server.undertow.handler;
 
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.http.common.HttpResultCode;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
+import io.koraframework.http.server.undertow.UndertowContext;
 import io.koraframework.http.server.undertow.request.UndertowHttpRouterRequest;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
@@ -35,14 +35,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Objects;
 
-public class RequestProcessingHttpHandler implements HttpHandler {
+public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(HttpServer.class);
+    private static final Logger logger = LoggerFactory.getLogger(KoraRequestProcessingHttpHandler.class);
 
     private final HttpServerTelemetry telemetry;
     private final HttpServerHandler httpServerHandler;
 
-    public RequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerHandler httpServerHandler) {
+    public KoraRequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerHandler httpServerHandler) {
         this.telemetry = telemetry;
         this.httpServerHandler = httpServerHandler;
     }
@@ -98,7 +98,7 @@ public class RequestProcessingHttpHandler implements HttpHandler {
                     } catch (Exception e) {
                         exception.addSuppressed(e);
                     }
-                    log.warn("Error dropped", exception);
+                    logger.warn("Error dropped", exception);
                 } finally {
                     exchange.endExchange();
                 }
@@ -109,7 +109,7 @@ public class RequestProcessingHttpHandler implements HttpHandler {
         httpResponse = observation.observeResponse(httpResponse);
         var headers = httpResponse.headers();
         exchange.setStatusCode(httpResponse.code());
-        exchange.getResponseHeaders().put(Headers.SERVER, "kora/undertow");
+        exchange.getResponseHeaders().put(Headers.SERVER, "Kora");
         var body = httpResponse.body();
         if (body == null) {
             this.setHeaders(exchange.getResponseHeaders(), headers, null);
@@ -177,7 +177,7 @@ public class RequestProcessingHttpHandler implements HttpHandler {
             return;
         }
         if (buffer.hasArray()) {
-            outputStream.write(buffer.array(), buffer.arrayOffset(), buffer.remaining());
+            outputStream.write(buffer.array(), buffer.arrayOffset() + buffer.position(), buffer.remaining());
             return;
         }
         try (var pooled = exchange.getConnection().getByteBufferPool().getArrayBackedPool().allocate()) {

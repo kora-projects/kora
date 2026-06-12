@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public final class UndertowRequestHttpBody implements HttpBodyInput {
+
     private final HttpServerExchange exchange;
 
     public UndertowRequestHttpBody(HttpServerExchange exchange) {
@@ -37,5 +38,10 @@ public final class UndertowRequestHttpBody implements HttpBodyInput {
     @Override
     public void close() throws IOException {
         this.exchange.getInputStream().close();
+    }
+
+    @Override
+    public String toString() {
+        return exchange.toString();
     }
 }

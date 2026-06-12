@@ -17,8 +17,8 @@ import io.koraframework.http.server.common.request.mapper.HttpServerRequestMappe
 import io.koraframework.http.server.common.response.mapper.HttpServerResponseMapperModule;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.system.*;
-import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerBodyConverter;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
+import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerBodyConverter;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerLoggerFactory;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerMetricsFactory;
 import io.koraframework.http.server.common.telemetry.impl.DefaultHttpServerTelemetryFactory;
@@ -48,10 +48,10 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
 
     @DefaultComponent
     default HttpServerTelemetryFactory defaultHttpServerTelemetryFactory(@Nullable MeterRegistry meterRegistry,
-                                                                        @Nullable Tracer tracer,
-                                                                        @Nullable DefaultHttpServerLoggerFactory loggerFactory,
-                                                                        @Nullable DefaultHttpServerMetricsFactory metricsFactory,
-                                                                        @Nullable DefaultHttpServerBodyConverter bodyLogger) {
+                                                                         @Nullable Tracer tracer,
+                                                                         @Nullable DefaultHttpServerLoggerFactory loggerFactory,
+                                                                         @Nullable DefaultHttpServerMetricsFactory metricsFactory,
+                                                                         @Nullable DefaultHttpServerBodyConverter bodyLogger) {
         return new DefaultHttpServerTelemetryFactory(meterRegistry, tracer, loggerFactory, metricsFactory, bodyLogger);
     }
 
@@ -81,7 +81,7 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
     }
 
     @SystemApi
-    default HttpServerHandler systemHttpServerHandler(@Tag(SystemApi.class) All<HttpServerRequestHandler> handlers, @Tag(SystemApi.class) All<HttpServerInterceptor> interceptors, HttpServerConfig config) {
+    default HttpServerHandler systemHttpServerHandler(@SystemApi All<HttpServerRequestHandler> handlers, @SystemApi All<HttpServerInterceptor> interceptors, HttpServerConfig config) {
         return new HttpServerHandler(handlers, interceptors, config);
     }
 }
