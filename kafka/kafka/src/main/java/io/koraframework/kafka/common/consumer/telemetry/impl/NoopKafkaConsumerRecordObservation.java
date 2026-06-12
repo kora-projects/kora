@@ -1,9 +1,13 @@
-package io.koraframework.kafka.common.consumer.telemetry;
+package io.koraframework.kafka.common.consumer.telemetry.impl;
 
+import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerRecordObservation;
 import io.opentelemetry.api.trace.Span;
 
-public class NoopKafkaConsumerRecordObservation implements KafkaConsumerRecordObservation {
+public final class NoopKafkaConsumerRecordObservation implements KafkaConsumerRecordObservation {
+
     public static final NoopKafkaConsumerRecordObservation INSTANCE = new NoopKafkaConsumerRecordObservation();
+
+    private NoopKafkaConsumerRecordObservation() {}
 
     @Override
     public Span span() {

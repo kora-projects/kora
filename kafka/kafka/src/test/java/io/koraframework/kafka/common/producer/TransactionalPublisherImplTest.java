@@ -11,6 +11,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import io.koraframework.kafka.common.producer.telemetry.*;
+import io.koraframework.kafka.common.producer.telemetry.impl.NoopKafkaPublisherTelemetry;
 import io.koraframework.test.kafka.KafkaParams;
 import io.koraframework.test.kafka.KafkaTestContainer;
 

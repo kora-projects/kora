@@ -1,5 +1,6 @@
-package io.koraframework.kafka.common.producer.telemetry;
+package io.koraframework.kafka.common.producer.telemetry.impl;
 
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTransactionObservation;
 import io.opentelemetry.api.trace.Span;
 import org.apache.kafka.clients.consumer.ConsumerGroupMetadata;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
@@ -8,8 +9,11 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Map;
 
-public class NoopKafkaPublisherTransactionObservation implements KafkaPublisherTelemetry.KafkaPublisherTransactionObservation {
+public final class NoopKafkaPublisherTransactionObservation implements KafkaPublisherTransactionObservation {
+
     public static final NoopKafkaPublisherTransactionObservation INSTANCE = new NoopKafkaPublisherTransactionObservation();
+
+    private NoopKafkaPublisherTransactionObservation() {}
 
     @Override
     public void observeOffsets(Map<TopicPartition, OffsetAndMetadata> offsets, ConsumerGroupMetadata groupMetadata) {

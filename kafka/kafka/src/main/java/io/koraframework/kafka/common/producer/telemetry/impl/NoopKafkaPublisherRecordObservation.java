@@ -1,12 +1,16 @@
-package io.koraframework.kafka.common.producer.telemetry;
+package io.koraframework.kafka.common.producer.telemetry.impl;
 
+import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherRecordObservation;
 import io.opentelemetry.api.trace.Span;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.jspecify.annotations.Nullable;
 
-public class NoopKafkaPublisherRecordObservation implements KafkaPublisherTelemetry.KafkaPublisherRecordObservation {
+public final class NoopKafkaPublisherRecordObservation implements KafkaPublisherRecordObservation {
+
     public static final NoopKafkaPublisherRecordObservation INSTANCE = new NoopKafkaPublisherRecordObservation();
+
+    private NoopKafkaPublisherRecordObservation() {}
 
     @Override
     public void onCompletion(@Nullable RecordMetadata metadata, @Nullable Exception exception) {}
