@@ -70,7 +70,7 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
     @Override
     public HttpServerObservation observe(HttpServerRequest request) {
-        var span = context.config().tracing().enabled() && request.pathTemplate() != null
+        var span = context.isTraceEnabled && request.pathTemplate() != null
             ? startSpan(request).startSpan()
             : Span.getInvalid();
         return new DefaultHttpServerObservation(context, logger, metrics, request, request.requestStartTimeInNanos(), span);

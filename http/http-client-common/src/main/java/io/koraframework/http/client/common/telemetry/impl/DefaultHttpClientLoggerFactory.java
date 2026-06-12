@@ -180,7 +180,7 @@ public class DefaultHttpClientLoggerFactory {
             requestLog.atWarn()
                 .addKeyValue("httpResponse", arg)
                 .addKeyValue("clientConfigPath", this.context.clientConfigPath())
-                .log("HttpClient received error");
+                .log("HttpClient error received");
         }
 
         protected boolean shouldWritePathFull(Logger logger) {
