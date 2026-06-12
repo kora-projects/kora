@@ -9,6 +9,7 @@ import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.micrometer.module.resilient.MicrometerCircuitBreakerMetrics;
 import io.koraframework.micrometer.module.resilient.MicrometerFallbackMetrics;
+import io.koraframework.micrometer.module.resilient.MicrometerRateLimiterMetrics;
 import io.koraframework.micrometer.module.resilient.MicrometerRetryMetrics;
 import io.koraframework.micrometer.module.resilient.MicrometerTimeoutMetrics;
 
@@ -27,6 +28,11 @@ public interface MetricsModule {
     @DefaultComponent
     default MicrometerFallbackMetrics micrometerFallbackMetrics(MeterRegistry meterRegistry) {
         return new MicrometerFallbackMetrics(meterRegistry);
+    }
+
+    @DefaultComponent
+    default MicrometerRateLimiterMetrics micrometerRateLimiterMetrics(MeterRegistry meterRegistry) {
+        return new MicrometerRateLimiterMetrics(meterRegistry);
     }
 
     @DefaultComponent
