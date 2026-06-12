@@ -49,6 +49,8 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         val superMethod = getSuperMethod(method, superCall)
         val builder = CodeBlock.builder()
 
+        val isResultNullable = method.returnType!!.resolve().isMarkedNullable
+        val suffixCheck = if (isResultNullable) "" else "!!"
         if (operation.executions.size == 1) {
             val keyBlock = CodeBlock.of("val _key = %L\n", operation.executions[0].cacheKey!!.code)
             val isSingleNullableParam = operation.executions[0].type.isMarkedNullable
@@ -56,14 +58,14 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
                 CodeBlock.of(
                     """
                         return if (_key != null) {
-                            %L.computeIfAbsent(_key) { %L }
+                            %L.computeIfAbsent(_key) { %L }%L
                         } else {
                             %L
                         }
-                    """.trimIndent(), operation.executions[0].field, superMethod, superMethod
+                    """.trimIndent(), operation.executions[0].field, superMethod, suffixCheck, superMethod
                 )
             } else {
-                CodeBlock.of("return %L.computeIfAbsent(_key) { %L }", operation.executions[0].field, superMethod)
+                CodeBlock.of("return %L.computeIfAbsent(_key) { %L }%L", operation.executions[0].field, superMethod, suffixCheck)
             }
 
             return CodeBlock.builder()

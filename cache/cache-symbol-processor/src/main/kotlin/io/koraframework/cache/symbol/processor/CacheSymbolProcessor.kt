@@ -357,7 +357,7 @@ class CacheSymbolProcessor(
             )
 
             val keyName = "_key" + (i + 1)
-            keyBuilder.addStatement("val %L = %L.apply(key.%L!!)!!", keyName, mapperName, recordField.simpleName.asString())
+            keyBuilder.addStatement("val %L = %L.apply(key!!.%L!!)!!", keyName, mapperName, recordField.simpleName.asString())
             if (i == 0) {
                 compositeKeyBuilder.add("val _compositeKey = %T(", ByteArray::class)
                 for (j in recordFields.indices) {
