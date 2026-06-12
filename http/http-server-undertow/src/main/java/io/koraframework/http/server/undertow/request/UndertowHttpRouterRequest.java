@@ -5,17 +5,18 @@ import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.router.HttpRouterRequest;
-import io.koraframework.http.server.undertow.UndertowHttpHeaders;
 
 import java.io.IOException;
 import java.util.*;
 
-public class UndertowHttpRouterRequest implements HttpRouterRequest {
+public final class UndertowHttpRouterRequest implements HttpRouterRequest {
+
     private final HttpServerExchange exchange;
     private final String method;
     private final String path;
-    private volatile HttpBodyInput body;
     private final UndertowHttpHeaders headers;
+
+    private volatile HttpBodyInput body;
 
     public UndertowHttpRouterRequest(HttpServerExchange exchange) {
         this.exchange = exchange;
@@ -99,5 +100,10 @@ public class UndertowHttpRouterRequest implements HttpRouterRequest {
             return HttpBody.empty();
         }
         return new UndertowRequestHttpBody(exchange);
+    }
+
+    @Override
+    public String toString() {
+        return exchange.toString();
     }
 }

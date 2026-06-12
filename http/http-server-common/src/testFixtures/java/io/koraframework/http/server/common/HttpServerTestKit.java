@@ -971,13 +971,16 @@ public abstract class HttpServerTestKit {
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             false,
+            false,
+            true,
             Duration.ofMillis(1),
+            Size.of(1, Size.Type.GiB),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
                 new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
             ),
-            Size.of(1, Size.Type.GiB)
+            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor.HttpServerCorsConfig_Defaults()
         );
         var publicApiHandler = new HttpServerHandler(List.of(handlers), interceptors, config);
         this.httpServer = this.httpServer(valueOf(config), publicApiHandler, this.telemetry);

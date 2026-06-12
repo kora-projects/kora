@@ -47,7 +47,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
         this.name = name;
         this.xnioWorker = xnioWorker;
         this.configurer = configurer;
-        var handler = (HttpHandler) new VirtualThreadHttpHandler(name, (exchange) -> httpHandler.get().handleRequest(exchange));
+
+        var handler = httpHandler.get();
         if (handlerConfigurer != null) {
             handler = handlerConfigurer.configure(handler);
         }
@@ -108,6 +109,8 @@ public class UndertowHttpServer implements HttpServer, ReadinessProbe {
             .setServerOption(Options.READ_TIMEOUT, ((int) config.socketReadTimeout().toMillis()))
             .setServerOption(Options.WRITE_TIMEOUT, ((int) config.socketWriteTimeout().toMillis()))
             .setServerOption(Options.KEEP_ALIVE, config.socketKeepAliveEnabled())
+            .setServerOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE, config.headerKeepAliveEnabled())
+            .setServerOption(UndertowOptions.ALWAYS_SET_DATE, config.headerServerDateEnabled())
             .setServerOption(UndertowOptions.MAX_ENTITY_SIZE, config.maxRequestBodySize().toBytes());
 
         if (this.configurer != null) {
