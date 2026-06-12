@@ -9,8 +9,8 @@ import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
 import io.koraframework.database.cassandra.CassandraConnectionFactory
 import io.koraframework.database.common.QueryContext
-import io.koraframework.database.common.telemetry.DataBaseTelemetry
-import io.koraframework.database.common.telemetry.NoopDataBaseObservation
+import io.koraframework.database.common.telemetry.DatabaseTelemetry
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseObservation
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.function.Function
@@ -33,7 +33,7 @@ class MockCassandraExecutor : CassandraConnectionFactory {
     ) as Iterator<Row>
     val row = Mockito.mock(Row::class.java)
     val batchStatementBuilder: BatchStatementBuilder = Mockito.mock(BatchStatementBuilder::class.java)
-    val telemetry = Mockito.mock(DataBaseTelemetry::class.java)
+    val telemetry = Mockito.mock(DatabaseTelemetry::class.java)
 
     fun reset() {
         Mockito.reset(resultSet, asyncResultSet, boundStatementBuilder, preparedStatement, boundStatement, mockSession, iterator, row, batchStatementBuilder, telemetry)
@@ -48,7 +48,7 @@ class MockCassandraExecutor : CassandraConnectionFactory {
         Mockito.mockStatic(BatchStatement::class.java).use { ignored ->
             whenever(BatchStatement.builder(DefaultBatchType.UNLOGGED)).thenReturn(batchStatementBuilder)
         }
-        whenever(telemetry.observe(any())).thenReturn(NoopDataBaseObservation())
+        whenever(telemetry.observe(any())).thenReturn(NoopDatabaseObservation.INSTANCE)
         whenever(mockSession.executeAsync(any<Statement<*>>())).thenReturn(CompletableFuture.completedFuture(MockAsyncResultSet(listOf())))
         whenever(mockSession.execute(any<Statement<*>>())).thenReturn(resultSet)
     }
@@ -61,7 +61,7 @@ class MockCassandraExecutor : CassandraConnectionFactory {
         return mockSession
     }
 
-    override fun telemetry(): DataBaseTelemetry {
+    override fun telemetry(): DatabaseTelemetry {
         return telemetry
     }
 
