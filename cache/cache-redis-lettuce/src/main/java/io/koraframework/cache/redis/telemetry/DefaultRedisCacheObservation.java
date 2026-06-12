@@ -14,6 +14,7 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
 
     protected final String operation;
     protected final DefaultRedisCacheTelemetry.TelemetryContext context;
+    protected final DefaultRedisCacheLoggerFactory.DefaultRedisCacheLogger logger;
     protected final DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics metrics;
     protected final Span span;
 
@@ -30,32 +31,26 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
 
     public DefaultRedisCacheObservation(String operation,
                                         DefaultRedisCacheTelemetry.TelemetryContext context,
+                                        DefaultRedisCacheLoggerFactory.DefaultRedisCacheLogger logger,
                                         DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics metrics,
                                         Span span) {
         this.operation = operation;
         this.context = context;
+        this.logger = logger;
         this.metrics = metrics;
         this.span = span;
     }
 
     @Override
     public void observeKey(Object key) {
-        this.context.logger().atTrace()
-            .addKeyValue("operation", this.operation)
-            .addKeyValue("cacheName", this.context.cacheName())
-            .addKeyValue("key", key)
-            .log("Redis Cache operation started...");
         this.key = key;
+        this.logger.logStart(this.operation, key);
     }
 
     @Override
     public void observeKeys(Collection<?> keys) {
-        this.context.logger().atTrace()
-            .addKeyValue("operation", this.operation)
-            .addKeyValue("cacheName", this.context.cacheName())
-            .addKeyValue("keys", keys.size())
-            .log("Redis Cache operation started...");
         this.keys = keys;
+        this.logger.logStart(this.operation, keys);
     }
 
     @Override
@@ -76,12 +71,8 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
     @Override
     public void end() {
         if (error != null) {
-            this.context.logger().atWarn()
-                .addKeyValue("operation", this.operation)
-                .addKeyValue("cacheName", this.context.cacheName())
-                .log("Redis Cache operation failed due to: {}", error.getMessage());
-
             metrics.reportCommandTook(operation, operationStarted, error);
+            logger.logEnd(operation, operationStarted, error);
             span.end();
             return;
         }
@@ -89,36 +80,24 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
         span.setStatus(StatusCode.OK);
         metrics.reportCommandTook(operation, operationStarted, null);
 
+        var retrieved = 0;
+        var missed = 0;
         if (operation.startsWith("GET")) {
             if (value != null) {
                 metrics.reportRatioChange(operation, RatioType.HIT, 1);
+                retrieved = 1;
             } else if (values != null && !values.isEmpty()) {
                 metrics.reportRatioChange(operation, RatioType.HIT, values.size());
+                retrieved = values.size();
             } else if (key != null) {
                 metrics.reportRatioChange(operation, RatioType.MISS, 1);
+                missed = 1;
             } else if (keys != null) {
                 metrics.reportRatioChange(operation, RatioType.MISS, keys.size());
+                missed = keys.size();
             }
-
-            if (value == null && (values == null || values.isEmpty())) {
-                this.context.logger().atTrace()
-                    .addKeyValue("operation", this.operation)
-                    .addKeyValue("cacheName", this.context.cacheName())
-                    .log("Redis Cache operation didn't retried value");
-            } else {
-                var retried = value != null ? 1 : values.size();
-                this.context.logger().atDebug()
-                    .addKeyValue("operation", this.operation)
-                    .addKeyValue("cacheName", this.context.cacheName())
-                    .addKeyValue("retried", retried)
-                    .log("Redis Cache operation retried value");
-            }
-        } else {
-            this.context.logger().atTrace()
-                .addKeyValue("operation", this.operation)
-                .addKeyValue("cacheName", this.context.cacheName())
-                .log("Redis Cache operation completed");
         }
+        logger.logEnd(operation, operationStarted, retrieved, missed);
         span.end();
     }
 

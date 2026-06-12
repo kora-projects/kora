@@ -40,17 +40,21 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
 
         V value = caffeine.getIfPresent(key);
         if (value == null) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "GET")
-                .addKeyValue("key", key)
-                .log("Caffeine Cache operation didn't retrieved value");
+            if (logger.isTraceEnabled()) {
+                logger.atTrace()
+                    .addKeyValue("cacheName", cacheName)
+                    .addKeyValue("operation", "GET")
+                    .addKeyValue("key", key)
+                    .log("Caffeine Cache operation didn't retrieved value");
+            }
         } else {
-            logger.atDebug()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "GET")
-                .addKeyValue("key", key)
-                .log("Caffeine Cache operation retrieved value");
+            if (logger.isDebugEnabled()) {
+                logger.atDebug()
+                    .addKeyValue("cacheName", cacheName)
+                    .addKeyValue("operation", "GET")
+                    .addKeyValue("key", key)
+                    .log("Caffeine Cache operation retrieved value");
+            }
         }
         return value;
     }
@@ -62,55 +66,67 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         }
 
         var values = caffeine.getAllPresent(keys);
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "GET_MANY")
-            .addKeyValue("keys", keys.size())
-            .addKeyValue("values", values.size())
-            .log("Caffeine Cache operation completed");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "GET_MANY")
+                .addKeyValue("keys", keys.size())
+                .addKeyValue("values", values.size())
+                .log("Caffeine Cache operation completed");
+        }
         return values;
     }
 
     @Override
     public Map<K, V> getAll() {
         var values = Collections.unmodifiableMap(caffeine.asMap());
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "GET_ALL")
-            .addKeyValue("values", values.size())
-            .log("Caffeine Cache operation completed");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "GET_ALL")
+                .addKeyValue("values", values.size())
+                .log("Caffeine Cache operation completed");
+        }
         return values;
     }
 
     @Override
     public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
         if (key == null) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-                .log("Caffeine Cache operation empty key provided, executing mapping function...");
+            if (logger.isTraceEnabled()) {
+                logger.atTrace()
+                    .addKeyValue("cacheName", cacheName)
+                    .addKeyValue("operation", "COMPUTE_IF_ABSENT")
+                    .log("Caffeine Cache operation empty key provided, executing mapping function...");
+            }
             return mappingFunction.apply(key);
         }
 
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-            .addKeyValue("key", key)
-            .log("Caffeine Cache operation started...");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "COMPUTE_IF_ABSENT")
+                .addKeyValue("key", key)
+                .log("Caffeine Cache operation started...");
+        }
 
         var value = caffeine.get(key, mappingFunction);
         if (value == null) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-                .addKeyValue("key", key)
-                .log("Caffeine Cache operation completed without any value");
+            if (logger.isTraceEnabled()) {
+                logger.atTrace()
+                    .addKeyValue("cacheName", cacheName)
+                    .addKeyValue("operation", "COMPUTE_IF_ABSENT")
+                    .addKeyValue("key", key)
+                    .log("Caffeine Cache operation completed without any value");
+            }
         } else {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-                .addKeyValue("key", key)
-                .log("Caffeine Cache operation completed with value");
+            if (logger.isTraceEnabled()) {
+                logger.atTrace()
+                    .addKeyValue("cacheName", cacheName)
+                    .addKeyValue("operation", "COMPUTE_IF_ABSENT")
+                    .addKeyValue("key", key)
+                    .log("Caffeine Cache operation completed with value");
+            }
         }
         return value;
     }
@@ -119,30 +135,36 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     @Override
     public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
-                .log("Caffeine Cache operation empty keys provided, executing mapping function...");
+            if (logger.isTraceEnabled()) {
+                logger.atTrace()
+                    .addKeyValue("cacheName", cacheName)
+                    .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
+                    .log("Caffeine Cache operation empty keys provided, executing mapping function...");
+            }
             return mappingFunction.apply(Collections.emptySet());
         }
 
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
-            .addKeyValue("keys", keys.size())
-            .log("Caffeine Cache operation started...");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
+                .addKeyValue("keys", keys.size())
+                .log("Caffeine Cache operation started...");
+        }
 
         var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
         if (value == null) {
             value = Collections.emptyMap();
         }
 
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
-            .addKeyValue("keys", keys.size())
-            .addKeyValue("values", value.size())
-            .log("Caffeine Cache operation completed");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
+                .addKeyValue("keys", keys.size())
+                .addKeyValue("values", value.size())
+                .log("Caffeine Cache operation completed");
+        }
         return value;
     }
 
@@ -152,11 +174,13 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         }
 
         caffeine.put(key, value);
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "PUT")
-            .addKeyValue("key", key)
-            .log("Caffeine Cache operation completed");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "PUT")
+                .addKeyValue("key", key)
+                .log("Caffeine Cache operation completed");
+        }
         return value;
     }
 
@@ -167,11 +191,13 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         }
 
         caffeine.putAll(keyAndValues);
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "PUT_MANY")
-            .addKeyValue("keys", keyAndValues.size())
-            .log("Caffeine Cache operation completed");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "PUT_MANY")
+                .addKeyValue("keys", keyAndValues.size())
+                .log("Caffeine Cache operation completed");
+        }
 
         return keyAndValues;
     }
@@ -183,11 +209,13 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         }
 
         caffeine.invalidate(key);
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "INVALIDATE")
-            .addKeyValue("key", key)
-            .log("Caffeine Cache operation completed");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "INVALIDATE")
+                .addKeyValue("key", key)
+                .log("Caffeine Cache operation completed");
+        }
     }
 
     @Override
@@ -197,19 +225,23 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
         }
 
         caffeine.invalidateAll(keys);
-        logger.atTrace()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "INVALIDATE_MANY")
-            .addKeyValue("keys", keys.size())
-            .log("Caffeine Cache operation completed");
+        if (logger.isTraceEnabled()) {
+            logger.atTrace()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "INVALIDATE_MANY")
+                .addKeyValue("keys", keys.size())
+                .log("Caffeine Cache operation completed");
+        }
     }
 
     @Override
     public void invalidateAll() {
         caffeine.invalidateAll();
-        logger.atDebug()
-            .addKeyValue("cacheName", cacheName)
-            .addKeyValue("operation", "INVALIDATE_ALL")
-            .log("Caffeine Cache operation completed");
+        if (logger.isDebugEnabled()) {
+            logger.atDebug()
+                .addKeyValue("cacheName", cacheName)
+                .addKeyValue("operation", "INVALIDATE_ALL")
+                .log("Caffeine Cache operation completed");
+        }
     }
 }

@@ -16,13 +16,17 @@ public final class DefaultRedisCacheTelemetryFactory implements RedisCacheTeleme
     @Nullable
     private final MeterRegistry meterRegistry;
     @Nullable
+    private final DefaultRedisCacheLoggerFactory loggerFactory;
+    @Nullable
     private final DefaultRedisCacheMetricsFactory metricsFactory;
 
     public DefaultRedisCacheTelemetryFactory(@Nullable Tracer tracer,
                                              @Nullable MeterRegistry meterRegistry,
+                                             @Nullable DefaultRedisCacheLoggerFactory loggerFactory,
                                              @Nullable DefaultRedisCacheMetricsFactory metricsFactory) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
+        this.loggerFactory = loggerFactory;
         this.metricsFactory = metricsFactory;
     }
 
@@ -36,7 +40,7 @@ public final class DefaultRedisCacheTelemetryFactory implements RedisCacheTeleme
 
         var tracer = traceEnabled ? this.tracer : NOOP_TRACER;
         var meterRegistry = metricEnabled ? this.meterRegistry : NOOP_METER_REGISTRY;
-        DefaultRedisCacheMetricsFactory enabledMetricsFactory;
+        final DefaultRedisCacheMetricsFactory enabledMetricsFactory;
         if (metricEnabled) {
             enabledMetricsFactory = this.metricsFactory != null
                 ? this.metricsFactory
@@ -45,6 +49,15 @@ public final class DefaultRedisCacheTelemetryFactory implements RedisCacheTeleme
             enabledMetricsFactory = NoopRedisCacheMetricsFactory.INSTANCE;
         }
 
-        return new DefaultRedisCacheTelemetry(cacheName, cacheImpl, config, tracer, meterRegistry, enabledMetricsFactory);
+        final DefaultRedisCacheLoggerFactory enabledLoggerFactory;
+        if (config.logging().enabled()) {
+            enabledLoggerFactory = this.loggerFactory != null
+                ? this.loggerFactory
+                : DefaultRedisCacheLoggerFactory.INSTANCE;
+        } else {
+            enabledLoggerFactory = NoopRedisCacheLoggerFactory.INSTANCE;
+        }
+
+        return new DefaultRedisCacheTelemetry(cacheName, cacheImpl, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
     }
 }

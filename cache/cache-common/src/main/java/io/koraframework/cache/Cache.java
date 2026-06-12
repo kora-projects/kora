@@ -61,7 +61,8 @@ public interface Cache<K, V> {
      * @param mappingFunction to use for value computing
      * @return existing or computed value
      */
-    V computeIfAbsent(K key, Function<K, V> mappingFunction);
+    @Nullable
+    V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction);
 
     /**
      * @param keys            to look for value or compute and put if absent
