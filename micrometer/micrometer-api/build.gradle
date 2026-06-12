@@ -1,5 +1,0 @@
-dependencies {
-    annotationProcessor project(':config:config-annotation-processor')
-
-    api libs.micrometer.core
-}
