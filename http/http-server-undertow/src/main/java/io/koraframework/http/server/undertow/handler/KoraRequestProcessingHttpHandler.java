@@ -35,14 +35,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Objects;
 
-public final class KoraRequestHttpHandler implements HttpHandler {
+public final class KoraRequestProcessingHttpHandler implements HttpHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(KoraRequestHttpHandler.class);
+    private static final Logger logger = LoggerFactory.getLogger(KoraRequestProcessingHttpHandler.class);
 
     private final HttpServerTelemetry telemetry;
     private final HttpServerHandler httpServerHandler;
 
-    public KoraRequestHttpHandler(HttpServerTelemetry telemetry, HttpServerHandler httpServerHandler) {
+    public KoraRequestProcessingHttpHandler(HttpServerTelemetry telemetry, HttpServerHandler httpServerHandler) {
         this.telemetry = telemetry;
         this.httpServerHandler = httpServerHandler;
     }

@@ -12,7 +12,8 @@ import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.telemetry.*;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import io.koraframework.http.server.undertow.handler.KoraCorsHttpHandler;
-import io.koraframework.http.server.undertow.handler.KoraRequestHttpHandler;
+import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
+import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
 import okhttp3.Request;
 import org.junit.jupiter.api.Test;
 
@@ -27,7 +28,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
     protected HttpServer httpServer(ValueOf<? extends HttpServerConfig> config, HttpServerHandler httpServerHandler, HttpServerTelemetry telemetry) {
         return new UndertowHttpServer(
             "test",
-            valueOf(new KoraRequestHttpHandler(telemetry, httpServerHandler)),
+            valueOf(new KoraVirtualThreadDispatchHttpHandler("uvt", new KoraRequestProcessingHttpHandler(telemetry, httpServerHandler))),
             null,
             config,
             null,
@@ -90,7 +91,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
             "/",
             request -> HttpServerResponse.of(200, HttpBody.plaintext("ok"))
         )), List.of(), config);
-        var processingHandler = new KoraRequestHttpHandler(NoopHttpServerTelemetry.INSTANCE, handler);
+        var processingHandler = new KoraRequestProcessingHttpHandler(NoopHttpServerTelemetry.INSTANCE, handler);
         return new UndertowHttpServer(
             "test-cors",
             valueOf(new KoraCorsHttpHandler(processingHandler, config.cors())),
