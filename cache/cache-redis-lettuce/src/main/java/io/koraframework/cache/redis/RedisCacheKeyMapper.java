@@ -1,8 +1,7 @@
 package io.koraframework.cache.redis;
 
-import jakarta.annotation.Nonnull;
-import jakarta.annotation.Nullable;
 import io.koraframework.cache.CacheKeyMapper;
+import org.jspecify.annotations.Nullable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.function.Function;
@@ -17,7 +16,6 @@ public interface RedisCacheKeyMapper<K> extends Function<K, byte[]> {
      */
     byte[] DELIMITER = ":".getBytes(StandardCharsets.UTF_8);
 
-    @Nonnull
     @Override
     byte[] apply(@Nullable K key);
 }

@@ -1,10 +1,12 @@
 package io.koraframework.cache.redis;
 
+import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.DefaultComponent;
 import io.koraframework.json.common.JsonModule;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -20,10 +22,10 @@ public interface RedisCacheMapperModule extends JsonModule {
     default <V> RedisCacheValueMapper<V> cacheRedisValueJsonMapper(JsonWriter<V> jsonWriter, JsonReader<V> jsonReader) {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull V value) {
-                return jsonWriter.toByteArrayUnchecked(value);
+            public byte[] write(V value) {
+                return jsonWriter.toByteArray(value);
             }
 
             @Override
@@ -31,7 +33,7 @@ public interface RedisCacheMapperModule extends JsonModule {
                 if (serializedValue == null) {
                     return null;
                 } else {
-                    return jsonReader.readUnchecked(serializedValue);
+                    return jsonReader.read(serializedValue);
                 }
             }
         };
@@ -41,9 +43,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<String> cacheRedisValueStringMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull String value) {
+            public byte[] write(String value) {
                 return value.getBytes(StandardCharsets.UTF_8);
             }
 
@@ -62,9 +64,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<byte[]> cacheRedisValueBytesMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull byte[] value) {
+            public byte[] write(byte[] value) {
                 return value;
             }
 
@@ -79,9 +81,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Integer> cacheRedisValueIntMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Integer value) {
+            public byte[] write(Integer value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -100,9 +102,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Long> cacheRedisValueLongMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Long value) {
+            public byte[] write(Long value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -121,9 +123,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<BigInteger> cacheRedisValueBigIntMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull BigInteger value) {
+            public byte[] write(BigInteger value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -142,9 +144,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<UUID> cacheRedisValueUuidMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull UUID value) {
+            public byte[] write(UUID value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -163,9 +165,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Short> shortRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Short value) {
+            public byte[] write(Short value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -184,9 +186,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Character> characterRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Character value) {
+            public byte[] write(Character value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -206,9 +208,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Float> floatRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Float value) {
+            public byte[] write(Float value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -227,9 +229,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Double> doubleRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Double value) {
+            public byte[] write(Double value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -248,9 +250,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<BigDecimal> bigDecimalRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull BigDecimal value) {
+            public byte[] write(BigDecimal value) {
                 return value.stripTrailingZeros().toPlainString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -269,9 +271,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Instant> instantRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Instant value) {
+            public byte[] write(Instant value) {
                 return DateTimeFormatter.ISO_INSTANT.format(value).getBytes(StandardCharsets.UTF_8);
             }
 
@@ -290,9 +292,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<LocalDateTime> localDateTimeRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull LocalDateTime value) {
+            public byte[] write(LocalDateTime value) {
                 return DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value).getBytes(StandardCharsets.UTF_8);
             }
 
@@ -311,9 +313,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<LocalDate> localDateRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull LocalDate value) {
+            public byte[] write(LocalDate value) {
                 return DateTimeFormatter.ISO_LOCAL_DATE.format(value).getBytes(StandardCharsets.UTF_8);
             }
 
@@ -332,9 +334,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<ZonedDateTime> zonedDateTimeRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull ZonedDateTime value) {
+            public byte[] write(ZonedDateTime value) {
                 return DateTimeFormatter.ISO_ZONED_DATE_TIME.format(value).getBytes(StandardCharsets.UTF_8);
             }
 
@@ -353,9 +355,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Duration> durationRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Duration value) {
+            public byte[] write(Duration value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -374,9 +376,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Period> periodRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Period value) {
+            public byte[] write(Period value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -395,9 +397,9 @@ public interface RedisCacheMapperModule extends JsonModule {
     default RedisCacheValueMapper<Boolean> booleanRedisValueMapper() {
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
+
             @Override
-            public byte[] write(@Nonnull Boolean value) {
+            public byte[] write(Boolean value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -422,9 +424,8 @@ public interface RedisCacheMapperModule extends JsonModule {
         var logger = LoggerFactory.getLogger(RedisCacheValueMapper.class);
         return new RedisCacheValueMapper<>() {
 
-            @Nonnull
             @Override
-            public byte[] write(@Nonnull T value) {
+            public byte[] write(T value) {
                 return value.toString().getBytes(StandardCharsets.UTF_8);
             }
 
@@ -449,8 +450,8 @@ public interface RedisCacheMapperModule extends JsonModule {
         // Still possible collision with user value, attention!
         var NULL_KEY_VALUE = "@N-U-L@".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : Base64.getEncoder().encodeToString(value).getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : Base64.getEncoder().encodeToString(value).getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
@@ -459,64 +460,64 @@ public interface RedisCacheMapperModule extends JsonModule {
         var valTrue = Boolean.TRUE.toString().getBytes(StandardCharsets.UTF_8);
         var valFalse = Boolean.FALSE.toString().getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : (value) ? valTrue : valFalse;
+            ? NULL_KEY_VALUE
+            : (value) ? valTrue : valFalse;
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<Character> characterRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<Short> shortRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<Integer> cacheRedisKeyIntMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<Long> cacheRedisKeyLongMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<BigInteger> cacheRedisKeyBigIntMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<BigDecimal> bigDecimalRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.stripTrailingZeros().toPlainString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.stripTrailingZeros().toPlainString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<UUID> cacheRedisKeyUuidMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
@@ -524,64 +525,64 @@ public interface RedisCacheMapperModule extends JsonModule {
         // Still possible collision with user value, attention!
         var NULL_KEY_VALUE = "@N-U-L@".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<Instant> instantRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : DateTimeFormatter.ISO_INSTANT.format(value).getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : DateTimeFormatter.ISO_INSTANT.format(value).getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<LocalDateTime> localDateTimeRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value).getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : DateTimeFormatter.ISO_LOCAL_DATE_TIME.format(value).getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<LocalDate> localDateRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : DateTimeFormatter.ISO_LOCAL_DATE.format(value).getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : DateTimeFormatter.ISO_LOCAL_DATE.format(value).getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<ZonedDateTime> zonedDateTimeRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : DateTimeFormatter.ISO_INSTANT.format(value.toInstant()).getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : DateTimeFormatter.ISO_INSTANT.format(value.toInstant()).getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<Duration> durationRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default RedisCacheKeyMapper<Period> periodRedisKeyMapper() {
         var NULL_KEY_VALUE = "NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent
     default <T extends Enum<T>> RedisCacheKeyMapper<T> enumRedisKeyMapper() {
         var NULL_KEY_VALUE = "0NUL".getBytes(StandardCharsets.UTF_8);
         return value -> (value == null)
-                ? NULL_KEY_VALUE
-                : value.toString().getBytes(StandardCharsets.UTF_8);
+            ? NULL_KEY_VALUE
+            : value.toString().getBytes(StandardCharsets.UTF_8);
     }
 
     @DefaultComponent

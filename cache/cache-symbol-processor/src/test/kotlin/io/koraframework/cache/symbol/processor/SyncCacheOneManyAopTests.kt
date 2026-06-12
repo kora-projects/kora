@@ -50,7 +50,7 @@ class SyncCacheOneManyAopTests : CaffeineCacheModule, RedisCacheModule {
             cache2 = cache2Class.constructors[0].newInstance(
                 CacheRunner.getRedisConfig(),
                 CacheRunner.lettuceClient(cache),
-                redisCacheTelemetryFactory(null, null, null),
+                redisCacheTelemetryFactory(null, null, null, null),
                 cacheRedisKeyStringMapper(),
                 cacheRedisValueStringMapper()
             ) as DummyCache12
