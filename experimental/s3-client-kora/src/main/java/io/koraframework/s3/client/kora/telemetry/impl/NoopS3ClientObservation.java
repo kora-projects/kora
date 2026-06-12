@@ -1,5 +1,6 @@
-package io.koraframework.s3.client.kora.telemetry;
+package io.koraframework.s3.client.kora.telemetry.impl;
 
+import io.koraframework.s3.client.kora.telemetry.S3ClientObservation;
 import io.opentelemetry.api.trace.Span;
 
 public final class NoopS3ClientObservation implements S3ClientObservation {
@@ -42,5 +43,4 @@ public final class NoopS3ClientObservation implements S3ClientObservation {
     public void observeError(Throwable e) {
 
     }
-
 }

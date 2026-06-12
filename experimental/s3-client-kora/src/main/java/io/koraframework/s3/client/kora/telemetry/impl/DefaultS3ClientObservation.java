@@ -1,18 +1,11 @@
-package io.koraframework.s3.client.kora.telemetry;
+package io.koraframework.s3.client.kora.telemetry.impl;
 
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.Timer;
+import io.koraframework.s3.client.kora.telemetry.S3ClientObservation;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.AwsIncubatingAttributes;
-import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-
-import java.util.concurrent.TimeUnit;
 
 public class DefaultS3ClientObservation implements S3ClientObservation {
 
@@ -20,10 +13,10 @@ public class DefaultS3ClientObservation implements S3ClientObservation {
 
     protected final String bucket;
     protected final String operation;
-    protected final S3ClientTelemetryConfig config;
+    protected final DefaultS3ClientTelemetry.TelemetryContext context;
+    protected final DefaultS3ClientLoggerFactory.DefaultS3ClientLogger logger;
+    protected final DefaultS3ClientMetricsFactory.DefaultS3ClientMetrics metrics;
     protected final Span span;
-    protected final Logger logger;
-    protected final Meter.MeterProvider<Timer> duration;
 
     @Nullable
     protected String awsKey;
@@ -38,16 +31,16 @@ public class DefaultS3ClientObservation implements S3ClientObservation {
 
     public DefaultS3ClientObservation(String bucket,
                                       String operation,
-                                      S3ClientTelemetryConfig config,
-                                      Span span,
-                                      Logger logger,
-                                      Meter.MeterProvider<Timer> duration) {
+                                      DefaultS3ClientTelemetry.TelemetryContext context,
+                                      DefaultS3ClientLoggerFactory.DefaultS3ClientLogger logger,
+                                      DefaultS3ClientMetricsFactory.DefaultS3ClientMetrics metrics,
+                                      Span span) {
         this.operation = operation;
         this.bucket = bucket;
-        this.config = config;
-        this.span = span;
+        this.context = context;
         this.logger = logger;
-        this.duration = duration;
+        this.metrics = metrics;
+        this.span = span;
     }
 
     @Override
@@ -88,28 +81,18 @@ public class DefaultS3ClientObservation implements S3ClientObservation {
 
     @Override
     public void end() {
-        var errorValue = (error == null) ? "" : this.error.getClass().getCanonicalName();
-
+        var processingTimeNanos = System.nanoTime() - this.startedRequest;
         if (error == null) {
             this.span.setStatus(StatusCode.OK);
-            this.logger.debug("KoraS3Client completed operation '{}' on bucket: {}", operation, bucket);
         } else {
+            var errorValue = this.error.getClass().getCanonicalName();
             this.span.setStatus(StatusCode.ERROR, errorValue);
+            this.span.setAttribute(ErrorAttributes.ERROR_TYPE.getKey(), errorValue);
             this.span.recordException(error);
-            this.logger.warn("KoraS3Client failed operation '{}' on bucket '{}' due to: {}", operation, bucket, error.getMessage());
         }
 
-        if (config.metrics().enabled()) {
-            var took = System.nanoTime() - this.startedRequest;
-            var meter = this.duration.withTags(Tags.of(
-                Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), operation),
-                Tag.of(AwsIncubatingAttributes.AWS_S3_BUCKET.getKey(), bucket),
-                Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue)
-            ));
-
-            meter.record(took, TimeUnit.NANOSECONDS);
-        }
-
+        this.metrics.record(operation, bucket, error, this.startedRequest);
+        this.logger.logEnd(operation, bucket, error, processingTimeNanos);
         this.span.end();
     }
 }
