@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class SyncCacheOneAopTests implements CaffeineCacheModule {
 
-    private static final String CACHED_IMPL = "io.koraframework.cache.annotation.processor.testcache.$DummyCache11Impl";
+    private static final String CACHED_IMPL = "io.koraframework.cache.annotation.processor.testcache.$DummyCache11_Impl";
     private static final String CACHED_SERVICE = "io.koraframework.cache.annotation.processor.testdata.sync.$CacheableSyncOne__AopProxy";
 
     private DummyCache11 cache = null;

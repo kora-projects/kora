@@ -5,6 +5,8 @@ import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.annotation.processor.common.TestUtils.CompilationErrorException;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.cache.annotation.processor.testcache.DummyCacheTagged;
+import io.koraframework.cache.annotation.processor.testcache.DummyInheritFinal;
+import io.koraframework.cache.annotation.processor.testcache.DummyInheritMediator;
 import io.koraframework.cache.annotation.processor.testdata.sync.*;
 import org.junit.jupiter.api.Test;
 
@@ -33,6 +35,16 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
     @Test
     void cacheTaggedRedisKeyMapper() {
         assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyCacheTagged.class, new CacheAnnotationProcessor()));
+    }
+
+    @Test
+    void cacheInheritFinalCacheScanner() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyInheritFinal.class, new CacheAnnotationProcessor()));
+    }
+
+    @Test
+    void cacheInheritMediatorCacheScanner() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyInheritMediator.class, new CacheAnnotationProcessor()));
     }
 
     @Test

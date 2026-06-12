@@ -13,7 +13,7 @@ class CacheablePutVoid {
         return value
     }
 
-    @CachePut(value = DummyCache21::class, parameters = ["arg1", "arg2"])
+    @CachePut(value = DummyCache21::class, args = ["arg1", "arg2"])
     fun putValue(arg1: String?, arg2: BigDecimal?) {
     }
 }

@@ -2,6 +2,7 @@ package io.koraframework.cache.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
@@ -26,27 +27,22 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_CACHE_PUT.canonicalName(), ANNOTATION_CACHE_PUTS.canonicalName());
-    }
-
-    @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(ANNOTATION_CACHE_PUT, ANNOTATION_CACHE_PUTS);
     }
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isPublisher(method) || MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("@CachePut can't be applied for async methods", method);
-        }
-        if (MethodUtils.isVoid(method)) {
-            throw new ProcessingErrorException("@CachePut can't be applied for type Void", method);
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHE_PUT.simpleName()) + CommonClassNames.publisher, method);
+        } else if (MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_CACHE_PUT) + method.getReturnType().toString(), method);
+        } else if (MethodUtils.isVoid(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type Void".formatted(ANNOTATION_CACHE_PUT), method);
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);
         final CodeBlock body = buildBodySync(method, operation, superCall);
-
         return new ApplyResult.MethodBody(body);
     }
 

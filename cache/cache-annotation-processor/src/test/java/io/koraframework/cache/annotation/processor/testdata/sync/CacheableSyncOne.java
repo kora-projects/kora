@@ -1,6 +1,7 @@
 package io.koraframework.cache.annotation.processor.testdata.sync;
 
 import io.koraframework.cache.annotation.CacheInvalidate;
+import io.koraframework.cache.annotation.CacheInvalidateAll;
 import io.koraframework.cache.annotation.CachePut;
 import io.koraframework.cache.annotation.Cacheable;
 import io.koraframework.cache.annotation.processor.testcache.DummyCache11;
@@ -16,7 +17,7 @@ public class CacheableSyncOne {
         return value;
     }
 
-    @CachePut(value = DummyCache11.class, parameters = {"arg1"})
+    @CachePut(value = DummyCache11.class, args = {"arg1"})
     public String putValue(BigDecimal arg2, String arg3, String arg1) {
         return value;
     }
@@ -26,7 +27,7 @@ public class CacheableSyncOne {
 
     }
 
-    @CacheInvalidate(value = DummyCache11.class, invalidateAll = true)
+    @CacheInvalidateAll(DummyCache11.class)
     public void evictAll() {
 
     }

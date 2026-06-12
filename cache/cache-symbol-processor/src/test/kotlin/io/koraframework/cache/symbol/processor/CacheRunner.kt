@@ -5,6 +5,11 @@ import io.koraframework.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryCo
 import io.koraframework.cache.caffeine.CaffeineCacheConfig
 import io.koraframework.cache.caffeine.CaffeineCacheConfig.CaffeineTelemetryConfig
 import io.koraframework.cache.redis.*
+import io.koraframework.cache.redis.RedisCacheClient
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_ConfigValueExtractor`
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor`
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor`
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor`
 import org.mockito.Mockito
 import org.mockito.Mockito.`when`
 import java.nio.ByteBuffer
@@ -38,10 +43,10 @@ class CacheRunner {
                 override fun expireAfterWrite(): Duration? = null
 
                 override fun expireAfterAccess(): Duration? = null
-                override fun telemetry() = `$RedisCacheConfig_RedisCacheTelemetryConfig_ConfigValueExtractor`.RedisCacheTelemetryConfig_Impl(
-                    `$RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor`.RedisCacheLoggingConfig_Defaults(),
-                    `$RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor`.RedisCacheTracingConfig_Defaults(),
-                    `$RedisCacheConfig_RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor`.RedisCacheMetricsConfig_Defaults()
+                override fun telemetry() = `$RedisCacheTelemetryConfig_ConfigValueExtractor`.RedisCacheTelemetryConfig_Impl(
+                    `$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor`.RedisCacheLoggingConfig_Defaults(),
+                    `$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor`.RedisCacheTracingConfig_Defaults(),
+                    `$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor`.RedisCacheMetricsConfig_Defaults()
                 )
             }
         }
@@ -49,7 +54,7 @@ class CacheRunner {
         fun lettuceClient(cache: MutableMap<ByteBuffer?, ByteBuffer?>): RedisCacheClient {
             return object : RedisCacheClient {
 
-                override fun scan(prefix: ByteArray): CompletionStage<List<ByteArray>> {
+                override fun scan(prefix: ByteArray): List<ByteArray> {
                     val keys: MutableList<ByteArray> = ArrayList()
                     for (buffer in cache.keys) {
                         if (buffer != null) {
@@ -58,71 +63,63 @@ class CacheRunner {
                             }
                         }
                     }
-                    return CompletableFuture.completedFuture(keys)
+                    return keys
                 }
 
-                override fun config(): RedisCacheClientConfig {
-                    return Mockito.mock(RedisCacheClientConfig::class.java)
-                }
-
-                override fun get(key: ByteArray): CompletionStage<ByteArray> {
+                override fun get(key: ByteArray): ByteArray? {
                     val r = cache[ByteBuffer.wrap(key)]
-                    return CompletableFuture.completedFuture(r?.array())
+                    return r?.array()
                 }
 
-                override fun mget(keys: Array<ByteArray>): CompletionStage<Map<ByteArray, ByteArray>> {
+                override fun mget(keys: Array<ByteArray>): Map<ByteArray, ByteArray> {
                     val result: MutableMap<ByteArray, ByteArray> = HashMap()
                     for (key in keys) {
                         Optional.ofNullable(cache[ByteBuffer.wrap(key)]).ifPresent { r: ByteBuffer ->
                             result[key] = r.array()
                         }
                     }
-                    return CompletableFuture.completedFuture(result)
+                    return result
                 }
 
-                override fun getex(key: ByteArray, expireAfterMillis: Long): CompletionStage<ByteArray> {
+                override fun getex(key: ByteArray, expireAfterMillis: Long): ByteArray? {
                     return get(key)
                 }
 
-                override fun getex(keys: Array<ByteArray>, expireAfterMillis: Long): CompletionStage<Map<ByteArray, ByteArray>> {
+                override fun getex(keys: Array<ByteArray>, expireAfterMillis: Long): Map<ByteArray, ByteArray> {
                     return mget(keys)
                 }
 
-                override fun set(key: ByteArray, value: ByteArray): CompletionStage<Boolean> {
+                override fun set(key: ByteArray, value: ByteArray) {
                     cache[ByteBuffer.wrap(key)] = ByteBuffer.wrap(value)
-                    return CompletableFuture.completedFuture(true)
                 }
 
-                override fun mset(keyAndValue: MutableMap<ByteArray, ByteArray>): CompletionStage<Boolean> {
+                override fun mset(keyAndValue: MutableMap<ByteArray, ByteArray>) {
                     keyAndValue.forEach { (k, v) -> set(k, v) }
-                    return CompletableFuture.completedFuture(true)
                 }
 
-                override fun psetex(keyAndValue: MutableMap<ByteArray, ByteArray>, expireAfterMillis: Long): CompletionStage<Boolean> {
+                override fun psetex(keyAndValue: MutableMap<ByteArray, ByteArray>, expireAfterMillis: Long) {
                     mset(keyAndValue)
-                    return CompletableFuture.completedFuture(true)
                 }
 
-                override fun psetex(key: ByteArray, value: ByteArray, expireAfterMillis: Long): CompletionStage<Boolean> {
+                override fun psetex(key: ByteArray, value: ByteArray, expireAfterMillis: Long) {
                     return set(key, value)
                 }
 
-                override fun del(key: ByteArray): CompletionStage<Long> {
+                override fun del(key: ByteArray): Long {
                     val res = if (cache.remove(ByteBuffer.wrap(key)) == null) 0L else 1L
-                    return CompletableFuture.completedFuture(res)
+                    return res
                 }
 
-                override fun del(keys: Array<ByteArray>): CompletionStage<Long> {
+                override fun del(keys: Array<ByteArray>): Long {
                     var counter = 0
                     for (key in keys) {
-                        counter += del(key).toCompletableFuture().get().toInt()
+                        counter += del(key).toInt()
                     }
-                    return CompletableFuture.completedFuture(counter.toLong())
+                    return counter.toLong()
                 }
 
-                override fun flushAll(): CompletionStage<Boolean> {
+                override fun flushAll() {
                     cache.clear()
-                    return CompletableFuture.completedFuture(true)
                 }
             }
         }

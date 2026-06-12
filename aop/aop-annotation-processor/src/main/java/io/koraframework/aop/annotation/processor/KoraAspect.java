@@ -10,14 +10,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public interface KoraAspect {
-    Set<String> getSupportedAnnotationTypes();
 
-    default Set<ClassName> getSupportedAnnotationClassNames() {
-        return getSupportedAnnotationTypes()
+    default Set<String> getSupportedAnnotationTypes() {
+        return getSupportedAnnotationClassNames()
             .stream()
-            .map(ClassName::bestGuess)
+            .map(ClassName::canonicalName)
             .collect(Collectors.toSet());
     }
+
+    Set<ClassName> getSupportedAnnotationClassNames();
 
     interface FieldFactory {
         default String constructorParam(TypeMirror type, List<AnnotationSpec> annotations) {
