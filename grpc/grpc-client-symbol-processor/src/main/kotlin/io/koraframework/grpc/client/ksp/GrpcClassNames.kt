@@ -10,7 +10,7 @@ object GrpcClassNames {
     val grpcGenerated = ClassName("io.grpc.stub.annotations", "GrpcGenerated")
     val channel = ClassName("io.grpc", "Channel")
     val managedChannelLifecycle = ClassName("io.koraframework.grpc.client", "ManagedChannelLifecycle")
-    val grpcClientConfig = ClassName("io.koraframework.grpc.client.config", "GrpcClientConfig")
+    val grpcClientConfig = ClassName("io.koraframework.grpc.client", "GrpcClientConfig")
     val stubFor = ClassName("io.grpc.kotlin", "StubFor")
 
 }
