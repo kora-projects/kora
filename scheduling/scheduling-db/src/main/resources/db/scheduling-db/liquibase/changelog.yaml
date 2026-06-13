@@ -1,0 +1,67 @@
+databaseChangeLog:
+  - changeSet:
+      id: scheduling-db-1-create-scheduled-tasks-postgresql
+      author: kora
+      dbms: postgresql
+      changes:
+        - sqlFile:
+            path: db/scheduling-db/flyway/postgresql/V1__create_scheduled_tasks.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: scheduling-db-1-create-scheduled-tasks-mysql
+      author: kora
+      dbms: mysql
+      changes:
+        - sqlFile:
+            path: db/scheduling-db/flyway/mysql/V1__create_scheduled_tasks.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: scheduling-db-1-create-scheduled-tasks-mariadb
+      author: kora
+      dbms: mariadb
+      changes:
+        - sqlFile:
+            path: db/scheduling-db/flyway/mariadb/V1__create_scheduled_tasks.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: scheduling-db-1-create-scheduled-tasks-mssql
+      author: kora
+      dbms: mssql
+      changes:
+        - sqlFile:
+            path: db/scheduling-db/flyway/mssql/V1__create_scheduled_tasks.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: scheduling-db-1-create-scheduled-tasks-oracle
+      author: kora
+      dbms: oracle
+      changes:
+        - sqlFile:
+            path: db/scheduling-db/flyway/oracle/V1__create_scheduled_tasks.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+
+  - changeSet:
+      id: scheduling-db-1-create-scheduled-tasks-hsql
+      author: kora
+      dbms: hsqldb
+      changes:
+        - sqlFile:
+            path: db/scheduling-db/flyway/hsql/V1__create_scheduled_tasks.sql
+            relativeToChangelogFile: false
+            splitStatements: true
+            stripComments: true
+

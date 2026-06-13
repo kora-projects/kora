@@ -28,6 +28,11 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         SchedulerType.QUARTZ, List.of(
             QuartzSchedulingGenerator.scheduleWithCron,
             QuartzSchedulingGenerator.scheduleWithTrigger
+        ),
+        SchedulerType.DB, List.of(
+            DbSchedulingGenerator.scheduleWithCron,
+            DbSchedulingGenerator.scheduleWithFixedDelay,
+            DbSchedulingGenerator.scheduleOnce
         )
     );
 
@@ -37,10 +42,14 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         JdkSchedulingGenerator.scheduleWithFixedDelay,
         JdkSchedulingGenerator.scheduleWithCron,
         QuartzSchedulingGenerator.scheduleWithCron,
-        QuartzSchedulingGenerator.scheduleWithTrigger);
+        QuartzSchedulingGenerator.scheduleWithTrigger,
+        DbSchedulingGenerator.scheduleWithCron,
+        DbSchedulingGenerator.scheduleWithFixedDelay,
+        DbSchedulingGenerator.scheduleOnce);
 
     private JdkSchedulingGenerator jdkGenerator;
     private QuartzSchedulingGenerator quartzGenerator;
+    private DbSchedulingGenerator dbGenerator;
 
     @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
@@ -52,6 +61,7 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
         super.init(processingEnv);
         this.jdkGenerator = new JdkSchedulingGenerator(processingEnv);
         this.quartzGenerator = new QuartzSchedulingGenerator(processingEnv);
+        this.dbGenerator = new DbSchedulingGenerator(processingEnv);
     }
 
     @Override
@@ -95,6 +105,7 @@ public class SchedulingAnnotationProcessor extends AbstractKoraProcessor {
             switch (trigger.schedulerType()) {
                 case JDK -> this.jdkGenerator.generate(type, method, module, trigger);
                 case QUARTZ -> this.quartzGenerator.generate(type, m, module, trigger);
+                case DB -> this.dbGenerator.generate(type, method, module, trigger);
             }
         }
         var packageName = elements.getPackageOf(type).getQualifiedName().toString();
