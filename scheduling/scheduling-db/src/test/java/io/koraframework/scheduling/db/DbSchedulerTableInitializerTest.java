@@ -28,7 +28,7 @@ class DbSchedulerTableInitializerTest {
         DbSchedulerTableInitializer.initialize(dataSource, "scheduled_tasks");
 
         Mockito.verify(statement).execute("select 1 from scheduled_tasks where 1 = 0");
-        Mockito.verifyNoMoreInteractions(statement);
+        Mockito.verify(connection, Mockito.never()).getMetaData();
     }
 
     @Test
