@@ -5,7 +5,6 @@ plugins {
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
-    api project(':netty-common')
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
 

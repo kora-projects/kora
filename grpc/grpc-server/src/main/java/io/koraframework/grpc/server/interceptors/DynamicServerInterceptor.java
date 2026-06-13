@@ -1,4 +1,4 @@
-package io.koraframework.grpc.server;
+package io.koraframework.grpc.server.interceptors;
 
 
 import io.grpc.Metadata;

@@ -1,4 +1,4 @@
-package io.koraframework.grpc.server;
+package io.koraframework.grpc.server.handler;
 
 import io.grpc.*;
 import io.opentelemetry.context.Context;
@@ -9,7 +9,8 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public class VirtualThreadExecutorTransportFilter extends ServerTransportFilter implements ServerCallExecutorSupplier {
+public final class VirtualThreadExecutorTransportFilter extends ServerTransportFilter implements ServerCallExecutorSupplier {
+
     public static final Attributes.Key<ExecutorService> EXECUTOR_KEY = Attributes.Key.create("virtual-thread-executor");
 
     public static final VirtualThreadExecutorTransportFilter INSTANCE = new VirtualThreadExecutorTransportFilter();

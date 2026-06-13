@@ -4,6 +4,7 @@ import io.grpc.*;
 import io.koraframework.grpc.server.app.EventService;
 import io.koraframework.grpc.server.events.SendEventRequest;
 import io.koraframework.grpc.server.events.SendEventResponse;
+import io.koraframework.grpc.server.handler.DynamicBindableService;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.ArrayBlockingQueue;

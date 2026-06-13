@@ -1,14 +1,15 @@
 package io.koraframework.grpc.client.config;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 public final class DefaultServiceConfigConfigValueExtractor implements ConfigValueExtractor<DefaultServiceConfig> {
+
     @Nullable
     @Override
     public DefaultServiceConfig extract(ConfigValue<?> value) {
@@ -34,27 +35,23 @@ public final class DefaultServiceConfigConfigValueExtractor implements ConfigVal
     }
 
     private Object toObject(ConfigValue<?> value) {
-        if (value instanceof ConfigValue.StringValue str) {
-            return str.value();
-        } else if (value instanceof ConfigValue.BooleanValue bool) {
-            return bool.value();
-        } else if (value instanceof ConfigValue.NumberValue num) {
-            return num.value().doubleValue(); // service config accepts only double values
-        } else if (value instanceof ConfigValue.ObjectValue obj) {
-            return this.toMap(obj);
-        } else if (value instanceof ConfigValue.ArrayValue arr) {
-            var list = new ArrayList<>();
-            for (var item : arr) {
-                var object = this.toObject(item);
-                if (object != null) {
-                    list.add(object);
+        return switch (value) {
+            case ConfigValue.StringValue str -> str.value();
+            case ConfigValue.BooleanValue bool -> bool.value();
+            case ConfigValue.NumberValue num -> num.value().doubleValue(); // service config accepts only double values
+            case ConfigValue.ObjectValue obj -> this.toMap(obj);
+            case ConfigValue.ArrayValue arr -> {
+                var list = new ArrayList<>();
+                for (var item : arr) {
+                    var object = this.toObject(item);
+                    if (object != null) {
+                        list.add(object);
+                    }
                 }
+                yield list;
             }
-            return list;
-        } else if (value instanceof ConfigValue.NullValue) {
-            return null;
-        } else {
-            throw new IllegalArgumentException("Unsupported config value type: " + value.getClass());
-        }
+            case ConfigValue.NullValue nullValue -> null;
+            default -> throw new IllegalArgumentException("Unsupported config value type: " + value.getClass());
+        };
     }
 }
