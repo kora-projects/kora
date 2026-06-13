@@ -17,14 +17,12 @@ import org.camunda.bpm.engine.impl.cmmn.entity.runtime.CaseInstanceQueryImpl;
 import org.camunda.bpm.engine.impl.el.JuelExpressionManager;
 import org.camunda.bpm.engine.impl.interceptor.*;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
-import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
 import org.camunda.bpm.engine.repository.CaseDefinition;
 import org.camunda.bpm.engine.repository.CaseDefinitionQuery;
 import org.camunda.bpm.engine.runtime.CaseExecution;
 import org.camunda.bpm.engine.runtime.CaseExecutionQuery;
 import org.camunda.bpm.engine.runtime.CaseInstance;
 import org.camunda.bpm.engine.runtime.CaseInstanceQuery;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,33 +38,26 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     private static final Logger logger = LoggerFactory.getLogger(KoraProcessEngineConfiguration.class);
 
     private final JobExecutor jobExecutor;
-    @Nullable
-    private final TelemetryRegistry telemetryRegistry;
     private final KoraResolverFactory componentResolverFactory;
     private final CamundaEngineDataSource camundaEngineDataSource;
-    private final CamundaVersion camundaVersion;
     private final CamundaEngineBpmnConfig engineConfig;
     private final Iterable<ProcessEnginePlugin> plugins;
 
     public KoraProcessEngineConfiguration(JobExecutor jobExecutor,
-                                          @Nullable TelemetryRegistry telemetryRegistry,
                                           IdGenerator idGenerator,
                                           JuelExpressionManager koraExpressionManager,
                                           ArtifactFactory artifactFactory,
                                           Iterable<ProcessEnginePlugin> plugins,
                                           CamundaEngineDataSource camundaEngineDataSource,
                                           CamundaEngineBpmnConfig engineConfig,
-                                          KoraResolverFactory componentResolverFactory,
-                                          CamundaVersion camundaVersion) {
+                                          KoraResolverFactory componentResolverFactory) {
         this.jobExecutor = jobExecutor;
-        this.telemetryRegistry = telemetryRegistry;
         this.componentResolverFactory = componentResolverFactory;
         this.idGenerator = idGenerator;
         this.artifactFactory = artifactFactory;
         this.plugins = plugins;
         this.engineConfig = engineConfig;
         this.camundaEngineDataSource = camundaEngineDataSource;
-        this.camundaVersion = camundaVersion;
 
         setDefaultCharset(StandardCharsets.UTF_8);
 
@@ -123,22 +114,12 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     }
 
     protected void configureMetricsAndTelemetry() {
-        if (telemetryRegistry != null && engineConfig.telemetry().engineTelemetryEnabled()) {
-            setTelemetryRegistry(telemetryRegistry);
+        if (engineConfig.telemetry().engineTelemetryEnabled()) {
             setMetricsEnabled(true);
             setTaskMetricsEnabled(true);
-            setInitializeTelemetry(true);
-            setTelemetryReporterActivate(true);
-
-            if (camundaVersion.version() == null) {
-                logger.warn("Disabling TelemetryReporter because required information 'Camunda Version' is not available.");
-                setTelemetryReporterActivate(false);
-            }
         } else {
             setMetricsEnabled(false);
             setTaskMetricsEnabled(false);
-            setInitializeTelemetry(false);
-            setTelemetryReporterActivate(false);
         }
     }
 

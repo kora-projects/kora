@@ -1,0 +1,67 @@
+package io.koraframework.camunda.engine.bpmn.telemetry.impl;
+
+import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineObservation;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import org.camunda.bpm.engine.delegate.DelegateExecution;
+import org.jspecify.annotations.Nullable;
+
+import static io.opentelemetry.api.common.AttributeKey.stringKey;
+
+public class DefaultCamundaEngineBpmnObservation implements CamundaEngineObservation {
+
+    protected final long start = System.nanoTime();
+    protected final DefaultCamundaEngineBpmnTelemetry.TelemetryContext context;
+    protected final Span span;
+    protected final DefaultCamundaEngineBpmnLoggerFactory.DefaultCamundaEngineBpmnLogger logger;
+    protected final DefaultCamundaEngineBpmnMetricsFactory.DefaultCamundaEngineBpmnMetrics metrics;
+
+    @Nullable
+    protected Throwable error;
+    protected DelegateExecution execution;
+
+    public DefaultCamundaEngineBpmnObservation(DefaultCamundaEngineBpmnTelemetry.TelemetryContext context,
+                                              Span span,
+                                              DefaultCamundaEngineBpmnLoggerFactory.DefaultCamundaEngineBpmnLogger logger,
+                                              DefaultCamundaEngineBpmnMetricsFactory.DefaultCamundaEngineBpmnMetrics metrics) {
+        this.context = context;
+        this.span = span;
+        this.logger = logger;
+        this.metrics = metrics;
+    }
+
+    @Override
+    public Span span() {
+        return this.span;
+    }
+
+    @Override
+    public void end() {
+        var took = System.nanoTime() - this.start;
+        this.metrics.record(this.error, took);
+        this.logger.logEnd(this.execution, this.error, took);
+        this.span.end();
+    }
+
+    @Override
+    public void observeError(Throwable e) {
+        this.error = e;
+        this.span.setStatus(StatusCode.ERROR);
+        this.span.recordException(e);
+    }
+
+    @Override
+    public void observeExecution(DelegateExecution execution) {
+        this.execution = execution;
+        setNotNull("eventName", execution.getEventName());
+        setNotNull("processBusinessKey", execution.getProcessBusinessKey());
+        setNotNull("processInstanceId", execution.getProcessInstanceId());
+        this.logger.logStart(execution);
+    }
+
+    protected void setNotNull(String name, String value) {
+        if (value != null) {
+            this.span.setAttribute(stringKey(name), value);
+        }
+    }
+}

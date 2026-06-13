@@ -1,7 +1,9 @@
 package io.koraframework.camunda.rest;
 
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryFactory;
-import io.koraframework.camunda.rest.telemetry.DefaultCamundaRestTelemetryFactory;
+import io.koraframework.camunda.rest.telemetry.impl.DefaultCamundaRestLoggerFactory;
+import io.koraframework.camunda.rest.telemetry.impl.DefaultCamundaRestMetricsFactory;
+import io.koraframework.camunda.rest.telemetry.impl.DefaultCamundaRestTelemetryFactory;
 import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.Tag;
 import io.koraframework.config.common.Config;
@@ -16,11 +18,21 @@ import org.jspecify.annotations.Nullable;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * Use module: `io.koraframework:experimental.operaton.rest.undertow` as a replacement for deprecated Camunda 7 engine
+ * <a href="https://camunda.com/blog/2025/02/camunda-7-enterprise-end-of-life-extension/">Camunda 7 EOL</a>
+ * <a href="https://operaton.org/">Operaton BPMN Engine</a>
+ * <a href="https://github.com/operaton/migrate-from-camunda-recipe">OpenRewrite Migration Recipe</a>
+ */
+@Deprecated
 public interface CamundaRestModule {
 
     @DefaultComponent
-    default CamundaRestTelemetryFactory camundaRestTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
-        return new DefaultCamundaRestTelemetryFactory(meterRegistry, tracer);
+    default CamundaRestTelemetryFactory camundaRestTelemetryFactory(@Nullable Tracer tracer,
+                                                                   @Nullable MeterRegistry meterRegistry,
+                                                                   @Nullable DefaultCamundaRestLoggerFactory loggerFactory,
+                                                                   @Nullable DefaultCamundaRestMetricsFactory metricsFactory) {
+        return new DefaultCamundaRestTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
     default CamundaRestConfig camundaRestConfig(Config config, ConfigValueExtractor<CamundaRestConfig> extractor) {

@@ -7,8 +7,9 @@ import io.koraframework.camunda.engine.bpmn.configurator.DeploymentProcessEngine
 import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
 import io.koraframework.camunda.engine.bpmn.configurator.SecondStageKoraProcessEngineConfigurator;
 import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineBpmnTelemetryFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.DefaultCamundaEngineBpmnTelemetryFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.KoraEngineTelemetryRegistry;
+import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineBpmnLoggerFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineBpmnMetricsFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineBpmnTelemetryFactory;
 import io.koraframework.camunda.engine.bpmn.transaction.CamundaTransactionManager;
 import io.koraframework.camunda.engine.bpmn.transaction.JdbcCamundaTransactionManager;
 import io.koraframework.common.DefaultComponent;
@@ -28,14 +29,19 @@ import org.camunda.bpm.engine.impl.cfg.ProcessEnginePlugin;
 import org.camunda.bpm.engine.impl.el.JuelExpressionManager;
 import org.camunda.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.camunda.bpm.engine.impl.persistence.StrongUuidGenerator;
-import org.camunda.bpm.engine.impl.telemetry.TelemetryRegistry;
-import org.camunda.bpm.engine.impl.telemetry.dto.ApplicationServerImpl;
 import org.camunda.bpm.impl.juel.jakarta.el.ELResolver;
 import org.jspecify.annotations.Nullable;
 
 import javax.sql.DataSource;
 import java.util.Optional;
 
+/**
+ * Use module: `io.koraframework:experimental.operaton.engine.bpmn` as a replacement for deprecated Camunda 7 engine
+ * <a href="https://camunda.com/blog/2025/02/camunda-7-enterprise-end-of-life-extension/">Camunda 7 EOL</a>
+ * <a href="https://operaton.org/">Operaton BPMN Engine</a>
+ * <a href="https://github.com/operaton/migrate-from-camunda-recipe">OpenRewrite Migration Recipe</a>
+ */
+@Deprecated
 public interface CamundaEngineBpmnModule {
 
     default CamundaEngineBpmnConfig camundaEngineBpmnConfig(Config config, ConfigValueExtractor<CamundaEngineBpmnConfig> extractor) {
@@ -69,11 +75,6 @@ public interface CamundaEngineBpmnModule {
     }
 
     @DefaultComponent
-    default TelemetryRegistry camundaEngineBpmnKoraTelemetryRegistry(@Nullable ApplicationServerImpl applicationServer) {
-        return new KoraEngineTelemetryRegistry(applicationServer);
-    }
-
-    @DefaultComponent
     default JobExecutor camundaEngineBpmnKoraJobExecutor(CamundaEngineBpmnConfig engineConfig) {
         if (engineConfig.jobExecutor().virtualThreadsEnabled()) {
             return new KoraVirtualThreadJobExecutor(engineConfig);
@@ -88,8 +89,11 @@ public interface CamundaEngineBpmnModule {
 
 
     @DefaultComponent
-    default CamundaEngineBpmnTelemetryFactory camundaEngineBpmnTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
-        return new DefaultCamundaEngineBpmnTelemetryFactory(meterRegistry, tracer);
+    default CamundaEngineBpmnTelemetryFactory camundaEngineBpmnTelemetryFactory(@Nullable Tracer tracer,
+                                                                               @Nullable MeterRegistry meterRegistry,
+                                                                               @Nullable DefaultCamundaEngineBpmnLoggerFactory loggerFactory,
+                                                                               @Nullable DefaultCamundaEngineBpmnMetricsFactory metricsFactory) {
+        return new DefaultCamundaEngineBpmnTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
     @DefaultComponent
@@ -150,16 +154,14 @@ public interface CamundaEngineBpmnModule {
 
     @DefaultComponent
     default ProcessEngineConfiguration camundaEngineBpmnKoraProcessEngineConfiguration(JobExecutor jobExecutor,
-                                                                                       TelemetryRegistry telemetryRegistry,
                                                                                        IdGenerator idGenerator,
                                                                                        JuelExpressionManager koraExpressionManager,
                                                                                        ArtifactFactory artifactFactory,
                                                                                        All<ProcessEnginePlugin> plugins,
                                                                                        CamundaEngineDataSource camundaEngineDataSource,
                                                                                        CamundaEngineBpmnConfig camundaEngineBpmnConfig,
-                                                                                       KoraResolverFactory componentResolverFactory,
-                                                                                       CamundaVersion camundaVersion) {
-        return new KoraProcessEngineConfiguration(jobExecutor, telemetryRegistry, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaEngineDataSource, camundaEngineBpmnConfig, componentResolverFactory, camundaVersion);
+                                                                                       KoraResolverFactory componentResolverFactory) {
+        return new KoraProcessEngineConfiguration(jobExecutor, idGenerator, koraExpressionManager, artifactFactory, plugins, camundaEngineDataSource, camundaEngineBpmnConfig, componentResolverFactory);
     }
 
     @Root
