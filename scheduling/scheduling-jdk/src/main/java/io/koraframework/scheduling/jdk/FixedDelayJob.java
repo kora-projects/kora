@@ -8,17 +8,18 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public final class FixedDelayJob extends AbstractJob {
+
     private final Duration initialDelay;
     private final Duration delay;
 
-    public FixedDelayJob(SchedulingTelemetry schedulingTelemetry, JdkSchedulingExecutor service, Runnable command, Duration initialDelay, Duration delay) {
+    public FixedDelayJob(SchedulingTelemetry schedulingTelemetry, SchedulingJdkExecutor service, Runnable command, Duration initialDelay, Duration delay) {
         super(schedulingTelemetry, service, command);
         this.initialDelay = Objects.requireNonNull(initialDelay);
         this.delay = Objects.requireNonNull(delay);
     }
 
     @Override
-    protected ScheduledFuture<?> schedule(JdkSchedulingExecutor service, Runnable command) {
+    protected ScheduledFuture<?> schedule(SchedulingJdkExecutor service, Runnable command) {
         var initialDelay = this.initialDelay.toMillis();
         var delay = this.delay.toMillis();
         return service.scheduleWithFixedDelay(command, initialDelay, delay, TimeUnit.MILLISECONDS);

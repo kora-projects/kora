@@ -9,46 +9,70 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 
+import java.time.Duration;
+import java.time.ZonedDateTime;
+import java.util.Objects;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
-public abstract class AbstractJob implements Lifecycle {
+public final class CronJob implements Lifecycle {
 
     private final Logger logger;
-
     private final ReentrantLock lock = new ReentrantLock(true);
-
     private final SchedulingTelemetry telemetry;
     private final SchedulingJdkExecutor service;
     private final Runnable command;
+    private final CronExpression cron;
 
     private volatile boolean started = false;
     private volatile ScheduledFuture<?> scheduledFuture;
 
-    public AbstractJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command) {
+    public CronJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command, CronExpression cron) {
         this.logger = LoggerFactory.getLogger(telemetry.jobClass());
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
+        this.cron = Objects.requireNonNull(cron);
     }
 
-    protected abstract ScheduledFuture<?> schedule(SchedulingJdkExecutor service, Runnable command);
-
     @Override
-    public final void init() {
+    public void init() {
         this.lock.lock();
         try {
             if (this.started) {
                 return;
             }
             this.started = true;
-            logger.debug("JDK Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+            this.logger.debug("JDK Job '{}#{}' starting...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
             final long started = TimeUtils.started();
 
-            this.scheduledFuture = this.schedule(this.service, this::runJob);
+            this.scheduleNext();
 
-            logger.info("JDK Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
+            this.logger.info("JDK Job '{}#{}' started in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(),
                 TimeUtils.tookForLogging(started));
+        } finally {
+            this.lock.unlock();
+        }
+    }
+
+    @Override
+    public void release() {
+        this.logger.debug("JDK Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
+        final long started = TimeUtils.started();
+
+        this.lock.lock();
+        try {
+            if (!this.started) {
+                return;
+            }
+            this.started = false;
+            var future = this.scheduledFuture;
+            this.scheduledFuture = null;
+            if (future != null) {
+                future.cancel(false);
+            }
+            this.logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
         } finally {
             this.lock.unlock();
         }
@@ -78,30 +102,23 @@ public abstract class AbstractJob implements Lifecycle {
                             }
                         });
                 });
+            this.scheduleNext();
         } finally {
             this.lock.unlock();
         }
     }
 
-    @Override
-    public final void release() {
-        logger.debug("JDK Job '{}#{}' stopping...", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod());
-        final long started = TimeUtils.started();
-
-        this.lock.lock();
-        try {
-            if (!this.started) {
-                return;
-            }
+    private void scheduleNext() {
+        var now = ZonedDateTime.now();
+        var next = this.cron.next(now);
+        if (next == null) {
+            this.logger.warn("JDK Job '{}#{}' won't be scheduled because cron expression has no next fire time: {}",
+                this.telemetry.jobClass().getCanonicalName(), this.telemetry.jobMethod(), this.cron);
             this.started = false;
-
-            var f = this.scheduledFuture;
             this.scheduledFuture = null;
-            f.cancel(false);
-
-            logger.info("JDK Job '{}#{}' stopped in {}", telemetry.jobClass().getCanonicalName(), telemetry.jobMethod(), TimeUtils.tookForLogging(started));
-        } finally {
-            this.lock.unlock();
+            return;
         }
+        var delay = Math.max(0, Duration.between(now, next).toMillis());
+        this.scheduledFuture = this.service.scheduleOnce(this::runJob, delay, TimeUnit.MILLISECONDS);
     }
 }
