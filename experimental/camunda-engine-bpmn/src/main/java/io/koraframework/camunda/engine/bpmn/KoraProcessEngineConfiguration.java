@@ -304,6 +304,8 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
             "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Task.xml\" />\n" +
             "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/EventSubscription.xml\" />\n" + // e.g. Message Start Events are registered during deployment
             "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Filter.xml\" />\n" + // FilterAllTasksCreator
+            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TaskMetrics.xml\" />\n" + // Engine metrics can be flushed before stage two
+            "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Metrics.xml\" />\n" + // DbMetricsReporter can flush on stage one close
             "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/User.xml\" />\n" + //AdminUserCreator
             "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Group.xml\" />\n" + //AdminUserCreator
             "        <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Membership.xml\" />\n" + //AdminUserCreator
@@ -377,14 +379,12 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
             "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/SchemaLogEntry.xml\" />\n" +
             //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Resource.xml\" />\n" +
             "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TableData.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/TaskMetrics.xml\" />\n" +
             //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Task.xml\" />\n" +
             //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/User.xml\" />\n" +
             "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/VariableInstance.xml\" />\n" +
             //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/EventSubscription.xml\" />\n" +
             "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Statistics.xml\" />\n" +
             //"    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Filter.xml\" />\n" +
-            "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Metrics.xml\" />\n" +
             "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/ExternalTask.xml\" />\n" +
             "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/Batch.xml\" />\n" +
             "    <mapper resource=\"org/camunda/bpm/engine/impl/mapping/entity/HistoricBatch.xml\" />\n" +
