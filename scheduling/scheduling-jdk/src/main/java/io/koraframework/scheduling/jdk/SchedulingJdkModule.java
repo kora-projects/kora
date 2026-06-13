@@ -6,6 +6,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.scheduling.common.SchedulingJobConfig;
+import io.koraframework.scheduling.common.SchedulingJobConfig;
 import io.koraframework.scheduling.common.SchedulingModule;
 
 public interface SchedulingJdkModule extends SchedulingModule {
