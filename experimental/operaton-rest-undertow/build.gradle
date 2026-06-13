@@ -1,0 +1,33 @@
+apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
+
+dependencies {
+    annotationProcessor project(":config:config-annotation-processor")
+
+    compileOnly(libs.operaton.engine) {
+        exclude group: "org.springframework", module: "spring-beans"
+        exclude group: "org.apache.tomcat", module: "catalina"
+    }
+
+    implementation project(":config:config-common")
+    implementation project(":logging:logging-common")
+    implementation libs.resteasy.undertow
+    implementation libs.resteasy.jackson
+    implementation project(":openapi:openapi-management")
+    implementation project(":http:http-server-undertow")
+
+    api project(":telemetry:telemetry-common")
+    api project(":common")
+    api libs.operaton.rest.jakarta
+    api libs.operaton.openapi
+    api libs.jakarta.rs.api
+    api libs.undertow.servlet
+    api libs.undertow.core
+    api libs.jboss.threads
+    api libs.jboss.logging
+
+    testImplementation libs.jdbc.postgresql
+    testImplementation project(":database:database-jdbc")
+    testImplementation project(":internal:test-logging")
+    testImplementation project(":test:test-junit5")
+    testImplementation project(":internal:test-postgres")
+}
