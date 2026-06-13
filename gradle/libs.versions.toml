@@ -172,6 +172,7 @@ classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.184" }
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.0.RELEASE" }
 apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.13.1" }
 quartz = { module = "org.quartz-scheduler:quartz", version = "2.5.2" }
+db-scheduler = { module = "com.github.kagkarlsson:db-scheduler", version = "16.12.0" }
 
 caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.4" }
 
