@@ -16,10 +16,12 @@ import io.koraframework.grpc.client.GrpcClientModule;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Wrapped;
-import io.koraframework.camunda.zeebe.worker.telemetry.DefaultZeebeWorkerTelemetryFactory;
-import io.koraframework.camunda.zeebe.worker.telemetry.MicrometerZeebeClientWorkerJobMetricsFactory;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeClientWorkerMetricsFactory;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryFactory;
+import io.koraframework.camunda.zeebe.worker.telemetry.impl.DefaultZeebeWorkerLoggerFactory;
+import io.koraframework.camunda.zeebe.worker.telemetry.impl.DefaultZeebeWorkerMetricsFactory;
+import io.koraframework.camunda.zeebe.worker.telemetry.impl.DefaultZeebeWorkerTelemetryFactory;
+import io.koraframework.camunda.zeebe.worker.telemetry.impl.MicrometerZeebeClientWorkerJobMetricsFactory;
 import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.Tag;
 import io.koraframework.common.annotation.Root;
@@ -103,11 +105,15 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
     }
 
     @DefaultComponent
-    default ZeebeWorkerTelemetryFactory zeebeWorkerTelemetryFactory(@Nullable MeterRegistry meterRegistry, @Nullable Tracer tracer) {
-        return new DefaultZeebeWorkerTelemetryFactory(meterRegistry, tracer);
+    default ZeebeWorkerTelemetryFactory zeebeWorkerTelemetryFactory(@Nullable MeterRegistry meterRegistry,
+                                                                    @Nullable Tracer tracer,
+                                                                    @Nullable DefaultZeebeWorkerLoggerFactory loggerFactory,
+                                                                    @Nullable DefaultZeebeWorkerMetricsFactory metricsFactory) {
+        return new DefaultZeebeWorkerTelemetryFactory(meterRegistry, tracer, loggerFactory, metricsFactory);
     }
 
     @Tag(ZeebeClient.class)
+    @DefaultComponent
     default Wrapped<ManagedChannel> zeebeWorkerGrpcManagedChannel(ZeebeClientConfig clientConfig,
                                                                   All<ClientInterceptor> interceptors,
                                                                   GrpcClientTelemetryFactory clientTelemetryFactory,
@@ -122,7 +128,7 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
     }
 
     @DefaultComponent
-    default MicrometerZeebeClientWorkerJobMetricsFactory micrometerZeebeClientWorkerJobMetricsFactory(@Nullable MeterRegistry meterRegistry) {
+    default ZeebeClientWorkerMetricsFactory micrometerZeebeClientWorkerJobMetricsFactory(@Nullable MeterRegistry meterRegistry) {
         return new MicrometerZeebeClientWorkerJobMetricsFactory(meterRegistry);
     }
 
