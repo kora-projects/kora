@@ -119,7 +119,7 @@ public class DefaultCamundaRestMetricsFactory {
             addConfiguredTags(staticTags);
             addExtraTags(staticTags, metricKey.extraTags());
 
-            return Timer.builder("http.server.request.duration")
+            return Timer.builder("camunda.rest.request.duration")
                 .serviceLevelObjectives(this.context.config().metrics().slo())
                 .tags(Tags.of(staticTags));
         }
@@ -135,7 +135,7 @@ public class DefaultCamundaRestMetricsFactory {
             addExtraTags(staticTags, metricKey.extraTags());
 
             var value = new AtomicLong(0);
-            Gauge.builder("http.server.active_requests", value, AtomicLong::get)
+            Gauge.builder("camunda.rest.active_requests", value, AtomicLong::get)
                 .tags(Tags.of(staticTags))
                 .register(this.context.meterRegistry());
             return value;
