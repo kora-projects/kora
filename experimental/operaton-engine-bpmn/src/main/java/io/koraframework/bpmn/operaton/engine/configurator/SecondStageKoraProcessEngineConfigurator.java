@@ -1,16 +1,19 @@
 package io.koraframework.bpmn.operaton.engine.configurator;
 
+import io.koraframework.bpmn.operaton.engine.KoraProcessEngine;
+import io.koraframework.bpmn.operaton.engine.KoraProcessEngineConfiguration;
+import io.koraframework.bpmn.operaton.engine.OperatonEngineBpmnConfig;
+import io.koraframework.common.util.TimeUtils;
+import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.session.Configuration;
 import org.operaton.bpm.engine.ProcessEngine;
 import org.operaton.bpm.engine.ProcessEngineConfiguration;
 import org.operaton.bpm.engine.impl.jobexecutor.JobExecutor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.bpmn.operaton.engine.OperatonEngineBpmnConfig;
-import io.koraframework.bpmn.operaton.engine.KoraProcessEngine;
-import io.koraframework.bpmn.operaton.engine.KoraProcessEngineConfiguration;
-import io.koraframework.common.util.TimeUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class SecondStageKoraProcessEngineConfigurator implements ProcessEngineConfigurator {
@@ -39,12 +42,22 @@ public final class SecondStageKoraProcessEngineConfigurator implements ProcessEn
             Configuration dest = kEngine.getSqlSessionFactory().getConfiguration();
 
             final AtomicInteger statements = new AtomicInteger(0);
+            List<MappedStatement> secondPhaseStatements = new ArrayList<>();
             src.getMappedStatements().forEach(ms -> {
                 if (!dest.hasStatement(ms.getId(), engineConfig.parallelInitialization().validateIncompleteStatements())) {
                     dest.addMappedStatement(ms);
+                    secondPhaseStatements.add(ms);
                     statements.incrementAndGet();
                 }
             });
+
+            if (logger.isDebugEnabled()) {
+                List<String> resources = secondPhaseStatements.stream()
+                    .map(MappedStatement::getResource)
+                    .toList();
+                logger.debug("Operaton BPMN Engine second stage statements mapped: {}", resources);
+            }
+
             if (jobExecutor.isAutoActivate()) {
                 jobExecutor.start();
             }

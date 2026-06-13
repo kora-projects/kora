@@ -293,7 +293,6 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Commons.xml\" />\n" +
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Authorization.xml\" />\n" +
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Tenant.xml\" />\n" +
-
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Deployment.xml\" />\n" +
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Incident.xml\" />\n" + // e.g. New process definition is deployed which replaces a previous version that included a Timer Start Event
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Job.xml\" />\n" +
@@ -307,7 +306,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/User.xml\" />\n" + //AdminUserCreator
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Group.xml\" />\n" + //AdminUserCreator
             "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Membership.xml\" />\n" + //AdminUserCreator
-            "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/CamundaFormDefinition.xml\" />\n" + //Deployment BPMN
+            "        <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/OperatonFormDefinition.xml\" />\n" + //Deployment BPMN
             "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/DecisionDefinition.xml\" />\n" + //Deployment DMN
             "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/DecisionRequirementsDefinition.xml\" />" + // Deployment DMN
             (getHistoryLevel() == HISTORY_LEVEL_FULL ? "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricJobLog.xml\" />\n" : "") + // full history
@@ -337,75 +336,122 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
         return parserConfiguration;
     }
 
+    static final String OPERATON_STATEMENTS = """
+        <configuration>
+        	<settings>
+        		<setting name="lazyLoadingEnabled" value="false" />
+        	</settings>
+        	<mappers>
+            <!-- Mappings are ordered so that cross-references can always be resolved by already loaded mappings -->
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Commons.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Authorization.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Report.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Tenant.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Attachment.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Comment.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Deployment.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Execution.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Group.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricActivityInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricCaseActivityInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDetail.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricIncident.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricIdentityLinkLog.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricProcessInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricCaseInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricStatistics.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricVariableInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricTaskInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricTaskInstanceReport.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricJobLog.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricExternalTaskLog.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/UserOperationLogEntry.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/IdentityInfo.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/IdentityLink.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Job.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/JobDefinition.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Incident.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Membership.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/ProcessDefinition.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Property.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/SchemaLogEntry.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Resource.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/TableData.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/TaskMetrics.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Task.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/User.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/VariableInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/EventSubscription.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Statistics.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Filter.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Metrics.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/ExternalTask.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Batch.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricBatch.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/TenantMembership.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/OperatonFormDefinition.xml" />
+        
+            <!-- CMMN -->
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/CaseDefinition.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/CaseExecution.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/CaseSentryPart.xml" />
+        
+            <!-- DMN -->
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/DecisionDefinition.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionInputInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionOutputInstance.xml" />
+            <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/DecisionRequirementsDefinition.xml" />
+        
+        	</mappers>
+        </configuration>
+        """;
+
     protected InputStream getMyBatisXmlConfigurationSteamStageTwo() {
-        String s = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<!DOCTYPE configuration PUBLIC \"-//mybatis.org//DTD Config 3.0//EN\" \"http://mybatis.org/dtd/mybatis-3-config.dtd\">\n" +
-            "<configuration>\n" +
-            "\t<settings>\n" +
-            "\t\t<setting name=\"lazyLoadingEnabled\" value=\"false\" />\n" +
-            "\t</settings>\n" +
-            "\t<mappers>\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Report.xml\" />\n" +
-
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Attachment.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Comment.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Deployment.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Execution.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Group.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricActivityInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricCaseActivityInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricDetail.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricIncident.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricIdentityLinkLog.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricProcessInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricCaseInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricStatistics.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricVariableInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricTaskInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricTaskInstanceReport.xml\" />\n" +
-            (getHistoryLevel() != HISTORY_LEVEL_FULL ? "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricJobLog.xml\" />\n" : "") +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricExternalTaskLog.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/UserOperationLogEntry.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/IdentityInfo.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/IdentityLink.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Job.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/JobDefinition.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Incident.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Membership.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/ProcessDefinition.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Property.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/SchemaLogEntry.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Resource.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/TableData.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/TaskMetrics.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Task.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/User.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/VariableInstance.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/EventSubscription.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Statistics.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Filter.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Metrics.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/ExternalTask.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/Batch.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricBatch.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/TenantMembership.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/CamundaFormDefinition.xml\" />\n" +
-
-            // Never include CMMN - not supported
-            //"    <!-- CMMN -->\n" +
-            //"\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/CaseDefinition.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/CaseExecution.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/CaseSentryPart.xml\" />\n" +
-
-            "    <!-- DMN -->\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/DecisionDefinition.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionInputInstance.xml\" />\n" +
-            "    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionOutputInstance.xml\" />\n" +
-            //"    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/DecisionRequirementsDefinition.xml\" />" +
-            "\t</mappers>\n" +
-            "</configuration>\n";
+        String s = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE configuration PUBLIC "-//mybatis.org//DTD Config 3.0//EN" "http://mybatis.org/dtd/mybatis-3-config.dtd">
+            <configuration>
+            \t<settings>
+            \t\t<setting name="lazyLoadingEnabled" value="false" />
+            \t</settings>
+            \t<mappers>
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Report.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Attachment.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Comment.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Execution.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricActivityInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricCaseActivityInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDetail.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricIncident.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricIdentityLinkLog.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricProcessInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricCaseInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricStatistics.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricVariableInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricTaskInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricTaskInstanceReport.xml" />%s
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricExternalTaskLog.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/UserOperationLogEntry.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/IdentityInfo.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/IdentityLink.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/SchemaLogEntry.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/TableData.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/TaskMetrics.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/VariableInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Statistics.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Metrics.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/ExternalTask.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/Batch.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricBatch.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/TenantMembership.xml" />
+                <!-- DMN -->
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionInputInstance.xml" />
+                <mapper resource="org/operaton/bpm/engine/impl/mapping/entity/HistoricDecisionOutputInstance.xml" />
+            \t</mappers>
+            </configuration>
+            """.formatted(getHistoryLevel() != HISTORY_LEVEL_FULL ? "\n    <mapper resource=\"org/operaton/bpm/engine/impl/mapping/entity/HistoricJobLog.xml\" />\n" : "");
         return new ByteArrayInputStream(s.getBytes());
     }
 }

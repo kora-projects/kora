@@ -5,8 +5,12 @@
         </encoder>
     </appender>
 
-    <logger name="io.undertow" level="DEBUG"/>
-    <root level="info">
+    <root level="INFO">
         <appender-ref ref="STDOUT" />
     </root>
+
+    <logger name="io.undertow" level="DEBUG"/>
+    <logger name="io.koraframework" level="DEBUG"/>
+    <logger name="org.testcontainers" level="INFO"/>
+    <logger name="com.github.dockerjava" level="INFO"/>
 </configuration>

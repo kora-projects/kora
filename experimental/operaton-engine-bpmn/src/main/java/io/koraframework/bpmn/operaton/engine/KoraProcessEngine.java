@@ -4,10 +4,10 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.bpmn.operaton.engine.configurator.ProcessEngineConfigurator;
 import io.koraframework.common.util.TimeUtils;
+import org.jspecify.annotations.Nullable;
 import org.operaton.bpm.engine.ProcessEngine;
 import org.operaton.bpm.engine.ProcessEngineConfiguration;
 import org.operaton.bpm.engine.ProcessEngines;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -87,13 +87,15 @@ public final class KoraProcessEngine implements Lifecycle, Wrapped<ProcessEngine
 
     @Override
     public void release() {
-        logger.debug("Operaton BPMN Engine stopping...");
-        final long started = TimeUtils.started();
+        if (processEngine != null) {
+            logger.debug("Operaton BPMN Engine stopping...");
+            final long started = TimeUtils.started();
 
-        ProcessEngines.unregister(processEngine);
-        processEngine.close();
+            ProcessEngines.unregister(processEngine);
+            processEngine.close();
 
-        logger.info("Operaton BPMN Engine stopped in {}", TimeUtils.tookForLogging(started));
+            logger.info("Operaton BPMN Engine stopped in {}", TimeUtils.tookForLogging(started));
+        }
     }
 
     @Override
