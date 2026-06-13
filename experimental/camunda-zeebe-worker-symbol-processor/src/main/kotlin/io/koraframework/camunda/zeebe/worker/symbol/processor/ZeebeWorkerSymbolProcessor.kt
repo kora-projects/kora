@@ -45,7 +45,7 @@ class ZeebeWorkerSymbolProcessor(
         private val CLASS_CLIENT: ClassName = ClassName("io.camunda.zeebe.client.api.worker", "JobClient")
         private val CLASS_FINAL_COMMAND: ClassName = ClassName("io.camunda.zeebe.client.api.command", "FinalCommandStep")
         private val CLASS_ACTIVE_JOB: ClassName = ClassName("io.camunda.zeebe.client.api.response", "ActivatedJob")
-        private val CLASS_WORKER_EXCEPTION: ClassName = ClassName("io.koraframework.camunda.zeebe.worker", "JobWorkerException")
+        private val CLASS_WORKER_EXCEPTION: ClassName = ClassName("io.koraframework.camunda.zeebe.worker.exception", "JobWorkerException")
         private val CLASS_JSON_READER: ClassName = ClassName("io.koraframework.json.common", "JsonReader")
         private val CLASS_JSON_WRITER: ClassName = ClassName("io.koraframework.json.common", "JsonWriter")
         private val CLASS_VARIABLE_READER = ClassName("io.koraframework.camunda.zeebe.worker", "ZeebeVariableJsonReader")
