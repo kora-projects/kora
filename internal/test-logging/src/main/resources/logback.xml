@@ -6,6 +6,7 @@
     </appender>
 
     <logger name="io.undertow" level="DEBUG"/>
+    <logger name="io.koraframework" level="DEBUG"/>
     <root level="info">
         <appender-ref ref="STDOUT" />
     </root>
