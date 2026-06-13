@@ -20,6 +20,8 @@ public class QuartzSchedulingGenerator {
     private static final ClassName koraQuartzJobClassName = ClassName.get("io.koraframework.scheduling.quartz", "KoraQuartzJob");
     private static final ClassName schedulingTelemetryClassName = ClassName.get("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetry");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory");
+    private static final ClassName schedulingJobConfigClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingJobConfig");
+    private static final ClassName jobTelemetryConfigClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingJobConfig", "JobTelemetryConfig");
     private static final ClassName triggerClassName = ClassName.get("org.quartz", "Trigger");
     private static final ClassName schedulerClassName = ClassName.get("org.quartz", "Scheduler");
     private static final ClassName triggerBuilderClassName = ClassName.get("org.quartz", "TriggerBuilder");
@@ -124,11 +126,7 @@ public class QuartzSchedulingGenerator {
             .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
-            .addMethod(MethodSpec.methodBuilder("telemetry")
-                .returns(ClassName.get("io.koraframework.scheduling.common.telemetry", "JobTelemetryConfig"))
-                .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
-                .build()
-            );
+            .addSuperinterface(schedulingJobConfigClassName);
 
         if (defaultCron != null && !defaultCron.isBlank()) {
             config.addMethod(MethodSpec.methodBuilder("cron")
@@ -148,7 +146,6 @@ public class QuartzSchedulingGenerator {
 
         return ClassName.get(packageName, configRecordName);
     }
-
 
     private ClassName generateJobClass(TypeElement type, ExecutableElement method) {
         var className = NameUtils.generatedType(type, method.getSimpleName() + "_Job");

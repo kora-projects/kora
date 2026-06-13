@@ -101,7 +101,6 @@ addDependencies(tasksCodegenJava, "mapstruct:mapstruct-java-extension")
 // Codegen Kotlin
 addDependenciesByPattern(tasksCodegenKotlin, "symbol-processor")
 addDependenciesByPattern(tasksCodegenKotlin, "ksp")
-addDependencies(tasksCodegenKotlin, "scheduling:scheduling-ksp")
 addDependencies(tasksCodegenKotlin, "mapstruct:mapstruct-ksp-extension")
 
 rootProject.allprojects.forEach {

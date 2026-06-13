@@ -1,0 +1,22 @@
+package io.koraframework.scheduling.jdk;
+
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
+public interface SchedulingJdkExecutor {
+
+    /**
+     * @see java.util.concurrent.ScheduledExecutorService#scheduleWithFixedDelay(Runnable, long, long, TimeUnit)
+     */
+    ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit timeUnit);
+
+    /**
+     * @see java.util.concurrent.ScheduledExecutorService#scheduleAtFixedRate(Runnable, long, long, TimeUnit)
+     */
+    ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit timeUnit);
+
+    /**
+     * @see java.util.concurrent.ScheduledExecutorService#schedule(Runnable, long, TimeUnit)
+     */
+    ScheduledFuture<?> scheduleOnce(Runnable command, long delay, TimeUnit timeUnit);
+}

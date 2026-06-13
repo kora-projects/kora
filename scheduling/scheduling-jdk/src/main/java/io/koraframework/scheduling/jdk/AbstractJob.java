@@ -16,21 +16,23 @@ public abstract class AbstractJob implements Lifecycle {
 
     private final Logger logger;
 
-    private final SchedulingTelemetry telemetry;
-    private final JdkSchedulingExecutor service;
-    private final Runnable command;
-
     private final ReentrantLock lock = new ReentrantLock(true);
+
+    private final SchedulingTelemetry telemetry;
+    private final SchedulingJdkExecutor service;
+    private final Runnable command;
 
     private volatile boolean started = false;
     private volatile ScheduledFuture<?> scheduledFuture;
 
-    public AbstractJob(SchedulingTelemetry telemetry, JdkSchedulingExecutor service, Runnable command) {
+    public AbstractJob(SchedulingTelemetry telemetry, SchedulingJdkExecutor service, Runnable command) {
         this.logger = LoggerFactory.getLogger(telemetry.jobClass());
         this.telemetry = telemetry;
         this.service = service;
         this.command = command;
     }
+
+    protected abstract ScheduledFuture<?> schedule(SchedulingJdkExecutor service, Runnable command);
 
     @Override
     public final void init() {
@@ -80,8 +82,6 @@ public abstract class AbstractJob implements Lifecycle {
             this.lock.unlock();
         }
     }
-
-    protected abstract ScheduledFuture<?> schedule(JdkSchedulingExecutor service, Runnable command);
 
     @Override
     public final void release() {
