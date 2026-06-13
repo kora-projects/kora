@@ -40,6 +40,8 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
                                       Class<?> jobClass,
                                       String jobMethod,
                                       SchedulingTelemetryConfig config,
+                                      boolean isTraceEnabled,
+                                      boolean isMetricsEnabled,
                                       Tracer tracer,
                                       MeterRegistry meterRegistry,
                                       DefaultSchedulingLoggerFactory loggerFactory,
