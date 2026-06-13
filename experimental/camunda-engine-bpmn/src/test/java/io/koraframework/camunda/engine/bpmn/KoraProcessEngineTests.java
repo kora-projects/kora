@@ -61,15 +61,13 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
 
             ProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineBpmnKoraProcessEngineConfiguration(
                 jobExecutor,
-                camundaEngineBpmnKoraTelemetryRegistry(null),
                 camundaEngineBpmnIdGenerator(),
                 camundaEngineBpmnKoraExpressionManager(camundaEngineBpmnKoraELResolver(koraDelegateWrapperFactory, All.of(), All.of())),
                 camundaEngineBpmnKoraArtifactFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 All.of(),
                 camundaEngineDataSource,
                 config,
-                camundaEngineBpmnKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
-                camundaEngineBpmnPackageVersion()
+                camundaEngineBpmnKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of())
             );
 
             var koraProcessEngine = camundaEngineBpmnKoraProcessEngine(koraProcessEngineConfiguration,
@@ -128,15 +126,13 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
 
             ProcessEngineConfiguration koraProcessEngineConfiguration = camundaEngineBpmnKoraProcessEngineConfiguration(
                 jobExecutor,
-                camundaEngineBpmnKoraTelemetryRegistry(null),
                 camundaEngineBpmnIdGenerator(),
                 camundaEngineBpmnKoraExpressionManager(camundaEngineBpmnKoraELResolver(koraDelegateWrapperFactory, All.of(), All.of())),
                 camundaEngineBpmnKoraArtifactFactory(koraDelegateWrapperFactory, All.of(), All.of()),
                 All.of(),
                 camundaEngineDataSource,
                 config,
-                camundaEngineBpmnKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of()),
-                camundaEngineBpmnPackageVersion()
+                camundaEngineBpmnKoraComponentResolverFactory(koraDelegateWrapperFactory, All.of(), All.of())
             );
 
             KoraProcessEngine koraProcessEngine = camundaEngineBpmnKoraProcessEngine(koraProcessEngineConfiguration,

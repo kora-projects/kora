@@ -14,6 +14,12 @@ import io.koraframework.common.annotation.Root;
 import io.undertow.server.HttpHandler;
 import jakarta.ws.rs.core.Application;
 
+/**
+ * Use module: `io.koraframework:experimental.operaton.rest.undertow` as a replacement for deprecated Camunda 7 engine
+ * <a href="https://camunda.com/blog/2025/02/camunda-7-enterprise-end-of-life-extension/">Camunda 7 EOL</a>
+ * <a href="https://operaton.org/">Operaton BPMN Engine</a>
+ */
+@Deprecated
 public interface CamundaRestUndertowModule extends CamundaRestModule {
 
     @Tag(CamundaRest.class)
