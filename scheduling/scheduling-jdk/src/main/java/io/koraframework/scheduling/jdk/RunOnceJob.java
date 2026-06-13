@@ -8,16 +8,17 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 public final class RunOnceJob extends AbstractJob {
+
     private final Duration delay;
 
-    public RunOnceJob(SchedulingTelemetry schedulingTelemetry, JdkSchedulingExecutor service, Runnable command, Duration delay) {
+    public RunOnceJob(SchedulingTelemetry schedulingTelemetry, SchedulingJdkExecutor service, Runnable command, Duration delay) {
         super(schedulingTelemetry, service, command);
         this.delay = Objects.requireNonNull(delay);
     }
 
     @Override
-    protected ScheduledFuture<?> schedule(JdkSchedulingExecutor service, Runnable command) {
+    protected ScheduledFuture<?> schedule(SchedulingJdkExecutor service, Runnable command) {
         var delay = this.delay.toMillis();
-        return service.schedule(command, delay, TimeUnit.MILLISECONDS);
+        return service.scheduleOnce(command, delay, TimeUnit.MILLISECONDS);
     }
 }

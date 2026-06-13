@@ -81,7 +81,7 @@ include(
     'scheduling:scheduling-jdk',
     'scheduling:scheduling-quartz',
     'scheduling:scheduling-annotation-processor',
-    'scheduling:scheduling-ksp',
+    'scheduling:scheduling-symbol-processor',
     'resilient:resilient-annotation-processor',
     'resilient:resilient-symbol-processor',
     'resilient:resilient-kora',
