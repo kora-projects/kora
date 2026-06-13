@@ -9,7 +9,7 @@ object GrpcClassNames {
     val abstractCoroutineStub = ClassName("io.grpc.kotlin", "AbstractCoroutineStub")
     val grpcGenerated = ClassName("io.grpc.stub.annotations", "GrpcGenerated")
     val channel = ClassName("io.grpc", "Channel")
-    val managedChannelLifecycle = ClassName("io.koraframework.grpc.client", "ManagedChannelLifecycle")
+    val managedChannelLifecycle = ClassName("io.koraframework.grpc.client.channel", "ManagedChannelLifecycle")
     val grpcClientConfig = ClassName("io.koraframework.grpc.client", "GrpcClientConfig")
     val stubFor = ClassName("io.grpc.kotlin", "StubFor")
 
