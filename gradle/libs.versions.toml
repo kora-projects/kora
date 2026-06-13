@@ -18,7 +18,6 @@ opentelemetry = "1.54.0"
 undertow = "2.3.18.Final"
 resteasy = "6.2.12.Final"
 camunda7 = "7.24.0"
-operaton = "2.1.1"
 zeebe = "8.7.10"
 junit = "6.0.1"
 guava = "33.3.1-jre"
@@ -156,9 +155,6 @@ s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.29.52" }
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
 camunda7-openapi = { module = "org.camunda.bpm:camunda-engine-rest-openapi", version.ref = "camunda7" }
-operaton-engine = { module = "org.operaton.bpm:operaton-engine", version.ref = "operaton" }
-operaton-rest-jakarta = { module = "org.operaton.bpm:operaton-engine-rest-jakarta", version = "1.0.0-beta-3" }
-operaton-openapi = { module = "org.operaton.bpm:operaton-engine-rest-openapi", version.ref = "operaton" }
 resteasy-undertow = { module = "org.jboss.resteasy:resteasy-undertow", version.ref = "resteasy" }
 resteasy-jackson = { module = "org.jboss.resteasy:resteasy-jackson2-provider", version.ref = "resteasy" }
 fasterxml-uuidgenerator = { module = "com.fasterxml.uuid:java-uuid-generator", version = "5.1.0" }
