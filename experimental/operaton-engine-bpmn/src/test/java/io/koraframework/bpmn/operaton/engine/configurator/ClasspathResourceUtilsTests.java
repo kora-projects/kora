@@ -13,7 +13,7 @@ public class ClasspathResourceUtilsTests {
 
     @Test
     void fileByRegex() {
-        List<Resource> resources = ClasspathResourceUtils.findResources(".*\\.txt");
+        List<Resource> resources = ClasspathResourceUtils.findResources("bpm/.*.form");
         assertEquals(1, resources.size());
         for (Resource resource : resources) {
             assertNotNull(resource.name());
