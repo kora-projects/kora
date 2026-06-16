@@ -94,7 +94,7 @@ final class ZeebeManagedChannelFactory {
 
             private ManagedChannelBuilder<?> configure(ManagedChannelBuilder<?> builder) {
                 builder.keepAliveTime(clientConfig.keepAlive().toMillis(), TimeUnit.MILLISECONDS);
-                builder.userAgent("zeebe-client-kora/" + VersionUtil.getVersion());
+                builder.userAgent("kora-zeebe/" + VersionUtil.getVersion());
                 builder.maxInboundMessageSize((int) clientConfig.grpc().maxMessageSize().toBytes());
                 if (clientConfig.grpc().retryPolicy().enabled()) {
                     Map<String, Object> serviceConfig = getServiceConfig(clientConfig);
