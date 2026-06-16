@@ -2,6 +2,7 @@ package io.koraframework.resilient.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.aop.annotation.processor.KoraAspect;
@@ -27,19 +28,16 @@ public class RateLimitKoraAspect implements KoraAspect {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_TYPE.canonicalName());
-    }
-
-    @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(ANNOTATION_TYPE);
     }
 
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
-        if (MethodUtils.isPublisher(method) || MethodUtils.isFuture(method)) {
-            throw new ProcessingErrorException("Future and Publisher methods are not supported", method);
+        if (MethodUtils.isPublisher(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+        } else if(MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
         }
 
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()

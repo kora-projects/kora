@@ -143,9 +143,11 @@ public class RequestHandlerGenerator {
             handler.add("\n");
         }
 
-        if (CommonUtils.isMono(returnType)) {
-            processingEnvironment.getMessager().printWarning("Method return type is Mono<T> which is unsupported and has no meaning", requestMappingData.executableElement());
+        if (CommonUtils.isPublisher(returnType)) {
+            processingEnvironment.getMessager().printWarning("Method return type is Publisher<T> which is unsupported and has no meaning", requestMappingData.executableElement());
         } else if (CommonUtils.isFuture(returnType)) {
+            processingEnvironment.getMessager().printWarning("Method return type is Future<T> which is unsupported and has no meaning", requestMappingData.executableElement());
+        } else if (CommonUtils.isCompletionStage(returnType)) {
             processingEnvironment.getMessager().printWarning("Method return type is CompletionStage<T> which is unsupported and has no meaning", requestMappingData.executableElement());
         }
         var controllerCall = this.generateBlockingCall(requestMappingData, parameters, requestName);

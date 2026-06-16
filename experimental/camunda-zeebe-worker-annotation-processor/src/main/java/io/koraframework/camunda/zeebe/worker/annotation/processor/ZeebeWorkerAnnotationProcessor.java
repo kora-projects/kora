@@ -54,6 +54,14 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
                 throw new ProcessingErrorException("@JobWorker method can't be private", method);
             }
 
+            if (MethodUtils.isPublisher(method)) {
+                throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_WORKER.simpleName()) + CommonClassNames.publisher, method);
+            } else if(MethodUtils.isFuture(method)) {
+                throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_WORKER) + method.getReturnType().toString(), method);
+            } else if(MethodUtils.isCompletionStage(method)) {
+                throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_WORKER) + method.getReturnType().toString(), method);
+            }
+
             var packageName = getPackage(method);
             var ownerType = getOwner(method);
 
@@ -74,7 +82,7 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             var specBuilder = implSpecBuilder
                 .addMethod(methodConstructor)
                 .addMethod(getMethodType(method));
-            if (MethodUtils.isFuture(method) || MethodUtils.isPublisher(method)) {
+            if (MethodUtils.isFuture(method) || MethodUtils.isCompletionStage(method) || MethodUtils.isPublisher(method)) {
                 throw new ProcessingErrorException("Async invocation is not supported", method);
             }
 
@@ -223,9 +231,6 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
             implBuilder.addField(String.class, "jobName", Modifier.PRIVATE, Modifier.FINAL);
             methodBuilder.addParameter(CLASS_WORKER_CONFIG, "config");
             constructorBuilder.addStatement("this.jobName = config.getJobConfig($S).name()", getJobType(method));
-        }
-        if (MethodUtils.isFuture(method) || MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("@JobWorker annotated method can't have async signatures", method);
         }
 
         if (!MethodUtils.isVoid(method)) {

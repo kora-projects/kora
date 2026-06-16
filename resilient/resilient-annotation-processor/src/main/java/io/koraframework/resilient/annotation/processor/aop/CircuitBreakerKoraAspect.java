@@ -2,6 +2,7 @@ package io.koraframework.resilient.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.aop.annotation.processor.KoraAspect;
@@ -29,11 +30,6 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
     }
 
     @Override
-    public Set<String> getSupportedAnnotationTypes() {
-        return Set.of(ANNOTATION_TYPE.canonicalName());
-    }
-
-    @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
         return Set.of(ANNOTATION_TYPE);
     }
@@ -41,8 +37,11 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
     @Override
     public ApplyResult apply(ExecutableElement method, String superCall, AspectContext aspectContext) {
         if (MethodUtils.isPublisher(method)) {
-            throw new ProcessingErrorException("Publisher methods are not supported", method);
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE.simpleName()) + CommonClassNames.publisher, method);
+        } else if(MethodUtils.isFuture(method)) {
+            throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
         }
+
         final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
         final String circuitBreakerName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
@@ -56,8 +55,8 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             CodeBlock.of("$L.get($S)", fieldManager, circuitBreakerName));
 
         final CodeBlock body;
-        if (MethodUtils.isFuture(method)) {
-            body = buildBodyFuture(method, superCall, fieldCircuit);
+        if (MethodUtils.isCompletionStage(method)) {
+            body = buildBodyCompletableStage(method, superCall, fieldCircuit);
         } else {
             body = buildBodySync(method, superCall, fieldCircuit);
         }
@@ -90,7 +89,7 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             """, cbField, methodCall.toString(), cbField, returnCall.toString(), PERMITTED_EXCEPTION, cbField).build();
     }
 
-    private CodeBlock buildBodyFuture(ExecutableElement method, String superCall, String cbField) {
+    private CodeBlock buildBodyCompletableStage(ExecutableElement method, String superCall, String cbField) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
