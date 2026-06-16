@@ -4,6 +4,8 @@ import io.koraframework.application.graph.All;
 import io.koraframework.bpmn.operaton.engine.transaction.JdbcOperatonTransactionManager;
 import io.koraframework.bpmn.operaton.engine.transaction.OperatonTransactionManager;
 import io.koraframework.database.common.telemetry.*;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import io.koraframework.database.jdbc.JdbcDatabase;
 import io.koraframework.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
@@ -175,7 +177,7 @@ public class KoraProcessEngineTests implements OperatonEngineBpmnModule {
             )
         );
 
-        var db = new JdbcDatabase(config, DataBaseTelemetryFactory.NOOP, null);
+        var db = new JdbcDatabase(config, NoopDatabaseTelemetryFactory.INSTANCE, null);
         try {
             db.init();
         } catch (SQLException e) {
