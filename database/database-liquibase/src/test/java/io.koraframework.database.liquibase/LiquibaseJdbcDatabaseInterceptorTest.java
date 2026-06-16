@@ -1,6 +1,9 @@
 package io.koraframework.database.liquibase;
 
 import io.koraframework.database.common.telemetry.*;
+import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.koraframework.database.liquibase.LiquibaseConfig;
 import io.koraframework.database.liquibase.LiquibaseJdbcDatabaseInterceptor;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -47,13 +50,13 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
             )
         );
 
-        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), null);
-        dataBase.init();
+        var database = new JdbcDatabase(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        database.init();
         try {
             var interceptor = new LiquibaseJdbcDatabaseInterceptor(new LiquibaseConfig() {});
-            Assertions.assertSame(dataBase, interceptor.init(dataBase), "LiquibaseJdbcDatabaseInterceptor should return same reference on init");
+            Assertions.assertSame(database, interceptor.init(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on init");
 
-            dataBase.inTx((Connection connection) -> {
+            database.inTx((Connection connection) -> {
                 var resultSet = connection
                     .createStatement()
                     .executeQuery("SELECT * FROM test_migrated_table WHERE id = 100");
@@ -65,9 +68,9 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(dataBase, interceptor.release(dataBase), "LiquibaseJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(database, interceptor.release(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on release");
         } finally {
-            dataBase.release();
+            database.release();
         }
     }
 }

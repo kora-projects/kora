@@ -5,6 +5,7 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 
 @ConfigValueExtractor
 public interface DatabaseTelemetryConfig extends TelemetryConfig {
+
     DatabaseLogConfig logging();
 
     DatabaseTracingConfig tracing();
@@ -12,12 +13,10 @@ public interface DatabaseTelemetryConfig extends TelemetryConfig {
     DatabaseMetricsConfig metrics();
 
     @ConfigValueExtractor
-    interface DatabaseLogConfig extends LogConfig {
-    }
+    interface DatabaseLogConfig extends LogConfig {}
 
     @ConfigValueExtractor
-    interface DatabaseTracingConfig extends TracingConfig {
-    }
+    interface DatabaseTracingConfig extends TracingConfig {}
 
     @ConfigValueExtractor
     interface DatabaseMetricsConfig extends MetricsConfig {

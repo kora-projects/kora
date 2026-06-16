@@ -2,6 +2,9 @@ package io.koraframework.database.cassandra;
 
 import io.koraframework.database.common.QueryContext;
 import io.koraframework.database.common.telemetry.*;
+import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.koraframework.test.cassandra.CassandraParams;
 import io.koraframework.test.cassandra.CassandraTestContainer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -61,7 +64,7 @@ class CassandraDatabaseTest {
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
             )
         );
-        return new CassandraDatabase(config, null, null, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()));
+        return new CassandraDatabase(config, null, null, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE));
     }
 
     private static void withDb(CassandraParams params, Consumer<CassandraDatabase> consumer) {

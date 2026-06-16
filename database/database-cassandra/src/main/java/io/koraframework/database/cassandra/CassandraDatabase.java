@@ -6,8 +6,8 @@ import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBui
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.common.util.Configurer;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.common.telemetry.DataBaseTelemetry;
-import io.koraframework.database.common.telemetry.DataBaseTelemetryFactory;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
+import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,10 +23,10 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     private final Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer;
     @Nullable
     private final Configurer<CqlSessionBuilder> sessionBuilderConfigurer;
-    private final DataBaseTelemetry telemetry;
+    private final DatabaseTelemetry telemetry;
     private volatile CqlSession cqlSession;
 
-    public CassandraDatabase(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, DataBaseTelemetryFactory telemetryFactory) {
+    public CassandraDatabase(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, DatabaseTelemetryFactory telemetryFactory) {
         this.config = config;
         this.loaderConfigurer = loaderConfigurer;
         this.sessionBuilderConfigurer = sessionBuilderConfigurer;
@@ -43,7 +43,7 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     }
 
     @Override
-    public DataBaseTelemetry telemetry() {
+    public DatabaseTelemetry telemetry() {
         return this.telemetry;
     }
 

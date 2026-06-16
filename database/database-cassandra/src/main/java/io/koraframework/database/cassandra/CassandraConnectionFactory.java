@@ -5,7 +5,7 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.database.common.QueryContext;
-import io.koraframework.database.common.telemetry.DataBaseTelemetry;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.opentelemetry.context.Context;
 
 import java.util.function.Function;
@@ -21,7 +21,7 @@ public interface CassandraConnectionFactory {
 
     CqlSession currentSession();
 
-    DataBaseTelemetry telemetry();
+    DatabaseTelemetry telemetry();
 
     default <T> T query(QueryContext queryContext, Function<PreparedStatement, T> callback) {
         var observation = this.telemetry().observe(queryContext);

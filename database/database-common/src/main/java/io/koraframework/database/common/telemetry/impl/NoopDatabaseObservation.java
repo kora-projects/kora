@@ -1,14 +1,22 @@
-package io.koraframework.database.common.telemetry;
+package io.koraframework.database.common.telemetry.impl;
 
+import io.koraframework.database.common.telemetry.DatabaseObservation;
 import io.opentelemetry.api.trace.Span;
 
-public class NoopDataBaseObservation implements DataBaseObservation {
+public final class NoopDatabaseObservation implements DatabaseObservation {
+
+    public static final DatabaseObservation INSTANCE = new NoopDatabaseObservation();
+
+    private NoopDatabaseObservation() {}
+
     @Override
     public void observeConnection() {
+
     }
 
     @Override
     public void observeStatement() {
+
     }
 
     @Override
@@ -18,9 +26,11 @@ public class NoopDataBaseObservation implements DataBaseObservation {
 
     @Override
     public void end() {
+
     }
 
     @Override
     public void observeError(Throwable e) {
+
     }
 }

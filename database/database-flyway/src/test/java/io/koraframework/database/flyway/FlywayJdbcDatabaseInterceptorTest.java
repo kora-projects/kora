@@ -1,11 +1,14 @@
 package io.koraframework.database.flyway;
 
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
+import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import io.koraframework.database.common.telemetry.*;
+import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import io.koraframework.database.jdbc.JdbcDatabase;
 import io.koraframework.test.postgres.PostgresParams;
@@ -44,14 +47,14 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of())
             )
         );
-        var dataBase = new JdbcDatabase(config, new DefaultDataBaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry()), null);
-        dataBase.init();
+        var database = new JdbcDatabase(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        database.init();
         try {
 
             var interceptor = new FlywayJdbcDatabaseInterceptor(new FlywayConfig() {});
-            Assertions.assertSame(dataBase, interceptor.init(dataBase), "FlywayJdbcDatabaseInterceptor should return same reference on init");
+            Assertions.assertSame(database, interceptor.init(database), "FlywayJdbcDatabaseInterceptor should return same reference on init");
 
-            dataBase.inTx((Connection connection) -> {
+            database.inTx((Connection connection) -> {
                 var resultSet = connection
                     .createStatement()
                     .executeQuery("SELECT * FROM test_migrated_table WHERE id = 100");
@@ -63,9 +66,9 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(dataBase, interceptor.release(dataBase), "FlywayJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(database, interceptor.release(database), "FlywayJdbcDatabaseInterceptor should return same reference on release");
         } finally {
-            dataBase.release();
+            database.release();
         }
 
     }

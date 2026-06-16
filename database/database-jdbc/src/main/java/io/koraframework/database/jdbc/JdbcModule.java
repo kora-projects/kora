@@ -1,7 +1,7 @@
 package io.koraframework.database.jdbc;
 
 import io.koraframework.common.DefaultComponent;
-import io.koraframework.database.common.DataBaseModule;
+import io.koraframework.database.common.DatabaseModule;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
@@ -13,7 +13,7 @@ import java.time.*;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface JdbcModule extends DataBaseModule {
+public interface JdbcModule extends DatabaseModule {
 
     default <T> JdbcResultSetMapper<Optional<T>> optionalResultSetMapper(JdbcRowMapper<T> rowMapper) {
         return JdbcResultSetMapper.optionalResultSetMapper(rowMapper);
