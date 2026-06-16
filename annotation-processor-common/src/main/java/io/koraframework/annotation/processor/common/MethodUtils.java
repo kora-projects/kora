@@ -17,10 +17,6 @@ public final class MethodUtils {
         return CommonUtils.isCompletionStage(method.getReturnType());
     }
 
-    public static boolean isCompletionStage(ExecutableElement method) {
-        return CommonUtils.isCompletionStage(method.getReturnType());
-    }
-
     public static boolean isPublisher(ExecutableElement method) {
         return CommonUtils.isPublisher(method.getReturnType());
     }
