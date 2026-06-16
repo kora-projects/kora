@@ -1,15 +1,17 @@
-package io.koraframework.grpc.client.config;
+package io.koraframework.grpc.client;
 
-import org.jspecify.annotations.Nullable;
-import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.grpc.client.config.DefaultServiceConfig;
+import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Objects;
 
 @ConfigValueExtractor
 public interface GrpcClientConfig {
+
     String url();
 
     @Nullable

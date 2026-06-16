@@ -1,4 +1,4 @@
-package io.koraframework.grpc.client;
+package io.koraframework.grpc.client.channel;
 
 import io.grpc.ChannelCredentials;
 import io.grpc.ManagedChannelBuilder;

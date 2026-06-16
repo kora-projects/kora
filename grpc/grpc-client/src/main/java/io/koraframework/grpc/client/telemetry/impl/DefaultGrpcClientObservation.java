@@ -1,11 +1,9 @@
-package io.koraframework.grpc.client.telemetry;
+package io.koraframework.grpc.client.telemetry.impl;
 
 import io.grpc.Metadata;
+import io.grpc.MethodDescriptor;
 import io.grpc.Status;
-import io.micrometer.core.instrument.Meter;
-import io.micrometer.core.instrument.Tag;
-import io.micrometer.core.instrument.Tags;
-import io.micrometer.core.instrument.Timer;
+import io.koraframework.grpc.client.telemetry.GrpcClientObservation;
 import io.opentelemetry.api.common.Attributes;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
@@ -15,19 +13,29 @@ import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
 import org.jspecify.annotations.Nullable;
 
-import java.util.concurrent.TimeUnit;
-
 public class DefaultGrpcClientObservation implements GrpcClientObservation {
-    private final long start = System.nanoTime();
-    private final Span span;
-    private final Meter.MeterProvider<Timer> duration;
-    @Nullable
-    private Throwable error;
-    private Status status;
 
-    public DefaultGrpcClientObservation(Span span, Meter.MeterProvider<Timer> duration) {
+    protected final long started = System.nanoTime();
+    protected final MethodDescriptor<?, ?> method;
+    protected final DefaultGrpcClientTelemetry.TelemetryContext context;
+    protected final Span span;
+    protected final DefaultGrpcClientLoggerFactory.DefaultGrpcClientLogger logger;
+    protected final DefaultGrpcClientMetricsFactory.DefaultGrpcClientMetrics metrics;
+    @Nullable
+    protected Throwable error;
+    @Nullable
+    protected Status status;
+
+    public DefaultGrpcClientObservation(MethodDescriptor<?, ?> method,
+                                        DefaultGrpcClientTelemetry.TelemetryContext context,
+                                        Span span,
+                                        DefaultGrpcClientLoggerFactory.DefaultGrpcClientLogger logger,
+                                        DefaultGrpcClientMetricsFactory.DefaultGrpcClientMetrics metrics) {
+        this.method = method;
+        this.context = context;
         this.span = span;
-        this.duration = duration;
+        this.logger = logger;
+        this.metrics = metrics;
     }
 
     @Override
@@ -37,6 +45,7 @@ public class DefaultGrpcClientObservation implements GrpcClientObservation {
             headers,
             (carrier, key, value) -> carrier.put(Metadata.Key.of(key, Metadata.ASCII_STRING_MARSHALLER), value)
         );
+        this.logger.logRequest(method, headers);
     }
 
     @Override
@@ -56,6 +65,7 @@ public class DefaultGrpcClientObservation implements GrpcClientObservation {
     @Override
     public void observeClose(Status status, Metadata trailers) {
         this.status = status;
+        this.span.setAttribute(RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE, status.getCode().value());
         if (!status.isOk()) {
             this.span.setStatus(StatusCode.ERROR);
             if (status.getCause() != null) {
@@ -71,20 +81,16 @@ public class DefaultGrpcClientObservation implements GrpcClientObservation {
 
     @Override
     public void end() {
-        var grpcStatus = status != null
-            ? Integer.toString(status.getCode().value())
-            : "";
-        var errorType = this.error != null
-            ? this.error.getClass().getCanonicalName()
-            : "";
-        var took = System.nanoTime() - start;
-        this.duration.withTags(Tags.of(
-            Tag.of(RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE.getKey(), grpcStatus),
-            Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorType)
-        )).record(took, TimeUnit.NANOSECONDS);
+        var processingTimeNanos = System.nanoTime() - started;
+        this.metrics.record(method, status, error, processingTimeNanos);
+        this.logger.logResponse(method, status, error, processingTimeNanos);
 
         if (this.error == null) {
             this.span.setStatus(StatusCode.OK);
+        } else {
+            var errorType = this.error.getClass().getCanonicalName();
+            this.span.setStatus(StatusCode.ERROR, errorType);
+            this.span.setAttribute(ErrorAttributes.ERROR_TYPE.getKey(), errorType);
         }
         this.span.end();
     }

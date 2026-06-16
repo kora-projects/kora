@@ -1,10 +1,11 @@
-package io.koraframework.grpc.server;
+package io.koraframework.grpc.server.handler;
 
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 
-public class DynamicServerCall<Req, Res> implements ServerCallHandler<Req, Res> {
+public final class DynamicServerCall<Req, Res> implements ServerCallHandler<Req, Res> {
+
     private volatile ServerCallHandler<Req, Res> currentCall;
 
     public DynamicServerCall(ServerCallHandler<Req, Res> currentCall) {

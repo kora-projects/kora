@@ -1,4 +1,4 @@
-package io.koraframework.grpc.server.config;
+package io.koraframework.grpc.server;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.common.util.Size;
