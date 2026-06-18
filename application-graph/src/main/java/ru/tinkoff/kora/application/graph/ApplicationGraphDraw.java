@@ -25,11 +25,12 @@ public class ApplicationGraphDraw {
         return this.addNode0(type, tags, factory, List.of(), dependencies);
     }
 
-    public <T> Node<T> addNode0(Type type, Class<?>[] tags, Graph.Factory<? extends T> factory, List<? extends Node<? extends GraphInterceptor<T>>> interceptors, Node<?>... dependencies) {
+    public <T> Node<T> addNode0(Type type, Class<?>[] tags, Graph.Factory<? extends T> factory, List<? extends Node<? extends GraphInterceptor<? super T>>> interceptors, Node<?>... dependencies) {
         var dependenciesList = new ArrayList<NodeImpl<?>>();
         for (var dependency : dependencies) {
             dependenciesList.add((NodeImpl<?>) dependency);
         }
+        @SuppressWarnings("unchecked")
         var interceptorsList = new ArrayList<NodeImpl<? extends GraphInterceptor<T>>>();
         for (var interceptor : interceptors) {
             interceptorsList.add((NodeImpl<? extends GraphInterceptor<T>>) interceptor);

@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import ru.tinkoff.kora.application.graph.internal.NodeImpl
 
-class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
+class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
 
     @Test
     fun interceptor() {
@@ -103,6 +103,39 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
                 """.trimIndent(),
         )
         Assertions.assertThat(draw.nodes).hasSize(2)
+        draw.init()
+        Assertions.assertThat((draw.nodes[1] as NodeImpl<*>).interceptors).hasSize(1)
+    }
+
+    @Test
+    fun interceptorForInterface() {
+        val draw = compile(
+            """
+                import ru.tinkoff.kora.application.graph.GraphInterceptor
+
+                @KoraApp
+                interface ExampleApplication {
+                            
+                    interface TestInterface
+
+                    class TestClass : TestInterface
+                            
+                    class TestRoot
+                    
+                    class TestInterceptor : GraphInterceptor<TestInterface> {
+                        override fun init(value: TestInterface) = value
+
+                        override fun release(value: TestInterface) = value
+                    }
+
+                    @Root
+                    fun root(testClass: TestClass) = TestRoot()
+                    
+                    fun interceptor(): TestInterceptor = TestInterceptor()
+                }
+                """.trimIndent(),
+        )
+        Assertions.assertThat(draw.nodes).hasSize(3)
         draw.init()
         Assertions.assertThat((draw.nodes[1] as NodeImpl<*>).interceptors).hasSize(1)
     }
