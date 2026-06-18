@@ -1,1 +1,1 @@
-io.koraframework.scheduling.annotation.processor.KoraSchedulingAnnotationProcessor
+io.koraframework.scheduling.annotation.processor.SchedulingAnnotationProcessor

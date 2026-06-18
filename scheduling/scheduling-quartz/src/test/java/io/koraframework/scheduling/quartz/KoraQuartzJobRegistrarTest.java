@@ -1,8 +1,8 @@
 package io.koraframework.scheduling.quartz;
 
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.scheduling.common.telemetry.NoopSchedulingObservation;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
+import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingObservation;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

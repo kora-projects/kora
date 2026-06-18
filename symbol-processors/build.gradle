@@ -10,7 +10,7 @@ dependencies {
     api project(':http:http-client-symbol-processor')
     api project(':http:soap-client-symbol-processor')
     api project(':database:database-symbol-processor')
-    api project(':scheduling:scheduling-ksp')
+    api project(':scheduling:scheduling-symbol-processor')
     api project(':resilient:resilient-symbol-processor')
     api project(':cache:cache-symbol-processor')
     api project(':validation:validation-symbol-processor')
