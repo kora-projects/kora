@@ -13,7 +13,7 @@ public class My {
 
         @Override
         public DefaultHttpServerMetrics create(DefaultHttpServerTelemetry.TelemetryContext context) {
-            return super.create(context);
+            return new MyHttpServerMetrics(context);
         }
     }
 
