@@ -1,4 +1,4 @@
-package io.koraframework.http.server.common.telemetry.impl;
+package io.koraframework.http.server.common.telemetry.old;
 
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.telemetry.HttpServerObservation;

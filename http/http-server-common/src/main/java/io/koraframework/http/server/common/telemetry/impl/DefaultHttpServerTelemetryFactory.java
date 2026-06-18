@@ -3,13 +3,14 @@ package io.koraframework.http.server.common.telemetry.impl;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
+import io.koraframework.http.server.common.telemetry.old.NoopHttpServerTelemetry;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public final class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFactory {
+public class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-server");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -66,6 +67,15 @@ public final class DefaultHttpServerTelemetryFactory implements HttpServerTeleme
             enabledLoggerFactory = NoopHttpServerLoggerFactory.INSTANCE;
         }
 
-        return new DefaultHttpServerTelemetry(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, bodyLogger != null ? bodyLogger : new DefaultHttpServerBodyConverter());
+        return build(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, bodyLogger != null ? bodyLogger : new DefaultHttpServerBodyConverter());
+    }
+
+    public HttpServerTelemetry build(HttpServerTelemetryConfig config,
+                                     Tracer tracer,
+                                     MeterRegistry meterRegistry,
+                                     DefaultHttpServerMetricsFactory metricsFactory,
+                                     DefaultHttpServerLoggerFactory loggerFactory,
+                                     DefaultHttpServerBodyConverter bodyConverter) {
+        return new DefaultHttpServerTelemetry(config, tracer, meterRegistry, metricsFactory, loggerFactory, bodyConverter);
     }
 }
