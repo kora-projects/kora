@@ -37,9 +37,7 @@ public class QueuePublisher<T> extends AtomicBoolean implements Flow.Publisher<T
             @Override
             public void request(long n) {
                 if (DEMAND.getAndAdd(QueuePublisher.this, n) <= 0) {
-                    if (WIP.compareAndSet(QueuePublisher.this, 0, 1)) {
-                        QueuePublisher.this.drainLoop();
-                    }
+                    QueuePublisher.this.drain();
                 }
             }
 
@@ -50,29 +48,47 @@ public class QueuePublisher<T> extends AtomicBoolean implements Flow.Publisher<T
         });
     }
 
-    private void drainLoop() {
-        try {
-            var queue = this.queue;
-            while (this.demand > 0) {
-                if (get()) {
-                    return;
-                }
-                var item = queue.poll();
-                if (item == null) {
-                    return;
-                }
-                if (item.value != null) {
-                    DEMAND.decrementAndGet(this);
-                    delegate.onNext(item.value);
-                } else if (item.error != null) {
-                    delegate.onError(item.error);
-                } else {
-                    delegate.onComplete();
-                }
-            }
-        } finally {
-            WIP.set(this, 0);
+    private void drain() {
+        if (WIP.getAndAdd(QueuePublisher.this, 1) != 0) {
+            return;
         }
+        var missed = 1;
+        while (true) {
+            if (get()) {
+                return;
+            }
+            var completed = this.drainLoop();
+            if (completed) {
+                return;
+            }
+            missed = WIP.addAndGet(this, -missed);
+            if (missed == 0) {
+                break;
+            }
+        }
+    }
+
+    private boolean drainLoop() {
+        var queue = this.queue;
+        while (this.demand > 0) {
+            if (get()) {
+                return true;
+            }
+            var item = queue.poll();
+            if (item == null) {
+                return false;
+            }
+            if (item.value != null) {
+                DEMAND.decrementAndGet(this);
+                delegate.onNext(item.value);
+            } else if (item.error != null) {
+                delegate.onError(item.error);
+            } else {
+                delegate.onComplete();
+                return true;
+            }
+        }
+        return false;
     }
 
     public void next(T item) {
@@ -86,9 +102,7 @@ public class QueuePublisher<T> extends AtomicBoolean implements Flow.Publisher<T
             delegate.onError(e);
             return;
         }
-        if (WIP.compareAndSet(QueuePublisher.this, 0, 1)) {
-            this.drainLoop();
-        }
+        this.drain();
     }
 
     public void error(Throwable throwable) {
@@ -105,9 +119,7 @@ public class QueuePublisher<T> extends AtomicBoolean implements Flow.Publisher<T
         } catch (InterruptedException e) {
             // nvm
         }
-        if (WIP.compareAndSet(QueuePublisher.this, 0, 1)) {
-            this.drainLoop();
-        }
+        this.drain();
     }
 
     public void cancel() {
