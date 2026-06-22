@@ -432,8 +432,7 @@ class KoraAppProcessor(
             }
             val component = graph[i];
 
-            val aopProxySuperClass = ServiceTypesHelper.findAopProxySuperClass(component.type)
-            val propertyType: TypeName = aopProxySuperClass?.toTypeName() ?: component.type.toTypeName()
+            val propertyType = component.type.toTypeName()
 
             currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType))
             val statement = this.generateComponentStatement(allModules, interceptors, graph, component)

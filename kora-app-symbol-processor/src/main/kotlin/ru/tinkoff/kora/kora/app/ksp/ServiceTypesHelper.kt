@@ -27,31 +27,6 @@ class ServiceTypesHelper(val resolver: Resolver) {
         .filter { it.simpleName.asString() == "value" && it.parameters.isEmpty() }
         .first()
 
-    companion object {
-
-        fun findAopProxySuperClass(maybeAopProxy: KSType): KSType? {
-            val aopProxyAnnotation = maybeAopProxy.declaration.findAnnotation(CommonClassNames.aopProxy)
-            val proxyDeclaration = maybeAopProxy.declaration
-            if (aopProxyAnnotation != null && proxyDeclaration is KSClassDeclaration) {
-                val proxyParent = (maybeAopProxy.declaration as KSClassDeclaration).superTypes
-                    .map { it.resolve() }
-                    .filter { (it.declaration as? KSClassDeclaration)?.classKind == ClassKind.CLASS }
-                    .firstOrNull()
-
-                if (proxyParent != null) {
-                    val proxyParentDeclaration = proxyParent.declaration
-                    val aopProxyName = proxyParentDeclaration.getOuterClassesAsPrefix() + proxyParentDeclaration.simpleName.asString() + "__AopProxy"
-                    val aopProxyCanonical = proxyParentDeclaration.packageName.asString() + "." + aopProxyName
-                    if (aopProxyCanonical == maybeAopProxy.declaration.qualifiedName!!.asString()) {
-                        return proxyParent
-                    }
-                }
-            }
-
-            return null
-        }
-    }
-
     fun isAssignableToUnwrapped(maybeWrapped: KSType, type: KSType): Boolean {
         if (!wrappedType.isAssignableFrom(maybeWrapped)) {
             return false
