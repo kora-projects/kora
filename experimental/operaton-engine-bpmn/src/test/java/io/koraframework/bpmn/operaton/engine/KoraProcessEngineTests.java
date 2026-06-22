@@ -1,6 +1,10 @@
 package io.koraframework.bpmn.operaton.engine;
 
 import io.koraframework.application.graph.All;
+import io.koraframework.bpmn.operaton.engine.telemetry.$OperatonEngineTelemetryConfig_CamundaEngineLoggingConfig_ConfigValueExtractor;
+import io.koraframework.bpmn.operaton.engine.telemetry.$OperatonEngineTelemetryConfig_CamundaEngineMetricsConfig_ConfigValueExtractor;
+import io.koraframework.bpmn.operaton.engine.telemetry.$OperatonEngineTelemetryConfig_CamundaEngineTracingConfig_ConfigValueExtractor;
+import io.koraframework.bpmn.operaton.engine.telemetry.$OperatonEngineTelemetryConfig_ConfigValueExtractor;
 import io.koraframework.bpmn.operaton.engine.transaction.JdbcOperatonTransactionManager;
 import io.koraframework.bpmn.operaton.engine.transaction.OperatonTransactionManager;
 import io.koraframework.database.common.telemetry.*;
@@ -37,11 +41,10 @@ public class KoraProcessEngineTests implements OperatonEngineBpmnModule {
                 $OperatonEngineBpmnConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
                 new $OperatonEngineBpmnConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
                 new $OperatonEngineBpmnConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
-                new $OperatonEngineBpmnConfig_OperatonTelemetryConfig_ConfigValueExtractor.OperatonTelemetryConfig_Impl(
-                    new $OperatonEngineBpmnConfig_OperatonEngineLogConfig_ConfigValueExtractor.OperatonEngineLogConfig_Defaults(),
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                    true,
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
+                new $OperatonEngineTelemetryConfig_ConfigValueExtractor.OperatonEngineTelemetryConfig_Impl(
+                    new $OperatonEngineTelemetryConfig_CamundaEngineLoggingConfig_ConfigValueExtractor.CamundaEngineLoggingConfig_Defaults(),
+                    new $OperatonEngineTelemetryConfig_CamundaEngineMetricsConfig_ConfigValueExtractor.CamundaEngineMetricsConfig_Defaults(),
+                    new $OperatonEngineTelemetryConfig_CamundaEngineTracingConfig_ConfigValueExtractor.CamundaEngineTracingConfig_Defaults()
                 )
             );
 
@@ -102,11 +105,10 @@ public class KoraProcessEngineTests implements OperatonEngineBpmnModule {
                 $OperatonEngineBpmnConfig_JobExecutorConfig_ConfigValueExtractor.DEFAULTS,
                 new $OperatonEngineBpmnConfig_DeploymentConfig_ConfigValueExtractor.DeploymentConfig_Impl(null, "MyDep", false, List.of("bpm"), null),
                 new $OperatonEngineBpmnConfig_AdminConfig_ConfigValueExtractor.AdminConfig_Impl("admin", "admin", null, null, null),
-                new $OperatonEngineBpmnConfig_OperatonTelemetryConfig_ConfigValueExtractor.OperatonTelemetryConfig_Impl(
-                    new $OperatonEngineBpmnConfig_OperatonEngineLogConfig_ConfigValueExtractor.OperatonEngineLogConfig_Defaults(),
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Impl(true, Map.of()),
-                    true,
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
+                new $OperatonEngineTelemetryConfig_ConfigValueExtractor.OperatonEngineTelemetryConfig_Impl(
+                    new $OperatonEngineTelemetryConfig_CamundaEngineLoggingConfig_ConfigValueExtractor.CamundaEngineLoggingConfig_Defaults(),
+                    new $OperatonEngineTelemetryConfig_CamundaEngineMetricsConfig_ConfigValueExtractor.CamundaEngineMetricsConfig_Defaults(),
+                    new $OperatonEngineTelemetryConfig_CamundaEngineTracingConfig_ConfigValueExtractor.CamundaEngineTracingConfig_Defaults()
                 )
             );
 
@@ -171,9 +173,9 @@ public class KoraProcessEngineTests implements OperatonEngineBpmnModule {
             false,
             new Properties(),
             new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
-                new $DatabaseTelemetryConfig_DatabaseLogConfig_ConfigValueExtractor.DatabaseLogConfig_Impl(true),
-                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(true, Map.of()),
-                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, TelemetryConfig.MetricsConfig.DEFAULT_SLO, Map.of())
+                new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueExtractor.DatabaseLoggingConfig_Defaults(),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Defaults(),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Defaults()
             )
         );
 

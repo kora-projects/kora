@@ -1,6 +1,6 @@
 package io.koraframework.bpmn.operaton.engine.telemetry;
 
-public interface OperatonEngineBpmnTelemetry {
+public interface OperatonEngineTelemetry {
 
     OperatonEngineObservation observe(String canonicalName);
 }

@@ -2,6 +2,7 @@ package io.koraframework.bpmn.operaton.rest.telemetry.impl;
 
 import io.koraframework.bpmn.operaton.rest.telemetry.OperatonRestObservation;
 import io.koraframework.bpmn.operaton.rest.telemetry.OperatonRestTelemetry;
+import io.koraframework.bpmn.operaton.rest.telemetry.OperatonRestTelemetryConfig;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
@@ -15,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 public class DefaultOperatonRestTelemetry implements OperatonRestTelemetry {
 
-    public record TelemetryContext(HttpServerTelemetryConfig config,
+    public record TelemetryContext(OperatonRestTelemetryConfig config,
                                    boolean isTraceEnabled,
                                    boolean isMetricsEnabled,
                                    Tracer tracer,
@@ -25,13 +26,13 @@ public class DefaultOperatonRestTelemetry implements OperatonRestTelemetry {
     protected final DefaultOperatonRestLoggerFactory.DefaultOperatonRestLogger logger;
     protected final DefaultOperatonRestMetricsFactory.DefaultOperatonRestMetrics metrics;
 
-    public DefaultOperatonRestTelemetry(HttpServerTelemetryConfig config,
-                                        boolean isTraceEnabled,
-                                        boolean isMetricsEnabled,
+    public DefaultOperatonRestTelemetry(OperatonRestTelemetryConfig config,
                                         Tracer tracer,
                                         MeterRegistry meterRegistry,
-                                        DefaultOperatonRestLoggerFactory loggerFactory,
-                                        DefaultOperatonRestMetricsFactory metricsFactory) {
+                                        DefaultOperatonRestMetricsFactory metricsFactory,
+                                        DefaultOperatonRestLoggerFactory loggerFactory) {
+        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultOperatonRestTelemetryFactory.NOOP_TRACER;
+        var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultOperatonRestTelemetryFactory.NOOP_METER_REGISTRY;
         this.context = new TelemetryContext(config, isTraceEnabled, isMetricsEnabled, tracer, meterRegistry);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);

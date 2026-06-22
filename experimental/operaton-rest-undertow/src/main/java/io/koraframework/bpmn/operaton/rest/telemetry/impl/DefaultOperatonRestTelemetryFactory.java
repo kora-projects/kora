@@ -1,8 +1,8 @@
 package io.koraframework.bpmn.operaton.rest.telemetry.impl;
 
 import io.koraframework.bpmn.operaton.rest.telemetry.OperatonRestTelemetry;
+import io.koraframework.bpmn.operaton.rest.telemetry.OperatonRestTelemetryConfig;
 import io.koraframework.bpmn.operaton.rest.telemetry.OperatonRestTelemetryFactory;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -34,7 +34,7 @@ public class DefaultOperatonRestTelemetryFactory implements OperatonRestTelemetr
     }
 
     @Override
-    public OperatonRestTelemetry get(HttpServerTelemetryConfig config) {
+    public OperatonRestTelemetry get(OperatonRestTelemetryConfig config) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -62,6 +62,14 @@ public class DefaultOperatonRestTelemetryFactory implements OperatonRestTelemetr
             enabledLoggerFactory = NoopOperatonRestLoggerFactory.INSTANCE;
         }
 
-        return new DefaultOperatonRestTelemetry(config, traceEnabled, metricEnabled, tracer, meterRegistry, enabledLoggerFactory, enabledMetricsFactory);
+        return build(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+    }
+
+    protected OperatonRestTelemetry build(OperatonRestTelemetryConfig config,
+                                         Tracer tracer,
+                                         MeterRegistry meterRegistry,
+                                         DefaultOperatonRestMetricsFactory metricsFactory,
+                                         DefaultOperatonRestLoggerFactory loggerFactory) {
+        return new DefaultOperatonRestTelemetry(config, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }

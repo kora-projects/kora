@@ -8,22 +8,22 @@ import org.jspecify.annotations.Nullable;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
-public class DefaultOperatonEngineBpmnObservation implements OperatonEngineObservation {
+public class DefaultOperatonEngineObservation implements OperatonEngineObservation {
 
     protected final long start = System.nanoTime();
-    protected final DefaultOperatonEngineBpmnTelemetry.TelemetryContext context;
+    protected final DefaultOperatonEngineTelemetry.TelemetryContext context;
     protected final Span span;
-    protected final DefaultOperatonEngineBpmnLoggerFactory.DefaultOperatonEngineBpmnLogger logger;
-    protected final DefaultOperatonEngineBpmnMetricsFactory.DefaultOperatonEngineBpmnMetrics metrics;
+    protected final DefaultOperatonEngineLoggerFactory.DefaultOperatonEngineLogger logger;
+    protected final DefaultOperatonEngineMetricsFactory.DefaultOperatonEngineMetrics metrics;
 
     @Nullable
     protected Throwable error;
     protected DelegateExecution execution;
 
-    public DefaultOperatonEngineBpmnObservation(DefaultOperatonEngineBpmnTelemetry.TelemetryContext context,
-                                              Span span,
-                                              DefaultOperatonEngineBpmnLoggerFactory.DefaultOperatonEngineBpmnLogger logger,
-                                              DefaultOperatonEngineBpmnMetricsFactory.DefaultOperatonEngineBpmnMetrics metrics) {
+    public DefaultOperatonEngineObservation(DefaultOperatonEngineTelemetry.TelemetryContext context,
+                                            Span span,
+                                            DefaultOperatonEngineLoggerFactory.DefaultOperatonEngineLogger logger,
+                                            DefaultOperatonEngineMetricsFactory.DefaultOperatonEngineMetrics metrics) {
         this.context = context;
         this.span = span;
         this.logger = logger;

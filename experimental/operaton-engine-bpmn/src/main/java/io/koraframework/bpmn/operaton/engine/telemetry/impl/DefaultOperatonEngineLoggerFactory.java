@@ -7,23 +7,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
-public class DefaultOperatonEngineBpmnLoggerFactory {
+public class DefaultOperatonEngineLoggerFactory {
 
-    public static final DefaultOperatonEngineBpmnLoggerFactory INSTANCE = new DefaultOperatonEngineBpmnLoggerFactory();
+    public static final DefaultOperatonEngineLoggerFactory INSTANCE = new DefaultOperatonEngineLoggerFactory();
 
-    public DefaultOperatonEngineBpmnLogger create(DefaultOperatonEngineBpmnTelemetry.TelemetryContext context, String javaDelegateName) {
-        return new DefaultOperatonEngineBpmnLogger(context, javaDelegateName, LoggerFactory.getLogger(javaDelegateName));
+    public DefaultOperatonEngineLogger create(DefaultOperatonEngineTelemetry.TelemetryContext context, String javaDelegateName) {
+        return new DefaultOperatonEngineLogger(context, javaDelegateName, LoggerFactory.getLogger(javaDelegateName));
     }
 
-    public static class DefaultOperatonEngineBpmnLogger {
+    public static class DefaultOperatonEngineLogger {
 
-        protected final DefaultOperatonEngineBpmnTelemetry.TelemetryContext context;
+        protected final DefaultOperatonEngineTelemetry.TelemetryContext context;
         protected final String javaDelegateName;
         protected final Logger logger;
 
-        public DefaultOperatonEngineBpmnLogger(DefaultOperatonEngineBpmnTelemetry.TelemetryContext context,
-                                             String javaDelegateName,
-                                             Logger logger) {
+        public DefaultOperatonEngineLogger(DefaultOperatonEngineTelemetry.TelemetryContext context,
+                                               String javaDelegateName,
+                                               Logger logger) {
             this.context = context;
             this.javaDelegateName = javaDelegateName;
             this.logger = logger;

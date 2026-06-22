@@ -14,10 +14,10 @@ import io.koraframework.bpmn.operaton.engine.configurator.AdminUserProcessEngine
 import io.koraframework.bpmn.operaton.engine.configurator.DeploymentProcessEngineConfigurator;
 import io.koraframework.bpmn.operaton.engine.configurator.ProcessEngineConfigurator;
 import io.koraframework.bpmn.operaton.engine.configurator.SecondStageKoraProcessEngineConfigurator;
-import io.koraframework.bpmn.operaton.engine.telemetry.OperatonEngineBpmnTelemetryFactory;
-import io.koraframework.bpmn.operaton.engine.telemetry.impl.DefaultOperatonEngineBpmnLoggerFactory;
-import io.koraframework.bpmn.operaton.engine.telemetry.impl.DefaultOperatonEngineBpmnMetricsFactory;
-import io.koraframework.bpmn.operaton.engine.telemetry.impl.DefaultOperatonEngineBpmnTelemetryFactory;
+import io.koraframework.bpmn.operaton.engine.telemetry.OperatonEngineTelemetryFactory;
+import io.koraframework.bpmn.operaton.engine.telemetry.impl.DefaultOperatonEngineLoggerFactory;
+import io.koraframework.bpmn.operaton.engine.telemetry.impl.DefaultOperatonEngineMetricsFactory;
+import io.koraframework.bpmn.operaton.engine.telemetry.impl.DefaultOperatonEngineTelemetryFactory;
 import io.koraframework.bpmn.operaton.engine.transaction.OperatonTransactionManager;
 import io.koraframework.bpmn.operaton.engine.transaction.JdbcOperatonTransactionManager;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -81,15 +81,15 @@ public interface OperatonEngineBpmnModule {
 
 
     @DefaultComponent
-    default OperatonEngineBpmnTelemetryFactory operatonEngineBpmnTelemetryFactory(@Nullable Tracer tracer,
-                                                                                 @Nullable MeterRegistry meterRegistry,
-                                                                                 @Nullable DefaultOperatonEngineBpmnLoggerFactory loggerFactory,
-                                                                                 @Nullable DefaultOperatonEngineBpmnMetricsFactory metricsFactory) {
-        return new DefaultOperatonEngineBpmnTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
+    default OperatonEngineTelemetryFactory operatonEngineBpmnTelemetryFactory(@Nullable Tracer tracer,
+                                                                              @Nullable MeterRegistry meterRegistry,
+                                                                              @Nullable DefaultOperatonEngineLoggerFactory loggerFactory,
+                                                                              @Nullable DefaultOperatonEngineMetricsFactory metricsFactory) {
+        return new DefaultOperatonEngineTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
     @DefaultComponent
-    default KoraDelegateWrapperFactory koraJavaDelegateTelemetryWrapper(OperatonEngineBpmnTelemetryFactory telemetryFactory,
+    default KoraDelegateWrapperFactory koraJavaDelegateTelemetryWrapper(OperatonEngineTelemetryFactory telemetryFactory,
                                                                         OperatonEngineBpmnConfig operatonEngineBpmnConfig) {
         return delegate -> {
             var telemetry = telemetryFactory.get(operatonEngineBpmnConfig.telemetry());

@@ -10,15 +10,15 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class DefaultOperatonEngineBpmnMetricsFactory {
+public class DefaultOperatonEngineMetricsFactory {
 
-    public static final DefaultOperatonEngineBpmnMetricsFactory INSTANCE = new DefaultOperatonEngineBpmnMetricsFactory();
+    public static final DefaultOperatonEngineMetricsFactory INSTANCE = new DefaultOperatonEngineMetricsFactory();
 
-    public DefaultOperatonEngineBpmnMetrics create(DefaultOperatonEngineBpmnTelemetry.TelemetryContext context, String javaDelegateName) {
-        return new DefaultOperatonEngineBpmnMetrics(context, javaDelegateName);
+    public DefaultOperatonEngineMetrics create(DefaultOperatonEngineTelemetry.TelemetryContext context, String javaDelegateName) {
+        return new DefaultOperatonEngineMetrics(context, javaDelegateName);
     }
 
-    public static class DefaultOperatonEngineBpmnMetrics {
+    public static class DefaultOperatonEngineMetrics {
 
         public record DurationKey(@Nullable Class<? extends Throwable> errorType,
                                   @Nullable Tags extraTags) {
@@ -30,10 +30,10 @@ public class DefaultOperatonEngineBpmnMetricsFactory {
 
         protected final ConcurrentHashMap<DurationKey, Timer> durationCache = new ConcurrentHashMap<>();
 
-        protected final DefaultOperatonEngineBpmnTelemetry.TelemetryContext context;
+        protected final DefaultOperatonEngineTelemetry.TelemetryContext context;
         protected final String javaDelegateName;
 
-        public DefaultOperatonEngineBpmnMetrics(DefaultOperatonEngineBpmnTelemetry.TelemetryContext context, String javaDelegateName) {
+        public DefaultOperatonEngineMetrics(DefaultOperatonEngineTelemetry.TelemetryContext context, String javaDelegateName) {
             this.context = context;
             this.javaDelegateName = javaDelegateName;
         }

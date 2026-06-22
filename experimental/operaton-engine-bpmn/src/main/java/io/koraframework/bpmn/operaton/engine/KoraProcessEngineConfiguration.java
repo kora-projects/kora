@@ -114,7 +114,7 @@ public class KoraProcessEngineConfiguration extends ProcessEngineConfigurationIm
     }
 
     protected void configureMetricsAndTelemetry() {
-        if (engineConfig.telemetry().engineTelemetryEnabled()) {
+        if (engineConfig.telemetry().metrics().engineMetrics()) {
             setMetricsEnabled(true);
             setTaskMetricsEnabled(true);
         } else {

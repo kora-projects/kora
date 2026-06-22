@@ -1,5 +1,6 @@
 package io.koraframework.bpmn.operaton.rest;
 
+import io.koraframework.bpmn.operaton.rest.telemetry.OperatonRestTelemetryConfig;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import org.jspecify.annotations.Nullable;
@@ -28,7 +29,7 @@ public interface OperatonRestConfig {
 
     CamundaOpenApiConfig openapi();
 
-    HttpServerTelemetryConfig telemetry();
+    OperatonRestTelemetryConfig telemetry();
 
     CamundaCorsConfig cors();
 

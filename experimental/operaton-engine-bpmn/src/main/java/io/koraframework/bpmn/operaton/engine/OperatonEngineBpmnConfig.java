@@ -1,7 +1,7 @@
 package io.koraframework.bpmn.operaton.engine;
 
+import io.koraframework.bpmn.operaton.engine.telemetry.OperatonEngineTelemetryConfig;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
-import io.koraframework.telemetry.common.TelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -20,7 +20,7 @@ public interface OperatonEngineBpmnConfig {
     @Nullable
     AdminConfig admin();
 
-    OperatonTelemetryConfig telemetry();
+    OperatonEngineTelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface ParallelInitConfig {
@@ -98,36 +98,6 @@ public interface OperatonEngineBpmnConfig {
 
         default boolean virtualThreadsEnabled() {
             return false;
-        }
-    }
-
-    @ConfigValueExtractor
-    interface OperatonTelemetryConfig extends TelemetryConfig {
-
-        @Override
-        OperatonEngineLogConfig logging();
-
-        @Override
-        TracingConfig tracing();
-
-        default boolean engineTelemetryEnabled() {
-            return false;
-        }
-    }
-
-    @ConfigValueExtractor
-    interface OperatonEngineLogConfig extends TelemetryConfig.LogConfig {
-
-        default boolean stacktrace() {
-            return true;
-        }
-    }
-
-    @ConfigValueExtractor
-    interface OperatonEngineTelemetryConfig extends TelemetryConfig.LogConfig {
-
-        default boolean stacktrace() {
-            return true;
         }
     }
 }
