@@ -2,19 +2,16 @@ package io.koraframework.http.server.common.router;
 
 
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.*;
+import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
-import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.RouterHttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -68,10 +65,13 @@ public class HttpServerHandler {
                 otherMethods.addAll(oldAllMethodValue.getValue());
             }
         }
+
         var interceptorsList = new ArrayList<HttpServerInterceptor>();
         for (var interceptor : interceptors) {
             interceptorsList.add(interceptor);
         }
+        interceptorsList.sort(Comparator.comparing(i -> i.getClass().getSimpleName()));
+
         if (interceptorsList.isEmpty()) {
             this.requestHandler.set(new SimpleRequestHandler());
         } else {

@@ -10,6 +10,8 @@ import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.system.HttpServerSystemConfig;
 import io.koraframework.http.server.common.system.SystemApi;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
+import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
+import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
 import io.undertow.Undertow;
 import io.undertow.server.HttpHandler;
 import org.jspecify.annotations.Nullable;
@@ -29,8 +31,10 @@ public interface UndertowSystemHttpServerModule extends HttpServerModule {
 
     @SystemApi
     @DefaultComponent
-    default HttpHandler undertowSystemHttpHandler(@SystemApi HttpServerHandler handler) {
-        return new RequestProcessingHttpHandler(NoopHttpServerTelemetry.INSTANCE, handler);
+    default HttpHandler undertowSystemHttpHandler(@SystemApi HttpServerHandler systemApiHandler) {
+        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(NoopHttpServerTelemetry.INSTANCE, systemApiHandler);
+        handler = new KoraVirtualThreadDispatchHttpHandler("kora-undertow-system", handler);
+        return handler;
     }
 
     @DefaultComponent

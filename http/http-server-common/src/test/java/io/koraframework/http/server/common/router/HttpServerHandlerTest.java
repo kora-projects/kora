@@ -1,15 +1,15 @@
 package io.koraframework.http.server.common.router;
 
+import io.koraframework.common.util.Size;
+import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueExtractor;
+import io.koraframework.http.server.common.HttpServerConfig;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
+import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
+import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.telemetry.*;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import io.koraframework.common.util.Size;
-import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueExtractor;
-import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.http.server.common.request.HttpServerRequestHandler;
-import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 
 import java.time.Duration;
 import java.util.List;
@@ -147,13 +147,15 @@ class HttpServerHandlerTest {
             Duration.ofSeconds(1),
             Duration.ofSeconds(1),
             false,
+            false,
+            true,
             Duration.ofMillis(1),
+            Size.ofBytesBinary(1024),
             new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
                 new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
-            ),
-            Size.ofBytesBinary(1024)
+            )
         );
     }
 

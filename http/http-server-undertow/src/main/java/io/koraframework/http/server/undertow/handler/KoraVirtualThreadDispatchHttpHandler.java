@@ -1,4 +1,4 @@
-package io.koraframework.http.server.undertow;
+package io.koraframework.http.server.undertow.handler;
 
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
@@ -7,14 +7,14 @@ import io.undertow.util.AttachmentKey;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-public final class VirtualThreadHttpHandler implements HttpHandler {
+public final class KoraVirtualThreadDispatchHttpHandler implements HttpHandler {
 
     private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
 
     private final String name;
     private final HttpHandler delegate;
 
-    public VirtualThreadHttpHandler(String name, HttpHandler delegate) {
+    public KoraVirtualThreadDispatchHttpHandler(String name, HttpHandler delegate) {
         this.name = name;
         this.delegate = delegate;
     }
@@ -32,7 +32,7 @@ public final class VirtualThreadHttpHandler implements HttpHandler {
             return existingExecutor;
         }
         var threadName = serverName + "-" + connection.getId();
-        // todo think about caching executor
+        // TODO think about caching executor
         var executor = Executors.newSingleThreadExecutor(r -> Thread.ofVirtual().name(threadName).unstarted(r));
         connection.addCloseListener(c -> {
             var e = c.removeAttachment(key);
