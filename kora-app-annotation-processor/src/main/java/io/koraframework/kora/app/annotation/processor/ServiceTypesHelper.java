@@ -1,8 +1,6 @@
 package io.koraframework.kora.app.annotation.processor;
 
-import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
-import io.koraframework.annotation.processor.common.NameUtils;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.TypeElement;
@@ -78,25 +76,7 @@ public class ServiceTypesHelper {
         var interceptorTypeParameter = this.interceptorTypeElement.getTypeParameters().get(0); // somehow it can be changed during execution
         var declaredType = (DeclaredType) interceptorType;
         var interceptedType = this.types.asMemberOf(declaredType, interceptorTypeParameter);
-        return isInterceptable(interceptedType, targetType);
-    }
-
-    public boolean isInterceptable(TypeMirror interceptedType, TypeMirror targetType) {
-        if (this.types.isSameType(interceptedType, targetType)) {
-            return true;
-        } else if (this.types.isAssignable(targetType, interceptedType)) {
-            // Check if is AopProxy
-            var typeMirrorElement = types.asElement(targetType);
-            var annotation = AnnotationUtils.findAnnotation(typeMirrorElement, CommonClassNames.aopProxy);
-            if (annotation != null) {
-                var interceptedTypeElement = types.asElement(interceptedType);
-                var aopProxyName = NameUtils.generatedType(interceptedTypeElement, "_AopProxy");
-                var expectedAopProxyCanonicalName = elements.getPackageOf(interceptedTypeElement).toString() + "." + aopProxyName;
-                return expectedAopProxyCanonicalName.equals(typeMirrorElement.toString());
-            }
-        }
-
-        return false;
+        return this.types.isSameType(interceptedType, targetType);
     }
 
     public boolean isInterceptor(TypeMirror maybeInterceptor) {

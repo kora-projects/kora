@@ -1,9 +1,9 @@
 package io.koraframework.kora.app.annotation.processor.interceptor;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.kora.app.annotation.processor.ProcessingContext;
 import io.koraframework.kora.app.annotation.processor.component.ResolvedComponent;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -41,7 +41,7 @@ public class ComponentInterceptors {
     public List<ComponentInterceptor> interceptorsFor(ResolvedComponent component) {
         var type = component.type();
         return this.interceptors.stream()
-            .filter(interceptor -> this.ctx.serviceTypeHelper.isInterceptable(interceptor.interceptType(), type))
+            .filter(interceptor -> this.ctx.types.isSameType(interceptor.interceptType(), type))
             .filter(interceptor -> TagUtils.tagsMatch(interceptor.component().tag(), component.tag()))
             .toList();
     }

@@ -87,8 +87,7 @@ class GraphFileGenerator(
                 }
             }
 
-            val aopProxySuperClass = ServiceTypesHelper.findAopProxySuperClass(component.type)
-            val propertyType = aopProxySuperClass?.toTypeName() ?: component.type.toTypeName()
+            val propertyType = component.type.toTypeName()
 
             currentClass!!.addProperty(component.fieldName, CommonClassNames.node.parameterizedBy(propertyType))
             val statement = this.generateComponentStatement(component)

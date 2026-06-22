@@ -14,6 +14,7 @@ import io.koraframework.kora.app.ksp.ProcessingContext
 import io.koraframework.kora.app.ksp.extension.ExtensionResult
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
+import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.fixPlatformType
 import io.koraframework.ksp.common.TagUtils
@@ -187,7 +188,10 @@ sealed interface ComponentDeclaration {
             val conditionalAnnotation = classDeclaration.findAnnotation(CommonClassNames.conditional)
             val condition = conditionalAnnotation?.findValueNoDefault<KSType>("tag")
                 ?.toClassName()
-            val type = classDeclaration.asType(listOf())
+            var type = classDeclaration.asType(listOf())
+            if (classDeclaration.isAnnotationPresent(CommonClassNames.aopProxy)) {
+                type = classDeclaration.superTypes.first().resolve()
+            }
             val tags = TagUtils.parseTagValue(classDeclaration)
             val parameterTypes = constructor.parameters.map { it.type.resolve() }
 
