@@ -72,7 +72,7 @@ final class ZeebeManagedChannelLifecycle implements Lifecycle, Wrapped<ManagedCh
         }
 
         var interceptors = new ArrayList<ClientInterceptor>(2);
-        var telemetry = telemetryFactory.get(serviceDefinition, config.telemetry(), uri);
+        var telemetry = telemetryFactory.get(config.telemetry(), serviceDefinition, uri);
         if (telemetry != null) {
             interceptors.add(new GrpcClientTelemetryInterceptor(telemetry));
         }

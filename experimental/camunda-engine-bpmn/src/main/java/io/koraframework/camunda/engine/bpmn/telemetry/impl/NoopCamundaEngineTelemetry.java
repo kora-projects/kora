@@ -1,11 +1,11 @@
 package io.koraframework.camunda.engine.bpmn.telemetry.impl;
 
-import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineBpmnTelemetry;
+import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineTelemetry;
 import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineObservation;
 
-public final class NoopCamundaEngineBpmnTelemetry implements CamundaEngineBpmnTelemetry {
+public final class NoopCamundaEngineTelemetry implements CamundaEngineTelemetry {
 
-    public static final NoopCamundaEngineBpmnTelemetry INSTANCE = new NoopCamundaEngineBpmnTelemetry();
+    public static final NoopCamundaEngineTelemetry INSTANCE = new NoopCamundaEngineTelemetry();
 
     @Override
     public CamundaEngineObservation observe(String canonicalName) {

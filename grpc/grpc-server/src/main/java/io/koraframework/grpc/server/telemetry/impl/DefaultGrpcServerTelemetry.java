@@ -24,7 +24,7 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
             new $GrpcServerTelemetryConfig_ConfigValueExtractor.GrpcServerTelemetryConfig_Impl(
-                new $GrpcServerTelemetryConfig_GrpcServerLogConfig_ConfigValueExtractor.GrpcServerLogConfig_Defaults(),
+                new $GrpcServerTelemetryConfig_GrpcServerLoggingConfig_ConfigValueExtractor.GrpcServerLoggingConfig_Defaults(),
                 new $GrpcServerTelemetryConfig_GrpcServerMetricsConfig_ConfigValueExtractor.GrpcServerMetricsConfig_Defaults(),
                 new $GrpcServerTelemetryConfig_GrpcServerTracingConfig_ConfigValueExtractor.GrpcServerTracingConfig_Defaults()
             ),

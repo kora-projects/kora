@@ -1,8 +1,7 @@
 package io.koraframework.camunda.zeebe.worker.telemetry.impl;
 
 import io.camunda.zeebe.client.api.response.ActivatedJob;
-import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerObservation;
-import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
+import io.koraframework.camunda.zeebe.worker.telemetry.*;
 import io.koraframework.telemetry.common.TelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
@@ -11,7 +10,7 @@ import io.opentelemetry.api.trace.Tracer;
 
 public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
 
-    public record TelemetryContext(TelemetryConfig config,
+    public record TelemetryContext(ZeebeWorkerTelemetryConfig config,
                                    String workerType,
                                    boolean isTraceEnabled,
                                    boolean isMetricsEnabled,
@@ -19,22 +18,11 @@ public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
                                    Tracer tracer) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new TelemetryConfig() {
-                @Override
-                public LogConfig logging() {
-                    return new LogConfig() {};
-                }
-
-                @Override
-                public TracingConfig tracing() {
-                    return new TracingConfig() {};
-                }
-
-                @Override
-                public MetricsConfig metrics() {
-                    return new MetricsConfig() {};
-                }
-            },
+            new $ZeebeWorkerTelemetryConfig_ConfigValueExtractor.ZeebeWorkerTelemetryConfig_Impl(
+                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerLoggingConfig_ConfigValueExtractor.ZeebeWorkerLoggingConfig_Defaults(),
+                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerMetricsConfig_ConfigValueExtractor.ZeebeWorkerMetricsConfig_Defaults(),
+                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerTracingConfig_ConfigValueExtractor.ZeebeWorkerTracingConfig_Defaults()
+            ),
             "none",
             false,
             false,
@@ -47,7 +35,7 @@ public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
     protected final DefaultZeebeWorkerLoggerFactory.DefaultZeebeWorkerLogger logger;
     protected final DefaultZeebeWorkerMetricsFactory.DefaultZeebeWorkerMetrics metrics;
 
-    public DefaultZeebeWorkerTelemetry(TelemetryConfig config,
+    public DefaultZeebeWorkerTelemetry(ZeebeWorkerTelemetryConfig config,
                                        String workerType,
                                        Tracer tracer,
                                        MeterRegistry meterRegistry,

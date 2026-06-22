@@ -11,12 +11,12 @@ import java.util.Set;
 
 public final class HttpClientOperationTelemetryConfig implements HttpClientTelemetryConfig {
 
-    private final OperationLogConfig logging;
+    private final OperationLoggingConfig logging;
     private final OperationMetricConfig metrics;
     private final OperationTracingConfig tracing;
 
     public HttpClientOperationTelemetryConfig(HttpClientTelemetryConfig client, HttpClientOperationConfig.OperationTelemetryConfig operation) {
-        this.logging = new OperationLogConfig(client.logging(), operation.logging());
+        this.logging = new OperationLoggingConfig(client.logging(), operation.logging());
         this.metrics = new OperationMetricConfig(client.metrics(), operation.metrics());
         this.tracing = new OperationTracingConfig(client.tracing(), operation.tracing());
     }
@@ -36,12 +36,12 @@ public final class HttpClientOperationTelemetryConfig implements HttpClientTelem
         return this.metrics;
     }
 
-    private static class OperationLogConfig implements HttpClientLoggerConfig {
+    private static class OperationLoggingConfig implements HttpClientLoggerConfig {
 
         private final HttpClientLoggerConfig client;
         private final HttpClientOperationConfig.OperationTelemetryConfig.LoggingConfig operation;
 
-        private OperationLogConfig(HttpClientLoggerConfig client, HttpClientOperationConfig.OperationTelemetryConfig.LoggingConfig operation) {
+        private OperationLoggingConfig(HttpClientLoggerConfig client, HttpClientOperationConfig.OperationTelemetryConfig.LoggingConfig operation) {
             this.client = Objects.requireNonNull(client);
             this.operation = Objects.requireNonNull(operation);
         }

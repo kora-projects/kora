@@ -63,8 +63,8 @@ public class DefaultHttpClientLoggerTests {
                     new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
                         MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
                     ),
-                    new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor.HttpClientTracingConfig_Defaults(),
-                    new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor.HttpClientMetricsConfig_Defaults()
+                    new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor.HttpClientMetricsConfig_Defaults(),
+                    new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor.HttpClientTracingConfig_Defaults()
                 ),
                 false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none"
             ));
@@ -106,8 +106,8 @@ public class DefaultHttpClientLoggerTests {
                     new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor.HttpClientLoggerConfig_Impl(
                         MASKED_QUERY_PARAMS, MASKED_HEADERS, "***", pathTemplate, Size.of(1, Size.Type.MB), Size.of(1, Size.Type.MB), true
                     ),
-                    new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor.HttpClientTracingConfig_Defaults(),
-                    new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor.HttpClientMetricsConfig_Defaults()
+                    new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor.HttpClientMetricsConfig_Defaults(),
+                    new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor.HttpClientTracingConfig_Defaults()
                 ),
                 false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none"
             ));

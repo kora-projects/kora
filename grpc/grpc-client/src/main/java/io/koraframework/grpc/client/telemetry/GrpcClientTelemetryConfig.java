@@ -16,7 +16,7 @@ public interface GrpcClientTelemetryConfig extends TelemetryConfig {
     GrpcClientTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface GrpcClientLoggingConfig extends TelemetryConfig.LogConfig { }
+    interface GrpcClientLoggingConfig extends LoggingConfig { }
 
     @ConfigValueExtractor
     interface GrpcClientMetricsConfig extends TelemetryConfig.MetricsConfig { }

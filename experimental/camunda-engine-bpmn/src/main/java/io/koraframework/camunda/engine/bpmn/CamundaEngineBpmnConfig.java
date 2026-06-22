@@ -1,7 +1,7 @@
 package io.koraframework.camunda.engine.bpmn;
 
+import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineTelemetryConfig;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
-import io.koraframework.telemetry.common.TelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -20,7 +20,7 @@ public interface CamundaEngineBpmnConfig {
     @Nullable
     AdminConfig admin();
 
-    CamundaTelemetryConfig telemetry();
+    CamundaEngineTelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface ParallelInitConfig {
@@ -98,36 +98,6 @@ public interface CamundaEngineBpmnConfig {
 
         default boolean virtualThreadsEnabled() {
             return false;
-        }
-    }
-
-    @ConfigValueExtractor
-    interface CamundaTelemetryConfig extends TelemetryConfig {
-
-        @Override
-        CamundaEngineLogConfig logging();
-
-        @Override
-        TracingConfig tracing();
-
-        default boolean engineTelemetryEnabled() {
-            return false;
-        }
-    }
-
-    @ConfigValueExtractor
-    interface CamundaEngineLogConfig extends TelemetryConfig.LogConfig {
-
-        default boolean stacktrace() {
-            return true;
-        }
-    }
-
-    @ConfigValueExtractor
-    interface CamundaEngineTelemetryConfig extends TelemetryConfig.LogConfig {
-
-        default boolean stacktrace() {
-            return true;
         }
     }
 }

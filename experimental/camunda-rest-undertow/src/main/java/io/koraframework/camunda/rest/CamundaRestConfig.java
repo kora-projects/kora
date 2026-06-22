@@ -1,7 +1,7 @@
 package io.koraframework.camunda.rest;
 
+import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryConfig;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -28,7 +28,7 @@ public interface CamundaRestConfig {
 
     CamundaOpenApiConfig openapi();
 
-    HttpServerTelemetryConfig telemetry();
+    CamundaRestTelemetryConfig telemetry();
 
     CamundaCorsConfig cors();
 

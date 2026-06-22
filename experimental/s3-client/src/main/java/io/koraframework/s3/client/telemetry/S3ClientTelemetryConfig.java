@@ -6,7 +6,7 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 @ConfigValueExtractor
 public interface S3ClientTelemetryConfig extends TelemetryConfig {
     @Override
-    S3ClientLogConfig logging();
+    S3ClientLoggingConfig logging();
 
     @Override
     S3ClientMetricsConfig metrics();
@@ -15,7 +15,7 @@ public interface S3ClientTelemetryConfig extends TelemetryConfig {
     S3ClientTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface S3ClientLogConfig extends TelemetryConfig.LogConfig {
+    interface S3ClientLoggingConfig extends LoggingConfig {
 
     }
 

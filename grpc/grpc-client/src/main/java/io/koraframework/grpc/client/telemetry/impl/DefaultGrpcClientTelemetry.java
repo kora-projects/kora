@@ -44,12 +44,12 @@ public class DefaultGrpcClientTelemetry implements GrpcClientTelemetry {
     protected final DefaultGrpcClientMetricsFactory.DefaultGrpcClientMetrics metrics;
 
     public DefaultGrpcClientTelemetry(GrpcClientTelemetryConfig config,
+                                      ServiceDescriptor service,
+                                      URI uri,
                                       Tracer tracer,
                                       MeterRegistry meterRegistry,
                                       DefaultGrpcClientMetricsFactory metricsFactory,
-                                      DefaultGrpcClientLoggerFactory loggerFactory,
-                                      ServiceDescriptor service,
-                                      URI uri) {
+                                      DefaultGrpcClientLoggerFactory loggerFactory) {
         var isTraceEnabled = config.tracing().enabled() && tracer != DefaultGrpcClientTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultGrpcClientTelemetryFactory.NOOP_METER_REGISTRY;
         this.context = new TelemetryContext(config, service, uri, isTraceEnabled, isMetricsEnabled, meterRegistry, tracer);

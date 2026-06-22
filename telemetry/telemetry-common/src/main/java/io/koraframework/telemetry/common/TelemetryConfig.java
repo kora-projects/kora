@@ -7,14 +7,16 @@ import java.util.Map;
 
 @ConfigValueExtractor
 public interface TelemetryConfig {
-    LogConfig logging();
+
+    LoggingConfig logging();
 
     TracingConfig tracing();
 
     MetricsConfig metrics();
 
     @ConfigValueExtractor
-    interface LogConfig {
+    interface LoggingConfig {
+
         default boolean enabled() {
             return false;
         }
@@ -22,6 +24,7 @@ public interface TelemetryConfig {
 
     @ConfigValueExtractor
     interface TracingConfig {
+
         default boolean enabled() {
             return true;
         }
@@ -33,6 +36,7 @@ public interface TelemetryConfig {
 
     @ConfigValueExtractor
     interface MetricsConfig {
+
         Duration[] DEFAULT_SLO = new Duration[]{
             Duration.ofMillis(1),
             Duration.ofMillis(10),

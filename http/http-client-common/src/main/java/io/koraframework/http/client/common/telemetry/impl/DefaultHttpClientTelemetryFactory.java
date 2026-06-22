@@ -9,7 +9,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public final class DefaultHttpClientTelemetryFactory implements HttpClientTelemetryFactory {
+public class DefaultHttpClientTelemetryFactory implements HttpClientTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("http-client");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -66,6 +66,17 @@ public final class DefaultHttpClientTelemetryFactory implements HttpClientTeleme
             enabledLoggerFactory = NoopHttpClientLoggerFactory.INSTANCE;
         }
 
-        return new DefaultHttpClientTelemetry(clientConfigPath, clientCanonicalName, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, loggerBodyConverter);
+        return build(clientConfigPath, clientCanonicalName, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, loggerBodyConverter != null ? loggerBodyConverter : new DefaultHttpClientBodyConverter());
+    }
+
+    protected HttpClientTelemetry build(String clientConfigPath,
+                                        String clientCanonicalName,
+                                        HttpClientTelemetryConfig config,
+                                        Tracer tracer,
+                                        MeterRegistry meterRegistry,
+                                        DefaultHttpClientMetricsFactory metricsFactory,
+                                        DefaultHttpClientLoggerFactory loggerFactory,
+                                        DefaultHttpClientBodyConverter loggerBodyConverter) {
+        return new DefaultHttpClientTelemetry(clientConfigPath, clientCanonicalName, config, tracer, meterRegistry, metricsFactory, loggerFactory, loggerBodyConverter);
     }
 }

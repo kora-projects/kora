@@ -1,8 +1,8 @@
 package io.koraframework.camunda.rest.telemetry.impl;
 
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
+import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryConfig;
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryFactory;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -24,9 +24,9 @@ public class DefaultCamundaRestTelemetryFactory implements CamundaRestTelemetryF
     private final DefaultCamundaRestMetricsFactory metricsFactory;
 
     public DefaultCamundaRestTelemetryFactory(@Nullable Tracer tracer,
-                                             @Nullable MeterRegistry meterRegistry,
-                                             @Nullable DefaultCamundaRestLoggerFactory loggerFactory,
-                                             @Nullable DefaultCamundaRestMetricsFactory metricsFactory) {
+                                              @Nullable MeterRegistry meterRegistry,
+                                              @Nullable DefaultCamundaRestLoggerFactory loggerFactory,
+                                              @Nullable DefaultCamundaRestMetricsFactory metricsFactory) {
         this.tracer = tracer;
         this.meterRegistry = meterRegistry;
         this.loggerFactory = loggerFactory;
@@ -34,7 +34,7 @@ public class DefaultCamundaRestTelemetryFactory implements CamundaRestTelemetryF
     }
 
     @Override
-    public CamundaRestTelemetry get(HttpServerTelemetryConfig config) {
+    public CamundaRestTelemetry get(CamundaRestTelemetryConfig config) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -62,6 +62,14 @@ public class DefaultCamundaRestTelemetryFactory implements CamundaRestTelemetryF
             enabledLoggerFactory = NoopCamundaRestLoggerFactory.INSTANCE;
         }
 
-        return new DefaultCamundaRestTelemetry(config, traceEnabled, metricEnabled, tracer, meterRegistry, enabledLoggerFactory, enabledMetricsFactory);
+        return build(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+    }
+
+    protected CamundaRestTelemetry build(CamundaRestTelemetryConfig config,
+                                         Tracer tracer,
+                                         MeterRegistry meterRegistry,
+                                         DefaultCamundaRestMetricsFactory metricsFactory,
+                                         DefaultCamundaRestLoggerFactory loggerFactory) {
+        return new DefaultCamundaRestTelemetry(config, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }

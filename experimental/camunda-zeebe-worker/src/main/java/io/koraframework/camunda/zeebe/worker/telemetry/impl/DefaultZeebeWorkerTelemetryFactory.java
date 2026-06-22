@@ -1,15 +1,15 @@
 package io.koraframework.camunda.zeebe.worker.telemetry.impl;
 
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
+import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryConfig;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryFactory;
-import io.koraframework.telemetry.common.TelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public final class DefaultZeebeWorkerTelemetryFactory implements ZeebeWorkerTelemetryFactory {
+public class DefaultZeebeWorkerTelemetryFactory implements ZeebeWorkerTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("zeebe-worker");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -34,7 +34,7 @@ public final class DefaultZeebeWorkerTelemetryFactory implements ZeebeWorkerTele
     }
 
     @Override
-    public ZeebeWorkerTelemetry get(String workerType, TelemetryConfig config) {
+    public ZeebeWorkerTelemetry get(ZeebeWorkerTelemetryConfig config, String workerType) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -62,6 +62,15 @@ public final class DefaultZeebeWorkerTelemetryFactory implements ZeebeWorkerTele
             enabledLoggerFactory = NoopZeebeWorkerLoggerFactory.INSTANCE;
         }
 
-        return new DefaultZeebeWorkerTelemetry(config, workerType, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+        return build(config, workerType, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+    }
+
+    protected ZeebeWorkerTelemetry build(ZeebeWorkerTelemetryConfig config,
+                                         String workerType,
+                                         Tracer tracer,
+                                         MeterRegistry meterRegistry,
+                                         DefaultZeebeWorkerMetricsFactory metricsFactory,
+                                         DefaultZeebeWorkerLoggerFactory loggerFactory) {
+        return new DefaultZeebeWorkerTelemetry(config, workerType, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }

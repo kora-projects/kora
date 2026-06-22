@@ -8,22 +8,22 @@ import org.jspecify.annotations.Nullable;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
-public class DefaultCamundaEngineBpmnObservation implements CamundaEngineObservation {
+public class DefaultCamundaEngineObservation implements CamundaEngineObservation {
 
     protected final long start = System.nanoTime();
-    protected final DefaultCamundaEngineBpmnTelemetry.TelemetryContext context;
+    protected final DefaultCamundaEngineTelemetry.TelemetryContext context;
     protected final Span span;
-    protected final DefaultCamundaEngineBpmnLoggerFactory.DefaultCamundaEngineBpmnLogger logger;
-    protected final DefaultCamundaEngineBpmnMetricsFactory.DefaultCamundaEngineBpmnMetrics metrics;
+    protected final DefaultCamundaEngineLoggerFactory.DefaultCamundaEngineLogger logger;
+    protected final DefaultCamundaEngineMetricsFactory.DefaultCamundaEngineMetrics metrics;
 
     @Nullable
     protected Throwable error;
     protected DelegateExecution execution;
 
-    public DefaultCamundaEngineBpmnObservation(DefaultCamundaEngineBpmnTelemetry.TelemetryContext context,
-                                              Span span,
-                                              DefaultCamundaEngineBpmnLoggerFactory.DefaultCamundaEngineBpmnLogger logger,
-                                              DefaultCamundaEngineBpmnMetricsFactory.DefaultCamundaEngineBpmnMetrics metrics) {
+    public DefaultCamundaEngineObservation(DefaultCamundaEngineTelemetry.TelemetryContext context,
+                                           Span span,
+                                           DefaultCamundaEngineLoggerFactory.DefaultCamundaEngineLogger logger,
+                                           DefaultCamundaEngineMetricsFactory.DefaultCamundaEngineMetrics metrics) {
         this.context = context;
         this.span = span;
         this.logger = logger;

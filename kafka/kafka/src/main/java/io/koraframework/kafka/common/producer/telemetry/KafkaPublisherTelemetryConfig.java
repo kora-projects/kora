@@ -15,7 +15,7 @@ public interface KafkaPublisherTelemetryConfig extends TelemetryConfig {
     KafkaProducerTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface KafkaProducerLoggingConfig extends LogConfig {
+    interface KafkaProducerLoggingConfig extends LoggingConfig {
     }
 
     @ConfigValueExtractor

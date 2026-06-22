@@ -15,13 +15,13 @@ public interface HttpClientTelemetryConfig extends TelemetryConfig {
     HttpClientLoggerConfig logging();
 
     @Override
-    HttpClientTracingConfig tracing();
-
-    @Override
     HttpClientMetricsConfig metrics();
 
+    @Override
+    HttpClientTracingConfig tracing();
+
     @ConfigValueExtractor
-    interface HttpClientLoggerConfig extends TelemetryConfig.LogConfig {
+    interface HttpClientLoggerConfig extends LoggingConfig {
 
         default Set<String> maskQueries() {
             return Collections.emptySet();
@@ -48,13 +48,13 @@ public interface HttpClientTelemetryConfig extends TelemetryConfig {
     }
 
     @ConfigValueExtractor
+    interface HttpClientMetricsConfig extends TelemetryConfig.MetricsConfig {}
+
+    @ConfigValueExtractor
     interface HttpClientTracingConfig extends TelemetryConfig.TracingConfig {
 
         default boolean pathFull() {
             return true;
         }
     }
-
-    @ConfigValueExtractor
-    interface HttpClientMetricsConfig extends TelemetryConfig.MetricsConfig {}
 }

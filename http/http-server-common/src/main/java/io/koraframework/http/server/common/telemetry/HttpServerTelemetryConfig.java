@@ -10,6 +10,7 @@ import java.util.Set;
 
 @ConfigValueExtractor
 public interface HttpServerTelemetryConfig extends TelemetryConfig {
+
     @Override
     HttpServerLoggingConfig logging();
 
@@ -20,7 +21,8 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
     HttpServerTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface HttpServerLoggingConfig extends LogConfig {
+    interface HttpServerLoggingConfig extends LoggingConfig {
+
         default boolean stacktrace() {
             return true;
         }
@@ -50,9 +52,7 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
     }
 
     @ConfigValueExtractor
-    interface HttpServerMetricsConfig extends TelemetryConfig.MetricsConfig {
-
-    }
+    interface HttpServerMetricsConfig extends TelemetryConfig.MetricsConfig { }
 
     @ConfigValueExtractor
     interface HttpServerTracingConfig extends TelemetryConfig.TracingConfig {

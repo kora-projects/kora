@@ -18,7 +18,7 @@ import io.koraframework.soap.client.common.$SoapServiceConfig_SoapClientTelemetr
 import io.koraframework.soap.client.common.SoapServiceConfig;
 import io.koraframework.soap.client.common.telemetry.NoopSoapClientTelemetry;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
-import io.koraframework.telemetry.common.$TelemetryConfig_LogConfig_ConfigValueExtractor;
+import io.koraframework.telemetry.common.$TelemetryConfig_LoggingConfig_ConfigValueExtractor;
 import io.koraframework.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
 import io.koraframework.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 
@@ -271,7 +271,7 @@ class WebServiceClientAnnotationProcessorTest {
             @Override
             public SoapClientTelemetryConfig telemetry() {
                 return new $SoapServiceConfig_SoapClientTelemetryConfig_ConfigValueExtractor.SoapClientTelemetryConfig_Impl(
-                    new $TelemetryConfig_LogConfig_ConfigValueExtractor.LogConfig_Defaults(),
+                    new $TelemetryConfig_LoggingConfig_ConfigValueExtractor.LoggingConfig_Defaults(),
                     new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Defaults(),
                     new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
                 );
