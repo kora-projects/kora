@@ -1,5 +1,6 @@
 package io.koraframework.camunda.zeebe.worker;
 
+import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryConfig;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import io.koraframework.common.util.Size;
@@ -37,7 +38,7 @@ public interface ZeebeClientConfig {
 
     DeploymentConfig deployment();
 
-    GrpcClientTelemetryConfig telemetry();
+    ZeebeWorkerTelemetryConfig telemetry();
 
     @ConfigValueExtractor
     interface RestConfig {
@@ -59,6 +60,8 @@ public interface ZeebeClientConfig {
         }
 
         GrpcRetryConfig retryPolicy();
+
+        GrpcClientTelemetryConfig telemetry();
     }
 
     @ConfigValueExtractor

@@ -6,10 +6,10 @@ import io.koraframework.camunda.engine.bpmn.configurator.AdminUserProcessEngineC
 import io.koraframework.camunda.engine.bpmn.configurator.DeploymentProcessEngineConfigurator;
 import io.koraframework.camunda.engine.bpmn.configurator.ProcessEngineConfigurator;
 import io.koraframework.camunda.engine.bpmn.configurator.SecondStageKoraProcessEngineConfigurator;
-import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineBpmnTelemetryFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineBpmnLoggerFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineBpmnMetricsFactory;
-import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineBpmnTelemetryFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineTelemetryFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineLoggerFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineMetricsFactory;
+import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineTelemetryFactory;
 import io.koraframework.camunda.engine.bpmn.transaction.CamundaTransactionManager;
 import io.koraframework.camunda.engine.bpmn.transaction.JdbcCamundaTransactionManager;
 import io.koraframework.common.DefaultComponent;
@@ -89,15 +89,15 @@ public interface CamundaEngineBpmnModule {
 
 
     @DefaultComponent
-    default CamundaEngineBpmnTelemetryFactory camundaEngineBpmnTelemetryFactory(@Nullable Tracer tracer,
-                                                                               @Nullable MeterRegistry meterRegistry,
-                                                                               @Nullable DefaultCamundaEngineBpmnLoggerFactory loggerFactory,
-                                                                               @Nullable DefaultCamundaEngineBpmnMetricsFactory metricsFactory) {
-        return new DefaultCamundaEngineBpmnTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
+    default CamundaEngineTelemetryFactory camundaEngineBpmnTelemetryFactory(@Nullable Tracer tracer,
+                                                                            @Nullable MeterRegistry meterRegistry,
+                                                                            @Nullable DefaultCamundaEngineLoggerFactory loggerFactory,
+                                                                            @Nullable DefaultCamundaEngineMetricsFactory metricsFactory) {
+        return new DefaultCamundaEngineTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
     @DefaultComponent
-    default KoraDelegateWrapperFactory koraJavaDelegateTelemetryWrapper(CamundaEngineBpmnTelemetryFactory telemetryFactory,
+    default KoraDelegateWrapperFactory koraJavaDelegateTelemetryWrapper(CamundaEngineTelemetryFactory telemetryFactory,
                                                                         CamundaEngineBpmnConfig camundaEngineBpmnConfig) {
         return delegate -> {
             var telemetry = telemetryFactory.get(camundaEngineBpmnConfig.telemetry());

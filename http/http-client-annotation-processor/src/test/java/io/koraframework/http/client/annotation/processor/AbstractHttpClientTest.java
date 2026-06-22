@@ -66,9 +66,9 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
         var durationCVE = new DurationConfigValueExtractor();
         var telemetryCVE = new $HttpClientTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
-            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
-            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
+            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
+            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
         );
         var operationTelemetryCVE = new $HttpClientOperationConfig_OperationTelemetryConfig_ConfigValueExtractor(
             new $HttpClientOperationConfig_OperationTelemetryConfig_LoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),

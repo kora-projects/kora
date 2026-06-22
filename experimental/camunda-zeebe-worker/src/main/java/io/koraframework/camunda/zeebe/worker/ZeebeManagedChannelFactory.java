@@ -3,6 +3,7 @@ package io.koraframework.camunda.zeebe.worker;
 import io.camunda.zeebe.client.ZeebeClient;
 import io.camunda.zeebe.client.impl.util.VersionUtil;
 import io.grpc.*;
+import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryConfig;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.grpc.client.channel.GrpcClientChannelFactory;
 import io.koraframework.grpc.client.config.DefaultServiceConfig;
@@ -50,7 +51,7 @@ final class ZeebeManagedChannelFactory {
 
             @Override
             public GrpcClientTelemetryConfig telemetry() {
-                return clientConfig.telemetry();
+                return clientConfig.grpc().telemetry();
             }
 
             @Override

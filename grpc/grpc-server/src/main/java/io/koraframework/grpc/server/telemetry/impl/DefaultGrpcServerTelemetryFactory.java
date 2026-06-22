@@ -8,7 +8,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public final class DefaultGrpcServerTelemetryFactory {
+public class DefaultGrpcServerTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("grpc-server");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -60,6 +60,14 @@ public final class DefaultGrpcServerTelemetryFactory {
             enabledLoggerFactory = NoopGrpcServerLoggerFactory.INSTANCE;
         }
 
-        return new DefaultGrpcServerTelemetry(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+        return build(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+    }
+
+    protected GrpcServerTelemetry build(GrpcServerTelemetryConfig config,
+                                        Tracer tracer,
+                                        MeterRegistry meterRegistry,
+                                        DefaultGrpcServerMetricsFactory metricsFactory,
+                                        DefaultGrpcServerLoggerFactory loggerFactory) {
+        return new DefaultGrpcServerTelemetry(config, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }

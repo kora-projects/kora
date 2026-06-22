@@ -12,7 +12,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 
-public final class DefaultGrpcClientTelemetryFactory implements GrpcClientTelemetryFactory {
+public class DefaultGrpcClientTelemetryFactory implements GrpcClientTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("grpc-client");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -37,7 +37,7 @@ public final class DefaultGrpcClientTelemetryFactory implements GrpcClientTeleme
     }
 
     @Override
-    public GrpcClientTelemetry get(ServiceDescriptor service, GrpcClientTelemetryConfig config, URI uri) {
+    public GrpcClientTelemetry get(GrpcClientTelemetryConfig config, ServiceDescriptor service, URI uri) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -65,6 +65,16 @@ public final class DefaultGrpcClientTelemetryFactory implements GrpcClientTeleme
             enabledLoggerFactory = NoopGrpcClientLoggerFactory.INSTANCE;
         }
 
-        return new DefaultGrpcClientTelemetry(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, service, uri);
+        return build(config, service, uri, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+    }
+
+    protected GrpcClientTelemetry build(GrpcClientTelemetryConfig config,
+                                        ServiceDescriptor service,
+                                        URI uri,
+                                        Tracer tracer,
+                                        MeterRegistry meterRegistry,
+                                        DefaultGrpcClientMetricsFactory metricsFactory,
+                                        DefaultGrpcClientLoggerFactory loggerFactory) {
+        return new DefaultGrpcClientTelemetry(config, service, uri, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }

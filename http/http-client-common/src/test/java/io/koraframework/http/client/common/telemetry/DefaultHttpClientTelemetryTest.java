@@ -38,9 +38,9 @@ class DefaultHttpClientTelemetryTest {
     private HttpClientTelemetryConfig config(String str) {
         var config = HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(str));
         var extractor = new $HttpClientTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientTelemetryConfig_HttpClientLoggerConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
-            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
-            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
+            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
+            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
+            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
         );
         return extractor.extract(config.root());
     }

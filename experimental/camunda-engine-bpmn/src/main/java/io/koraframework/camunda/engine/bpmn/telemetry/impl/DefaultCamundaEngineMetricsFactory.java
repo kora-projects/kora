@@ -10,15 +10,15 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
-public class DefaultCamundaEngineBpmnMetricsFactory {
+public class DefaultCamundaEngineMetricsFactory {
 
-    public static final DefaultCamundaEngineBpmnMetricsFactory INSTANCE = new DefaultCamundaEngineBpmnMetricsFactory();
+    public static final DefaultCamundaEngineMetricsFactory INSTANCE = new DefaultCamundaEngineMetricsFactory();
 
-    public DefaultCamundaEngineBpmnMetrics create(DefaultCamundaEngineBpmnTelemetry.TelemetryContext context, String javaDelegateName) {
-        return new DefaultCamundaEngineBpmnMetrics(context, javaDelegateName);
+    public DefaultCamundaEngineMetrics create(DefaultCamundaEngineTelemetry.TelemetryContext context, String javaDelegateName) {
+        return new DefaultCamundaEngineMetrics(context, javaDelegateName);
     }
 
-    public static class DefaultCamundaEngineBpmnMetrics {
+    public static class DefaultCamundaEngineMetrics {
 
         public record DurationKey(@Nullable Class<? extends Throwable> errorType,
                                   @Nullable Tags extraTags) {
@@ -30,10 +30,10 @@ public class DefaultCamundaEngineBpmnMetricsFactory {
 
         protected final ConcurrentHashMap<DurationKey, Timer> durationCache = new ConcurrentHashMap<>();
 
-        protected final DefaultCamundaEngineBpmnTelemetry.TelemetryContext context;
+        protected final DefaultCamundaEngineTelemetry.TelemetryContext context;
         protected final String javaDelegateName;
 
-        public DefaultCamundaEngineBpmnMetrics(DefaultCamundaEngineBpmnTelemetry.TelemetryContext context, String javaDelegateName) {
+        public DefaultCamundaEngineMetrics(DefaultCamundaEngineTelemetry.TelemetryContext context, String javaDelegateName) {
             this.context = context;
             this.javaDelegateName = javaDelegateName;
         }

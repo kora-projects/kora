@@ -21,9 +21,9 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
             new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
-                new $DatabaseTelemetryConfig_DatabaseLogConfig_ConfigValueExtractor.DatabaseLogConfig_Defaults(),
-                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Defaults(),
-                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Defaults()
+                new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueExtractor.DatabaseLoggingConfig_Defaults(),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Defaults(),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Defaults()
             ),
             "none",
             "none",

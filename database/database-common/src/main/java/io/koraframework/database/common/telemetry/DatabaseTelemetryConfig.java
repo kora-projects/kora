@@ -6,22 +6,23 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 @ConfigValueExtractor
 public interface DatabaseTelemetryConfig extends TelemetryConfig {
 
-    DatabaseLogConfig logging();
-
-    DatabaseTracingConfig tracing();
+    DatabaseLoggingConfig logging();
 
     DatabaseMetricsConfig metrics();
 
-    @ConfigValueExtractor
-    interface DatabaseLogConfig extends LogConfig {}
+    DatabaseTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface DatabaseTracingConfig extends TracingConfig {}
+    interface DatabaseLoggingConfig extends LoggingConfig {}
 
     @ConfigValueExtractor
     interface DatabaseMetricsConfig extends MetricsConfig {
+
         default boolean driverMetrics() {
             return true;
         }
     }
+
+    @ConfigValueExtractor
+    interface DatabaseTracingConfig extends TracingConfig {}
 }

@@ -7,23 +7,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
 
-public class DefaultCamundaEngineBpmnLoggerFactory {
+public class DefaultCamundaEngineLoggerFactory {
 
-    public static final DefaultCamundaEngineBpmnLoggerFactory INSTANCE = new DefaultCamundaEngineBpmnLoggerFactory();
+    public static final DefaultCamundaEngineLoggerFactory INSTANCE = new DefaultCamundaEngineLoggerFactory();
 
-    public DefaultCamundaEngineBpmnLogger create(DefaultCamundaEngineBpmnTelemetry.TelemetryContext context, String javaDelegateName) {
-        return new DefaultCamundaEngineBpmnLogger(context, javaDelegateName, LoggerFactory.getLogger(javaDelegateName));
+    public DefaultCamundaEngineLogger create(DefaultCamundaEngineTelemetry.TelemetryContext context, String javaDelegateName) {
+        return new DefaultCamundaEngineLogger(context, javaDelegateName, LoggerFactory.getLogger(javaDelegateName));
     }
 
-    public static class DefaultCamundaEngineBpmnLogger {
+    public static class DefaultCamundaEngineLogger {
 
-        protected final DefaultCamundaEngineBpmnTelemetry.TelemetryContext context;
+        protected final DefaultCamundaEngineTelemetry.TelemetryContext context;
         protected final String javaDelegateName;
         protected final Logger logger;
 
-        public DefaultCamundaEngineBpmnLogger(DefaultCamundaEngineBpmnTelemetry.TelemetryContext context,
-                                             String javaDelegateName,
-                                             Logger logger) {
+        public DefaultCamundaEngineLogger(DefaultCamundaEngineTelemetry.TelemetryContext context,
+                                              String javaDelegateName,
+                                              Logger logger) {
             this.context = context;
             this.javaDelegateName = javaDelegateName;
             this.logger = logger;

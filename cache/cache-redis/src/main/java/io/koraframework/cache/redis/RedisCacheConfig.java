@@ -46,7 +46,7 @@ public interface RedisCacheConfig {
         }
 
         @ConfigValueExtractor
-        interface RedisCacheLoggingConfig extends TelemetryConfig.LogConfig {
+        interface RedisCacheLoggingConfig extends TelemetryConfig.LoggingConfig {
         }
 
         @ConfigValueExtractor

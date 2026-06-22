@@ -7,18 +7,18 @@ import java.time.Duration;
 import java.util.Objects;
 
 public final class SchedulingTelemetryConfig implements TelemetryConfig {
-    private final OperationLogConfig logging;
+    private final OperationLoggingConfig logging;
     private final OperationMetricConfig metrics;
     private final OperationTracingConfig tracing;
 
     public SchedulingTelemetryConfig(TelemetryConfig config, @Nullable JobTelemetryConfig job) {
-        this.logging = new OperationLogConfig(config.logging(), job == null ? null : job.logging());
+        this.logging = new OperationLoggingConfig(config.logging(), job == null ? null : job.logging());
         this.metrics = new OperationMetricConfig(config.metrics(), job == null ? null : job.metrics());
         this.tracing = new OperationTracingConfig(config.tracing(), job == null ? null : job.tracing());
     }
 
     @Override
-    public LogConfig logging() {
+    public LoggingConfig logging() {
         return this.logging;
     }
 
@@ -32,11 +32,11 @@ public final class SchedulingTelemetryConfig implements TelemetryConfig {
         return this.metrics;
     }
 
-    private static class OperationLogConfig implements LogConfig {
-        private final LogConfig client;
+    private static class OperationLoggingConfig implements LoggingConfig {
+        private final LoggingConfig client;
         private final JobTelemetryConfig.@Nullable JobLogConfig job;
 
-        private OperationLogConfig(LogConfig client, JobTelemetryConfig.@Nullable JobLogConfig job) {
+        private OperationLoggingConfig(LoggingConfig client, JobTelemetryConfig.@Nullable JobLogConfig job) {
             this.client = Objects.requireNonNull(client);
             this.job = job;
         }

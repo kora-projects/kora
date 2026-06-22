@@ -7,7 +7,7 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 public interface GrpcServerTelemetryConfig extends TelemetryConfig {
 
     @Override
-    GrpcServerLogConfig logging();
+    GrpcServerLoggingConfig logging();
 
     @Override
     GrpcServerMetricsConfig metrics();
@@ -16,7 +16,7 @@ public interface GrpcServerTelemetryConfig extends TelemetryConfig {
     GrpcServerTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface GrpcServerLogConfig extends TelemetryConfig.LogConfig {}
+    interface GrpcServerLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
     @ConfigValueExtractor
     interface GrpcServerMetricsConfig extends TelemetryConfig.MetricsConfig {}

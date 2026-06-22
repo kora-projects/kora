@@ -2,6 +2,7 @@ package io.koraframework.camunda.rest.telemetry.impl;
 
 import io.koraframework.camunda.rest.telemetry.CamundaRestObservation;
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetry;
+import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryConfig;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
@@ -15,7 +16,7 @@ import org.jspecify.annotations.Nullable;
 
 public class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
 
-    public record TelemetryContext(HttpServerTelemetryConfig config,
+    public record TelemetryContext(CamundaRestTelemetryConfig config,
                                    boolean isTraceEnabled,
                                    boolean isMetricsEnabled,
                                    Tracer tracer,
@@ -25,13 +26,13 @@ public class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
     protected final DefaultCamundaRestLoggerFactory.DefaultCamundaRestLogger logger;
     protected final DefaultCamundaRestMetricsFactory.DefaultCamundaRestMetrics metrics;
 
-    public DefaultCamundaRestTelemetry(HttpServerTelemetryConfig config,
-                                       boolean isTraceEnabled,
-                                       boolean isMetricsEnabled,
+    public DefaultCamundaRestTelemetry(CamundaRestTelemetryConfig config,
                                        Tracer tracer,
                                        MeterRegistry meterRegistry,
-                                       DefaultCamundaRestLoggerFactory loggerFactory,
-                                       DefaultCamundaRestMetricsFactory metricsFactory) {
+                                       DefaultCamundaRestMetricsFactory metricsFactory,
+                                       DefaultCamundaRestLoggerFactory loggerFactory) {
+        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultCamundaRestTelemetryFactory.NOOP_TRACER;
+        var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultCamundaRestTelemetryFactory.NOOP_METER_REGISTRY;
         this.context = new TelemetryContext(config, isTraceEnabled, isMetricsEnabled, tracer, meterRegistry);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);

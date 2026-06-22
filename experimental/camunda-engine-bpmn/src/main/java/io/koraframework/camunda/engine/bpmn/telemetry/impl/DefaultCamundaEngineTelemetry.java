@@ -1,7 +1,7 @@
 package io.koraframework.camunda.engine.bpmn.telemetry.impl;
 
-import io.koraframework.camunda.engine.bpmn.CamundaEngineBpmnConfig;
-import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineBpmnTelemetry;
+import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineTelemetryConfig;
+import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineTelemetry;
 import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineObservation;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
@@ -11,25 +11,25 @@ import io.opentelemetry.api.trace.Tracer;
 
 import static io.opentelemetry.api.common.AttributeKey.stringKey;
 
-public class DefaultCamundaEngineBpmnTelemetry implements CamundaEngineBpmnTelemetry {
+public class DefaultCamundaEngineTelemetry implements CamundaEngineTelemetry {
 
-    public record TelemetryContext(CamundaEngineBpmnConfig.CamundaTelemetryConfig config,
+    public record TelemetryContext(CamundaEngineTelemetryConfig config,
                                    boolean isTraceEnabled,
                                    boolean isMetricsEnabled,
                                    Tracer tracer,
                                    MeterRegistry meterRegistry) {}
 
     protected final TelemetryContext context;
-    protected final DefaultCamundaEngineBpmnLoggerFactory loggerFactory;
-    protected final DefaultCamundaEngineBpmnMetricsFactory metricsFactory;
+    protected final DefaultCamundaEngineLoggerFactory loggerFactory;
+    protected final DefaultCamundaEngineMetricsFactory metricsFactory;
 
-    public DefaultCamundaEngineBpmnTelemetry(CamundaEngineBpmnConfig.CamundaTelemetryConfig config,
-                                             boolean isTraceEnabled,
-                                             boolean isMetricsEnabled,
-                                             Tracer tracer,
-                                             MeterRegistry meterRegistry,
-                                             DefaultCamundaEngineBpmnLoggerFactory loggerFactory,
-                                             DefaultCamundaEngineBpmnMetricsFactory metricsFactory) {
+    public DefaultCamundaEngineTelemetry(CamundaEngineTelemetryConfig config,
+                                         Tracer tracer,
+                                         MeterRegistry meterRegistry,
+                                         DefaultCamundaEngineMetricsFactory metricsFactory,
+                                         DefaultCamundaEngineLoggerFactory loggerFactory) {
+        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultCamundaEngineTelemetryFactory.NOOP_TRACER;
+        var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultCamundaEngineTelemetryFactory.NOOP_METER_REGISTRY;
         this.context = new TelemetryContext(config, isTraceEnabled, isMetricsEnabled, tracer, meterRegistry);
         this.loggerFactory = loggerFactory;
         this.metricsFactory = metricsFactory;
@@ -41,7 +41,7 @@ public class DefaultCamundaEngineBpmnTelemetry implements CamundaEngineBpmnTelem
         var logger = this.loggerFactory.create(this.context, javaDelegateName);
         var metrics = this.metricsFactory.create(this.context, javaDelegateName);
 
-        return new DefaultCamundaEngineBpmnObservation(this.context, span, logger, metrics);
+        return new DefaultCamundaEngineObservation(this.context, span, logger, metrics);
     }
 
     protected Span createSpan(String javaDelegateName) {
