@@ -11,7 +11,6 @@ import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.telemetry.*;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
-import io.koraframework.http.server.undertow.handler.KoraCorsHttpHandler;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
 import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
 import okhttp3.Request;
@@ -85,7 +84,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
     }
 
     private UndertowHttpServer corsServer() {
-        var config = new TestHttpServerConfig(new TestHttpServerCorsConfig());
+        var config = new TestHttpServerConfig();
         var handler = new HttpServerHandler(List.of(new HttpServerRequestHandlerImpl(
             "GET",
             "/",
@@ -94,7 +93,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
         var processingHandler = new KoraRequestProcessingHttpHandler(NoopHttpServerTelemetry.INSTANCE, handler);
         return new UndertowHttpServer(
             "test-cors",
-            valueOf(new KoraCorsHttpHandler(processingHandler, config.cors())),
+            valueOf(processingHandler),
             null,
             valueOf(config),
             null,
@@ -102,7 +101,7 @@ class UndertowHttpServerTest extends HttpServerTestKit {
         );
     }
 
-    private record TestHttpServerConfig(HttpServerCorsConfig cors) implements HttpServerConfig {
+    private record TestHttpServerConfig() implements HttpServerConfig {
         @Override
         public int port() {
             return 0;
@@ -135,13 +134,6 @@ class UndertowHttpServerTest extends HttpServerTestKit {
         @Override
         public Size maxRequestBodySize() {
             return Size.of(1, Size.Type.GiB);
-        }
-    }
-
-    private static final class TestHttpServerCorsConfig implements HttpServerConfig.HttpServerCorsConfig {
-        @Override
-        public boolean enabled() {
-            return true;
         }
     }
 }

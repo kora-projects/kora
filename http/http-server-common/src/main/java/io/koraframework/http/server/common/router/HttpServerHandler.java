@@ -3,7 +3,6 @@ package io.koraframework.http.server.common.router;
 
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.interceptor.GlobalHttpServerInterceptor;
 import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
@@ -12,10 +11,7 @@ import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
 import org.jspecify.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -74,21 +70,7 @@ public class HttpServerHandler {
         for (var interceptor : interceptors) {
             interceptorsList.add(interceptor);
         }
-        interceptorsList.sort((i1, i2) -> {
-            if (i1 instanceof GlobalHttpServerInterceptor g1 && i2 instanceof GlobalHttpServerInterceptor g2) {
-                var compare = Integer.compare(g2.priority(), g1.priority());
-                if (compare != 0) {
-                    return compare;
-                }
-                return i1.getClass().getName().compareTo(i2.getClass().getName());
-            } else if (i1 instanceof GlobalHttpServerInterceptor) {
-                return -1;
-            } else if (i2 instanceof GlobalHttpServerInterceptor) {
-                return 1;
-            } else {
-                return i1.getClass().getSimpleName().compareTo(i2.getClass().getSimpleName());
-            }
-        });
+        interceptorsList.sort(Comparator.comparing(i -> i.getClass().getSimpleName()));
 
         if (interceptorsList.isEmpty()) {
             this.requestHandler.set(new SimpleRequestHandler());
