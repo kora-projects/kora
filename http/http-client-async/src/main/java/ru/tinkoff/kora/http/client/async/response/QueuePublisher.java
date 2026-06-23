@@ -111,6 +111,7 @@ public class QueuePublisher<T> extends AtomicBoolean implements Flow.Publisher<T
         } catch (InterruptedException e) {
             // nvm
         }
+        this.drain();
     }
 
     public void complete() {
