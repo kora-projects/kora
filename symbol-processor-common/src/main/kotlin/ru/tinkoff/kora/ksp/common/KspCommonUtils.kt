@@ -275,7 +275,21 @@ fun parseAnnotationClassValue(target: KSAnnotated, annotationName: String): List
 inline fun <reified T> parseAnnotationValue(target: KSAnnotation, name: String) = target.findValue<T>(name)
 
 fun parseTags(target: KSAnnotated): List<KSType> {
-    return parseAnnotationClassValue(target, CommonClassNames.tag.canonicalName)
+    val direct = parseAnnotationClassValue(target, CommonClassNames.tag.canonicalName)
+    if (direct.isNotEmpty()) {
+        return direct
+    }
+
+    for (annotation in target.annotations) {
+        val metaTag = parseAnnotationClassValue(
+            annotation.annotationType.resolve().declaration,
+            CommonClassNames.tag.canonicalName
+        )
+        if (metaTag.isNotEmpty()) {
+            return metaTag
+        }
+    }
+    return emptyList()
 }
 
 fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration) -> Boolean): List<KSFunctionDeclaration> {

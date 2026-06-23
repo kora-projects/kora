@@ -766,11 +766,20 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
     }
 
     private static Class<?>[] parseTags(AnnotatedElement object) {
-        return Arrays.stream(object.getDeclaredAnnotations())
-            .filter(a -> a.annotationType().equals(Tag.class))
-            .map(a -> ((Tag) a).value())
-            .findFirst()
-            .orElse(null);
+        final Annotation[] annotations = object.getDeclaredAnnotations();
+        for (Annotation annotation : annotations) {
+            if (annotation.annotationType().equals(Tag.class)) {
+                return ((Tag) annotation).value();
+            }
+        }
+
+        for (Annotation annotation : annotations) {
+            final Tag metaTag = annotation.annotationType().getAnnotation(Tag.class);
+            if (metaTag != null) {
+                return metaTag.value();
+            }
+        }
+        return null;
     }
 
     private static Object getComponentFromGraph(TestGraphContext graph, GraphCandidate candidate) {

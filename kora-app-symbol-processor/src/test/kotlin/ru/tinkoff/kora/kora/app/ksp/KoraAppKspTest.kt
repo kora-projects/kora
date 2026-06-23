@@ -495,6 +495,23 @@ class KoraAppKspTest {
             throw e
         }
     }
+
+    @Test
+    fun appPartWithMetaTaggedDependency() {
+        val classLoader: ClassLoader = symbolProcess(AppWithMetaTagComponent::class, KoraAppProcessorProvider())
+        val clazz = classLoader.loadClass(AppWithMetaTagComponent::class.java.name + "SubmoduleImpl")
+        assertThat(clazz).isNotNull
+            .isInterface
+
+        val targetFile1 = "build/in-test-generated-ksp/sources/" + AppWithMetaTagComponent::class.java.name.replace(
+            '.',
+            '/'
+        ) + "SubmoduleImpl.kt"
+        val targetFile2 = "src/test/kotlin/" + AppWithMetaTagComponentApp::class.java.name.replace('.', '/') + ".kt"
+        val classLoaderApp = symbolProcessFiles(listOf(targetFile1, targetFile2))
+        val appClazz = classLoaderApp.loadClass(AppWithMetaTagComponentApp::class.java.name + "Graph")
+        assertThat(appClazz).isNotNull
+    }
 }
 
 

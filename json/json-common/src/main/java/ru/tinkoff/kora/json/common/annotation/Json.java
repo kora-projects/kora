@@ -13,6 +13,6 @@ import java.lang.annotation.Target;
  * <b>English</b>: Annotation specifies that for the type is represented in JSON format. If specified for a type, a JSON reader and writer will be created for that type and embedded in the dependency container.
  */
 @Tag(Json.class)
-@Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.METHOD, ElementType.TYPE_USE})
+@Target({ElementType.TYPE, ElementType.PARAMETER, ElementType.METHOD, ElementType.FIELD, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface Json { }
