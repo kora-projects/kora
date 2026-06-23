@@ -171,4 +171,16 @@ object TagUtils {
         }
         return true
     }
+
+    fun Collection<String>.makeAnnotationSpecForTypes(): AnnotationSpec {
+        val codeBlock = CodeBlock.builder().add("value = [")
+        forEachIndexed { i, type ->
+            if (i > 0) {
+                codeBlock.add(", ")
+            }
+            codeBlock.add("%T::class", ClassName.bestGuess(type))
+        }
+        val value = codeBlock.add("]").build()
+        return AnnotationSpec.builder(CommonClassNames.tag).addMember(value).build()
+    }
 }
