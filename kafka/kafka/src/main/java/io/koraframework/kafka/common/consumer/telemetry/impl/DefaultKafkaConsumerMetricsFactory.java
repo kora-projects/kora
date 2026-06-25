@@ -142,7 +142,7 @@ public class DefaultKafkaConsumerMetricsFactory {
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId()));
-            tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG, context.listenerConfig()));
+            tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG_PATH, context.listenerConfig()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_SIMPLE, context.listenerSimpleName()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_CANONICAL, context.listenerCanonicalName()));
             for (var e : context.config().metrics().tags().entrySet()) {
@@ -178,7 +178,7 @@ public class DefaultKafkaConsumerMetricsFactory {
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId()));
-            tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG, context.listenerConfig()));
+            tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG_PATH, context.listenerConfig()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_SIMPLE, context.listenerSimpleName()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_CANONICAL, context.listenerCanonicalName()));
             for (var e : context.config().metrics().tags().entrySet()) {
@@ -212,7 +212,7 @@ public class DefaultKafkaConsumerMetricsFactory {
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId()));
-            tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG, context.listenerConfig()));
+            tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG_PATH, context.listenerConfig()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_SIMPLE, context.listenerSimpleName()));
             tags.add(Tag.of(DefaultKafkaConsumerTelemetry.SYSTEM_NAME_CANONICAL, context.listenerCanonicalName()));
             for (var e : context.config().metrics().tags().entrySet()) {

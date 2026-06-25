@@ -1,8 +1,6 @@
 package io.koraframework.kafka.common.consumer.telemetry.impl;
 
-import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerPollObservation;
-import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetry;
-import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryConfig;
+import io.koraframework.kafka.common.consumer.telemetry.*;
 import io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerMetricsFactory.DefaultKafkaConsumerMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
@@ -29,25 +27,15 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
                                    String clientId,
                                    String groupId) {
 
-        public static final TelemetryContext EMPTY = new TelemetryContext(new KafkaConsumerTelemetryConfig() {
-            @Override
-            public KafkaConsumerLoggingConfig logging() {
-                return new KafkaConsumerLoggingConfig() {};
-            }
-
-            @Override
-            public KafkaConsumerMetricsConfig metrics() {
-                return new KafkaConsumerMetricsConfig() {};
-            }
-
-            @Override
-            public KafkaConsumerTracingConfig tracing() {
-                return new KafkaConsumerTracingConfig() {};
-            }
-        }, false, false, DefaultKafkaConsumerTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaConsumerTelemetryFactory.NOOP_TRACER, new Properties(), "none", "none", "none", "", "");
+        public static final TelemetryContext EMPTY = new TelemetryContext(
+            new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueExtractor.KafkaConsumerTracingConfig_Defaults()
+            ), false, false, DefaultKafkaConsumerTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaConsumerTelemetryFactory.NOOP_TRACER, new Properties(), "none", "none", "none", "", "");
     }
 
-    public static final String SYSTEM_CONFIG = "system.path";
+    public static final String SYSTEM_CONFIG_PATH = "system.path";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
@@ -85,14 +73,14 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
 
     @Override
     public MeterRegistry meterRegistry() {
-        return this.context.meterRegistry;
+        return this.context.meterRegistry();
     }
 
     @Override
     public KafkaConsumerPollObservation observePoll() {
         logger.logPollStart();
 
-        var span = context.isTraceEnabled
+        var span = context.isTraceEnabled()
             ? createSpanPoll().startSpan()
             : Span.getInvalid();
 
@@ -105,16 +93,16 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
     }
 
     protected SpanBuilder createSpanPoll() {
-        var span = context.tracer.spanBuilder("kafka.poll")
+        var span = context.tracer().spanBuilder("kafka.poll")
             .setSpanKind(SpanKind.CONSUMER)
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_SYSTEM, MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId)
-            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId)
-            .setAttribute(SYSTEM_CONFIG, context.listenerConfig)
-            .setAttribute(SYSTEM_NAME_SIMPLE, context.listenerSimpleName)
-            .setAttribute(SYSTEM_NAME_CANONICAL, context.listenerCanonicalName)
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId())
+            .setAttribute(MessagingIncubatingAttributes.MESSAGING_CONSUMER_GROUP_NAME.getKey(), context.groupId())
+            .setAttribute(SYSTEM_CONFIG_PATH, context.listenerConfig())
+            .setAttribute(SYSTEM_NAME_SIMPLE, context.listenerSimpleName())
+            .setAttribute(SYSTEM_NAME_CANONICAL, context.listenerCanonicalName())
             .setNoParent();
-        for (var e : context.config.tracing().attributes().entrySet()) {
+        for (var e : context.config().tracing().attributes().entrySet()) {
             span.setAttribute(e.getKey(), e.getValue());
         }
         return span;

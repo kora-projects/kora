@@ -103,7 +103,7 @@ public class DefaultKafkaPublisherMetricsFactory {
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE.getKey(), MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND));
-            tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_CONFIG, context.publisherConfig()));
+            tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_CONFIG_PATH, context.publisherConfig()));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_NAME_SIMPLE, context.publisherSimpleName()));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_NAME_CANONICAL, context.publisherCanonicalName()));
             for (var e : context.config().metrics().tags().entrySet()) {
@@ -146,7 +146,7 @@ public class DefaultKafkaPublisherMetricsFactory {
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_SYSTEM.getKey(), MessagingIncubatingAttributes.MessagingSystemIncubatingValues.KAFKA));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_CLIENT_ID.getKey(), context.clientId()));
             tags.add(Tag.of(MessagingIncubatingAttributes.MESSAGING_OPERATION_TYPE.getKey(), MessagingIncubatingAttributes.MessagingOperationTypeIncubatingValues.SEND));
-            tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_CONFIG, context.publisherConfig()));
+            tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_CONFIG_PATH, context.publisherConfig()));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_NAME_SIMPLE, context.publisherSimpleName()));
             tags.add(Tag.of(DefaultKafkaPublisherTelemetry.SYSTEM_NAME_CANONICAL, context.publisherCanonicalName()));
             for (var e : this.context.config().metrics().tags().entrySet()) {

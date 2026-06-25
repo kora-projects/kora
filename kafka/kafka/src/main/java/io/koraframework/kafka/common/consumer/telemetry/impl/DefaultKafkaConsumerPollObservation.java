@@ -19,7 +19,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.Objects;
 
-import static io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG;
+import static io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerTelemetry.SYSTEM_CONFIG_PATH;
 import static io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerTelemetry.SYSTEM_NAME_CANONICAL;
 import static io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerTelemetry.SYSTEM_NAME_SIMPLE;
 
@@ -110,7 +110,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_NAME, record.topic())
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_DESTINATION_PARTITION_ID, String.valueOf(record.partition()))
             .setAttribute(MessagingIncubatingAttributes.MESSAGING_KAFKA_OFFSET, record.offset())
-            .setAttribute(SYSTEM_CONFIG, context.listenerConfig())
+            .setAttribute(SYSTEM_CONFIG_PATH, context.listenerConfig())
             .setAttribute(SYSTEM_NAME_SIMPLE, context.listenerSimpleName())
             .setAttribute(SYSTEM_NAME_CANONICAL, context.listenerCanonicalName());
         try {

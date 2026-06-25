@@ -45,7 +45,8 @@ public class DefaultKafkaConsumerLoggerFactory {
                 if (records.isEmpty()) {
                     this.logger.atTrace()
                         .addKeyValue("listenerConfig", context.listenerConfig())
-                        .log("{} polled '0' records", context.listenerConfig());
+                        .addKeyValue("recordsCount", 0)
+                        .log("KafkaListener polled records");
                 } else {
                     Map<String, List<Integer>> topicPartitionMap = new HashMap<>();
                     for (TopicPartition partition : records.partitions()) {
@@ -69,12 +70,14 @@ public class DefaultKafkaConsumerLoggerFactory {
                     this.logger.atTrace()
                         .addKeyValue("listenerConfig", context.listenerConfig())
                         .addKeyValue("topics", arg)
-                        .log("KafkaListener polled '{}' records, starting handling records...", records.count());
+                        .addKeyValue("recordsCount", records.count())
+                        .log("KafkaListener polled records, starting handling records");
                 }
             } else if (this.logger.isDebugEnabled() && !records.isEmpty()) {
                 this.logger.atDebug()
                     .addKeyValue("listenerConfig", context.listenerConfig())
-                    .log("KafkaListener polled '{}' records, starting handling records...", records.count());
+                    .addKeyValue("recordsCount", records.count())
+                    .log("KafkaListener polled records, starting handling records");
             }
         }
 
@@ -84,12 +87,18 @@ public class DefaultKafkaConsumerLoggerFactory {
                 if (this.logger.isInfoEnabled()) {
                     this.logger.atInfo()
                         .addKeyValue("listenerConfig", context.listenerConfig())
-                        .log("KafkaListener success '{}' records handled", recordsCount);
+                        .addKeyValue("recordsCount", recordsCount)
+                        .log("KafkaListener records handled");
                 }
             } else if (this.logger.isWarnEnabled()) {
-                this.logger.atWarn()
+                var log = this.logger.atWarn()
                     .addKeyValue("listenerConfig", context.listenerConfig())
-                    .log("KafkaListener failed '{}' records handling due to: {}", recordsCount, error.getMessage());
+                    .addKeyValue("recordsCount", recordsCount)
+                    .addKeyValue("exceptionType", error.getClass().getCanonicalName());
+                if (error.getMessage() != null) {
+                    log.addKeyValue("exceptionMessage", error.getMessage());
+                }
+                log.log("KafkaListener records handling failed");
             }
         }
 
@@ -115,12 +124,16 @@ public class DefaultKafkaConsumerLoggerFactory {
                         .log("KafkaListener success record handled");
                 }
             } else if (this.logger.isWarnEnabled()) {
-                this.logger.atWarn()
+                var log = this.logger.atWarn()
                     .addKeyValue("listenerConfig", context.listenerConfig())
                     .addKeyValue("topic", record.topic())
                     .addKeyValue("offset", record.offset())
                     .addKeyValue("partition", record.partition())
-                    .log("KafkaListener failed record handled due to: {}", error.getMessage());
+                    .addKeyValue("exceptionType", error.getClass().getCanonicalName());
+                if (error.getMessage() != null) {
+                    log.addKeyValue("exceptionMessage", error.getMessage());
+                }
+                log.log("KafkaListener record handling failed");
             }
         }
     }

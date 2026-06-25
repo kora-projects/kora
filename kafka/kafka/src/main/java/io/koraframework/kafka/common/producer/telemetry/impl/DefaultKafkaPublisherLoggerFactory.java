@@ -46,11 +46,14 @@ public class DefaultKafkaPublisherLoggerFactory {
             if (error != null) {
                 if (this.logger.isWarnEnabled()) {
                     var errorType = error.getClass().getCanonicalName();
-                    this.logger.atWarn()
-                        .addKeyValue("errorType", errorType)
+                    var log = this.logger.atWarn()
+                        .addKeyValue("exceptionType", errorType)
                         .addKeyValue("topic", topic)
-                        .addKeyValue("publisherConfig", context.publisherConfig())
-                        .log("KafkaPublisher failed record sending due to: {}", error.getMessage());
+                        .addKeyValue("publisherConfig", context.publisherConfig());
+                    if (error.getMessage() != null) {
+                        log.addKeyValue("exceptionMessage", error.getMessage());
+                    }
+                    log.log("KafkaPublisher record sending failed");
                 }
             } else if (metadata != null && this.logger.isInfoEnabled()) {
                 this.logger.atInfo()
@@ -86,11 +89,13 @@ public class DefaultKafkaPublisherLoggerFactory {
                 this.logger.atTrace()
                     .addKeyValue("publisherConfig", context.publisherConfig())
                     .addKeyValue("topics", arg)
+                    .addKeyValue("offsetsCount", offsets.size())
                     .log("KafkaPublisher success transaction records sent");
             } else if (this.logger.isDebugEnabled()) {
                 this.logger.atDebug()
                     .addKeyValue("publisherConfig", context.publisherConfig())
-                    .log("KafkaPublisher success transaction records sent for '{}' topics and partitions", offsets.size());
+                    .addKeyValue("offsetsCount", offsets.size())
+                    .log("KafkaPublisher success transaction records sent");
             }
         }
 
@@ -111,10 +116,13 @@ public class DefaultKafkaPublisherLoggerFactory {
                 }
             } else if (this.logger.isWarnEnabled()) {
                 var errorType = error.getClass().getCanonicalName();
-                this.logger.atWarn()
-                    .addKeyValue("errorType", errorType)
-                    .addKeyValue("publisherConfig", context.publisherConfig())
-                    .log("KafkaPublisher starting transaction rollback due to: {}", error.getMessage());
+                var log = this.logger.atWarn()
+                    .addKeyValue("exceptionType", errorType)
+                    .addKeyValue("publisherConfig", context.publisherConfig());
+                if (error.getMessage() != null) {
+                    log.addKeyValue("exceptionMessage", error.getMessage());
+                }
+                log.log("KafkaPublisher starting transaction rollback");
             }
         }
 
@@ -127,10 +135,13 @@ public class DefaultKafkaPublisherLoggerFactory {
                 }
             } else if (this.logger.isWarnEnabled()) {
                 var errorType = error.getClass().getCanonicalName();
-                this.logger.atWarn()
-                    .addKeyValue("errorType", errorType)
-                    .addKeyValue("publisherConfig", context.publisherConfig())
-                    .log("KafkaPublisher failed transaction due to: {}", error.getMessage());
+                var log = this.logger.atWarn()
+                    .addKeyValue("exceptionType", errorType)
+                    .addKeyValue("publisherConfig", context.publisherConfig());
+                if (error.getMessage() != null) {
+                    log.addKeyValue("exceptionMessage", error.getMessage());
+                }
+                log.log("KafkaPublisher transaction failed");
             }
         }
     }

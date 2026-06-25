@@ -11,7 +11,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Properties;
 
-public final class DefaultKafkaPublisherTelemetryFactory implements KafkaPublisherTelemetryFactory {
+public class DefaultKafkaPublisherTelemetryFactory implements KafkaPublisherTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("kafka-publisher");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -63,6 +63,17 @@ public final class DefaultKafkaPublisherTelemetryFactory implements KafkaPublish
             enabledLoggerFactory = NoopKafkaPublisherLoggerFactory.INSTANCE;
         }
 
-        return new DefaultKafkaPublisherTelemetry(publisherConfig, publisherCanonicalName, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, properties);
+        return build(publisherConfig, publisherCanonicalName, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, properties);
+    }
+
+    protected KafkaPublisherTelemetry build(String publisherConfig,
+                                            String publisherCanonicalName,
+                                            KafkaPublisherTelemetryConfig config,
+                                            Tracer tracer,
+                                            MeterRegistry meterRegistry,
+                                            DefaultKafkaPublisherMetricsFactory metricsFactory,
+                                            DefaultKafkaPublisherLoggerFactory loggerFactory,
+                                            Properties properties) {
+        return new DefaultKafkaPublisherTelemetry(publisherConfig, publisherCanonicalName, config, tracer, meterRegistry, metricsFactory, loggerFactory, properties);
     }
 }
