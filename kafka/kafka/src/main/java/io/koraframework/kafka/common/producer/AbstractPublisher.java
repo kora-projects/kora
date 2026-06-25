@@ -3,7 +3,6 @@ package io.koraframework.kafka.common.producer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig;
-import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryFactory;
 import io.micrometer.core.instrument.binder.kafka.KafkaClientMetrics;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -18,7 +17,7 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
 
     protected final Logger logger;
 
-    protected final String publisherName;
+    protected final String publisherConfig;
     protected final KafkaPublisherTelemetryConfig telemetryConfig;
     protected final Properties driverProperties;
     protected final KafkaPublisherTelemetry telemetry;
@@ -26,8 +25,8 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
     protected volatile Producer<byte[], byte[]> delegate;
     protected volatile KafkaClientMetrics micrometerMetrics;
 
-    protected AbstractPublisher(String publisherName, String publisherImpl, Properties driverProperties, KafkaPublisherTelemetryConfig telemetryConfig, KafkaPublisherTelemetry telemetry) {
-        this.publisherName = publisherName;
+    protected AbstractPublisher(String publisherConfig, String publisherImpl, Properties driverProperties, KafkaPublisherTelemetryConfig telemetryConfig, KafkaPublisherTelemetry telemetry) {
+        this.publisherConfig = publisherConfig;
         this.telemetryConfig = telemetryConfig;
         this.driverProperties = driverProperties;
         this.telemetry = telemetry;
@@ -54,7 +53,7 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
         }
         try {
             logger.atDebug()
-                .addKeyValue("publisherName", this.publisherName)
+                .addKeyValue("publisherName", this.publisherConfig)
                 .log("KafkaPublisher starting...");
             final long started = TimeUtils.started();
 
@@ -66,10 +65,10 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
             }
 
             logger.atInfo()
-                .addKeyValue("publisherName", this.publisherName)
+                .addKeyValue("publisherName", this.publisherConfig)
                 .log("KafkaPublisher started in {}", TimeUtils.tookForLogging(started));
         } catch (Exception e) {
-            throw new RuntimeException("KafkaPublisher '" + publisherName + "' failed to start, due to: " + e.getMessage(), e);
+            throw new RuntimeException("KafkaPublisher '" + publisherConfig + "' failed to start, due to: " + e.getMessage(), e);
         }
     }
 
@@ -80,7 +79,7 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
         }
 
         logger.atDebug()
-            .addKeyValue("publisherName", this.publisherName)
+            .addKeyValue("publisherName", this.publisherConfig)
             .log("KafkaPublisher stopping...");
         final long started = TimeUtils.started();
 
@@ -91,7 +90,7 @@ public abstract class AbstractPublisher implements GeneratedPublisher {
         try (delegate; micrometerMetrics) {}
 
         logger.atInfo()
-            .addKeyValue("publisherName", this.publisherName)
+            .addKeyValue("publisherName", this.publisherConfig)
             .log("KafkaPublisher stopped in {}", TimeUtils.tookForLogging(started));
     }
 }

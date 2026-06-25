@@ -45,11 +45,11 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     @Nullable
     private final ConsumerAwareRebalanceListener rebalanceListener;
     private final KafkaListenerConfig config;
-    private final String listenerName;
+    private final String listenerConfig;
     private final String listenerImpl;
     private final boolean commitAllowed;
 
-    public KafkaSubscribeConsumerContainer(String listenerName,
+    public KafkaSubscribeConsumerContainer(String listenerConfig,
                                            String listenerImpl,
                                            KafkaListenerConfig config,
                                            Deserializer<K> keyDeserializer,
@@ -75,7 +75,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         this.valueDeserializer = valueDeserializer;
         this.backoffTimeout = new AtomicLong(config.backoffTimeout().toMillis());
         this.telemetry = telemetry;
-        this.listenerName = Objects.requireNonNull(listenerName);
+        this.listenerConfig = Objects.requireNonNull(listenerConfig);
         this.listenerImpl = Objects.requireNonNull(listenerImpl);
         var logger = LoggerFactory.getLogger(listenerImpl);
         this.logger = this.config.telemetry().logging().enabled() && logger.isErrorEnabled()
@@ -87,7 +87,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
         try (consumer) {
             consumers.add(consumer);
             logger.atInfo()
-                .addKeyValue("listenerName", this.listenerName)
+                .addKeyValue("listenerName", this.listenerConfig)
                 .log("{} started in {}", listenerLogName, TimeUtils.tookForLogging(started));
 
             boolean isFirstPoll = true;
@@ -99,7 +99,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                     if (isFirstPoll) {
                         records = consumer.poll(Duration.ofMillis(10));
                         logger.atInfo()
-                            .addKeyValue("listenerName", this.listenerName)
+                            .addKeyValue("listenerName", this.listenerConfig)
                             .log("{} first poll for '{}' records in {}",
                             listenerLogName, records.count(), TimeUtils.tookForLogging(started));
 
@@ -120,12 +120,12 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
 
                     try {
                         logger.atDebug()
-                            .addKeyValue("listenerName", this.listenerName)
+                            .addKeyValue("listenerName", this.listenerConfig)
                             .log("{} backing off for {}ms...", listenerLogName, backoffTimeout.get());
                         Thread.sleep(backoffTimeout.get());
                     } catch (InterruptedException ie) {
                         logger.atError()
-                            .addKeyValue("listenerName", this.listenerName)
+                            .addKeyValue("listenerName", this.listenerConfig)
                             .log("{} error interrupting thread", listenerLogName, ie);
                     }
                     if (backoffTimeout.get() < 60000) {
@@ -136,7 +136,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             }
         } catch (Exception e) {
             logger.atError()
-                .addKeyValue("listenerName", this.listenerName)
+                .addKeyValue("listenerName", this.listenerConfig)
                 .log("{} poll loop got unhandled exception", listenerLogName, e);
         } finally {
             consumers.remove(consumer);
@@ -147,11 +147,11 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     public void init() {
         if (config.threads() > 0 && this.isActive.compareAndSet(false, true)) {
             logger.atDebug()
-                .addKeyValue("listenerName", this.listenerName)
+                .addKeyValue("listenerName", this.listenerConfig)
                 .log("KafkaListener starting in subscribe mode...");
             final long started = TimeUtils.started();
 
-            executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(listenerName));
+            executorService = Executors.newFixedThreadPool(config.threads(), new NamedThreadFactory(listenerConfig));
             CountDownLatch initLatch = new CountDownLatch(config.threads());
 
             for (int i = 0; i < config.threads(); i++) {
@@ -174,7 +174,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
                 try {
                     if (!initLatch.await(config.initializationFailTimeout().toMillis(), TimeUnit.MILLISECONDS)) {
                         throw new RuntimeException("KafkaListener '{}' failed to start, due to timeout in {}ms".formatted(
-                            listenerName, TimeUtils.durationForLogging(config.initializationFailTimeout())));
+                            listenerConfig, TimeUtils.durationForLogging(config.initializationFailTimeout())));
                     }
                 } catch (InterruptedException e) {
                     // ignore
@@ -187,7 +187,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
     public void release() {
         if (isActive.compareAndSet(true, false)) {
             logger.atDebug()
-                .addKeyValue("listenerName", this.listenerName)
+                .addKeyValue("listenerName", this.listenerConfig)
                 .log("KafkaListener stopping...");
             final long started = TimeUtils.started();
 
@@ -198,13 +198,13 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             if (executorService != null) {
                 if (!shutdownExecutorService(executorService, config.shutdownWait())) {
                     logger.atWarn()
-                        .addKeyValue("listenerName", this.listenerName)
+                        .addKeyValue("listenerName", this.listenerConfig)
                         .log("KafkaListener failed completing graceful shutdown in {}", config.shutdownWait());
                 }
             }
 
             logger.atInfo()
-                .addKeyValue("listenerName", this.listenerName)
+                .addKeyValue("listenerName", this.listenerConfig)
                 .log("KafkaListener stopped in {}", TimeUtils.tookForLogging(started));
         }
     }
@@ -215,7 +215,7 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             executorService.shutdown();
             try {
                 logger.atDebug()
-                    .addKeyValue("listenerName", this.listenerName)
+                    .addKeyValue("listenerName", this.listenerConfig)
                     .log("KafkaListener awaiting graceful shutdown...");
                 terminated = executorService.awaitTermination(shutdownAwait.toMillis(), TimeUnit.MILLISECONDS);
                 if (!terminated) {
@@ -237,13 +237,13 @@ public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
             return this.buildConsumer();
         } catch (Exception e) {
             logger.atError()
-                .addKeyValue("listenerName", this.listenerName)
+                .addKeyValue("listenerName", this.listenerConfig)
                 .log("KafkaListener failed to start in subscribe mode, due to: {}", e.getMessage(), e);
             try {
                 Thread.sleep(250);
             } catch (InterruptedException ie) {
                 logger.atError()
-                    .addKeyValue("listenerName", this.listenerName)
+                    .addKeyValue("listenerName", this.listenerConfig)
                     .log("KafkaListener error interrupting thread", ie);
             }
             return null;
