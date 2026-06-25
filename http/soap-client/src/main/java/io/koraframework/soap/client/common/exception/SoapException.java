@@ -1,6 +1,7 @@
-package io.koraframework.soap.client.common;
+package io.koraframework.soap.client.common.exception;
 
 public class SoapException extends RuntimeException {
+
     public SoapException(String message) {
         super(message);
     }

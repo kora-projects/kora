@@ -41,11 +41,11 @@ public interface SoapClasses {
     }
 
     default TypeName soapFaultException() {
-        return ClassName.get("io.koraframework.soap.client.common", "SoapFaultException");
+        return ClassName.get("io.koraframework.soap.client.common.exception", "SoapFaultException");
     }
 
     default TypeName soapException() {
-        return ClassName.get("io.koraframework.soap.client.common", "SoapException");
+        return ClassName.get("io.koraframework.soap.client.common.exception", "SoapException");
     }
 
     TypeName jaxbContextTypeName();
@@ -131,7 +131,7 @@ public interface SoapClasses {
 
         @Override
         public TypeName xmlToolsType() {
-            return ClassName.get("io.koraframework.soap.client.common.jakarta", "JakartaXmlTools");
+            return ClassName.get("io.koraframework.soap.client.common.jakarta", "JakartaSoapEnvelopeMapper");
         }
 
         @Override
@@ -222,7 +222,7 @@ public interface SoapClasses {
 
         @Override
         public TypeName xmlToolsType() {
-            return ClassName.get("io.koraframework.soap.client.common.javax", "JavaxXmlTools");
+            return ClassName.get("io.koraframework.soap.client.common.javax", "JavaxSoapEnvelopeMapper");
         }
 
         @Override

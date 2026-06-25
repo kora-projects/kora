@@ -27,8 +27,8 @@ import java.util.function.Function
 
 class SoapClientImplGenerator(private val resolver: Resolver) {
 
-    private val soapFaultException = ClassName("io.koraframework.soap.client.common", "SoapFaultException")
-    private val soapException = ClassName("io.koraframework.soap.client.common", "SoapException")
+    private val soapFaultException = ClassName("io.koraframework.soap.client.common.exception", "SoapFaultException")
+    private val soapException = ClassName("io.koraframework.soap.client.common.exception", "SoapException")
     private val soapConfig = ClassName("io.koraframework.soap.client.common", "SoapServiceConfig")
     private val soapRequestExecutor = ClassName("io.koraframework.soap.client.common", "SoapRequestExecutor")
     private val httpClient = ClassName("io.koraframework.http.client.common", "HttpClient")
@@ -169,6 +169,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
         if (serviceName.isEmpty()) {
             serviceName = service.simpleName.asString()
         }
+        val configPath = "soapClient.$serviceName"
         val targetNamespace = webService.findValue<String>("targetNamespace")!!
         val builder = TypeSpec.classBuilder(service.getOuterClassesAsPrefix() + service.simpleName.asString() + "_SoapClientImpl")
             .generated(WebServiceClientSymbolProcessor::class)
@@ -226,8 +227,8 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
             }
             val executorFieldName = operationName + "RequestExecutor"
             constructorBuilder.addCode(
-                "this.%L = %T(httpClient, telemetry, %T(jaxb), config, %T(%S, %S,  %S, %S))\n",
-                executorFieldName, soapRequestExecutor, soapClasses.xmlToolsType(), soapMethodDescriptor, service.toClassName().canonicalName, serviceName, operationName, soapAction
+                "this.%L = %T(httpClient, telemetry, %T(jaxb), config, %S, %T(%S, %S,  %S, %S))\n",
+                executorFieldName, soapRequestExecutor, soapClasses.xmlToolsType(), configPath, soapMethodDescriptor, service.toClassName().canonicalName, serviceName, operationName, soapAction
             )
             builder.addProperty(executorFieldName, soapRequestExecutor, KModifier.PRIVATE)
             val m = FunSpec.builder(method.simpleName.asString()).addModifiers(KModifier.OVERRIDE)

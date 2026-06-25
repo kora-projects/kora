@@ -1,7 +1,7 @@
 package io.koraframework.soap.client.common;
 
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
-import io.koraframework.telemetry.common.TelemetryConfig;
+import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryConfig;
 
 import java.time.Duration;
 
@@ -15,9 +15,4 @@ public interface SoapServiceConfig {
     }
 
     SoapClientTelemetryConfig telemetry();
-
-    @ConfigValueExtractor
-    interface SoapClientTelemetryConfig extends TelemetryConfig {
-
-    }
 }

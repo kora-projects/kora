@@ -1,5 +1,7 @@
 package io.koraframework.soap.client.common;
 
+import io.koraframework.soap.client.common.exception.SoapInvalidHttpResponseException;
+import io.koraframework.soap.client.common.exception.SoapException;
 import io.opentelemetry.context.Context;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
@@ -18,20 +20,26 @@ import java.io.InputStream;
 import java.time.Duration;
 
 public class SoapRequestExecutor {
+
     private final HttpClient httpClient;
-    private final XmlTools xmlTools;
+    private final SoapEnvelopeMapper soapMapper;
     private final String url;
     private final String soapAction;
     private final SoapClientTelemetry telemetry;
     private final Duration timeout;
 
-    public SoapRequestExecutor(HttpClient httpClient, SoapClientTelemetryFactory telemetryFactory, XmlTools xmlTools, SoapServiceConfig config, SoapMethodDescriptor methodDescriptor) {
+    public SoapRequestExecutor(HttpClient httpClient,
+                               SoapClientTelemetryFactory telemetryFactory,
+                               SoapEnvelopeMapper soapMapper,
+                               SoapServiceConfig config,
+                               String configPath,
+                               SoapMethodDescriptor methodDescriptor) {
         this.httpClient = httpClient;
-        this.xmlTools = xmlTools;
+        this.soapMapper = soapMapper;
         this.url = config.url();
         this.timeout = config.timeout();
-        this.soapAction = methodDescriptor.soapAction;
-        this.telemetry = telemetryFactory.get(config.telemetry(), methodDescriptor, url);
+        this.soapAction = methodDescriptor.soapAction();
+        this.telemetry = telemetryFactory.get(configPath, methodDescriptor.serviceClass(), config.telemetry(), methodDescriptor, url);
     }
 
     public SoapResult call(SoapEnvelope requestEnvelope) throws SoapException {
@@ -41,7 +49,7 @@ public class SoapRequestExecutor {
             .call(() -> {
                 try {
                     observation.observeRequest(requestEnvelope);
-                    var requestXml = this.xmlTools.marshal(requestEnvelope);
+                    var requestXml = this.soapMapper.marshal(requestEnvelope);
                     observation.observeRequestXml(requestXml);
                     var httpClientRequest = HttpClientRequest.post(this.url)
                         .body(HttpBody.of("text/xml", requestXml))
@@ -58,9 +66,9 @@ public class SoapRequestExecutor {
                             try {
                                 var bodyAsBytes = is.readAllBytes();
                                 observation.observeResponseBody(bodyAsBytes);
-                                throw new InvalidHttpResponseSoapException(httpClientResponse.code(), bodyAsBytes);
+                                throw new SoapInvalidHttpResponseException(httpClientResponse.code(), bodyAsBytes);
                             } catch (IOException e) {
-                                var ex = new InvalidHttpResponseSoapException(httpClientResponse.code(), new byte[0]);
+                                var ex = new SoapInvalidHttpResponseException(httpClientResponse.code(), new byte[0]);
                                 ex.addSuppressed(e);
                                 throw ex;
                             }
@@ -101,7 +109,7 @@ public class SoapRequestExecutor {
     private SoapResult.Success readSuccess(InputStream body) throws IOException {
         var bodyAsBytes = body.readAllBytes();
         try (var bi = new ByteArrayInputStream(bodyAsBytes)) {
-            var responseEnvelope = this.xmlTools.unmarshal(bi);
+            var responseEnvelope = this.soapMapper.unmarshal(bi);
             return new SoapResult.Success(responseEnvelope.getBody().getAny().get(0));
         }
     }
@@ -113,13 +121,13 @@ public class SoapRequestExecutor {
         var bodyAsBytes = body.readAllBytes();
         var parts = MultipartParser.parse(bodyAsBytes, multipartMeta.boundary());
         var xmlPartId = multipartMeta.start();
-        var responseEnvelope = (SoapEnvelope) this.xmlTools.unmarshal(parts, xmlPartId);
+        var responseEnvelope = (SoapEnvelope) this.soapMapper.unmarshal(parts, xmlPartId);
         var responseBody = responseEnvelope.getBody().getAny().get(0);
         return new ParseMultipartResult(new SoapResult.Success(responseBody), parts.get(xmlPartId));
     }
 
     private SoapResult.Failure readFailure(InputStream body) throws IOException {
-        var responseEnvelope = this.xmlTools.unmarshal(body);
+        var responseEnvelope = this.soapMapper.unmarshal(body);
         var fault = (SoapFault) responseEnvelope.getBody().getAny().get(0);
         var faultMessage = fault.getFaultcode().toString() + " " + fault.getFaultstring();
         return new SoapResult.Failure(fault, faultMessage);

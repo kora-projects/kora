@@ -1,16 +1,19 @@
-package io.koraframework.soap.client.common.javax;
+package io.koraframework.soap.client.common.jakarta;
 
 import io.koraframework.soap.client.common.*;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;
+import io.koraframework.soap.client.common.exception.SoapException;
+import io.koraframework.soap.client.common.exception.SoapRequestMarshallingException;
+import io.koraframework.soap.client.common.exception.SoapResponseUnmarshallingException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.Map;
 
-public class JavaxXmlTools implements XmlTools {
-    private final javax.xml.bind.JAXBContext jaxb;
+public class JakartaSoapEnvelopeMapper implements SoapEnvelopeMapper {
+    private final jakarta.xml.bind.JAXBContext jaxb;
 
-    public JavaxXmlTools(javax.xml.bind.JAXBContext jaxb) {
+    public JakartaSoapEnvelopeMapper(jakarta.xml.bind.JAXBContext jaxb) {
         this.jaxb = jaxb;
     }
 
@@ -20,7 +23,7 @@ public class JavaxXmlTools implements XmlTools {
         try {
             var marshaller = this.jaxb.createMarshaller();
             marshaller.marshal(envelope, baos);
-        } catch (javax.xml.bind.JAXBException e) {
+        } catch (jakarta.xml.bind.JAXBException e) {
             throw new SoapRequestMarshallingException(e);
         }
         return baos.toByteArray();
@@ -31,7 +34,7 @@ public class JavaxXmlTools implements XmlTools {
         try {
             var unmarshaller = jaxb.createUnmarshaller();
             return (SoapEnvelope) unmarshaller.unmarshal(is);
-        } catch (javax.xml.bind.JAXBException e) {
+        } catch (jakarta.xml.bind.JAXBException e) {
             throw new SoapResponseUnmarshallingException(e);
         }
     }
@@ -41,9 +44,9 @@ public class JavaxXmlTools implements XmlTools {
         var xmlPart = parts.get(xmlPartId);
         try {
             var unmarshaller = jaxb.createUnmarshaller();
-            unmarshaller.setAttachmentUnmarshaller(new JavaxXopAttachmentUnmarshaller(parts));
+            unmarshaller.setAttachmentUnmarshaller(new JakartaXopAttachmentUnmarshaller(parts));
             return (SoapEnvelope) unmarshaller.unmarshal(xmlPart.getContentStream());
-        } catch (javax.xml.bind.JAXBException e) {
+        } catch (jakarta.xml.bind.JAXBException e) {
             throw new SoapResponseUnmarshallingException(e);
         }
     }
