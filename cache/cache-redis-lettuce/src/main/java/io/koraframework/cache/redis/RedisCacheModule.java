@@ -1,10 +1,10 @@
 package io.koraframework.cache.redis;
 
 import io.koraframework.cache.redis.lettuce.LettuceCacheModule;
-import io.koraframework.cache.redis.telemetry.DefaultRedisCacheLoggerFactory;
-import io.koraframework.cache.redis.telemetry.DefaultRedisCacheMetricsFactory;
-import io.koraframework.cache.redis.telemetry.DefaultRedisCacheTelemetryFactory;
 import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryFactory;
+import io.koraframework.cache.redis.telemetry.impl.DefaultRedisCacheLoggerFactory;
+import io.koraframework.cache.redis.telemetry.impl.DefaultRedisCacheMetricsFactory;
+import io.koraframework.cache.redis.telemetry.impl.DefaultRedisCacheTelemetryFactory;
 import io.koraframework.common.DefaultComponent;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;

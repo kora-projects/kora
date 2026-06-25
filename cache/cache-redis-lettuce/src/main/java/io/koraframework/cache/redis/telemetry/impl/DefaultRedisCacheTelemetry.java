@@ -1,5 +1,6 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
 
+import io.koraframework.cache.redis.telemetry.*;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -13,29 +14,20 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
-                                   String cacheName,
-                                   String cacheImpl) {
+                                   String cacheConfigPath,
+                                   String cacheImplCanonicalName,
+                                   String cacheImplSimpleName) {
 
-        public static final TelemetryContext EMPTY = new TelemetryContext(new RedisCacheTelemetryConfig() {
-            @Override
-            public RedisCacheLoggingConfig logging() {
-                return new RedisCacheLoggingConfig() {};
-            }
-
-            @Override
-            public RedisCacheTracingConfig tracing() {
-                return new RedisCacheTracingConfig() {};
-            }
-
-            @Override
-            public RedisCacheMetricsConfig metrics() {
-                return new RedisCacheMetricsConfig() {};
-            }
-        }, false, false, DefaultRedisCacheTelemetryFactory.NOOP_METER_REGISTRY, DefaultRedisCacheTelemetryFactory.NOOP_TRACER, "", "");
+        public static final TelemetryContext EMPTY = new TelemetryContext(new $RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
+            new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
+        ), false, false, DefaultRedisCacheTelemetryFactory.NOOP_METER_REGISTRY, DefaultRedisCacheTelemetryFactory.NOOP_TRACER, "", "", "");
     }
 
-    public static final String SYSTEM_NAME = "system.name";
-    public static final String SYSTEM_IMPL = "system.impl";
+    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
+    public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
     private static final String TAG_OPERATION = "operation";
     private static final String TAG_ORIGIN = "origin";
@@ -44,8 +36,8 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
     protected final DefaultRedisCacheLoggerFactory.DefaultRedisCacheLogger logger;
     protected final DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics metrics;
 
-    public DefaultRedisCacheTelemetry(String cacheName,
-                                      String cacheImpl,
+    public DefaultRedisCacheTelemetry(String cacheConfigPath,
+                                      Class<?> cacheImpl,
                                       RedisCacheTelemetryConfig config,
                                       Tracer tracer,
                                       MeterRegistry meterRegistry,
@@ -59,8 +51,9 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
             isMetricsEnabled,
             meterRegistry,
             tracer,
-            cacheName,
-            cacheImpl
+            cacheConfigPath,
+            cacheImpl.getCanonicalName(),
+            cacheImpl.getSimpleName()
         );
 
         this.metrics = metricsFactory.create(this.context);
@@ -69,7 +62,7 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
 
     @Override
     public RedisCacheObservation observe(String operation) {
-        var span = (context.config().tracing().enabled())
+        var span = (context.isTraceEnabled())
             ? this.createSpan(operation).startSpan()
             : Span.getInvalid();
         return new DefaultRedisCacheObservation(operation, context, logger, metrics, span);
@@ -79,7 +72,9 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
         var span = this.context.tracer().spanBuilder("cache.operation")
             .setSpanKind(SpanKind.INTERNAL)
             .setAttribute(TAG_OPERATION, operation)
-            .setAttribute(SYSTEM_NAME, this.context.cacheName())
+            .setAttribute(SYSTEM_CONFIG_PATH, this.context.cacheConfigPath())
+            .setAttribute(SYSTEM_NAME_SIMPLE, this.context.cacheImplSimpleName())
+            .setAttribute(SYSTEM_NAME_CANONICAL, this.context.cacheImplCanonicalName())
             .setAttribute(TAG_ORIGIN, "redis");
 
         for (var e : this.context.config().tracing().attributes().entrySet()) {

@@ -1,6 +1,7 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
 
-import io.koraframework.cache.redis.telemetry.DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics.RatioType;
+import io.koraframework.cache.redis.telemetry.RedisCacheObservation;
+import io.koraframework.cache.redis.telemetry.impl.DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics.RatioType;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
 import org.jspecify.annotations.Nullable;

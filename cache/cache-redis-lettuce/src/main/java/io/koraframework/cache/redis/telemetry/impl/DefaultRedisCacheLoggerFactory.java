@@ -1,4 +1,4 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -11,7 +11,7 @@ public class DefaultRedisCacheLoggerFactory {
     public static final DefaultRedisCacheLoggerFactory INSTANCE = new DefaultRedisCacheLoggerFactory();
 
     public DefaultRedisCacheLogger create(DefaultRedisCacheTelemetry.TelemetryContext context) {
-        var logger = LoggerFactory.getLogger(context.cacheImpl());
+        var logger = LoggerFactory.getLogger(context.cacheImplCanonicalName());
         return new DefaultRedisCacheLogger(logger, context);
     }
 
@@ -29,7 +29,8 @@ public class DefaultRedisCacheLoggerFactory {
             if (this.logger.isTraceEnabled()) {
                 this.logger.atTrace()
                     .addKeyValue("operation", operation)
-                    .addKeyValue("cacheName", this.context.cacheName())
+                    .addKeyValue("cacheConfigPath", this.context.cacheConfigPath())
+                    .addKeyValue("cacheImpl", this.context.cacheImplCanonicalName())
                     .addKeyValue("key", key)
                     .log("Redis Cache operation started");
             }
@@ -39,7 +40,8 @@ public class DefaultRedisCacheLoggerFactory {
             if (this.logger.isTraceEnabled()) {
                 this.logger.atTrace()
                     .addKeyValue("operation", operation)
-                    .addKeyValue("cacheName", this.context.cacheName())
+                    .addKeyValue("cacheConfigPath", this.context.cacheConfigPath())
+                    .addKeyValue("cacheImpl", this.context.cacheImplCanonicalName())
                     .addKeyValue("keys", keys.size())
                     .log("Redis Cache operation started");
             }
@@ -54,7 +56,8 @@ public class DefaultRedisCacheLoggerFactory {
             if (this.logger.isWarnEnabled()) {
                 this.logger.atWarn()
                     .addKeyValue("operation", operation)
-                    .addKeyValue("cacheName", this.context.cacheName())
+                    .addKeyValue("cacheConfigPath", this.context.cacheConfigPath())
+                    .addKeyValue("cacheImpl", this.context.cacheImplCanonicalName())
                     .addKeyValue("processingTime", (System.nanoTime() - startedInNanos) / 1_000_000)
                     .log("Redis Cache operation failed due to: {}", error.getMessage());
             }
@@ -68,7 +71,8 @@ public class DefaultRedisCacheLoggerFactory {
 
                 builder
                     .addKeyValue("operation", operation)
-                    .addKeyValue("cacheName", this.context.cacheName())
+                    .addKeyValue("cacheConfigPath", this.context.cacheConfigPath())
+                    .addKeyValue("cacheImpl", this.context.cacheImplCanonicalName())
                     .addKeyValue("processingTime", (System.nanoTime() - startedInNanos) / 1_000_000);
 
                 if (operation.startsWith("GET")) {

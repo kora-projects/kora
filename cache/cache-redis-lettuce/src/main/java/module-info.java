@@ -9,7 +9,7 @@ module kora.cache.redis.lettuce {
 
     requires kora.common;
     requires kora.config.common;
-    requires kora.telemetry.common;
+    requires transitive kora.telemetry.common;
     requires kora.cache.common;
     requires kora.redis.lettuce;
     requires kora.json.common;
@@ -18,4 +18,5 @@ module kora.cache.redis.lettuce {
     exports io.koraframework.cache.redis;
     exports io.koraframework.cache.redis.lettuce;
     exports io.koraframework.cache.redis.telemetry;
+    exports io.koraframework.cache.redis.telemetry.impl;
 }

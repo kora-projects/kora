@@ -20,14 +20,13 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
     private final Cache<K, V> caffeine;
     private final Logger logger;
 
-    protected AbstractCaffeineCache(String cacheName,
-                                    String cacheImpl,
+    protected AbstractCaffeineCache(String cacheConfigPath,
                                     CaffeineCacheConfig config,
                                     CaffeineCacheFactory factory) {
-        this.cacheName = cacheName;
-        this.caffeine = factory.build(cacheName, config);
+        this.cacheName = cacheConfigPath;
+        this.caffeine = factory.build(cacheConfigPath, config);
         this.logger = config.telemetry().logging().enabled()
-            ? LoggerFactory.getLogger(cacheImpl)
+            ? LoggerFactory.getLogger(getClass())
             : NOPLogger.NOP_LOGGER;
     }
 

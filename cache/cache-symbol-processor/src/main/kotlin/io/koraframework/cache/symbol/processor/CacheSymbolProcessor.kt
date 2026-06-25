@@ -421,8 +421,8 @@ class CacheSymbolProcessor(
             ?.findValueNoDefault<String>("value")!!
 
         return when (cacheType.rawType) {
-            CAFFEINE_CACHE -> CodeBlock.of("%S, %S, config, factory", configPath, cacheImpl.qualifiedName!!.asString())
-            REDIS_CACHE -> CodeBlock.of("%S, %S, config, redisClient, telemetryFactory, keyMapper, valueMapper", configPath, cacheImpl.qualifiedName!!.asString())
+            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory", configPath)
+            REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetryFactory, keyMapper, valueMapper", configPath)
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
     }

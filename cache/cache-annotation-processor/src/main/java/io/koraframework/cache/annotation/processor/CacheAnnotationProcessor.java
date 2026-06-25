@@ -365,7 +365,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(CAFFEINE_CACHE_CONFIG, "config")
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addStatement("super($S, $S, config, factory)", configPath, ClassName.get(cacheImpl).canonicalName())
+                .addStatement("super($S, config, factory)", configPath)
                 .build();
         }
 
@@ -381,7 +381,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .addParameter(REDIS_TELEMETRY_FACTORY, "telemetryFactory")
                 .addParameter(keyMapperType, "keyMapper")
                 .addParameter(valueMapperType, "valueMapper")
-                .addStatement("super($S, $S, config, redisClient, telemetryFactory, keyMapper, valueMapper)", configPath, ClassName.get(cacheImpl).canonicalName())
+                .addStatement("super($S, config, redisClient, telemetryFactory, keyMapper, valueMapper)", configPath)
                 .build();
         }
 

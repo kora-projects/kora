@@ -14,5 +14,5 @@ public interface LettuceTelemetryConfig {
     interface LettuceMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
     @ConfigValueExtractor
-    interface LettuceLoggingConfig extends TelemetryConfig.LogConfig {}
+    interface LettuceLoggingConfig extends TelemetryConfig.LoggingConfig {}
 }

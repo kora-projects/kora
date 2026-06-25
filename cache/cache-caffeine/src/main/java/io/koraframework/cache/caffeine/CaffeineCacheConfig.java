@@ -34,7 +34,7 @@ public interface CaffeineCacheConfig {
         CaffeineLoggingConfig logging();
 
         @ConfigValueExtractor
-        interface CaffeineLoggingConfig extends TelemetryConfig.LogConfig {}
+        interface CaffeineLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
         @ConfigValueExtractor
         interface CaffeineMetricsConfig {

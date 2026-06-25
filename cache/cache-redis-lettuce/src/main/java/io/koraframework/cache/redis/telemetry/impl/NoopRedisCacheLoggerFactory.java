@@ -1,4 +1,4 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.helpers.NOPLogger;

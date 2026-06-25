@@ -31,15 +31,14 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
     @Nullable
     private final Long expireAfterWriteMillis;
 
-    protected AbstractRedisCache(String cacheName,
-                                 String cacheImpl,
+    protected AbstractRedisCache(String cacheConfigPath,
                                  RedisCacheConfig config,
                                  RedisCacheClient redisClient,
                                  RedisCacheTelemetryFactory telemetryFactory,
                                  RedisCacheKeyMapper<K> keyMapper,
                                  RedisCacheValueMapper<V> valueMapper) {
         this.redisClient = redisClient;
-        this.telemetry = telemetryFactory.get(cacheName, cacheImpl, config.telemetry());
+        this.telemetry = telemetryFactory.get(cacheConfigPath, getClass(), config.telemetry());
         this.keyMapper = keyMapper;
         this.valueMapper = valueMapper;
         this.expireAfterAccessMillis = (config.expireAfterAccess() == null)

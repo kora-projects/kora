@@ -1,12 +1,15 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
 
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryConfig;
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public final class DefaultRedisCacheTelemetryFactory implements RedisCacheTelemetryFactory {
+public class DefaultRedisCacheTelemetryFactory implements RedisCacheTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("redis-lettuce");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -31,7 +34,7 @@ public final class DefaultRedisCacheTelemetryFactory implements RedisCacheTeleme
     }
 
     @Override
-    public RedisCacheTelemetry get(String cacheName, String cacheImpl, RedisCacheTelemetryConfig config) {
+    public RedisCacheTelemetry get(String cacheConfigPath, Class<?> cacheImpl, RedisCacheTelemetryConfig config) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -58,6 +61,16 @@ public final class DefaultRedisCacheTelemetryFactory implements RedisCacheTeleme
             enabledLoggerFactory = NoopRedisCacheLoggerFactory.INSTANCE;
         }
 
-        return new DefaultRedisCacheTelemetry(cacheName, cacheImpl, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+        return build(cacheConfigPath, cacheImpl, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+    }
+
+    protected RedisCacheTelemetry build(String cacheConfigPath,
+                                        Class<?> cacheImpl,
+                                        RedisCacheTelemetryConfig config,
+                                        Tracer tracer,
+                                        MeterRegistry meterRegistry,
+                                        DefaultRedisCacheMetricsFactory metricsFactory,
+                                        DefaultRedisCacheLoggerFactory loggerFactory) {
+        return new DefaultRedisCacheTelemetry(cacheConfigPath, cacheImpl, config, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }

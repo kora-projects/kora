@@ -10,6 +10,6 @@ public final class DummyCache extends AbstractRedisCache<String, String> {
                       RedisCacheTelemetryFactory telemetry,
                       RedisCacheKeyMapper<String> keyMapper,
                       RedisCacheValueMapper<String> valueMapper) {
-        super("dummy", "dummy", config, redisClient, telemetry, keyMapper, valueMapper);
+        super("dummy", config, redisClient, telemetry, keyMapper, valueMapper);
     }
 }

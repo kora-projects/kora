@@ -1,4 +1,7 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
+
+import io.koraframework.cache.redis.telemetry.RedisCacheObservation;
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
 
 public final class NoopRedisCacheTelemetry implements RedisCacheTelemetry {
 

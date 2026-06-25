@@ -1,5 +1,6 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
 
+import io.koraframework.cache.redis.telemetry.RedisCacheObservation;
 import io.opentelemetry.api.trace.Span;
 
 import java.util.Collection;

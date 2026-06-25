@@ -1,4 +1,4 @@
-package io.koraframework.cache.redis.telemetry;
+package io.koraframework.cache.redis.telemetry.impl;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
@@ -113,8 +113,10 @@ public class DefaultRedisCacheMetricsFactory {
                 }
             }
             var errorValue = error == null ? "" : error.getClass().getCanonicalName();
-            var tags = new ArrayList<Tag>(4 + context.config().metrics().tags().size() + extraTags);
-            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_NAME, context.cacheName()));
+            var tags = new ArrayList<Tag>(6 + context.config().metrics().tags().size() + extraTags);
+            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_CONFIG_PATH, context.cacheConfigPath()));
+            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_NAME_SIMPLE, context.cacheImplSimpleName()));
+            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_NAME_CANONICAL, context.cacheImplCanonicalName()));
             tags.add(Tag.of(TAG_ORIGIN, "redis"));
             for (var e : context.config().metrics().tags().entrySet()) {
                 tags.add(Tag.of(e.getKey(), e.getValue()));
@@ -144,8 +146,10 @@ public class DefaultRedisCacheMetricsFactory {
                     extraTags++;
                 }
             }
-            var tags = new ArrayList<Tag>(4 + context.config().metrics().tags().size() + extraTags);
-            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_NAME, context.cacheName()));
+            var tags = new ArrayList<Tag>(6 + context.config().metrics().tags().size() + extraTags);
+            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_CONFIG_PATH, context.cacheConfigPath()));
+            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_NAME_SIMPLE, context.cacheImplSimpleName()));
+            tags.add(Tag.of(DefaultRedisCacheTelemetry.SYSTEM_NAME_CANONICAL, context.cacheImplCanonicalName()));
             tags.add(Tag.of(TAG_ORIGIN, "redis"));
             for (var e : context.config().metrics().tags().entrySet()) {
                 tags.add(Tag.of(e.getKey(), e.getValue()));
