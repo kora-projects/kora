@@ -1,3 +1,4 @@
 io.koraframework.cache.symbol.processor.aop.CacheableAopKoraAspectFactory
 io.koraframework.cache.symbol.processor.aop.CachePutAopKoraAspectFactory
 io.koraframework.cache.symbol.processor.aop.CacheInvalidateAopKoraAspectFactory
+io.koraframework.cache.symbol.processor.aop.CacheInvalidateAllAopKoraAspectFactory

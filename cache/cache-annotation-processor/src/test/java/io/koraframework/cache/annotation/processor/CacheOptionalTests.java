@@ -26,7 +26,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -39,7 +39,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
+        var cache = newObject("$DummyCache_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
@@ -67,8 +67,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -82,10 +82,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -109,7 +109,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value;
                     }
                     
-                    @CachePut(value = DummyCache.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache.class, args = {"arg1"})
                     public String putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return value;
                     }
@@ -122,7 +122,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
+        var cache = newObject("$DummyCache_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
@@ -150,8 +150,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value;
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public String putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return value;
                     }
@@ -165,10 +165,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -192,7 +192,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -205,7 +205,7 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache = newObject("$DummyCacheImpl", CacheRunner.getCaffeineConfig(),
+        var cache = newObject("$DummyCache_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache).isNotNull();
 
@@ -233,8 +233,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -248,10 +248,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -279,8 +279,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value.describeConstable();
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public Optional<String> putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return Optional.ofNullable(value);
                     }
@@ -294,10 +294,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
@@ -325,8 +325,8 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                         return value;
                     }
                     
-                    @CachePut(value = DummyCache1.class, parameters = {"arg1"})
-                    @CachePut(value = DummyCache2.class, parameters = {"arg1"})
+                    @CachePut(value = DummyCache1.class, args = {"arg1"})
+                    @CachePut(value = DummyCache2.class, args = {"arg1"})
                     public String putValueOptional(BigDecimal arg2, String arg3, String arg1) {
                         return value;
                     }
@@ -340,10 +340,10 @@ public class CacheOptionalTests extends AbstractCacheAnnotationProcessorTests im
                 """);
         compileResult.assertSuccess();
 
-        var cache1 = newObject("$DummyCache1Impl", CacheRunner.getCaffeineConfig(),
+        var cache1 = newObject("$DummyCache1_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache1).isNotNull();
-        var cache2 = newObject("$DummyCache2Impl", CacheRunner.getCaffeineConfig(),
+        var cache2 = newObject("$DummyCache2_Impl", CacheRunner.getCaffeineConfig(),
             caffeineCacheFactory(null));
         assertThat(cache2).isNotNull();
 
