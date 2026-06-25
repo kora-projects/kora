@@ -34,7 +34,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
         val component = FunSpec.builder("_" + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job")
             .returns(jobClassName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
-            .addParameter("target", typeClassName);
+            .addParameter("target", typeClassName)
 
         when (trigger.annotation.shortName.getShortName()) {
             "ScheduleWithTrigger" -> {
@@ -46,7 +46,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     .addTag(tag)
                     .build()
                 component.addParameter(triggerParameter)
-                component.addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                component.addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
             }
 
             "ScheduleWithCron" -> {
@@ -92,7 +92,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     }
 
                     builder.addFunction(b.build())
-                    component.addParameter("config", configClassName);
+                    component.addParameter("config", configClassName)
                     cronSchedule = CodeBlock.of("config.cron()")
                 }
                 component.addCode(
@@ -100,19 +100,19 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                 val trigger = %T.newTrigger()
                   .withIdentity(%S)
                   .withSchedule(%T.cronSchedule(%L))
-                  .build();
+                  .build()
                 """.trimIndent() + "\n", triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString()
-                );
+                )
                 if (!configPath.isNullOrBlank()) {
-                    component.addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configPath, typeClassName, function.simpleName.getShortName())
                 } else {
-                    component.addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                    component.addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
                 }
             }
         }
 
         component
-            .addCode("return %T(telemetry, target, trigger);\n", jobClassName)
+            .addCode("return %T(telemetry, target, trigger)\n", jobClassName)
 
         builder.addFunction(component.build())
     }
@@ -145,15 +145,15 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     .addParameter("trigger", triggerClassName)
                     .build()
             )
-        val quartzDisallowConcurrentExecution = ClassName("org.quartz", "DisallowConcurrentExecution");
-        val koraDisallowConcurrentExecution = ClassName("io.koraframework.scheduling.quartz", "DisallowConcurrentExecution");
+        val quartzDisallowConcurrentExecution = ClassName("org.quartz", "DisallowConcurrentExecution")
+        val koraDisallowConcurrentExecution = ClassName("io.koraframework.scheduling.quartz", "DisallowConcurrentExecution")
         if (type.isAnnotationPresent(quartzDisallowConcurrentExecution) || method.isAnnotationPresent(koraDisallowConcurrentExecution)) {
-            typeSpec.addAnnotation(quartzDisallowConcurrentExecution);
+            typeSpec.addAnnotation(quartzDisallowConcurrentExecution)
         }
-        val quartzPersistJobData = ClassName("org.quartz", "PersistJobDataAfterExecution");
-        val koraPersistJobData = ClassName("io.koraframework.scheduling.quartz", "PersistJobDataAfterExecution");
+        val quartzPersistJobData = ClassName("org.quartz", "PersistJobDataAfterExecution")
+        val koraPersistJobData = ClassName("io.koraframework.scheduling.quartz", "PersistJobDataAfterExecution")
         if (type.isAnnotationPresent(quartzPersistJobData) || method.isAnnotationPresent(koraPersistJobData)) {
-            typeSpec.addAnnotation(quartzPersistJobData);
+            typeSpec.addAnnotation(quartzPersistJobData)
         }
 
         FileSpec.get(packageName, typeSpec.build()).writeTo(env.codeGenerator, false, listOf(type.containingFile!!))

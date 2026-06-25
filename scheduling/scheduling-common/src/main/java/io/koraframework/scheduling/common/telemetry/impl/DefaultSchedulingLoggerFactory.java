@@ -1,6 +1,5 @@
 package io.koraframework.scheduling.common.telemetry.impl;
 
-import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,8 +27,14 @@ public class DefaultSchedulingLoggerFactory {
             if (!this.logger.isDebugEnabled()) {
                 return;
             }
-            this.logger.atDebug()
-                .addKeyValue("scheduledJob", structuredJob(null, 0))
+
+            var log = this.logger.atDebug();
+            if (this.context.jobConfigPath() != null) {
+                log = log.addKeyValue("jobConfigPath", this.context.jobConfigPath());
+            }
+
+            log.addKeyValue("jobClass", this.context.jobCanonicalName())
+                .addKeyValue("jobMethod", this.context.jobMethod())
                 .log("Scheduled Job execution started");
         }
 
@@ -41,29 +46,25 @@ public class DefaultSchedulingLoggerFactory {
                 return;
             }
 
-            this.logger.atLevel(error == null ? Level.INFO : Level.WARN)
-                .addKeyValue("scheduledJob", structuredJob(error, durationInNanos))
-                .setCause(error)
-                .log(error == null ? "Scheduled Job execution completed" : "Scheduled Job execution failed with error");
-        }
+            var log = this.logger.atLevel(error == null ? Level.INFO : Level.WARN);
+            if (this.context.jobConfigPath() != null) {
+                log = log.addKeyValue("jobConfigPath", this.context.jobConfigPath());
+            }
 
-        protected StructuredArgumentWriter structuredJob(@Nullable Throwable error, long durationInNanos) {
-            return gen -> {
-                gen.writeStartObject();
-                gen.writeStringProperty("jobClass", this.context.jobClass().getCanonicalName());
-                gen.writeStringProperty("jobMethod", this.context.jobMethod());
-                if (durationInNanos > 0) {
-                    gen.writeNumberProperty("duration", durationInNanos / 1_000_000);
+            log = log.addKeyValue("jobClass", this.context.jobCanonicalName())
+                .addKeyValue("jobMethod", this.context.jobMethod())
+                .addKeyValue("duration", durationInNanos / 1_000_000)
+                .setCause(error);
+            if (error != null) {
+                var exceptionType = error.getClass().getCanonicalName();
+                if (exceptionType != null) {
+                    log = log.addKeyValue("exceptionType", exceptionType);
                 }
-                if (error != null) {
-                    var exceptionType = error.getClass().getCanonicalName();
-                    if (exceptionType != null) {
-                        gen.writeStringProperty("exceptionType", exceptionType);
-                    }
-                    gen.writeStringProperty("exceptionMessage", error.getMessage());
+                if (error.getMessage() != null) {
+                    log = log.addKeyValue("exceptionMessage", error.getMessage());
                 }
-                gen.writeEndObject();
-            };
+            }
+            log.log(error == null ? "Scheduled Job execution completed" : "Scheduled Job execution failed with error");
         }
     }
 }

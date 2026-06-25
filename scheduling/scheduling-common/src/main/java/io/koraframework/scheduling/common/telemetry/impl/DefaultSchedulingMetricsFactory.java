@@ -52,8 +52,13 @@ public class DefaultSchedulingMetricsFactory {
                 }
             }
 
-            var staticTags = new ArrayList<Tag>(2 + this.context.config().metrics().tags().size() + extraTags);
+            var staticTags = new ArrayList<Tag>(5 + this.context.config().metrics().tags().size() + extraTags);
             staticTags.add(Tag.of(CodeAttributes.CODE_FUNCTION_NAME.getKey(), this.context.jobName()));
+            if(this.context.jobConfigPath() != null) {
+                staticTags.add(Tag.of(DefaultSchedulingTelemetry.SYSTEM_CONFIG_PATH, this.context.jobConfigPath()));
+            }
+            staticTags.add(Tag.of(DefaultSchedulingTelemetry.SYSTEM_NAME_SIMPLE, this.context.jobSimpleName()));
+            staticTags.add(Tag.of(DefaultSchedulingTelemetry.SYSTEM_NAME_CANONICAL, this.context.jobCanonicalName()));
             staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), metricKey.errorType() == null ? "" : metricKey.errorType().getCanonicalName()));
             for (var tag : this.context.config().metrics().tags().entrySet()) {
                 staticTags.add(Tag.of(tag.getKey(), tag.getValue()));

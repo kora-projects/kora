@@ -50,7 +50,7 @@ public class QuartzSchedulingGenerator {
             var tag = AnnotationUtils.<TypeMirror>parseAnnotationValue(this.elements, trigger.triggerAnnotation(), "value");
             var triggerParameter = ParameterSpec.builder(triggerClassName, "trigger").addAnnotation(TagUtils.makeAnnotationSpec(tag)).build();
             component.addParameter(triggerParameter);
-            component.addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
+            component.addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", typeMirror, method.getSimpleName().toString());
         } else if (annotationType.equals(scheduleWithCron)) {
             var identity = Optional.ofNullable(AnnotationUtils.<String>parseAnnotationValue(elements, trigger.triggerAnnotation(), "identity"))
                 .filter(Predicate.not(String::isBlank))
@@ -102,18 +102,16 @@ public class QuartzSchedulingGenerator {
                   .build();
                 """.stripIndent(), triggerBuilderClassName, identity, cronScheduleBuilderClassName, cronSchedule.toString());
             if (configPath != null && !configPath.isBlank()) {
-                component.addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
+                component.addStatement("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S)", configPath, typeMirror, method.getSimpleName().toString());
             } else {
-                component.addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", typeMirror, method.getSimpleName().toString());
+                component.addStatement("var telemetry = telemetryFactory.get(null, null, $T.class, $S)", typeMirror, method.getSimpleName().toString());
             }
         } else {
             // never gonna happen
             throw new IllegalStateException();
         }
 
-        component
-            .addCode("return new $T(telemetry, object, trigger);\n", jobClassName);
-
+        component.addStatement("return new $T(telemetry, object, trigger)", jobClassName);
         module.addMethod(component.build());
     }
 

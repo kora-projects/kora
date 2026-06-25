@@ -8,6 +8,7 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.semconv.CodeAttributes;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
@@ -16,11 +17,18 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
     public record TelemetryContext(Class<?> jobClass,
                                    String jobMethod,
                                    String jobName,
+                                   @Nullable String jobConfigPath,
+                                   String jobSimpleName,
+                                   String jobCanonicalName,
                                    SchedulingTelemetryConfig config,
                                    boolean isTraceEnabled,
                                    boolean isMetricsEnabled,
                                    Tracer tracer,
                                    MeterRegistry meterRegistry) {}
+
+    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
+    public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
     protected final Class<?> jobClass;
     protected final String jobMethod;
@@ -28,18 +36,26 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
     protected final DefaultSchedulingLoggerFactory.DefaultSchedulingLogger logger;
     protected final DefaultSchedulingMetricsFactory.DefaultSchedulingMetrics metrics;
 
-    public DefaultSchedulingTelemetry(Class<?> jobClass,
+    public DefaultSchedulingTelemetry(@Nullable String jobConfigPath,
+                                      Class<?> jobClass,
                                       String jobMethod,
                                       SchedulingTelemetryConfig config,
-                                      boolean isTraceEnabled,
-                                      boolean isMetricsEnabled,
                                       Tracer tracer,
                                       MeterRegistry meterRegistry,
                                       DefaultSchedulingLoggerFactory loggerFactory,
                                       DefaultSchedulingMetricsFactory metricsFactory) {
+        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultSchedulingTelemetryFactory.NOOP_TRACER;
+        var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultSchedulingTelemetryFactory.NOOP_METER_REGISTRY;
+
         this.jobClass = Objects.requireNonNull(jobClass);
         this.jobMethod = Objects.requireNonNull(jobMethod);
-        this.context = new TelemetryContext(jobClass, jobMethod, jobClass.getCanonicalName() + "." + jobMethod, config, isTraceEnabled, isMetricsEnabled, tracer, meterRegistry);
+        var jobCanonicalClassName = jobClass.getCanonicalName();
+        if (jobCanonicalClassName == null) {
+            jobCanonicalClassName = jobClass.getName();
+        }
+        var jobSimpleName = jobClass.getSimpleName() + "#" + jobMethod;
+        var jobCanonicalName = jobCanonicalClassName + "#" + jobMethod;
+        this.context = new TelemetryContext(jobClass, jobMethod, jobCanonicalName, jobConfigPath, jobSimpleName, jobCanonicalName, config, isTraceEnabled, isMetricsEnabled, tracer, meterRegistry);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -66,10 +82,16 @@ public class DefaultSchedulingTelemetry implements SchedulingTelemetry {
         }
 
         var span = this.context.tracer()
-            .spanBuilder(this.context.jobClass().getCanonicalName() + " " + this.context.jobMethod())
+            .spanBuilder("scheduling " + this.context.jobCanonicalName())
             .setSpanKind(SpanKind.INTERNAL)
             .setParent(io.opentelemetry.context.Context.current())
-            .setAttribute(CodeAttributes.CODE_FUNCTION_NAME, this.context.jobName());
+            .setAttribute(CodeAttributes.CODE_FUNCTION_NAME, this.context.jobName())
+            .setAttribute(SYSTEM_NAME_SIMPLE, this.context.jobSimpleName())
+            .setAttribute(SYSTEM_NAME_CANONICAL, this.context.jobCanonicalName());
+
+        if (this.context.jobConfigPath != null) {
+            span = span.setAttribute(SYSTEM_CONFIG_PATH, this.context.jobConfigPath());
+        }
         for (var entry : this.context.config().tracing().attributes().entrySet()) {
             span.setAttribute(entry.getKey(), entry.getValue());
         }

@@ -5,14 +5,13 @@ import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import io.koraframework.scheduling.common.SchedulingJobConfig;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryConfig;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryFactory;
-import io.koraframework.telemetry.common.TelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public final class DefaultSchedulingTelemetryFactory implements SchedulingTelemetryFactory {
+public class DefaultSchedulingTelemetryFactory implements SchedulingTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("scheduling-telemetry");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -40,8 +39,9 @@ public final class DefaultSchedulingTelemetryFactory implements SchedulingTeleme
     }
 
     @Override
-    public SchedulingTelemetry get(SchedulingJobConfig.JobTelemetryConfig jobTelemetryConfig, Class<?> jobClass, String jobMethod) {
+    public SchedulingTelemetry get(@Nullable String jobConfigPath, SchedulingJobConfig.@Nullable JobTelemetryConfig jobTelemetryConfig, Class<?> jobClass, String jobMethod) {
         var config = new SchedulingJobTelemetryConfig(this.config, jobTelemetryConfig);
+
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -69,6 +69,17 @@ public final class DefaultSchedulingTelemetryFactory implements SchedulingTeleme
             enabledLoggerFactory = NoopSchedulingLoggerFactory.INSTANCE;
         }
 
-        return new DefaultSchedulingTelemetry(jobClass, jobMethod, config, traceEnabled, metricEnabled, tracer, meterRegistry, enabledLoggerFactory, enabledMetricsFactory);
+        return build(jobConfigPath, jobClass, jobMethod, config, tracer, meterRegistry, enabledLoggerFactory, enabledMetricsFactory);
+    }
+
+    protected SchedulingTelemetry build(@Nullable String jobConfigPath,
+                                        Class<?> jobClass,
+                                        String jobMethod,
+                                        SchedulingTelemetryConfig config,
+                                        Tracer tracer,
+                                        MeterRegistry meterRegistry,
+                                        DefaultSchedulingLoggerFactory loggerFactory,
+                                        DefaultSchedulingMetricsFactory metricsFactory) {
+        return new DefaultSchedulingTelemetry(jobConfigPath, jobClass, jobMethod, config, tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }

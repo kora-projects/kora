@@ -7,20 +7,20 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 public interface SchedulingTelemetryConfig extends TelemetryConfig {
 
     @Override
-    SchedulingLogConfig logging();
-
-    @Override
-    SchedulingTracingConfig tracing();
+    SchedulingLoggingConfig logging();
 
     @Override
     SchedulingMetricsConfig metrics();
 
-    @ConfigValueExtractor
-    interface SchedulingLogConfig extends TelemetryConfig.LogConfig {}
+    @Override
+    SchedulingTracingConfig tracing();
 
     @ConfigValueExtractor
-    interface SchedulingTracingConfig extends TelemetryConfig.TracingConfig {}
+    interface SchedulingLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
     @ConfigValueExtractor
     interface SchedulingMetricsConfig extends TelemetryConfig.MetricsConfig {}
+
+    @ConfigValueExtractor
+    interface SchedulingTracingConfig extends TelemetryConfig.TracingConfig {}
 }

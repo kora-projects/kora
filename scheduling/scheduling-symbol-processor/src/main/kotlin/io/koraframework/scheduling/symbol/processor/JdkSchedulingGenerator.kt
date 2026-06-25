@@ -40,7 +40,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job";
+        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
         val cron = trigger.annotation.findValue<String>("value")
         val componentFunction = FunSpec.builder(jobFunName)
             .addParameter("telemetryFactory", schedulingTelemetryFactoryClassName)
@@ -54,20 +54,20 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
                 throw ProcessingErrorException("Either value() or config() annotation parameter must be provided", function)
             }
             componentFunction
-                .addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
-                .addCode("val cron = %T.parse(%S);\n", cronExpressionClassName, cron)
+                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                .addStatement("val cron = %T.parse(%S)", cronExpressionClassName, cron)
         } else {
             val configType = cronConfigType(type, function, cron ?: "")
             FileSpec.get(packageName, configType).writeTo(environment.codeGenerator, false, listOf(type.containingFile!!))
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
-                .addCode("val cron = %T.parse(config.cron());\n", cronExpressionClassName)
+                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val cron = %T.parse(config.cron())", cronExpressionClassName)
             builder.addFunction(cronConfigComponent(packageName, configType.name!!, configName, cron ?: ""))
         }
         componentFunction
-            .addCode("return %T(telemetry, service, { target.get().%N() }, cron);\n", cronJobClassName, function.simpleName.getShortName())
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, cron)", cronJobClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -76,7 +76,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job";
+        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
         val initialDelay = trigger.annotation.findValue<Long>("initialDelay") ?: 0
         val period = trigger.annotation.findValue<Long>("period")
         val unit = trigger.annotation.findEnumValue("unit")!!
@@ -92,9 +92,9 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
                 throw ProcessingErrorException("Either period() or config() annotation parameter must be provided", function)
             }
             componentFunction
-                .addCode("val initialDelay = %T.of(%L, %L);\n", Duration::class, initialDelay, unit)
-                .addCode("val period = %T.of(%L, %L);\n", Duration::class, period, unit)
-                .addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
+                .addStatement("val initialDelay = %T.of(%L, %L)", Duration::class, initialDelay, unit)
+                .addStatement("val period = %T.of(%L, %L)", Duration::class, period, unit)
+                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
         } else {
             val configType = configType(
                 type, function,
@@ -105,13 +105,13 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
-                .addCode("val period = config.period();\n")
-                .addCode("val initialDelay = config.initialDelay();\n")
+                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val period = config.period()")
+                .addStatement("val initialDelay = config.initialDelay()")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addCode("return %T(telemetry, service, { target.get().%N() }, initialDelay, period);\n", fixedRateJobClassName, function.simpleName.getShortName())
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, period)", fixedRateJobClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -119,7 +119,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job";
+        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
         val initialDelay = trigger.annotation.findValue<Long>("initialDelay") ?: 0
         val delay = trigger.annotation.findValue<Long>("delay")
         val unit = trigger.annotation.findEnumValue("unit")!!
@@ -135,9 +135,9 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
                 throw ProcessingErrorException("Either delay() or config() annotation parameter must be provided", function)
             }
             componentFunction
-                .addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
-                .addCode("val initialDelay = %T.of(%L, %L);\n", Duration::class, initialDelay, unit)
-                .addCode("val delay = %T.of(%L, %L);\n", Duration::class, delay, unit)
+                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                .addStatement("val initialDelay = %T.of(%L, %L)", Duration::class, initialDelay, unit)
+                .addStatement("val delay = %T.of(%L, %L)", Duration::class, delay, unit)
         } else {
             val configType = configType(
                 type, function,
@@ -148,13 +148,13 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
-                .addCode("val delay = config.delay();\n")
-                .addCode("val initialDelay = config.initialDelay();\n")
+                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val delay = config.delay()")
+                .addStatement("val initialDelay = config.initialDelay()")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addCode("return %T(telemetry, service, { target.get().%N() }, initialDelay, delay);\n", fixedDelayJobClassName, function.simpleName.getShortName())
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, initialDelay, delay)", fixedDelayJobClassName, function.simpleName.getShortName())
         builder.addFunction(componentFunction.build())
     }
 
@@ -162,7 +162,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         val packageName = type.packageName.asString()
         val configName = trigger.annotation.findValue<String>("config")
         val typeClassName = type.toClassName()
-        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job";
+        val jobFunName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Job"
         val delay = trigger.annotation.findValue<Long>("delay")
         val unit = trigger.annotation.findEnumValue("unit")!!
         val componentFunction = FunSpec.builder(jobFunName)
@@ -177,8 +177,8 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
                 throw ProcessingErrorException("Either delay() or config() annotation parameter must be provided", function)
             }
             componentFunction
-                .addCode("val telemetry = telemetryFactory.get(null, %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
-                .addCode("val delay = %T.of(%L, %L);\n", Duration::class, delay, unit)
+                .addStatement("val telemetry = telemetryFactory.get(null, null, %T::class.java, %S)", typeClassName, function.simpleName.getShortName())
+                .addStatement("val delay = %T.of(%L, %L)", Duration::class, delay, unit)
         } else {
             val configType = configType(
                 type, function,
@@ -188,22 +188,22 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
             componentFunction
                 .addParameter("config", ClassName(packageName, configType.name!!))
-                .addCode("val telemetry = telemetryFactory.get(config.telemetry(), %T::class.java, %S);\n", typeClassName, function.simpleName.getShortName())
-                .addCode("val delay = config.delay();\n")
+                .addStatement("val telemetry = telemetryFactory.get(%S, config.telemetry(), %T::class.java, %S)", configName, typeClassName, function.simpleName.getShortName())
+                .addStatement("val delay = config.delay()")
             builder.addFunction(configComponent(packageName, configType.name!!, configName))
         }
         componentFunction
-            .addCode("return %T(telemetry, service, { target.get().%N() }, delay);\n", runOnceJobClassName, function.simpleName.getShortName());
-        builder.addFunction(componentFunction.build());
+            .addStatement("return %T(telemetry, service, { target.get().%N() }, delay)", runOnceJobClassName, function.simpleName.getShortName())
+        builder.addFunction(componentFunction.build())
     }
 
     private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(configClassName)
         .addParameter("config", CommonClassNames.config)
         .addParameter(
             "extractor", CommonClassNames.configValueExtractor
-            .parameterizedBy(ClassName(packageName, configClassName))
+                .parameterizedBy(ClassName(packageName, configClassName))
         )
-        .addCode("val configValue = config.get(%S);\n", configPath)
+        .addStatement("val configValue = config.get(%S)", configPath)
         .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
         .returns(ClassName(packageName, configClassName))
         .build()
@@ -249,7 +249,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
     private fun cronConfigComponent(packageName: String, configClassName: String, configPath: String, defaultCron: String) = FunSpec.builder(configClassName)
         .addParameter("config", CommonClassNames.config)
         .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(ClassName(packageName, configClassName)))
-        .addCode("val value = config.get(%S);\n", configPath)
+        .addStatement("val value = config.get(%S)", configPath)
         .apply {
             if (defaultCron.isNotBlank()) {
                 controlFlow("if (value is %T.NullValue)", CommonClassNames.configValue) {

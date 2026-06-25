@@ -14,29 +14,20 @@ public interface SchedulingJobConfig {
     @ConfigValueExtractor
     interface JobTelemetryConfig {
 
-        LogConfig logging();
+        JobLoggingConfig logging();
 
-        TracingConfig tracing();
+        JobMetricsConfig metrics();
 
-        MetricsConfig metrics();
+        JobTracingConfig tracing();
 
         @ConfigValueExtractor
-        interface LogConfig {
+        interface JobLoggingConfig {
             @Nullable
             Boolean enabled();
         }
 
         @ConfigValueExtractor
-        interface TracingConfig {
-            @Nullable
-            Boolean enabled();
-
-            @Nullable
-            Map<String, String> attributes();
-        }
-
-        @ConfigValueExtractor
-        interface MetricsConfig {
+        interface JobMetricsConfig {
             @Nullable
             Boolean enabled();
 
@@ -44,6 +35,15 @@ public interface SchedulingJobConfig {
 
             @Nullable
             Map<String, String> tags();
+        }
+
+        @ConfigValueExtractor
+        interface JobTracingConfig {
+            @Nullable
+            Boolean enabled();
+
+            @Nullable
+            Map<String, String> attributes();
         }
     }
 }
