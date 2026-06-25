@@ -5,6 +5,7 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetry;
 
 public interface GeneratedPublisher extends Lifecycle {
+
     Producer<byte[], byte[]> producer();
 
     KafkaPublisherTelemetry telemetry();

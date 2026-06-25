@@ -25,8 +25,8 @@ public interface KafkaListenerConfig {
     @Nullable
     List<String> partitions();
 
-    default Either<Duration, String> offset() {
-        return Either.right("latest");
+    default Either<Duration, Offset> offset() {
+        return Either.right(Offset.latest);
     }
 
     default Duration pollTimeout() {
@@ -53,7 +53,14 @@ public interface KafkaListenerConfig {
         return false;
     }
 
+    @Nullable
+    Duration initializationFailTimeout();
+
     KafkaConsumerTelemetryConfig telemetry();
+
+    enum Offset {
+        latest, earliest
+    }
 
     default KafkaListenerConfig withDriverPropertiesOverrides(Map<String, Object> overrides) {
         var props = new Properties();
@@ -71,6 +78,7 @@ public interface KafkaListenerConfig {
             partitionRefreshInterval(),
             shutdownWait(),
             allowEmptyRecords(),
+            initializationFailTimeout(),
             telemetry()
         );
     }

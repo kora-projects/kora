@@ -204,9 +204,11 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val b = classDeclaration.extendsKeepAop(implementationName, resolver)
             .generated(KafkaPublisherSymbolProcessor::class)
             .superclass(KafkaClassNames.abstractPublisher)
+            .addSuperclassConstructorParameter("%S", configPath)
+            .addSuperclassConstructorParameter("%S", classDeclaration.qualifiedName!!.asString())
             .addSuperclassConstructorParameter("driverProperties")
             .addSuperclassConstructorParameter("telemetryConfig")
-            .addSuperclassConstructorParameter("telemetryFactory.get(%S, telemetryConfig, driverProperties)", configPath)
+            .addSuperclassConstructorParameter("telemetryFactory.get(%S, %S, telemetryConfig, driverProperties)", configPath, classDeclaration.qualifiedName!!.asString())
             .apply { topicConfig?.let { addProperty(PropertySpec.builder("topicConfig", it, KModifier.PRIVATE, KModifier.FINAL).initializer("topicConfig").build()) } }
 
         val constructorBuilder = FunSpec.constructorBuilder()

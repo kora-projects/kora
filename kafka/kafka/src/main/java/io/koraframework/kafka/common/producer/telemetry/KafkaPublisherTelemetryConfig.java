@@ -5,6 +5,7 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 
 @ConfigValueExtractor
 public interface KafkaPublisherTelemetryConfig extends TelemetryConfig {
+
     @Override
     KafkaProducerLoggingConfig logging();
 

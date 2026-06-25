@@ -17,6 +17,7 @@ import java.util.Map;
 public interface TransactionalPublisher<P> {
 
     interface Transaction<P> extends AutoCloseable {
+
         P publisher();
 
         Producer<byte[], byte[]> producer();
@@ -123,5 +124,4 @@ public interface TransactionalPublisher<P> {
 
         R accept(Transaction<? extends P> tx) throws E;
     }
-
 }
