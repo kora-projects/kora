@@ -19,7 +19,7 @@ public final class NoopS3ClientLoggerFactory extends DefaultS3ClientLoggerFactor
         public static final NoopS3ClientLogger INSTANCE = new NoopS3ClientLogger();
 
         private NoopS3ClientLogger() {
-            super(NOPLogger.NOP_LOGGER);
+            super(DefaultS3ClientTelemetry.TelemetryContext.EMPTY, NOPLogger.NOP_LOGGER);
         }
 
         @Override

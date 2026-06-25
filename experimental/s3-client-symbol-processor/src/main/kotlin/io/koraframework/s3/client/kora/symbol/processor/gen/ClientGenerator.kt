@@ -7,6 +7,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
+import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
@@ -45,7 +46,7 @@ object ClientGenerator {
             .generated(ClientGenerator::class)
             .addProperty(
                 PropertySpec.Companion.builder("client", S3ClassNames.client, KModifier.PRIVATE)
-                    .initializer("clientFactory.create(clientConfig)")
+                    .initializer("clientFactory.create(configPath, %T::class.java, clientConfig)", s3client.toClassName())
                     .build()
             )
             .addProperty(
@@ -54,6 +55,7 @@ object ClientGenerator {
                     .build()
             )
         val constructor = FunSpec.constructorBuilder()
+            .addParameter("configPath", String::class)
             .addParameter("clientFactory", S3ClassNames.clientFactory)
             .addParameter("clientConfig", configType)
         if (!bucketsPath.isEmpty()) {

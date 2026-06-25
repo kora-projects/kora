@@ -69,10 +69,10 @@ object ModuleGenerator {
             .addParameter("clientConfig", configType)
         if (paths.isEmpty()) {
             clientImpl
-                .addStatement("return %T(clientFactory, clientConfig)", clientType)
+                .addStatement("return %T(%S, clientFactory, clientConfig)", clientType, s3ClientConfigPath)
         } else {
             clientImpl.addParameter("bucketsConfig", bucketsType)
-                .addStatement("return %T(clientFactory, clientConfig, bucketsConfig)", clientType)
+                .addStatement("return %T(%S, clientFactory, clientConfig, bucketsConfig)", clientType, s3ClientConfigPath)
         }
         b.addFunction(clientImpl.build())
 

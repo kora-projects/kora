@@ -71,10 +71,10 @@ public class ModuleGenerator {
             .addParameter(configType, "clientConfig");
         if (paths.isEmpty()) {
             clientImpl
-                .addStatement("return new $T(clientFactory, clientConfig)", clientType);
+                .addStatement("return new $T($S, clientFactory, clientConfig)", clientType, s3ClientConfigPath);
         } else {
             clientImpl.addParameter(bucketsType, "bucketsConfig")
-                .addStatement("return new $T(clientFactory, clientConfig, bucketsConfig)", clientType);
+                .addStatement("return new $T($S, clientFactory, clientConfig, bucketsConfig)", clientType, s3ClientConfigPath);
         }
         b.addMethod(clientImpl.build());
 

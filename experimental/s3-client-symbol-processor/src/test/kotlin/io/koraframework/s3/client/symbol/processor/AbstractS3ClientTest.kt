@@ -32,6 +32,7 @@ abstract class AbstractS3ClientTest : AbstractSymbolProcessorTest() {
         result.assertSuccess()
         val clientFactory = S3ClientFactory { config -> s3Client }
         val args = ArrayList<Any?>(2 + addArgs.size)
+        args.add("config.dummy")
         args.add(clientFactory)
         args.add(config)
         args.addAll(addArgs.map { if (it is GeneratedObject<*>) it() else it })

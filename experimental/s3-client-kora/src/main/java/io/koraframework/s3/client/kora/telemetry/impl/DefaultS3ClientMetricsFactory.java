@@ -69,8 +69,8 @@ public class DefaultS3ClientMetricsFactory {
                 }
             }
             var errorValue = metricKey.errorType == null ? "" : metricKey.errorType.getCanonicalName();
-            var tags = new ArrayList<Tag>(4 + this.context.config().metrics().tags().size() + extraTags);
-            tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), "s3-kora"));
+            var tags = new ArrayList<Tag>(7 + this.context.config().metrics().tags().size() + extraTags);
+            tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), "s3"));
             for (var e : this.context.config().metrics().tags().entrySet()) {
                 tags.add(Tag.of(e.getKey(), e.getValue()));
             }
@@ -78,6 +78,9 @@ public class DefaultS3ClientMetricsFactory {
             tags.add(Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricKey.operation()));
             tags.add(Tag.of(AwsIncubatingAttributes.AWS_S3_BUCKET.getKey(), metricKey.bucket()));
             tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
+            tags.add(Tag.of(DefaultS3ClientTelemetry.SYSTEM_CONFIG_PATH, this.context.clientConfigPath()));
+            tags.add(Tag.of(DefaultS3ClientTelemetry.SYSTEM_NAME_SIMPLE, this.context.clientSimpleName()));
+            tags.add(Tag.of(DefaultS3ClientTelemetry.SYSTEM_NAME_CANONICAL, this.context.clientCanonicalName()));
             if (metricKey.extraTags != null) {
                 for (Tag extraTag : metricKey.extraTags) {
                     tags.add(extraTag);

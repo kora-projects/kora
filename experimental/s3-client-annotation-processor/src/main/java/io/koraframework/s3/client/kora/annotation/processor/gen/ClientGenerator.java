@@ -37,9 +37,10 @@ public class ClientGenerator {
             .addField(configType, "config", Modifier.PRIVATE, Modifier.FINAL);
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC)
+            .addParameter(String.class, "configPath")
             .addParameter(S3ClassNames.CLIENT_FACTORY, "clientFactory")
             .addParameter(configType, "clientConfig")
-            .addStatement("this.client = clientFactory.create(clientConfig)")
+            .addStatement("this.client = clientFactory.create(configPath, $T.class, clientConfig)", s3client)
             .addStatement("this.config = clientConfig");
         if (!bucketsPath.isEmpty()) {
             constructor.addParameter(bucketsType, "bucketsConfig");

@@ -38,6 +38,7 @@ public class AbstractS3ClientTest extends AbstractAnnotationProcessorTest {
         result.assertSuccess();
         var clientFactory = (S3ClientFactory) config -> s3Client;
         var args = new ArrayList<Object>(2 + addArgs.length);
+        args.add("config.dummy");
         args.add(clientFactory);
         args.add(config);
         args.addAll(List.of(addArgs));

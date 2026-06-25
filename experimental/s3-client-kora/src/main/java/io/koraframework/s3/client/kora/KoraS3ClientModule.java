@@ -34,9 +34,17 @@ public interface KoraS3ClientModule {
     @DefaultComponent
     default S3ClientFactory defaultKoraS3ClientFactory(@Tag(S3Client.class) HttpClient client,
                                                        S3ClientTelemetryFactory telemetryFactory) {
-        return config -> {
-            var telemetry = telemetryFactory.get(config.telemetry());
-            return new KoraS3Client(client, config, telemetry);
+        return new S3ClientFactory() {
+            @Override
+            public S3Client create(S3ClientConfig config) {
+                return create("s3", KoraS3Client.class, config);
+            }
+
+            @Override
+            public S3Client create(String configPath, Class<?> clientImpl, S3ClientConfig config) {
+                var telemetry = telemetryFactory.get(configPath, clientImpl, config.telemetry());
+                return new KoraS3Client(client, config, telemetry);
+            }
         };
     }
 

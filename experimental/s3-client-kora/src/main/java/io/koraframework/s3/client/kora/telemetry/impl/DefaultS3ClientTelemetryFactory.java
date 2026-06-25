@@ -9,7 +9,7 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.jspecify.annotations.Nullable;
 
-public final class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryFactory {
+public class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryFactory {
 
     public static final Tracer NOOP_TRACER = TracerProvider.noop().get("s3-client-kora-telemetry");
     public static final MeterRegistry NOOP_METER_REGISTRY = new CompositeMeterRegistry();
@@ -34,7 +34,7 @@ public final class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryF
     }
 
     @Override
-    public S3ClientTelemetry get(S3ClientTelemetryConfig config) {
+    public S3ClientTelemetry get(String clientConfigPath, Class<?> clientType, S3ClientTelemetryConfig config) {
         var tracerEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!tracerEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -62,6 +62,16 @@ public final class DefaultS3ClientTelemetryFactory implements S3ClientTelemetryF
             enabledLoggerFactory = NoopS3ClientLoggerFactory.INSTANCE;
         }
 
-        return new DefaultS3ClientTelemetry(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+        return build(clientConfigPath, clientType, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory);
+    }
+
+    protected S3ClientTelemetry build(String clientConfigPath,
+                                      Class<?> clientType,
+                                      S3ClientTelemetryConfig config,
+                                      Tracer tracer,
+                                      MeterRegistry meterRegistry,
+                                      DefaultS3ClientMetricsFactory metricsFactory,
+                                      DefaultS3ClientLoggerFactory loggerFactory) {
+        return new DefaultS3ClientTelemetry(clientConfigPath, clientType, config, tracer, meterRegistry, metricsFactory, loggerFactory);
     }
 }
