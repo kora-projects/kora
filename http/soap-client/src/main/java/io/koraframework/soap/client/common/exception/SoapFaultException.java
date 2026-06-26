@@ -1,4 +1,4 @@
-package io.koraframework.soap.client.common;
+package io.koraframework.soap.client.common.exception;
 
 import io.koraframework.soap.client.common.envelope.SoapFault;
 

@@ -1,12 +1,16 @@
-package io.koraframework.soap.client.common.telemetry;
+package io.koraframework.soap.client.common.telemetry.impl;
 
 import io.opentelemetry.api.trace.Span;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.soap.client.common.SoapResult;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;
+import io.koraframework.soap.client.common.telemetry.SoapClientObservation;
 
-public class NoopSoapClientObservation implements SoapClientObservation {
+public final class NoopSoapClientObservation implements SoapClientObservation {
+
     public static final NoopSoapClientObservation INSTANCE = new NoopSoapClientObservation();
+
+    private NoopSoapClientObservation() { }
 
     @Override
     public void observeRequest(SoapEnvelope requestEnvelope) {

@@ -14,13 +14,10 @@ import org.slf4j.LoggerFactory;
 import io.koraframework.annotation.processor.common.JavaCompilation;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.http.client.jdk.JdkHttpClient;
-import io.koraframework.soap.client.common.$SoapServiceConfig_SoapClientTelemetryConfig_ConfigValueExtractor;
 import io.koraframework.soap.client.common.SoapServiceConfig;
-import io.koraframework.soap.client.common.telemetry.NoopSoapClientTelemetry;
+import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryConfig;
+import io.koraframework.soap.client.common.telemetry.impl.NoopSoapClientTelemetry;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
-import io.koraframework.telemetry.common.$TelemetryConfig_LoggingConfig_ConfigValueExtractor;
-import io.koraframework.telemetry.common.$TelemetryConfig_MetricsConfig_ConfigValueExtractor;
-import io.koraframework.telemetry.common.$TelemetryConfig_TracingConfig_ConfigValueExtractor;
 
 import javax.xml.ws.Endpoint;
 import java.io.ByteArrayOutputStream;
@@ -261,7 +258,7 @@ class WebServiceClientAnnotationProcessorTest {
         var type = cl.loadClass(className);
         var constructor = type.getConstructor(HttpClient.class, SoapClientTelemetryFactory.class, SoapServiceConfig.class);
         var httpClient = this.httpClient;
-        var telemetry = (SoapClientTelemetryFactory) (_, _, _) -> NoopSoapClientTelemetry.INSTANCE;
+        var telemetry = (SoapClientTelemetryFactory) (_, _, _, _, _) -> NoopSoapClientTelemetry.INSTANCE;
         return constructor.newInstance(httpClient, telemetry, new SoapServiceConfig() {
             @Override
             public String url() {
@@ -270,11 +267,22 @@ class WebServiceClientAnnotationProcessorTest {
 
             @Override
             public SoapClientTelemetryConfig telemetry() {
-                return new $SoapServiceConfig_SoapClientTelemetryConfig_ConfigValueExtractor.SoapClientTelemetryConfig_Impl(
-                    new $TelemetryConfig_LoggingConfig_ConfigValueExtractor.LoggingConfig_Defaults(),
-                    new $TelemetryConfig_TracingConfig_ConfigValueExtractor.TracingConfig_Defaults(),
-                    new $TelemetryConfig_MetricsConfig_ConfigValueExtractor.MetricsConfig_Defaults()
-                );
+                return new SoapClientTelemetryConfig() {
+                    @Override
+                    public SoapClientLoggingConfig logging() {
+                        return new SoapClientLoggingConfig() {};
+                    }
+
+                    @Override
+                    public SoapClientMetricsConfig metrics() {
+                        return new SoapClientMetricsConfig() {};
+                    }
+
+                    @Override
+                    public SoapClientTracingConfig tracing() {
+                        return new SoapClientTracingConfig() {};
+                    }
+                };
             }
         });
     }

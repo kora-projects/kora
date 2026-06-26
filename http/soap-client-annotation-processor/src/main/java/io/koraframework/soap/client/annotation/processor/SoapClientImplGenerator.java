@@ -155,6 +155,7 @@ public class SoapClientImplGenerator {
         if (serviceName.isEmpty()) {
             serviceName = service.getSimpleName().toString();
         }
+        var configPath = "soapClient." + serviceName;
         var targetNamespace = findAnnotationValue(webService, "targetNamespace").toString();
         var builder = TypeSpec.classBuilder(NameUtils.generatedType(service, "SoapClientImpl"))
             .addOriginatingElement(service)
@@ -219,8 +220,8 @@ public class SoapClientImplGenerator {
             }
             var executorFieldName = operationName + "RequestExecutor";
             constructorBuilder.addCode(
-                "this.$L = new $T(httpClient, telemetry, new $T(jaxb), config, new $T($S, $S, $S, $S));\n",
-                executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), SOAP_METHOD_DESCRIPTOR, service.toString(), serviceName, operationName, soapAction
+                "this.$L = new $T(httpClient, telemetry, new $T(jaxb), config, $S, new $T($S, $S, $S, $S));\n",
+                executorFieldName, soapClasses.soapRequestExecutor(), soapClasses.xmlToolsType(), configPath, SOAP_METHOD_DESCRIPTOR, service.toString(), serviceName, operationName, soapAction
             );
             builder.addField(soapClasses.soapRequestExecutor(), executorFieldName, Modifier.PRIVATE, Modifier.FINAL);
 

@@ -46,7 +46,7 @@ interface SoapClasses {
 
         override fun webParamType() = ClassName("jakarta.jws", "WebParam")
 
-        override fun xmlToolsType() = ClassName("io.koraframework.soap.client.common.jakarta", "JakartaXmlTools")
+        override fun xmlToolsType() = ClassName("io.koraframework.soap.client.common.jakarta", "JakartaSoapEnvelopeMapper")
 
         override fun holderType() = ClassName("jakarta.xml.ws", "Holder")
 
@@ -84,7 +84,7 @@ interface SoapClasses {
 
         override fun webParamType() = ClassName("javax.jws", "WebParam")
 
-        override fun xmlToolsType() = ClassName("io.koraframework.soap.client.common.javax", "JavaxXmlTools")
+        override fun xmlToolsType() = ClassName("io.koraframework.soap.client.common.javax", "JavaxSoapEnvelopeMapper")
 
         override fun holderType() = ClassName("javax.xml.ws", "Holder")
 

@@ -6,6 +6,7 @@ import io.koraframework.soap.client.common.SoapResult;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;
 
 public interface SoapClientObservation extends Observation {
+
     void observeRequest(SoapEnvelope requestEnvelope);
 
     void observeRequestXml(byte[] requestXml);
@@ -17,5 +18,4 @@ public interface SoapClientObservation extends Observation {
     void observeFailure(SoapResult.Failure result);
 
     void observeResult(Object body);
-
 }

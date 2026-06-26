@@ -13,13 +13,16 @@ import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public class MultipartParser {
+public final class MultipartParser {
+
     private static final byte[] end = "--".getBytes(UTF_8);
     private static final byte[] br = "\r\n".getBytes(UTF_8);
     private static final Pattern BOUNDARY_PATTERN = Pattern.compile(".*boundary=(?<boundary>.*?[;$]).*");
     private static final Pattern START_PATTERN = Pattern.compile(".*start=(?<start>.*?[;$]).*");
 
     public record MultipartMeta(String boundary, String start) {}
+
+    private MultipartParser() {}
 
     public static MultipartMeta parseMeta(String contentType) {
         var boundary = BOUNDARY_PATTERN.matcher(contentType);

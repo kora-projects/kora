@@ -7,7 +7,10 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.util.function.Function;
 
-public class SoapEnvelopeProcessors {
+public final class SoapEnvelopeProcessors {
+
+    private SoapEnvelopeProcessors() {}
+
     public static Function<SoapEnvelope, SoapEnvelope> wssAuth(String username, String password) {
         return soapEnvelope -> {
             try {
