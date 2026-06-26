@@ -17,7 +17,7 @@ public interface QuartzModule extends SchedulingModule {
 
     @Tag(QuartzModule.class)
     default Properties quartzProperties(Config config, ConfigValueExtractor<Properties> extractor) throws IOException {
-        var value = config.get("quartz");
+        var value = config.get("scheduling.quartz.properties");
         var defaults = new Properties();
         try (var is = Thread.currentThread().getContextClassLoader().getResourceAsStream("org/quartz/quartz.properties")) {
             if (is != null) {
