@@ -34,7 +34,7 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
         var observation = executionAttributes.getAttribute(OBSERVATION);
         if (observation != null) {
             execContext.httpResponse().firstMatchingHeader("x-amz-request-id").ifPresent(observation::observeAwsRequestId);
-            execContext.httpResponse().firstMatchingHeader("x-amz-extended-request-id").ifPresent(observation::observeAwsRequestId);
+            execContext.httpResponse().firstMatchingHeader("x-amz-extended-request-id").ifPresent(observation::observeAwsExtendedId);
 
             var key = extractKey(execContext.request());
             if (key != null) {
@@ -231,7 +231,7 @@ public final class AwsS3ClientTelemetryInterceptor implements ExecutionIntercept
             case SelectObjectContentRequest req -> "SelectObjectContent";
             case WriteGetObjectResponseRequest req -> "WriteGetObjectResponse"; // для S3 Object Lambda
 
-            default -> "unknown";
+            default -> request.getClass().getSimpleName();
         };
     }
 

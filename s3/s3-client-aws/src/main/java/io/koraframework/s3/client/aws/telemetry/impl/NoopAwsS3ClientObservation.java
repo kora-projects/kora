@@ -1,6 +1,8 @@
-package io.koraframework.s3.client.aws.telemetry;
+package io.koraframework.s3.client.aws.telemetry.impl;
 
+import io.koraframework.s3.client.aws.telemetry.AwsS3ClientObservation;
 import io.opentelemetry.api.trace.Span;
+import org.jspecify.annotations.Nullable;
 
 public final class NoopAwsS3ClientObservation implements AwsS3ClientObservation {
 
@@ -19,12 +21,12 @@ public final class NoopAwsS3ClientObservation implements AwsS3ClientObservation 
     }
 
     @Override
-    public void observeAwsRequestId(String amxRequestId) {
+    public void observeAwsRequestId(@Nullable String amxRequestId) {
 
     }
 
     @Override
-    public void observeAwsExtendedId(String amxRequestId) {
+    public void observeAwsExtendedId(@Nullable String amxRequestId) {
 
     }
 
@@ -42,5 +44,4 @@ public final class NoopAwsS3ClientObservation implements AwsS3ClientObservation 
     public void observeError(Throwable e) {
 
     }
-
 }

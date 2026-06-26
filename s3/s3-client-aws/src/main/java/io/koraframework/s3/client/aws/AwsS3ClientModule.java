@@ -7,7 +7,9 @@ import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.s3.client.aws.telemetry.AwsS3ClientTelemetryFactory;
-import io.koraframework.s3.client.aws.telemetry.DefaultAwsS3ClientTelemetryFactory;
+import io.koraframework.s3.client.aws.telemetry.impl.DefaultAwsS3ClientLoggerFactory;
+import io.koraframework.s3.client.aws.telemetry.impl.DefaultAwsS3ClientMetricsFactory;
+import io.koraframework.s3.client.aws.telemetry.impl.DefaultAwsS3ClientTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
@@ -57,8 +59,10 @@ public interface AwsS3ClientModule {
     }
 
     default AwsS3ClientTelemetryFactory awsS3ClientTelemetryFactory(@Nullable Tracer tracer,
-                                                                    @Nullable MeterRegistry meterRegistry) {
-        return new DefaultAwsS3ClientTelemetryFactory(tracer, meterRegistry);
+                                                                    @Nullable MeterRegistry meterRegistry,
+                                                                    @Nullable DefaultAwsS3ClientLoggerFactory loggerFactory,
+                                                                    @Nullable DefaultAwsS3ClientMetricsFactory metricsFactory) {
+        return new DefaultAwsS3ClientTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
     default AwsS3ClientFactory awsS3ClientFactory(SdkHttpClient httpClient,
@@ -80,7 +84,7 @@ public interface AwsS3ClientModule {
                 .region(Region.of(config.region()))
                 .requestChecksumCalculation(RequestChecksumCalculation.fromValue(config.checksumCalculationRequest().name()))
                 .responseChecksumValidation(ResponseChecksumValidation.fromValue(config.checksumValidationResponse().name()))
-                .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get(config.telemetry()))))
+                .overrideConfiguration(b -> b.addExecutionInterceptor(new AwsS3ClientTelemetryInterceptor(telemetryFactory.get("s3client.aws", S3Client.class, config.telemetry()))))
                 .overrideConfiguration(b -> interceptors.forEach(b::addExecutionInterceptor))
                 .build();
         };
