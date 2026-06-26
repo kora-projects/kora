@@ -7,26 +7,20 @@ import io.koraframework.telemetry.common.TelemetryConfig;
 public interface AwsS3ClientTelemetryConfig extends TelemetryConfig {
 
     @Override
-    S3ClientLogConfig logging();
+    S3LoggingConfig logging();
 
     @Override
-    S3ClientMetricsConfig metrics();
+    S3MetricsConfig metrics();
 
     @Override
-    S3ClientTracingConfig tracing();
+    S3TracingConfig tracing();
 
     @ConfigValueExtractor
-    interface S3ClientLogConfig extends TelemetryConfig.LogConfig {
-
-    }
+    interface S3LoggingConfig extends TelemetryConfig.LoggingConfig { }
 
     @ConfigValueExtractor
-    interface S3ClientTracingConfig extends TelemetryConfig.TracingConfig {
-
-    }
+    interface S3MetricsConfig extends TelemetryConfig.MetricsConfig { }
 
     @ConfigValueExtractor
-    interface S3ClientMetricsConfig extends TelemetryConfig.MetricsConfig {
-
-    }
+    interface S3TracingConfig extends TelemetryConfig.TracingConfig { }
 }
