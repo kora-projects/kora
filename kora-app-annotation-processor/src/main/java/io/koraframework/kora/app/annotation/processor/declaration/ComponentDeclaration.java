@@ -254,6 +254,9 @@ public sealed interface ComponentDeclaration {
         if (TypeParameterUtils.hasRawTypes(type)) {
             ctx.messager.printMessage(Diagnostic.Kind.WARNING, "Components with raw types can break dependency resolution in unpredictable way", typeElement);
         }
+        if (AnnotationUtils.isAnnotationPresent(typeElement, CommonClassNames.aopProxy)) {
+            type = typeElement.getSuperclass();
+        }
         var tags = TagUtils.parseTagValue(typeElement);
         var conditionalAnnotation = AnnotationUtils.findAnnotation(typeElement, CommonClassNames.conditional);
         var condition = conditionalAnnotation != null

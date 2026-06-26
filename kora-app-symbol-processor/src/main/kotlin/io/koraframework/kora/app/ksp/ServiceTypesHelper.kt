@@ -3,7 +3,6 @@ package io.koraframework.kora.app.ksp
 import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.getDeclaredFunctions
 import com.google.devtools.ksp.processing.Resolver
-import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -26,31 +25,6 @@ class ServiceTypesHelper(val resolver: Resolver) {
     private val wrappedValueFunction = wrappedClassDeclaration.getDeclaredFunctions()
         .filter { it.simpleName.asString() == "value" && it.parameters.isEmpty() }
         .first()
-
-    companion object {
-
-        fun findAopProxySuperClass(maybeAopProxy: KSType): KSType? {
-            val aopProxyAnnotation = maybeAopProxy.declaration.findAnnotation(CommonClassNames.aopProxy)
-            val proxyDeclaration = maybeAopProxy.declaration
-            if (aopProxyAnnotation != null && proxyDeclaration is KSClassDeclaration) {
-                val proxyParent = (maybeAopProxy.declaration as KSClassDeclaration).superTypes
-                    .map { it.resolve() }
-                    .filter { (it.declaration as? KSClassDeclaration)?.classKind == ClassKind.CLASS }
-                    .firstOrNull()
-
-                if (proxyParent != null) {
-                    val proxyParentDeclaration = proxyParent.declaration
-                    val aopProxyName = proxyParentDeclaration.getOuterClassesAsPrefix() + proxyParentDeclaration.simpleName.asString() + "__AopProxy"
-                    val aopProxyCanonical = proxyParentDeclaration.packageName.asString() + "." + aopProxyName
-                    if (aopProxyCanonical == maybeAopProxy.declaration.qualifiedName!!.asString()) {
-                        return proxyParent
-                    }
-                }
-            }
-
-            return null
-        }
-    }
 
     fun isAssignableToUnwrapped(maybeWrapped: KSType, type: KSType): Boolean {
         if (!wrappedType.isAssignableFrom(maybeWrapped)) {
