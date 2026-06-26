@@ -55,6 +55,7 @@ class KoraCodegenTest {
             @Nullable
             private String implicitHeadersRegex;
             private boolean defaultDelegate;
+            private boolean additionalContractAnnotations;
 
             public boolean authAsArg() {return authAsArg;}
 
@@ -70,6 +71,8 @@ class KoraCodegenTest {
             public String implicitHeadersRegex() {return implicitHeadersRegex;}
 
             public boolean isDefaultDelegate() {return defaultDelegate;}
+
+            public boolean additionalContractAnnotations() {return additionalContractAnnotations;}
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -103,6 +106,11 @@ class KoraCodegenTest {
 
             public Options setDefaultDelegate(boolean defaultDelegate) {
                 this.defaultDelegate = defaultDelegate;
+                return this;
+            }
+
+            public Options setAdditionalContractAnnotations(boolean additionalContractAnnotations) {
+                this.additionalContractAnnotations = additionalContractAnnotations;
                 return this;
             }
         }
@@ -169,6 +177,7 @@ class KoraCodegenTest {
 
                 if (name.equals("petstoreV3")) {
                     result.add(new SwaggerParams(mode, fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
+                    result.add(new SwaggerParams(mode, fileName, name + "_additional_contract_annotations", new SwaggerParams.Options().setAdditionalContractAnnotations(true)));
                 }
 
                 if (fileName.contains("discriminator")
@@ -234,6 +243,14 @@ class KoraCodegenTest {
 
         if (options.isDefaultDelegate()) {
             configurator.addAdditionalProperty("delegateMethodBodyMode", "throwException");
+        }
+
+        if (options.additionalContractAnnotations()) {
+            configurator.addAdditionalProperty("additionalContractAnnotations", """
+                {
+                  "*": [ { "annotation": "@io.swagger.v3.oas.annotations.tags.Tag(name = \\"additional-contract\\")" } ]
+                }
+                """);
         }
 
         if (options.implicitHeadersRegex() != null) {

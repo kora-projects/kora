@@ -35,7 +35,7 @@ interface {{classname}} {
     {{/externalDocs}}
     */
     {{#koraAdditionalContractAnnotations}}
-    {{.}}
+    {{{.}}}
     {{/koraAdditionalContractAnnotations}}
     @ru.tinkoff.kora.http.common.annotation.HttpRoute(method = "{{httpMethod}}", path = "{{path}}"){{#vendorExtensions.x-has-implicit-headers}}
     @io.swagger.v3.oas.annotations.Parameters(value = [
