@@ -3,7 +3,6 @@ package io.koraframework.soap.client.common.telemetry.impl;
 import io.koraframework.http.client.common.response.HttpClientResponse;
 import io.koraframework.soap.client.common.SoapResult;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;
-import io.koraframework.soap.client.common.envelope.SoapFault;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
@@ -30,8 +29,8 @@ public class DefaultSoapClientMetricsFactory {
     public static class DefaultSoapClientMetrics {
 
         public record DurationKey(int httpCode,
-                                  String errorType,
-                                  String soapFaultCode,
+                                  @Nullable String errorType,
+                                  @Nullable String soapFaultCode,
                                   @Nullable Tags extraTags) {
 
             public DurationKey withExtraTags(Tags tags) {
@@ -72,7 +71,8 @@ public class DefaultSoapClientMetricsFactory {
                 : failure.fault();
             var faultCode = fault != null && fault.getFaultcode() != null
                 ? fault.getFaultcode().toString()
-                : "";
+                : null;
+
             if (exception != null) {
                 return new DurationKey(responseCode, exception.getClass().getCanonicalName(), faultCode, null);
             }
@@ -80,7 +80,7 @@ public class DefaultSoapClientMetricsFactory {
                 var faultDetail = fault.getDetail().getAny().getFirst();
                 return new DurationKey(responseCode, faultDetail.getClass().getCanonicalName(), faultCode, null);
             }
-            return new DurationKey(responseCode, "", faultCode, null);
+            return new DurationKey(responseCode, null, faultCode, null);
         }
 
         // DO NOT ADD DYNAMIC TAGS IN BUILDER, use metric key instead of metric collision will happen
@@ -106,8 +106,16 @@ public class DefaultSoapClientMetricsFactory {
             staticTags.add(Tag.of(ServerAttributes.SERVER_ADDRESS.getKey(), uri.getHost()));
             staticTags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), Integer.toString(port)));
             staticTags.add(Tag.of(HttpAttributes.HTTP_RESPONSE_STATUS_CODE.getKey(), Integer.toString(metricKey.httpCode())));
-            staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), metricKey.errorType()));
-            staticTags.add(Tag.of(DefaultSoapClientObservation.FAULT_CODE.getKey(), metricKey.soapFaultCode()));
+            if (metricKey.errorType != null) {
+                staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), metricKey.errorType()));
+            } else {
+                staticTags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), ""));
+            }
+            if (metricKey.soapFaultCode != null) {
+                staticTags.add(Tag.of(DefaultSoapClientObservation.FAULT_CODE.getKey(), metricKey.soapFaultCode()));
+            } else {
+                staticTags.add(Tag.of(DefaultSoapClientObservation.FAULT_CODE.getKey(), ""));
+            }
             staticTags.add(Tag.of(DefaultSoapClientTelemetry.SYSTEM_CONFIG_PATH, this.context.clientConfigPath()));
             staticTags.add(Tag.of(DefaultSoapClientTelemetry.SYSTEM_NAME_SIMPLE, this.context.clientSimpleName()));
             staticTags.add(Tag.of(DefaultSoapClientTelemetry.SYSTEM_NAME_CANONICAL, this.context.clientCanonicalName()));
