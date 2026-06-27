@@ -1,11 +1,11 @@
 package io.koraframework.database.common.annotation.processor.jdbc;
 
+import io.koraframework.database.jdbc.JdbcHelper;
 import org.mockito.Mockito;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext;
 import io.koraframework.database.jdbc.JdbcConnectionFactory;
-import io.koraframework.database.jdbc.JdbcHelper;
 import io.koraframework.database.jdbc.RuntimeSqlException;
 
 import java.sql.*;
@@ -37,7 +37,7 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
     }
 
     @Override
-    public <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException {
+    public <T> T withConnection(JdbcHelper.SqlFunction<Connection, T> callback) throws RuntimeSqlException {
         try {
             return callback.apply(mockConnection);
         } catch (SQLException e) {
@@ -51,7 +51,7 @@ public class MockJdbcExecutor implements JdbcConnectionFactory {
     }
 
     @Override
-    public ConnectionContext currentConnectionContext() {
+    public ConnectionContext currentContext() {
         return mockConnectionContext;
     }
 

@@ -6,11 +6,11 @@ public final class JdbcHelper {
 
     private JdbcHelper() { }
 
-    public interface SqlFunction0<T> {
+    public interface SqlSupplier<T> {
         T apply() throws SQLException;
     }
 
-    public interface SqlFunction1<T, R> {
+    public interface SqlFunction<T, R> {
         R apply(T t) throws SQLException;
     }
 

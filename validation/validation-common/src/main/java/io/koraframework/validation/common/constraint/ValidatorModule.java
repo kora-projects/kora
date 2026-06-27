@@ -1,6 +1,7 @@
 package io.koraframework.validation.common.constraint;
 
 import io.koraframework.application.graph.TypeRef;
+import io.koraframework.common.DefaultComponent;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.constraint.factory.*;
 import io.koraframework.validation.common.constraint.factory.*;
@@ -14,111 +15,138 @@ import java.util.Set;
 
 public interface ValidatorModule {
 
+    @DefaultComponent
     default <T> Validator<List<T>> listValidator(Validator<T> validator, TypeRef<T> valueRef) {
         return new IterableValidator<>(validator);
     }
 
+    @DefaultComponent
     default <T> Validator<Set<T>> setValidator(Validator<T> validator, TypeRef<T> valueRef) {
         return new IterableValidator<>(validator);
     }
 
+    @DefaultComponent
     default <T> Validator<Collection<T>> collectionValidator(Validator<T> validator, TypeRef<T> valueRef) {
         return new IterableValidator<>(validator);
     }
 
-    default <K, V> NotEmptyValidatorFactory<Map<K, V>> notEmptyMapConstraintFactory(TypeRef<K> keyRef, TypeRef<V> valueRef) {
+    @DefaultComponent
+    default <K, V> NotEmptyValidatorFactory<Map<K, V>> notEmptyMapValidatorFactory(TypeRef<K> keyRef, TypeRef<V> valueRef) {
         return NotEmptyMapValidator::new;
     }
 
-    default <T> NotEmptyValidatorFactory<Iterable<T>> notEmptyIterableConstraintFactory(TypeRef<T> valueRef) {
+    @DefaultComponent
+    default <T> NotEmptyValidatorFactory<Iterable<T>> notEmptyIterableValidatorFactory(TypeRef<T> valueRef) {
         return NotEmptyIterableValidator::new;
     }
 
-    default <T> NotEmptyValidatorFactory<List<T>> notEmptyListConstraintFactory(TypeRef<T> valueRef) {
+    @DefaultComponent
+    default <T> NotEmptyValidatorFactory<List<T>> notEmptyListValidatorFactory(TypeRef<T> valueRef) {
         return NotEmptyIterableValidator::new;
     }
 
-    default <T> NotEmptyValidatorFactory<Set<T>> notEmptySetConstraintFactory(TypeRef<T> valueRef) {
+    @DefaultComponent
+    default <T> NotEmptyValidatorFactory<Set<T>> notEmptySetValidatorFactory(TypeRef<T> valueRef) {
         return NotEmptyIterableValidator::new;
     }
 
-    default <T> NotEmptyValidatorFactory<Collection<T>> notEmptyCollectionConstraintFactory(TypeRef<T> valueRef) {
+    @DefaultComponent
+    default <T> NotEmptyValidatorFactory<Collection<T>> notEmptyCollectionValidatorFactory(TypeRef<T> valueRef) {
         return NotEmptyIterableValidator::new;
     }
 
-    default NotEmptyValidatorFactory<String> notEmptyStringConstraintFactory() {
+    @DefaultComponent
+    default NotEmptyValidatorFactory<String> notEmptyStringValidatorFactory() {
         return NotEmptyStringValidator::new;
     }
 
-    default NotEmptyValidatorFactory<CharSequence> notEmptyCharSequenceConstraintFactory() {
+    @DefaultComponent
+    default NotEmptyValidatorFactory<CharSequence> notEmptyCharSequenceValidatorFactory() {
         return NotEmptyStringValidator::new;
     }
 
-    default NotBlankValidatorFactory<String> notBlankStringConstraintFactory() {
+    @DefaultComponent
+    default NotBlankValidatorFactory<String> notBlankStringValidatorFactory() {
         return NotBlankStringValidator::new;
     }
 
-    default NotBlankValidatorFactory<CharSequence> notBlankCharSequenceConstraintFactory() {
+    @DefaultComponent
+    default NotBlankValidatorFactory<CharSequence> notBlankCharSequenceValidatorFactory() {
         return NotBlankStringValidator::new;
     }
 
-    default RangeValidatorFactory<Short> rangeShortConstraintFactory() {
+    @DefaultComponent
+    default RangeValidatorFactory<Short> rangeShortValidatorFactory() {
         return RangeLongNumberValidator::new;
     }
 
-    default RangeValidatorFactory<Integer> rangeIntegerConstraintFactory() {
+    @DefaultComponent
+    default RangeValidatorFactory<Integer> rangeIntegerValidatorFactory() {
         return RangeLongNumberValidator::new;
     }
 
-    default RangeValidatorFactory<Long> rangeLongConstraintFactory() {
+    @DefaultComponent
+    default RangeValidatorFactory<Long> rangeLongValidatorFactory() {
         return RangeLongNumberValidator::new;
     }
 
-    default RangeValidatorFactory<Float> rangeFloatConstraintFactory() {
+    @DefaultComponent
+    default RangeValidatorFactory<Float> rangeFloatValidatorFactory() {
         return RangeDoubleNumberValidator::new;
     }
 
-    default RangeValidatorFactory<Double> rangeDoubleConstraintFactory() {
+    @DefaultComponent
+    default RangeValidatorFactory<Double> rangeDoubleValidatorFactory() {
         return RangeDoubleNumberValidator::new;
     }
 
-    default RangeValidatorFactory<BigInteger> rangeBigIntegerConstraintFactory() {
+    @DefaultComponent
+    default RangeValidatorFactory<BigInteger> rangeBigIntegerValidatorFactory() {
         return RangeBigIntegerValidator::new;
     }
 
-    default RangeValidatorFactory<BigDecimal> rangeBigDecimalConstraintFactory() {
+    @DefaultComponent
+    default RangeValidatorFactory<BigDecimal> rangeBigDecimalValidatorFactory() {
         return RangeBigDecimalValidator::new;
     }
 
-    default SizeValidatorFactory<String> sizeStringConstraintFactory() {
+    @DefaultComponent
+    default SizeValidatorFactory<String> sizeStringValidatorFactory() {
         return SizeStringValidator::new;
     }
 
-    default SizeValidatorFactory<CharSequence> sizeCharSequenceConstraintFactory() {
+    @DefaultComponent
+    default SizeValidatorFactory<CharSequence> sizeCharSequenceValidatorFactory() {
         return SizeStringValidator::new;
     }
 
-    default <K, V> SizeValidatorFactory<Map<K, V>> sizeDoubleConstraintFactory(TypeRef<K> keyRef, TypeRef<V> valueRef) {
+    @DefaultComponent
+    default <K, V> SizeValidatorFactory<Map<K, V>> sizeDoubleValidatorFactory(TypeRef<K> keyRef, TypeRef<V> valueRef) {
         return SizeMapValidator::new;
     }
 
-    default <V> SizeValidatorFactory<Collection<V>> sizeIterableConstraintFactory(TypeRef<V> valueRef) {
+    @DefaultComponent
+    default <V> SizeValidatorFactory<Collection<V>> sizeIterableValidatorFactory(TypeRef<V> valueRef) {
         return SizeCollectionValidator::new;
     }
 
-    default <V> SizeValidatorFactory<List<V>> sizeListConstraintFactory(TypeRef<V> valueRef) {
+    @DefaultComponent
+    default <V> SizeValidatorFactory<List<V>> sizeListValidatorFactory(TypeRef<V> valueRef) {
         return SizeCollectionValidator::new;
     }
 
-    default <V> SizeValidatorFactory<Set<V>> sizeSetConstraintFactory(TypeRef<V> valueRef) {
+    @DefaultComponent
+    default <V> SizeValidatorFactory<Set<V>> sizeSetValidatorFactory(TypeRef<V> valueRef) {
         return SizeCollectionValidator::new;
     }
 
-    default PatternValidatorFactory<String> patternStringConstraintFactory() {
+    @DefaultComponent
+    default PatternValidatorFactory<String> patternStringValidatorFactory() {
         return PatternValidator::new;
     }
 
-    default PatternValidatorFactory<CharSequence> patternCharSequenceConstraintFactory() {
+    @DefaultComponent
+    default PatternValidatorFactory<CharSequence> patternCharSequenceValidatorFactory() {
         return PatternValidator::new;
     }
 }

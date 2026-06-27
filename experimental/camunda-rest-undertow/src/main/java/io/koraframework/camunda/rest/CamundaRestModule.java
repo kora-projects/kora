@@ -36,7 +36,7 @@ public interface CamundaRestModule {
     }
 
     default CamundaRestConfig camundaRestConfig(Config config, ConfigValueExtractor<CamundaRestConfig> extractor) {
-        return extractor.extract(config.get("camunda.rest"));
+        return extractor.extractOrThrow(config.get("camunda.rest"));
     }
 
     @Tag(CamundaRest.class)

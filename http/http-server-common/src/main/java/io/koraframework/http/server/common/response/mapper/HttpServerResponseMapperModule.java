@@ -38,15 +38,15 @@ public interface HttpServerResponseMapperModule {
         return new HttpServerResponseEntityMapper<>(delegate);
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
     default <T> HttpServerResponseMapper<HttpResponseEntity<T>> jsonHttpResponseEntityHttpServerResponseMapper(JsonWriter<T> writer) {
         return new HttpServerResponseEntityMapper<>(new JsonWriterHttpServerResponseMapper<>(writer));
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
-    default <T> JsonWriterHttpServerResponseMapper<T> jsonHttpServerResponseMapper(JsonWriter<T> writer) {
+    default <T> HttpServerResponseMapper<T> jsonHttpServerResponseMapper(JsonWriter<T> writer) {
         return new JsonWriterHttpServerResponseMapper<>(writer);
     }
 }

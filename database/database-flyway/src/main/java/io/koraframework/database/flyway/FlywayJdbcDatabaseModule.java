@@ -6,8 +6,7 @@ import io.koraframework.config.common.extractor.ConfigValueExtractor;
 public interface FlywayJdbcDatabaseModule {
 
     default FlywayConfig flywayConfig(Config config, ConfigValueExtractor<FlywayConfig> extractor) {
-        var value = config.get("flyway");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("flyway"));
     }
 
     default FlywayJdbcDatabaseInterceptor flywayJdbcDatabaseInterceptor(FlywayConfig flywayConfig) {

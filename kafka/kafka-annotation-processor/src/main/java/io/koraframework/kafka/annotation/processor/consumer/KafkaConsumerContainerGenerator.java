@@ -4,6 +4,7 @@ import com.palantir.javapoet.MethodSpec;
 import com.palantir.javapoet.ParameterSpec;
 import com.palantir.javapoet.ParameterizedTypeName;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
+import io.koraframework.kafka.annotation.processor.KafkaClassNames;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.TagUtils;
@@ -30,7 +31,7 @@ public class KafkaConsumerContainerGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(CommonClassNames.root)
             .addAnnotation(tagAnnotation)
-            .returns(CommonClassNames.lifecycle);
+            .returns(KafkaClassNames.generatedListener);
         var handlerTypeName = (ParameterizedTypeName) handlerMethod.method().returnType();
 
         var configParameter = ParameterSpec

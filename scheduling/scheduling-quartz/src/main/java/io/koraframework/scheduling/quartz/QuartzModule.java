@@ -41,8 +41,7 @@ public interface QuartzModule extends SchedulingModule {
     }
 
     default SchedulingQuartzConfig schedulingQuartzConfig(Config config, ConfigValueExtractor<SchedulingQuartzConfig> extractor) {
-        var value = config.get("scheduling");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("scheduling.quartz"));
     }
 
     default KoraQuartzJobFactory koraQuartzJobFactory(All<ValueOf<KoraQuartzJob>> jobs) {

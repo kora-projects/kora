@@ -68,12 +68,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     .addTag(elementType.canonicalName)
                     .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
                     .addParameter(ParameterSpec.builder("extractor", extractorClass).build())
-                    .addStatement("val value = config.get(%S)", configPath)
-                    .addStatement("val parsed = extractor.extract(value)")
-                    .controlFlow("if (parsed == null)") {
-                        addStatement("throw %T.missingValueAfterParse(value)", CommonClassNames.configValueExtractionException)
-                    }
-                    .addStatement("return parsed")
+                    .addStatement("return extractor.extract(config.get(%S))", configPath)
                     .build()
             )
             .addFunction(

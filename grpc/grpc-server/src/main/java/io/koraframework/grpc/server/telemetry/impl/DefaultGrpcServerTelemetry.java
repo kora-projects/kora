@@ -17,7 +17,7 @@ import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
 public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
 
     public record TelemetryContext(GrpcServerTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer) {
@@ -44,9 +44,9 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
                                       MeterRegistry meterRegistry,
                                       DefaultGrpcServerMetricsFactory metricsFactory,
                                       DefaultGrpcServerLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultGrpcServerTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultGrpcServerTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultGrpcServerTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, isTraceEnabled, isMetricsEnabled, meterRegistry, tracer);
+        this.context = new TelemetryContext(config, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -60,7 +60,7 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
     }
 
     protected Span createSpan(ServerCall<?, ?> call, Metadata headers, String serviceName, String methodName) {
-        if (!this.context.isTraceEnabled()) {
+        if (!this.context.isTracingEnabled()) {
             return Span.getInvalid();
         }
         var remoteAddress = call.getAttributes().get(Grpc.TRANSPORT_ATTR_REMOTE_ADDR);

@@ -14,7 +14,8 @@ import io.koraframework.http.client.common.response.HttpClientResponse;
 
 import java.io.IOException;
 
-public final class OkHttpClient implements HttpClient {
+public class OkHttpClient implements HttpClient {
+
     private final okhttp3.OkHttpClient client;
 
     public OkHttpClient(okhttp3.OkHttpClient client) {

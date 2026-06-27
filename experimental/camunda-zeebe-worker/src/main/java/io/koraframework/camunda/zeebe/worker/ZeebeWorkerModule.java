@@ -36,11 +36,11 @@ import java.util.concurrent.ScheduledExecutorService;
 public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
 
     default ZeebeWorkerConfig zeebeWorkerConfig(Config config, ConfigValueExtractor<ZeebeWorkerConfig> extractor) {
-        return extractor.extract(config.get("zeebe.worker"));
+        return extractor.extractOrThrow(config.get("zeebe.worker"));
     }
 
     default ZeebeClientConfig zeebeClientConfig(Config config, ConfigValueExtractor<ZeebeClientConfig> extractor) {
-        return extractor.extract(config.get("zeebe.client"));
+        return extractor.extractOrThrow(config.get("zeebe.client"));
     }
 
     @DefaultComponent

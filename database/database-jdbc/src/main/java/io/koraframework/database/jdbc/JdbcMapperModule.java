@@ -13,12 +13,14 @@ import java.time.*;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface JdbcModule extends DatabaseModule {
+public interface JdbcMapperModule extends DatabaseModule {
 
+    @DefaultComponent
     default <T> JdbcResultSetMapper<Optional<T>> optionalResultSetMapper(JdbcRowMapper<T> rowMapper) {
         return JdbcResultSetMapper.optionalResultSetMapper(rowMapper);
     }
 
+    @DefaultComponent
     default JdbcRowMapper<Boolean> booleanJdbcRowMapper() {
         return rs -> {
             var value = rs.getBoolean(1);
@@ -29,6 +31,7 @@ public interface JdbcModule extends DatabaseModule {
         };
     }
 
+    @DefaultComponent
     default JdbcRowMapper<Short> shortJdbcRowMapper() {
         return rs -> {
             var value = rs.getShort(1);
@@ -39,6 +42,7 @@ public interface JdbcModule extends DatabaseModule {
         };
     }
 
+    @DefaultComponent
     default JdbcRowMapper<Integer> integerJdbcRowMapper() {
         return rs -> {
             var value = rs.getInt(1);
@@ -49,6 +53,7 @@ public interface JdbcModule extends DatabaseModule {
         };
     }
 
+    @DefaultComponent
     default JdbcRowMapper<Long> longJdbcRowMapper() {
         return rs -> {
             var value = rs.getLong(1);
@@ -59,6 +64,7 @@ public interface JdbcModule extends DatabaseModule {
         };
     }
 
+    @DefaultComponent
     default JdbcRowMapper<Double> doubleJdbcRowMapper() {
         return rs -> {
             var value = rs.getDouble(1);
@@ -69,6 +75,7 @@ public interface JdbcModule extends DatabaseModule {
         };
     }
 
+    @DefaultComponent
     default JdbcRowMapper<Float> floatJdbcRowMapper() {
         return rs -> {
             var value = rs.getFloat(1);
@@ -79,6 +86,7 @@ public interface JdbcModule extends DatabaseModule {
         };
     }
 
+    @DefaultComponent
     default JdbcRowMapper<String> stringJdbcRowMapper() {
         return rs -> {
             var value = rs.getString(1);
@@ -89,6 +97,7 @@ public interface JdbcModule extends DatabaseModule {
         };
     }
 
+    @DefaultComponent
     default JdbcRowMapper<byte[]> byteArrayJdbcRowMapper() {
         return rs -> {
             var value = rs.getBytes(1);
@@ -278,7 +287,7 @@ public interface JdbcModule extends DatabaseModule {
     }
 
     @DefaultComponent
-    default JdbcResultColumnMapper<LocalDate> localDateJdbcColumnMapper() {
+    default JdbcResultColumnMapper<LocalDate> localDateJdbcResultColumnMapper() {
         return (row, index) -> {
             var value = row.getObject(index, LocalDate.class);
             if (row.wasNull()) {
@@ -289,7 +298,7 @@ public interface JdbcModule extends DatabaseModule {
     }
 
     @DefaultComponent
-    default JdbcResultColumnMapper<LocalTime> localTimeJdbcColumnMapper() {
+    default JdbcResultColumnMapper<LocalTime> localTimeJdbcResultColumnMapper() {
         return (row, index) -> {
             var value = row.getObject(index, LocalTime.class);
             if (row.wasNull()) {
@@ -300,7 +309,7 @@ public interface JdbcModule extends DatabaseModule {
     }
 
     @DefaultComponent
-    default JdbcResultColumnMapper<LocalDateTime> localDateTimeJdbcColumnMapper() {
+    default JdbcResultColumnMapper<LocalDateTime> localDateTimeJdbcResultColumnMapper() {
         return (row, index) -> {
             var value = row.getObject(index, LocalDateTime.class);
             if (row.wasNull()) {
@@ -311,7 +320,7 @@ public interface JdbcModule extends DatabaseModule {
     }
 
     @DefaultComponent
-    default JdbcResultColumnMapper<OffsetTime> offsetTimeJdbcColumnMapper() {
+    default JdbcResultColumnMapper<OffsetTime> offsetTimeJdbcResultColumnMapper() {
         return (row, index) -> {
             var value = row.getObject(index, OffsetTime.class);
             if (row.wasNull()) {
@@ -322,7 +331,7 @@ public interface JdbcModule extends DatabaseModule {
     }
 
     @DefaultComponent
-    default JdbcResultColumnMapper<OffsetDateTime> offsetDateTimeJdbcColumnMapper() {
+    default JdbcResultColumnMapper<OffsetDateTime> offsetDateTimeJdbcResultColumnMapper() {
         return (row, index) -> {
             var value = row.getObject(index, OffsetDateTime.class);
             if (row.wasNull()) {

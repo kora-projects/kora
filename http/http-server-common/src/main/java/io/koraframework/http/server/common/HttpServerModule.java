@@ -31,7 +31,7 @@ import java.util.Optional;
 
 public interface HttpServerModule extends HttpServerParameterReaderModule, HttpServerRequestMapperModule, HttpServerResponseMapperModule {
 
-    default HttpServerConfig httpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> configValueExtractor) {
+    default HttpServerConfig publicHttpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> configValueExtractor) {
         var value = config.get("httpServer");
         var parsed = configValueExtractor.extract(value);
         if (parsed == null) {
@@ -66,17 +66,17 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
     }
 
     @SystemApi
-    default HttpServerRequestHandler systemLivenessHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<LivenessProbe>> probes) {
+    default HttpServerRequestHandler systemLivenessHttpServerRequestHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<LivenessProbe>> probes) {
         return new LivenessHandler(config, probes);
     }
 
     @SystemApi
-    default HttpServerRequestHandler systemReadinessHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
+    default HttpServerRequestHandler systemReadinessHttpServerRequestHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
         return new ReadinessHandler(config, probes);
     }
 
     @SystemApi
-    default HttpServerRequestHandler systemMetricsHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
+    default HttpServerRequestHandler systemMetricsHttpServerRequestHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
         return new MetricsHandler(config, meterRegistry);
     }
 

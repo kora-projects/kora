@@ -8,6 +8,7 @@ import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.Tag;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.kafka.common.consumer.GeneratedListener;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.containers.ConsumerRecordWrapper;
 import io.koraframework.kafka.common.consumer.containers.handlers.KafkaRecordHandler;
@@ -232,7 +233,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
 
             private Method assertContainer() {
                 var containerMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClassProcessContainer")).findFirst().orElseThrow();
-                assertThat(containerMethod.getReturnType()).isEqualTo(Lifecycle.class);
+                assertThat(containerMethod.getReturnType()).isEqualTo(GeneratedListener.class);
                 assertThat(containerMethod.getParameters()[0].getType()).isEqualTo(KafkaListenerConfig.class);
                 assertThat(containerMethod.getParameters()[0].getAnnotation(Tag.class).value()).isEqualTo(tagValue);
                 assertThat(containerMethod.getParameters()[2].getParameterizedType()).isEqualTo(TypeRef.of(Deserializer.class, keyType));

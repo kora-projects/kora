@@ -1,5 +1,7 @@
-package io.koraframework.json.common;
+package io.koraframework.json.common.writer;
 
+import io.koraframework.json.common.JsonWriter;
+import io.koraframework.json.common.RawJson;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonGenerator;
 

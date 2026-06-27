@@ -312,8 +312,7 @@ public class JdkSchedulingGenerator {
                 ),
                 "extractor"
             )
-            .addStatement("var configValue = config.get($S)", configPath)
-            .addStatement("return $T.ofNullable(extractor.extract(configValue)).orElseThrow(() -> $T.missingValueAfterParse(configValue))", Optional.class, CommonClassNames.configValueExtractionException)
+            .addStatement("return extractor.extract(config.get($S))", configPath)
             .returns(ClassName.get(packageName, configClassName))
             .build();
 

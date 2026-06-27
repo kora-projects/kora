@@ -9,9 +9,9 @@ import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
 
 public interface CassandraDatabaseModule extends CassandraModule {
+
     default CassandraConfig cassandraConfig(Config config, ConfigValueExtractor<CassandraConfig> extractor) {
-        var value = config.get("cassandra");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("cassandra"));
     }
 
     default CassandraDatabase cassandraDatabase(CassandraConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {

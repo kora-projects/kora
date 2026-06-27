@@ -7,7 +7,7 @@ dependencies {
 
     testImplementation project(':logging:logging-common')
     testImplementation project(':aop:aop-annotation-processor')
-    testImplementation project(':logging:declarative-logging:declarative-logging-annotation-processor')
+    testImplementation project(':logging:logging-aop:logging-aop-annotation-processor')
     testImplementation testFixtures(project(':annotation-processor-common'))
 }
 

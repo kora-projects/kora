@@ -9,7 +9,7 @@ import io.koraframework.database.common.telemetry.DatabaseObservation
 import io.koraframework.database.common.telemetry.DatabaseTelemetry
 import io.koraframework.database.jdbc.ConnectionContext
 import io.koraframework.database.jdbc.JdbcConnectionFactory
-import io.koraframework.database.jdbc.JdbcHelper.SqlFunction1
+import io.koraframework.database.jdbc.JdbcHelper
 import io.koraframework.database.jdbc.RuntimeSqlException
 import java.sql.*
 
@@ -37,7 +37,7 @@ class MockJdbcExecutor : JdbcConnectionFactory {
         reset()
     }
 
-    override fun <T> withConnection(callback: SqlFunction1<Connection, T>): T {
+    override fun <T> withConnection(callback: JdbcHelper.SqlFunction<Connection, T>): T {
         return try {
             callback.apply(mockConnection)
         } catch (e: SQLException) {
@@ -47,7 +47,7 @@ class MockJdbcExecutor : JdbcConnectionFactory {
 
     override fun currentConnection() = mockConnection!!
 
-    override fun currentConnectionContext() = mockConnectionContext
+    override fun currentContext() = mockConnectionContext
 
     override fun newConnection(): Connection {
         TODO("Not yet implemented")

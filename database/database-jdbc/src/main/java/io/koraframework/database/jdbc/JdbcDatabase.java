@@ -102,8 +102,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     }
 
     @Nullable
-    @Override
-    public ConnectionContext currentConnectionContext() {
+    public ConnectionContext currentContext() {
         if (this.connectionContext.isBound()) {
             return this.connectionContext.get();
         }
@@ -111,7 +110,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     }
 
     @Override
-    public <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException {
+    public <T> T withConnection(JdbcHelper.SqlFunction<Connection, T> callback) throws RuntimeSqlException {
         if (this.connectionContext.isBound()) {
             try {
                 return callback.apply(this.connectionContext.get().connection());

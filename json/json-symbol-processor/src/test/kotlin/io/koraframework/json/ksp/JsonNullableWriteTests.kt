@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonNullable
 import io.koraframework.json.common.JsonWriter
-import io.koraframework.json.common.ListJsonWriter
+import io.koraframework.json.common.writer.ListJsonWriter
 import tools.jackson.core.JsonGenerator
 import java.sql.Timestamp
 import java.time.Instant

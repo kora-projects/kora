@@ -17,7 +17,7 @@ import org.jspecify.annotations.Nullable;
 public class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
 
     public record TelemetryContext(CamundaRestTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    Tracer tracer,
                                    MeterRegistry meterRegistry) {}
@@ -31,9 +31,9 @@ public class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
                                        MeterRegistry meterRegistry,
                                        DefaultCamundaRestMetricsFactory metricsFactory,
                                        DefaultCamundaRestLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultCamundaRestTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultCamundaRestTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultCamundaRestTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, isTraceEnabled, isMetricsEnabled, tracer, meterRegistry);
+        this.context = new TelemetryContext(config, isTracingEnabled, isMetricsEnabled, tracer, meterRegistry);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -45,7 +45,7 @@ public class DefaultCamundaRestTelemetry implements CamundaRestTelemetry {
     }
 
     protected Span createSpan(String template, HttpServerExchange exchange) {
-        if (template == null || !this.context.isTraceEnabled()) {
+        if (template == null || !this.context.isTracingEnabled()) {
             return Span.getInvalid();
         }
         var span = this.context.tracer()

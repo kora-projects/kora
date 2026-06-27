@@ -1,6 +1,13 @@
 package io.koraframework.json.annotation.processor;
 
 import io.koraframework.json.annotation.processor.dto.*;
+import io.koraframework.json.common.reader.ListJsonReader;
+import io.koraframework.json.common.reader.MapJsonReader;
+import io.koraframework.json.common.reader.SetJsonReader;
+import io.koraframework.json.common.util.JsonObjectCodec;
+import io.koraframework.json.common.writer.ListJsonWriter;
+import io.koraframework.json.common.writer.MapJsonWriter;
+import io.koraframework.json.common.writer.SetJsonWriter;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

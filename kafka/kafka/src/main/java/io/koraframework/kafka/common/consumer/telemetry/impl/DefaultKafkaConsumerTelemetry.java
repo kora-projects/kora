@@ -16,7 +16,7 @@ import java.util.Properties;
 public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
 
     public record TelemetryContext(KafkaConsumerTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
@@ -35,7 +35,7 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
             ), false, false, DefaultKafkaConsumerTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaConsumerTelemetryFactory.NOOP_TRACER, new Properties(), "none", "none", "none", "", "");
     }
 
-    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_CONFIG_PATH = "system.config";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
@@ -51,11 +51,11 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
                                          DefaultKafkaConsumerMetricsFactory metricsFactory,
                                          DefaultKafkaConsumerLoggerFactory loggerFactory,
                                          Properties driverProperties) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultKafkaConsumerTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultKafkaConsumerTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultKafkaConsumerTelemetryFactory.NOOP_METER_REGISTRY;
 
         this.context = new TelemetryContext(config,
-            isTraceEnabled,
+            isTracingEnabled,
             isMetricsEnabled,
             meterRegistry,
             tracer,
@@ -80,7 +80,7 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
     public KafkaConsumerPollObservation observePoll() {
         logger.logPollStart();
 
-        var span = context.isTraceEnabled()
+        var span = context.isTracingEnabled()
             ? createSpanPoll().startSpan()
             : Span.getInvalid();
 

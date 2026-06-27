@@ -12,7 +12,7 @@ public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
 
     public record TelemetryContext(ZeebeWorkerTelemetryConfig config,
                                    String workerType,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer) {
@@ -41,9 +41,9 @@ public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
                                        MeterRegistry meterRegistry,
                                        DefaultZeebeWorkerMetricsFactory metricsFactory,
                                        DefaultZeebeWorkerLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultZeebeWorkerTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultZeebeWorkerTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultZeebeWorkerTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, workerType, isTraceEnabled, isMetricsEnabled, meterRegistry, tracer);
+        this.context = new TelemetryContext(config, workerType, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -55,7 +55,7 @@ public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
     }
 
     protected Span createSpan(ActivatedJob job) {
-        if (!this.context.isTraceEnabled()) {
+        if (!this.context.isTracingEnabled()) {
             return Span.getInvalid();
         }
         var b = this.context.tracer()

@@ -54,4 +54,5 @@ public final class KafkaClassNames {
     public static final ClassName abstractPublisher = ClassName.get("io.koraframework.kafka.common.producer", "AbstractPublisher");
     public static final ClassName producerTelemetryFactory = ClassName.get("io.koraframework.kafka.common.producer.telemetry", "KafkaPublisherTelemetryFactory");
     public static final ClassName generatedPublisher = ClassName.get("io.koraframework.kafka.common.producer", "GeneratedPublisher");
+    public static final ClassName generatedListener = ClassName.get("io.koraframework.kafka.common.consumer", "GeneratedListener");
 }

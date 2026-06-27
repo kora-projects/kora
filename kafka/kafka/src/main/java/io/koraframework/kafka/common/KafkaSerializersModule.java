@@ -16,63 +16,63 @@ import java.util.UUID;
 public interface KafkaSerializersModule {
 
     @DefaultComponent
-    default Serializer<String> stringSerializer() {
+    default Serializer<String> stringKafkaSerializer() {
         return new StringSerializer();
     }
 
     @DefaultComponent
-    default Serializer<byte[]> byteArraySerializer() {
+    default Serializer<byte[]> byteArrayKafkaSerializer() {
         return new ByteArraySerializer();
     }
 
     @DefaultComponent
-    default Serializer<ByteBuffer> byteBufferSerializer() {
+    default Serializer<ByteBuffer> byteBufferKafkaSerializer() {
         return new ByteBufferSerializer();
     }
 
     @DefaultComponent
-    default Serializer<Bytes> bytesSerializer() {
+    default Serializer<Bytes> bytesKafkaSerializer() {
         return new BytesSerializer();
     }
 
     @DefaultComponent
-    default Serializer<Double> doubleSerializer() {
+    default Serializer<Double> doubleKafkaSerializer() {
         return new DoubleSerializer();
     }
 
     @DefaultComponent
-    default Serializer<Float> floatSerializer() {
+    default Serializer<Float> floatKafkaSerializer() {
         return new FloatSerializer();
     }
 
     @DefaultComponent
-    default Serializer<Integer> integerSerializer() {
+    default Serializer<Integer> integerKafkaSerializer() {
         return new IntegerSerializer();
     }
 
     @DefaultComponent
-    default Serializer<Long> longSerializer() {
+    default Serializer<Long> longKafkaSerializer() {
         return new LongSerializer();
     }
 
     @DefaultComponent
-    default Serializer<Short> shortSerializer() {
+    default Serializer<Short> shortKafkaSerializer() {
         return new ShortSerializer();
     }
 
     @DefaultComponent
-    default Serializer<UUID> uuidSerializer() {
+    default Serializer<UUID> uuidKafkaSerializer() {
         return new UUIDSerializer();
     }
 
     @DefaultComponent
-    default Serializer<Void> voidSerializer() {
+    default Serializer<Void> voidKafkaSerializer() {
         return new VoidSerializer();
     }
 
-    @DefaultComponent
     @Json
-    default <T> Serializer<T> objectSerializer(JsonWriter<T> w) {
-        return new JsonKafkaSerializer<>(w);
+    @DefaultComponent
+    default <T> Serializer<T> jsonKafkaSerializer(JsonWriter<T> writer) {
+        return new JsonKafkaSerializer<>(writer);
     }
 }

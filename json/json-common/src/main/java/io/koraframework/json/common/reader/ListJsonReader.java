@@ -1,21 +1,22 @@
-package io.koraframework.json.common;
+package io.koraframework.json.common.reader;
 
+import io.koraframework.json.common.JsonReader;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.JsonToken;
 import tools.jackson.core.exc.StreamReadException;
 
-import java.util.LinkedHashSet;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 
-public class SetJsonReader<T> implements JsonReader<Set<T>> {
+public class ListJsonReader<T> implements JsonReader<List<T>> {
     private final JsonReader<T> reader;
 
-    public SetJsonReader(JsonReader<T> reader) {
+    public ListJsonReader(JsonReader<T> reader) {
         this.reader = reader;
     }
 
     @Override
-    public Set<T> read(JsonParser parser) {
+    public List<T> read(JsonParser parser) {
         var token = parser.currentToken();
         if (token == JsonToken.VALUE_NULL) {
             return null;
@@ -25,10 +26,10 @@ public class SetJsonReader<T> implements JsonReader<Set<T>> {
         }
         token = parser.nextToken();
         if (token == JsonToken.END_ARRAY) {
-            return Set.of();
+            return List.of();
         }
 
-        Set<T> result = new LinkedHashSet<>();
+        List<T> result = new ArrayList<>();
         while (token != JsonToken.END_ARRAY) {
             var element = this.reader.read(parser);
             result.add(element);

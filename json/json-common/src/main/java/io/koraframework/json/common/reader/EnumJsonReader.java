@@ -1,5 +1,6 @@
-package io.koraframework.json.common;
+package io.koraframework.json.common.reader;
 
+import io.koraframework.json.common.JsonReader;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.exc.StreamReadException;

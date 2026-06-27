@@ -44,8 +44,7 @@ public class ConfigModuleGenerator {
                 .returns(configClass)
                 .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
                 .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
-                .addStatement("var value = config.get($S)", configPath)
-                .addStatement("return $T.ofNullable(extractor.extract(value)).orElseThrow(() -> $T.missingValueAfterParse(value))", Optional.class, CommonClassNames.configValueExtractionException)
+                .addStatement("return extractor.extract(config.get($S))", configPath)
                 .build());
 
         return JavaFile.builder(packageName, type.build()).build();

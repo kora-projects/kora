@@ -223,7 +223,7 @@ class CacheSymbolProcessor(
             .addModifiers(KModifier.PUBLIC)
             .addParameter("config", CommonClassNames.config)
             .addParameter("extractor", extractorType)
-            .addStatement("return extractor.extract(config.get(%S))!!", configPath)
+            .addStatement("return extractor.extractOrThrow(config.get(%S))!!", configPath)
             .returns(returnType.asType(listOf()).toTypeName())
             .build()
     }

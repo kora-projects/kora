@@ -8,6 +8,7 @@ import io.opentelemetry.context.Context;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.helpers.NOPLogger;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 
 public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
-    private static final Logger logger = LoggerFactory.getLogger(RedisCache.class);
+    private final Logger logger;
 
     private final RedisCacheClient redisClient;
     private final RedisCacheTelemetry telemetry;
@@ -47,6 +48,10 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
         this.expireAfterWriteMillis = (config.expireAfterWrite() == null)
             ? null
             : config.expireAfterWrite().toMillis();
+
+        this.logger = config.telemetry().logging().enabled()
+            ? LoggerFactory.getLogger(getClass())
+            : NOPLogger.NOP_LOGGER;
 
         if (config.keyPrefix().isBlank()) {
             this.keyPrefix = null;

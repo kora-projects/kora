@@ -18,7 +18,7 @@ import java.util.List;
 public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
     public record TelemetryContext(HttpClientTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
@@ -34,7 +34,7 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
         ), false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none");
     }
 
-    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_CONFIG_PATH = "system.config";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
@@ -50,11 +50,11 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                                       DefaultHttpClientMetricsFactory metricsFactory,
                                       DefaultHttpClientLoggerFactory loggerFactory,
                                       DefaultHttpClientBodyConverter loggerBodyConverter) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultHttpClientTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultHttpClientTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY;
 
         this.context = new TelemetryContext(config,
-            isTraceEnabled,
+            isTracingEnabled,
             isMetricsEnabled,
             meterRegistry,
             tracer,
@@ -70,7 +70,7 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
 
     @Override
     public HttpClientObservation observe(HttpClientRequest request) {
-        var span = context.isTraceEnabled
+        var span = context.isTracingEnabled
             ? startSpan(request).startSpan()
             : Span.getInvalid();
         return new DefaultHttpClientObservation(this.context, this.logger, this.metrics, request, span);

@@ -2,8 +2,6 @@ package io.koraframework.redis.lettuce;
 
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 import io.koraframework.redis.lettuce.telemetry.LettuceTelemetryConfig;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.SocketOptions;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;

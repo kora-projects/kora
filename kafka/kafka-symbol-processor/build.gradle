@@ -7,7 +7,7 @@ dependencies {
     testImplementation project(':config:config-common')
     testImplementation project(':logging:logging-common')
     testImplementation project(':aop:aop-symbol-processor')
-    testImplementation project(':logging:declarative-logging:declarative-logging-symbol-processor')
+    testImplementation project(':logging:logging-aop:logging-aop-symbol-processor')
 
     testImplementation testFixtures(project(':symbol-processor-common'))
 }

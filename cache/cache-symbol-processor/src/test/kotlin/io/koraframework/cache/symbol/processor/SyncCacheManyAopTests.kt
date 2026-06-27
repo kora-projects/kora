@@ -53,7 +53,7 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
             cache2 = cache2Class.constructors[0].newInstance(
                 CacheRunner.getRedisConfig(),
                 CacheRunner.lettuceClient(cache),
-                redisCacheTelemetryFactory(null, null, null, null),
+                defaultRedisCacheTelemetryFactory(null, null, null, null),
                 RedisCacheKeyMapper<DummyCache22.Key> { key ->
                     val k1 = key!!.k1.toByteArray(StandardCharsets.UTF_8)
                     val k2 = key.k2.toString().toByteArray(StandardCharsets.UTF_8)
@@ -63,7 +63,7 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
                         .put(k2)
                         .array()
                 },
-                cacheRedisValueStringMapper()
+                stringRedisCacheKeyMapper()
             ) as DummyCache22
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
