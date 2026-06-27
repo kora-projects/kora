@@ -191,7 +191,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()));
         assertEquals(0, violations.size());
     }
@@ -210,7 +210,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()));
         assertEquals(2, violations.size());
     }
@@ -229,7 +229,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")));
         assertEquals(0, violations.size());
     }
@@ -248,7 +248,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()), ValidationContext.failFast());
         assertEquals(0, violations.size());
     }
@@ -267,7 +267,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()), ValidationContext.failFast());
         assertEquals(1, violations.size());
     }
@@ -285,7 +285,7 @@ public class ValidationJsonNullableFieldTests extends AbstractValidationAnnotati
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")), ValidationContext.failFast());
         assertEquals(0, violations.size());
     }

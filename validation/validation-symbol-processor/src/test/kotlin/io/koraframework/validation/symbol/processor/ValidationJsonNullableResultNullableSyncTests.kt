@@ -176,7 +176,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
+        val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         assertDoesNotThrow { component.invoke<Any>("test") }
     }
 
@@ -202,7 +202,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
+        val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         val ex = assertThrows(ViolationException::class.java) { component.invoke<Any>("test") }
         assertEquals(2, ex.violations.size)
     }
@@ -229,7 +229,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
+        val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         assertDoesNotThrow { component.invoke<Any>("test") }
     }
 
@@ -255,7 +255,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
+        val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         assertDoesNotThrow { component.invoke<Any>("test") }
     }
 
@@ -281,7 +281,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
+        val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         val ex = assertThrows(ViolationException::class.java) { component.invoke<Any>("test") }
         assertEquals(1, ex.violations.size)
     }
@@ -308,7 +308,7 @@ class ValidationJsonNullableResultNullableSyncTests : AbstractValidationSymbolPr
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
+        val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
         assertDoesNotThrow { component.invoke<Any>("test") }
     }
 }

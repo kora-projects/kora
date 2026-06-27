@@ -21,9 +21,9 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
     protected Validator<ValidFoo> getFooValidator() {
         Class<?> clazz = getClazz("io.koraframework.validation.annotation.processor.testdata.$ValidFoo_Validator");
         return getClazzInstance(clazz,
-            notEmptyStringConstraintFactory(),
-            patternStringConstraintFactory(),
-            rangeLongConstraintFactory(),
+            notEmptyStringValidatorFactory(),
+            patternStringValidatorFactory(),
+            rangeLongValidatorFactory(),
             getBarValidator()
         );
     }
@@ -31,9 +31,9 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
     protected Validator<ValidBar> getBarValidator() {
         Class<?> clazz = getClazz("io.koraframework.validation.annotation.processor.testdata.$ValidBar_Validator");
         return getClazzInstance(clazz,
-            notBlankStringConstraintFactory(),
-            sizeStringConstraintFactory(),
-            sizeListConstraintFactory(TypeRef.of(Integer.class)),
+            notBlankStringValidatorFactory(),
+            sizeStringValidatorFactory(),
+            sizeListValidatorFactory(TypeRef.of(Integer.class)),
             listValidator(getTazValidator(), TypeRef.of(ValidTaz.class))
         );
     }
@@ -41,7 +41,7 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
     protected Validator<ValidTaz> getTazValidator() {
         Class<?> clazz = getClazz("io.koraframework.validation.annotation.processor.testdata.$ValidTaz_Validator");
         return getClazzInstance(clazz,
-            patternStringConstraintFactory()
+            patternStringValidatorFactory()
         );
     }
 
