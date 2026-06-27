@@ -69,13 +69,13 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                 val authMethodConfig = ClassName(apiPackage, "ApiSecurity", "Config", authMethod.name + "Config")
                 val username = authMethod.name + "_username"
                 val password = authMethod.name + "_password"
-                b.addStatement("val %N = extractor.extract(config.get(%S))", username, configPath + ".username")
-                b.addStatement("val %N = extractor.extract(config.get(%S))", password, configPath + ".password")
+                b.addStatement("val %N = extractor.extractOrThrow(config.get(%S))", username, configPath + ".username")
+                b.addStatement("val %N = extractor.extractOrThrow(config.get(%S))", password, configPath + ".password")
                 b.addStatement("val %N = %T(%N, %N)", authMethod.name, authMethodConfig, username, password)
                 params.add(CodeBlock.of("%N", authMethod.name))
             }
             if (authMethod.type == "apiKey") {
-                b.addStatement("val %N = extractor.extract(config.get(%S))", authMethod.name, configPath)
+                b.addStatement("val %N = extractor.extractOrThrow(config.get(%S))", authMethod.name, configPath)
                 params.add(CodeBlock.of("%N", authMethod.name))
             }
         }
