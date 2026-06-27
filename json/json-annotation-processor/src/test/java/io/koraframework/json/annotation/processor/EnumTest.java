@@ -57,18 +57,18 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testAnnotationProcessedReaderFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            import io.koraframework.json.common.JsonReader;import io.koraframework.json.common.JsonWriter;@io.koraframework.common.KoraApp
             public interface TestApp {
               @Json
               enum TestEnum {
                 VALUE1, VALUE2
               }
             
-              default io.koraframework.json.common.JsonReader<String> stringReader() { return tools.jackson.core.JsonParser::getValueAsString; }
-              default io.koraframework.json.common.JsonWriter<String> stringWriter() { return tools.jackson.core.JsonGenerator::writeString; }
+              default JsonReader<String> stringReader() { return tools.jackson.core.JsonParser::getValueAsString; }
+              default JsonWriter<String> stringWriter() { return tools.jackson.core.JsonGenerator::writeString; }
             
               @Root
-              default String root(io.koraframework.json.common.JsonReader<TestEnum> r) {return "";}
+              default String root(JsonReader<TestEnum> r) {return "";}
             }
             """);
 
@@ -79,18 +79,18 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testAnnotationProcessedWriterFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            import io.koraframework.json.common.JsonReader;import io.koraframework.json.common.JsonWriter;@io.koraframework.common.KoraApp
             public interface TestApp {
               @Json
               enum TestEnum {
                 VALUE1, VALUE2
               }
             
-              default io.koraframework.json.common.JsonReader<String> stringReader() { return tools.jackson.core.JsonParser::getValueAsString; }
-              default io.koraframework.json.common.JsonWriter<String> stringWriter() { return tools.jackson.core.JsonGenerator::writeString; }
+              default JsonReader<String> stringReader() { return tools.jackson.core.JsonParser::getValueAsString; }
+              default JsonWriter<String> stringWriter() { return tools.jackson.core.JsonGenerator::writeString; }
             
               @Root
-              default String root(io.koraframework.json.common.JsonWriter<TestEnum> r) {return "";}
+              default String root(JsonWriter<TestEnum> r) {return "";}
             }
             """);
 

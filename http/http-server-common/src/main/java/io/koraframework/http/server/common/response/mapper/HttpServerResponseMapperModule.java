@@ -1,7 +1,6 @@
 package io.koraframework.http.server.common.response.mapper;
 
 import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
 import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.server.common.response.HttpServerResponse;

@@ -15,8 +15,8 @@ public class JsonTypes {
     public static final ClassName jsonReader = ClassName.get("io.koraframework.json.common", "JsonReader");
     public static final ClassName jsonWriter = ClassName.get("io.koraframework.json.common", "JsonWriter");
 
-    public static final ClassName enumJsonReader = ClassName.get("io.koraframework.json.common", "EnumJsonReader");
-    public static final ClassName enumJsonWriter = ClassName.get("io.koraframework.json.common", "EnumJsonWriter");
+    public static final ClassName enumJsonReader = ClassName.get("io.koraframework.json.common.reader", "EnumJsonReader");
+    public static final ClassName enumJsonWriter = ClassName.get("io.koraframework.json.common.writer", "EnumJsonWriter");
 
     public static final ClassName jsonFieldAnnotation = ClassName.get("io.koraframework.json.common.annotation", "JsonField");
     public static final ClassName jsonSkipAnnotation = ClassName.get("io.koraframework.json.common.annotation", "JsonSkip");

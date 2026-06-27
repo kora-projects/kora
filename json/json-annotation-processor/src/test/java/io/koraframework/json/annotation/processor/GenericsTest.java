@@ -35,12 +35,12 @@ public class GenericsTest extends AbstractJsonAnnotationProcessorTest {
             public record TestRecord <T>(T value, java.util.List<T> values) {
             }
             """, """
-            @KoraApp
+            import io.koraframework.json.common.JsonReader;import io.koraframework.json.common.JsonWriter;@KoraApp
             public interface TestApp extends io.koraframework.json.common.JsonModule {
                 @Root
-                default String root1(io.koraframework.json.common.JsonWriter<TestRecord<Integer>> w, io.koraframework.json.common.JsonReader<TestRecord<Integer>> r) { return ""; }
+                default String root1(JsonWriter<TestRecord<Integer>> w, JsonReader<TestRecord<Integer>> r) { return ""; }
                 @Root
-                default String root2(io.koraframework.json.common.JsonWriter<TestRecord<String>> w, io.koraframework.json.common.JsonReader<TestRecord<String>> r) { return ""; }
+                default String root2(JsonWriter<TestRecord<String>> w, JsonReader<TestRecord<String>> r) { return ""; }
             }
             """);
         compileResult.assertSuccess();

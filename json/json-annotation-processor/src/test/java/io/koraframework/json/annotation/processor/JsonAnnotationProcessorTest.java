@@ -1,10 +1,12 @@
 package io.koraframework.json.annotation.processor;
 
 import io.koraframework.json.annotation.processor.dto.*;
+import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.reader.ListJsonReader;
 import io.koraframework.json.common.reader.MapJsonReader;
 import io.koraframework.json.common.reader.SetJsonReader;
 import io.koraframework.json.common.util.JsonObjectCodec;
+import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.writer.ListJsonWriter;
 import io.koraframework.json.common.writer.MapJsonWriter;
 import io.koraframework.json.common.writer.SetJsonWriter;
@@ -13,7 +15,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.json.annotation.processor.dto.DtoWithInnerDto.InnerDto;
-import io.koraframework.json.common.*;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 import tools.jackson.core.ObjectReadContext;

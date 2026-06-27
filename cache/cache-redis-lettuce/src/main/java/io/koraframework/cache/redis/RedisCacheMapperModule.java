@@ -2,7 +2,6 @@ package io.koraframework.cache.redis;
 
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.DefaultComponent;
-import io.koraframework.json.common.JsonModule;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;

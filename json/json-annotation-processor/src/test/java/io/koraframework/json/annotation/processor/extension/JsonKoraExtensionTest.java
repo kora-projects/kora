@@ -20,7 +20,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
             public interface TestApp {
               interface TestInterface {}
             
-              default String root0(io.koraframework.json.common.JsonReader<TestInterface> r) {return "";}
+              default String root0(JsonReader<TestInterface> r) {return "";}
             
               @Root
               default Integer root1(String test) {return 42;}
@@ -42,7 +42,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
               record TestRecord() {}
             
               @Root
-              default Integer root1(io.koraframework.json.common.JsonReader<TestRecord> r) {return 42;}
+              default Integer root1(JsonReader<TestRecord> r) {return 42;}
             }
             """);
         compileResult.assertSuccess();
@@ -53,12 +53,12 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testWriterFromExtensionNotFoundForInterface() {
         compile(List.of(new KoraAppProcessor()), """
-            @io.koraframework.common.KoraApp
+            import io.koraframework.json.common.JsonWriter;@io.koraframework.common.KoraApp
             public interface TestApp {
               interface TestInterface {}
             
               @Root
-              default String root(io.koraframework.json.common.JsonWriter<TestInterface> r) {return "";}
+              default String root(JsonWriter<TestInterface> r) {return "";}
             }
             """);
 
@@ -71,13 +71,13 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testWriterFoundForAnnotatedRecord() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            import io.koraframework.json.common.JsonWriter;@io.koraframework.common.KoraApp
             public interface TestApp {
               @io.koraframework.json.common.annotation.Json
               record TestRecord() {}
             
               @Root
-              default Integer root1(io.koraframework.json.common.JsonWriter<TestRecord> r) {return 42;}
+              default Integer root1(JsonWriter<TestRecord> r) {return 42;}
             }
             """);
         compileResult.assertSuccess();
@@ -100,7 +100,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
                 record Impl2(int value) implements TestInterface { }
               }
             
-              default String root0(io.koraframework.json.common.JsonReader<TestInterface> r) { return ""; }
+              default String root0(JsonReader<TestInterface> r) { return ""; }
             
               @Root
               default Integer root1(String test) { return 42; }
@@ -115,7 +115,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testWriterFromExtensionGeneratedForSealedInterface() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            import io.koraframework.json.common.JsonWriter;import io.koraframework.json.common.JsonWriter;@io.koraframework.common.KoraApp
             public interface TestApp {
             
               @JsonDiscriminatorField("type")
@@ -127,7 +127,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
                 record Impl2(int value) implements TestInterface { }
               }
             
-              default String root0(io.koraframework.json.common.JsonWriter<TestInterface> r) { return ""; }
+              default String root0(JsonWriter<TestInterface> r) { return ""; }
             
               @Root
               default Integer root1(String test) { return 42; }
