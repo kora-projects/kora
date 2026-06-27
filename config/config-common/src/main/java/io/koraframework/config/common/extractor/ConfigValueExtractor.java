@@ -1,8 +1,9 @@
 package io.koraframework.config.common.extractor;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.Mapping;
 import io.koraframework.config.common.ConfigValue;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 import java.util.function.Function;
 
@@ -20,6 +21,14 @@ public interface ConfigValueExtractor<T> extends Mapping.MappingFunction {
 
     @Nullable
     T extract(ConfigValue<?> value);
+
+    default T extractOrThrow(ConfigValue<?> value) {
+        var config = extract(value);
+        if (config == null) {
+            throw ConfigValueExtractionException.missingValueAfterParse(value);
+        }
+        return config;
+    }
 
     default <U> ConfigValueExtractor<U> map(Function<T, U> f) {
         return new ConfigValueExtractorMapping<>(this, f);
