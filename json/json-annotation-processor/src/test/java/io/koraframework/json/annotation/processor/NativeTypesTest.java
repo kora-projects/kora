@@ -39,7 +39,7 @@ public class NativeTypesTest extends AbstractJsonAnnotationProcessorTest {
                   record TestRecord(java.net.URI value) { }
                 
                   @Root
-                  default String root(JsonReader<TestRecord> reader) {return "";}
+                  default String root(io.koraframework.json.common.JsonReader<TestRecord> reader) {return "";}
                 }
                 """);
         compileResult.isFailed();
@@ -49,13 +49,13 @@ public class NativeTypesTest extends AbstractJsonAnnotationProcessorTest {
     public void testRecordNativeTypeWriterFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()),
             """
-                import io.koraframework.json.common.JsonWriter;@io.koraframework.common.KoraApp
+                @io.koraframework.common.KoraApp
                 public interface TestApp {
                 
                   record TestRecord(java.net.URI value) { }
                 
                   @Root
-                  default String root(JsonWriter<TestRecord> writer) { return ""; }
+                  default String root(io.koraframework.json.common.JsonWriter<TestRecord> writer) { return ""; }
                 }
                 """);
 
