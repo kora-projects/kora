@@ -114,9 +114,9 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName jsonDiscriminatorValue = ClassName.get("io.koraframework.json.common.annotation", "JsonDiscriminatorValue");
         public static final ClassName jsonNullable = ClassName.get("io.koraframework.json.common", "JsonNullable");
         public static final ClassName jsonWriter = ClassName.get("io.koraframework.json.common", "JsonWriter");
-        public static final ClassName enumJsonWriter = ClassName.get("io.koraframework.json.common", "EnumJsonWriter");
+        public static final ClassName enumJsonWriter = ClassName.get("io.koraframework.json.common.writer", "EnumJsonWriter");
         public static final ClassName jsonReader = ClassName.get("io.koraframework.json.common", "JsonReader");
-        public static final ClassName enumJsonReader = ClassName.get("io.koraframework.json.common", "EnumJsonReader");
+        public static final ClassName enumJsonReader = ClassName.get("io.koraframework.json.common.reader", "EnumJsonReader");
     }
 
     public CodegenParams params;
