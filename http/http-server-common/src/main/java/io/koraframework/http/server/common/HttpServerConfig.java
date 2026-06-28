@@ -48,4 +48,39 @@ public interface HttpServerConfig {
     }
 
     HttpServerTelemetryConfig telemetry();
+
+    HttpServerCorsConfig cors();
+
+    @ConfigValueExtractor
+    interface HttpServerCorsConfig {
+
+        default boolean enabled() {
+            return false;
+        }
+
+        @Nullable
+        default String allowOrigin() {
+            return null;
+        }
+
+        default List<String> allowHeaders() {
+            return List.of("*");
+        }
+
+        default List<String> allowMethods() {
+            return List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
+        }
+
+        default boolean allowCredentials() {
+            return true;
+        }
+
+        default List<String> exposeHeaders() {
+            return List.of();
+        }
+
+        default Duration maxAge() {
+            return Duration.ofHours(1);
+        }
+    }
 }

@@ -1,5 +1,13 @@
 package io.koraframework.http.server.common.router;
 
+import io.koraframework.http.server.common.$HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor;
+import io.koraframework.http.server.common.telemetry.*;
+import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.Mockito;
 import io.koraframework.application.graph.All;
 import io.koraframework.common.util.Size;
 import io.koraframework.http.common.body.HttpBody;
@@ -160,7 +168,8 @@ class HttpServerHandlerProcessTests {
                 new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
-            )
+            ),
+            new $HttpServerConfig_HttpServerCorsConfig_ConfigValueExtractor.HttpServerCorsConfig_Defaults()
         );
     }
 
