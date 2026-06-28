@@ -1,16 +1,15 @@
 package io.koraframework.http.client.ok;
 
-import io.koraframework.http.client.common.*;
+import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.http.client.common.exception.HttpClientConnectionException;
 import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.exception.HttpClientTimeoutException;
 import io.koraframework.http.client.common.exception.HttpClientUnknownException;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.internal.http.HttpMethod;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.http.client.common.request.HttpClientRequest;
 import io.koraframework.http.client.common.response.HttpClientResponse;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 
@@ -59,15 +58,30 @@ public class OkHttpClient implements HttpClient {
     @Nullable
     private RequestBody toRequestBody(HttpClientRequest request) throws IOException {
         var body = request.body();
-        if (!HttpMethod.permitsRequestBody(request.method())) {
+        if (!permitsRequestBody(request.method())) {
             if (body != null) {
                 body.close();
             }
             return null;
         }
-        if (body == null && HttpMethod.requiresRequestBody(request.method())) {
+        if (body == null && requiresRequestBody(request.method())) {
             return RequestBody.create(new byte[0]);
         }
         return new OkHttpRequestBody(body);
+    }
+
+    // Can't use direct HttpMethod.permitsRequestBody cause its internal and can't be exposed via module-info.java
+    private static boolean permitsRequestBody(String method) {
+        return !method.equals("GET") && !method.equals("HEAD");
+    }
+
+    // Can't use direct HttpMethod.requiresRequestBody cause its internal and can't be exposed via module-info.java
+    private static boolean requiresRequestBody(String method) {
+        return method.equals("POST")
+            || method.equals("PUT")
+            || method.equals("PATCH")
+            || method.equals("PROPPATCH")
+            || method.equals("QUERY")
+            || method.equals("REPORT"); // WebDAV
     }
 }

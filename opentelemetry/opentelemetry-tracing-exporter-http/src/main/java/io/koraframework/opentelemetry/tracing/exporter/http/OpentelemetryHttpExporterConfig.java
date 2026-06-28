@@ -5,14 +5,15 @@ import io.koraframework.config.common.annotation.ConfigValueExtractor;
 
 import java.time.Duration;
 
+import static io.koraframework.opentelemetry.tracing.exporter.http.$OpentelemetryHttpExporterConfig_FromConfig_ConfigValueExtractor.*;
+
 
 public sealed interface OpentelemetryHttpExporterConfig {
+
     record Empty() implements OpentelemetryHttpExporterConfig {}
 
     @ConfigValueExtractor
-    sealed interface FromConfig extends OpentelemetryHttpExporterConfig permits
-        $OpentelemetryHttpExporterConfig_FromConfig_ConfigValueExtractor.FromConfig_Defaults,
-        $OpentelemetryHttpExporterConfig_FromConfig_ConfigValueExtractor.FromConfig_Impl {
+    sealed interface FromConfig extends OpentelemetryHttpExporterConfig permits FromConfig_Defaults, FromConfig_Impl {
 
         String endpoint();
 
