@@ -43,9 +43,6 @@ subprojects {
         if (name == "compileJava" && !project.name.contains("internal")) {
             options.compilerArgs << '-Xlint:all' << '-Xlint:-serial,-processing,-missing-explicit-ctor'
         }
-        if (name == "compileJava" && project.path == ":http:http-client-ok") {
-            options.compilerArgs << '--add-exports' << 'okhttp3/okhttp3.internal.http=kora.http.client.ok'
-        }
     }
 }
 
