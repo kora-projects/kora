@@ -3,7 +3,7 @@ package io.koraframework.resilient.symbol.processor.aop.testdata
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import io.koraframework.common.KoraApp
-import io.koraframework.config.common.DefaultConfigExtractorsModule
+import io.koraframework.config.common.extractor.ConfigValueExtractorModule
 import io.koraframework.config.common.origin.SimpleConfigOrigin
 import io.koraframework.config.hocon.HoconConfigFactory
 import io.koraframework.resilient.circuitbreaker.CircuitBreakerModule
@@ -13,7 +13,7 @@ import io.koraframework.resilient.retry.RetryModule
 import io.koraframework.resilient.timeout.TimeoutModule
 
 @KoraApp
-interface AppWithConfig : DefaultConfigExtractorsModule, CircuitBreakerModule, RetryModule, TimeoutModule, FallbackModule, RateLimiterModule {
+interface AppWithConfig : ConfigValueExtractorModule, CircuitBreakerModule, RetryModule, TimeoutModule, FallbackModule, RateLimiterModule {
     fun config(config: Config) = HoconConfigFactory.fromHocon(SimpleConfigOrigin("test"), config)
 
     fun config() = ConfigFactory.parseString(
