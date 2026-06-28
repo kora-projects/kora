@@ -7,6 +7,6 @@ import org.junit.jupiter.api.Test;
 class CommonConfigModuleTest {
     @Test
     void testSystemProperties() {
-        Assertions.assertNotNull(new CommonConfigModule() {}.systemProperties());
+        Assertions.assertNotNull(new CommonConfigModule() {}.systemPropertiesConfig());
     }
 }

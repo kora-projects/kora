@@ -72,7 +72,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
         val m = FunSpec.builder(configName.substring(1).replaceFirstChar { it.lowercaseChar() })
             .addModifiers(KModifier.PUBLIC)
             .addParameter("config", CommonClassNames.config)
-            .addParameter("parser", CommonClassNames.configValueExtractor.parameterizedBy(KafkaClassNames.publisherTopicConfig))
+            .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(KafkaClassNames.publisherTopicConfig))
             .returns(configTypeName)
 
         val b = CodeBlock.builder()
@@ -89,7 +89,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
                 if (i > 0) {
                     b.add(",\n")
                 }
-                b.add("parser.extract(config.get(%S))!!", path)
+                b.add("extractor.extractOrThrow(config.get(%S))!!", path)
             }
         }
         b.unindent().add("\n)\n")

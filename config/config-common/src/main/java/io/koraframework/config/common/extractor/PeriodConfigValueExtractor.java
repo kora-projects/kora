@@ -8,8 +8,9 @@ import java.time.Period;
 import java.time.temporal.ChronoUnit;
 
 public class PeriodConfigValueExtractor implements ConfigValueExtractor<Period> {
-    @Override
+
     @Nullable
+    @Override
     public Period extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
@@ -29,10 +30,10 @@ public class PeriodConfigValueExtractor implements ConfigValueExtractor<Period> 
     }
 
     public static Period parsePeriod(ConfigValue<String> configValue) {
-        var s = ConfigImplUtil.unicodeTrim(configValue.value());
+        var s = ExtractorUtils.unicodeTrim(configValue.value());
         var originalUnitString = getUnits(s);
         var unitString = originalUnitString;
-        var numberString = ConfigImplUtil.unicodeTrim(s.substring(0, s.length() - unitString.length()));
+        var numberString = ExtractorUtils.unicodeTrim(s.substring(0, s.length() - unitString.length()));
 
         // this would be caught later anyway, but the error message
         // is more helpful if we check it here.

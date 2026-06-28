@@ -7,8 +7,9 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 public class DurationConfigValueExtractor implements ConfigValueExtractor<Duration> {
-    @Override
+
     @Nullable
+    @Override
     public Duration extract(ConfigValue<?> value) {
         return extractFromValue(value);
     }
@@ -50,10 +51,10 @@ public class DurationConfigValueExtractor implements ConfigValueExtractor<Durati
     }
 
     public static long parseDuration(ConfigValue<String> configValue) {
-        var s = ConfigImplUtil.unicodeTrim(configValue.value());
+        var s = ExtractorUtils.unicodeTrim(configValue.value());
         var originalUnitString = getUnits(s);
         var unitString = originalUnitString;
-        var numberString = ConfigImplUtil.unicodeTrim(s.substring(0, s.length()
+        var numberString = ExtractorUtils.unicodeTrim(s.substring(0, s.length()
             - unitString.length()));
 
         // this would be caught later anyway, but the error message

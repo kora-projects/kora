@@ -7,6 +7,7 @@ import java.time.Duration;
 import java.util.Objects;
 
 public class DurationArrayConfigValueExtractor implements ConfigValueExtractor<Duration[]> {
+
     private final ConfigValueExtractor<Duration> durationConfigValueExtractor;
 
     public DurationArrayConfigValueExtractor(ConfigValueExtractor<Duration> doubleConfigValueExtractor) {
@@ -18,6 +19,7 @@ public class DurationArrayConfigValueExtractor implements ConfigValueExtractor<D
         if (value.isNull()) {
             return null;
         }
+
         var array = value.asArray();
         var result = new Duration[array.value().size()];
         for (int i = 0; i < result.length; i++) {

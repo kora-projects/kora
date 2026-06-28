@@ -18,6 +18,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
 public interface YamlConfigModule extends CommonConfigModule {
+
     @ApplicationConfig
     default ConfigOrigin applicationConfigOrigin() throws URISyntaxException {
         var resource = System.getProperty("config.resource");
@@ -52,7 +53,7 @@ public interface YamlConfigModule extends CommonConfigModule {
     }
 
     @Tag(YamlConfigModule.class)
-    default Config referenceConfig() throws Exception {
+    default Config applicationConfigYamlReference() throws Exception {
         var references = Thread.currentThread().getContextClassLoader().getResources("reference.yaml");
         var config = MapConfigFactory.fromMap("empty", Map.of());
         while (references.hasMoreElements()) {
@@ -77,7 +78,7 @@ public interface YamlConfigModule extends CommonConfigModule {
     }
 
     @ApplicationConfig
-    default Config yamlConfig(@ApplicationConfig ConfigOrigin configOrigin, @Tag(YamlConfigModule.class) Config reference) throws Exception {
+    default Config applicationConfig(@ApplicationConfig ConfigOrigin configOrigin, @Tag(YamlConfigModule.class) Config reference) throws Exception {
         if (configOrigin instanceof FileConfigOrigin fileConfigOrigin) {
             try (var is = Files.newInputStream(fileConfigOrigin.path(), StandardOpenOption.READ)) {
                 var config = YamlConfigFactory.fromYaml(configOrigin, is);

@@ -5,6 +5,7 @@ import io.koraframework.config.common.ConfigValue;
 import java.util.function.Function;
 
 public final class ConfigValueExtractorMapping<T, U> implements ConfigValueExtractor<U> {
+
     private final ConfigValueExtractor<T> baseExtractor;
     private final Function<T, U> mapping;
 

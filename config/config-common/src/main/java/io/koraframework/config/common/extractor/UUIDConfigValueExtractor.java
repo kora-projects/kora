@@ -7,16 +7,17 @@ import java.util.UUID;
 
 public class UUIDConfigValueExtractor implements ConfigValueExtractor<UUID> {
 
-    @Override
     @Nullable
+    @Override
     public UUID extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
+
         if (value instanceof ConfigValue.StringValue stringValue) {
             return UUID.fromString(stringValue.value());
+        } else {
+            throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
         }
-        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
     }
-
 }

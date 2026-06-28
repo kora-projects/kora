@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public interface HoconConfigModule extends CommonConfigModule {
+
     @ApplicationConfig
     default ConfigOrigin applicationConfigOrigin() throws URISyntaxException {
         var resource = System.getProperty("config.resource");
@@ -52,7 +53,7 @@ public interface HoconConfigModule extends CommonConfigModule {
     }
 
     @ApplicationConfig
-    default com.typesafe.config.Config applicationUnresolved(@ApplicationConfig ConfigOrigin origin) throws Exception {
+    default com.typesafe.config.Config applicationConfigHoconUnresolved(@ApplicationConfig ConfigOrigin origin) throws Exception {
         if (origin instanceof FileConfigOrigin file) {
             try (var reader = Files.newBufferedReader(file.path(), StandardCharsets.UTF_8)) {
                 return ConfigFactory.parseReader(reader);
@@ -72,7 +73,7 @@ public interface HoconConfigModule extends CommonConfigModule {
         }
     }
 
-    default com.typesafe.config.Config hoconConfig(@ApplicationConfig com.typesafe.config.Config config) {
+    default com.typesafe.config.Config applicationConfigHocon(@ApplicationConfig com.typesafe.config.Config config) {
         var loader = Thread.currentThread().getContextClassLoader();
         ConfigFactory.invalidateCaches();
         return ConfigFactory.defaultOverrides(loader)
@@ -82,7 +83,7 @@ public interface HoconConfigModule extends CommonConfigModule {
     }
 
     @ApplicationConfig
-    default Config config(@ApplicationConfig ConfigOrigin origin, com.typesafe.config.Config hoconConfig) {
+    default Config applicationConfig(@ApplicationConfig ConfigOrigin origin, com.typesafe.config.Config hoconConfig) {
         return HoconConfigFactory.fromHocon(origin, hoconConfig);
     }
 }

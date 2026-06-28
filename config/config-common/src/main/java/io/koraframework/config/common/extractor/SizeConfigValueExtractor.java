@@ -6,17 +6,17 @@ import io.koraframework.config.common.ConfigValue;
 
 public final class SizeConfigValueExtractor implements ConfigValueExtractor<Size> {
 
-    @Override
     @Nullable
+    @Override
     public Size extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
-        } else if (value instanceof ConfigValue.NumberValue number) {
-            return Size.ofBytesBinary(number.value().longValue());
-        } else if (value instanceof ConfigValue.StringValue string) {
-            return Size.parse(string.value());
         }
 
-        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
+        return switch (value) {
+            case ConfigValue.NumberValue number -> Size.ofBytesBinary(number.value().longValue());
+            case ConfigValue.StringValue string -> Size.parse(string.value());
+            default -> throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
+        };
     }
 }

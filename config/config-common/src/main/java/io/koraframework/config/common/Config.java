@@ -1,6 +1,7 @@
 package io.koraframework.config.common;
 
 import io.koraframework.config.common.impl.ConfigResolver;
+import io.koraframework.config.common.impl.ConfigUtils;
 import io.koraframework.config.common.origin.ConfigOrigin;
 
 /**
@@ -29,7 +30,7 @@ public interface Config {
     }
 
     default ConfigValue<?> get(ConfigValuePath path) {
-        return ConfigHelper.get(this, path);
+        return ConfigUtils.get(this, path);
     }
 
     /**
