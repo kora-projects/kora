@@ -63,15 +63,15 @@ class SyncCacheManyAopTests : CaffeineCacheModule, RedisCacheModule {
                         .put(k2)
                         .array()
                 },
-                stringRedisCacheKeyMapper()
+                stringRedisCacheValueMapper()
             ) as DummyCache22
 
             val serviceClass = classLoader.loadClass(SERVICE_CLASS) ?: throw IllegalArgumentException("Expected class not found: $SERVICE_CLASS")
             val inst = serviceClass.constructors[0].newInstance(
                 cache1,
-                CacheKeyMapper.CacheKeyMapper2<DummyCache21.Key, String?, BigDecimal?> { k1, k2 -> DummyCache21.Key(k1 ?: "", k2) },
+                CacheKeyMapper.CacheKeyMapper2<DummyCache21.Key, String?, BigDecimal?> { k1, k2 -> DummyCache21.Key(k1 ?: "", k2!!) },
                 cache2,
-                CacheKeyMapper.CacheKeyMapper2<DummyCache22.Key, String?, BigDecimal?> { k1, k2 -> DummyCache22.Key(k1 ?: "", k2) }
+                CacheKeyMapper.CacheKeyMapper2<DummyCache22.Key, String?, BigDecimal?> { k1, k2 -> DummyCache22.Key(k1 ?: "", k2!!) }
             ) as CacheableSyncMany
             inst
         } catch (e: Exception) {

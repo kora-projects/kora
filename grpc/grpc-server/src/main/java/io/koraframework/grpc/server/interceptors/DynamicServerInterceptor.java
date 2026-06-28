@@ -1,6 +1,5 @@
 package io.koraframework.grpc.server.interceptors;
 
-
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;

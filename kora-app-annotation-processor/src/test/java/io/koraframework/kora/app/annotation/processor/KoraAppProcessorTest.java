@@ -160,7 +160,7 @@ class KoraAppProcessorTest {
                       Dependency requested at: io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency#class2(io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
                 s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(330);
                 s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(14);
-                s.assertThat(e.diagnostics.get(0).getSource().getName()).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithUnresolvedDependency.java");
+                s.assertThat(e.diagnostics.get(0).getSource().getName().replace('\\', '/')).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithUnresolvedDependency.java");
             }));
     }
 
@@ -169,7 +169,7 @@ class KoraAppProcessorTest {
         assertThatThrownBy(() -> testClass(AppWithCircularDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 s.assertThat(e.getMessage()).startsWith("Encountered circular dependency in graph for source type:");
-                s.assertThat(e.diagnostics.get(0).getSource().getName()).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithCircularDependency.java");
+                s.assertThat(e.diagnostics.get(0).getSource().getName().replace('\\', '/')).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithCircularDependency.java");
             }));
     }
 

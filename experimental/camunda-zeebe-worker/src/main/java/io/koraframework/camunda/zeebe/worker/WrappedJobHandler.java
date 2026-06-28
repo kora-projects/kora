@@ -6,7 +6,7 @@ import io.camunda.zeebe.client.api.worker.JobHandler;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
 import io.koraframework.common.telemetry.OpentelemetryContext;

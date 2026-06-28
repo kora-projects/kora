@@ -1,4 +1,4 @@
 @NullMarked
-package io.koraframework.micrometer.module.resilient;
+package io.koraframework.camunda.zeebe.worker;
 
 import org.jspecify.annotations.NullMarked;

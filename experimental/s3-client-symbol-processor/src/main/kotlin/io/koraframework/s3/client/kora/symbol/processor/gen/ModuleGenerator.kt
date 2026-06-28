@@ -55,7 +55,7 @@ object ModuleGenerator {
                 .returns(configType)
                 .addParameter("config", CommonClassNames.config)
                 .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(configType))
-                .addStatement("return extractor.extract(config.get(%S))", s3ClientConfigPath)
+                .addStatement("return extractor.extractOrThrow(config.get(%S))", s3ClientConfigPath)
                 .build()
         )
         val clientImpl = FunSpec.builder("clientImpl")

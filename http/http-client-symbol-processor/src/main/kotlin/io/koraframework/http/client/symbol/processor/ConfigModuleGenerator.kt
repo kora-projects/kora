@@ -34,7 +34,7 @@ class ConfigModuleGenerator(val resolver: Resolver) {
                     .returns(configClass)
                     .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
                     .addParameter(ParameterSpec.builder("extractor", extractorClass).build())
-                    .addStatement("return extractor.extract(config.get(%S))", configPath)
+                    .addStatement("return extractor.extractOrThrow(config.get(%S))", configPath)
                     .build()
             )
         return FileSpec.builder(packageName, moduleName)

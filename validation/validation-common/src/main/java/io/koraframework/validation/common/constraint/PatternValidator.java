@@ -1,6 +1,5 @@
 package io.koraframework.validation.common.constraint;
 
-import org.intellij.lang.annotations.Language;
 import io.koraframework.validation.common.ValidationContext;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.Violation;
@@ -13,7 +12,7 @@ final class PatternValidator<T extends CharSequence> implements Validator<T> {
 
     private final Pattern pattern;
 
-    PatternValidator(@Language("RegExp") String pattern, int flags) {
+    PatternValidator(String pattern, int flags) {
         this.pattern = Pattern.compile(pattern, flags);
     }
 

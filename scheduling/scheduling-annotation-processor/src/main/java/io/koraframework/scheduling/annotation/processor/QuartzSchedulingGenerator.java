@@ -69,7 +69,7 @@ public class QuartzSchedulingGenerator {
                 if (cron != null && !cron.isBlank()) {
                     b.addStatement("var value = config.get($S)", configPath);
                     b.beginControlFlow("if (value instanceof $T.NullValue)", CommonClassNames.configValue)
-                        .addCode("return extractor.extract($>\n")
+                        .addCode("return extractor.extractOrThrow($>\n")
                         .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), $S)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue, cron)
                         .addCode("$<\n);\n")
                         .endControlFlow();
@@ -78,11 +78,11 @@ public class QuartzSchedulingGenerator {
                 }
                 b.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
                     .addStatement("var cron = str.value()")
-                    .addCode("return extractor.extract($>\n")
+                    .addCode("return extractor.extractOrThrow($>\n")
                     .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), cron)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue)
                     .addCode("$<\n);\n")
                     .nextControlFlow("else if (value instanceof $T.ObjectValue obj)", CommonClassNames.configValue)
-                    .addStatement("return extractor.extract(obj)")
+                    .addStatement("return extractor.extractOrThrow(obj)")
                     .nextControlFlow("else")
                     .addStatement("throw io.koraframework.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValue)
                     .endControlFlow();

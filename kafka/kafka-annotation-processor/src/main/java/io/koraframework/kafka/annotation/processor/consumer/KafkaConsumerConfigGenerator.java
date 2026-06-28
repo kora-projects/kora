@@ -38,7 +38,7 @@ public class KafkaConsumerConfigGenerator {
             .returns(KafkaClassNames.kafkaConsumerConfig)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.kafkaConsumerConfig), "extractor")
-            .addStatement("return extractor.extract(config.get($S))", configPath)
+            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(TagUtils.makeAnnotationSpec(targetTag));
 

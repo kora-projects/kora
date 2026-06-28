@@ -60,7 +60,7 @@ public class SoapClientImplGenerator {
                 .addAnnotation(CommonClassNames.defaultComponent)
                 .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
                 .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
-                .addStatement("return extractor.extract(config.get($S))", configPath)
+                .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
                 .build())
             .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapClientImpl")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)

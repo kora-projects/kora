@@ -1,4 +1,4 @@
 @NullMarked
-package io.koraframework.cache.redis;
+package io.koraframework.camunda.engine.bpmn;
 
 import org.jspecify.annotations.NullMarked;

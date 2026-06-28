@@ -1,7 +1,5 @@
 package io.koraframework.database.common.annotation;
 
-import org.intellij.lang.annotations.Language;
-
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
@@ -36,6 +34,5 @@ public @interface Query {
      * <hr>
      * <b>English</b>: SQL/CQL query.
      */
-    @Language("SQL")
     String value();
 }

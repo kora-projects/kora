@@ -1,4 +1,4 @@
 @NullMarked
-package io.koraframework.redis.lettuce;
+package io.koraframework.database.cassandra;
 
 import org.jspecify.annotations.NullMarked;

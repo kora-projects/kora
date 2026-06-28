@@ -14,5 +14,3 @@ dependencies {
     testImplementation project(":kora-app-annotation-processor")
     testImplementation project(":internal:test-logging")
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

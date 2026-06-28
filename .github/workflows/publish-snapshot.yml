@@ -20,7 +20,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Gradle artifact
-        run: ./gradlew assemble
+        run: ./gradlew assemble --no-daemon --parallel
 
       - name: Gradle publish
         run: ./gradlew publishMavenPublicationToSnapshotRepository -Psigning.secretKeyRingFile=/tmp/secring.gpg --no-daemon --parallel

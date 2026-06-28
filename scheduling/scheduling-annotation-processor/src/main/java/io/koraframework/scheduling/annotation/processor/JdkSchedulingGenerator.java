@@ -312,7 +312,7 @@ public class JdkSchedulingGenerator {
                 ),
                 "extractor"
             )
-            .addStatement("return extractor.extract(config.get($S))", configPath)
+            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
             .returns(ClassName.get(packageName, configClassName))
             .build();
 
@@ -329,18 +329,18 @@ public class JdkSchedulingGenerator {
 
         if (defaultCron != null && !defaultCron.isBlank()) {
             method.beginControlFlow("if (value instanceof $T.NullValue)", CommonClassNames.configValue)
-                .addCode("return extractor.extract($>\n")
+                .addCode("return extractor.extractOrThrow($>\n")
                 .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), $S)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue, defaultCron)
                 .addCode("$<\n);\n")
                 .endControlFlow();
         }
         method.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
             .addStatement("var cron = str.value()")
-            .addCode("return extractor.extract($>\n")
+            .addCode("return extractor.extractOrThrow($>\n")
             .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), cron)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue)
             .addCode("$<\n);\n")
             .nextControlFlow("else if (value instanceof $T.ObjectValue obj)", CommonClassNames.configValue)
-            .addStatement("return extractor.extract(obj)")
+            .addStatement("return extractor.extractOrThrow(obj)")
             .nextControlFlow("else")
             .addStatement("throw $T.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValueExtractionException, CommonClassNames.configValue)
             .endControlFlow();

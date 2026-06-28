@@ -105,7 +105,7 @@ class KafkaPublisherGenerator(val env: SymbolProcessorEnvironment, val resolver:
             .addAnnotation(propertiesTag)
             .addParameter("config", CommonClassNames.config)
             .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(KafkaClassNames.publisherConfig))
-            .addStatement("return extractor.extract(config.get(%S))!!", configPath)
+            .addStatement("return extractor.extractOrThrow(config.get(%S))!!", configPath)
             .build()
     }
 

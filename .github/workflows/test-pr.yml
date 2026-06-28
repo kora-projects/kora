@@ -35,19 +35,19 @@ jobs:
           gradle-home-cache-cleanup: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Gradle ${{ matrix.task }} classes
-        run: ./gradlew classes-${{ matrix.task }} --scan
+        run: ./gradlew classes-${{ matrix.task }} --scan --no-daemon --parallel
         shell: bash
 
       - name: Gradle ${{ matrix.task }} javadoc
-        run: ./gradlew javadoc-${{ matrix.task }} --scan --parallel
+        run: ./gradlew javadoc-${{ matrix.task }} --scan --no-daemon --parallel
         shell: bash
 
       - name: Gradle ${{ matrix.task }} test classes
-        run: ./gradlew testClasses-${{ matrix.task }} --scan
+        run: ./gradlew testClasses-${{ matrix.task }} --no-daemon --parallel
         shell: bash
 
       - name: Gradle ${{ matrix.task }} test
-        run: ./gradlew test-${{ matrix.task }} --scan --parallel
+        run: ./gradlew test-${{ matrix.task }} --scan --no-daemon --parallel
         shell: bash
 
       - name: Publish ${{ matrix.task }} test report
