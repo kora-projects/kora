@@ -265,7 +265,7 @@ class ZeebeWorkerSymbolProcessor(
         variables
             .firstOrNull { v -> v.isVars }
             ?.let { vars ->
-                val readerType = CLASS_JSON_READER.parameterizedBy(vars.parameter.type.toTypeName())
+                val readerType = CLASS_JSON_READER.parameterizedBy(vars.parameter.type.resolve().makeNotNullable().toTypeName())
                 implBuilder.addProperty("varsReader", readerType, KModifier.PRIVATE, KModifier.FINAL)
                 methodBuilder.addParameter("varsReader", readerType)
                 constructorBuilder.addStatement("this.varsReader = varsReader")
@@ -274,7 +274,7 @@ class ZeebeWorkerSymbolProcessor(
         var varCounter = 1
         for ((parameter, name, isVar) in variables) {
             if (isVar) {
-                val readerType = CLASS_JSON_READER.parameterizedBy(parameter.type.toTypeName())
+                val readerType = CLASS_JSON_READER.parameterizedBy(parameter.type.resolve().makeNotNullable().toTypeName())
                 val readerName = "var" + varCounter + "Reader"
                 implBuilder.addProperty(readerName, readerType, KModifier.PRIVATE, KModifier.FINAL)
                 methodBuilder.addParameter(readerName, readerType)
