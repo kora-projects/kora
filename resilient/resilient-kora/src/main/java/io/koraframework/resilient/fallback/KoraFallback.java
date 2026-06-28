@@ -1,53 +1,46 @@
 package io.koraframework.resilient.fallback;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.koraframework.resilient.fallback.telemetry.FallbackTelemetry;
 
 import java.util.function.Supplier;
 
 final class KoraFallback implements Fallback {
 
-    private static final Logger logger = LoggerFactory.getLogger(KoraFallback.class);
-
     private final String name;
-    private final FallbackMetrics metrics;
+    private final FallbackTelemetry telemetry;
     private final FallbackPredicate failurePredicate;
     private final FallbackConfig.NamedConfig config;
 
-    KoraFallback(String name, FallbackMetrics metrics, FallbackPredicate failurePredicate, FallbackConfig.NamedConfig config) {
+    KoraFallback(String name, FallbackTelemetry telemetry, FallbackPredicate failurePredicate, FallbackConfig.NamedConfig config) {
         this.name = name;
-        this.metrics = metrics;
+        this.telemetry = telemetry;
         this.failurePredicate = failurePredicate;
         this.config = config;
     }
 
     @Override
     public boolean canFallback(Throwable throwable) {
-        if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("Fallback '{}' is disabled", name);
-            return false;
-        } else if (failurePredicate.test(throwable)) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("Fallback '{}' initiating due to exception", name, throwable);
-            } else if (logger.isDebugEnabled()) {
-                logger.debug("Fallback '{}' initiating due to exception: {}", name, throwable.toString());
+        var observation = this.telemetry.observe();
+        try {
+            if (Boolean.FALSE.equals(config.enabled())) {
+                return false;
+            } else if (failurePredicate.test(throwable)) {
+                observation.recordExecute(throwable);
+                return true;
+            } else {
+                return false;
             }
-            metrics.recordExecute(name, throwable);
-            return true;
-        } else {
-            if (logger.isTraceEnabled()) {
-                logger.trace("Fallback '{}' rejected exception due to predicate", name, throwable);
-            } else if (logger.isDebugEnabled()) {
-                logger.debug("Fallback '{}' rejected exception due to predicate: {}", name, throwable.toString());
-            }
-            return false;
+        } catch (Throwable e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
     }
 
     @Override
     public void fallback(Runnable runnable, Runnable fallback) {
         if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("Fallback '{}' is disabled", name);
             runnable.run();
             return;
         }
@@ -66,7 +59,6 @@ final class KoraFallback implements Fallback {
     @Override
     public <T> T fallback(Supplier<T> supplier, Supplier<T> fallback) {
         if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("Fallback '{}' is disabled", name);
             return supplier.get();
         }
 

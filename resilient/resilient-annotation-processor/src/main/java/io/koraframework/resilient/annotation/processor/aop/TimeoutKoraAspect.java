@@ -1,10 +1,8 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
-import com.palantir.javapoet.AnnotationSpec;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
 import io.koraframework.annotation.processor.common.CommonClassNames;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.aop.annotation.processor.KoraAspect;
@@ -26,6 +24,7 @@ public class TimeoutKoraAspect implements KoraAspect {
 
     private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.timeout.annotation", "Timeout");
     private static final ClassName EXHAUSTED_EXCEPTION = ClassName.get("io.koraframework.resilient.timeout", "TimeoutExhaustedException");
+    private static final ClassName TIMEOUT_TELEMETRY_CONFIG = ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryConfig");
 
     private final ProcessingEnvironment env;
 
@@ -54,15 +53,18 @@ public class TimeoutKoraAspect implements KoraAspect {
 
         var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.timeout.TimeoutManager"));
         var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
-        var metricsType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.timeout.TimeoutMetrics"));
-        var fieldMetrics = aspectContext.fieldFactory().constructorParam(metricsType, List.of(AnnotationSpec.builder(Nullable.class).build()));
+        var telemetryFactoryType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryFactory"));
+        var fieldTelemetryFactory = aspectContext.fieldFactory().constructorParam(telemetryFactoryType, List.of());
         var timeouterType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.timeout.Timeout"));
         var fieldTimeout = aspectContext.fieldFactory().constructorInitialized(timeouterType,
             CodeBlock.of("$L.get($S)", fieldManager, timeoutName));
+        var timeoutTelemetryType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry"));
+        var fieldTelemetry = aspectContext.fieldFactory().constructorInitialized(timeoutTelemetryType,
+            CodeBlock.of("$L.get($S, new $T() {})", fieldTelemetryFactory, timeoutName, TIMEOUT_TELEMETRY_CONFIG));
 
         final CodeBlock body;
         if (MethodUtils.isCompletionStage(method)) {
-            body = buildBodyCompletableStage(method, superCall, timeoutName, fieldTimeout, fieldMetrics);
+            body = buildBodyCompletableStage(method, superCall, timeoutName, fieldTimeout, fieldTelemetry);
         } else {
             body = buildBodySync(method, superCall, fieldTimeout);
         }
@@ -87,7 +89,7 @@ public class TimeoutKoraAspect implements KoraAspect {
         }
     }
 
-    private CodeBlock buildBodyCompletableStage(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
+    private CodeBlock buildBodyCompletableStage(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldTelemetry) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
@@ -99,19 +101,22 @@ public class TimeoutKoraAspect implements KoraAspect {
                           _cause = ce.getCause();
                       }
                       if(_cause instanceof $T) {
-                        if($L != null) {
-                            $L.recordTimeout($S, $L.timeout().toNanos());
+                        var _observation = $L.observe();
+                        try {
+                            _observation.recordTimeout($L.timeout().toNanos());
+                        } finally {
+                            _observation.end();
                         }
                         return $T.failedFuture(new $T($S, "Timeout exceeded " + $L.timeout()));
                       } else {
                         return $T.failedFuture(_cause);
                       }
                     });""", superMethod.toString(), fieldTimeout, TimeUnit.class, CompletionException.class, TimeoutException.class,
-            fieldMetrics, fieldMetrics, timeoutName, fieldTimeout, CompletableFuture.class,
+            fieldTelemetry, fieldTimeout, CompletableFuture.class,
             EXHAUSTED_EXCEPTION, timeoutName, fieldTimeout, CompletableFuture.class).build();
     }
 
-    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
+    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldTelemetry) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
@@ -119,15 +124,20 @@ public class TimeoutKoraAspect implements KoraAspect {
                     .timeout($L.timeout())
                     .onErrorMap(e -> e instanceof $T, e -> new $T($S, "Timeout exceeded " + $L.timeout()))
                     .doOnError(e -> {
-                        if(e instanceof $T && $L != null) {
-                            $L.recordTimeout($S, $L.timeout().toNanos());
+                        if(e instanceof $T) {
+                            var _observation = $L.observe();
+                            try {
+                                _observation.recordTimeout($L.timeout().toNanos());
+                            } finally {
+                                _observation.end();
+                            }
                         }
                     });
                 """, superMethod.toString(), fieldTimeout, TimeoutException.class, EXHAUSTED_EXCEPTION, timeoutName,
-            fieldTimeout, EXHAUSTED_EXCEPTION, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
+            fieldTimeout, EXHAUSTED_EXCEPTION, fieldTelemetry, fieldTimeout).build();
     }
 
-    private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldMetrics) {
+    private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String timeoutName, String fieldTimeout, String fieldTelemetry) {
         final CodeBlock superMethod = buildMethodCall(method, superCall);
 
         return CodeBlock.builder().add("""
@@ -135,12 +145,17 @@ public class TimeoutKoraAspect implements KoraAspect {
                     .timeout($L.timeout())
                     .onErrorMap(e -> e instanceof $T, e -> new $T($S, "Timeout exceeded " + $L.timeout()))
                     .doOnError(e -> {
-                        if(e instanceof $T && $L != null) {
-                            $L.recordTimeout($S, $L.timeout().toNanos());
+                        if(e instanceof $T) {
+                            var _observation = $L.observe();
+                            try {
+                                _observation.recordTimeout($L.timeout().toNanos());
+                            } finally {
+                                _observation.end();
+                            }
                         }
                     });
                 """, superMethod.toString(), fieldTimeout, TimeoutException.class, EXHAUSTED_EXCEPTION, timeoutName,
-            fieldTimeout, EXHAUSTED_EXCEPTION, fieldMetrics, fieldMetrics, timeoutName, fieldTimeout).build();
+            fieldTimeout, EXHAUSTED_EXCEPTION, fieldTelemetry, fieldTimeout).build();
     }
 
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {

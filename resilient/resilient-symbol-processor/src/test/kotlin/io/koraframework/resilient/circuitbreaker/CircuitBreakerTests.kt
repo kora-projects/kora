@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
+import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry
 import java.time.Duration
 import java.util.concurrent.Callable
 import java.util.function.Supplier
@@ -27,7 +28,7 @@ class CircuitBreakerTests {
         val config: CircuitBreakerConfig.NamedConfig = `$CircuitBreakerConfig_NamedConfig_ConfigValueExtractor`.NamedConfig_Impl(
             true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate::class.java.canonicalName
         )
-        val circuitBreaker = KoraCircuitBreaker("default", config, KoraCircuitBreakerPredicate(), NoopCircuitBreakerMetrics())
+        val circuitBreaker = KoraCircuitBreaker("default", config, KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE)
 
         val successCallable = Callable {
             try {

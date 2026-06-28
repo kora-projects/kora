@@ -1,27 +1,39 @@
 package io.koraframework.resilient.retry;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.All;
+import io.koraframework.common.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.resilient.retry.telemetry.RetryTelemetryFactory;
+import io.koraframework.resilient.retry.telemetry.impl.DefaultRetryLoggerFactory;
+import io.koraframework.resilient.retry.telemetry.impl.DefaultRetryMetricsFactory;
+import io.koraframework.resilient.retry.telemetry.impl.DefaultRetryTelemetryFactory;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import org.jspecify.annotations.Nullable;
 
 public interface RetryModule {
 
     default RetryConfig koraRetryableConfig(Config config, ConfigValueExtractor<RetryConfig> extractor) {
-        var value = config.get("resilient");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("resilient"));
     }
 
     default RetryManager koraRetryableManager(All<RetryPredicate> failurePredicates,
                                               RetryConfig config,
-                                              @Nullable RetryMetrics metrics) {
-        return new KoraRetryManager(config, failurePredicates,
-            metrics == null
-                ? new NoopRetryMetrics()
-                : metrics);
+                                              RetryTelemetryFactory telemetryFactory) {
+        return new KoraRetryManager(config, failurePredicates, telemetryFactory);
     }
 
-    default RetryPredicate koraRetryFailurePredicate() {
+    @DefaultComponent
+    default RetryTelemetryFactory defaultRetryTelemetryFactory(@Nullable Tracer tracer,
+                                                               @Nullable MeterRegistry meterRegistry,
+                                                               @Nullable DefaultRetryLoggerFactory loggerFactory,
+                                                               @Nullable DefaultRetryMetricsFactory metricsFactory) {
+        return new DefaultRetryTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
+    }
+
+    @DefaultComponent
+    default RetryPredicate defaultRetryFailurePredicate() {
         return new KoraRetryPredicate();
     }
 }

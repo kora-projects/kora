@@ -1,9 +1,7 @@
 package io.koraframework.resilient.retry;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import io.koraframework.resilient.retry.telemetry.RetryObservation;
 
-import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -14,11 +12,9 @@ record KoraRetryState(
     long delayStepNanos,
     int attemptsMax,
     RetryPredicate failurePredicate,
-    RetryMetrics metrics,
+    RetryObservation observation,
     AtomicInteger attempts
 ) implements Retry.RetryState {
-
-    private static final Logger logger = LoggerFactory.getLogger(KoraRetryState.class);
 
     @Override
     public int getAttempts() {
@@ -38,34 +34,15 @@ record KoraRetryState(
 
     @Override
     public RetryStatus onException(Throwable throwable) {
+        observation.observeError(throwable);
         if (!failurePredicate.test(throwable)) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("RetryState '{}' predicate rejected exception", name, throwable);
-            } else if (logger.isDebugEnabled()) {
-                logger.debug("RetryState '{}' predicate rejected exception: {}", name, throwable.toString());
-            }
             return RetryStatus.REJECTED;
         }
 
         var attemptsUsed = attempts.incrementAndGet();
         if (attemptsUsed <= attemptsMax) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception",
-                    name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable);
-            } else if (logger.isDebugEnabled()) {
-                logger.debug("RetryState '{}' initiating '{}' retry attempt in '{}' due to exception: {}",
-                    name, attemptsUsed, Duration.ofNanos(getDelayNanos()), throwable.toString());
-            }
-
             return RetryStatus.ACCEPTED;
         } else {
-            if (logger.isTraceEnabled()) {
-                logger.trace("Retry '{}' exhausted after {} attempts due to exception",
-                    name, getAttemptsMax(), throwable);
-            } else if (logger.isDebugEnabled()) {
-                logger.debug("Retry '{}' exhausted after {} attempts due to: {}",
-                    name, getAttemptsMax(), throwable.toString());
-            }
             return RetryStatus.EXHAUSTED;
         }
     }
@@ -79,15 +56,17 @@ record KoraRetryState(
     @Override
     public void close() {
         var attemptsUsed = attempts.get();
-        if (attemptsUsed > attemptsMax) {
-            logger.debug("RetryState '{}' exhausted all '{}' retry attempts", name, attemptsMax);
-            metrics.recordExhaustedAttempts(name, attemptsMax);
-        } else if (attemptsUsed > 0) {
-            logger.trace("RetryState '{}' success after '{}' failed retry attempts", name, attemptsUsed);
-            for (int i = 1; i < attemptsUsed; i++) {
-                final long attemptDelay = delayNanos + delayStepNanos * i;
-                metrics.recordAttempt(name, attemptDelay);
+        try {
+            if (attemptsUsed > attemptsMax) {
+                observation.recordExhaustedAttempts(attemptsMax);
+            } else if (attemptsUsed > 0) {
+                for (int i = 1; i < attemptsUsed; i++) {
+                    final long attemptDelay = delayNanos + delayStepNanos * i;
+                    observation.recordAttempt(attemptDelay);
+                }
             }
+        } finally {
+            observation.end();
         }
     }
 

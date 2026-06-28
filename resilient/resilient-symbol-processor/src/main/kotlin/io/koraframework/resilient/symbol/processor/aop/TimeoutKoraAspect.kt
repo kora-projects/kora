@@ -37,6 +37,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         val systemMember = MemberName("java.lang", "System")
         val atomicMember = MemberName("java.util.concurrent.atomic", "AtomicLong")
         val timeoutKoraMember = MemberName("io.koraframework.resilient.timeout", "TimeoutExhaustedException")
+        val timeoutTelemetryConfig = ClassName("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryConfig")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -58,19 +59,23 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
 
         val timeoutName = annotation.findValue<String>("value")!!
 
-        val metricType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.TimeoutMetrics")!!.asType(listOf()).makeNullable()
-        val fieldMetric = aspectContext.fieldFactory.constructorParam(metricType, listOf())
+        val telemetryFactoryType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryFactory")!!.asType(listOf())
+        val fieldTelemetryFactory = aspectContext.fieldFactory.constructorParam(telemetryFactoryType, listOf())
         val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.TimeoutManager")!!.asType(listOf())
         val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
         val fieldTimeout = aspectContext.fieldFactory.constructorInitialized(
             resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.Timeout")!!.asType(listOf()),
             CodeBlock.of("%L[%S]", fieldManager, timeoutName)
         )
+        val fieldTelemetry = aspectContext.fieldFactory.constructorInitialized(
+            resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry")!!.asType(listOf()),
+            CodeBlock.of("%L.get(%S, object : %T {})", fieldTelemetryFactory, timeoutName, timeoutTelemetryConfig)
+        )
 
         val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, superCall, timeoutName, fieldTimeout, fieldMetric)
+            buildBodyFlow(ksFunction, superCall, timeoutName, fieldTimeout, fieldTelemetry)
         } else if (ksFunction.isSuspend()) {
-            buildBodySuspend(ksFunction, superCall, timeoutName, fieldTimeout, fieldMetric)
+            buildBodySuspend(ksFunction, superCall, timeoutName, fieldTimeout, fieldTelemetry)
         } else {
             buildBodySync(ksFunction, superCall, fieldTimeout)
         }
@@ -98,7 +103,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
     }
 
     private fun buildBodySuspend(
-        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldMetric: String
+        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldTelemetry: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
@@ -108,16 +113,21 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
                       %L
                   }
             } catch (e: %M) {
-                %L?.recordTimeout(%S, %L.timeout().toNanos())
+                val _observation = %L.observe()
+                try {
+                    _observation.recordTimeout(%L.timeout().toNanos())
+                } finally {
+                    _observation.end()
+                }
                 throw %M(%S, "Timeout exceeded " + %L.timeout())
             }
           """.trimIndent(), timeoutMember, fieldTimeout, superMethod.toString(), timeoutCancelMember,
-            fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout
+            fieldTelemetry, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout
         ).build()
     }
 
     private fun buildBodyFlow(
-        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldMetric: String
+        method: KSFunctionDeclaration, superCall: String, timeoutName: String, fieldTimeout: String, fieldTelemetry: String
     ): CodeBlock {
         val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
@@ -128,7 +138,12 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
                 .%M {
                     val current = %M.nanoTime()
                     if (current > limit.get()) {
-                        %L?.recordTimeout(%S, %L.timeout().toNanos())
+                        val _observation = %L.observe()
+                        try {
+                            _observation.recordTimeout(%L.timeout().toNanos())
+                        } finally {
+                            _observation.end()
+                        }
                         throw %M(%S, "Timeout exceeded " + %L.timeout())
                     } else {
                         false
@@ -136,7 +151,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
                 }
             """.trimIndent(),
             atomicMember, flowMember, emitMember, superMethod.toString(), startMember, systemMember,
-            fieldTimeout, whileMember, systemMember, fieldMetric, timeoutName, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout,
+            fieldTimeout, whileMember, systemMember, fieldTelemetry, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout,
         ).build()
     }
 

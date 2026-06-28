@@ -2,6 +2,7 @@ package io.koraframework.resilient.ratelimiter;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
@@ -14,6 +15,8 @@ public interface RateLimiterConfig {
     default Map<String, NamedConfig> ratelimiter() {
         return Map.of();
     }
+
+    RateLimiterTelemetryConfig telemetry();
 
     /**
      * {@link #limitForPeriod} Configures the number of permissions available during one limit refresh period.

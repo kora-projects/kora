@@ -1,5 +1,6 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.resilient.retry.telemetry.RetryTelemetryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,12 +14,12 @@ final class KoraRetryManager implements RetryManager {
     private final Map<String, Retry> retryableByName = new ConcurrentHashMap<>();
     private final Iterable<RetryPredicate> failurePredicates;
     private final RetryConfig config;
-    private final RetryMetrics metrics;
+    private final RetryTelemetryFactory telemetryFactory;
 
-    KoraRetryManager(RetryConfig config, Iterable<RetryPredicate> failurePredicates, RetryMetrics metrics) {
+    KoraRetryManager(RetryConfig config, Iterable<RetryPredicate> failurePredicates, RetryTelemetryFactory telemetryFactory) {
         this.config = config;
         this.failurePredicates = failurePredicates;
-        this.metrics = metrics;
+        this.telemetryFactory = telemetryFactory;
     }
 
     @Override
@@ -26,8 +27,12 @@ final class KoraRetryManager implements RetryManager {
         return retryableByName.computeIfAbsent(name, (k) -> {
             final RetryConfig.NamedConfig config = this.config.getNamedConfig(name);
             final RetryPredicate failurePredicate = getFailurePredicate(config);
-            logger.debug("Creating Retry named '{}' with config {}", name, config);
-            return new KoraRetry(name, config, failurePredicate, metrics);
+            logger.atDebug()
+                .addKeyValue("resilientType", "retry")
+                .addKeyValue("resilientName", name)
+                .addKeyValue("config", config)
+                .log("Creating Retry");
+            return new KoraRetry(name, config, failurePredicate, this.telemetryFactory.get(name, this.config.telemetry()));
         });
     }
 
