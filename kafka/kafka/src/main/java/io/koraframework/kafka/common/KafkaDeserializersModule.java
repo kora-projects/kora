@@ -16,63 +16,63 @@ import java.util.UUID;
 public interface KafkaDeserializersModule {
 
     @DefaultComponent
-    default Deserializer<String> stringDeserializer() {
+    default Deserializer<String> stringKafkaDeserializer() {
         return new StringDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<UUID> uuidDeserializer() {
+    default Deserializer<UUID> uuidKafkaDeserializer() {
         return new UUIDDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<byte[]> byteArrayDeserializer() {
+    default Deserializer<byte[]> byteArrayKafkaDeserializer() {
         return new ByteArrayDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<Bytes> bytesDeserializer() {
+    default Deserializer<Bytes> bytesKafkaDeserializer() {
         return new BytesDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<ByteBuffer> byteBufferDeserializer() {
+    default Deserializer<ByteBuffer> byteBufferKafkaDeserializer() {
         return new ByteBufferDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<Double> doubleDeserializer() {
+    default Deserializer<Double> doubleKafkaDeserializer() {
         return new DoubleDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<Float> floatDeserializer() {
+    default Deserializer<Float> floatKafkaDeserializer() {
         return new FloatDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<Integer> integerDeserializer() {
+    default Deserializer<Integer> integerKafkaDeserializer() {
         return new IntegerDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<Long> longDeserializer() {
+    default Deserializer<Long> longKafkaDeserializer() {
         return new LongDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<Short> shortDeserializer() {
+    default Deserializer<Short> shortKafkaDeserializer() {
         return new ShortDeserializer();
     }
 
     @DefaultComponent
-    default Deserializer<Void> voidDeserializer() {
+    default Deserializer<Void> voidKafkaDeserializer() {
         return new VoidDeserializer();
     }
 
-    @DefaultComponent
     @Json
-    default <T> JsonKafkaDeserializer<T> deserializer(JsonReader<T> reader) {
+    @DefaultComponent
+    default <T> JsonKafkaDeserializer<T> jsonKafkaDeserializer(JsonReader<T> reader) {
         return new JsonKafkaDeserializer<>(reader);
     }
 }

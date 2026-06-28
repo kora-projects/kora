@@ -1,6 +1,5 @@
 package io.koraframework.validation.common.annotation;
 
-import org.jetbrains.annotations.Range;
 import io.koraframework.common.AopAnnotation;
 import io.koraframework.validation.common.constraint.factory.SizeValidatorFactory;
 
@@ -20,14 +19,12 @@ import java.util.Map;
 public @interface Size {
 
     /**
-     * @return minimum value should have (inclusive)
+     * @return minimum value should have (inclusive) (from = 0, to = Integer.MAX_VALUE)
      */
-    @Range(from = 0, to = Integer.MAX_VALUE)
     int min() default 0;
 
     /**
-     * @return maximum value should have (inclusive)
+     * @return maximum value should have (inclusive) (from = 0, to = Integer.MAX_VALUE)
      */
-    @Range(from = 0, to = Integer.MAX_VALUE)
     int max();
 }

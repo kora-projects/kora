@@ -11,8 +11,7 @@ import io.koraframework.scheduling.common.SchedulingModule;
 public interface SchedulingJdkModule extends SchedulingModule {
 
     default SchedulingJdkConfig schedulingJdkConfig(Config config, ConfigValueExtractor<SchedulingJdkConfig> extractor) {
-        var value = config.get("scheduling.jdk");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("scheduling.jdk"));
     }
 
     @DefaultComponent

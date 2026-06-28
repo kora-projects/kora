@@ -4,10 +4,10 @@ import org.jspecify.annotations.NullMarked;
 module kora.cache.caffeine {
     requires transitive com.github.benmanes.caffeine;
 
-    requires kora.common;
-    requires kora.config.common;
-    requires kora.telemetry.common;
-    requires kora.cache.common;
+    requires transitive kora.common;
+    requires transitive kora.config.common;
+    requires transitive kora.telemetry.common;
+    requires transitive kora.cache.common;
 
     exports io.koraframework.cache.caffeine;
 }

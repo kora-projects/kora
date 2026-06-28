@@ -4,6 +4,7 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.kafka.common.KafkaUtils.NamedThreadFactory;
 import io.koraframework.kafka.common.consumer.ConsumerAwareRebalanceListener;
+import io.koraframework.kafka.common.consumer.GeneratedListener;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerPollObservation;
@@ -29,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class KafkaSubscribeConsumerContainer<K, V> implements Lifecycle {
+public final class KafkaSubscribeConsumerContainer<K, V> implements GeneratedListener {
 
     private final Logger logger;
 

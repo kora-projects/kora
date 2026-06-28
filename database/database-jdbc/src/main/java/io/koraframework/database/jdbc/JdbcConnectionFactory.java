@@ -22,21 +22,19 @@ import java.sql.PreparedStatement;
 @SuppressWarnings("overloads")
 public interface JdbcConnectionFactory {
 
-    <T> T withConnection(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException;
+    <T> T withConnection(JdbcHelper.SqlFunction<Connection, T> callback) throws RuntimeSqlException;
 
     @Nullable
     Connection currentConnection();
 
     @Nullable
-    default ConnectionContext currentConnectionContext() {
-        return null;
-    }
+    ConnectionContext currentContext();
 
     Connection newConnection();
 
     DatabaseTelemetry telemetry();
 
-    default <T> T query(QueryContext queryContext, JdbcHelper.SqlFunction1<PreparedStatement, T> callback) {
+    default <T> T query(QueryContext queryContext, JdbcHelper.SqlFunction<PreparedStatement, T> callback) {
         var observation = this.telemetry().observe(queryContext);
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -52,7 +50,7 @@ public interface JdbcConnectionFactory {
             }));
     }
 
-    default <T> T withConnection(JdbcHelper.SqlFunction0<T> callback) throws RuntimeSqlException {
+    default <T> T withConnection(JdbcHelper.SqlSupplier<T> callback) throws RuntimeSqlException {
         return this.withConnection(connection -> {
             return callback.apply();
         });
@@ -72,7 +70,7 @@ public interface JdbcConnectionFactory {
         });
     }
 
-    default <T> T inTx(JdbcHelper.SqlFunction1<Connection, T> callback) throws RuntimeSqlException {
+    default <T> T inTx(JdbcHelper.SqlFunction<Connection, T> callback) throws RuntimeSqlException {
         return this.withConnection(connection -> {
             if (!connection.getAutoCommit()) {
                 return callback.apply(connection);
@@ -87,7 +85,7 @@ public interface JdbcConnectionFactory {
                 try {
                     connection.rollback();
                     connection.setAutoCommit(true);
-                    for (PostRollbackAction action : currentConnectionContext().postRollbackActions()) {
+                    for (PostRollbackAction action : currentContext().postRollbackActions()) {
                         action.run(connection, e);
                     }
                 } catch (Exception suppressed) {
@@ -95,14 +93,14 @@ public interface JdbcConnectionFactory {
                 }
                 throw e;
             }
-            for (PostCommitAction action : currentConnectionContext().postCommitActions()) {
+            for (PostCommitAction action : currentContext().postCommitActions()) {
                 action.run(connection);
             }
             return result;
         });
     }
 
-    default <T> T inTx(JdbcHelper.SqlFunction0<T> callback) throws RuntimeSqlException {
+    default <T> T inTx(JdbcHelper.SqlSupplier<T> callback) throws RuntimeSqlException {
         return this.inTx(connection -> {
             return callback.apply();
         });

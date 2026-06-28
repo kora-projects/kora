@@ -6,8 +6,7 @@ import io.koraframework.config.common.extractor.ConfigValueExtractor;
 public interface LiquibaseJdbcDatabaseModule {
 
     default LiquibaseConfig liquibaseConfig(Config config, ConfigValueExtractor<LiquibaseConfig> extractor) {
-        var value = config.get("liquibase");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("liquibase"));
     }
 
     default LiquibaseJdbcDatabaseInterceptor liquibaseJdbcDatabaseInterceptor(LiquibaseConfig liquibaseConfig) {

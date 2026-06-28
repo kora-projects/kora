@@ -1,3 +1,6 @@
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 module kora.telemetry.common {
     requires transitive kora.config.common;
     requires transitive io.opentelemetry.semconv;

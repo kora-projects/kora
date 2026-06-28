@@ -6,5 +6,3 @@ dependencies {
 
     testImplementation(testFixtures(project(":annotation-processor-common")))
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

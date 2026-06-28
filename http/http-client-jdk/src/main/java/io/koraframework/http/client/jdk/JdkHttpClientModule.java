@@ -16,7 +16,7 @@ public interface JdkHttpClientModule extends HttpClientModule {
     }
 
     default JdkHttpClientConfig jdkHttpClientConfig(Config config, ConfigValueExtractor<JdkHttpClientConfig> extractor) {
-        return extractor.extract(config.get("httpClient.jdk"));
+        return extractor.extractOrThrow(config.get("httpClient.jdk"));
     }
 
     @DefaultComponent

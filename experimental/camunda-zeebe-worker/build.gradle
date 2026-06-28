@@ -1,5 +1,3 @@
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
-
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 

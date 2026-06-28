@@ -16,7 +16,7 @@ dependencies {
     testImplementation project(":logging:logging-logback")
     testImplementation project(":aop:aop-symbol-processor")
     testImplementation project(":config:config-symbol-processor")
-    testImplementation project(":logging:declarative-logging:declarative-logging-symbol-processor")
+    testImplementation project(":logging:logging-aop:logging-aop-symbol-processor")
 
     testImplementation project(":database:database-common")
     testImplementation project(":database:database-jdbc")

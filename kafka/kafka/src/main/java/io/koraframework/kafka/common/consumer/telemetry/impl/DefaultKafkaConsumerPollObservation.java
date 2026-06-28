@@ -85,7 +85,7 @@ public class DefaultKafkaConsumerPollObservation implements KafkaConsumerPollObs
     @Override
     public KafkaConsumerRecordObservation observeRecord(ConsumerRecord<?, ?> record) {
         Span span;
-        if (context.isTraceEnabled()) {
+        if (context.isTracingEnabled()) {
             span = createSpan(record).startSpan();
             this.span.addLink(span.getSpanContext());
         } else {

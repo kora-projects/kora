@@ -25,11 +25,11 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
         try {
             final Class<?> clazz = classLoader.loadClass("io.koraframework.validation.annotation.processor.testdata.$ValidateSync__AopProxy");
             return (ValidateSync) clazz.getConstructors()[0].newInstance(
-                rangeIntegerConstraintFactory(),
-                notEmptyStringConstraintFactory(),
-                patternStringConstraintFactory(),
+                rangeIntegerValidatorFactory(),
+                notEmptyStringValidatorFactory(),
+                patternStringValidatorFactory(),
                 getTazValidator(classLoader),
-                sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
+                sizeListValidatorFactory(TypeRef.of(ValidTaz.class)),
                 listValidator(getTazValidator(classLoader), TypeRef.of(ValidTaz.class))
             );
         } catch (RuntimeException e) {
@@ -48,11 +48,11 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
         try {
             final Class<?> clazz = classLoader.loadClass("io.koraframework.validation.annotation.processor.testdata.$ValidateCompletionStage__AopProxy");
             return (ValidateCompletionStage) clazz.getConstructors()[0].newInstance(
-                rangeIntegerConstraintFactory(),
-                notEmptyStringConstraintFactory(),
-                patternStringConstraintFactory(),
+                rangeIntegerValidatorFactory(),
+                notEmptyStringValidatorFactory(),
+                patternStringValidatorFactory(),
                 getTazValidator(classLoader),
-                sizeListConstraintFactory(TypeRef.of(ValidTaz.class)),
+                sizeListValidatorFactory(TypeRef.of(ValidTaz.class)),
                 listValidator(getTazValidator(classLoader), TypeRef.of(ValidTaz.class))
             );
         } catch (RuntimeException e) {
@@ -70,7 +70,7 @@ public abstract class ValidateRunner extends Assertions implements ValidatorModu
     protected Validator<ValidTaz> getTazValidator(ClassLoader classLoader) {
         try {
             final Class<?> clazz = classLoader.loadClass("io.koraframework.validation.annotation.processor.testdata.$ValidTaz_Validator");
-            return (Validator<ValidTaz>) clazz.getConstructors()[0].newInstance(patternStringConstraintFactory());
+            return (Validator<ValidTaz>) clazz.getConstructors()[0].newInstance(patternStringValidatorFactory());
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {

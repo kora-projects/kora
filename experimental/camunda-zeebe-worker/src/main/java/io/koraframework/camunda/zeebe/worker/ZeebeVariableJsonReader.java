@@ -19,6 +19,7 @@ public final class ZeebeVariableJsonReader<T> implements JsonReader<T> {
         this.fetchVariableName = new SerializedString(fetchVariableName);
     }
 
+    @Nullable
     private T readValue(JsonParser parser) {
         var token = parser.nextToken();
         if (token == JsonToken.VALUE_NULL) {

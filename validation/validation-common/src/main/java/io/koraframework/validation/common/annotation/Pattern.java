@@ -1,6 +1,5 @@
 package io.koraframework.validation.common.annotation;
 
-import org.intellij.lang.annotations.Language;
 import io.koraframework.common.AopAnnotation;
 import io.koraframework.validation.common.constraint.factory.PatternValidatorFactory;
 
@@ -19,7 +18,6 @@ public @interface Pattern {
     /**
      * @return RegEx pattern
      */
-    @Language("RegExp")
     String value();
 
     /**

@@ -15,7 +15,7 @@ public interface OkHttpClientModule extends HttpClientModule {
     }
 
     default OkHttpClientConfig okHttpClientConfig(Config config, ConfigValueExtractor<OkHttpClientConfig> extractor) {
-        return extractor.extract(config.get("httpClient.ok"));
+        return extractor.extractOrThrow(config.get("httpClient.ok"));
     }
 
     @DefaultComponent

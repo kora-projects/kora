@@ -7,7 +7,7 @@ import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
 import io.koraframework.validation.common.ViolationException;
 
-public final class ValidationHttpServerInterceptor implements HttpServerInterceptor {
+public class ValidationHttpServerInterceptor implements HttpServerInterceptor {
 
     @Nullable
     private final ViolationExceptionHttpServerResponseMapper mapper;

@@ -1,7 +1,6 @@
 package io.koraframework.http.server.common.response.mapper;
 
 import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
 import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.server.common.response.HttpServerResponse;
@@ -38,15 +37,15 @@ public interface HttpServerResponseMapperModule {
         return new HttpServerResponseEntityMapper<>(delegate);
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
     default <T> HttpServerResponseMapper<HttpResponseEntity<T>> jsonHttpResponseEntityHttpServerResponseMapper(JsonWriter<T> writer) {
         return new HttpServerResponseEntityMapper<>(new JsonWriterHttpServerResponseMapper<>(writer));
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
-    default <T> JsonWriterHttpServerResponseMapper<T> jsonHttpServerResponseMapper(JsonWriter<T> writer) {
+    default <T> HttpServerResponseMapper<T> jsonHttpServerResponseMapper(JsonWriter<T> writer) {
         return new JsonWriterHttpServerResponseMapper<>(writer);
     }
 }

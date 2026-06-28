@@ -10,7 +10,7 @@ import io.opentelemetry.api.trace.Tracer;
 public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
 
     public record TelemetryContext(RedisCacheTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
@@ -25,7 +25,7 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
         ), false, false, DefaultRedisCacheTelemetryFactory.NOOP_METER_REGISTRY, DefaultRedisCacheTelemetryFactory.NOOP_TRACER, "", "", "");
     }
 
-    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_CONFIG_PATH = "system.config";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
@@ -43,11 +43,11 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
                                       MeterRegistry meterRegistry,
                                       DefaultRedisCacheMetricsFactory metricsFactory,
                                       DefaultRedisCacheLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultRedisCacheTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultRedisCacheTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultRedisCacheTelemetryFactory.NOOP_METER_REGISTRY;
 
         this.context = new TelemetryContext(config,
-            isTraceEnabled,
+            isTracingEnabled,
             isMetricsEnabled,
             meterRegistry,
             tracer,
@@ -62,7 +62,7 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
 
     @Override
     public RedisCacheObservation observe(String operation) {
-        var span = (context.isTraceEnabled())
+        var span = (context.isTracingEnabled())
             ? this.createSpan(operation).startSpan()
             : Span.getInvalid();
         return new DefaultRedisCacheObservation(operation, context, logger, metrics, span);

@@ -31,13 +31,8 @@ import java.util.Optional;
 
 public interface HttpServerModule extends HttpServerParameterReaderModule, HttpServerRequestMapperModule, HttpServerResponseMapperModule {
 
-    default HttpServerConfig httpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> configValueExtractor) {
-        var value = config.get("httpServer");
-        var parsed = configValueExtractor.extract(value);
-        if (parsed == null) {
-            throw ConfigValueExtractionException.missingValueAfterParse(value);
-        }
-        return parsed;
+    default HttpServerConfig publicHttpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> extractor) {
+        return extractor.extractOrThrow(config.get("httpServer"));
     }
 
     default HttpServerHandler publicHttpServerHandler(All<HttpServerRequestHandler> handlers,
@@ -56,27 +51,22 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
     }
 
     @SystemApi
-    default HttpServerSystemConfig systemHttpServerConfig(Config config, ConfigValueExtractor<HttpServerSystemConfig> configValueExtractor) {
-        var value = config.get("httpServer.system");
-        var parsed = configValueExtractor.extract(value);
-        if (parsed == null) {
-            throw ConfigValueExtractionException.missingValueAfterParse(value);
-        }
-        return parsed;
+    default HttpServerSystemConfig systemHttpServerConfig(Config config, ConfigValueExtractor<HttpServerSystemConfig> extractor) {
+        return extractor.extractOrThrow(config.get("httpServer.system"));
     }
 
     @SystemApi
-    default HttpServerRequestHandler systemLivenessHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<LivenessProbe>> probes) {
+    default HttpServerRequestHandler systemLivenessHttpServerRequestHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<LivenessProbe>> probes) {
         return new LivenessHandler(config, probes);
     }
 
     @SystemApi
-    default HttpServerRequestHandler systemReadinessHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
+    default HttpServerRequestHandler systemReadinessHttpServerRequestHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<ReadinessProbe>> probes) {
         return new ReadinessHandler(config, probes);
     }
 
     @SystemApi
-    default HttpServerRequestHandler systemMetricsHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
+    default HttpServerRequestHandler systemMetricsHttpServerRequestHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, ValueOf<Optional<MetricsScraper>> meterRegistry) {
         return new MetricsHandler(config, meterRegistry);
     }
 

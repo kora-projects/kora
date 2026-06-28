@@ -17,5 +17,3 @@ dependencies {
     testImplementation project(":internal:test-logging")
     testImplementation project(":internal:test-redis")
 }
-
-apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

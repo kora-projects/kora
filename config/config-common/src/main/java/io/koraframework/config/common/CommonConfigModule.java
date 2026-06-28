@@ -6,6 +6,7 @@ import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.annotation.ApplicationConfig;
 import io.koraframework.config.common.annotation.Environment;
 import io.koraframework.config.common.annotation.SystemProperties;
+import io.koraframework.config.common.extractor.ConfigValueExtractorModule;
 import io.koraframework.config.common.factory.MapConfigFactory;
 import io.koraframework.config.common.factory.MergeConfigFactory;
 import io.koraframework.config.common.origin.ConfigOrigin;
@@ -13,7 +14,7 @@ import io.koraframework.config.common.origin.EnvironmentOrigin;
 import io.koraframework.config.common.origin.SystemPropertiesOrigin;
 import org.jspecify.annotations.Nullable;
 
-public interface CommonConfigModule extends DefaultConfigExtractorsModule {
+public interface CommonConfigModule extends ConfigValueExtractorModule {
 
     @Environment
     default Config environmentConfig() {

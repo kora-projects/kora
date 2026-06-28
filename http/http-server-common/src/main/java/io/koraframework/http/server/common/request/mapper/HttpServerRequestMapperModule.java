@@ -1,7 +1,7 @@
 package io.koraframework.http.server.common.request.mapper;
 
 import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
+import io.koraframework.http.common.form.FormMultipart;
 import io.koraframework.http.common.form.FormUrlEncoded;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestMapper;
@@ -20,7 +20,7 @@ public interface HttpServerRequestMapperModule {
     }
 
     @DefaultComponent
-    default HttpServerRequestMapper<ByteBuffer> byteBufBodyHttpServerRequestMapper() {
+    default HttpServerRequestMapper<ByteBuffer> byteBufferHttpServerRequestMapper() {
         return (r) -> {
             try (var body = r.body()) {
                 var content = body.getFullContentIfAvailable();
@@ -73,18 +73,18 @@ public interface HttpServerRequestMapperModule {
     }
 
     @DefaultComponent
-    default HttpServerRequestMapper<FormUrlEncoded> formUrlEncoderHttpServerRequestMapper() {
+    default HttpServerRequestMapper<FormUrlEncoded> formUrlEncodedHttpServerRequestMapper() {
         return new FormUrlEncodedServerRequestMapper();
     }
 
     @DefaultComponent
-    default FormMultipartServerRequestMapper formMultipartServerHttpServerRequestMapper() {
+    default HttpServerRequestMapper<FormMultipart> formMultipartHttpServerRequestMapper() {
         return new FormMultipartServerRequestMapper();
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
-    default <T> JsonReaderHttpServerRequestMapper<T> jsonReaderHttpServerRequestMapper(JsonReader<T> reader) {
+    default <T> HttpServerRequestMapper<T> jsonHttpServerRequestMapper(JsonReader<T> reader) {
         return new JsonReaderHttpServerRequestMapper<>(reader);
     }
 }

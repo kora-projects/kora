@@ -1,6 +1,5 @@
 package io.koraframework.resilient.fallback.annotation;
 
-import org.intellij.lang.annotations.Language;
 import io.koraframework.common.AopAnnotation;
 import io.koraframework.resilient.fallback.FallbackConfig;
 
@@ -21,6 +20,5 @@ public @interface Fallback {
     /**
      * @return fallbackMethod method name to execute
      */
-    @Language(value = "JAVA", prefix = "class Renderer{String $text(){return ", suffix = ";}}")
     String method();
 }

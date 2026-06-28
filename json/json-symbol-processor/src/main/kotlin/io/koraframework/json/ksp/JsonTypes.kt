@@ -16,8 +16,8 @@ object JsonTypes {
     val jsonReader = ClassName("io.koraframework.json.common", "JsonReader")
     val jsonWriter = ClassName("io.koraframework.json.common", "JsonWriter")
 
-    val enumJsonReader = ClassName("io.koraframework.json.common", "EnumJsonReader")
-    val enumJsonWriter = ClassName("io.koraframework.json.common", "EnumJsonWriter")
+    val enumJsonReader = ClassName("io.koraframework.json.common.reader", "EnumJsonReader")
+    val enumJsonWriter = ClassName("io.koraframework.json.common.writer", "EnumJsonWriter")
 
     val jsonFieldAnnotation = ClassName("io.koraframework.json.common.annotation", "JsonField")
     val jsonSkipAnnotation = ClassName("io.koraframework.json.common.annotation", "JsonSkip")

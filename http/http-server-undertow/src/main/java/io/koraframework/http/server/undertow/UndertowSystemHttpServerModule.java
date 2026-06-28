@@ -5,6 +5,9 @@ import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.common.util.Configurer;
+import io.koraframework.config.common.Config;
+import io.koraframework.config.common.extractor.ConfigValueExtractionException;
+import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.http.server.common.HttpServerModule;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.system.HttpServerSystemConfig;
@@ -19,8 +22,8 @@ import org.xnio.XnioWorker;
 
 public interface UndertowSystemHttpServerModule extends HttpServerModule {
 
-    @Root
     @SystemApi
+    @Root
     default UndertowHttpServer undertowSystemHttpServer(@SystemApi ValueOf<HttpHandler> httpHandler,
                                                         XnioWorker worker,
                                                         @SystemApi ValueOf<HttpServerSystemConfig> config,
@@ -35,6 +38,10 @@ public interface UndertowSystemHttpServerModule extends HttpServerModule {
         var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(NoopHttpServerTelemetry.INSTANCE, systemApiHandler);
         handler = new KoraVirtualThreadDispatchHttpHandler("kora-undertow-system", handler);
         return handler;
+    }
+
+    default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowConfig> extractor) {
+        return extractor.extractOrThrow(config.get("httpServer.undertow"));
     }
 
     @DefaultComponent

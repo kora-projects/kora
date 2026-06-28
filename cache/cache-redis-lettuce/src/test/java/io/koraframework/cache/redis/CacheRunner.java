@@ -97,8 +97,8 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
 
     private DummyCache createDummyCache(RedisParams redisParams, Duration expireWrite, Duration expireRead) throws Exception {
         var lettuceClient = createLettuce(redisParams);
-        return new DummyCache(getConfig(expireWrite, expireRead), lettuceClient, redisCacheTelemetryFactory(null, null, null, null),
-            cacheRedisKeyStringMapper(), cacheRedisValueStringMapper());
+        return new DummyCache(getConfig(expireWrite, expireRead), lettuceClient, defaultRedisCacheTelemetryFactory(null, null, null, null),
+            stringRedisCacheKeyMapper(), stringRedisCacheValueMapper());
     }
 
     protected DummyCache createCache(RedisParams redisParams) throws Exception {

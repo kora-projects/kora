@@ -8,6 +8,11 @@ import java.util.function.Function;
 public class ConfigValueExtractionException extends RuntimeException {
     private final ConfigOrigin origin;
 
+    public ConfigValueExtractionException(ConfigOrigin origin, String message) {
+        super(message);
+        this.origin = origin;
+    }
+
     public ConfigValueExtractionException(ConfigOrigin origin, String message, Throwable cause) {
         super(message, cause);
         this.origin = origin;

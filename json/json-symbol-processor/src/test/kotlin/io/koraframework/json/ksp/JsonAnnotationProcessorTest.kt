@@ -1,11 +1,18 @@
 package io.koraframework.json.ksp
 
 import com.google.devtools.ksp.KspExperimental
+import io.koraframework.json.common.JsonReader
+import io.koraframework.json.common.JsonWriter
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Test
-import io.koraframework.json.common.*
+import io.koraframework.json.common.reader.ListJsonReader
+import io.koraframework.json.common.reader.MapJsonReader
+import io.koraframework.json.common.reader.SetJsonReader
+import io.koraframework.json.common.writer.ListJsonWriter
+import io.koraframework.json.common.writer.MapJsonWriter
+import io.koraframework.json.common.writer.SetJsonWriter
 import io.koraframework.json.ksp.AbstractJsonSymbolProcessorTest.Companion.reader
 import io.koraframework.json.ksp.AbstractJsonSymbolProcessorTest.Companion.readerClass
 import io.koraframework.json.ksp.AbstractJsonSymbolProcessorTest.Companion.writer
@@ -24,7 +31,6 @@ import io.koraframework.json.ksp.dto.DtoWithSnakeCaseNaming
 import io.koraframework.json.ksp.dto.DtoWithSupportedTypes
 import io.koraframework.json.ksp.dto.EmptyClass
 import io.koraframework.json.ksp.dto.KotlinDataClassDtoWithNonPrimaryConstructor
-import io.koraframework.json.ksp.dto.*
 import io.koraframework.ksp.common.symbolProcess
 import tools.jackson.core.JsonGenerator
 import tools.jackson.core.JsonParser

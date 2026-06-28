@@ -1,7 +1,7 @@
 package io.koraframework.json.ksp
 
-import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonReader
+import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonWriter
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import java.net.URI

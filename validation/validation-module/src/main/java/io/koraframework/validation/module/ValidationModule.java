@@ -1,5 +1,6 @@
 package io.koraframework.validation.module;
 
+import io.koraframework.common.DefaultComponent;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.validation.common.constraint.ValidatorModule;
 import io.koraframework.validation.module.http.server.ValidationHttpServerInterceptor;
@@ -7,6 +8,7 @@ import io.koraframework.validation.module.http.server.ViolationExceptionHttpServ
 
 public interface ValidationModule extends ValidatorModule {
 
+    @DefaultComponent
     default ValidationHttpServerInterceptor validationHttpServerInterceptor(@Nullable ViolationExceptionHttpServerResponseMapper mapper) {
         return new ValidationHttpServerInterceptor(mapper);
     }

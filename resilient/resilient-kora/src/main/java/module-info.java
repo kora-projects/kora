@@ -4,7 +4,6 @@ import org.jspecify.annotations.NullMarked;
 module kora.resilent.kora {
     requires transitive kora.common;
     requires transitive kora.config.common;
-    requires static org.jetbrains.annotations;
 
     exports io.koraframework.resilient;
     exports io.koraframework.resilient.circuitbreaker;

@@ -203,8 +203,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
             "extractor", CommonClassNames.configValueExtractor
                 .parameterizedBy(ClassName(packageName, configClassName))
         )
-        .addStatement("val configValue = config.get(%S)", configPath)
-        .addStatement("return extractor.extract(configValue) ?: throw %T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
+        .addStatement("return extractor.extractOrThrow(config.get(%S))", configPath)
         .returns(ClassName(packageName, configClassName))
         .build()
 
@@ -253,17 +252,17 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
         .apply {
             if (defaultCron.isNotBlank()) {
                 controlFlow("if (value is %T.NullValue)", CommonClassNames.configValue) {
-                    addCode("return extractor.extract(\n")
+                    addCode("return extractor.extractOrThrow(\n")
                     addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), %S)))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue, defaultCron)
                     addCode(")!!\n")
                 }
             }
         }
         .controlFlow("if (value is %T.ObjectValue)", CommonClassNames.configValue) {
-            addStatement("return extractor.extract(value)!!")
+            addStatement("return extractor.extractOrThrow(value)!!")
         }
         .controlFlow("if (value is %T.StringValue)", CommonClassNames.configValue) {
-            addCode("return extractor.extract(\n")
+            addCode("return extractor.extractOrThrow(\n")
             addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), value.value())))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue)
             addCode(")!!\n")
             nextControlFlow("else")

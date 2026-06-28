@@ -16,7 +16,7 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
         var patchedSources = Arrays.copyOf(sources, sources.length + 1);
         patchedSources[sources.length] = """
             @io.koraframework.common.Module
-            public interface ConfigModule extends io.koraframework.grpc.client.GrpcClientModule, io.koraframework.config.common.DefaultConfigExtractorsModule {
+            public interface ConfigModule extends io.koraframework.grpc.client.GrpcClientModule, io.koraframework.config.common.extractor.ConfigValueExtractorModule {
               default io.koraframework.config.common.Config config() {
                 return io.koraframework.config.common.factory.MapConfigFactory.fromMap(java.util.Map.of(
                   "grpcClient", java.util.Map.of(

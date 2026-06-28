@@ -1,3 +1,6 @@
+import org.jspecify.annotations.NullMarked;
+
+@NullMarked
 module kora.logging.common {
     requires transitive kora.common;
     requires transitive kora.json.common;

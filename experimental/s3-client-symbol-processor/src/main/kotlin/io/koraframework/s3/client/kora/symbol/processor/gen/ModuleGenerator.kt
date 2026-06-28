@@ -55,12 +55,7 @@ object ModuleGenerator {
                 .returns(configType)
                 .addParameter("config", CommonClassNames.config)
                 .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(configType))
-                .addStatement("val configValue = config.get(%S)", s3ClientConfigPath)
-                .addStatement("val parsed = extractor.extract(configValue)", s3ClientConfigPath)
-                .controlFlow("if (parsed == null)") {
-                    addStatement("throw %T.missingValueAfterParse(configValue)", CommonClassNames.configValueExtractionException)
-                }
-                .addStatement("return parsed")
+                .addStatement("return extractor.extractOrThrow(config.get(%S))", s3ClientConfigPath)
                 .build()
         )
         val clientImpl = FunSpec.builder("clientImpl")

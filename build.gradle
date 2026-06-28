@@ -3,6 +3,9 @@ plugins {
     id 'jacoco'
 }
 
+
+import io.koraframework.gradle.SonatypePublishTask
+
 if (hasProperty('buildScan')) {
     buildScan {
         termsOfServiceUrl = 'https://gradle.com/terms-of-service'
@@ -146,9 +149,6 @@ def createPublishArchive = tasks.register("createPublishArchive", Zip) {
     dependsOn(':maven-parent:publishMavenPublicationToBuildRepository')
 }
 
-
-import io.koraframework.gradle.SonatypePublishTask
-
 tasks.register('uploadPublishArchive', SonatypePublishTask) {
     dependsOn(createPublishArchive)
     archive = rootProject.layout.buildDirectory.file('deployment.zip')
@@ -278,6 +278,8 @@ subprojects {
 
     test {
         jvmArgs([
+            "-XX:+TieredCompilation",
+            "-XX:TieredStopAtLevel=1",
             '-XX:FlightRecorderOptions=stackdepth=1024',
             '--enable-preview',
             '--add-opens', 'jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED',
@@ -293,6 +295,9 @@ subprojects {
         useJUnitPlatform()
         testLogging {
             showStandardStreams(false)
+            showCauses(true)
+            showExceptions(true)
+            showStackTraces(true)
             events("passed", "skipped", "failed")
             exceptionFormat("full")
         }

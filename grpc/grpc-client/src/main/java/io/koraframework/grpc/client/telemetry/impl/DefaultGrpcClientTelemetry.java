@@ -19,7 +19,7 @@ public class DefaultGrpcClientTelemetry implements GrpcClientTelemetry {
     public record TelemetryContext(GrpcClientTelemetryConfig config,
                                    ServiceDescriptor service,
                                    URI uri,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer) {
@@ -50,9 +50,9 @@ public class DefaultGrpcClientTelemetry implements GrpcClientTelemetry {
                                       MeterRegistry meterRegistry,
                                       DefaultGrpcClientMetricsFactory metricsFactory,
                                       DefaultGrpcClientLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultGrpcClientTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultGrpcClientTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultGrpcClientTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, service, uri, isTraceEnabled, isMetricsEnabled, meterRegistry, tracer);
+        this.context = new TelemetryContext(config, service, uri, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -64,7 +64,7 @@ public class DefaultGrpcClientTelemetry implements GrpcClientTelemetry {
     }
 
     protected Span createSpan(MethodDescriptor<?, ?> method) {
-        if (!this.context.isTraceEnabled()) {
+        if (!this.context.isTracingEnabled()) {
             return Span.getInvalid();
         }
         var methodName = Objects.requireNonNullElse(method.getBareMethodName(), "unknownMethod");

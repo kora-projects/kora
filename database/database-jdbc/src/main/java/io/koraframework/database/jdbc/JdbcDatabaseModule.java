@@ -7,11 +7,10 @@ import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 
-public interface JdbcDatabaseModule extends JdbcModule {
+public interface JdbcDatabaseModule extends JdbcMapperModule {
 
     default JdbcDatabaseConfig jdbcDatabaseConfig(Config config, ConfigValueExtractor<JdbcDatabaseConfig> extractor) {
-        var value = config.get("db");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("db"));
     }
 
     default JdbcDatabase jdbcDatabase(JdbcDatabaseConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {

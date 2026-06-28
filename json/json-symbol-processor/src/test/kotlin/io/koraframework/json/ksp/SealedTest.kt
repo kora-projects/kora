@@ -1,8 +1,8 @@
 package io.koraframework.json.ksp
 
+import io.koraframework.json.common.JsonReader
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import io.koraframework.json.common.JsonReader
 import io.koraframework.json.common.JsonWriter
 import io.koraframework.ksp.common.GraphUtil.toGraph
 import java.nio.charset.StandardCharsets

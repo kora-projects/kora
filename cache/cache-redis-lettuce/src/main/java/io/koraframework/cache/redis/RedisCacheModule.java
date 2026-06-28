@@ -13,7 +13,7 @@ import org.jspecify.annotations.Nullable;
 public interface RedisCacheModule extends RedisCacheMapperModule, LettuceCacheModule {
 
     @DefaultComponent
-    default RedisCacheTelemetryFactory redisCacheTelemetryFactory(@Nullable Tracer tracer,
+    default RedisCacheTelemetryFactory defaultRedisCacheTelemetryFactory(@Nullable Tracer tracer,
                                                                   @Nullable MeterRegistry meterRegistry,
                                                                   @Nullable DefaultRedisCacheLoggerFactory loggerFactory,
                                                                   @Nullable DefaultRedisCacheMetricsFactory metricsFactory) {

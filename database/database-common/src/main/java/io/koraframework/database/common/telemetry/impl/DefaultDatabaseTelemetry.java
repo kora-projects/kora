@@ -14,7 +14,7 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
     public record TelemetryContext(DatabaseTelemetryConfig config,
                                    String poolName,
                                    String dbSystem,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer) {
@@ -45,9 +45,9 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
                                     MeterRegistry meterRegistry,
                                     DefaultDatabaseMetricsFactory metricsFactory,
                                     DefaultDatabaseLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultDatabaseTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultDatabaseTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultDatabaseTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, poolName, dbSystem, isTraceEnabled, isMetricsEnabled, meterRegistry, tracer);
+        this.context = new TelemetryContext(config, poolName, dbSystem, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -59,7 +59,7 @@ public class DefaultDatabaseTelemetry implements DatabaseTelemetry {
 
     @Override
     public DatabaseObservation observe(QueryContext query) {
-        var span = context.isTraceEnabled
+        var span = context.isTracingEnabled
             ? this.createSpan(query).startSpan()
             : Span.getInvalid();
 

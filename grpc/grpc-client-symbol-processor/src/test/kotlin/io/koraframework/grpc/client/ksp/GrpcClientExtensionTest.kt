@@ -13,7 +13,7 @@ class GrpcClientExtensionTest : AbstractSymbolProcessorTest() {
         val patchedSources = Arrays.copyOf(sources, sources.size + 1)
         patchedSources[sources.size] = """
             @io.koraframework.common.Module
-            interface ConfigModule : io.koraframework.grpc.client.GrpcClientModule, io.koraframework.config.common.DefaultConfigExtractorsModule {
+            interface ConfigModule : io.koraframework.grpc.client.GrpcClientModule, io.koraframework.config.common.extractor.ConfigValueExtractorModule {
               fun config(): io.koraframework.config.common.Config {
                 return io.koraframework.config.common.factory.MapConfigFactory.fromMap(java.util.Map.of(
                   "grpcClient", java.util.Map.of(

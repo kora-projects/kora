@@ -161,7 +161,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         assertDoesNotThrow(() -> invoke(component, "test"));
     }
 
@@ -184,7 +184,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test"));
         assertEquals(2, ex.getViolations().size());
     }
@@ -208,7 +208,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         assertDoesNotThrow(() -> invoke(component, "test"));
     }
 
@@ -231,7 +231,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         assertDoesNotThrow(() -> invoke(component, "test"));
     }
 
@@ -254,7 +254,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test"));
         assertEquals(1, ex.getViolations().size());
     }
@@ -278,7 +278,7 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
+        var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         assertDoesNotThrow(() -> invoke(component, "test"));
     }
 }

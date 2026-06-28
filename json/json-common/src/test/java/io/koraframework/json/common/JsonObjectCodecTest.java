@@ -1,5 +1,6 @@
 package io.koraframework.json.common;
 
+import io.koraframework.json.common.util.JsonObjectCodec;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;

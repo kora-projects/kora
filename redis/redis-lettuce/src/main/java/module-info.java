@@ -7,11 +7,11 @@ module kora.redis.lettuce {
     requires transitive io.netty.transport;
     requires transitive io.netty.common;
 
-    requires kora.common;
-    requires kora.config.common;
-    requires kora.telemetry.common;
-    requires kora.netty.common;
-    requires lettuce.core;
+    requires transitive kora.common;
+    requires transitive kora.config.common;
+    requires transitive kora.telemetry.common;
+    requires transitive kora.netty.common;
+    requires transitive lettuce.core;
 
     exports io.koraframework.redis.lettuce;
     exports io.koraframework.redis.lettuce.telemetry;

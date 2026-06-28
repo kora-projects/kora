@@ -146,7 +146,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonNullable.undefined<String>()).objectInstance)
         assertEquals(0, violations.size)
     }
@@ -167,7 +167,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue<String>()).objectInstance)
         assertEquals(2, violations.size)
     }
@@ -188,7 +188,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")).objectInstance)
         assertEquals(0, violations.size)
     }
@@ -209,7 +209,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonNullable.undefined<String>()).objectInstance, ValidationContext.failFast())
         assertEquals(0, violations.size)
     }
@@ -230,7 +230,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue<String>()).objectInstance, ValidationContext.failFast())
         assertEquals(1, violations.size)
     }
@@ -251,7 +251,7 @@ class ValidationJsonNullableFieldNullableTests : AbstractValidationSymbolProcess
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")).objectInstance, ValidationContext.failFast())
         assertEquals(0, violations.size)
     }

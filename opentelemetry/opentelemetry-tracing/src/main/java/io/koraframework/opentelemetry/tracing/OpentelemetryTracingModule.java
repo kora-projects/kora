@@ -19,7 +19,7 @@ import java.util.function.Supplier;
 public interface OpentelemetryTracingModule {
 
     default OpentelemetryResourceConfig opentelemetryResourceConfig(Config config, ConfigValueExtractor<OpentelemetryResourceConfig> extractor) {
-        return extractor.extract(config.get("tracing"));
+        return extractor.extractOrThrow(config.get("tracing"));
     }
 
     default Resource opentelemetryTracingResource(OpentelemetryResourceConfig config) {

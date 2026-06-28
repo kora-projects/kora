@@ -8,7 +8,7 @@ import io.koraframework.logging.common.LoggingModule;
 
 public interface LogbackModule extends LoggingModule {
 
-    default LoggingLevelApplier loggingLevelApplier() {
+    default LoggingLevelApplier logbackLoggingLevelApplier() {
         var ctx = (LoggerContext) LoggerFactory.getILoggerFactory();
         return new LoggingLevelApplier() {
             @Override

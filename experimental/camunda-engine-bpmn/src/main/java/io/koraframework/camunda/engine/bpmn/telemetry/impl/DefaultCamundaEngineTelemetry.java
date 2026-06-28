@@ -14,7 +14,7 @@ import static io.opentelemetry.api.common.AttributeKey.stringKey;
 public class DefaultCamundaEngineTelemetry implements CamundaEngineTelemetry {
 
     public record TelemetryContext(CamundaEngineTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    Tracer tracer,
                                    MeterRegistry meterRegistry) {}
@@ -28,9 +28,9 @@ public class DefaultCamundaEngineTelemetry implements CamundaEngineTelemetry {
                                          MeterRegistry meterRegistry,
                                          DefaultCamundaEngineMetricsFactory metricsFactory,
                                          DefaultCamundaEngineLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultCamundaEngineTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultCamundaEngineTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultCamundaEngineTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, isTraceEnabled, isMetricsEnabled, tracer, meterRegistry);
+        this.context = new TelemetryContext(config, isTracingEnabled, isMetricsEnabled, tracer, meterRegistry);
         this.loggerFactory = loggerFactory;
         this.metricsFactory = metricsFactory;
     }
@@ -45,7 +45,7 @@ public class DefaultCamundaEngineTelemetry implements CamundaEngineTelemetry {
     }
 
     protected Span createSpan(String javaDelegateName) {
-        if (!this.context.isTraceEnabled()) {
+        if (!this.context.isTracingEnabled()) {
             return Span.getInvalid();
         }
 

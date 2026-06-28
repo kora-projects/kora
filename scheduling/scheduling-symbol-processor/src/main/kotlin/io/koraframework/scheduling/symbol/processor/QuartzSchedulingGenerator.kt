@@ -69,7 +69,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     if (cron.isNotBlank()) {
                         b.addStatement("val value = config.get(%S)", configPath)
                         b.controlFlow("if (value is %T.NullValue)", CommonClassNames.configValue) {
-                            addCode("return extractor.extract(\n")
+                            addCode("return extractor.extractOrThrow(\n")
                             addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), %S)))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue, cron)
                             addCode(")!!\n")
                         }
@@ -77,10 +77,10 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                         b.addStatement("val value = config.get(%S)!!", configPath)
                     }
                     b.controlFlow("if (value is %T.ObjectValue)", CommonClassNames.configValue) {
-                        addStatement("return extractor.extract(value)!!")
+                        addStatement("return extractor.extractOrThrow(value)!!")
                     }
                     b.controlFlow("if (value is %T.StringValue)", CommonClassNames.configValue) {
-                        addCode("return extractor.extract(\n")
+                        addCode("return extractor.extractOrThrow(\n")
                         addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), value.value())))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue)
                         addCode(")!!\n")
                         nextControlFlow("else")

@@ -17,7 +17,7 @@ import java.util.Objects;
 public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
     public record TelemetryContext(HttpServerTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
@@ -42,11 +42,11 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
                                       DefaultHttpServerMetricsFactory metricsFactory,
                                       DefaultHttpServerLoggerFactory loggerFactory,
                                       DefaultHttpServerBodyConverter bodyLogger) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultHttpServerTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultHttpServerTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultHttpServerTelemetryFactory.NOOP_METER_REGISTRY;
 
         this.context = new TelemetryContext(config,
-            isTraceEnabled,
+            isTracingEnabled,
             isMetricsEnabled,
             meterRegistry,
             tracer,
@@ -59,7 +59,7 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
     @Override
     public HttpServerObservation observe(HttpServerRequest request) {
-        var span = context.isTraceEnabled && request.pathTemplate() != null
+        var span = context.isTracingEnabled && request.pathTemplate() != null
             ? startSpan(request).startSpan()
             : Span.getInvalid();
         return new DefaultHttpServerObservation(context, logger, metrics, request, request.requestStartTimeInNanos(), span);

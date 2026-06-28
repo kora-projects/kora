@@ -1,9 +1,9 @@
 package io.koraframework.json.ksp
 
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonReader
 import io.koraframework.json.common.JsonWriter
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
 import tools.jackson.core.JsonGenerator
 import tools.jackson.core.JsonParser
 

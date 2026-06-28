@@ -16,7 +16,7 @@ import java.util.Properties;
 public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
 
     public record TelemetryContext(KafkaPublisherTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
@@ -34,7 +34,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
             ), false, false, DefaultKafkaPublisherTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaPublisherTelemetryFactory.NOOP_TRACER, new Properties(), "none", "none", "none", "");
     }
 
-    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_CONFIG_PATH = "system.config";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
@@ -50,12 +50,12 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
                                           DefaultKafkaPublisherMetricsFactory metricsFactory,
                                           DefaultKafkaPublisherLoggerFactory loggerFactory,
                                           Properties driverProperties) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultKafkaPublisherTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultKafkaPublisherTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultKafkaPublisherTelemetryFactory.NOOP_METER_REGISTRY;
 
         this.context = new TelemetryContext(
             config,
-            isTraceEnabled,
+            isTracingEnabled,
             isMetricsEnabled,
             meterRegistry,
             tracer,
@@ -77,7 +77,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
 
     @Override
     public KafkaPublisherTransactionObservation observeTx() {
-        var span = this.context.isTraceEnabled()
+        var span = this.context.isTracingEnabled()
             ? createTxSpan().startSpan()
             : Span.getInvalid();
         return new DefaultKafkaPublisherTransactionObservation(context, logger, span);
@@ -85,7 +85,7 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
 
     @Override
     public KafkaPublisherRecordObservation observeSend(String topic) {
-        var span = this.context.isTraceEnabled()
+        var span = this.context.isTracingEnabled()
             ? createSendSpan(topic).startSpan()
             : Span.getInvalid();
         return new DefaultKafkaPublisherRecordObservation(context, logger, metrics, topic, span);

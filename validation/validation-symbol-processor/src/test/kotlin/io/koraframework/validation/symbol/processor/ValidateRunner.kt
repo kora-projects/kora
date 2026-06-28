@@ -22,11 +22,11 @@ open class ValidateRunner : Assertions(),
         val classLoader = getClassLoader()
         val clazz = classLoader!!.loadClass("io.koraframework.validation.symbol.processor.testdata.\$ValidateSync__AopProxy")
         return clazz.constructors[0].newInstance(
-            rangeIntegerConstraintFactory(),
-            notEmptyStringConstraintFactory(),
-            patternStringConstraintFactory(),
+            rangeIntegerValidatorFactory(),
+            notEmptyStringValidatorFactory(),
+            patternStringValidatorFactory(),
             getTazValidator(),
-            sizeListConstraintFactory(TypeRef.of(ValidTaz::class.java)),
+            sizeListValidatorFactory(TypeRef.of(ValidTaz::class.java)),
             listValidator(getTazValidator(), TypeRef.of(ValidTaz::class.java))
         ) as ValidateSync
     }
@@ -34,7 +34,7 @@ open class ValidateRunner : Assertions(),
     protected open fun getTazValidator(): Validator<ValidTaz> {
         val classLoader = getClassLoader()
         val clazz = classLoader!!.loadClass("io.koraframework.validation.symbol.processor.testdata.\$ValidTaz_Validator")
-        return clazz.constructors[0].newInstance(patternStringConstraintFactory()) as Validator<ValidTaz>
+        return clazz.constructors[0].newInstance(patternStringValidatorFactory()) as Validator<ValidTaz>
     }
 
     private fun getClassLoader(): ClassLoader {

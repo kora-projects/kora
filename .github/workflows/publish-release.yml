@@ -26,10 +26,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Gradle artifact
-        run: ./gradlew assemble jar
+        run: ./gradlew assemble jar --no-daemon --parallel
 
       - name: Gradle publish
-        run: ./gradlew uploadPublishArchive -Psigning.secretKeyRingFile=/tmp/secring.gpg --no-daemon
+        run: ./gradlew uploadPublishArchive -Psigning.secretKeyRingFile=/tmp/secring.gpg --no-daemon --parallel
         env:
           KORA_IO_SIGNING_KEY: ${{ secrets.KORA_IO_SIGNING_KEY }}
           KORA_IO_SIGNING_PASSWORD: ${{ secrets.KORA_IO_SIGNING_PASSWORD }}

@@ -1,8 +1,8 @@
 package io.koraframework.json.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import io.koraframework.json.common.ListJsonReader;
-import io.koraframework.json.common.ListJsonWriter;
+import io.koraframework.json.common.reader.ListJsonReader;
+import io.koraframework.json.common.writer.ListJsonWriter;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 

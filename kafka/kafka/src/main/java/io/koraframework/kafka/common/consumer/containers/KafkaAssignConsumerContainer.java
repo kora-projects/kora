@@ -3,6 +3,7 @@ package io.koraframework.kafka.common.consumer.containers;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.kafka.common.KafkaUtils.NamedThreadFactory;
+import io.koraframework.kafka.common.consumer.GeneratedListener;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.containers.handlers.BaseKafkaRecordsHandler;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerPollObservation;
@@ -31,7 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
+public final class KafkaAssignConsumerContainer<K, V> implements GeneratedListener {
 
     private final Logger logger;
 
@@ -81,6 +82,7 @@ public final class KafkaAssignConsumerContainer<K, V> implements Lifecycle {
 
     public void launchPollLoop(Consumer<K, V> consumer, String listenerLogName, int number, long started, Runnable initializeConfirmer) {
         try (consumer) {
+            consumers.add(consumer);
             var allPartitions = this.partitions.get();
             var partitions = List.<TopicPartition>of();
             logger.atInfo()

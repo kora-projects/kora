@@ -14,8 +14,8 @@ module kora.netty.common {
     requires transitive io.netty.transport;
     requires transitive io.netty.transport.unix.common;
 
-    requires kora.common;
-    requires kora.config.common;
+    requires transitive kora.common;
+    requires transitive kora.config.common;
 
     exports io.koraframework.netty.common;
 }

@@ -32,7 +32,7 @@ public interface NettyModule {
     }
 
     default NettyTransportConfig nettyTransportConfig(Config config, ConfigValueExtractor<NettyTransportConfig> extractor) {
-        return extractor.extract(config.get("netty"));
+        return extractor.extractOrThrow(config.get("netty"));
     }
 
     @Tag(EventLoopBoss.class)

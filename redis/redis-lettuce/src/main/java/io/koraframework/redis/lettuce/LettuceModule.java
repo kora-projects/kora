@@ -18,8 +18,7 @@ import org.jspecify.annotations.Nullable;
 public interface LettuceModule extends NettyModule {
 
     default LettuceConfig lettuceConfig(Config config, ConfigValueExtractor<LettuceConfig> extractor) {
-        var value = config.get("lettuce");
-        return extractor.extract(value);
+        return extractor.extractOrThrow(config.get("lettuce"));
     }
 
     @DefaultComponent

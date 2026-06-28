@@ -1,6 +1,15 @@
 package io.koraframework.json.common;
 
 import io.koraframework.common.DefaultComponent;
+import io.koraframework.json.common.reader.ListJsonReader;
+import io.koraframework.json.common.reader.MapJsonReader;
+import io.koraframework.json.common.reader.SetJsonReader;
+import io.koraframework.json.common.reader.SortedSetJsonReader;
+import io.koraframework.json.common.util.JsonObjectCodec;
+import io.koraframework.json.common.writer.ListJsonWriter;
+import io.koraframework.json.common.writer.MapJsonWriter;
+import io.koraframework.json.common.writer.RawJsonWriter;
+import io.koraframework.json.common.writer.SetJsonWriter;
 import tools.jackson.core.StreamWriteFeature;
 import tools.jackson.core.exc.StreamReadException;
 import tools.jackson.core.json.JsonFactory;
@@ -30,31 +39,38 @@ public interface JsonModule {
         return JsonObjectCodec::parse;
     }
 
-    default <T> JsonWriter<List<T>> listJsonWriterFactory(JsonWriter<T> writer) {
+    @DefaultComponent
+    default <T> JsonWriter<List<T>> listJsonWriter(JsonWriter<T> writer) {
         return new ListJsonWriter<>(writer);
     }
 
-    default <T> JsonReader<List<T>> listJsonReaderFactory(JsonReader<T> reader) {
+    @DefaultComponent
+    default <T> JsonReader<List<T>> listJsonReader(JsonReader<T> reader) {
         return new ListJsonReader<>(reader);
     }
 
-    default <T> JsonWriter<Map<String, T>> mapJsonWriterFactory(JsonWriter<T> writer) {
+    @DefaultComponent
+    default <T> JsonWriter<Map<String, T>> mapJsonWriter(JsonWriter<T> writer) {
         return new MapJsonWriter<>(writer);
     }
 
-    default <T> JsonReader<Map<String, T>> mapJsonReaderFactory(JsonReader<T> reader) {
+    @DefaultComponent
+    default <T> JsonReader<Map<String, T>> mapJsonReader(JsonReader<T> reader) {
         return new MapJsonReader<>(reader);
     }
 
-    default <T> JsonWriter<Set<T>> setJsonWriterFactory(JsonWriter<T> writer) {
+    @DefaultComponent
+    default <T> JsonWriter<Set<T>> setJsonWriter(JsonWriter<T> writer) {
         return new SetJsonWriter<>(writer);
     }
 
-    default <T> JsonReader<Set<T>> setJsonReaderFactory(JsonReader<T> reader) {
+    @DefaultComponent
+    default <T> JsonReader<Set<T>> setJsonReader(JsonReader<T> reader) {
         return new SetJsonReader<>(reader);
     }
 
-    default <T extends Comparable<T>> JsonReader<SortedSet<T>> sortedSetJsonReaderFactory(JsonReader<T> reader) {
+    @DefaultComponent
+    default <T extends Comparable<T>> JsonReader<SortedSet<T>> sortedSetJsonReader(JsonReader<T> reader) {
         return new SortedSetJsonReader<>(reader);
     }
 

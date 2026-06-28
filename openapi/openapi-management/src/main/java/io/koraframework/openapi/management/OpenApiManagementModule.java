@@ -9,7 +9,7 @@ import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 public interface OpenApiManagementModule {
 
     default OpenApiManagementConfig openApiManagementConfig(Config config, ConfigValueExtractor<OpenApiManagementConfig> extractor) {
-        return extractor.extract(config.get("openapi.management"));
+        return extractor.extractOrThrow(config.get("openapi.management"));
     }
 
     default HttpServerRequestHandler openApiManagementController(OpenApiManagementConfig config) {

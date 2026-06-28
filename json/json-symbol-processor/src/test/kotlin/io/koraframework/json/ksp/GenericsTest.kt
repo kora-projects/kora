@@ -1,8 +1,8 @@
 package io.koraframework.json.ksp
 
+import io.koraframework.json.common.JsonWriter
 import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonReader
-import io.koraframework.json.common.JsonWriter
 import io.koraframework.ksp.common.GraphUtil.toGraph
 
 class GenericsTest : AbstractJsonSymbolProcessorTest() {

@@ -18,7 +18,7 @@ public interface ApacheHttpClientModule extends HttpClientModule {
     }
 
     default ApacheHttpClientConfig apacheHttpClientConfig(Config config, ConfigValueExtractor<ApacheHttpClientConfig> extractor) {
-        return extractor.extract(config.get("httpClient.apache"));
+        return extractor.extractOrThrow(config.get("httpClient.apache"));
     }
 
     @DefaultComponent

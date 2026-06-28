@@ -118,7 +118,7 @@ class JdbcDatabaseTest {
         withDb(params, db -> {
             var latch = new CountDownLatch(1);
             Assertions.assertThatThrownBy(() -> db.inTx((JdbcHelper.SqlRunnable) () -> {
-                db.currentConnectionContext().addPostRollbackAction((conn, e) -> latch.countDown());
+                db.currentContext().addPostRollbackAction((conn, e) -> latch.countDown());
                 try (var stmt = db.currentConnection().prepareStatement(sql)) {
                     stmt.execute();
                 }
@@ -132,7 +132,7 @@ class JdbcDatabaseTest {
 
             var latch1 = new CountDownLatch(1);
             db.inTx(() -> {
-                db.currentConnectionContext().addPostCommitAction((conn) -> latch1.countDown());
+                db.currentContext().addPostCommitAction((conn) -> latch1.countDown());
                 try (var stmt = db.currentConnection().prepareStatement(sql)) {
                     stmt.execute();
                 }

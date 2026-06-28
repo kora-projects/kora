@@ -45,7 +45,7 @@ import java.util.Optional;
 public interface CamundaEngineBpmnModule {
 
     default CamundaEngineBpmnConfig camundaEngineBpmnConfig(Config config, ConfigValueExtractor<CamundaEngineBpmnConfig> extractor) {
-        return extractor.extract(config.get("camunda.engine.bpmn"));
+        return extractor.extractOrThrow(config.get("camunda.engine.bpmn"));
     }
 
     @Tag(CamundaBpmn.class)

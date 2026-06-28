@@ -37,13 +37,4 @@ public interface UndertowPublicHttpServerModule extends UndertowSystemHttpServer
         handler = new KoraVirtualThreadDispatchHttpHandler("kora-undertow", handler);
         return handler;
     }
-
-    default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowConfig> extractor) {
-        var value = config.get("httpServer.undertow");
-        var parsed = extractor.extract(value);
-        if (parsed == null) {
-            throw ConfigValueExtractionException.missingValueAfterParse(value);
-        }
-        return parsed;
-    }
 }

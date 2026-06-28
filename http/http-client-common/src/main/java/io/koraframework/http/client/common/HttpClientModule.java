@@ -6,6 +6,7 @@ import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule;
 import io.koraframework.http.client.common.request.mapper.HttpClientRequestMapperModule;
 import io.koraframework.http.client.common.response.HttpClientResponseMapperModule;
+import io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientBodyConverter;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientLoggerFactory;
 import io.koraframework.http.client.common.telemetry.impl.DefaultHttpClientMetricsFactory;
@@ -22,11 +23,11 @@ public interface HttpClientModule extends HttpClientRequestMapperModule, HttpCli
     }
 
     @DefaultComponent
-    default DefaultHttpClientTelemetryFactory defaultHttpClientTelemetryFactory(@Nullable Tracer tracer,
-                                                                                @Nullable MeterRegistry meterRegistry,
-                                                                                @Nullable DefaultHttpClientLoggerFactory loggerFactory,
-                                                                                @Nullable DefaultHttpClientMetricsFactory metricsFactory,
-                                                                                @Nullable DefaultHttpClientBodyConverter loggerBodyConverter) {
+    default HttpClientTelemetryFactory defaultHttpClientTelemetryFactory(@Nullable Tracer tracer,
+                                                                         @Nullable MeterRegistry meterRegistry,
+                                                                         @Nullable DefaultHttpClientLoggerFactory loggerFactory,
+                                                                         @Nullable DefaultHttpClientMetricsFactory metricsFactory,
+                                                                         @Nullable DefaultHttpClientBodyConverter loggerBodyConverter) {
         return new DefaultHttpClientTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory, loggerBodyConverter);
     }
 }

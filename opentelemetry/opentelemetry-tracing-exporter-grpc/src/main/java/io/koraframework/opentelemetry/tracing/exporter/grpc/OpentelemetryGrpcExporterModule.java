@@ -48,7 +48,7 @@ public interface OpentelemetryGrpcExporterModule extends OpentelemetryTracingMod
         if (value instanceof ConfigValue.NullValue || value.asObject().get("endpoint").isNull()) {
             return new OpentelemetryGrpcExporterConfig.Empty();
         }
-        return extractor.extract(value);
+        return extractor.extractOrThrow(value);
     }
 
     @DefaultComponent

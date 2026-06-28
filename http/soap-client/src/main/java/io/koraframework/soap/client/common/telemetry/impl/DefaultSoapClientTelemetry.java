@@ -16,7 +16,7 @@ import java.net.URI;
 public class DefaultSoapClientTelemetry implements SoapClientTelemetry {
 
     public record TelemetryContext(SoapClientTelemetryConfig config,
-                                   boolean isTraceEnabled,
+                                   boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
                                    Tracer tracer,
@@ -34,7 +34,7 @@ public class DefaultSoapClientTelemetry implements SoapClientTelemetry {
             ), false, false, DefaultSoapClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultSoapClientTelemetryFactory.NOOP_TRACER, "none", "none", "none", new SoapMethodDescriptor("none", "none", "none", null), "http://localhost");
     }
 
-    public static final String SYSTEM_CONFIG_PATH = "system.path";
+    public static final String SYSTEM_CONFIG_PATH = "system.config";
     public static final String SYSTEM_NAME_SIMPLE = "system.name.simple";
     public static final String SYSTEM_NAME_CANONICAL = "system.name.canonical";
 
@@ -51,12 +51,12 @@ public class DefaultSoapClientTelemetry implements SoapClientTelemetry {
                                       MeterRegistry meterRegistry,
                                       DefaultSoapClientMetricsFactory metricsFactory,
                                       DefaultSoapClientLoggerFactory loggerFactory) {
-        var isTraceEnabled = config.tracing().enabled() && tracer != DefaultSoapClientTelemetryFactory.NOOP_TRACER;
+        var isTracingEnabled = config.tracing().enabled() && tracer != DefaultSoapClientTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultSoapClientTelemetryFactory.NOOP_METER_REGISTRY;
 
         this.context = new TelemetryContext(
             config,
-            isTraceEnabled,
+            isTracingEnabled,
             isMetricsEnabled,
             meterRegistry,
             tracer,
@@ -72,7 +72,7 @@ public class DefaultSoapClientTelemetry implements SoapClientTelemetry {
 
     @Override
     public SoapClientObservation observe(SoapEnvelope requestEnvelope) {
-        var span = this.context.isTraceEnabled()
+        var span = this.context.isTracingEnabled()
             ? this.startSpan().startSpan()
             : Span.getInvalid();
         return new DefaultSoapClientObservation(requestEnvelope, this.context, span, this.logger, this.metrics);
