@@ -4,12 +4,11 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 dependencies {
     implementation project(':kora-app-symbol-processor')
 
-    testImplementation "org.mapstruct:mapstruct:1.5.5.Final"
-    testImplementation "org.mapstruct:mapstruct-processor:1.5.5.Final"
-    testImplementation "jakarta.inject:jakarta.inject-api:2.0.1"
+    testImplementation libs.mapstruct
+    testImplementation libs.mapstruct.processor
+    testImplementation libs.jakarta.inject.api
 
     testImplementation project(":kora-app-symbol-processor")
     testImplementation project(":symbol-processor-common")
     testImplementation testFixtures(project(':symbol-processor-common'))
 }
-

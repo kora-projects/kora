@@ -10,5 +10,5 @@ dependencies {
     api libs.jakarta.jws.api
     api libs.jakarta.xml.bind.api
 
-    compileOnlyApi 'javax.xml.bind:jaxb-api:2.3.1'
+    compileOnlyApi libs.javax.jaxb.api
 }

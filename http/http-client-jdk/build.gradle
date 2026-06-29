@@ -4,5 +4,5 @@ dependencies {
     api project(":http:http-client-common")
 
     testImplementation(testFixtures(project(":http:http-client-common")))
-    testImplementation("com.github.fge:jackson-coreutils:1.8")
+    testImplementation libs.jackson.coreutils
 }
