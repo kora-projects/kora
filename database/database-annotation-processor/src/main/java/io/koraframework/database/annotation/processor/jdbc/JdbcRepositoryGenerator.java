@@ -229,7 +229,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             }
             b.nextControlFlow("catch (java.sql.SQLException e)")
                 .addStatement("_observation.observeError(e)")
-                .addStatement("throw new io.koraframework.database.jdbc.RuntimeSqlException(e)");
+                .addStatement("throw new io.koraframework.database.jdbc.UncheckedSqlException(e)");
             b.nextControlFlow("catch (Exception e)")
                 .addStatement("_observation.observeError(e)")
                 .addStatement("throw e");

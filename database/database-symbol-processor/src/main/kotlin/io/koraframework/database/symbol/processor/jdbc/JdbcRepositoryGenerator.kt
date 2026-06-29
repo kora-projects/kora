@@ -170,7 +170,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                 }
                 nextControlFlow("catch (_e: java.sql.SQLException)")
                 addStatement("_observation.observeError(_e)")
-                addStatement("throw io.koraframework.database.jdbc.RuntimeSqlException(_e)")
+                addStatement("throw io.koraframework.database.jdbc.UncheckedSqlException(_e)")
                 nextControlFlow("catch (_e: Exception)")
                 addStatement("_observation.observeError(_e)")
                 addStatement("throw _e")

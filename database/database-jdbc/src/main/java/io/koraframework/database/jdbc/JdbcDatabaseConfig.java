@@ -18,6 +18,7 @@ import java.util.Properties;
  */
 @ConfigMapper
 public interface JdbcDatabaseConfig {
+
     String username();
 
     String password();

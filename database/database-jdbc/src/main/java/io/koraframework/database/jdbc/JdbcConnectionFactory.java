@@ -1,16 +1,17 @@
 package io.koraframework.database.jdbc;
 
-import io.opentelemetry.context.Context;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.database.common.QueryContext;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext.PostCommitAction;
 import io.koraframework.database.jdbc.ConnectionContext.PostRollbackAction;
+import io.opentelemetry.context.Context;
+import org.jspecify.annotations.Nullable;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.SQLException;
 
 /**
  * <b>Русский</b>: Фабрика соединений JDBC которая позволяет выполнять запросы в ручном режиме и в рамках транзакции.
@@ -22,19 +23,20 @@ import java.sql.PreparedStatement;
 @SuppressWarnings("overloads")
 public interface JdbcConnectionFactory {
 
-    <T> T withConnection(JdbcHelper.SqlFunction<Connection, T> callback) throws RuntimeSqlException;
+    <T> T withContext(SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException;
 
-    @Nullable
-    Connection currentConnection();
+    default <T> T withConnection(SqlFunction<Connection, T> callback) throws UncheckedSqlException {
+        return withContext(context -> callback.apply(context.connection()));
+    }
+
+    Connection acquireConnection();
 
     @Nullable
     ConnectionContext currentContext();
 
-    Connection newConnection();
-
     DatabaseTelemetry telemetry();
 
-    default <T> T query(QueryContext queryContext, JdbcHelper.SqlFunction<PreparedStatement, T> callback) {
+    default <T> T query(QueryContext queryContext, SqlFunction<PreparedStatement, T> callback) {
         var observation = this.telemetry().observe(queryContext);
         return ScopedValue.where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -50,35 +52,35 @@ public interface JdbcConnectionFactory {
             }));
     }
 
-    default <T> T withConnection(JdbcHelper.SqlSupplier<T> callback) throws RuntimeSqlException {
+    default <T> T withConnection(SqlSupplier<T> callback) throws UncheckedSqlException {
         return this.withConnection(connection -> {
             return callback.apply();
         });
     }
 
-    default void withConnection(JdbcHelper.SqlConsumer<Connection> callback) throws RuntimeSqlException {
+    default void withConnection(SqlConsumer<Connection> callback) throws UncheckedSqlException {
         this.withConnection(connection -> {
             callback.accept(connection);
             return null;
         });
     }
 
-    default void withConnection(JdbcHelper.SqlRunnable callback) throws RuntimeSqlException {
+    default void withConnection(SqlRunnable callback) throws UncheckedSqlException {
         this.withConnection(connection -> {
             callback.run();
             return null;
         });
     }
 
-    default <T> T inTx(JdbcHelper.SqlFunction<Connection, T> callback) throws RuntimeSqlException {
+    default <T> T inTx(SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
         return this.withConnection(connection -> {
             if (!connection.getAutoCommit()) {
-                return callback.apply(connection);
+                return callback.apply(currentContext());
             }
             connection.setAutoCommit(false);
             T result;
             try {
-                result = callback.apply(connection);
+                result = callback.apply(currentContext());
                 connection.commit();
                 connection.setAutoCommit(true);
             } catch (Exception e) {
@@ -86,7 +88,11 @@ public interface JdbcConnectionFactory {
                     connection.rollback();
                     connection.setAutoCommit(true);
                     for (PostRollbackAction action : currentContext().postRollbackActions()) {
-                        action.run(connection, e);
+                        try {
+                            action.run(connection, e);
+                        } catch (SQLException ex) {
+                            e.addSuppressed(ex);
+                        }
                     }
                 } catch (Exception suppressed) {
                     e.addSuppressed(suppressed);
@@ -100,23 +106,39 @@ public interface JdbcConnectionFactory {
         });
     }
 
-    default <T> T inTx(JdbcHelper.SqlSupplier<T> callback) throws RuntimeSqlException {
+    default <T> T inTx(SqlSupplier<T> callback) throws UncheckedSqlException {
         return this.inTx(connection -> {
             return callback.apply();
         });
     }
 
-    default void inTx(JdbcHelper.SqlConsumer<Connection> callback) throws RuntimeSqlException {
-        this.inTx(connection -> {
-            callback.accept(connection);
+    default void inTx(SqlConsumer<ConnectionContext> callback) throws UncheckedSqlException {
+        this.inTx(ctx -> {
+            callback.accept(ctx);
             return null;
         });
     }
 
-    default void inTx(JdbcHelper.SqlRunnable callback) throws RuntimeSqlException {
-        this.inTx(connection -> {
+    default void inTx(SqlRunnable callback) throws UncheckedSqlException {
+        this.inTx(_ -> {
             callback.run();
             return null;
         });
+    }
+
+    interface SqlSupplier<T> {
+        T apply() throws SQLException;
+    }
+
+    interface SqlFunction<T, R> {
+        R apply(T t) throws SQLException;
+    }
+
+    interface SqlConsumer<T> {
+        void accept(T t) throws SQLException;
+    }
+
+    interface SqlRunnable {
+        void run() throws SQLException;
     }
 }

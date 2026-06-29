@@ -10,7 +10,7 @@ import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 public interface JdbcDatabaseModule extends JdbcMapperModule {
 
     default JdbcDatabaseConfig jdbcDatabaseConfig(Config config, ConfigValueMapper<JdbcDatabaseConfig> mapper) {
-        return mapper.mapOrThrow(config.get("db"));
+        return mapper.mapOrThrow(config.get("db.jdbc"));
     }
 
     default JdbcDatabase jdbcDatabase(JdbcDatabaseConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {

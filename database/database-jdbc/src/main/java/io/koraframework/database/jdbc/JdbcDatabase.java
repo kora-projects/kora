@@ -79,11 +79,11 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
 
     @Nullable
     @Override
-    public Connection newConnection() {
+    public Connection acquireConnection() {
         try {
             return this.dataSource.getConnection();
         } catch (SQLException e) {
-            throw new RuntimeSqlException(e);
+            throw new UncheckedSqlException(e);
         }
     }
 
@@ -93,8 +93,7 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     }
 
     @Nullable
-    @Override
-    public Connection currentConnection() {
+    public Connection connectionCurrent() {
         if (this.connectionContext.isBound()) {
             return this.connectionContext.get().connection();
         }
@@ -110,20 +109,21 @@ public class JdbcDatabase implements Lifecycle, Wrapped<DataSource>, JdbcConnect
     }
 
     @Override
-    public <T> T withConnection(JdbcHelper.SqlFunction<Connection, T> callback) throws RuntimeSqlException {
+    public <T> T withContext(SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
         if (this.connectionContext.isBound()) {
             try {
-                return callback.apply(this.connectionContext.get().connection());
+                return callback.apply(this.connectionContext.get());
             } catch (SQLException e) {
-                throw new RuntimeSqlException(e);
+                throw new UncheckedSqlException(e);
             }
         }
 
-        try (var connection = this.newConnection()) {
+        try (var connection = this.acquireConnection()) {
+            var context = new ConnectionContext(connection);
             return ScopedValue.where(this.connectionContext, new ConnectionContext(connection))
-                .call(() -> callback.apply(connection));
+                .call(() -> callback.apply(context));
         } catch (SQLException e) {
-            throw new RuntimeSqlException(e);
+            throw new UncheckedSqlException(e);
         }
     }
 
