@@ -1,8 +1,8 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import io.camunda.zeebe.client.ZeebeClient;
-import io.camunda.zeebe.client.api.command.DeployResourceCommandStep1;
-import io.camunda.zeebe.client.api.response.DeploymentEvent;
+import io.camunda.client.CamundaClient;
+import io.camunda.client.api.command.DeployResourceCommandStep1;
+import io.camunda.client.api.response.DeploymentEvent;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,10 +31,10 @@ public final class ZeebeResourceDeployment implements Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-    private final ZeebeClient client;
+    private final CamundaClient client;
     private final ZeebeClientConfig.DeploymentConfig deploymentConfig;
 
-    public ZeebeResourceDeployment(ZeebeClient client,
+    public ZeebeResourceDeployment(CamundaClient client,
                                    ZeebeClientConfig.DeploymentConfig deploymentConfig) {
         this.client = client;
         this.deploymentConfig = deploymentConfig;

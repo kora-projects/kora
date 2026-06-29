@@ -1,10 +1,10 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import io.camunda.zeebe.client.ZeebeClient;
-import io.camunda.zeebe.client.api.worker.BackoffSupplier;
-import io.camunda.zeebe.client.api.worker.JobHandler;
-import io.camunda.zeebe.client.api.worker.JobWorker;
-import io.camunda.zeebe.client.api.worker.JobWorkerMetrics;
+import io.camunda.client.CamundaClient;
+import io.camunda.client.api.worker.BackoffSupplier;
+import io.camunda.client.api.worker.JobHandler;
+import io.camunda.client.api.worker.JobWorker;
+import io.camunda.client.api.worker.JobWorkerMetrics;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.camunda.zeebe.worker.ZeebeWorkerConfig.JobConfig;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeClientWorkerMetricsFactory;
@@ -26,7 +26,7 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraZeebeJobWorkerEngine.class);
 
-    private final ZeebeClient client;
+    private final CamundaClient client;
     private final Iterable<KoraJobWorker> jobWorkers;
     private final ZeebeClientConfig clientConfig;
     private final ZeebeWorkerConfig workerConfig;
@@ -36,7 +36,7 @@ public final class KoraZeebeJobWorkerEngine implements Lifecycle {
 
     private final List<JobWorker> workers = new CopyOnWriteArrayList<>();
 
-    public KoraZeebeJobWorkerEngine(ZeebeClient client,
+    public KoraZeebeJobWorkerEngine(CamundaClient client,
                                     Iterable<KoraJobWorker> jobWorkers,
                                     ZeebeClientConfig clientConfig,
                                     ZeebeWorkerConfig workerConfig,
