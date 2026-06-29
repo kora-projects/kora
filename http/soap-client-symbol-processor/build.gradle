@@ -5,8 +5,6 @@ plugins {
 }
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
-def cxfVersion = "3.4.5"
-
 configurations {
     cxf
 }
@@ -22,24 +20,24 @@ static ClassLoader getClassLoader(Configuration config) {
 dependencies {
     api project(':symbol-processor-common')
 
-    cxf "org.apache.cxf:cxf-tools-wsdlto-core:$cxfVersion"
-    cxf "org.apache.cxf:cxf-tools-wsdlto-frontend-jaxws:$cxfVersion"
-    cxf "org.apache.cxf:cxf-tools-wsdlto-databinding-jaxb:$cxfVersion"
-    cxf 'javax.xml.bind:jaxb-api:2.3.1'
-    cxf 'javax.jws:javax.jws-api:1.1'
-    cxf 'javax.xml.ws:jaxws-api:2.3.1'
+    cxf libs.cxf.tools.wsdlto.core
+    cxf libs.cxf.tools.wsdlto.frontend.jaxws
+    cxf libs.cxf.tools.wsdlto.databinding.jaxb
+    cxf libs.javax.jaxb.api
+    cxf libs.javax.jws.api
+    cxf libs.javax.jaxws.api
 
     testImplementation testFixtures(project(':annotation-processor-common'))
     testImplementation testFixtures(project(':symbol-processor-common'))
 
-    testImplementation 'javax.xml.bind:jaxb-api:2.3.1'
-    testImplementation 'com.sun.xml.bind:jaxb-impl:2.3.5'
-    testImplementation 'javax.jws:javax.jws-api:1.1'
-    testImplementation 'javax.xml.ws:jaxws-api:2.3.1'
+    testImplementation libs.javax.jaxb.api
+    testImplementation libs.sun.jaxb.impl
+    testImplementation libs.javax.jws.api
+    testImplementation libs.javax.jaxws.api
 
-    testImplementation 'org.apache.cxf:cxf-rt-bindings-soap:3.4.5'
-    testImplementation 'org.apache.cxf:cxf-rt-transports-http-jetty:3.4.5'
-    testImplementation 'org.apache.cxf:cxf-rt-frontend-jaxws:3.4.5'
+    testImplementation libs.cxf.rt.bindings.soap
+    testImplementation libs.cxf.rt.transports.http.jetty
+    testImplementation libs.cxf.rt.frontend.jaxws
     testImplementation project(':http:soap-client')
     testImplementation project(':http:http-client-jdk')
 }
