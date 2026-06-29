@@ -197,10 +197,6 @@ zeebe-client = { module = "io.camunda:camunda-client-java", version.ref = "zeebe
 mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
 mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
 
-mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
-mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
-
-
 ["bundles"]
 netty = [
     "netty-buffer", "netty-codecs", "netty-codec-http", "netty-codec-socks", "netty-common",
