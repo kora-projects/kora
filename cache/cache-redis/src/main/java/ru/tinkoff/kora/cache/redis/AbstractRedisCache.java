@@ -1,11 +1,12 @@
 package ru.tinkoff.kora.cache.redis;
 
 import jakarta.annotation.Nonnull;
+import jakarta.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import ru.tinkoff.kora.cache.AsyncCache;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -13,7 +14,7 @@ import java.util.concurrent.CompletionStage;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
+public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     private static final Logger logger = LoggerFactory.getLogger(RedisCache.class);
 
@@ -122,6 +123,18 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Nonnull
     @Override
     public V put(@Nonnull K key, @Nonnull V value) {
+        return putExpireAfterWrite(key, value, expireAfterWriteMillis);
+    }
+
+    @Nonnull
+    @Override
+    public V putExpireAfterWrite(@Nonnull K key, @Nonnull V value, @Nonnull Duration expireAfterWrite) {
+        Objects.requireNonNull(expireAfterWrite, "RedisCache#putExpireAfterWrite received nullable expireAfterWrite argument");
+        return putExpireAfterWrite(key, value, expireAfterWrite.toMillis());
+    }
+
+    @Nonnull
+    private V putExpireAfterWrite(@Nonnull K key, @Nonnull V value, @Nullable Long expireAfterWriteMillis) {
         if (key == null || value == null) {
             return null;
         }
@@ -150,6 +163,18 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Nonnull
     @Override
     public Map<K, V> put(@Nonnull Map<K, V> keyAndValues) {
+        return putExpireAfterWrite(keyAndValues, expireAfterWriteMillis);
+    }
+
+    @Nonnull
+    @Override
+    public Map<K, V> putExpireAfterWrite(@Nonnull Map<K, V> keyAndValues, @Nonnull Duration expireAfterWrite) {
+        Objects.requireNonNull(expireAfterWrite, "RedisCache#putExpireAfterWrite received nullable expireAfterWrite argument");
+        return putExpireAfterWrite(keyAndValues, expireAfterWrite.toMillis());
+    }
+
+    @Nonnull
+    private Map<K, V> putExpireAfterWrite(@Nonnull Map<K, V> keyAndValues, @Nullable Long expireAfterWriteMillis) {
         if (keyAndValues == null || keyAndValues.isEmpty()) {
             return Collections.emptyMap();
         }
@@ -449,6 +474,18 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Nonnull
     @Override
     public CompletionStage<V> putAsync(@Nonnull K key, @Nonnull V value) {
+        return putAsyncExpireAfterWrite(key, value, expireAfterWriteMillis);
+    }
+
+    @Nonnull
+    @Override
+    public CompletionStage<V> putAsyncExpireAfterWrite(@Nonnull K key, @Nonnull V value, @Nonnull Duration expireAfterWrite) {
+        Objects.requireNonNull(expireAfterWrite, "RedisCache#putExpireAfterWrite received nullable expireAfterWrite argument");
+        return putAsyncExpireAfterWrite(key, value, expireAfterWrite.toMillis());
+    }
+
+    @Nonnull
+    private CompletionStage<V> putAsyncExpireAfterWrite(@Nonnull K key, @Nonnull V value, @Nullable Long expireAfterWriteMillis) {
         if (key == null) {
             return CompletableFuture.completedFuture(value);
         }
@@ -474,6 +511,18 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
     @Nonnull
     @Override
     public CompletionStage<Map<K, V>> putAsync(@Nonnull Map<K, V> keyAndValues) {
+        return putAsyncExpireAfterWrite(keyAndValues, expireAfterWriteMillis);
+    }
+
+    @Nonnull
+    @Override
+    public CompletionStage<Map<K, V>> putAsyncExpireAfterWrite(@Nonnull Map<K, V> keyAndValues, @Nonnull Duration expireAfterWrite) {
+        Objects.requireNonNull(expireAfterWrite, "RedisCache#putExpireAfterWrite received nullable expireAfterWrite argument");
+        return putAsyncExpireAfterWrite(keyAndValues, expireAfterWrite.toMillis());
+    }
+
+    @Nonnull
+    private CompletionStage<Map<K, V>> putAsyncExpireAfterWrite(@Nonnull Map<K, V> keyAndValues, @Nullable Long expireAfterWriteMillis) {
         if (keyAndValues == null || keyAndValues.isEmpty()) {
             return CompletableFuture.completedFuture(Collections.emptyMap());
         }
@@ -509,6 +558,7 @@ public abstract class AbstractRedisCache<K, V> implements AsyncCache<K, V> {
             });
     }
 
+    @Nonnull
     @Override
     public CompletionStage<V> computeIfAbsentAsync(@Nonnull K key, @Nonnull Function<K, CompletionStage<V>> mappingFunction) {
         if (key == null) {
