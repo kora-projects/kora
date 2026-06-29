@@ -1,5 +1,5 @@
 plugins {
-    id "org.jetbrains.kotlin.jvm" version "2.3.0" apply false
+    alias(libs.plugins.kotlin.jvm) apply false
     id 'jacoco'
 }
 
@@ -130,6 +130,8 @@ subprojects {
                 force "org.junit.jupiter:junit-platform-launcher:${versions.junit.get()}"
                 force "org.slf4j:slf4j-api:${versions.slf4j.get()}"
                 force "com.google.guava:guava:${versions.guava.get()}"
+                force "net.bytebuddy:byte-buddy:${versions.byte.buddy.get()}"
+                force "net.bytebuddy:byte-buddy-agent:${versions.byte.buddy.get()}"
             }
         }
     }

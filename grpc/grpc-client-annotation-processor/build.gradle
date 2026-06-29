@@ -1,5 +1,5 @@
 plugins {
-    id "com.google.protobuf" version "0.9.5"
+    alias(libs.plugins.protobuf)
 }
 
 dependencies {
@@ -12,20 +12,18 @@ dependencies {
     testImplementation project(":grpc:grpc-client")
     testImplementation project(":config:config-annotation-processor")
     testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation "javax.annotation:javax.annotation-api:1.3.2"
+    testImplementation libs.javax.annotation.api
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
-def grpcVersion = libs.versions.grpc.java.get()
-
 protobuf {
     protoc {
-        artifact = "com.google.protobuf:protoc:3.21.9"
+        artifact = libs.protobuf.protoc.get().toString()
     }
     plugins {
         grpc {
-            artifact = "io.grpc:protoc-gen-grpc-java:$grpcVersion"
+            artifact = libs.grpc.java.gen.get().toString()
         }
     }
     generateProtoTasks {

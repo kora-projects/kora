@@ -30,7 +30,7 @@ def modifyPom(Node pom) {
                 plugin {
                     groupId "org.apache.maven.plugins"
                     artifactId "maven-compiler-plugin"
-                    delegate.version "3.8.1"
+                    delegate.version libs.versions.maven.compiler.plugin.get()
                     configuration {
                         release '${java.version}'
                         source '${java.version}'
@@ -50,7 +50,7 @@ def modifyPom(Node pom) {
                 plugin {
                     groupId "org.apache.maven.plugins"
                     artifactId "maven-surefire-plugin"
-                    delegate.version "2.22.2"
+                    delegate.version libs.versions.maven.surefire.plugin.get()
                     configuration {
                         argLine "--enable-preview"
                     }

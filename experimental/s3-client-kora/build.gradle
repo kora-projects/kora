@@ -12,5 +12,5 @@ dependencies {
     testImplementation project(":http:http-client-ok")
     testImplementation libs.testcontainers.core
     testImplementation libs.s3client.minio
-    testImplementation "com.squareup.okhttp3:logging-interceptor:${libs.okhttp.jvm.get().version}"
+    testImplementation libs.okhttp.logging.interceptor
 }
