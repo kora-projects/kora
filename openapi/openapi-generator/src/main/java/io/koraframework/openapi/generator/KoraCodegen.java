@@ -1813,10 +1813,6 @@ public class KoraCodegen extends DefaultCodegen {
     @Override
     protected ImmutableMap.Builder<String, Mustache.Lambda> addMustacheLambdas() {
         return super.addMustacheLambdas()
-            .put("trim", (fragment, out) -> {
-                var text = fragment.execute();
-                out.write(text.trim());
-            })
             .put("classname", (fragment, out) -> {
                 var text = fragment.execute();
                 out.write(this.upperCase(toVarName(text)));
