@@ -1,0 +1,25 @@
+# Per-version update limits for gradle/update-libs-versions.gradle.
+#
+# Keys are names from the [versions] section in libs.versions.toml.
+# Inline versions can be limited with "inline:<lineNumber>" where lineNumber is 1-based
+# in libs.versions.toml, but prefer moving shared versions into [versions] first.
+#
+# Levels:
+# - any: allow any newer stable version
+# - major: allow major version changes
+# - minor: keep the current major version
+# - patch: keep the current major and minor version
+
+[version-levels]
+# Keep CXF on the 3.x line unless the SOAP generator setup is tested against CXF 4.x.
+cxf = "minor"
+
+# Keep RESTEasy on 6.x unless the Jakarta stack is intentionally migrated.
+resteasy = "minor"
+
+# Keep JAXB APIs on the 3.x line unless consumers are ready for 4.x.
+jakarta-xml-api = "minor"
+
+# Keep legacy javax SOAP/JAXB dependencies on their existing minor line.
+javax-jaxb = "patch"
+jaxb-impl = "patch"

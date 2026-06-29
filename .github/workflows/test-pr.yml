@@ -55,3 +55,37 @@ jobs:
         with:
           files: |
             **/test-results/**/*.xml
+
+  dependency-report-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: run-tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JDK 25 setup
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'adopt'
+
+      - name: Gradle setup
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: true
+
+      - name: Generate vulnerability report
+        run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportVulnerabilities=true -PvulnerabilityReportFile=build/reports/dependency-vulnerabilities.md --no-daemon --console plain
+        shell: bash
+
+      - name: Generate dependency update report
+        run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=patch -PupdateReportFile=build/reports/dependency-updates.md --no-daemon --console plain
+        shell: bash
+
+      - name: Upload dependency reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-reports
+          path: |
+            build/reports/dependency-vulnerabilities.md
+            build/reports/dependency-updates.md

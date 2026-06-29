@@ -1,0 +1,548 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+import groovy.xml.XmlSlurper
+
+def syncBuildSrcDependencies = { File buildSrcFile, List libraryEntries, def writeChanges ->
+    if (!buildSrcFile.isFile()) {
+        return [count: 0, changes: [], missing: []]
+    }
+
+    def catalogByModule = [:]
+    libraryEntries.each { entry ->
+        def key = "${entry.group}:${entry.artifact}"
+        if (!catalogByModule.containsKey(key)) {
+            catalogByModule[key] = entry
+        }
+    }
+
+    def lines = buildSrcFile.readLines("UTF-8")
+    def changes = []
+    def missing = []
+    def updatedLines = []
+    lines.eachWithIndex { line, index ->
+        def matcher = line =~ /(['"])([A-Za-z0-9_.-]+):([A-Za-z0-9_.-]+):([^'"]+)\1/
+        if (!matcher.find()) {
+            updatedLines += line
+            return
+        }
+
+        def quote = matcher.group(1)
+        def group = matcher.group(2)
+        def artifact = matcher.group(3)
+        def current = matcher.group(4)
+        def key = "${group}:${artifact}"
+        def catalogEntry = catalogByModule[key]
+        if (!catalogEntry) {
+            println "buildSrc/build.gradle: no libs.versions.toml entry for ${key}:${current}"
+            missing += [line: index + 1, group: group, artifact: artifact, current: current]
+            updatedLines += line
+            return
+        }
+
+        def target = catalogEntry.version
+        if (current == target) {
+            updatedLines += line
+            return
+        }
+
+        changes += [
+            line: index + 1,
+            group: group,
+            artifact: artifact,
+            current: current,
+            target: target,
+            alias: catalogEntry.alias
+        ]
+        updatedLines += line.replace("${quote}${key}:${current}${quote}", "${quote}${key}:${target}${quote}")
+    }
+
+    if (!changes.isEmpty()) {
+        println ""
+        println "buildSrc/build.gradle sync:"
+        changes.each {
+            println "  line ${it.line}: ${it.group}:${it.artifact} (${it.alias}) ${it.current} -> ${it.target}"
+        }
+
+        if (writeChanges) {
+            buildSrcFile.write(updatedLines.join(System.lineSeparator()) + System.lineSeparator(), "UTF-8")
+            println "Updated ${buildSrcFile}"
+        }
+    }
+
+    return [count: changes.size(), changes: changes, missing: missing]
+}
+
+gradle.projectsLoaded {
+    gradle.rootProject {
+        tasks.register("updateLibsVersions") {
+            group = "version catalog"
+            description = "Checks gradle/libs.versions.toml against Maven metadata and optionally updates it."
+
+            doLast {
+                def catalogFile = rootProject.file("gradle/libs.versions.toml")
+                def writeChanges = providers.gradleProperty("writeVersions").map { it.toBoolean() }.getOrElse(false)
+                def includePreRelease = providers.gradleProperty("includePreRelease").map { it.toBoolean() }.getOrElse(false)
+                def reportVulnerabilitiesEnabled = providers.gradleProperty("reportVulnerabilities").map { it.toBoolean() }.getOrElse(false)
+                def reportUpdatesEnabled = providers.gradleProperty("reportUpdates").map { it.toBoolean() }.getOrElse(false)
+                def updateLevel = providers.gradleProperty("updateLevel").getOrElse("any").toLowerCase(Locale.ROOT)
+                def vulnerabilityReportFile = providers.gradleProperty("vulnerabilityReportFile")
+                    .map { rootProject.file(it) }
+                    .orElse(rootProject.layout.buildDirectory.file("reports/dependency-vulnerabilities.md").map { it.asFile })
+                    .get()
+                def updateReportFile = providers.gradleProperty("updateReportFile")
+                    .map { rootProject.file(it) }
+                    .orElse(rootProject.layout.buildDirectory.file("reports/dependency-updates.md").map { it.asFile })
+                    .get()
+                def policyFile = rootProject.file(providers.gradleProperty("versionPolicy")
+                    .getOrElse("gradle/libs-version-policy.toml"))
+
+                if (!(updateLevel in ["any", "major", "minor", "patch"])) {
+                    throw new GradleException("Unsupported updateLevel '${updateLevel}'. Use one of: any, major, minor, patch.")
+                }
+
+                if (!catalogFile.isFile()) {
+                    throw new GradleException("Catalog file not found: ${catalogFile}")
+                }
+
+                def versionPolicy = readVersionPolicy(policyFile)
+                if (!versionPolicy.isEmpty()) {
+                    println "Using version policy ${policyFile}:"
+                    versionPolicy.keySet().sort().each { key ->
+                        println "  ${key}: ${versionPolicy[key]}"
+                    }
+                    println ""
+                }
+
+                def catalog = catalogFile.readLines("UTF-8")
+                def section = ""
+                def versionValues = [:]
+                def versionLineNumbers = [:]
+                def versionRefs = [:].withDefault { [] }
+                def inlineEntries = [:]
+                def libraryEntries = []
+
+                catalog.eachWithIndex { line, index ->
+                    def sectionMatcher = line =~ /^\s*\["([^"]+)"\]\s*$/
+                    if (sectionMatcher.matches()) {
+                        section = sectionMatcher[0][1]
+                        return
+                    }
+
+                    if (section == "versions") {
+                        def versionMatcher = line =~ /^([A-Za-z0-9_.-]+)\s*=\s*"([^"]+)"/
+                        if (versionMatcher.find()) {
+                            versionValues[versionMatcher.group(1)] = versionMatcher.group(2)
+                            versionLineNumbers[versionMatcher.group(1)] = index
+                        }
+                        return
+                    }
+
+                    if (section == "libraries") {
+                        def moduleMatcher = line =~ /module\s*=\s*"([^:"]+):([^:"]+)"/
+                        if (moduleMatcher.find()) {
+                            def aliasMatcher = line =~ /^([A-Za-z0-9_.-]+)\s*=/
+                            def alias = aliasMatcher.find() ? aliasMatcher.group(1) : "inline:${index + 1}"
+                            def coord = [group: moduleMatcher.group(1), artifact: moduleMatcher.group(2), repository: "https://repo1.maven.org/maven2"]
+                            def refMatcher = line =~ /version\.ref\s*=\s*"([^"]+)"/
+                            def inlineMatcher = line =~ /version\s*=\s*"([^"]+)"/
+                            if (refMatcher.find()) {
+                                def versionRef = refMatcher.group(1)
+                                versionRefs[versionRef] += coord
+                                libraryEntries += [alias: alias, group: coord.group, artifact: coord.artifact, versionRef: versionRef, versionLine: versionLineNumbers[versionRef]]
+                            } else if (inlineMatcher.find()) {
+                                def version = inlineMatcher.group(1)
+                                inlineEntries[index] = [name: alias, current: version, coordinates: [coord]]
+                                libraryEntries += [alias: alias, group: coord.group, artifact: coord.artifact, version: version, versionLine: index]
+                            }
+                        }
+                        return
+                    }
+
+                    if (section == "plugins") {
+                        def pluginMatcher = line =~ /id\s*=\s*"([^"]+)"/
+                        if (pluginMatcher.find()) {
+                            def pluginId = pluginMatcher.group(1)
+                            def coord = [
+                                group: pluginId,
+                                artifact: "${pluginId}.gradle.plugin",
+                                repository: "https://plugins.gradle.org/m2"
+                            ]
+                            def refMatcher = line =~ /version\.ref\s*=\s*"([^"]+)"/
+                            def inlineMatcher = line =~ /version\s*=\s*"([^"]+)"/
+                            if (refMatcher.find()) {
+                                versionRefs[refMatcher.group(1)] += coord
+                            } else if (inlineMatcher.find()) {
+                                inlineEntries[index] = [current: inlineMatcher.group(1), coordinates: [coord]]
+                            }
+                        }
+                    }
+                }
+
+                libraryEntries = libraryEntries.collect { entry ->
+                    if (entry.versionRef) {
+                        if (!versionValues.containsKey(entry.versionRef)) {
+                            return null
+                        }
+                        return entry + [version: versionValues[entry.versionRef], versionLine: versionLineNumbers[entry.versionRef]]
+                    }
+                    return entry
+                }.findAll { it.version }
+
+                if (reportVulnerabilitiesEnabled) {
+                    reportVulnerabilities(libraryEntries, vulnerabilityReportFile)
+                    if (!writeChanges) {
+                        return
+                    }
+                }
+
+                def updates = []
+                versionRefs.keySet().sort().each { key ->
+                    if (!versionValues.containsKey(key)) {
+                        logger.warn("Version reference '${key}' has no entry in [versions]")
+                        return
+                    }
+                    def current = versionValues[key]
+                    def effectiveUpdateLevel = effectiveUpdateLevel(updateLevel, versionPolicy[key])
+                    logPolicyRestriction(key, updateLevel, versionPolicy[key], effectiveUpdateLevel)
+                    def latestVersions = versionRefs[key].collect { latestVersion(it.group, it.artifact, current, it.repository, includePreRelease, effectiveUpdateLevel) }.findAll()
+                    if (latestVersions.isEmpty()) {
+                        return
+                    }
+                    def selected = latestVersions.sort { versionSortKey(it) }.last()
+                    if (selected != current) {
+                        updates += [line: versionLineNumbers[key], name: key, current: current, latest: selected]
+                    }
+                }
+
+                inlineEntries.keySet().sort().each { lineNumber ->
+                    def entry = inlineEntries[lineNumber]
+                    def key = "inline:${lineNumber + 1}"
+                    def displayName = inlineDisplayName(key, entry)
+                    def effectiveUpdateLevel = effectiveUpdateLevel(updateLevel, versionPolicy[key])
+                    logPolicyRestriction(key, updateLevel, versionPolicy[key], effectiveUpdateLevel)
+                    def latestVersions = entry.coordinates.collect { latestVersion(it.group, it.artifact, entry.current, it.repository, includePreRelease, effectiveUpdateLevel) }.findAll()
+                    if (latestVersions.isEmpty()) {
+                        return
+                    }
+                    def selected = latestVersions.sort { versionSortKey(it) }.last()
+                    if (selected != entry.current) {
+                        updates += [line: lineNumber, name: displayName, current: entry.current, latest: selected]
+                    }
+                }
+
+                def updateByLine = updates.collectEntries { [(it.line): it.latest] }
+                def effectiveLibraryEntries = libraryEntries.collect {
+                    updateByLine.containsKey(it.versionLine) ? it + [version: updateByLine[it.versionLine]] : it
+                }
+                def buildSrcResult = syncBuildSrcDependencies(rootProject.file("buildSrc/build.gradle"), effectiveLibraryEntries, writeChanges)
+                def buildSrcChanges = buildSrcResult.count
+
+                if (reportUpdatesEnabled) {
+                    reportUpdates(updates, buildSrcResult, updateLevel, updateReportFile)
+                }
+
+                if (updates.isEmpty() && buildSrcChanges == 0) {
+                    println "No version updates found."
+                    return
+                }
+
+                if (!updates.isEmpty()) {
+                    updates.sort { [it.line, it.name] }.each {
+                        println "${it.name}: ${it.current} -> ${it.latest}"
+                    }
+                }
+
+                if (!writeChanges) {
+                    println ""
+                    println "Dry run only. Re-run with -PwriteVersions=true to update ${catalogFile}."
+                    println "Use -PupdateLevel=minor to update only within the current major version."
+                    return
+                }
+
+                if (!updates.isEmpty()) {
+                    updates.each {
+                        catalog[it.line] = catalog[it.line].replace("\"${it.current}\"", "\"${it.latest}\"")
+                    }
+                    catalogFile.write(catalog.join(System.lineSeparator()) + System.lineSeparator(), "UTF-8")
+                    println "Updated ${catalogFile}"
+                }
+            }
+        }
+    }
+}
+
+String metadataUrl(String group, String artifact, String repository) {
+    "${repository}/${group.replace('.', '/')}/${artifact}/maven-metadata.xml"
+}
+
+String latestVersion(String group, String artifact, String currentVersion, String repository, boolean includePreRelease, String updateLevel) {
+    def url = metadataUrl(group, artifact, repository)
+    try {
+        def connection = new URL(url).openConnection()
+        connection.connectTimeout = 10000
+        connection.readTimeout = 10000
+        def metadata = new XmlSlurper(false, false).parse(connection.inputStream)
+        def versions = metadata.versioning.versions.version.collect { it.text() }
+        if (!includePreRelease) {
+            versions = versions.findAll { !(it ==~ /(?i).*(alpha|beta|rc|snapshot|milestone|preview|ea|[.-]M\d+).*/) }
+        }
+        if (currentVersion ==~ /\d+(\.\d+)+/) {
+            def plainVersions = versions.findAll { it ==~ /\d+(\.\d+)+/ }
+            if (!plainVersions.isEmpty()) {
+                versions = plainVersions
+            }
+        } else if (currentVersion.endsWith("-jre")) {
+            def jreVersions = versions.findAll { it.endsWith("-jre") }
+            if (!jreVersions.isEmpty()) {
+                versions = jreVersions
+            }
+        } else if (currentVersion.endsWith("-android")) {
+            def androidVersions = versions.findAll { it.endsWith("-android") }
+            if (!androidVersions.isEmpty()) {
+                versions = androidVersions
+            }
+        }
+        versions = versions.findAll { isAllowedUpdate(currentVersion, it, updateLevel) }
+        return versions ? versions.sort { versionSortKey(it) }.last() : null
+    } catch (Exception e) {
+        println "WARN: Unable to read metadata for ${group}:${artifact} from ${url} (${e.message})"
+        return null
+    }
+}
+
+String versionSortKey(String version) {
+    def parts = (version =~ /\d+|[A-Za-z]+/).collect {
+        it ==~ /\d+/ ? it.toLong().toString().padLeft(10, '0') : it.toLowerCase(Locale.ROOT)
+    }
+    parts.join(".")
+}
+
+boolean isAllowedUpdate(String currentVersion, String candidateVersion, String updateLevel) {
+    if (updateLevel == "any") {
+        return true
+    }
+
+    def current = numericVersionParts(currentVersion)
+    def candidate = numericVersionParts(candidateVersion)
+    if (!current || !candidate) {
+        return true
+    }
+
+    if (updateLevel in ["minor", "patch"] && candidate[0] != current[0]) {
+        return false
+    }
+    if (updateLevel == "patch" && candidate.size() > 1 && current.size() > 1 && candidate[1] != current[1]) {
+        return false
+    }
+    return true
+}
+
+List<Long> numericVersionParts(String version) {
+    def matcher = version =~ /\d+/
+    def parts = matcher.collect { it.toLong() }
+    return parts.isEmpty() ? null : parts
+}
+
+void reportVulnerabilities(List<Map> libraryEntries, File reportFile) {
+    def coordinates = [:]
+    libraryEntries.each { entry ->
+        def key = "${entry.group}:${entry.artifact}:${entry.version}"
+        if (!coordinates.containsKey(key)) {
+            coordinates[key] = [group: entry.group, artifact: entry.artifact, version: entry.version, aliases: [] as Set]
+        }
+        coordinates[key].aliases << entry.alias
+    }
+
+    println "Vulnerability report via OSV.dev for ${coordinates.size()} Maven coordinates:"
+    println ""
+    def markdown = []
+    markdown << "<!-- kora-dependency-vulnerability-report -->"
+    markdown << "## Dependency Vulnerability Report"
+    markdown << ""
+    markdown << "Checked `${coordinates.size()}` Maven coordinates from `gradle/libs.versions.toml` via OSV.dev."
+    markdown << ""
+
+    def vulnerableCount = 0
+    def vulnerabilityCount = 0
+
+    coordinates.values().sort { "${it.group}:${it.artifact}:${it.version}" }.each { coord ->
+        def vulns = queryOsv(coord.group, coord.artifact, coord.version)
+        if (vulns.isEmpty()) {
+            return
+        }
+
+        vulnerableCount++
+        vulnerabilityCount += vulns.size()
+        println "${coord.group}:${coord.artifact}:${coord.version} (${coord.aliases.sort().join(', ')})"
+        markdown << "### `${coord.group}:${coord.artifact}:${coord.version}`"
+        markdown << ""
+        markdown << "Aliases: `${coord.aliases.sort().join('`, `')}`"
+        markdown << ""
+        vulns.sort { it.id ?: "" }.each { vuln ->
+            def ids = []
+            if (vuln.id) {
+                ids << vuln.id
+            }
+            if (vuln.aliases instanceof Collection) {
+                ids.addAll(vuln.aliases.findAll { it ==~ /CVE-\d{4}-\d+/ })
+            }
+            ids = ids.unique()
+            def summary = vuln.summary ?: "(no summary)"
+            println "  - ${ids.join(', ')}: ${summary}"
+            markdown << "- `${ids.join('`, `')}`: ${summary}"
+        }
+        println ""
+        markdown << ""
+    }
+
+    if (vulnerableCount == 0) {
+        println "No vulnerabilities found."
+        markdown << "No vulnerabilities found."
+    } else {
+        println "Found ${vulnerabilityCount} vulnerabilities across ${vulnerableCount} coordinates."
+        markdown.add(3, "**Found `${vulnerabilityCount}` vulnerabilities across `${vulnerableCount}` coordinates.**")
+        markdown.add(4, "")
+    }
+
+    reportFile.parentFile.mkdirs()
+    reportFile.write(markdown.join(System.lineSeparator()) + System.lineSeparator(), "UTF-8")
+    println "Wrote vulnerability report to ${reportFile}"
+}
+
+void reportUpdates(List updates, Map buildSrcResult, String updateLevel, File reportFile) {
+    def updateCount = updates.size()
+    def buildSrcCount = (buildSrcResult.count ?: 0) as int
+    def totalCount = updateCount + buildSrcCount
+
+    def markdown = []
+    markdown << "<!-- kora-dependency-update-report -->"
+    markdown << "## Dependency Update Report"
+    markdown << ""
+    markdown << "Update level: `${updateLevel}`"
+    markdown << ""
+
+    if (totalCount == 0) {
+        markdown << "No dependency updates found."
+    } else {
+        markdown << "**Found `${totalCount}` dependency updates.**"
+        markdown << ""
+        if (updateCount > 0) {
+            markdown << "### `gradle/libs.versions.toml`"
+            markdown << ""
+            updates.sort { [it.line, it.name] }.each {
+                markdown << "- `${it.name}`: `${it.current}` -> `${it.latest}`"
+            }
+            markdown << ""
+        }
+        if (buildSrcCount > 0) {
+            markdown << "### `buildSrc/build.gradle`"
+            markdown << ""
+            buildSrcResult.changes.each {
+                markdown << "- line `${it.line}`: `${it.group}:${it.artifact}` (`${it.alias}`) `${it.current}` -> `${it.target}`"
+            }
+            markdown << ""
+        }
+    }
+
+    if (buildSrcResult.missing) {
+        markdown << "### `buildSrc/build.gradle` dependencies not in catalog"
+        markdown << ""
+        buildSrcResult.missing.each {
+            markdown << "- line `${it.line}`: `${it.group}:${it.artifact}:${it.current}`"
+        }
+        markdown << ""
+    }
+
+    reportFile.parentFile.mkdirs()
+    reportFile.write(markdown.join(System.lineSeparator()) + System.lineSeparator(), "UTF-8")
+    println "Wrote dependency update report to ${reportFile}"
+}
+
+List queryOsv(String group, String artifact, String version) {
+    def results = []
+    def pageToken = null
+    while (true) {
+        def payload = [
+            package: [name: "${group}:${artifact}", ecosystem: "Maven"],
+            version: version
+        ]
+        if (pageToken) {
+            payload.page_token = pageToken
+        }
+
+        try {
+            def connection = new URL("https://api.osv.dev/v1/query").openConnection()
+            connection.connectTimeout = 10000
+            connection.readTimeout = 20000
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json")
+            connection.outputStream.withWriter("UTF-8") {
+                it << JsonOutput.toJson(payload)
+            }
+
+            def response = new JsonSlurper().parse(connection.inputStream)
+            if (response.vulns instanceof Collection) {
+                results.addAll(response.vulns)
+            }
+            pageToken = response.next_page_token
+            if (!pageToken) {
+                return results
+            }
+        } catch (Exception e) {
+            println "WARN: Unable to query OSV for ${group}:${artifact}:${version} (${e.message})"
+            return results
+        }
+    }
+}
+
+Map<String, String> readVersionPolicy(File policyFile) {
+    if (!policyFile.isFile()) {
+        return [:]
+    }
+
+    def policy = [:]
+    def section = ""
+    policyFile.eachLine("UTF-8") { rawLine ->
+        def line = rawLine.replaceFirst(/\s*#.*$/, "").trim()
+        if (line.isEmpty()) {
+            return
+        }
+        def sectionMatcher = line =~ /^\[([A-Za-z0-9_.-]+)\]$/
+        if (sectionMatcher.matches()) {
+            section = sectionMatcher[0][1]
+            return
+        }
+        if (section != "version-levels") {
+            return
+        }
+        def matcher = line =~ /^"?([A-Za-z0-9_.:-]+)"?\s*=\s*"(any|major|minor|patch)"$/
+        if (!matcher.matches()) {
+            throw new GradleException("Invalid version policy line in ${policyFile}: ${rawLine}")
+        }
+        policy[matcher[0][1]] = matcher[0][2]
+    }
+    return policy
+}
+
+String effectiveUpdateLevel(String requestedLevel, String policyLevel) {
+    if (!policyLevel) {
+        return requestedLevel
+    }
+    def order = ["patch", "minor", "major", "any"]
+    return order[Math.min(order.indexOf(requestedLevel), order.indexOf(policyLevel))]
+}
+
+void logPolicyRestriction(String key, String requestedLevel, String policyLevel, String effectiveLevel) {
+    if (policyLevel && policyLevel != requestedLevel) {
+        println "Policy ${key}: requested=${requestedLevel}, policy=${policyLevel}, effective=${effectiveLevel}"
+    } else if (policyLevel) {
+        println "Policy ${key}: ${effectiveLevel}"
+    }
+}
+
+String inlineDisplayName(String key, Map entry) {
+    def coordinate = entry.coordinates ? "${entry.coordinates[0].group}:${entry.coordinates[0].artifact}" : key
+    def alias = entry.name ?: key
+    return "${alias} (${coordinate}, ${key})"
+}
