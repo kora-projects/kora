@@ -32,7 +32,8 @@ import ru.tinkoff.kora.ksp.common.KotlinPoetUtils.controlFlow
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.makeTagAnnotationSpec
 import ru.tinkoff.kora.ksp.common.parseMappingData
-import ru.tinkoff.kora.ksp.common.parseTags
+import ru.tinkoff.kora.ksp.common.TagUtils.makeAnnotationSpecForTypes
+import ru.tinkoff.kora.ksp.common.TagUtils.parseTagValue
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionException
 import java.util.concurrent.CompletionStage
@@ -58,17 +59,17 @@ class RouteProcessor {
             .distinct()
             .toList()
 
-        val tags = declaration.parseTags()
+        val tags = parseTagValue(declaration)
         val paramSpecBuilder = ParameterSpec.builder("_controller", parent.toClassName())
         if (tags.isNotEmpty()) {
-            paramSpecBuilder.addAnnotation(tags.makeTagAnnotationSpec())
+            paramSpecBuilder.addAnnotation(tags.makeAnnotationSpecForTypes())
         }
 
         val funBuilder = FunSpec.builder(funName)
             .returns(httpServerRequestHandler)
             .addParameter(paramSpecBuilder.build())
         if (tags.isNotEmpty()) {
-            funBuilder.addAnnotation(tags.makeTagAnnotationSpec())
+            funBuilder.addAnnotation(tags.makeAnnotationSpecForTypes())
         }
 
         val isSuspend = function.modifiers.contains(Modifier.SUSPEND)
