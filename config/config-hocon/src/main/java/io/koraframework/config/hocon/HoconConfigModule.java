@@ -7,6 +7,7 @@ import io.koraframework.config.common.ConfigModule;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.annotation.ApplicationConfig;
 import io.koraframework.config.common.origin.ConfigOrigin;
+import io.koraframework.config.common.origin.ContainerConfigOrigin;
 import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.ResourceConfigOrigin;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
@@ -44,21 +45,22 @@ public interface HoconConfigModule extends ConfigModule {
                 return new SimpleConfigOrigin("empty");
             }
             if (resourceUrl.getProtocol().equals("file")) {
-                return new FileConfigOrigin(Path.of(resourceUrl.toURI()));
+                return HoconConfigFactory.fileOrigin(Path.of(resourceUrl.toURI()));
             }
-            return new ResourceConfigOrigin(resourceUrl);
+            return HoconConfigFactory.resourceOrigin(resourceUrl);
         } else {
-            return new FileConfigOrigin(Path.of(file));
+            return HoconConfigFactory.fileOrigin(Path.of(file));
         }
     }
 
     @ApplicationConfig
     default com.typesafe.config.Config applicationConfigHoconUnresolved(@ApplicationConfig ConfigOrigin origin) throws Exception {
-        if (origin instanceof FileConfigOrigin file) {
+        var source = origin instanceof ContainerConfigOrigin container ? container.origins().get(0) : origin;
+        if (source instanceof FileConfigOrigin file) {
             try (var reader = Files.newBufferedReader(file.path(), StandardCharsets.UTF_8)) {
                 return ConfigFactory.parseReader(reader);
             }
-        } else if (origin instanceof ResourceConfigOrigin resource) {
+        } else if (source instanceof ResourceConfigOrigin resource) {
             var connection = resource.url().openConnection();
             connection.connect();
             try (var reader = new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8)) {
