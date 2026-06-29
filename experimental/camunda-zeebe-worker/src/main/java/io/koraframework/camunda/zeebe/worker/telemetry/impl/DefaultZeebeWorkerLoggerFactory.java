@@ -1,6 +1,6 @@
 package io.koraframework.camunda.zeebe.worker.telemetry.impl;
 
-import io.camunda.zeebe.client.api.response.ActivatedJob;
+import io.camunda.client.api.response.ActivatedJob;
 import io.koraframework.camunda.zeebe.worker.exception.JobWorkerException;
 import io.koraframework.logging.common.arg.StructuredArgument;
 import org.jspecify.annotations.Nullable;

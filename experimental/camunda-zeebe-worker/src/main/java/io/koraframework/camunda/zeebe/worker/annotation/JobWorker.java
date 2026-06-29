@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
 public @interface JobWorker {
 
     /**
-     * @return Job Worker Type {@link io.camunda.zeebe.client.api.worker.JobWorkerBuilderStep1#jobType(String)}
+     * @return Job Worker Type {@link io.camunda.client.api.worker.JobWorkerBuilderStep1#jobType(String)}
      */
     String value();
 }

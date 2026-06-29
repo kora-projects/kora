@@ -1,8 +1,8 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import io.camunda.zeebe.client.api.command.FinalCommandStep;
-import io.camunda.zeebe.client.api.response.ActivatedJob;
-import io.camunda.zeebe.client.api.worker.JobClient;
+import io.camunda.client.api.command.FinalCommandStep;
+import io.camunda.client.api.response.ActivatedJob;
+import io.camunda.client.api.worker.JobClient;
 import io.koraframework.camunda.zeebe.worker.annotation.JobWorker;
 import io.koraframework.camunda.zeebe.worker.exception.JobWorkerException;
 
@@ -19,7 +19,7 @@ public interface KoraJobWorker {
     /**
      * If empty list than ALL variables will be fetched (default behavior)
      *
-     * @return {@link io.camunda.zeebe.client.api.worker.JobWorkerBuilderStep1.JobWorkerBuilderStep3#fetchVariables(List)}
+     * @return {@link io.camunda.client.api.worker.JobWorkerBuilderStep1.JobWorkerBuilderStep3#fetchVariables(List)}
      */
     default List<String> fetchVariables() {
         return Collections.emptyList();

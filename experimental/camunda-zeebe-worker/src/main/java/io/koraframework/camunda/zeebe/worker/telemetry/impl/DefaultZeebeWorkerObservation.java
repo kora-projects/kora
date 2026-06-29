@@ -1,9 +1,9 @@
 package io.koraframework.camunda.zeebe.worker.telemetry.impl;
 
-import io.camunda.zeebe.client.api.command.FailJobCommandStep1;
-import io.camunda.zeebe.client.api.command.FinalCommandStep;
-import io.camunda.zeebe.client.api.command.ThrowErrorCommandStep1;
-import io.camunda.zeebe.client.api.response.ActivatedJob;
+import io.camunda.client.api.command.FailJobCommandStep1;
+import io.camunda.client.api.command.FinalCommandStep;
+import io.camunda.client.api.command.ThrowErrorCommandStep1;
+import io.camunda.client.api.response.ActivatedJob;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerObservation;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;

@@ -1,19 +1,13 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import io.camunda.zeebe.client.CredentialsProvider;
-import io.camunda.zeebe.client.ZeebeClient;
-import io.camunda.zeebe.client.ZeebeClientConfiguration;
-import io.camunda.zeebe.client.api.JsonMapper;
-import io.camunda.zeebe.client.api.worker.BackoffSupplier;
-import io.camunda.zeebe.client.impl.ZeebeClientBuilderImpl;
+import io.camunda.client.CamundaClient;
+import io.camunda.client.CamundaClientConfiguration;
+import io.camunda.client.CredentialsProvider;
+import io.camunda.client.api.JsonMapper;
+import io.camunda.client.api.worker.BackoffSupplier;
+import io.camunda.client.impl.CamundaClientBuilderImpl;
 import io.grpc.ClientInterceptor;
 import io.grpc.ManagedChannel;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.opentelemetry.api.trace.Tracer;
-import org.jspecify.annotations.Nullable;
-import io.koraframework.grpc.client.channel.GrpcClientChannelFactory;
-import io.koraframework.grpc.client.GrpcClientModule;
-import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeClientWorkerMetricsFactory;
@@ -27,10 +21,15 @@ import io.koraframework.common.Tag;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.grpc.client.GrpcClientModule;
+import io.koraframework.grpc.client.channel.GrpcClientChannelFactory;
+import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.koraframework.json.common.JsonModule;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.opentelemetry.api.trace.Tracer;
+import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 
 public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
@@ -44,31 +43,34 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
     }
 
     @DefaultComponent
-    @SuppressWarnings("deprecation")
-    default ZeebeClientConfiguration zeebeWorkerClientConfiguration(ZeebeClientConfig clientConfig,
-                                                                    ZeebeWorkerConfig workerConfig,
-                                                                    @Nullable CredentialsProvider credentialsProvider,
-                                                                    @Nullable JsonMapper jsonMapper,
-                                                                    @Nullable ScheduledExecutorService jobWorkerExecutor) {
+    default CamundaClientConfiguration zeebeWorkerClientConfiguration(ZeebeClientConfig clientConfig,
+                                                                      ZeebeWorkerConfig workerConfig,
+                                                                      @Nullable CredentialsProvider credentialsProvider,
+                                                                      @Nullable JsonMapper jsonMapper,
+                                                                      @Nullable ScheduledExecutorService jobWorkerExecutor) {
         final ZeebeWorkerConfig.JobConfig defaultJobConfig = workerConfig.getJobConfig(ZeebeWorkerConfig.DEFAULT);
 
-        ZeebeClientBuilderImpl zeebeClientConfiguration = (ZeebeClientBuilderImpl) new ZeebeClientBuilderImpl()
+        CamundaClientBuilderImpl zeebeClientConfiguration = (CamundaClientBuilderImpl) new CamundaClientBuilderImpl()
             .defaultJobPollInterval(defaultJobConfig.pollInterval())
             .defaultJobTimeout(defaultJobConfig.timeout())
             .numJobWorkerExecutionThreads(clientConfig.executionThreads())
             .caCertificatePath(clientConfig.certificatePath())
             .keepAlive(clientConfig.keepAlive())
-            .defaultMessageTimeToLive(clientConfig.grpc().ttl())
-            .maxMessageSize((int) clientConfig.grpc().maxMessageSize().toBytes())
-            .grpcAddress(URI.create(clientConfig.grpc().url()))
-            .applyEnvironmentVariableOverrides(false)
-            .jobWorkerExecutor(Executors.newScheduledThreadPool(0, Thread.ofVirtual().name("zeebe-worker-", 1).factory()), true);
+            .applyEnvironmentVariableOverrides(false);
+
+        if (clientConfig.grpc() != null) {
+            zeebeClientConfiguration = (CamundaClientBuilderImpl) zeebeClientConfiguration
+                .grpcAddress(URI.create(clientConfig.grpc().url()))
+                .defaultMessageTimeToLive(clientConfig.grpc().ttl())
+                .maxMessageSize((int) clientConfig.grpc().maxMessageSize().toBytes())
+                .preferRestOverGrpc(false);
+        }
 
         if (defaultJobConfig.streamEnabled() != null) {
-            zeebeClientConfiguration = (ZeebeClientBuilderImpl) zeebeClientConfiguration.defaultJobWorkerStreamEnabled(defaultJobConfig.streamEnabled());
+            zeebeClientConfiguration = (CamundaClientBuilderImpl) zeebeClientConfiguration.defaultJobWorkerStreamEnabled(defaultJobConfig.streamEnabled());
         }
         if (defaultJobConfig.maxJobsActive() != null) {
-            zeebeClientConfiguration = (ZeebeClientBuilderImpl) zeebeClientConfiguration.defaultJobWorkerMaxJobsActive(defaultJobConfig.maxJobsActive());
+            zeebeClientConfiguration = (CamundaClientBuilderImpl) zeebeClientConfiguration.defaultJobWorkerMaxJobsActive(defaultJobConfig.maxJobsActive());
         }
         if (credentialsProvider != null) {
             zeebeClientConfiguration.credentialsProvider(credentialsProvider);
@@ -82,14 +84,8 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
         if (defaultJobConfig.tenantIds() != null && !defaultJobConfig.tenantIds().isEmpty()) {
             zeebeClientConfiguration.defaultJobWorkerTenantIds(defaultJobConfig.tenantIds());
         }
-        if (!clientConfig.tls()) {
-            zeebeClientConfiguration.usePlaintext();
-        }
-        if (clientConfig.rest() != null) {
-            zeebeClientConfiguration
-                .restAddress(URI.create(clientConfig.rest().url()))
-                .preferRestOverGrpc(true);
-        }
+        zeebeClientConfiguration
+            .restAddress(URI.create(clientConfig.rest().url()));
 
         return zeebeClientConfiguration;
     }
@@ -112,7 +108,7 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
         return new DefaultZeebeWorkerTelemetryFactory(meterRegistry, tracer, loggerFactory, metricsFactory);
     }
 
-    @Tag(ZeebeClient.class)
+    @Tag(CamundaClient.class)
     @DefaultComponent
     default Wrapped<ManagedChannel> zeebeWorkerGrpcManagedChannel(ZeebeClientConfig clientConfig,
                                                                   All<ClientInterceptor> interceptors,
@@ -121,9 +117,9 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
         return ZeebeManagedChannelFactory.build(clientConfig, interceptors, clientTelemetryFactory, clientChannelFactory);
     }
 
-    default Wrapped<ZeebeClient> zeebeWorkerClient(ZeebeClientConfig clientConfig,
-                                                   ZeebeClientConfiguration clientConfiguration,
-                                                   @Tag(ZeebeClient.class) ManagedChannel managedChannel) {
+    default Wrapped<CamundaClient> zeebeWorkerClient(ZeebeClientConfig clientConfig,
+                                                     CamundaClientConfiguration clientConfiguration,
+                                                     @Tag(CamundaClient.class) ManagedChannel managedChannel) {
         return new KoraZeebeClient(clientConfig, clientConfiguration, managedChannel);
     }
 
@@ -133,13 +129,13 @@ public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
     }
 
     @Root
-    default ZeebeResourceDeployment zeebeWorkerResourceDeployment(ZeebeClient zeebeClient,
+    default ZeebeResourceDeployment zeebeWorkerResourceDeployment(CamundaClient zeebeClient,
                                                                   ZeebeClientConfig clientConfig) {
         return new ZeebeResourceDeployment(zeebeClient, clientConfig.deployment());
     }
 
     @Root
-    default KoraZeebeJobWorkerEngine zeebeKoraZeebeJobWorkerEngine(ZeebeClient client,
+    default KoraZeebeJobWorkerEngine zeebeKoraZeebeJobWorkerEngine(CamundaClient client,
                                                                    All<KoraJobWorker> jobWorkers,
                                                                    ZeebeClientConfig clientConfig,
                                                                    ZeebeWorkerConfig workerConfig,
