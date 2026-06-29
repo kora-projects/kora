@@ -10,7 +10,6 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
-import io.koraframework.database.common.telemetry.*;
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
@@ -84,7 +83,7 @@ class JdbcDatabaseTest {
         withDb(params, db -> {
             var result = db.withConnection(() -> {
                 var r = new ArrayList<Entity>();
-                try (var stmt = db.currentConnection().prepareStatement(sql);) {
+                try (var stmt = db.connectionCurrent().prepareStatement(sql);) {
                     stmt.setString(1, "test1");
                     var rs = stmt.executeQuery();
                     while (rs.next()) {
@@ -117,9 +116,9 @@ class JdbcDatabaseTest {
 
         withDb(params, db -> {
             var latch = new CountDownLatch(1);
-            Assertions.assertThatThrownBy(() -> db.inTx((JdbcHelper.SqlRunnable) () -> {
-                db.currentContext().addPostRollbackAction((conn, e) -> latch.countDown());
-                try (var stmt = db.currentConnection().prepareStatement(sql)) {
+            Assertions.assertThatThrownBy(() -> db.inTx((JdbcConnectionFactory.SqlRunnable) () -> {
+                db.currentContext().afterRollback((conn, e) -> latch.countDown());
+                try (var stmt = db.connectionCurrent().prepareStatement(sql)) {
                     stmt.execute();
                 }
                 throw new RuntimeException();
@@ -132,8 +131,8 @@ class JdbcDatabaseTest {
 
             var latch1 = new CountDownLatch(1);
             db.inTx(() -> {
-                db.currentContext().addPostCommitAction((conn) -> latch1.countDown());
-                try (var stmt = db.currentConnection().prepareStatement(sql)) {
+                db.currentContext().afterCommit((conn) -> latch1.countDown());
+                try (var stmt = db.connectionCurrent().prepareStatement(sql)) {
                     stmt.execute();
                 }
             });

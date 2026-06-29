@@ -11,9 +11,8 @@ public class ConnectionContext {
 
     private final Connection connection;
 
-    private List<PostCommitAction> postCommitActions;
-
-    private List<PostRollbackAction> postRollbackActions;
+    private List<PostCommitAction> afterCommitActions;
+    private List<PostRollbackAction> afterRollbackActions;
 
     public ConnectionContext(Connection connection) {
         this.connection = connection;
@@ -23,38 +22,42 @@ public class ConnectionContext {
         return this.connection;
     }
 
-    public void addPostCommitAction(PostCommitAction action) throws SQLException {
+    public ConnectionContext afterCommit(PostCommitAction action) throws SQLException {
         if (!this.isActiveTransaction()) {
             throw new IllegalStateException("Cannot add post commit action when transaction is not active");
         }
-        if (this.postCommitActions == null) {
-            this.postCommitActions = new ArrayList<>();
+        if (this.afterCommitActions == null) {
+            this.afterCommitActions = new ArrayList<>();
         }
-        this.postCommitActions.add(action);
+        this.afterCommitActions.add(action);
+        return this;
     }
 
-    public Collection<PostCommitAction> postCommitActions() {
-        return Objects.requireNonNullElseGet(this.postCommitActions, List::of);
+    Collection<PostCommitAction> postCommitActions() {
+        return Objects.requireNonNullElseGet(this.afterCommitActions, List::of);
     }
 
-    public void addPostRollbackAction(PostRollbackAction action) throws SQLException {
+    public ConnectionContext afterRollback(PostRollbackAction action) throws SQLException {
         if (!this.isActiveTransaction()) {
             throw new IllegalStateException("Cannot add post rollback action when transaction is not active");
         }
-        if (this.postRollbackActions == null) {
-            this.postRollbackActions = new ArrayList<>();
+        if (this.afterRollbackActions == null) {
+            this.afterRollbackActions = new ArrayList<>();
         }
-        this.postRollbackActions.add(action);
+        this.afterRollbackActions.add(action);
+        return this;
     }
 
-    public Collection<PostRollbackAction> postRollbackActions() {
-        return Objects.requireNonNullElseGet(this.postRollbackActions, List::of);
+    Collection<PostRollbackAction> postRollbackActions() {
+        return Objects.requireNonNullElseGet(this.afterRollbackActions, List::of);
     }
 
+    @FunctionalInterface
     public interface PostCommitAction {
         void run(Connection connection) throws SQLException;
     }
 
+    @FunctionalInterface
     public interface PostRollbackAction {
         void run(Connection connection, Exception e) throws SQLException;
     }
