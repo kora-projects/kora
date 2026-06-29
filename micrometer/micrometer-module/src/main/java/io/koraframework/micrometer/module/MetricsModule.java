@@ -1,5 +1,6 @@
 package io.koraframework.micrometer.module;
 
+import io.koraframework.application.graph.Wrapped;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.contrib.metrics.micrometer.CallbackRegistrar;
 import io.opentelemetry.contrib.metrics.micrometer.MicrometerMeterProvider;
@@ -9,9 +10,10 @@ import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 
 public interface MetricsModule {
+
     @Root
     @DefaultComponent
-    default PrometheusMeterRegistryWrapper prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
+    default Wrapped<MeterRegistry> prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers) {
         return new PrometheusMeterRegistryWrapper(initializers);
     }
 

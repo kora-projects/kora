@@ -4,6 +4,7 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.telemetry.common.MetricsScraper;
 import io.micrometer.core.instrument.Gauge;
+import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.binder.jvm.ClassLoaderMetrics;
 import io.micrometer.core.instrument.binder.jvm.JvmGcMetrics;
@@ -12,14 +13,15 @@ import io.micrometer.core.instrument.binder.jvm.JvmThreadMetrics;
 import io.micrometer.core.instrument.binder.system.FileDescriptorMetrics;
 import io.micrometer.core.instrument.binder.system.ProcessorMetrics;
 import io.micrometer.core.instrument.binder.system.UptimeMetrics;
-import io.micrometer.prometheus.PrometheusConfig;
-import io.micrometer.prometheus.PrometheusMeterRegistry;
+import io.micrometer.prometheusmetrics.PrometheusConfig;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 
-public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<PrometheusMeterRegistry>, MetricsScraper {
+public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<MeterRegistry>, MetricsScraper {
     private static final String KORA_VERSION = readVersion();
 
     private final Iterable<PrometheusMeterRegistryInitializer> initializers;
@@ -95,7 +97,7 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
     }
 
     @Override
-    public void scrape(Writer writer) throws IOException {
-        this.registry.scrape(writer);
+    public void scrape(OutputStream os) throws IOException {
+        this.registry.scrape(os);
     }
 }
