@@ -63,13 +63,15 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         val fieldTelemetryFactory = aspectContext.fieldFactory.constructorParam(telemetryFactoryType, listOf())
         val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.TimeoutManager")!!.asType(listOf())
         val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
+        val configType = resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.TimeoutConfig")!!.asType(listOf())
+        val configField = aspectContext.fieldFactory.constructorParam(configType, listOf())
         val fieldTimeout = aspectContext.fieldFactory.constructorInitialized(
             resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.Timeout")!!.asType(listOf()),
             CodeBlock.of("%L[%S]", fieldManager, timeoutName)
         )
         val fieldTelemetry = aspectContext.fieldFactory.constructorInitialized(
             resolver.getClassDeclarationByName("io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry")!!.asType(listOf()),
-            CodeBlock.of("%L.get(%S, object : %T {})", fieldTelemetryFactory, timeoutName, timeoutTelemetryConfig)
+            CodeBlock.of("%L.get(%S, %L.telemetry())", fieldTelemetryFactory, timeoutName, configField)
         )
 
         val body = if (ksFunction.isFlow()) {

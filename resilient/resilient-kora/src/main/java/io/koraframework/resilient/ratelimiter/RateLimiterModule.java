@@ -17,8 +17,7 @@ import java.util.Optional;
 public interface RateLimiterModule {
 
     default RateLimiterConfig koraRateLimiterConfig(Config config, ConfigValueExtractor<RateLimiterConfig> extractor) {
-        var value = config.get("resilient");
-        return Optional.ofNullable(extractor.extract(value)).orElseThrow(() -> ConfigValueExtractionException.missingValueAfterParse(value));
+        return extractor.extractOrThrow(config.get("resilient"));
     }
 
     default RateLimiterManager koraRateLimiterManager(RateLimiterConfig config,
