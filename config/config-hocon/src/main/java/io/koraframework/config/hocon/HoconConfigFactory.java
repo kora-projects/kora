@@ -16,7 +16,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public class HoconConfigFactory {
+public final class HoconConfigFactory {
+
+    private HoconConfigFactory() { }
+
     public static Config fromHocon(ConfigOrigin origin, com.typesafe.config.Config config) {
         var object = config.root();
         var path = ConfigValuePath.root();

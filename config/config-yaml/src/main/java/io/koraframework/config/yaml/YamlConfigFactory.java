@@ -13,7 +13,10 @@ import io.koraframework.config.common.origin.ConfigOrigin;
 import java.io.InputStream;
 import java.util.*;
 
-public class YamlConfigFactory {
+public final class YamlConfigFactory {
+
+    private YamlConfigFactory() { }
+
     public static Config fromYaml(ConfigOrigin origin, InputStream is) {
         var settings = LoadSettings.builder()
             .setAllowRecursiveKeys(false)

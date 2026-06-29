@@ -51,8 +51,7 @@ final class KafkaPublisherTransactionalGenerator {
             .addAnnotation(tag)
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.publisherTransactionalConfig), "extractor")
-            .addStatement("var configValue = config.get($S)", configPath)
-            .addStatement("return $T.requireNonNull(extractor.extract(configValue))", Objects.class)
+            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
             .build();
         var publisher = MethodSpec.methodBuilder(CommonUtils.decapitalize(typeElement.getSimpleName().toString()) + "_PublisherTransactional")
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)

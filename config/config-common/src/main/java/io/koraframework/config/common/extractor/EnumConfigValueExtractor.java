@@ -6,6 +6,7 @@ import io.koraframework.config.common.ConfigValue;
 import java.util.HashMap;
 
 public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueExtractor<T> {
+
     private final HashMap<String, T> map;
 
     public EnumConfigValueExtractor(Class<T> type) {
@@ -15,12 +16,13 @@ public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueE
         }
     }
 
-    @Override
     @Nullable
+    @Override
     public T extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
+
         if (value instanceof ConfigValue.StringValue stringValue) {
             var str = stringValue.value();
             var enumValue = this.map.get(str);
@@ -29,7 +31,6 @@ public class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueE
             }
             return enumValue;
         }
-
         throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
     }
 }

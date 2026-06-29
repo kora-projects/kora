@@ -5,6 +5,7 @@ import io.koraframework.config.common.ConfigValue;
 import java.util.Optional;
 
 public final class OptionalConfigValueExtractor<T> implements ConfigValueExtractor<Optional<T>> {
+
     private final ConfigValueExtractor<T> delegate;
 
     public OptionalConfigValueExtractor(ConfigValueExtractor<T> delegate) {

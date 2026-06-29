@@ -1,10 +1,17 @@
-package io.koraframework.config.common;
+package io.koraframework.config.common.impl;
 
+import io.koraframework.config.common.Config;
+import io.koraframework.config.common.ConfigValue;
+import io.koraframework.config.common.ConfigValuePath;
+import io.koraframework.config.common.PathElement;
 import io.koraframework.config.common.extractor.ConfigValueExtractionException;
 
 import java.util.LinkedList;
 
-public class ConfigHelper {
+public final class ConfigUtils {
+
+    private ConfigUtils() { }
+
     public static ConfigValue<?> get(Config config, ConfigValuePath path) {
         var value = (ConfigValue<?>) config.root();
         var parts = new LinkedList<PathElement>();

@@ -6,6 +6,7 @@ import io.koraframework.config.common.ConfigValue;
 import java.util.Objects;
 
 public class DoubleArrayConfigValueExtractor implements ConfigValueExtractor<double[]> {
+
     private final ConfigValueExtractor<Double> doubleConfigValueExtractor;
 
     public DoubleArrayConfigValueExtractor(ConfigValueExtractor<Double> doubleConfigValueExtractor) {
@@ -17,6 +18,7 @@ public class DoubleArrayConfigValueExtractor implements ConfigValueExtractor<dou
         if (value.isNull()) {
             return null;
         }
+
         var array = value.asArray();
         var result = new double[array.value().size()];
         for (int i = 0; i < result.length; i++) {

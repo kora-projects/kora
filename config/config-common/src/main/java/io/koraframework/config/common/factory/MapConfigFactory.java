@@ -12,7 +12,9 @@ import io.koraframework.config.common.origin.SimpleConfigOrigin;
 
 import java.util.*;
 
-public class MapConfigFactory {
+public final class MapConfigFactory {
+
+    private MapConfigFactory() {}
 
     public static Config fromMap(Map<String, ?> map) {
         return fromMap("Map@" + System.identityHashCode(map), map);
@@ -138,38 +140,23 @@ public class MapConfigFactory {
     }
 
     private static ConfigValue<?> toValue(ConfigOrigin origin, Object object, ConfigValuePath path) {
-        if (object instanceof ConfigValue<?> configValue) {
-            return configValue;
-        }
-        if (object instanceof Config configValue) {
-            return configValue.root();
-        }
-        if (object instanceof Map<?, ?>) {
-            @SuppressWarnings("unchecked")
-            var map = (Map<String, ?>) object;
-            return toObject(origin, map, path);
-        }
-        if (object instanceof List<?> list) {
-            return toList(origin, list, path);
-        }
-        var valueOrigin = new SimpleConfigValueOrigin(origin, path);
-        if (object instanceof Number number) {
-            return new ConfigValue.NumberValue(valueOrigin, number);
-        }
-        if (object instanceof String string) {
-            return new ConfigValue.StringValue(valueOrigin, string);
-        }
-        if (object instanceof Boolean bool) {
-            return new ConfigValue.BooleanValue(valueOrigin, bool);
-        }
-        if (object instanceof Enum<?> e) {
-            return new ConfigValue.StringValue(valueOrigin, e.name());
-        }
-        throw new ConfigValueExtractionException(
-            origin,
-            "Unexpected object type with path %s: %s. Supported types are Map<String, ?>, List<?>, String, Number, Boolean and Enum<?>".formatted(path, object.getClass()),
-            null
-        );
+        return switch (object) {
+            case ConfigValue<?> configValue -> configValue;
+            case Config configValue -> configValue.root();
+            case Map<?, ?> _ -> {
+                @SuppressWarnings("unchecked")
+                var map = (Map<String, ?>) object;
+                yield toObject(origin, map, path);
+            }
+            case List<?> list -> toList(origin, list, path);
+            case Number number -> new ConfigValue.NumberValue(new SimpleConfigValueOrigin(origin, path), number);
+            case String string -> new ConfigValue.StringValue(new SimpleConfigValueOrigin(origin, path), string);
+            case Boolean bool -> new ConfigValue.BooleanValue(new SimpleConfigValueOrigin(origin, path), bool);
+            case Enum<?> e -> new ConfigValue.StringValue(new SimpleConfigValueOrigin(origin, path), e.name());
+            case null, default -> throw new ConfigValueExtractionException(origin,
+                "Unexpected object type with path %s: %s. Supported types are Map<String, ?>, List<?>, String, Number, Boolean and Enum<?>".formatted(path, object.getClass())
+            );
+        };
     }
 
     private static ConfigValue.ObjectValue toObject(ConfigOrigin origin, Map<String, ?> object, ConfigValuePath path) {

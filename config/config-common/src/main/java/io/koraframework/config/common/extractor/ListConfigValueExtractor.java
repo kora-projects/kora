@@ -13,5 +13,4 @@ public final class ListConfigValueExtractor<T> extends CollectionConfigValueExtr
     protected List<T> newCollection(int size) {
         return new ArrayList<>();
     }
-
 }

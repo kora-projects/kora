@@ -2,6 +2,7 @@ package io.koraframework.config.common;
 
 import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.RefreshableGraph;
+import io.koraframework.common.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.annotation.ApplicationConfig;
 import io.koraframework.config.common.annotation.Environment;
@@ -22,7 +23,7 @@ public interface CommonConfigModule extends ConfigValueExtractorModule {
     }
 
     @SystemProperties
-    default Config systemProperties() {
+    default Config systemPropertiesConfig() {
         return MapConfigFactory.fromProperties(new SystemPropertiesOrigin("System Properties"), System.getProperties());
     }
 
@@ -35,7 +36,8 @@ public interface CommonConfigModule extends ConfigValueExtractorModule {
     }
 
     @Root
-    default ConfigWatcher configRefresher(RefreshableGraph graph, @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode) {
+    @DefaultComponent
+    default ConfigWatcher applicationConfigWatcher(RefreshableGraph graph, @Nullable @ApplicationConfig Node<? extends ConfigOrigin> applicationConfigNode) {
         return new ConfigWatcher(graph, applicationConfigNode, 1000);
     }
 }

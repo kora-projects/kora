@@ -7,8 +7,9 @@ import java.util.ArrayList;
 import java.util.Properties;
 
 public class PropertiesConfigValueExtractor implements ConfigValueExtractor<Properties> {
-    @Override
+
     @Nullable
+    @Override
     public Properties extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;

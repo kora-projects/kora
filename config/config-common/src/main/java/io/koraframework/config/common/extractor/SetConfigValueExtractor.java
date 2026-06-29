@@ -13,5 +13,4 @@ public final class SetConfigValueExtractor<T> extends CollectionConfigValueExtra
     protected Set<T> newCollection(int size) {
         return new LinkedHashSet<>();
     }
-
 }

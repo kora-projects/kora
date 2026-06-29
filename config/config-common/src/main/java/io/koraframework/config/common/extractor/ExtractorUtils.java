@@ -1,6 +1,9 @@
 package io.koraframework.config.common.extractor;
 
-public class ConfigImplUtil {
+public final class ExtractorUtils {
+
+    private ExtractorUtils() { }
+
     public static String unicodeTrim(String s) {
         // this is dumb because it looks like there aren't any whitespace
         // characters that need surrogate encoding. But, points for

@@ -33,6 +33,43 @@ public class AnnotationConfigTest extends AbstractConfigTest {
     }
 
     @Test
+    public void testIntArraySupported() {
+        var mapper = Mockito.mock(ConfigValueExtractor.class);
+        when(mapper.extract(any())).thenReturn((Object) new int[] {42});
+
+        var extractor = this.compileConfig(List.of(mapper), """
+            @io.koraframework.config.common.annotation.ConfigValueExtractor
+            public interface TestConfig {
+              int[] value();
+            }
+            """);
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value",  List.of(42))).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", (Object) new int[] {42}));
+
+        verify(mapper).extract(any());
+    }
+
+    @Test
+    public void testIntArrayNullableSupported() {
+        var mapper = Mockito.mock(ConfigValueExtractor.class);
+        when(mapper.extract(any())).thenReturn((Object) new int[] {42});
+
+        var extractor = this.compileConfig(List.of(mapper), """
+            @io.koraframework.config.common.annotation.ConfigValueExtractor
+            public interface TestConfig {
+              @Nullable
+              int[] value();
+            }
+            """);
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", List.of(42))).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", (Object) new int[] {42}));
+
+        verify(mapper).extract(any());
+    }
+
+    @Test
     public void testIntegerSupported() {
         var extractor = this.compileConfig(List.of(), """
             @io.koraframework.config.common.annotation.ConfigValueExtractor

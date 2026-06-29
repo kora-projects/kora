@@ -37,6 +37,6 @@ public interface GrpcClientConfig {
             ? serviceName
             : serviceName.substring(packageEnding + 1);
 
-        return Objects.requireNonNull(extractor.extract(config.get("grpcClient." + serviceSimpleName)));
+        return extractor.extractOrThrow(config.get("grpcClient." + serviceSimpleName));
     }
 }
