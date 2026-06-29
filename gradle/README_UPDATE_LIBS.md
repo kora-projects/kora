@@ -180,7 +180,15 @@ The report includes `gradle/libs.versions.toml` updates and
 The workflow `.github/workflows/dependency-reports.yml` runs after
 `.github/workflows/test-pr.yml` completes successfully for a pull request.
 The PR test workflow generates Markdown report artifacts, and the dependency
-report workflow downloads those artifacts and posts PR comments.
+report workflow downloads those artifacts and posts PR comments. The artifact
+also contains `pr-number.txt`, so the reporting workflow does not depend on
+`workflow_run.pull_requests` metadata being present. The artifact is downloaded
+to the runner temporary directory, not to the repository workspace.
+
+GitHub only triggers `workflow_run` workflows when the workflow file already
+exists on the default branch. If `.github/workflows/dependency-reports.yml` is
+introduced by the same pull request, it will start working after that workflow
+file is merged to the default branch.
 
 If the generated vulnerability Markdown report contains known vulnerabilities,
 the workflow creates or updates a single PR comment. The vulnerability comment

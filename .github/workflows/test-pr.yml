@@ -82,6 +82,10 @@ jobs:
         run: ./gradlew -I gradle/update-libs-versions.gradle updateLibsVersions -PreportUpdates=true -PupdateLevel=patch -PupdateReportFile=build/reports/dependency-updates.md --no-daemon --console plain
         shell: bash
 
+      - name: Save pull request number
+        run: echo "${{ github.event.number }}" > build/reports/pr-number.txt
+        shell: bash
+
       - name: Upload dependency reports
         uses: actions/upload-artifact@v4
         with:
@@ -89,3 +93,4 @@ jobs:
           path: |
             build/reports/dependency-vulnerabilities.md
             build/reports/dependency-updates.md
+            build/reports/pr-number.txt
