@@ -12,6 +12,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import ru.tinkoff.kora.kora.app.ksp.ProcessingContext
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.ksp.common.AnnotationUtils.findAnnotation
+import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.CommonClassNames
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.fixPlatformType
 import ru.tinkoff.kora.ksp.common.TagUtils
@@ -164,7 +165,10 @@ sealed interface ComponentDeclaration {
                     it.variance
                 )
             }
-            val type = classDeclaration.asType(listOf())
+            var type = classDeclaration.asType(listOf())
+            if (classDeclaration.isAnnotationPresent(CommonClassNames.aopProxy)) {
+                type = classDeclaration.superTypes.first().resolve()
+            }
             val tags = TagUtils.parseTagValue(classDeclaration)
             val parameterTypes = constructor.parameters.map { it.type.resolve() }
 
