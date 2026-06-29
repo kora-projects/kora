@@ -32,7 +32,6 @@ public interface CircuitBreakerModule {
         return new DefaultCircuitBreakerTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
-    @DefaultComponent
     default CircuitBreakerPredicate defaultCircuitBreakerFailurePredicate() {
         return new KoraCircuitBreakerPredicate();
     }

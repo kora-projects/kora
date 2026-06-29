@@ -32,7 +32,6 @@ public interface FallbackModule {
         return new DefaultFallbackTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
-    @DefaultComponent
     default FallbackPredicate defaultFallbackFailurePredicate() {
         return new KoraFallbackPredicate();
     }

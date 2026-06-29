@@ -108,18 +108,16 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         val superMethod = buildMethodCall(method, superCall)
         return CodeBlock.builder().add(
             """
+            val _observation = %L.observe()
             try {
-                  return %M(%L.timeout().toMillis()) {
-                      %L
-                  }
-            } catch (e: %M) {
-                val _observation = %L.observe()
-                try {
-                    _observation.recordTimeout(%L.timeout().toNanos())
-                } finally {
-                    _observation.end()
+                return %M(%L.timeout().toMillis()) {
+                    %L
                 }
+            } catch (e: %M) {
+                _observation.recordTimeout(%L.timeout().toNanos())
                 throw %M(%S, "Timeout exceeded " + %L.timeout())
+            } finally {
+                _observation.end()
             }
           """.trimIndent(), timeoutMember, fieldTimeout, superMethod.toString(), timeoutCancelMember,
             fieldTelemetry, fieldTimeout, timeoutKoraMember, timeoutName, fieldTimeout
@@ -133,19 +131,16 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         return CodeBlock.builder().add(
             """
             val limit = %M()
+            val _observation = %L.observe()
             return %M { %M(%L) }
                 .%M { limit.set(%M.nanoTime() + %L.timeout().toNanos()) }
                 .%M {
                     val current = %M.nanoTime()
                     if (current > limit.get()) {
-                        val _observation = %L.observe()
-                        try {
-                            _observation.recordTimeout(%L.timeout().toNanos())
-                        } finally {
-                            _observation.end()
-                        }
+                        _observation.recordTimeout(%L.timeout().toNanos())
                         throw %M(%S, "Timeout exceeded " + %L.timeout())
                     } else {
+                        _observation.end()
                         false
                     }
                 }

@@ -32,7 +32,6 @@ public interface RetryModule {
         return new DefaultRetryTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
-    @DefaultComponent
     default RetryPredicate defaultRetryFailurePredicate() {
         return new KoraRetryPredicate();
     }
