@@ -4,10 +4,12 @@ import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigParseOptions;
 import org.junit.jupiter.api.Test;
 import ru.tinkoff.kora.config.common.ConfigValue;
+import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
 import ru.tinkoff.kora.config.common.origin.SimpleConfigOrigin;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -163,6 +165,38 @@ class HoconConfigFactoryTest {
         } finally {
             Files.walk(tempDir)
                 .sorted(java.util.Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete());
+        }
+    }
+
+    @Test
+    void resourceOriginTracksFileIncludes() throws Exception {
+        var tempDir = Files.createTempDirectory("hocon-test");
+        try {
+            var overrideFile = tempDir.resolve("override.conf").toAbsolutePath();
+            Files.writeString(overrideFile, """
+                database.pool = 20
+                """);
+
+            var mainFile = tempDir.resolve("application.conf");
+            Files.writeString(mainFile, """
+                include file("%s")
+                database.username = "user"
+                """.formatted(overrideFile));
+
+            // application config loaded as a resource (e.g. packaged inside a jar),
+            // pulling in an external file via include file("...") (e.g. a k8s ConfigMap override)
+            var origin = HoconConfigFactory.resourceOrigin(mainFile.toUri().toURL());
+
+            var includedFilePaths = origin.origins().stream()
+                .filter(o -> o instanceof FileConfigOrigin)
+                .map(o -> ((FileConfigOrigin) o).path())
+                .toList();
+
+            assertThat(includedFilePaths).contains(overrideFile);
+        } finally {
+            Files.walk(tempDir)
+                .sorted(Comparator.reverseOrder())
                 .forEach(p -> p.toFile().delete());
         }
     }

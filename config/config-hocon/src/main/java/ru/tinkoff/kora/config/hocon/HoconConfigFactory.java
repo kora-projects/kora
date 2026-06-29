@@ -14,11 +14,13 @@ import ru.tinkoff.kora.config.common.impl.SimpleConfigValueOrigin;
 import ru.tinkoff.kora.config.common.origin.ConfigOrigin;
 
 import jakarta.annotation.Nullable;
+
 import java.net.URL;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.Consumer;
 
 import ru.tinkoff.kora.config.common.origin.FileConfigOrigin;
 
@@ -69,17 +71,21 @@ public class HoconConfigFactory {
     }
 
     static HoconConfigOrigin fileOrigin(Path path) {
+        return new HoconConfigOrigin(path, includedFiles(options -> ConfigFactory.parseFile(path.toFile(), options)));
+    }
+
+    static HoconConfigOrigin resourceOrigin(URL url) {
+        return new HoconConfigOrigin(url, includedFiles(options -> ConfigFactory.parseURL(url, options)));
+    }
+
+    private static List<FileConfigOrigin> includedFiles(Consumer<ConfigParseOptions> parse) {
         var includer = new TrackingConfigIncluder();
         var options = ConfigParseOptions.defaults().setIncluder(includer);
-        ConfigFactory.parseFile(path.toFile(), options);
+        parse.accept(options);
         var includedFiles = new ArrayList<FileConfigOrigin>();
         for (var includedFile : includer.getIncludedFiles()) {
             includedFiles.add(new FileConfigOrigin(includedFile));
         }
-        return new HoconConfigOrigin(path, includedFiles);
-    }
-
-    static HoconConfigOrigin resourceOrigin(URL url) {
-        return new HoconConfigOrigin(url);
+        return includedFiles;
     }
 }

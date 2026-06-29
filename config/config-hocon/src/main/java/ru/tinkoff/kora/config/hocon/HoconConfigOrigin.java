@@ -28,9 +28,11 @@ final class HoconConfigOrigin implements ContainerConfigOrigin {
         this.description = buildDescription();
     }
 
-    HoconConfigOrigin(URL url) {
+    HoconConfigOrigin(URL url, List<FileConfigOrigin> includedFiles) {
         this.primaryOrigin = new ResourceConfigOrigin(url);
-        this.origins = List.of(this.primaryOrigin);
+        this.origins = new ArrayList<>();
+        this.origins.add(this.primaryOrigin);
+        this.origins.addAll(includedFiles);
         this.description = buildDescription();
     }
 
