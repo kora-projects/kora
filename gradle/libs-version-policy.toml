@@ -11,6 +11,30 @@
 # - patch: keep the current major and minor version
 
 [version-levels]
+# Keep legacy com.fasterxml.jackson artifacts on the 2.x line; Jackson 3 is tracked separately as tools.jackson.
+jackson2-coreline = "minor"
+jackson2-annotations = "minor"
+
+# Keep Logback on the current 1.x line unless SLF4J/logging modules are tested against a new major.
+logback = "minor"
+
+# Keep legacy Commons artifacts on their current major lines; some have major-line replacements under different coordinates.
+commons-cli = "minor"
+commons-codec = "minor"
+commons-collections = "patch"
+commons-fileupload = "minor"
+commons-io = "minor"
+commons-lang3 = "minor"
+commons-logging = "minor"
+commons-text = "minor"
+
+# Keep Prometheus metrics on the current 1.x line.
+prometheus-metrics = "minor"
+
+# Keep Swagger 2.x / parser 2.x lines unless OpenAPI generator stack is tested against a new major.
+swagger-coreline = "minor"
+swagger-parser = "minor"
+
 # Keep CXF on the 3.x line unless the SOAP generator setup is tested against CXF 4.x.
 cxf = "minor"
 

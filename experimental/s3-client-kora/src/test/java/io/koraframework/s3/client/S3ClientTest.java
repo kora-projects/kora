@@ -42,6 +42,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class S3ClientTest {
+
     static GenericContainer<?> minio = new GenericContainer<>(DockerImageName.parse("minio/minio"))
         .withCommand("server", "/home/shared")
         .withEnv("SERVICES", "s3")
@@ -138,7 +139,7 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             var metadata = s3Client().headObject(credentials, "test", key);
             assertThat(metadata).isNotNull();
@@ -155,7 +156,7 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) (long) content.length, -1L)
                 .build());
             var metadata = s3Client().headObjectOptional(credentials, "test", key);
             assertThat(metadata).isNotNull();
@@ -219,7 +220,7 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             try (var object = s3Client().getObject(credentials, "test", key, null, true)) {
                 assertThat(object).isNotNull();
@@ -240,7 +241,7 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             var args = new io.koraframework.s3.client.kora.model.request.GetObjectArgs();
             try (var object = s3Client().getObject(credentials, "test", key, args.setRange(Range.fromTo(1, 5)), true)) {
@@ -277,7 +278,7 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             try (var object = s3Client().getObject(credentials, "test", key, null, false)) {
                 assertThat(object).isNotNull();
@@ -302,7 +303,7 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
 
             s3Client().deleteObject(credentials, "test", key);
@@ -348,13 +349,13 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key1)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             minioClient.putObject(PutObjectArgs.builder()
                 .bucket("test")
                 .object(key2)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
 
             s3Client().deleteObjects(credentials, "test", List.of(key1, key2, key3));
@@ -414,13 +415,13 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key1)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             minioClient.putObject(PutObjectArgs.builder()
                 .bucket("test")
                 .object(key2)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             try {
                 assertThatThrownBy(() -> s3Client().deleteObjects(S3Credentials.of("testDeleteObjectsWithError", "testDeleteObjectsWithError"), "test", List.of(key1, key2)))
@@ -620,7 +621,7 @@ class S3ClientTest {
                 .bucket("test")
                 .object(key)
                 .contentType("text/plain")
-                .stream(new ByteArrayInputStream(content), content.length, -1)
+                .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                 .build());
             var args = new ListObjectsArgs()
                 .setPrefix(prefix + "/")
@@ -638,7 +639,7 @@ class S3ClientTest {
                     .bucket("test")
                     .object(moreKey)
                     .contentType("text/plain")
-                    .stream(new ByteArrayInputStream(moreContent), moreContent.length, -1)
+                    .stream(new ByteArrayInputStream(moreContent), (long) content.length, -1L)
                     .build());
             }
 
@@ -660,12 +661,12 @@ class S3ClientTest {
 
             for (int i = 0; i < 10; i++) {
                 var moreKey = prefix + "/test" + i + "/" + UUID.randomUUID();
-                var moreContent = randomBytes(1024);
+                var content = randomBytes(1024);
                 minioClient.putObject(PutObjectArgs.builder()
                     .bucket("test")
                     .object(moreKey)
                     .contentType("text/plain")
-                    .stream(new ByteArrayInputStream(moreContent), moreContent.length, -1)
+                    .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                     .build());
             }
 
@@ -692,7 +693,7 @@ class S3ClientTest {
                     .bucket("test")
                     .object(key)
                     .contentType("text/plain")
-                    .stream(new ByteArrayInputStream(content), content.length, -1)
+                    .stream(new ByteArrayInputStream(content), (long) content.length, -1L)
                     .build());
             }
 

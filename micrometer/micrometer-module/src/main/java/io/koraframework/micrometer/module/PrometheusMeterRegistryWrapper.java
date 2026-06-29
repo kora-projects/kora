@@ -18,7 +18,6 @@ import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 
 public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<MeterRegistry>, MetricsScraper {
@@ -53,7 +52,6 @@ public final class PrometheusMeterRegistryWrapper implements Lifecycle, Wrapped<
             .tag("version", KORA_VERSION)
             .register(this.registry);
     }
-
 
     @Override
     public void release() {

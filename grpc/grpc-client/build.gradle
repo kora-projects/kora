@@ -16,5 +16,6 @@ dependencies {
 
     testImplementation libs.grpc.java.gen
     testImplementation libs.grpc.protobuf
+    testImplementation libs.protobuf.java
     testImplementation libs.javax.annotation.api
 }

@@ -9,6 +9,7 @@ dependencies {
 
     testImplementation libs.grpc.java.gen
     testImplementation libs.grpc.protobuf
+    testImplementation libs.protobuf.java
     testImplementation project(":grpc:grpc-client")
     testImplementation project(":config:config-annotation-processor")
     testImplementation testFixtures(project(":annotation-processor-common"))

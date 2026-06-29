@@ -84,7 +84,7 @@ class KotlinCompilation {
             .toList() + classpathEntries.map { it.toFile() }
         val kspConfig = KSPJvmConfig.Builder().apply {
             moduleName = "main"
-            jvmTarget = "24"
+            jvmTarget = "25"
             languageVersion = "2.2"
             apiVersion = "2.2"
             processorOptions = processorsOptions
@@ -140,11 +140,11 @@ class KotlinCompilation {
         k2JvmArgs.script = false
         k2JvmArgs.disableStandardScript = true
         k2JvmArgs.help = false
-        k2JvmArgs.compileJava = javaSrcFiles.isNotEmpty()
+//        k2JvmArgs.compileJava = javaSrcFiles.isNotEmpty()
         k2JvmArgs.allowNoSourceFiles = true
         k2JvmArgs.expression = null
         k2JvmArgs.destination = classOutputDir.toString()
-        k2JvmArgs.jvmTarget = "24"
+        k2JvmArgs.jvmTarget = "25"
         k2JvmArgs.jvmDefault = "all"
         k2JvmArgs.jdkHome = System.getProperty("java.home")
         k2JvmArgs.freeArgs = files.map { it.toString() }
