@@ -14,7 +14,7 @@ class RedisContainer extends GenericContainer<RedisContainer> {
     private static final int PORT_DEFAULT = 6379;
 
     private static final DockerImageName DEFAULT_IMAGE = DockerImageName
-        .parse("redis:6.2.7-alpine")
+        .parse("redis:8.8-alpine")
         .asCompatibleSubstituteFor(DockerImageName.parse("redis"));
 
     public RedisContainer() {

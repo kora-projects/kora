@@ -5,4 +5,5 @@ dependencies {
     api libs.flyway
 
     testImplementation project(":internal:test-postgres")
+    testImplementation libs.flyway.postgres
 }

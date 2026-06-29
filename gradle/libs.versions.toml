@@ -126,6 +126,7 @@ jackson2-module-jakarta-xmlbind-annotations = { module = "com.fasterxml.jackson.
 jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.11" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
 flyway = { module = "org.flywaydb:flyway-core", version = "12.9.0" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version = "12.9.0" }
 liquibase = { module = "org.liquibase:liquibase-core", version = "5.0.3" }
 
 jms-api = { module = "javax.jms:javax.jms-api", version = "2.0.1" }

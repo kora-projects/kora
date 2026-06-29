@@ -31,7 +31,7 @@ public class CassandraTestContainer implements TestExecutionListener, ParameterR
             CassandraTestContainer.params = params;
             return;
         }
-        container = new CassandraContainer<>(DockerImageName.parse("cassandra").withTag("4.0.0"))
+        container = new CassandraContainer<>(DockerImageName.parse("cassandra:4.1.11"))
             .withExposedPorts(7000, 9042)
             .waitingFor(new HostPortWaitStrategy().withStartupTimeout(Duration.ofMinutes(10)));
         container.start();
