@@ -1,24 +1,32 @@
 package io.koraframework.config.hocon;
 
 import com.typesafe.config.ConfigException;
+import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigList;
 import com.typesafe.config.ConfigObject;
+import com.typesafe.config.ConfigParseOptions;
 import com.typesafe.config.ConfigRenderOptions;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.ConfigValuePath;
 import io.koraframework.config.common.impl.SimpleConfig;
 import io.koraframework.config.common.impl.SimpleConfigValueOrigin;
 import io.koraframework.config.common.origin.ConfigOrigin;
+import io.koraframework.config.common.origin.ContainerConfigOrigin;
+import io.koraframework.config.common.origin.FileConfigOrigin;
+import io.koraframework.config.common.origin.ResourceConfigOrigin;
+import org.jspecify.annotations.Nullable;
 
+import java.net.URL;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class HoconConfigFactory {
 
-    private HoconConfigFactory() { }
+    private HoconConfigFactory() {}
 
     public static Config fromHocon(ConfigOrigin origin, com.typesafe.config.Config config) {
         var object = config.root();
@@ -63,5 +71,36 @@ public final class HoconConfigFactory {
             result.add(toValue(origin, configValue, path.child(i)));
         }
         return new ConfigValue.ArrayValue(new SimpleConfigValueOrigin(origin, path), List.copyOf(result));
+    }
+
+    static ConfigOrigin fileOrigin(Path path) {
+        var primary = new FileConfigOrigin(path);
+        return withIncludes(primary, includedFiles(options -> ConfigFactory.parseFile(path.toFile(), options)));
+    }
+
+    static ConfigOrigin resourceOrigin(URL url) {
+        var primary = new ResourceConfigOrigin(url);
+        return withIncludes(primary, includedFiles(options -> ConfigFactory.parseURL(url, options)));
+    }
+
+    private static ConfigOrigin withIncludes(ConfigOrigin primary, List<FileConfigOrigin> includedFiles) {
+        if (includedFiles.isEmpty()) {
+            return primary;
+        }
+        var origins = new ArrayList<ConfigOrigin>();
+        origins.add(primary);
+        origins.addAll(includedFiles);
+        return new ContainerConfigOrigin(origins);
+    }
+
+    private static List<FileConfigOrigin> includedFiles(Consumer<ConfigParseOptions> parse) {
+        var includer = new TrackingConfigIncluder();
+        var options = ConfigParseOptions.defaults().setIncluder(includer);
+        parse.accept(options);
+        var includedFiles = new ArrayList<FileConfigOrigin>();
+        for (var includedFile : includer.getIncludedFiles()) {
+            includedFiles.add(new FileConfigOrigin(includedFile));
+        }
+        return includedFiles;
     }
 }
