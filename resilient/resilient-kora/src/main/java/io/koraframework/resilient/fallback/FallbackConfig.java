@@ -2,6 +2,7 @@ package io.koraframework.resilient.fallback;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.resilient.fallback.telemetry.FallbackTelemetryConfig;
 
 import java.util.Map;
 
@@ -15,6 +16,8 @@ public interface FallbackConfig {
     default Map<String, NamedConfig> fallback() {
         return Map.of();
     }
+
+    FallbackTelemetryConfig telemetry();
 
     /**
      * {@link #failurePredicateName} {@link FallbackPredicate#name()} default is {@link KoraFallbackPredicate}

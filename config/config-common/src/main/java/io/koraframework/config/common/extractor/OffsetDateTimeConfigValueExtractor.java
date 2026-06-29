@@ -7,13 +7,13 @@ import java.time.OffsetDateTime;
 
 public class OffsetDateTimeConfigValueExtractor implements ConfigValueExtractor<OffsetDateTime> {
 
-    @Override
     @Nullable
+    @Override
     public OffsetDateTime extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
+
         return OffsetDateTime.parse(value.asString());
     }
-
 }

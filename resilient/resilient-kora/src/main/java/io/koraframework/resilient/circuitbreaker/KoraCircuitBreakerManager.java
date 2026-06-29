@@ -1,5 +1,6 @@
 package io.koraframework.resilient.circuitbreaker;
 
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -13,12 +14,12 @@ final class KoraCircuitBreakerManager implements CircuitBreakerManager {
     private final Map<String, CircuitBreaker> circuitBreakerMap = new ConcurrentHashMap<>();
     private final CircuitBreakerConfig config;
     private final Iterable<CircuitBreakerPredicate> failurePredicates;
-    private final CircuitBreakerMetrics metrics;
+    private final CircuitBreakerTelemetryFactory telemetryFactory;
 
-    KoraCircuitBreakerManager(CircuitBreakerConfig config, Iterable<CircuitBreakerPredicate> failurePredicates, CircuitBreakerMetrics metrics) {
+    KoraCircuitBreakerManager(CircuitBreakerConfig config, Iterable<CircuitBreakerPredicate> failurePredicates, CircuitBreakerTelemetryFactory telemetryFactory) {
         this.config = config;
         this.failurePredicates = failurePredicates;
-        this.metrics = metrics;
+        this.telemetryFactory = telemetryFactory;
     }
 
     @Override
@@ -26,10 +27,14 @@ final class KoraCircuitBreakerManager implements CircuitBreakerManager {
         return circuitBreakerMap.computeIfAbsent(name, (k) -> {
             var config = this.config.getNamedConfig(name);
             final CircuitBreakerPredicate failurePredicate = getFailurePredicate(config);
-            logger.debug("Creating CircuitBreaker named '{}' with failure predicate '{}' and config {}",
-                name, failurePredicate.name(), config);
+            logger.atDebug()
+                .addKeyValue("resilientType", "circuitbreaker")
+                .addKeyValue("resilientName", name)
+                .addKeyValue("failurePredicate", failurePredicate.name())
+                .addKeyValue("config", config)
+                .log("Creating CircuitBreaker");
 
-            return new KoraCircuitBreaker(name, config, failurePredicate, metrics);
+            return new KoraCircuitBreaker(name, config, failurePredicate, this.telemetryFactory.get(name, this.config.telemetry()));
         });
     }
 

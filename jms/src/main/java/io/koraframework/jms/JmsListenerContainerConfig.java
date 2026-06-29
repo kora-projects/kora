@@ -1,7 +1,7 @@
 package io.koraframework.jms;
 
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
-import io.koraframework.telemetry.common.TelemetryConfig;
+import io.koraframework.jms.telemetry.JmsConsumerTelemetryConfig;
 
 @ConfigValueExtractor
 public interface JmsListenerContainerConfig {
@@ -9,5 +9,5 @@ public interface JmsListenerContainerConfig {
 
     int threads();
 
-    TelemetryConfig telemetry();
+    JmsConsumerTelemetryConfig telemetry();
 }

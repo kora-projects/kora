@@ -1,10 +1,10 @@
 package io.koraframework.camunda.zeebe.worker;
 
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryConfig;
-import org.jspecify.annotations.Nullable;
-import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import io.koraframework.common.util.Size;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Collections;
@@ -14,11 +14,7 @@ import java.util.List;
 public interface ZeebeClientConfig {
 
     default int executionThreads() {
-        return Math.max(Runtime.getRuntime().availableProcessors(), 2);
-    }
-
-    default boolean tls() {
-        return true;
+        return Math.max(Runtime.getRuntime().availableProcessors() * 2, 2);
     }
 
     default Duration keepAlive() {
@@ -31,9 +27,9 @@ public interface ZeebeClientConfig {
     @Nullable
     Duration initializationFailTimeout();
 
+    @Nullable
     GrpcConfig grpc();
 
-    @Nullable
     RestConfig rest();
 
     DeploymentConfig deployment();

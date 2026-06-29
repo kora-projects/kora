@@ -4,12 +4,13 @@ import io.koraframework.config.common.ConfigValue;
 import org.jspecify.annotations.Nullable;
 
 public final class BooleanConfigValueExtractor implements ConfigValueExtractor<Boolean> {
-    @Override
     @Nullable
+    @Override
     public Boolean extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
+
         if (value instanceof ConfigValue.BooleanValue booleanValue) {
             return booleanValue.value();
         }

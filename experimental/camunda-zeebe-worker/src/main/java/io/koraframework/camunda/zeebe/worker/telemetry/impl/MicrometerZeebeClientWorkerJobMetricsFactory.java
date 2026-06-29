@@ -1,6 +1,6 @@
 package io.koraframework.camunda.zeebe.worker.telemetry.impl;
 
-import io.camunda.zeebe.client.api.worker.JobWorkerMetrics;
+import io.camunda.client.api.worker.JobWorkerMetrics;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeClientWorkerMetricsFactory;
 import io.koraframework.telemetry.common.TelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;

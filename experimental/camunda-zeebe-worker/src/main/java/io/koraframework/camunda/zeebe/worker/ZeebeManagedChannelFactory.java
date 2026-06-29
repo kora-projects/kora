@@ -1,7 +1,7 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import io.camunda.zeebe.client.ZeebeClient;
-import io.camunda.zeebe.client.impl.util.VersionUtil;
+import io.camunda.client.CamundaClient;
+import io.camunda.client.impl.util.VersionUtil;
 import io.grpc.*;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryConfig;
 import org.jspecify.annotations.Nullable;
@@ -31,7 +31,7 @@ final class ZeebeManagedChannelFactory {
 
         final GrpcClientChannelFactory grpcClientChannelFactory = getZeebeClientChannelFactory(clientChannelFactory, clientConfig);
 
-        final String serviceName = ZeebeClient.class.getCanonicalName();
+        final String serviceName = CamundaClient.class.getCanonicalName();
         final ServiceDescriptor descriptor = new ServiceDescriptor(serviceName);
         return new ZeebeManagedChannelLifecycle(grpcClientConfig, null, interceptors, clientTelemetryFactory, grpcClientChannelFactory, descriptor);
     }

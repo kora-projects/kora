@@ -1,8 +1,8 @@
 package io.koraframework.config.common.extractor;
 
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.ConfigValue;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 
@@ -14,12 +14,13 @@ public abstract class CollectionConfigValueExtractor<T, C extends Collection<@Nu
         this.elementValueExtractor = elementValueExtractor;
     }
 
-    @Override
     @Nullable
+    @Override
     public C extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
+
         if (value instanceof ConfigValue.StringValue(var origin, var value1)) {
             if (value1.isEmpty()) {
                 return newCollection(0);
@@ -32,15 +33,15 @@ public abstract class CollectionConfigValueExtractor<T, C extends Collection<@Nu
                 result.add(elementValueExtractor.extract(listValue));
             }
             return result;
-        }
-        if (value instanceof ConfigValue.ArrayValue array) {
+        } else if (value instanceof ConfigValue.ArrayValue array) {
             var result = newCollection(array.value().size());
             for (var element : array) {
                 result.add(elementValueExtractor.extract(element));
             }
             return result;
+        } else {
+            throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.ArrayValue.class);
         }
-        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.ArrayValue.class);
     }
 
     protected abstract C newCollection(int size);

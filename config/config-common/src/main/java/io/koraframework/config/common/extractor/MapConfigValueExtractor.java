@@ -15,12 +15,13 @@ public final class MapConfigValueExtractor<T> implements ConfigValueExtractor<Ma
         this.mapValueExtractor = mapValueExtractor;
     }
 
-    @Override
     @Nullable
+    @Override
     public Map<String, @Nullable T> extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
+
         if (value instanceof ObjectValue objectValue) {
             var result = new LinkedHashMap<String, @Nullable T>(objectValue.value().size());
             for (var entry : objectValue) {

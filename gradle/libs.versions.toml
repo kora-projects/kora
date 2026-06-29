@@ -18,7 +18,7 @@ opentelemetry = "1.54.0"
 undertow = "2.3.18.Final"
 resteasy = "6.2.12.Final"
 camunda7 = "7.24.0"
-zeebe = "8.9.8"
+zeebe = "8.9.11"
 junit = "6.0.1"
 guava = "33.6.0-jre"
 okhttp = "5.3.2"
@@ -108,7 +108,7 @@ netty-codec-socks = { module = "io.netty:netty-codec-socks", version.ref = "nett
 byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-buddy" }
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "byte-buddy" }
 
-javapoet = { module = "com.palantir.javapoet:javapoet", version = "0.7.0" }
+javapoet = { module = "com.palantir.javapoet:javapoet", version = "0.17.0" }
 classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.181" }
 
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.0.RELEASE" }
@@ -192,7 +192,10 @@ fasterxml-uuidgenerator = { module = "com.fasterxml.uuid:java-uuid-generator", v
 jakarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "3.1.0" }
 
 zeebe-model = { module = "io.camunda:zeebe-bpmn-model", version.ref = "zeebe" }
-zeebe-client = { module = "io.camunda:zeebe-client-java", version.ref = "zeebe" }
+zeebe-client = { module = "io.camunda:camunda-client-java", version.ref = "zeebe" }
+
+mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
+mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }
 
 mapstruct = { module = "org.mapstruct:mapstruct", version.ref = "mapstruct" }
 mapstruct-processor = { module = "org.mapstruct:mapstruct-processor", version.ref = "mapstruct" }

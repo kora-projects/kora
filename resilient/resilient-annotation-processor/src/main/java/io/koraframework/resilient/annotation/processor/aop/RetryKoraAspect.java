@@ -91,18 +91,6 @@ public class RetryKoraAspect implements KoraAspect {
         return builder.build();
     }
 
-    private CodeBlock buildBodyMono(ExecutableElement method, String superCall, String fieldRetry) {
-        return CodeBlock.builder().add("""
-            return $L.retryWhen($L);
-            """, buildMethodCall(method, superCall), fieldRetry).build();
-    }
-
-    private CodeBlock buildBodyFlux(ExecutableElement method, String superCall, String fieldRetry) {
-        return CodeBlock.builder().add("""
-            return $L.retryWhen($L);
-            """, buildMethodCall(method, superCall), fieldRetry).build();
-    }
-
     private CodeBlock buildMethodCall(ExecutableElement method, String call) {
         return method.getParameters().stream().map(p -> CodeBlock.of("$L", p)).collect(joining(", ", call + "(", ")"));
     }

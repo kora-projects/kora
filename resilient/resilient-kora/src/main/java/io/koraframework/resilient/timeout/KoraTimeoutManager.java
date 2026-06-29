@@ -1,5 +1,6 @@
 package io.koraframework.resilient.timeout;
 
+import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,20 +12,24 @@ final class KoraTimeoutManager implements TimeoutManager {
     private static final Logger logger = LoggerFactory.getLogger(KoraTimeoutManager.class);
 
     private final Map<String, Timeout> timeouterMap = new ConcurrentHashMap<>();
-    private final TimeoutMetrics metrics;
     private final TimeoutConfig config;
+    private final TimeoutTelemetryFactory telemetryFactory;
 
-    KoraTimeoutManager(TimeoutMetrics metrics, TimeoutConfig config) {
-        this.metrics = metrics;
+    KoraTimeoutManager(TimeoutConfig config, TimeoutTelemetryFactory telemetryFactory) {
         this.config = config;
+        this.telemetryFactory = telemetryFactory;
     }
 
     @Override
     public Timeout get(String name) {
         return timeouterMap.computeIfAbsent(name, (k) -> {
             var config = this.config.getNamedConfig(name);
-            logger.debug("Creating Timeout named '{}' and config {}", name, config);
-            return new KoraTimeout(name, config.duration().toNanos(), metrics, config);
+            logger.atDebug()
+                .addKeyValue("resilientType", "timeout")
+                .addKeyValue("resilientName", name)
+                .addKeyValue("config", config)
+                .log("Creating Timeout");
+            return new KoraTimeout(name, config.duration(), this.telemetryFactory.get(name, this.config.telemetry()), config);
         });
     }
 }

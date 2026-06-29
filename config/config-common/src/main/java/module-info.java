@@ -10,4 +10,5 @@ module kora.config.common {
     exports io.koraframework.config.common.extractor;
     exports io.koraframework.config.common.factory;
     exports io.koraframework.config.common.origin;
+    exports io.koraframework.config.common.impl;
 }

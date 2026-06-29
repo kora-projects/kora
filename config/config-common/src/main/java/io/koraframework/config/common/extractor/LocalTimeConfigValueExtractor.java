@@ -7,13 +7,12 @@ import java.time.LocalTime;
 
 public class LocalTimeConfigValueExtractor implements ConfigValueExtractor<LocalTime> {
 
-    @Override
     @Nullable
+    @Override
     public LocalTime extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
         return LocalTime.parse(value.asString());
     }
-
 }

@@ -1,10 +1,9 @@
 package io.koraframework.resilient.circuitbreaker;
 
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallAcquireStatus;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.resilient.circuitbreaker.CircuitBreakerMetrics.CallAcquireStatus;
 
 import java.time.Clock;
 import java.util.concurrent.atomic.AtomicLong;
@@ -32,8 +31,6 @@ import java.util.function.Supplier;
 @SuppressWarnings("ConstantConditions")
 final class KoraCircuitBreaker implements CircuitBreaker {
 
-    private static final Logger logger = LoggerFactory.getLogger(KoraCircuitBreaker.class);
-
     private static final long CLOSED_COUNTER_MASK = 0x7FFF_FFFFL;
     private static final long CLOSED_STATE = 1L << 63;
     private static final long HALF_OPEN_COUNTER_MASK = 0xFFFFL;
@@ -50,25 +47,22 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     private final String name;
     private final CircuitBreakerConfig.NamedConfig config;
     private final CircuitBreakerPredicate failurePredicate;
-    private final CircuitBreakerMetrics metrics;
+    private final CircuitBreakerTelemetry telemetry;
     private final long waitDurationInOpenStateInMillis;
     private final Clock clock;
 
-    KoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerMetrics metrics) {
+    KoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this.state = new AtomicLong(CLOSED_STATE);
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
-        this.metrics = metrics;
+        this.telemetry = telemetry;
         this.waitDurationInOpenStateInMillis = config.waitDurationInOpenState().toMillis();
         this.clock = Clock.systemDefaultZone();
-
-        this.metrics.recordState(name, State.CLOSED);
     }
 
     State getState() {
         if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("CircuitBreaker '{}' is disabled", name);
             return State.CLOSED;
         } else {
             return getState(state.get());
@@ -87,9 +81,16 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     private <T> T internalAccept(Supplier<T> supplier, @Nullable Supplier<T> fallback) {
         if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("CircuitBreaker '{}' is disabled", name);
-            metrics.recordCallAcquire(name, CallAcquireStatus.DISABLED);
-            return supplier.get();
+            var observation = this.telemetry.observe();
+            try {
+                observation.recordCallAcquire(State.CLOSED, CallAcquireStatus.DISABLED);
+                return supplier.get();
+            } catch (Throwable e) {
+                observation.observeError(e);
+                throw e;
+            } finally {
+                observation.end();
+            }
         }
 
         try {
@@ -143,30 +144,16 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     private void onStateChange(State prevState,
                                State newState,
-                               String action,
-                               @Nullable Throwable throwable) {
+                               @Nullable Throwable throwable,
+                               CircuitBreakerObservation observation) {
         if (throwable != null) {
-            if (logger.isTraceEnabled()) {
-                logger.trace("CircuitBreaker '{}' switched from {} to {} on {} due to exception",
-                    name, prevState, newState, action, throwable);
-            } else if (logger.isInfoEnabled()) {
-                logger.info("CircuitBreaker '{}' switched from {} to {} on {} due to exception: {}",
-                    name, prevState, newState, action, throwable.toString());
-            }
-        } else {
-            logger.info("CircuitBreaker '{}' switched from {} to {} on {}", name, prevState, newState, action);
+            observation.observeError(throwable);
         }
-        metrics.recordState(name, newState);
+        observation.recordStateChange(prevState, newState);
     }
 
     @Override
     public void acquire() throws CallNotPermittedException {
-        if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("CircuitBreaker '{}' is disabled", name);
-            metrics.recordCallAcquire(name, CallAcquireStatus.DISABLED);
-            return;
-        }
-
         if (!tryAcquire()) {
             throw new CallNotPermittedException(getState(state.get()), name);
         }
@@ -174,17 +161,27 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public boolean tryAcquire() {
+        var observation = this.telemetry.observe();
+        try {
+            return tryAcquire(observation);
+        } catch (Throwable e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
+        }
+    }
+
+    private boolean tryAcquire(CircuitBreakerObservation observation) {
         if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("CircuitBreaker '{}' is disabled", name);
-            metrics.recordCallAcquire(name, CallAcquireStatus.DISABLED);
+            observation.recordCallAcquire(State.CLOSED, CallAcquireStatus.DISABLED);
             return true;
         }
 
         final long stateLong = state.get();
         final State state = getState(stateLong);
         if (state == State.CLOSED) {
-            logger.trace("CircuitBreaker '{}' acquired in CLOSED state", name);
-            metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
+            observation.recordCallAcquire(state, CallAcquireStatus.PERMITTED);
             return true;
         }
 
@@ -193,18 +190,13 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             if (acquired < config.permittedCallsInHalfOpenState()) {
                 final boolean isAcquired = this.state.compareAndSet(stateLong, stateLong + 1);
                 if (isAcquired) {
-                    if (logger.isTraceEnabled()) {
-                        logger.trace("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
-                            name, config.permittedCallsInHalfOpenState() - acquired);
-                    }
-                    metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
+                    observation.recordCallAcquire(state, CallAcquireStatus.PERMITTED);
                     return true;
                 } else {
-                    return tryAcquire();
+                    return tryAcquire(observation);
                 }
             } else {
-                logger.debug("CircuitBreaker '{}' rejected in HALF_OPEN state due to all {} calls acquired", name, acquired);
-                metrics.recordCallAcquire(name, CallAcquireStatus.REJECTED);
+                observation.recordCallAcquire(state, CallAcquireStatus.REJECTED);
                 return false;
             }
         }
@@ -214,54 +206,44 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         // go to half open
         if (beenInOpenState >= waitDurationInOpenStateInMillis) {
             if (this.state.compareAndSet(stateLong, HALF_OPEN_STATE + 1)) {
-                if (logger.isDebugEnabled()) {
-                    logger.debug("CircuitBreaker '{}' acquired in HALF_OPEN state with {} calls left",
-                        name, config.permittedCallsInHalfOpenState() - 1);
-                }
-                onStateChange(State.OPEN, State.HALF_OPEN, "acquire", null);
-                metrics.recordCallAcquire(name, CallAcquireStatus.PERMITTED);
+                onStateChange(State.OPEN, State.HALF_OPEN, null, observation);
+                observation.recordCallAcquire(State.HALF_OPEN, CallAcquireStatus.PERMITTED);
                 return true;
             } else {
                 // prob concurrently switched to half open and have to reacquire
-                return tryAcquire();
+                return tryAcquire(observation);
             }
         } else {
-            if (logger.isDebugEnabled()) {
-                logger.debug("CircuitBreaker '{}' rejected in OPEN state for waiting '{}' when require minimum wait time '{}'",
-                    name, TimeUtils.durationForLogging(beenInOpenState), TimeUtils.durationForLogging(waitDurationInOpenStateInMillis));
-            }
-            metrics.recordCallAcquire(name, CallAcquireStatus.REJECTED);
+            observation.recordCallAcquire(state, CallAcquireStatus.REJECTED);
             return false;
         }
     }
 
     @Override
     public void releaseOnSuccess() {
-        if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("CircuitBreaker '{}' is disabled", name);
-            return;
-        }
-
-        State prevState;
-        State newState;
-        while (true) {
-            final long currentStateLong = state.get();
-            final long newStateLong = calculateStateOnSuccess(currentStateLong);
-            if (state.compareAndSet(currentStateLong, newStateLong)) {
-                newState = getState(newStateLong);
-                prevState = getState(currentStateLong);
-                break;
+        var observation = this.telemetry.observe();
+        try {
+            if (Boolean.FALSE.equals(config.enabled())) {
+                return;
             }
-        }
 
-        if (prevState != newState) {
-            onStateChange(prevState, newState, "success", null);
-        }
+            State prevState;
+            State newState;
+            while (true) {
+                final long currentStateLong = state.get();
+                final long newStateLong = calculateStateOnSuccess(currentStateLong);
+                if (state.compareAndSet(currentStateLong, newStateLong)) {
+                    newState = getState(newStateLong);
+                    prevState = getState(currentStateLong);
+                    break;
+                }
+            }
 
-        if (prevState == newState) {
-            logger.trace("CircuitBreaker '{}' released in {} state on success", name, newState);
-        } else {
-            logger.trace("CircuitBreaker '{}' released from {} to {} state on success", name, prevState, newState);
+            if (prevState != newState) {
+                onStateChange(prevState, newState, null, observation);
+            }
+        } finally {
+            observation.end();
         }
     }
 
@@ -291,73 +273,42 @@ final class KoraCircuitBreaker implements CircuitBreaker {
 
     @Override
     public void releaseOnError(Throwable throwable) {
-        if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("CircuitBreaker '{}' is disabled", name);
-            return;
-        }
-
-        if (!failurePredicate.test(throwable)) {
-            if (logger.isDebugEnabled()) {
-                final long currentStateLong = state.get();
-                var currentState = getState(currentStateLong);
-                if (logger.isTraceEnabled()) {
-                    logger.debug("CircuitBreaker '{}' in {} state predicate rejected exception",
-                        name, currentState, throwable);
-                } else if (logger.isDebugEnabled()) {
-                    logger.debug("CircuitBreaker '{}' in {} state predicate rejected exception: {}",
-                        name, currentState, throwable.toString());
-                }
-            }
-
-            final long currentStateLong = state.get();
-            final State currentState = getState(currentStateLong);
-            if (currentState == State.HALF_OPEN) {
-                long updatedStateLong = this.state.decrementAndGet();
-                if (logger.isTraceEnabled()) {
-                    final short acquired = countHalfOpenAcquired(updatedStateLong);
-                    logger.trace("CircuitBreaker '{}' released acquired in HALF_OPEN state for rejected exception with {} calls left",
-                        name, config.permittedCallsInHalfOpenState() - acquired);
-                }
+        var observation = this.telemetry.observe();
+        try {
+            if (Boolean.FALSE.equals(config.enabled())) {
                 return;
             }
 
-            return;
-        }
-
-        State prevState;
-        State newState;
-        while (true) {
-            final long currentStateLong = state.get();
-            final long newStateLong = calculateStateOnFailure(currentStateLong);
-            if (state.compareAndSet(currentStateLong, newStateLong)) {
-                newState = getState(newStateLong);
-                prevState = getState(currentStateLong);
-                break;
-            }
-        }
-
-        if (prevState != newState) {
-            onStateChange(prevState, newState, "error", throwable);
-        }
-
-        if (logger.isDebugEnabled()) {
-            if (prevState == newState) {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("CircuitBreaker '{}' released in {} state due to exception",
-                        name, newState, throwable);
-                } else {
-                    logger.debug("CircuitBreaker '{}' released in {} state due to exception: {}",
-                        name, newState, throwable.toString());
+            if (!failurePredicate.test(throwable)) {
+                final long currentStateLong = state.get();
+                final State currentState = getState(currentStateLong);
+                if (currentState == State.HALF_OPEN) {
+                    this.state.decrementAndGet();
+                    return;
                 }
+
+                return;
+            }
+
+            State prevState;
+            State newState;
+            while (true) {
+                final long currentStateLong = state.get();
+                final long newStateLong = calculateStateOnFailure(currentStateLong);
+                if (state.compareAndSet(currentStateLong, newStateLong)) {
+                    newState = getState(newStateLong);
+                    prevState = getState(currentStateLong);
+                    break;
+                }
+            }
+
+            if (prevState != newState) {
+                onStateChange(prevState, newState, throwable, observation);
             } else {
-                if (logger.isTraceEnabled()) {
-                    logger.trace("CircuitBreaker '{}' released from {} to {} state due to exception",
-                        name, prevState, newState, throwable);
-                } else {
-                    logger.debug("CircuitBreaker '{}' released from {} to {} state due to exception: {}",
-                        name, prevState, newState, throwable.toString());
-                }
+                observation.observeError(throwable);
             }
+        } finally {
+            observation.end();
         }
     }
 

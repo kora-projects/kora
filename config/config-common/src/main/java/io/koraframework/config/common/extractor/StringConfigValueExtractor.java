@@ -4,21 +4,18 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.ConfigValue;
 
 public final class StringConfigValueExtractor implements ConfigValueExtractor<String> {
-    @Override
     @Nullable
+    @Override
     public String extract(ConfigValue<?> value) {
         if (value.isNull()) {
             return null;
         }
-        if (value instanceof ConfigValue.NumberValue numberValue) {
-            return numberValue.value().toString();
-        }
-        if (value instanceof ConfigValue.BooleanValue booleanValue) {
-            return booleanValue.value().toString();
-        }
-        if (value instanceof ConfigValue.StringValue stringValue) {
-            return stringValue.value();
-        }
-        throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
+
+        return switch (value) {
+            case ConfigValue.NumberValue numberValue -> numberValue.value().toString();
+            case ConfigValue.BooleanValue booleanValue -> booleanValue.value().toString();
+            case ConfigValue.StringValue stringValue -> stringValue.value();
+            default -> throw ConfigValueExtractionException.unexpectedValueType(value, ConfigValue.StringValue.class);
+        };
     }
 }

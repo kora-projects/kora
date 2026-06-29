@@ -1,10 +1,10 @@
 package io.koraframework.kafka.annotation.processor.producer;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.kafka.annotation.processor.KafkaClassNames;
 import io.koraframework.kafka.annotation.processor.utils.KafkaPublisherUtils;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
@@ -65,8 +65,7 @@ final class KafkaPublisherGenerator {
             .addAnnotation(TagUtils.makeAnnotationSpec(className))
             .addParameter(CommonClassNames.config, "config")
             .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.publisherConfig), "extractor")
-            .addStatement("var configValue = config.get($S)", configPath)
-            .addStatement("return $T.requireNonNull(extractor.extract(configValue))", Objects.class)
+            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
             .build();
     }
 
@@ -316,16 +315,22 @@ final class KafkaPublisherGenerator {
     }
 
     public void generateConfig(TypeElement producer, List<ExecutableElement> publishMethods) throws IOException {
-        var record = new RecordClassBuilder(NameUtils.generatedType(producer, "TopicConfig"), KafkaPublisherAnnotationProcessor.class)
-            .originatingElement(producer)
-            .addModifier(Modifier.PUBLIC);
+        var topicConfigBuilder = TypeSpec.recordBuilder(NameUtils.generatedType(producer, "TopicConfig"))
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationUtils.generated(KafkaPublisherAnnotationProcessor.class));
+
+        var constructor = MethodSpec.constructorBuilder();
         for (int i = 0; i < publishMethods.size(); i++) {
             if (AnnotationUtils.isAnnotationPresent(publishMethods.get(0), kafkaTopicAnnotation)) {
-                record.addComponent("topic" + i, publisherTopicConfig);
+                constructor.addParameter(publisherTopicConfig, "topic" + i);
             }
         }
+
+        var recordSpec = topicConfigBuilder.recordConstructor(constructor.build());
+
         var packageName = this.elements.getPackageOf(producer).getQualifiedName().toString();
-        record.writeTo(processingEnv.getFiler(), packageName);
+        var javaFile = JavaFile.builder(packageName, recordSpec.build()).build();
+        CommonUtils.safeWriteTo(this.processingEnv, javaFile);
     }
 
     public MethodSpec buildTopicConfigMethod(TypeElement producer, List<ExecutableElement> publishMethods, AnnotationMirror publisherAnnotation) {
@@ -336,7 +341,7 @@ final class KafkaPublisherGenerator {
         var m = MethodSpec.methodBuilder(CommonUtils.decapitalize(configName))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, publisherTopicConfig), "parser")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, publisherTopicConfig), "extractor")
             .returns(configTypeName)
             .addCode("return new $T(\n$>", configTypeName);
 
@@ -352,7 +357,7 @@ final class KafkaPublisherGenerator {
                 if (i > 0) {
                     m.addCode(",\n");
                 }
-                m.addCode("parser.extract(config.get($S))", path);
+                m.addCode("extractor.extractOrThrow(config.get($S))", path);
             }
         }
         m.addCode("$<\n);\n");

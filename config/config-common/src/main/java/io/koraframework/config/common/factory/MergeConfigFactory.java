@@ -11,7 +11,10 @@ import io.koraframework.config.common.origin.ContainerConfigOrigin;
 
 import java.util.LinkedHashMap;
 
-public class MergeConfigFactory {
+public final class MergeConfigFactory {
+
+    private MergeConfigFactory() { }
+
     public static Config merge(Config config, Config fallback) {
         var root1 = config.root();
         var root2 = fallback.root();

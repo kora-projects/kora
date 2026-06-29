@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 
 public class ConfigWatcher implements Lifecycle {
+
     private static final Logger log = LoggerFactory.getLogger(ConfigWatcher.class);
 
     private final RefreshableGraph graph;

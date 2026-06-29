@@ -1,8 +1,8 @@
 package io.koraframework.camunda.zeebe.worker;
 
-import io.camunda.zeebe.client.ZeebeClient;
-import io.camunda.zeebe.client.ZeebeClientConfiguration;
-import io.camunda.zeebe.client.impl.ZeebeClientImpl;
+import io.camunda.client.CamundaClient;
+import io.camunda.client.CamundaClientConfiguration;
+import io.camunda.client.impl.CamundaClientImpl;
 import io.grpc.ManagedChannel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,24 +13,24 @@ import io.koraframework.common.util.TimeUtils;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
-public final class KoraZeebeClient implements Wrapped<ZeebeClient>, Lifecycle {
+public final class KoraZeebeClient implements Wrapped<CamundaClient>, Lifecycle {
 
     private static final Logger logger = LoggerFactory.getLogger(KoraZeebeClient.class);
 
     private final ZeebeClientConfig clientConfig;
-    private final ZeebeClientConfiguration clientConfiguration;
+    private final CamundaClientConfiguration clientConfiguration;
     private final ManagedChannel managedChannel;
 
-    private volatile ZeebeClientImpl zeebeClient;
+    private volatile CamundaClientImpl zeebeClient;
 
-    public KoraZeebeClient(ZeebeClientConfig clientConfig, ZeebeClientConfiguration clientConfiguration, ManagedChannel managedChannel) {
+    public KoraZeebeClient(ZeebeClientConfig clientConfig, CamundaClientConfiguration clientConfiguration, ManagedChannel managedChannel) {
         this.clientConfig = clientConfig;
         this.clientConfiguration = clientConfiguration;
         this.managedChannel = managedChannel;
     }
 
     @Override
-    public ZeebeClient value() {
+    public CamundaClient value() {
         return this.zeebeClient;
     }
 
@@ -39,7 +39,7 @@ public final class KoraZeebeClient implements Wrapped<ZeebeClient>, Lifecycle {
         logger.debug("ZeebeClient starting...");
         final long started = TimeUtils.started();
 
-        this.zeebeClient = new ZeebeClientImpl(clientConfiguration, managedChannel);
+        this.zeebeClient = new CamundaClientImpl(clientConfiguration, managedChannel);
         final Duration initTimeout = clientConfig.initializationFailTimeout();
         if (initTimeout != null) {
             try {

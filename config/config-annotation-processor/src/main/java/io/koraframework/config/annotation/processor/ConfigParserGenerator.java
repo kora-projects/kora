@@ -1,8 +1,8 @@
 package io.koraframework.config.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.ElementKind;
@@ -63,38 +63,13 @@ public class ConfigParserGenerator {
             typeBuilder.addMethod(parseFieldMethod);
         }
 
+        var configRecord = buildConfigInterfaceRecord(element, fields);
+        typeBuilder.addType(configRecord);
+
         var parserType = typeBuilder.build();
 
-        var javaFile = JavaFile.builder(packageName, typeBuilder.build()).build();
-        var fileName = packageName.isEmpty()
-            ? parserType.name()
-            : packageName + "." + parserType.name();
-
-        try {
-
-            var sw = new StringWriter();
-            javaFile.writeTo(sw);
-            var content = sw.toString();
-            var i = content.lastIndexOf('}');
-            content = content.substring(0, i);
-            content += "\n" + this.buildConfigInterfaceImplementation(element, fields) + "\n}\n";
-
-            var filerSourceFile = this.processingEnv.getFiler().createSourceFile(fileName, element);
-
-            try (var writer = filerSourceFile.openWriter()) {
-                writer.write(content);
-            } catch (Exception e) {
-                try {
-                    filerSourceFile.delete();
-                } catch (Exception e1) {
-                    e.addSuppressed(e1);
-                }
-                throw e;
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
+        var javaFile = JavaFile.builder(packageName, parserType).build();
+        CommonUtils.safeWriteTo(processingEnv, javaFile);
         return Either.left(null);
     }
 
@@ -385,18 +360,62 @@ public class ConfigParserGenerator {
         return null;
     }
 
-    private String buildConfigInterfaceImplementation(TypeElement typeElement, List<ConfigUtils.ConfigField> fields) {
-        var recordBuilder = new RecordClassBuilder(typeElement.getSimpleName() + "_Impl", ConfigParserGenerator.class)
-            .addModifier(Modifier.PUBLIC)
-            .enforceEquals();
+    private TypeSpec buildConfigInterfaceRecord(TypeElement typeElement, List<ConfigUtils.ConfigField> fields) {
+        String implName = typeElement.getSimpleName() + "_Impl";
+        var recordSpec = TypeSpec.recordBuilder(implName)
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class));
 
+        var constructorBuilder = MethodSpec.constructorBuilder();
+        MethodSpec.Builder constructorChecker = null;
+        boolean anyFieldArray = false;
+
+        MethodSpec.Builder equalOverrideIfArray = MethodSpec.methodBuilder("equals")
+            .addModifiers(Modifier.PUBLIC)
+            .addAnnotation(Override.class)
+            .addParameter(Object.class, "o")
+            .returns(boolean.class)
+            .addCode("return this == o || o instanceof $L that", implName);
         for (ConfigUtils.ConfigField field : fields) {
             boolean requireCheck = !field.isNullable() && !field.typeName().isPrimitive();
-            recordBuilder.addComponent(field.name(), field.typeName(), requireCheck);
+            if (!anyFieldArray && field.typeName() instanceof ArrayTypeName) {
+                anyFieldArray = true;
+            }
+
+            var paramType = field.typeName();
+            if (requireCheck) {
+                paramType = paramType.annotated(CommonClassNames.nonNullAnnotation);
+            }
+
+            var paramSpec = ParameterSpec.builder(paramType, field.name());
+            constructorBuilder.addParameter(paramSpec.build());
+            if (field.typeName() instanceof ArrayTypeName) {
+                equalOverrideIfArray.addCode(" && $T.equals(this.$L(), that.$L())", Arrays.class, field.name(), field.name());
+            } else if (field.typeName().isPrimitive()) {
+                equalOverrideIfArray.addCode(" && this.$L() == that.$L()", field.name(), field.name());
+            } else {
+                equalOverrideIfArray.addCode(" && $T.equals(this.$L(), that.$L())", Objects.class, field.name(), field.name());
+            }
+
+            if (requireCheck) {
+                if (constructorChecker == null) {
+                    constructorChecker = MethodSpec.compactConstructorBuilder().addModifiers(Modifier.PUBLIC);
+                }
+                constructorChecker.addStatement("$T.requireNonNull($L)", Objects.class, field.name());
+            }
         }
 
-        recordBuilder.superinterface(TypeName.get(typeElement.asType()));
-        return recordBuilder.render().indent(2);
+        if (constructorChecker != null) {
+            recordSpec.addMethod(constructorChecker.build());
+        }
+        recordSpec.recordConstructor(constructorBuilder.build());
+        recordSpec.addSuperinterface(typeElement.asType());
+
+        if (anyFieldArray) {
+            recordSpec.addMethod(equalOverrideIfArray.addCode(";").build());
+        }
+
+        return recordSpec.build();
     }
 
     private static final Map<TypeName, CodeBlock> supportedTypes = Map.ofEntries(

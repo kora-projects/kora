@@ -1,6 +1,6 @@
 package io.koraframework.camunda.zeebe.worker.telemetry.impl;
 
-import io.camunda.zeebe.client.api.response.ActivatedJob;
+import io.camunda.client.api.response.ActivatedJob;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerObservation;
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetry;
 

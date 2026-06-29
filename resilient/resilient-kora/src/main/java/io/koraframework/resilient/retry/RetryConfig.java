@@ -2,6 +2,7 @@ package io.koraframework.resilient.retry;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.resilient.retry.telemetry.RetryTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
@@ -15,6 +16,8 @@ public interface RetryConfig {
     default Map<String, NamedConfig> retry() {
         return Map.of();
     }
+
+    RetryTelemetryConfig telemetry();
 
     /**
      * {@link #delay} Attempt initial delay

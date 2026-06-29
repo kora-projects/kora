@@ -24,9 +24,9 @@ public final class ZeebeWorkerAnnotationProcessor extends AbstractKoraProcessor 
     private static final ClassName CLASS_KORA_WORKER = ClassName.get("io.koraframework.camunda.zeebe.worker", "KoraJobWorker");
     private static final ClassName CLASS_JOB_CONTEXT = ClassName.get("io.koraframework.camunda.zeebe.worker", "JobContext");
     private static final ClassName CLASS_ACTIVE_CONTEXT = ClassName.get("io.koraframework.camunda.zeebe.worker", "ActiveJobContext");
-    private static final ClassName CLASS_CLIENT = ClassName.get("io.camunda.zeebe.client.api.worker", "JobClient");
-    private static final ClassName CLASS_FINAL_COMMAND = ClassName.get("io.camunda.zeebe.client.api.command", "FinalCommandStep");
-    private static final ClassName CLASS_ACTIVE_JOB = ClassName.get("io.camunda.zeebe.client.api.response", "ActivatedJob");
+    private static final ClassName CLASS_CLIENT = ClassName.get("io.camunda.client.api.worker", "JobClient");
+    private static final ClassName CLASS_FINAL_COMMAND = ClassName.get("io.camunda.client.api.command", "FinalCommandStep");
+    private static final ClassName CLASS_ACTIVE_JOB = ClassName.get("io.camunda.client.api.response", "ActivatedJob");
     private static final ClassName CLASS_WORKER_EXCEPTION = ClassName.get("io.koraframework.camunda.zeebe.worker.exception", "JobWorkerException");
     private static final ClassName CLASS_JSON_READER = ClassName.get("io.koraframework.json.common", "JsonReader");
     private static final ClassName CLASS_JSON_WRITER = ClassName.get("io.koraframework.json.common", "JsonWriter");
