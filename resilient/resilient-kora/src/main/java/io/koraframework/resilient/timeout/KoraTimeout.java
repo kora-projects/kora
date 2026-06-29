@@ -1,5 +1,6 @@
 package io.koraframework.resilient.timeout;
 
+import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,17 +15,19 @@ final class KoraTimeout implements Timeout {
 
     private final String name;
     private final long delayMaxNanos;
-    private final TimeoutMetrics metrics;
+    private final Duration delayMaxDuration;
+    private final TimeoutTelemetry telemetry;
     private final TimeoutConfig.NamedConfig config;
     private final Executor executor;
 
     KoraTimeout(String name,
-                long delayMaxNanos,
-                TimeoutMetrics metrics,
+                Duration delayMaxDuration,
+                TimeoutTelemetry telemetry,
                 TimeoutConfig.NamedConfig config) {
         this.name = name;
-        this.delayMaxNanos = delayMaxNanos;
-        this.metrics = metrics;
+        this.delayMaxNanos = delayMaxDuration.toNanos();
+        this.delayMaxDuration = delayMaxDuration;
+        this.telemetry = telemetry;
         this.config = config;
         var threadFactory = Thread.ofVirtual()
             .name("timeout-" + name + "-", 1)
@@ -35,10 +38,9 @@ final class KoraTimeout implements Timeout {
     @Override
     public Duration timeout() {
         if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("Timeout '{}' is disabled", name);
             return Duration.ZERO;
         } else {
-            return Duration.ofNanos(delayMaxNanos);
+            return delayMaxDuration;
         }
     }
 
@@ -46,7 +48,9 @@ final class KoraTimeout implements Timeout {
     public void execute(Runnable runnable) throws TimeoutExhaustedException {
         if (Boolean.FALSE.equals(config.enabled())) {
             logger.debug("Timeout '{}' is disabled", name);
+
             runnable.run();
+            return;
         }
 
         internalExecute(e -> {
@@ -66,8 +70,6 @@ final class KoraTimeout implements Timeout {
     @Override
     public <T> T execute(Callable<T> callable) throws TimeoutExhaustedException {
         if (Boolean.FALSE.equals(config.enabled())) {
-            logger.debug("Timeout '{}' is disabled", name);
-
             try {
                 return callable.call();
             } catch (Exception e) {
@@ -93,11 +95,7 @@ final class KoraTimeout implements Timeout {
     }
 
     private <T> T internalExecute(Function<Executor, Future<T>> consumer) throws TimeoutExhaustedException {
-        if (logger.isTraceEnabled()) {
-            final Duration timeout = timeout();
-            logger.trace("KoraTimeout '{}' starting await for {}", name, timeout);
-        }
-
+        var observation = this.telemetry.observe(delayMaxDuration);
         final Future<T> handler = consumer.apply(executor);
         try {
             return handler.get(delayMaxNanos, TimeUnit.NANOSECONDS);
@@ -110,52 +108,39 @@ final class KoraTimeout implements Timeout {
         } catch (TimeoutException e) {
             handler.cancel(true);
             final Duration timeout = timeout();
-            logger.debug("KoraTimeout '{}' registered timeout after: {}", name, timeout);
-            metrics.recordTimeout(name, delayMaxNanos);
+            observation.recordTimeout(delayMaxNanos);
+            observation.observeError(e);
             throw new TimeoutExhaustedException(name, "Timeout exceeded " + timeout);
         } catch (InterruptedException e) {
+            observation.observeError(e);
             throw new IllegalStateException(e);
+        } finally {
+            observation.end();
         }
 
         // is not executed
         throw new IllegalStateException("Should not happen");
     }
 
-    public String name() {return name;}
-
-    public long delayMaxNanos() {return delayMaxNanos;}
-
-    public TimeoutMetrics metrics() {return metrics;}
-
-    public TimeoutConfig.NamedConfig config() {return config;}
-
-    public Executor executor() {return executor;}
+    public String name() {
+        return name;
+    }
 
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
         if (obj == null || obj.getClass() != this.getClass()) return false;
         var that = (KoraTimeout) obj;
-        return Objects.equals(this.name, that.name) &&
-            this.delayMaxNanos == that.delayMaxNanos &&
-            Objects.equals(this.metrics, that.metrics) &&
-            Objects.equals(this.config, that.config) &&
-            Objects.equals(this.executor, that.executor);
+        return Objects.equals(this.name, that.name) && this.delayMaxNanos == that.delayMaxNanos;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, delayMaxNanos, metrics, config, executor);
+        return Objects.hash(name, delayMaxNanos);
     }
 
     @Override
     public String toString() {
-        return "KoraTimeout[" +
-            "name=" + name + ", " +
-            "delayMaxNanos=" + delayMaxNanos + ", " +
-            "metrics=" + metrics + ", " +
-            "config=" + config + ", " +
-            "executor=" + executor + ']';
+        return "KoraTimeout[name=" + name + ", " + "delayMaxNanos=" + delayMaxNanos + ']';
     }
-
 }

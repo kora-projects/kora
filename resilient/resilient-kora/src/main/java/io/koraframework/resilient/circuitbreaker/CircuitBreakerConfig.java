@@ -2,6 +2,7 @@ package io.koraframework.resilient.circuitbreaker;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
@@ -14,6 +15,8 @@ public interface CircuitBreakerConfig {
     default Map<String, NamedConfig> circuitbreaker() {
         return Map.of();
     }
+
+    CircuitBreakerTelemetryConfig telemetry();
 
     /**
      * You can use <a href="https://resilience4j.readme.io/docs/circuitbreaker">Resilient4j documentation</a> as a description of how CircuitBreaker works and how similar properties are configution its parts

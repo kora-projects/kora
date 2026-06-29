@@ -2,6 +2,7 @@ package io.koraframework.resilient.timeout;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
@@ -15,6 +16,8 @@ public interface TimeoutConfig {
     default Map<String, NamedConfig> timeout() {
         return Map.of();
     }
+
+    TimeoutTelemetryConfig telemetry();
 
     /**
      * {@link #duration} Configures maximum interval for timeout.
