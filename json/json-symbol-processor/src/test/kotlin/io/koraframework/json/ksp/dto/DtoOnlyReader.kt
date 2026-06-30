@@ -1,6 +1,6 @@
 package io.koraframework.json.ksp.dto
 
-import io.koraframework.common.Mapping
+import io.koraframework.common.annotation.Mapping
 import io.koraframework.json.common.annotation.JsonField
 import io.koraframework.json.common.annotation.JsonReader
 import tools.jackson.core.JsonParser

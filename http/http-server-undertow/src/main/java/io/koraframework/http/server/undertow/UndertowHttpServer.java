@@ -3,7 +3,7 @@ package io.koraframework.http.server.undertow;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.server.common.HttpServer;
 import io.koraframework.http.server.common.HttpServerConfig;

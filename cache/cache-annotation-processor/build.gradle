@@ -4,7 +4,7 @@ dependencies {
     implementation libs.javapoet
 
     testImplementation libs.prometheus.collector.caffeine
-    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(":internal:test-logging")
     testImplementation project(":cache:cache-caffeine")
     testImplementation project(":cache:cache-redis-lettuce")

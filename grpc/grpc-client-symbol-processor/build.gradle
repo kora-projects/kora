@@ -5,15 +5,15 @@ plugins {
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':symbol-processor-common')
+    api project(":core:symbol-processor-common")
 
-    implementation project(':kora-app-symbol-processor')
+    implementation project(":core:kora-app-symbol-processor")
 
     testImplementation libs.grpc.kotlin.stub
     testImplementation libs.grpc.protobuf
     testImplementation project(':grpc:grpc-client')
     testImplementation project(':config:config-symbol-processor')
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation libs.javax.annotation.api
 }
 

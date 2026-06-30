@@ -1,8 +1,7 @@
 package io.koraframework.resilient.ratelimiter;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractionException;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetryFactory;
 import io.koraframework.resilient.ratelimiter.telemetry.impl.DefaultRateLimiterLoggerFactory;
@@ -11,8 +10,6 @@ import io.koraframework.resilient.ratelimiter.telemetry.impl.DefaultRateLimiterT
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
-
-import java.util.Optional;
 
 public interface RateLimiterModule {
 

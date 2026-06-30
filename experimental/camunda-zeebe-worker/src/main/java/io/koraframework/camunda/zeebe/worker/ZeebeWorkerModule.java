@@ -16,8 +16,8 @@ import io.koraframework.camunda.zeebe.worker.telemetry.impl.DefaultZeebeWorkerLo
 import io.koraframework.camunda.zeebe.worker.telemetry.impl.DefaultZeebeWorkerMetricsFactory;
 import io.koraframework.camunda.zeebe.worker.telemetry.impl.DefaultZeebeWorkerTelemetryFactory;
 import io.koraframework.camunda.zeebe.worker.telemetry.impl.MicrometerZeebeClientWorkerJobMetricsFactory;
-import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;

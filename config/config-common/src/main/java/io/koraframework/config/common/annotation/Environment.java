@@ -1,6 +1,6 @@
 package io.koraframework.config.common.annotation;
 
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 
 /**
  * <b>Русский</b>: Специальный тег {@link Tag} который используется для внедрения конфигурации окружения переменных.

@@ -7,7 +7,7 @@ import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammatic
 import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 
 import java.util.Arrays;
 

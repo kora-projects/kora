@@ -41,7 +41,7 @@ class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
                 
                 """.trimIndent(),
             """
-                import io.koraframework.common.KoraApp;
+                import io.koraframework.common.annotation.KoraApp;
                 import io.koraframework.common.annotation.Root;
                 import io.koraframework.validation.common.Validator;
                 import io.koraframework.validation.common.constraint.ValidatorModule;

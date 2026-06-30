@@ -1,7 +1,7 @@
 package io.koraframework.test.extension.junit5.testdata;
 
-import io.koraframework.common.Component;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Component;
+import io.koraframework.common.annotation.Tag;
 
 @Tag(LifecycleComponent.class)
 @Component

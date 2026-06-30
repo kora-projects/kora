@@ -1,7 +1,7 @@
 package io.koraframework.http.server.common.request.mapper;
 
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.http.server.common.request.HttpServerParameterReader;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.annotation.Json;

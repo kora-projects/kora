@@ -1,8 +1,8 @@
 package io.koraframework.logging.common.annotation;
 
-import io.koraframework.common.AopPropagate;
+import io.koraframework.common.annotation.AopPropagate;
 import org.slf4j.event.Level;
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;

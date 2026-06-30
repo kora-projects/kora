@@ -1,7 +1,7 @@
 package io.koraframework.s3.client.kora;
 
-import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.extractor.ConfigValueExtractionException;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;

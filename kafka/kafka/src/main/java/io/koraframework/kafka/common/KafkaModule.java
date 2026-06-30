@@ -1,6 +1,6 @@
 package io.koraframework.kafka.common;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
 import io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerLoggerFactory;
 import io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerMetricsFactory;

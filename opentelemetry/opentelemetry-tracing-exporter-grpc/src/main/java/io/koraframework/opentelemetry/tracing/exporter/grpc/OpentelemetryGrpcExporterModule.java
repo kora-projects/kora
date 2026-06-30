@@ -7,7 +7,7 @@ import io.opentelemetry.sdk.trace.SpanProcessor;
 import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 import io.opentelemetry.sdk.trace.export.SpanExporter;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;

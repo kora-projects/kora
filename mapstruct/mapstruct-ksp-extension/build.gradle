@@ -2,13 +2,13 @@ apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    implementation project(':kora-app-symbol-processor')
+    implementation project(":core:kora-app-symbol-processor")
 
     testImplementation libs.mapstruct
     testImplementation libs.mapstruct.processor
     testImplementation libs.jakarta.inject.api
 
-    testImplementation project(":kora-app-symbol-processor")
-    testImplementation project(":symbol-processor-common")
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation project(":core:kora-app-symbol-processor")
+    testImplementation project(":core:symbol-processor-common")
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
 }

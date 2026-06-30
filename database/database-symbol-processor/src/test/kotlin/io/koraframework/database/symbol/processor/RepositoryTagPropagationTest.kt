@@ -2,7 +2,7 @@ package io.koraframework.database.symbol.processor
 
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation

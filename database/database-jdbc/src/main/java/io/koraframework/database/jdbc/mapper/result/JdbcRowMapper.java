@@ -1,7 +1,7 @@
 package io.koraframework.database.jdbc.mapper.result;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.common.RowMapper;
 import io.koraframework.database.jdbc.JdbcRepository;
 

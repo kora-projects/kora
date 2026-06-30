@@ -2,8 +2,8 @@ package io.koraframework.test.extension.junit5;
 
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import io.koraframework.common.Component;
-import io.koraframework.common.KoraApp;
+import io.koraframework.common.annotation.Component;
+import io.koraframework.common.annotation.KoraApp;
 
 import java.lang.annotation.*;
 

@@ -1,0 +1,24 @@
+dependencies {
+    api project(":core:application-graph")
+    api libs.slf4j.api
+    api libs.micrometer.core
+    api libs.opentelemetry.api
+}
+
+sourceSets.main {
+    resources {
+        srcDirs "build/kora-version"
+    }
+}
+
+project.tasks.register("generateKoraVersion") {
+    def path = "build/kora-version/META-INF/kora/version/${project.name}"
+    it.outputs.file(path)
+    def output = file(path)
+    output.mkdirs()
+    output.delete()
+    output.createNewFile()
+    output.write(version.toString())
+}
+
+sourcesJar.dependsOn("generateKoraVersion")

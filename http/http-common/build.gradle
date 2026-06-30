@@ -1,4 +1,4 @@
 dependencies {
-    api project(":common")
+    api project(":core:common")
     compileOnly project(':json:json-common')
 }

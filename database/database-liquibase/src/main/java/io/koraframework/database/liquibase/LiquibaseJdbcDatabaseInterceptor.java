@@ -28,7 +28,7 @@ public class LiquibaseJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDa
     }
 
     @Override
-    public JdbcDatabase init(JdbcDatabase value) {
+    public JdbcDatabase afterInit(JdbcDatabase value) {
         final long started = TimeUtils.started();
         logger.debug("Liquibase migration applying...");
 
@@ -50,7 +50,7 @@ public class LiquibaseJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDa
     }
 
     @Override
-    public JdbcDatabase release(JdbcDatabase value) {
+    public JdbcDatabase preRelease(JdbcDatabase value) {
         return value;
     }
 }

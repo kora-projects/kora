@@ -2,7 +2,7 @@ dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
 
-    api project(":common")
+    api project(":core:common")
     api project(":database:database-common")
 
     api libs.bundles.netty

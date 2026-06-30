@@ -8,11 +8,11 @@ dependencies {
     api libs.junit.platform.launcher
     api libs.junit.jupiter
 
-    implementation project(":common")
+    implementation project(":core:common")
     implementation project(":config:config-common")
 
-    testAnnotationProcessor project(":annotation-processors")
-    testImplementation project(":annotation-processors")
+    testAnnotationProcessor project(":core:annotation-processors")
+    testImplementation project(":core:annotation-processors")
     testImplementation project(":config:config-hocon")
 
     testImplementation libs.mockk

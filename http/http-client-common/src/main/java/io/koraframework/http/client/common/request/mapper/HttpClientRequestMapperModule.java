@@ -1,7 +1,7 @@
 package io.koraframework.http.client.common.request.mapper;
 
-import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.json.common.JsonWriter;

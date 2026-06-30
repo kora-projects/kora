@@ -4,7 +4,7 @@ import io.grpc.*;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.grpc.client.GrpcClientConfig;
 import io.koraframework.grpc.client.interceptor.GrpcClientConfigInterceptor;

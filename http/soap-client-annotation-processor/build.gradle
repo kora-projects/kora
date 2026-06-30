@@ -14,7 +14,7 @@ static ClassLoader getClassLoader(Configuration config) {
 
 dependencies {
     api libs.javapoet
-    api project(':annotation-processor-common')
+    api project(":core:annotation-processor-common")
 
     cxf libs.cxf.tools.wsdlto.core
     cxf libs.cxf.tools.wsdlto.frontend.jaxws
@@ -23,7 +23,7 @@ dependencies {
     cxf libs.javax.jws.api
     cxf libs.javax.jaxws.api
 
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
 
     testImplementation libs.javax.jaxb.api
     testImplementation libs.sun.jaxb.impl

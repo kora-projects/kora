@@ -4,11 +4,11 @@ plugins {
 }
 
 dependencies {
-    api project(':symbol-processor-common')
-    api project(':kora-app-symbol-processor')
+    api project(":core:symbol-processor-common")
+    api project(":core:kora-app-symbol-processor")
 
     testImplementation project(':json:json-common')
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
 }
 
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"

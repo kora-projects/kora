@@ -5,7 +5,7 @@ plugins {
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    implementation project(':kora-app-symbol-processor')
+    implementation project(":core:kora-app-symbol-processor")
 
     implementation libs.ksp.api
     implementation libs.kotlin.reflect
@@ -13,7 +13,7 @@ dependencies {
     implementation libs.kotlinpoet.ksp
 
     testImplementation project(":internal:test-logging")
-    testImplementation testFixtures(project(":symbol-processor-common"))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation(libs.kotlin.stdlib.lib)
     testImplementation project(":experimental:camunda-zeebe-worker")
 }

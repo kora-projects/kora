@@ -1,6 +1,6 @@
 package io.koraframework.http.server.common.request.mapper;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.http.common.form.FormMultipart;
 import io.koraframework.http.common.form.FormUrlEncoded;
 import io.koraframework.http.server.common.request.HttpServerRequest;

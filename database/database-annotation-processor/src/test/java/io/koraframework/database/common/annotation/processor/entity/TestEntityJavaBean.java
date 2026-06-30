@@ -1,7 +1,7 @@
 package io.koraframework.database.common.annotation.processor.entity;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.common.annotation.processor.cassandra.CassandraEntity;
 import io.koraframework.database.common.annotation.processor.jdbc.JdbcEntity;
 

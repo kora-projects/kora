@@ -3,16 +3,16 @@ plugins {
 }
 
 dependencies {
-    api project(":annotation-processor-common")
+    api project(":core:annotation-processor-common")
 
-    implementation project(":kora-app-annotation-processor")
+    implementation project(":core:kora-app-annotation-processor")
 
     testImplementation libs.grpc.java.gen
     testImplementation libs.grpc.protobuf
     testImplementation libs.protobuf.java
     testImplementation project(":grpc:grpc-client")
     testImplementation project(":config:config-annotation-processor")
-    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation libs.javax.annotation.api
 }
 

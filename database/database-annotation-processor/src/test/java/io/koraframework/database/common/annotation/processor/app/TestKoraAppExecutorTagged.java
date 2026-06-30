@@ -1,7 +1,7 @@
 package io.koraframework.database.common.annotation.processor.app;
 
 import org.mockito.Mockito;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.common.annotation.Query;
 import io.koraframework.database.common.annotation.Repository;
 import io.koraframework.database.jdbc.JdbcConnectionFactory;

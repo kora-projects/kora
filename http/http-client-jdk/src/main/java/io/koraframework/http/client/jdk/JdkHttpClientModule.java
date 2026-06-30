@@ -1,6 +1,6 @@
 package io.koraframework.http.client.jdk;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;

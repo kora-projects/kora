@@ -3,7 +3,7 @@ package io.koraframework.aop.ksp
 import com.google.devtools.ksp.processing.Resolver
 import com.squareup.kotlinpoet.asClassName
 import io.koraframework.aop.symbol.processor.KoraAspectFactory
-import io.koraframework.common.AopAnnotation
+import io.koraframework.common.annotation.AopAnnotation
 
 @AopAnnotation
 annotation class TestAnnotation1(val value: String) {

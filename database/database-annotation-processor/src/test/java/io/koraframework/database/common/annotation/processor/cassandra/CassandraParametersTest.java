@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import io.koraframework.annotation.processor.common.TestContext;
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.cassandra.CassandraConnectionFactory;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import io.koraframework.database.common.QueryContext;
@@ -402,7 +402,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     public void testEntityFieldMappingByTag() throws ClassNotFoundException {
         var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
         var repository = compileCassandra(List.of(mapper), """
-            import io.koraframework.common.Tag;public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
+            import io.koraframework.common.annotation.Tag;public record SomeEntity(long id, @Tag(SomeEntity.class) String value) {}
             
             """, """
             @Repository
@@ -428,7 +428,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     public void testParameterMappingByTag() throws ClassNotFoundException {
         var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
         var repository = compileCassandra(List.of(mapper), """
-            import io.koraframework.common.Tag;@Repository
+            import io.koraframework.common.annotation.Tag;@Repository
             public interface TestRepository extends CassandraRepository {
                 @Query("INSERT INTO test(value) VALUES (:value)")
                 void test(@Tag(TestRepository.class) String value);
@@ -450,7 +450,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     public void testRecordParameterMapping() throws ClassNotFoundException, SQLException {
         var mapper = Mockito.mock(CassandraParameterColumnMapper.class);
         var repository = compileCassandra(List.of(mapper), """            
-            import io.koraframework.common.Tag;@Repository
+            import io.koraframework.common.annotation.Tag;@Repository
             public interface TestRepository extends CassandraRepository {
                 @Query("INSERT INTO test(value) VALUES (:value::jsonb)")
                 void test(@Tag(TestRepository.class) TestRecord value);

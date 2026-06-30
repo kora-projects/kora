@@ -4,7 +4,7 @@ import org.apache.kafka.common.serialization.Serializer;
 import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.kafka.annotation.processor.producer.KafkaPublisherAnnotationProcessor;
 import io.koraframework.kafka.common.producer.KafkaPublisherConfig;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig;
@@ -78,7 +78,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testPublisherWithRecordWithKeyTag() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
-            @KafkaPublisher("test")
+            import io.koraframework.common.annotation.Tag;@KafkaPublisher("test")
             public interface TestProducer {
               void send(ProducerRecord<@Tag(String.class) String, String> record);
             }
@@ -96,7 +96,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testPublisherWithRecordWithValueTag() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
-            @KafkaPublisher("test")
+            import io.koraframework.common.annotation.Tag;@KafkaPublisher("test")
             public interface TestProducer {
               void send(ProducerRecord<String, @Tag(String.class) String> record);
             }
@@ -159,7 +159,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testPublisherWithValueWithTag() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
-            @KafkaPublisher("test")
+            import io.koraframework.common.annotation.Tag;@KafkaPublisher("test")
             public interface TestProducer {
               @Topic("test.sendTopic")
               void send(@Tag(String.class) String value);
@@ -206,7 +206,7 @@ public class KafkaPublisherTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testPublisherWithKeyAndValueWithTag() throws NoSuchMethodException {
         this.compile(List.of(new KafkaPublisherAnnotationProcessor()), """
-            @KafkaPublisher("test")
+            import io.koraframework.common.annotation.Tag;@KafkaPublisher("test")
             public interface TestProducer {
               @Topic("test.sendTopic")
               void send(Long key, @Tag(String.class) String value);

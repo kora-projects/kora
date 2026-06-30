@@ -1,6 +1,6 @@
 package io.koraframework.validation.common.annotation;
 
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.ValidatorFactory;
 

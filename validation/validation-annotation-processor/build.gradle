@@ -1,12 +1,12 @@
 dependencies {
-    implementation project(":annotation-processor-common")
-    implementation project(":kora-app-annotation-processor")
+    implementation project(":core:annotation-processor-common")
+    implementation project(":core:kora-app-annotation-processor")
     implementation project(":aop:aop-annotation-processor")
 
-    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(":validation:validation-common")
-    testImplementation project(":annotation-processor-common")
-    testImplementation project(":kora-app-annotation-processor")
+    testImplementation project(":core:annotation-processor-common")
+    testImplementation project(":core:kora-app-annotation-processor")
     testImplementation project(":config:config-annotation-processor")
     testImplementation project(":internal:test-logging")
     testImplementation project(":json:json-common")

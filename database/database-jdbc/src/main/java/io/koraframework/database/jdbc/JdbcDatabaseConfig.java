@@ -2,7 +2,7 @@ package io.koraframework.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryConfig;
 

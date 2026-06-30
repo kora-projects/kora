@@ -22,7 +22,7 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
         compile0(
             listOf(KoraAppProcessorProvider(), HttpClientSymbolProcessorProvider()),
             """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             interface TestApp {
                fun client(): HttpClient = org.mockito.Mockito.mock(HttpClient::class.java)
                fun telemetry(): HttpClientTelemetryFactory = org.mockito.Mockito.mock(HttpClientTelemetryFactory::class.java)

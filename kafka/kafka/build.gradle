@@ -1,7 +1,7 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(":common")
+    api project(":core:common")
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")
     api project(":logging:logging-common")

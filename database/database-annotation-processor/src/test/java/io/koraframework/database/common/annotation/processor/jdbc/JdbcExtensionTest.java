@@ -3,21 +3,16 @@ package io.koraframework.database.common.annotation.processor.jdbc;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
-import io.koraframework.annotation.processor.common.TestUtils;
-import io.koraframework.application.graph.TypeRef;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
-import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 
-import java.sql.ResultSet;
 import java.util.List;
 import java.util.function.Predicate;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.*;
 
 public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
 
@@ -37,7 +32,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     public void testRowMapperWithTags() {
         compile(List.of(new KoraAppProcessor(), new RepositoryAnnotationProcessor(), new JdbcEntityAnnotationProcessor()),
             """
-                @KoraApp
+                import io.koraframework.common.annotation.Tag;@KoraApp
                 public interface Application extends JdbcDatabaseModule {
                 
                     @Root
@@ -52,7 +47,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
                 }
                 """,
             """
-                @EntityJdbc record TestRow(String f1, String f2, @Tag(String.class) String f3, @Mapping(TestRowResultColumnMapper.class) String f4) { }
+                import io.koraframework.common.annotation.Tag;@EntityJdbc record TestRow(String f1, String f2, @Tag(String.class) String f3, @Mapping(TestRowResultColumnMapper.class) String f4) { }
                 """,
             """
                 public final class TestRowResultColumnMapper implements JdbcResultColumnMapper<String> {
@@ -79,9 +74,9 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testRowMapperWithTaggedField() {
         compile(List.of(new KoraAppProcessor(), new JdbcEntityAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            import io.koraframework.common.annotation.Tag;@io.koraframework.common.KoraApp
             public interface TestApp {
-                @io.koraframework.common.Tag(TestRecord.class)
+                @Tag(TestRecord.class)
                 default io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper<String> taggedColumnMapper() {
                     return java.sql.ResultSet::getString;
                 }
@@ -90,7 +85,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
               default String root(io.koraframework.database.jdbc.mapper.result.JdbcRowMapper<TestRecord> r) {return "";}
             }
             """, """
-            @EntityJdbc public record TestRecord(@io.koraframework.common.Tag(TestRecord.class) String value) {}
+            import io.koraframework.common.annotation.Tag;@EntityJdbc public record TestRecord(@Tag(TestRecord.class) String value) {}
             """);
 
         compileResult.assertSuccess();

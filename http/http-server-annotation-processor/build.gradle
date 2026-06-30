@@ -5,10 +5,10 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(':annotation-processor-common')
-    api project(':kora-app-annotation-processor')
+    api project(":core:annotation-processor-common")
+    api project(":core:kora-app-annotation-processor")
 
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(':http:http-server-common')
     testImplementation project(':json:json-common')
     testImplementation libs.jackson.databind

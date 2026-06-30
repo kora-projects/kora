@@ -1,8 +1,8 @@
 package io.koraframework.redis.lettuce;
 
-import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.Tag;
+import io.koraframework.common.Configurer;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.netty.common.NettyModule;

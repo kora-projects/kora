@@ -1,7 +1,7 @@
 package io.koraframework.json.common;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import tools.jackson.core.ObjectReadContext;
 
 import java.io.InputStream;

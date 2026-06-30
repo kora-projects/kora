@@ -1,9 +1,9 @@
 package io.koraframework.config.common.extractor;
 
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.ConfigValue;
-import io.koraframework.common.util.Either;
+import io.koraframework.common.Either;
 import io.koraframework.common.util.Size;
 
 import java.math.BigDecimal;

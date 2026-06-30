@@ -15,10 +15,9 @@ import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
 import io.koraframework.database.symbol.processor.entity.TestEntity
-import kotlin.collections.get
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure
 

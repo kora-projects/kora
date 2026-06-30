@@ -2,7 +2,7 @@ package io.koraframework.config.common;
 
 import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.RefreshableGraph;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.annotation.ApplicationConfig;
 import io.koraframework.config.common.annotation.Environment;

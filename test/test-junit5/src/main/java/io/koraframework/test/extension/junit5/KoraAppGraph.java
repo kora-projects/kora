@@ -2,7 +2,7 @@ package io.koraframework.test.extension.junit5;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.ApplicationGraphDraw;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 
 import java.lang.reflect.Type;
 import java.util.List;

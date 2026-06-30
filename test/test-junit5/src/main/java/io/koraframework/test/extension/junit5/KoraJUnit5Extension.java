@@ -2,7 +2,7 @@ package io.koraframework.test.extension.junit5;
 
 import io.koraframework.application.graph.*;
 import io.koraframework.application.graph.internal.GraphImpl;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.test.extension.junit5.mockito.MockitoStrictness;
 import org.jspecify.annotations.Nullable;

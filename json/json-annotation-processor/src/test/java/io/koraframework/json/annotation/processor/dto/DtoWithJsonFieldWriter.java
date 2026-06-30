@@ -1,6 +1,6 @@
 package io.koraframework.json.annotation.processor.dto;
 
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;

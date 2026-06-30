@@ -1,11 +1,11 @@
 dependencies {
-    implementation project(':annotation-processor-common')
+    implementation project(":core:annotation-processor-common")
 
     testImplementation project(':config:config-common')
     testImplementation project(':scheduling:scheduling-quartz')
     testImplementation project(':scheduling:scheduling-jdk')
     testImplementation project(':config:config-annotation-processor')
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

@@ -23,7 +23,7 @@ allprojects {
 
 // config libraries
 subprojects {
-    if (!project.childProjects.isEmpty() || project.name == 'maven-parent') {
+    if (!project.childProjects.isEmpty() || project.name == 'kora-bom') {
         return
     }
     apply plugin: 'java-library'
@@ -88,7 +88,7 @@ def isPublishedLibrary = { Project p ->
     if (p.parent.name == "internal") {
         return false
     }
-    if (p.name == "maven-parent") {
+    if (p.name == "kora-bom") {
         return false
     }
     return true
@@ -195,7 +195,7 @@ def createPublishArchive = tasks.register("createPublishArchive", Zip) {
     exclude('*/**/maven-metadata.*')
     group = 'publishing'
     getArchiveFile().set(rootProject.layout.buildDirectory.file('deployment.zip'))
-    dependsOn(':maven-parent:publishMavenPublicationToBuildRepository')
+    dependsOn(':kora-bom:publishMavenPublicationToBuildRepository')
 }
 
 tasks.register('uploadPublishArchive', SonatypePublishTask) {

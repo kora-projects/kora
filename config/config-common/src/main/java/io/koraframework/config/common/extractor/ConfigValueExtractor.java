@@ -1,8 +1,7 @@
 package io.koraframework.config.common.extractor;
 
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import io.koraframework.config.common.ConfigValue;
-import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 
 import java.util.function.Function;

@@ -4,7 +4,7 @@ import org.apache.kafka.common.serialization.Deserializer;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.kafka.common.consumer.ConsumerAwareRebalanceListener;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory;
@@ -54,9 +54,9 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
     @Test
     public void testProcessValueWithTag() throws NoSuchMethodException {
         compile("""
-            import io.koraframework.common.Tag;public class KafkaListenerClass {
+            public class KafkaListenerClass {
                 @KafkaListener("test.config.path")
-                public void process(@Tag(KafkaListenerClass.class) String value) {
+                public void process(@io.koraframework.common.annotation.Tag(KafkaListenerClass.class) String value) {
                 }
             }
             """);
@@ -95,7 +95,7 @@ public class KafkaListenerKeyAndValueTest extends AbstractKafkaListenerAnnotatio
     @Test
     public void testProcessKeyAndValueWithTag() throws NoSuchMethodException {
         compile("""
-            import io.koraframework.common.Tag;public class KafkaListenerClass {
+            import io.koraframework.common.annotation.Tag;public class KafkaListenerClass {
                 @KafkaListener("test.config.path")
                 public void process(@Tag(KafkaListenerClass.class) String key, @Tag(String.class) String value) {
                 }

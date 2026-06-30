@@ -4,7 +4,7 @@ import org.apache.kafka.common.serialization.Serializer
 import org.assertj.core.api.Assertions.assertThat
 import org.intellij.lang.annotations.Language
 import org.junit.jupiter.api.Test
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.kafka.common.producer.KafkaPublisherConfig
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryFactory

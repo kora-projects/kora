@@ -1,6 +1,6 @@
 package io.koraframework.resilient.timeout.annotation;
 
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 import io.koraframework.resilient.timeout.TimeoutConfig;
 import io.koraframework.resilient.timeout.TimeoutExhaustedException;
 

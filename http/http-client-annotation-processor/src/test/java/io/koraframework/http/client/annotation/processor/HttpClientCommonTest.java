@@ -1,7 +1,7 @@
 package io.koraframework.http.client.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import io.koraframework.common.Component;
+import io.koraframework.common.annotation.Component;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
 import io.koraframework.http.client.common.response.HttpClientResponseMapper;
 import io.koraframework.logging.common.annotation.Log;
@@ -18,7 +18,7 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
     public void testMethodAopAnnotationPreserved() {
         var mapper = mock(HttpClientResponseMapper.class);
         var client = compileClient(List.of(mapper), """
-            @Component
+            import io.koraframework.common.annotation.Component;@Component
             @HttpClient
             public interface TestClient {
             
@@ -37,7 +37,7 @@ public class HttpClientCommonTest extends AbstractHttpClientTest {
         var requestMapper = mock(HttpClientRequestMapper.class);
         var responseMapper = mock(HttpClientResponseMapper.class);
         var client = compileClient(List.of(requestMapper, responseMapper), """
-            @Component
+            import io.koraframework.common.annotation.Component;@Component
             @HttpClient
             public interface TestClient {
             

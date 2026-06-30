@@ -7,8 +7,8 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.CodeBlock
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.aop.symbol.processor.KoraAspectFactory
-import io.koraframework.common.AopAnnotation
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.AopAnnotation
+import io.koraframework.common.annotation.Tag
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 
 private typealias AA = AopAliasTarget.AliasedAnnotation

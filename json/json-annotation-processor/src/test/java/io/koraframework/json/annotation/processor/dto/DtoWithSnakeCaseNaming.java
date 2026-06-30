@@ -1,6 +1,6 @@
 package io.koraframework.json.annotation.processor.dto;
 
-import io.koraframework.common.NamingStrategy;
+import io.koraframework.common.annotation.NamingStrategy;
 import io.koraframework.common.naming.SnakeCaseNameConverter;
 import io.koraframework.json.common.annotation.Json;
 

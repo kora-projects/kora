@@ -4,7 +4,7 @@ import io.grpc.ChannelCredentials;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.okhttp.OkHttpChannelBuilder;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 
 public final class GrpcOkHttpClientChannelFactory implements GrpcClientChannelFactory {
 

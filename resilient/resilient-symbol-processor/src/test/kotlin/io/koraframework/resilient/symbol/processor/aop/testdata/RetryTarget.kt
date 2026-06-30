@@ -1,7 +1,7 @@
 package io.koraframework.resilient.symbol.processor.aop.testdata
 
 import org.slf4j.LoggerFactory
-import io.koraframework.common.Component
+import io.koraframework.common.annotation.Component
 import io.koraframework.common.annotation.Root
 import io.koraframework.resilient.retry.annotation.Retry
 import java.util.concurrent.atomic.AtomicInteger

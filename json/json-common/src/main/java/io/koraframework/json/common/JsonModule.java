@@ -1,6 +1,6 @@
 package io.koraframework.json.common;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.json.common.reader.ListJsonReader;
 import io.koraframework.json.common.reader.MapJsonReader;
 import io.koraframework.json.common.reader.SetJsonReader;

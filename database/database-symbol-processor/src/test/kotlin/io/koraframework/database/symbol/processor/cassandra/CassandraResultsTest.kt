@@ -8,9 +8,8 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.whenever
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper
-import kotlin.collections.get
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure

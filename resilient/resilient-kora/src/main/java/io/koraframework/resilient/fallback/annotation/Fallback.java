@@ -1,6 +1,6 @@
 package io.koraframework.resilient.fallback.annotation;
 
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 import io.koraframework.resilient.fallback.FallbackConfig;
 
 import java.lang.annotation.*;

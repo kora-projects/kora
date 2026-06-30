@@ -1,9 +1,9 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api(project(":symbol-processor-common"))
+    api(project(":core:symbol-processor-common"))
 
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation libs.mockito.kotlin
 }
 

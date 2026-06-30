@@ -1,7 +1,7 @@
 package io.koraframework.test.extension.junit5.testdata;
 
-import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.KoraApp;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.KoraApp;
 
 @KoraApp
 public interface TestApplicationOps {

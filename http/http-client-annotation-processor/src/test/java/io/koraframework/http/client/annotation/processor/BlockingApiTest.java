@@ -1,7 +1,7 @@
 package io.koraframework.http.client.annotation.processor;
 
-import io.koraframework.common.Component;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Component;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
@@ -26,7 +26,7 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     @Test
     public void testComponentAnnotationPreserved() {
         var client = compileClient(List.of(), """
-            @Component
+            import io.koraframework.common.annotation.Component;@Component
             @HttpClient
             public interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
@@ -181,9 +181,9 @@ public class BlockingApiTest extends AbstractHttpClientTest {
     @Test
     public void testBlockingCustomMapperTag() {
         compileClient(List.of(newGeneratedObject("TestMapper")), """
-            import io.koraframework.common.Tag;@HttpClient
+            @HttpClient
             public interface TestClient {
-              @Tag(TestMapper.class)
+              @io.koraframework.common.annotation.Tag(TestMapper.class)
               @HttpRoute(method = "GET", path = "/test")
               String request();
             }

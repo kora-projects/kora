@@ -1,5 +1,5 @@
 dependencies {
-    api project(":common")
+    api project(":core:common")
     api project(":logging:logging-common")
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")

@@ -1,6 +1,6 @@
 package io.koraframework.config.yaml;
 
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.CommonConfigModule;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.annotation.ApplicationConfig;

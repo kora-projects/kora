@@ -4,7 +4,7 @@ import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.Test
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.test.extension.junit5.KoraAppTest
 import io.koraframework.test.extension.junit5.TestComponent
 import io.koraframework.test.extension.junit5.testdata.*

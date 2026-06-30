@@ -1,6 +1,6 @@
 package io.koraframework.json.common;
 
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import org.jspecify.annotations.Nullable;
 import tools.jackson.core.JsonEncoding;
 import tools.jackson.core.JsonGenerator;

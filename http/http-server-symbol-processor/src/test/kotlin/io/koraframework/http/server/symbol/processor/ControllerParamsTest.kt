@@ -3,7 +3,7 @@ package io.koraframework.http.server.symbol.processor
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import io.koraframework.application.graph.TypeRef
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.http.common.header.HttpHeaders
 import io.koraframework.http.server.common.request.HttpServerRequestMapper
 import io.koraframework.http.server.common.request.HttpServerParameterReader
@@ -555,7 +555,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
-                suspend fun request(@io.koraframework.common.Mapping(Mapper::class) request: String) {
+                suspend fun request(@io.koraframework.common.annotation.Mapping(Mapper::class) request: String) {
                 }
             }
             """.trimIndent(), """
@@ -579,7 +579,7 @@ class ControllerParamsTest : AbstractHttpControllerTest() {
             @HttpController
             class Controller {
                 @HttpRoute(method = GET, path = "/request")
-                fun request(@io.koraframework.common.Mapping(Mapper::class) request: String) {
+                fun request(@io.koraframework.common.annotation.Mapping(Mapper::class) request: String) {
                 }
             }
             """.trimIndent(), """

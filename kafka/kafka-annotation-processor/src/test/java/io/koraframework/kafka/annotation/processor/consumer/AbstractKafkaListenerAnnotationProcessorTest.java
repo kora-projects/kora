@@ -2,10 +2,9 @@ package io.koraframework.kafka.annotation.processor.consumer;
 
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.annotation.processor.common.CompileResult;
-import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.kafka.common.consumer.GeneratedListener;

@@ -1,7 +1,7 @@
 package io.koraframework.kafka.common.consumer;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.util.Either;
+import io.koraframework.common.Either;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryConfig;
 

@@ -4,7 +4,7 @@ import org.quartz.Scheduler;
 import org.quartz.impl.StdSchedulerFactory;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;

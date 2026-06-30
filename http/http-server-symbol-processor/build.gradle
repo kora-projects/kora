@@ -5,10 +5,10 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 
 dependencies {
-    api project(':common')
+    api project(':core:common')
     api project(':http:http-server-common')
-    api project(':symbol-processor-common')
-    api project(':kora-app-symbol-processor')
+    api project(":core:symbol-processor-common")
+    api project(":core:kora-app-symbol-processor")
 
     implementation libs.ksp.api
     implementation libs.kotlin.reflect
@@ -16,8 +16,8 @@ dependencies {
     implementation libs.kotlinpoet.ksp
 
 
-    testImplementation testFixtures(project(':annotation-processor-common'))
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation project(':json:json-common')
     testImplementation libs.mockito.kotlin
     testImplementation(libs.kotlin.stdlib.lib)

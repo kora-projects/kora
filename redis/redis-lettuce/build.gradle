@@ -9,7 +9,7 @@ dependencies {
         exclude group: 'io.netty'
     }
 
-    api project(":common")
+    api project(":core:common")
     api project(":netty-common")
     api project(":telemetry:telemetry-common")
     api project(":logging:logging-common")

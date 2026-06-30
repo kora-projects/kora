@@ -3,7 +3,7 @@ package io.koraframework.database.common.annotation.processor.cassandra;
 import com.datastax.oss.driver.api.core.cql.Statement;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.cassandra.mapper.result.CassandraAsyncResultSetMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper;
 
@@ -168,7 +168,7 @@ public class CassandraResultsTest extends AbstractCassandraRepositoryTest {
     public void testTagOnResultMapper() throws ClassNotFoundException {
         var mapper = Mockito.mock(CassandraResultSetMapper.class);
         var repository = compileCassandra(List.of(mapper), """
-            import io.koraframework.common.Tag;@Repository
+            import io.koraframework.common.annotation.Tag;@Repository
             public interface TestRepository extends CassandraRepository {
                 @Query("SELECT count(*) FROM test")
                 @Tag(TestRepository.class)

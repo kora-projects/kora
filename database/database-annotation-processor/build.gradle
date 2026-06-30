@@ -1,8 +1,8 @@
 dependencies {
-    api project(":annotation-processor-common")
-    implementation project(":kora-app-annotation-processor")
+    api project(":core:annotation-processor-common")
+    implementation project(":core:kora-app-annotation-processor")
 
-    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(":database:database-common")
     testImplementation project(":database:database-jdbc")
     testImplementation project(":database:database-cassandra")

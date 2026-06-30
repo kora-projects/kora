@@ -1,7 +1,7 @@
 package io.koraframework.database.cassandra.mapper.result;
 
 import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 
 import java.util.ArrayList;
 import java.util.List;

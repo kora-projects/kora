@@ -2,7 +2,7 @@ package io.koraframework.resilient.symbol.processor.aop.testdata
 
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
-import io.koraframework.common.KoraApp
+import io.koraframework.common.annotation.KoraApp
 import io.koraframework.config.common.extractor.ConfigValueExtractorModule
 import io.koraframework.config.common.origin.SimpleConfigOrigin
 import io.koraframework.config.hocon.HoconConfigFactory

@@ -6,7 +6,7 @@ dependencies {
     api project(':telemetry:telemetry-common')
     api project(":http:http-client-common")
     api project(":config:config-common")
-    api project(":common")
+    api project(":core:common")
 
     testImplementation project(":internal:test-logging")
     testImplementation project(":http:http-client-ok")

@@ -1,12 +1,9 @@
 package io.koraframework.http.server.undertow;
 
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
-import io.koraframework.common.util.Configurer;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractionException;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.common.Configurer;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
