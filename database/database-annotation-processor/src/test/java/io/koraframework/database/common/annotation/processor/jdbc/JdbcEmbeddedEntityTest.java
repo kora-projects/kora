@@ -21,7 +21,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -41,7 +41,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -61,7 +61,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord(int f1, java.time.OffsetDateTime f2) {}",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord(@Embedded(\"f1_\") EmbeddedRecord f1) {}",
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord(@Embedded(\"f1_\") EmbeddedRecord f1) {}",
             """
                 @io.koraframework.common.annotation.Component
                 public final class TimeJdbcResultColumnMapper implements io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper<java.time.OffsetDateTime> {
@@ -90,7 +90,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (@Nullable String f1, int f2){}",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -128,7 +128,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
                         this.f2 = f2;
                     }
                 }""",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord (@Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -167,7 +167,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
                     }
                 }""",
             """
-                @io.koraframework.database.jdbc.EntityJdbc
+                @io.koraframework.database.jdbc.annotation.EntityJdbc
                 public class TestBean {
                     @Embedded
                     private EmbeddedRecord f1;
@@ -225,7 +225,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (@Nullable String f1, int f2){}",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord (@Embedded(\"f1_\") EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -257,7 +257,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord (@Nullable @Embedded EmbeddedRecord f1){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord (@Nullable @Embedded EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -296,7 +296,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
             "public record EmbeddedRecord (int f1, int f2){}",
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord (@Nullable @Embedded(\"f1_\") EmbeddedRecord f1){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord (@Nullable @Embedded(\"f1_\") EmbeddedRecord f1){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 

@@ -1,6 +1,7 @@
 package io.koraframework.database.cassandra.annotation;
 
-import io.koraframework.database.cassandra.CassandraConfig;
+import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
+import io.koraframework.database.cassandra.mapper.result.CassandraRowColumnMapper;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -8,27 +9,30 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * <b>Русский</b>: Обозначает специальный <a href="https://docs.datastax.com/en/cql-oss/3.3/cql/cql_using/useCreateUDT.html">UDT тип</a> данных
+ * <b>Русский</b>: Обозначает пользовательский
+ * <a href="https://docs.datastax.com/en/cql-oss/3.3/cql/cql_using/useCreateUDT.html">UDT тип</a>
+ * Cassandra, для которого будут сгенерированы конвертеры чтения и записи.
  * <hr>
- * <b>English</b>: Sets the name of the execution profile from configuration that will be used for query.
+ * <b>English</b>: Marks a Cassandra
+ * <a href="https://docs.datastax.com/en/cql-oss/3.3/cql/cql_using/useCreateUDT.html">UDT type</a>
+ * that should have read and write converters generated for it.
  * <br>
  * <br>
  * Пример / Example:
  * <pre>
  * {@code
- * @Repository
- * public interface MyRepository extends CassandraRepository {
+ * @UDT
+ * public record Address(String city, String street) {}
  *
- *     @CassandraProfile("myProfile")
- *     @Query("INSERT INTO users(fullname) VALUES (:fullName)")
- *     void addUser(String fullName);
- * }
+ * @EntityCassandra
+ * public record User(String id, Address address) {}
  * }
  * </pre>
  *
- * @see CassandraConfig#profiles()
+ * @see CassandraParameterColumnMapper
+ * @see CassandraRowColumnMapper
  */
-@Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
 public @interface UDT {
 }

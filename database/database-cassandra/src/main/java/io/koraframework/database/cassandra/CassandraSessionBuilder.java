@@ -14,6 +14,7 @@ import java.util.Arrays;
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
 
 public class CassandraSessionBuilder {
+
     public CqlSession build(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, @Nullable MeterRegistry meterRegistry) {
         var builder = CqlSession.builder();
         var loaderBuilder = (ProgrammaticDriverConfigLoaderBuilder) new DefaultProgrammaticDriverConfigLoaderBuilder();

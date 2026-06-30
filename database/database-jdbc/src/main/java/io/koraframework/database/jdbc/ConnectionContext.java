@@ -18,6 +18,7 @@ public class ConnectionContext {
         this.connection = connection;
     }
 
+    @SuppressWarnings("resource")
     public Connection connection() {
         return this.connection;
     }

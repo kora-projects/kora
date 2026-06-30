@@ -33,6 +33,7 @@ import io.koraframework.database.common.RowMapper;
  * @see Mapping
  */
 public interface CassandraRowMapper<T> extends Mapping.MappingFunction, RowMapper<T> {
+
     @Nullable
     T apply(Row row);
 }

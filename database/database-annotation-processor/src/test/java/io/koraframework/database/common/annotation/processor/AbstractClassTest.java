@@ -50,7 +50,7 @@ public class AbstractClassTest extends AbstractJdbcRepositoryTest {
             """, """
             @KoraApp
             public interface TestApp {
-                default io.koraframework.database.jdbc.JdbcConnectionFactory factory() { return null; }
+                default io.koraframework.database.jdbc.JdbcExecutor factory() { return null; }
 
                 @Root
                 default Integer someRoot(TestRepository repository) { return 1; }

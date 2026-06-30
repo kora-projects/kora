@@ -37,6 +37,7 @@ import java.util.Optional;
  * @see Mapping
  */
 public interface JdbcResultSetMapper<T> extends Mapping.MappingFunction {
+
     @Nullable
     T apply(ResultSet rows) throws SQLException;
 

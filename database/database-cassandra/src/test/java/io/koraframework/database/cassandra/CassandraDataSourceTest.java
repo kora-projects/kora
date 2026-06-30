@@ -5,6 +5,7 @@ import io.koraframework.database.common.telemetry.*;
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.database.cassandra.mapper.result.CassandraRowMapper;
 import io.koraframework.test.cassandra.CassandraParams;
 import io.koraframework.test.cassandra.CassandraTestContainer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
@@ -20,8 +21,8 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 @ExtendWith(CassandraTestContainer.class)
-class CassandraDatabaseTest {
-    private static CassandraDatabase createCassandraDatabase(CassandraParams params) {
+class CassandraDataSourceTest {
+    private static CassandraDataSource createCassandraDataSource(CassandraParams params) {
         var profiles = new HashMap<String, CassandraConfig.Profile>();
         profiles.put(
             "profile",
@@ -64,17 +65,86 @@ class CassandraDatabaseTest {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        return new CassandraDatabase(config, null, null, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE));
+        return new CassandraDataSource(config, null, null, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE));
     }
 
-    private static void withDb(CassandraParams params, Consumer<CassandraDatabase> consumer) {
-        var db = createCassandraDatabase(params);
+    private static void withDb(CassandraParams params, Consumer<CassandraDataSource> consumer) {
+        var db = createCassandraDataSource(params);
         try {
             db.init();
             consumer.accept(db);
         } finally {
             db.release();
         }
+    }
+
+    @Test
+    public void testCassandraQueryBuilder() {
+        var status = "active";
+        String value = null;
+        var query = CassandraQuery.builder()
+            .sql("SELECT * FROM users WHERE id = :id")
+            .bindIf(" AND status = :status", "status", status, status != null)
+            .bindIf(" AND value = :value", "value", value, value != null)
+            .sqlIf(" ALLOW FILTERING", true)
+            .param("id", 1)
+            .build();
+
+        Assertions.assertThat(query.sourceCql())
+            .isEqualTo("SELECT * FROM users WHERE id = :id AND status = :status ALLOW FILTERING");
+        Assertions.assertThat(query.cql())
+            .isEqualTo("SELECT * FROM users WHERE id = ? AND status = ? ALLOW FILTERING");
+        Assertions.assertThat(query.parameterValues())
+            .containsExactly(1, "active");
+    }
+
+    @Test
+    public void testCassandraQuery(CassandraParams params) {
+        params.execute("create table test_table_query(id int, value varchar, status varchar, primary key (id));\n");
+        params.execute("insert into test_table_query(id, value, status) values (1,'test1','active');\n");
+        params.execute("insert into test_table_query(id, value, status) values (2,'test2','archived');\n");
+
+        record Entity(Integer id, String value) {}
+
+        withDb(params, db -> {
+            var status = "active";
+            var query = CassandraQuery.builder()
+                .sql("SELECT id, value FROM test_table_query WHERE id = :id")
+                .bindIf(" AND status = :status", "status", status, status != null)
+                .sql(" ALLOW FILTERING")
+                .param("id", 1)
+                .build();
+            CassandraRowMapper<Entity> mapper = row -> {
+                var __id = row.isNull("id") ? null : row.getInt("id");
+                var __value = row.getString("value");
+                return new Entity(__id, __value);
+            };
+
+            var result = db.queryList(query, mapper);
+
+            Assertions.assertThat(result)
+                .hasSize(1)
+                .first()
+                .isEqualTo(new Entity(1, "test1"));
+
+            var one = db.queryOne(
+                CassandraQuery.builder()
+                    .sql("SELECT id, value FROM test_table_query WHERE id = :id")
+                    .param("id", 1)
+                    .build(),
+                mapper
+            );
+            Assertions.assertThat(one).isEqualTo(new Entity(1, "test1"));
+
+            var optional = db.queryOptional(
+                CassandraQuery.builder()
+                    .sql("SELECT id, value FROM test_table_query WHERE id = :id")
+                    .param("id", 999)
+                    .build(),
+                mapper
+            );
+            Assertions.assertThat(optional).isEmpty();
+        });
     }
 
 

@@ -28,6 +28,7 @@ import java.sql.SQLException;
  * @see Mapping
  */
 public interface JdbcResultColumnMapper<T> extends Mapping.MappingFunction {
+
     @Nullable
     T apply(ResultSet row, int index) throws SQLException;
 }

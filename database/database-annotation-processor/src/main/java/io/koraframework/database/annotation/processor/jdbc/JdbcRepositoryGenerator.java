@@ -136,7 +136,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
             .map(p -> CodeBlock.of("$L", p.variable()))
-            .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
+            .orElse(CodeBlock.of("this._jdbcExecutor.currentConnection()"));
 
         var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;
         type.addField(
@@ -149,7 +149,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                         )""", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method))
                 .build());
         mb.addStatement("var _query = $L", queryContextFieldName);
-        mb.addStatement("var _observation = this._connectionFactory.telemetry().observe(_query)");
+        mb.addStatement("var _observation = this._jdbcExecutor.telemetry().observe(_query)");
         if (methodType.getReturnType().getKind() != TypeKind.VOID) {
             mb.addCode("return ");
         }
@@ -158,7 +158,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 var _conToUse = $L;
                 $T _conToClose;
                 if (_conToUse == null) {
-                    _conToUse = this._connectionFactory.newConnection();
+                    _conToUse = this._jdbcExecutor.acquireConnection();
                     _conToClose = _conToUse;
                 } else {
                     _conToClose = null;
@@ -242,21 +242,21 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     }
 
     public void enrichWithExecutor(TypeElement repositoryElement, TypeSpec.Builder builder, MethodSpec.Builder constructorBuilder) {
-        builder.addField(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory", Modifier.PRIVATE, Modifier.FINAL);
+        builder.addField(JdbcTypes.CONNECTION_FACTORY, "_jdbcExecutor", Modifier.PRIVATE, Modifier.FINAL);
         builder.addSuperinterface(JdbcTypes.JDBC_REPOSITORY);
-        builder.addMethod(MethodSpec.methodBuilder("getJdbcConnectionFactory")
+        builder.addMethod(MethodSpec.methodBuilder("executor")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(Override.class)
             .returns(JdbcTypes.CONNECTION_FACTORY)
-            .addCode("return this._connectionFactory;")
+            .addCode("return this._jdbcExecutor;")
             .build());
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(executorTag).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_jdbcExecutor").addAnnotation(executorTag).build());
         } else {
-            constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory");
+            constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_jdbcExecutor");
         }
-        constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
+        constructorBuilder.addStatement("this._jdbcExecutor = _jdbcExecutor");
     }
 }

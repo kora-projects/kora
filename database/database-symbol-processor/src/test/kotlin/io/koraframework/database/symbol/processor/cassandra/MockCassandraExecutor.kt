@@ -7,7 +7,7 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.whenever
-import io.koraframework.database.cassandra.CassandraConnectionFactory
+import io.koraframework.database.cassandra.CassandraExecutor
 import io.koraframework.database.common.QueryContext
 import io.koraframework.database.common.telemetry.DatabaseTelemetry
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseObservation
@@ -15,7 +15,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CompletionStage
 import java.util.function.Function
 
-class MockCassandraExecutor : CassandraConnectionFactory {
+class MockCassandraExecutor : CassandraExecutor {
     val resultSet: ResultSet = Mockito.mock(
         ResultSet::class.java
     )

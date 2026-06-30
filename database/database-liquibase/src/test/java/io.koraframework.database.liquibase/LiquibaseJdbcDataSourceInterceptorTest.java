@@ -1,30 +1,36 @@
-package io.koraframework.database.flyway;
+package io.koraframework.database.liquibase;
 
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueExtractor;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueExtractor;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor;
+import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
+import io.koraframework.database.jdbc.JdbcDataSource;
+import io.koraframework.test.postgres.PostgresParams;
+import io.koraframework.test.postgres.PostgresTestContainer;
 import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import io.koraframework.database.common.telemetry.*;
-import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.JdbcDatabase;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Properties;
 
 @ExtendWith({PostgresTestContainer.class})
-public class FlywayJdbcDatabaseInterceptorTest {
+public class LiquibaseJdbcDataSourceInterceptorTest {
 
     @Test
-    public void testFlywayInterceptor(PostgresParams params) throws SQLException {
+    public void testLiquibaseInterceptor(PostgresParams params) throws SQLException {
         var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
@@ -36,7 +42,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
             Duration.ofMillis(1000L),
             Duration.ofMillis(1000L),
             Duration.ofMillis(1000L),
-            2, // flyway uses two connections for migration and schema management
+            1, // Liquibase usually uses one connection
             0,
             Duration.ofMillis(1000L),
             false,
@@ -47,15 +53,15 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        var database = new JdbcDatabase(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+
+        var database = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
         database.init();
         try {
+            var interceptor = new LiquibaseJdbcDatabaseInterceptor(new LiquibaseConfig() {});
+            Assertions.assertSame(database, interceptor.afterInit(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on init");
 
-            var interceptor = new FlywayJdbcDatabaseInterceptor(new FlywayConfig() {});
-            Assertions.assertSame(database, interceptor.afterInit(database), "FlywayJdbcDatabaseInterceptor should return same reference on init");
-
-            database.inTx((Connection connection) -> {
-                var resultSet = connection
+            database.inTx(ctx -> {
+                var resultSet = ctx.connection()
                     .createStatement()
                     .executeQuery("SELECT * FROM test_migrated_table WHERE id = 100");
 
@@ -66,10 +72,9 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(database, interceptor.beforeRelease(database), "FlywayJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(database, interceptor.beforeRelease(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on release");
         } finally {
             database.release();
         }
-
     }
 }
