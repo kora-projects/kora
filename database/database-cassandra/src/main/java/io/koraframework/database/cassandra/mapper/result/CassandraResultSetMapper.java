@@ -36,6 +36,7 @@ import java.util.Optional;
  * @see Mapping
  */
 public interface CassandraResultSetMapper<T> extends Mapping.MappingFunction {
+
     @Nullable
     T apply(ResultSet rows);
 

@@ -242,7 +242,7 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         builder.addProperty("_cassandraConnectionFactory", CassandraTypes.connectionFactory, KModifier.PRIVATE)
         builder.addSuperinterface(CassandraTypes.repository)
         builder.addFunction(
-            FunSpec.builder("getCassandraConnectionFactory")
+            FunSpec.builder("executor")
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(CassandraTypes.connectionFactory)
                 .addStatement("return this._cassandraConnectionFactory")

@@ -12,7 +12,7 @@ import org.mockito.Mockito;
 import io.koraframework.annotation.processor.common.TestContext;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.annotation.Tag;
-import io.koraframework.database.cassandra.CassandraConnectionFactory;
+import io.koraframework.database.cassandra.CassandraExecutor;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import io.koraframework.database.common.QueryContext;
 import io.koraframework.database.common.annotation.processor.DbTestUtils;
@@ -35,7 +35,7 @@ public class CassandraParametersTest extends AbstractCassandraRepositoryTest {
     @Test
     public void oldTest() {
         var ctx = new TestContext();
-        ctx.addContextElement(TypeRef.of(CassandraConnectionFactory.class), executor);
+        ctx.addContextElement(TypeRef.of(CassandraExecutor.class), executor);
         ctx.addMock(TypeRef.of(CassandraEntity.TestEntityFieldCassandraParameterColumnMapperNonFinal.class));
         ctx.addMock(TypeRef.of(CassandraParameterColumnMapper.class, TestUnknownType.class));
         ctx.addMock(TypeRef.of(CassandraParameterColumnMapper.class, UnknownTypeField.class));

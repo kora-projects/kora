@@ -27,6 +27,7 @@ import io.koraframework.database.common.RowMapper;
  * @see Mapping
  */
 public interface CassandraRowColumnMapper<T> extends Mapping.MappingFunction, RowMapper<T> {
+
     @Nullable
     T apply(GettableByName row, int index);
 }

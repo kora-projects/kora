@@ -8,11 +8,11 @@ import org.mockito.kotlin.whenever
 import io.koraframework.database.common.telemetry.DatabaseObservation
 import io.koraframework.database.common.telemetry.DatabaseTelemetry
 import io.koraframework.database.jdbc.ConnectionContext
-import io.koraframework.database.jdbc.JdbcConnectionFactory
+import io.koraframework.database.jdbc.JdbcExecutor
 import io.koraframework.database.jdbc.UncheckedSqlException
 import java.sql.*
 
-class MockJdbcExecutor : JdbcConnectionFactory {
+class MockJdbcExecutor : JdbcExecutor {
     val resultSet = Mockito.mock(ResultSet::class.java)
 
     val preparedStatement = Mockito.mock(PreparedStatement::class.java)!!
@@ -36,7 +36,7 @@ class MockJdbcExecutor : JdbcConnectionFactory {
         reset()
     }
 
-    override fun <T> withContext(callback: JdbcConnectionFactory.SqlFunction<ConnectionContext, T>): T {
+    override fun <T> withContext(callback: JdbcExecutor.SqlFunction<ConnectionContext, T>): T {
         return try {
             callback.apply(mockConnectionContext)
         } catch (e: SQLException) {

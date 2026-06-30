@@ -4,7 +4,7 @@ import org.mockito.Mockito
 import io.koraframework.common.annotation.Tag
 import io.koraframework.database.common.annotation.Query
 import io.koraframework.database.common.annotation.Repository
-import io.koraframework.database.jdbc.JdbcConnectionFactory
+import io.koraframework.database.jdbc.JdbcExecutor
 import io.koraframework.database.jdbc.JdbcRepository
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
@@ -19,8 +19,8 @@ interface TestKoraAppTagged {
     class ExampleTag
 
     @Tag(ExampleTag::class)
-    fun jdbcQueryExecutorAccessor(): JdbcConnectionFactory? {
-        return Mockito.mock(JdbcConnectionFactory::class.java)
+    fun jdbcQueryExecutorAccessor(): JdbcExecutor? {
+        return Mockito.mock(JdbcExecutor::class.java)
     }
 
     @Tag(ExampleTag::class)

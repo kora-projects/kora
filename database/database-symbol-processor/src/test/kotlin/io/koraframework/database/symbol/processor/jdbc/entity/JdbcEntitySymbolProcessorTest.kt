@@ -12,7 +12,7 @@ class JdbcEntitySymbolProcessorTest : AbstractSymbolProcessorTest() {
     fun testMappersGenerated() {
         compile0(listOf(JdbcEntitySymbolProcessorProvider()),
             """
-            @io.koraframework.database.jdbc.EntityJdbc
+            @io.koraframework.database.jdbc.annotation.EntityJdbc
             data class TestRow(val id: Int)
             """.trimIndent()
         )

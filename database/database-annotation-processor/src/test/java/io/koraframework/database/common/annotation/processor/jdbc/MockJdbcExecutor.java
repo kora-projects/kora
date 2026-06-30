@@ -4,7 +4,7 @@ import org.mockito.Mockito;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext;
-import io.koraframework.database.jdbc.JdbcConnectionFactory;
+import io.koraframework.database.jdbc.JdbcExecutor;
 import io.koraframework.database.jdbc.UncheckedSqlException;
 
 import java.sql.*;
@@ -12,7 +12,7 @@ import java.sql.*;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-public class MockJdbcExecutor implements JdbcConnectionFactory {
+public class MockJdbcExecutor implements JdbcExecutor {
     public final ResultSet resultSet = Mockito.mock(ResultSet.class);
     public final PreparedStatement preparedStatement = Mockito.mock(PreparedStatement.class);
     public final CallableStatement callableStatement = Mockito.mock(CallableStatement.class);

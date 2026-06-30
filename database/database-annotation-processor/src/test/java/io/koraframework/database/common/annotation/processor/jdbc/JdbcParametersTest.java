@@ -9,7 +9,7 @@ import io.koraframework.database.common.annotation.processor.DbTestUtils;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityJavaBean;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord;
 import io.koraframework.database.common.annotation.processor.jdbc.repository.AllowedParametersRepository;
-import io.koraframework.database.jdbc.JdbcConnectionFactory;
+import io.koraframework.database.jdbc.JdbcExecutor;
 import io.koraframework.database.jdbc.JdbcDatabaseConfig;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import io.koraframework.json.common.annotation.Json;
@@ -31,7 +31,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     void oldTest() throws SQLException {
         var executor = new MockJdbcExecutor();
         var ctx = new TestContext();
-        ctx.addContextElement(TypeRef.of(JdbcConnectionFactory.class), executor);
+        ctx.addContextElement(TypeRef.of(JdbcExecutor.class), executor);
         ctx.addMock(TypeRef.of(JdbcParameterColumnMapper.class, TestEntityRecord.UnknownTypeField.class));
         ctx.addMock(TypeRef.of(JdbcEntity.TestEntityFieldJdbcParameterColumnMapperNonFinal.class));
         AllowedParametersRepository repository = ctx.newInstance(DbTestUtils.compileClass(AllowedParametersRepository.class));

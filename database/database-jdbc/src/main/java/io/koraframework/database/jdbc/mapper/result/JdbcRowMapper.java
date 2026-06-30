@@ -35,6 +35,7 @@ import java.sql.SQLException;
  * @see Mapping
  */
 public interface JdbcRowMapper<T> extends Mapping.MappingFunction, RowMapper<T> {
+
     @Nullable
     T apply(ResultSet row) throws SQLException;
 }

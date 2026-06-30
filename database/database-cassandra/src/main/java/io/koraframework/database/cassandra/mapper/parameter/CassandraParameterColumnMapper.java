@@ -29,5 +29,6 @@ import io.koraframework.database.cassandra.CassandraRepository;
  * @see Mapping
  */
 public interface CassandraParameterColumnMapper<T> extends Mapping.MappingFunction {
+
     void apply(SettableByName<?> stmt, int index, @Nullable T value);
 }

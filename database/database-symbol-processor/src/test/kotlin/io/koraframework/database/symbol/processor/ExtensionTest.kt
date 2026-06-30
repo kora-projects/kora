@@ -55,8 +55,8 @@ class ExtensionTest : AbstractJdbcRepositoryTest() {
                     repo: TestRepository
                 ) = repo.test()
         
-                fun jdbcQueryExecutorAccessor(): JdbcConnectionFactory {
-                    return Mockito.mock(JdbcConnectionFactory::class.java)
+                fun jdbcQueryExecutorAccessor(): JdbcExecutor {
+                    return Mockito.mock(JdbcExecutor::class.java)
                 }
             }
             """.trimIndent(),
