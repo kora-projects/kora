@@ -1,10 +1,10 @@
 package io.koraframework.json.annotation.processor;
 
+import org.intellij.lang.annotations.Language;
+import org.jetbrains.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.JsonWriter;
-import org.intellij.lang.annotations.Language;
-import org.jetbrains.annotations.Nullable;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 
@@ -19,7 +19,11 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
     protected String commonImports() {
         return super.commonImports() + """
             import io.koraframework.json.common.annotation.*;
+            import java.sql.Timestamp;
+            import java.util.List;
+            import io.koraframework.json.common.JsonValue;
             import io.koraframework.json.common.JsonNullable;
+            import io.koraframework.json.common.JsonUndefined;
             import io.koraframework.json.common.annotation.JsonInclude.IncludeType;
             import java.util.Optional;
             import tools.jackson.core.JsonParser;

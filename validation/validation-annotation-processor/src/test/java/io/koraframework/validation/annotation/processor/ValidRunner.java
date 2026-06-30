@@ -1,6 +1,5 @@
 package io.koraframework.validation.annotation.processor;
 
-import org.junit.jupiter.api.Assertions;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.validation.annotation.processor.testdata.ValidBar;
@@ -8,6 +7,7 @@ import io.koraframework.validation.annotation.processor.testdata.ValidFoo;
 import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.constraint.ValidatorModule;
+import org.junit.jupiter.api.Assertions;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;

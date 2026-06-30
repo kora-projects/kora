@@ -23,6 +23,7 @@ import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATOR_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VALID_TYPE
 import io.koraframework.validation.symbol.processor.ValidTypes.VIOLATION_TYPE
 import io.koraframework.validation.symbol.processor.ValidUtils.getConstraints
+import io.koraframework.validation.symbol.processor.ValidUtils.isJsonValueType
 
 class ValidatorGenerator(val codeGenerator: CodeGenerator) {
 
@@ -227,20 +228,21 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
 
         val fields = ArrayList<Field>()
         for (fieldProperty in elementFields) {
-            val constraints = fieldProperty.getConstraints()
-            val validateds = getValid(fieldProperty)
             val resolvedType = fieldProperty.type.resolve()
             val isNullable = resolvedType.isMarkedNullable
             val isNotNull = (fieldProperty.annotations + fieldProperty.type.annotations)
                 .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
                 .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
-            val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
+            val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null }.isJsonValueType()
+            val realType = if (isJsonNullable) resolvedType.arguments[0].type else fieldProperty.type
+
+            val constraints = fieldProperty.getConstraints()
+            val validateds = getValid(fieldProperty, realType!!)
 
             if (constraints.isNotEmpty() || validateds.isNotEmpty() || (isJsonNullable && isNotNull)) {
-                val realType = if (isJsonNullable) resolvedType.arguments[0].type else fieldProperty.type
                 fields.add(
                     Field(
-                        realType!!.asType(),
+                        realType.asType(),
                         fieldProperty.simpleName.asString(),
                         declaration.modifiers.any { m -> m == Modifier.DATA },
                         isNullable,
@@ -262,16 +264,16 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
         )
     }
 
-    private fun getValid(field: KSPropertyDeclaration): List<Validated> {
+    private fun getValid(field: KSPropertyDeclaration, targetType: KSTypeReference): List<Validated> {
         if (field.isAnnotationPresent(VALID_TYPE)) {
-            return listOf(Validated(field.type.asType()))
+            return listOf(Validated(targetType.asType()))
         }
 
         val parentClass = field.parentDeclaration as KSClassDeclaration
         return parentClass.primaryConstructor?.parameters
             ?.filter { it.name?.asString() == field.simpleName.asString() }
             ?.firstOrNull { it.isAnnotationPresent(VALID_TYPE) }
-            ?.let { return listOf(Validated(field.type.asType())) }
+            ?.let { return listOf(Validated(targetType.asType())) }
             ?: emptyList()
     }
 

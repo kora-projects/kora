@@ -1,9 +1,9 @@
 package io.koraframework.validation.annotation.processor.testdata;
 
+import io.koraframework.common.Component;
 import io.koraframework.validation.common.annotation.*;
 import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.Component;
 
 import java.util.List;
 

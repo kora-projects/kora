@@ -3,8 +3,9 @@ package io.koraframework.json.ksp
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import io.koraframework.json.common.JsonNullable
+import io.koraframework.json.common.JsonValue
 import io.koraframework.json.common.JsonWriter
-import io.koraframework.json.common.writer.ListJsonWriter
+import io.koraframework.json.common.ListJsonWriter
 import tools.jackson.core.JsonGenerator
 import java.sql.Timestamp
 import java.time.Instant
@@ -20,7 +21,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             """.trimIndent()
         )
 
-        val o = writer("TestRecord").toString(new("TestRecord", JsonNullable.undefined<Any>()))
+        val o = writer("TestRecord").toString(new("TestRecord", JsonValue.undefined<Any>()))
 
         assertThat(o).isEqualTo(
             """
@@ -80,7 +81,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
             }
         }
 
-        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonNullable.undefined<Any>()))
+        val o = writer("TestRecord", timeWriter).toString(new("TestRecord", JsonValue.undefined<Any>()))
 
         assertThat(o).isEqualTo(
             """
@@ -157,7 +158,7 @@ class JsonNullableWriteTests : AbstractJsonSymbolProcessorTest() {
         }
 
         val o = writer("TestRecord", timeWriter, writer("InnerRecord", timeWriter)).toString(
-            new("TestRecord", JsonNullable.undefined<Any>(), JsonNullable.undefined<Any>()))
+            new("TestRecord", JsonValue.undefined<Any>(), JsonValue.undefined<Any>()))
 
         assertThat(o).isEqualTo(
             """

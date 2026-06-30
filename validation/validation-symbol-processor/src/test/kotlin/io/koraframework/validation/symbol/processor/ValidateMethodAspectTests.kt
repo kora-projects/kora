@@ -1,11 +1,11 @@
 package io.koraframework.validation.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
+import io.koraframework.validation.common.ViolationException
+import io.koraframework.validation.symbol.processor.testdata.ValidTaz
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
-import io.koraframework.validation.common.ViolationException
-import io.koraframework.validation.symbol.processor.testdata.ValidTaz
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental

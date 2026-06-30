@@ -16,7 +16,6 @@ import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.TypeParameterElement;
 import javax.lang.model.type.PrimitiveType;
-import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -39,6 +38,17 @@ public class JsonReaderGenerator {
             return false;
         }
         if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
+            return true;
+        }
+
+        return CommonUtils.isNullable(field.parameter());
+    }
+
+    private boolean isUndefined(JsonClassReaderMeta.FieldMeta field) {
+        if (field.parameter().asType().getKind().isPrimitive()) {
+            return false;
+        }
+        if (field.typeMeta() != null && (field.typeMeta().isJsonUndefined())) {
             return true;
         }
 
@@ -71,9 +81,9 @@ public class JsonReaderGenerator {
         assertTokenType(method, "START_OBJECT");
 
         if (meta.fields().size() <= 32) {
-            method.addStatement("var __receivedFields = new int[]{NULLABLE_FIELDS_RECEIVED}");
+            method.addStatement("var __receivedFields = new int[]{UNDEFINED_FIELDS_RECEIVED}");
         } else {
-            method.addStatement("var __receivedFields = ($T) NULLABLE_FIELDS_RECEIVED.clone()", BitSet.class);
+            method.addStatement("var __receivedFields = ($T) UNDEFINED_FIELDS_RECEIVED.clone()", BitSet.class);
         }
         method.addCode("\n");
 
@@ -158,7 +168,7 @@ public class JsonReaderGenerator {
             var sb = new StringBuilder();
             for (int i = meta.fields().size() - 1; i >= 0; i--) {
                 var f = meta.fields().get(i);
-                sb.append(isNullable(f) ? "1" : "0");
+                sb.append(isUndefined(f) || isNullable(f) ? "1" : "0");
             }
             var nullableFieldsReceived = meta.fields().isEmpty()
                 ? "0"
@@ -171,23 +181,23 @@ public class JsonReaderGenerator {
                 .addField(FieldSpec.builder(TypeName.INT, "ALL_FIELDS_RECEIVED", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                     .initializer(CodeBlock.of(allFieldsReceived))
                     .build())
-                .addField(FieldSpec.builder(TypeName.INT, "NULLABLE_FIELDS_RECEIVED", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
+                .addField(FieldSpec.builder(TypeName.INT, "UNDEFINED_FIELDS_RECEIVED", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
                     .initializer(CodeBlock.of(nullableFieldsReceived))
                     .build());
         } else {
             typeBuilder
                 .addField(ClassName.get(BitSet.class), "ALL_FIELDS_RECEIVED", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL)
-                .addField(ClassName.get(BitSet.class), "NULLABLE_FIELDS_RECEIVED", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
+                .addField(ClassName.get(BitSet.class), "UNDEFINED_FIELDS_RECEIVED", Modifier.PRIVATE, Modifier.STATIC, Modifier.FINAL);
             var fieldReceivedInitBlock = CodeBlock.builder()
                 .add("""
                     ALL_FIELDS_RECEIVED = new $T($L);
                     ALL_FIELDS_RECEIVED.set(0, $L);
-                    NULLABLE_FIELDS_RECEIVED = new $T($L);
+                    UNDEFINED_FIELDS_RECEIVED = new $T($L);
                     """, BitSet.class, meta.fields().size(), meta.fields().size(), BitSet.class, meta.fields().size());
             for (int i = 0; i < meta.fields().size(); i++) {
                 var field = meta.fields().get(i);
-                if (isNullable(field)) {
-                    fieldReceivedInitBlock.add("NULLABLE_FIELDS_RECEIVED.set($L);\n", i);
+                if (isUndefined(field) || isNullable(field)) {
+                    fieldReceivedInitBlock.add("UNDEFINED_FIELDS_RECEIVED.set($L);\n", i);
                 }
             }
             typeBuilder.addStaticBlock(fieldReceivedInitBlock.build());
@@ -238,8 +248,12 @@ public class JsonReaderGenerator {
                 } else {
                     method.addCode(" = 0;\n");
                 }
-            } else if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
-                method.addCode(" = $T.undefined();\n", JsonTypes.jsonNullable);
+            } else if (field.typeMeta() != null && field.typeMeta().jsonValueType() != null) {
+                switch (field.typeMeta().jsonValueType()) {
+                    case VALUE -> method.addCode(" = $T.undefined();\n", JsonTypes.jsonValue);
+                    case NULLABLE -> method.addCode(" = $T.nullValue();\n", JsonTypes.jsonNullable);
+                    case UNDEFINED -> method.addCode(" = $T.undefined();\n", JsonTypes.jsonUndefined);
+                }
             } else {
                 method.addCode(" = null;\n");
             }
@@ -328,9 +342,26 @@ public class JsonReaderGenerator {
                     method.addCode("__receivedFields[0] = __receivedFields[0] | (1 << $L);\n", index);
                 }
             }
-            method.addCode("return $L.read(__parser);\n", this.readerFieldName(field));
+
+            CodeBlock prefix;
+            if (field.typeMeta().jsonValueType() != null) {
+                prefix = switch (field.typeMeta().jsonValueType()) {
+                    case VALUE -> CodeBlock.of("return $T.ofNullable(", JsonTypes.jsonValue);
+                    case NULLABLE -> CodeBlock.of("return $T.ofNullable(", JsonTypes.jsonNullable);
+                    case UNDEFINED -> CodeBlock.of("return $T.of(", JsonTypes.jsonUndefined);
+                };
+            } else {
+                prefix = CodeBlock.of("return ");
+            }
+
+            CodeBlock suffix = field.typeMeta().jsonValueType() != null
+                ? CodeBlock.of(")")
+                : CodeBlock.of("");
+
+            method.addCode("$L$L.read(__parser)$L;\n", prefix, this.readerFieldName(field), suffix);
             return method.build();
         }
+
         method.addStatement("var __token = __parser.nextToken()");
         if (field.typeMeta() instanceof KnownTypeReaderMeta meta) {
             method.addModifiers(Modifier.STATIC);
@@ -341,26 +372,38 @@ public class JsonReaderGenerator {
                 block.add("__receivedFields[0] = __receivedFields[0] | (1 << $L);\n", index);
             }
 
-            CodeBlock prefix = field.typeMeta().isJsonNullable()
-                ? CodeBlock.of("return $T.ofNullable(", JsonTypes.jsonNullable)
-                : CodeBlock.of("return ");
+            CodeBlock prefix;
+            if (field.typeMeta().jsonValueType() != null) {
+                prefix = switch (field.typeMeta().jsonValueType()) {
+                    case VALUE -> CodeBlock.of("return $T.ofNullable(", JsonTypes.jsonValue);
+                    case NULLABLE -> CodeBlock.of("return $T.ofNullable(", JsonTypes.jsonNullable);
+                    case UNDEFINED -> CodeBlock.of("return $T.of(", JsonTypes.jsonUndefined);
+                };
+            } else {
+                prefix = CodeBlock.of("return ");
+            }
 
-            CodeBlock suffix = field.typeMeta().isJsonNullable()
+            CodeBlock suffix = field.typeMeta().jsonValueType() != null
                 ? CodeBlock.of(")")
                 : CodeBlock.of("");
 
-            boolean isJsonNullable = field.typeMeta().isJsonNullable();
-            block.add(readKnownType(field.jsonName(), prefix, suffix, meta.knownType(), isNullable(field), isJsonNullable, meta.typeMirror()));
+            block.add(readKnownType(field.jsonName(), prefix, suffix, meta, isNullable(field)));
             method.addCode(block.build());
             return method.build();
         }
 
         if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
+            var type = switch (field.typeMeta().jsonValueType()) {
+                case VALUE -> JsonTypes.jsonValue;
+                case NULLABLE -> JsonTypes.jsonNullable;
+                default -> throw new UnsupportedOperationException("Unknown jsonValueType: " + field.typeMeta().jsonValueType());
+            };
+
             method.addCode("""
                 if (__token == $T.VALUE_NULL) {
                   return $T.nullValue();
                 }
-                """, JsonTypes.jsonToken, JsonTypes.jsonNullable);
+                """, JsonTypes.jsonToken, type);
         } else if (isNullable(field)) {
             method.addCode("""
                 if (__token == $T.VALUE_NULL) {
@@ -380,7 +423,27 @@ public class JsonReaderGenerator {
         }
 
         if (field.typeMeta() != null && field.typeMeta().isJsonNullable()) {
-            method.addStatement("return $T.ofNullable($L.read(__parser))", JsonTypes.jsonNullable, readerFieldName(field));
+            var type = switch (field.typeMeta().jsonValueType()) {
+                case VALUE -> JsonTypes.jsonValue;
+                case NULLABLE -> JsonTypes.jsonNullable;
+                default -> throw new UnsupportedOperationException("Unknown jsonValueType: " + field.typeMeta().jsonValueType());
+            };
+
+            if (size > 32) {
+                method.addStatement("__receivedFields.set($L)", index);
+            } else {
+                method.addStatement("__receivedFields[0] = __receivedFields[0] | (1 << $L)", index);
+            }
+
+            method.addStatement("return $T.ofNullable($L.read(__parser))", type, readerFieldName(field));
+        } else if (field.typeMeta() != null && field.typeMeta().jsonValueType() == ReaderFieldType.JsonValueType.UNDEFINED) {
+            if (size > 32) {
+                method.addStatement("__receivedFields.set($L)", index);
+            } else {
+                method.addStatement("__receivedFields[0] = __receivedFields[0] | (1 << $L)", index);
+            }
+
+            method.addStatement("return $T.of($L.read(__parser))", JsonTypes.jsonUndefined, readerFieldName(field));
         } else {
             method.addStatement("return $L.read(__parser)", readerFieldName(field));
         }
@@ -391,7 +454,8 @@ public class JsonReaderGenerator {
         return "read_" + field.parameter().getSimpleName().toString();
     }
 
-    private CodeBlock readKnownType(String jsonName, CodeBlock prefix, CodeBlock suffix, KnownType.KnownTypesEnum knownType, boolean nullable, boolean jsonNullable, TypeMirror typeMirror) {
+    private CodeBlock readKnownType(String jsonName, CodeBlock prefix, CodeBlock suffix, KnownTypeReaderMeta meta, boolean nullable) {
+        KnownType.KnownTypesEnum knownType = meta.knownType();
         var method = CodeBlock.builder();
         var code = switch (knownType) {
             case STRING -> CodeBlock.of("""
@@ -447,9 +511,16 @@ public class JsonReaderGenerator {
                     }""",
                 JsonTypes.jsonToken, prefix, UUID.class, suffix);
         };
+
         method.add(code);
-        if (jsonNullable) {
-            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn $T.nullValue();$<\n}", JsonTypes.jsonToken, JsonTypes.jsonNullable);
+        if (meta.isJsonNullable()) {
+            var type = switch (meta.jsonValueType()) {
+                case VALUE -> JsonTypes.jsonValue;
+                case NULLABLE -> JsonTypes.jsonNullable;
+                default -> throw new UnsupportedOperationException("Unknown jsonValueType: " + meta.jsonValueType());
+            };
+
+            method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn $T.nullValue();$<\n}", JsonTypes.jsonToken, type);
         } else if (nullable) {
             method.add(" else if (__token == $T.VALUE_NULL) {$>\nreturn null;$<\n}", JsonTypes.jsonToken);
         }

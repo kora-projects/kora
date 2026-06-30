@@ -1,28 +1,28 @@
 package io.koraframework.validation.annotation.processor;
 
-import org.junit.jupiter.api.Test;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
+import io.koraframework.json.common.JsonNullable;
+import io.koraframework.json.common.JsonValue;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.validation.common.ViolationException;
 import io.koraframework.validation.common.constraint.ValidatorModule;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 
-public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
+public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnnotationProcessorTest implements ValidatorModule {
 
     @Test
-    public void resultJsonNullableIsUndefined() {
+    public void argumentJsonNullableIsUndefined() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
-                    }
+                    public void test(JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -31,19 +31,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
-    public void resultJsonNullableIsNull() {
+    public void argumentJsonNullableIsNull() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    public JsonNullable<String> test() {
-                        return JsonNullable.nullValue();
-                    }
+                    public void test(JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -52,19 +50,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.nullValue()));
     }
 
     @Test
-    public void resultJsonNullableIsPresent() {
+    public void argumentJsonNullableIsPresent() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    public JsonNullable<String> test() {
-                        return JsonNullable.of("1");
-                    }
+                    public void test(JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -73,20 +69,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 
     @Test
-    public void resultJsonNullableNonNullIsUndefined() {
+    public void argumentJsonNullableNonNullIsUndefined() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    @NonNull
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
-                    }
+                    public void test(@NonNull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -95,20 +88,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertThrows(ViolationException.class, () -> invoke(component, "test"));
+        assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
-    public void resultJsonNullableNonNullIsNull() {
+    public void argumentJsonNullableNonNullIsNull() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    @NonNull
-                    public JsonNullable<String> test() {
-                        return JsonNullable.nullValue();
-                    }
+                    public void test(@NonNull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -117,20 +107,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertThrows(ViolationException.class, () -> invoke(component, "test"));
+        assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
     }
 
     @Test
-    public void resultJsonNullableNonNullIsPresent() {
+    public void argumentJsonNullableNonNullIsPresent() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    @NonNull
-                    public JsonNullable<String> test() {
-                        return JsonNullable.of("1");
-                    }
+                    public void test(@NonNull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -139,21 +126,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy");
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 
     @Test
-    public void resultJsonNullableWithValidatorIsUndefined() {
+    public void argumentJsonNullableWithValidatorIsUndefined() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    @NotBlank
-                    @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -162,21 +145,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
-    public void resultJsonNullableWithValidatorIsNull() {
+    public void argumentJsonNullableWithValidatorIsNull() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    @NotBlank
-                    @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.nullValue();
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -185,22 +164,18 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test"));
+        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
         assertEquals(2, ex.getViolations().size());
     }
 
     @Test
-    public void resultJsonNullableWithValidatorIsPresent() {
+    public void argumentJsonNullableWithValidatorIsPresent() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate
-                    @NotBlank
-                    @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.of("1");
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -209,21 +184,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 
     @Test
-    public void resultJsonNullableWithValidatorFailFastIsUndefined() {
+    public void argumentJsonNullableWithValidatorFailFastIsUndefined() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    @NotBlank
-                    @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -232,21 +203,17 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
     }
 
     @Test
-    public void resultJsonNullableWithValidatorFailFastIsNull() {
+    public void argumentJsonNullableWithValidatorFailFastIsNull() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    @NotBlank
-                    @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.nullValue();
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -255,22 +222,18 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test"));
+        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
         assertEquals(1, ex.getViolations().size());
     }
 
     @Test
-    public void resultJsonNullableWithValidatorFailFastIsPresent() {
+    public void argumentJsonNullableWithValidatorFailFastIsPresent() {
         var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor(), new AopAnnotationProcessor()),
             """
                 @Component
                 public class TestComponent {
                     @Validate(failFast = true)
-                    @NotBlank
-                    @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.of("1");
-                    }
+                    public void test(@NotBlank @NotEmpty JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -279,6 +242,6 @@ public class ValidationJsonNullableResultSyncTests extends AbstractValidationAnn
         assertThat(validatorClass).isNotNull();
 
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test"));
+        assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
     }
 }

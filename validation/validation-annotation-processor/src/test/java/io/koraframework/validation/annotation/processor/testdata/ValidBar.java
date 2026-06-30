@@ -1,9 +1,9 @@
 package io.koraframework.validation.annotation.processor.testdata;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.validation.common.annotation.NotBlank;
 import io.koraframework.validation.common.annotation.Size;
 import io.koraframework.validation.common.annotation.Valid;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
