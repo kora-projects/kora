@@ -4,6 +4,7 @@ import com.palantir.javapoet.*;
 import io.koraframework.common.Module;
 import io.koraframework.common.Tag;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import javax.annotation.processing.AbstractProcessor;
@@ -131,6 +132,88 @@ public class DependencyTest extends AbstractKoraAppTest {
             }
             """);
         assertThat(draw.getNodes()).hasSize(5);
+        draw.init();
+    }
+
+    @Test
+    public void testAllWithOnlyDefault() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface {}
+                class TestClass implements TestInterface {}
+            
+                @Root
+                default Object root(All<TestInterface> all) { return ""; }
+            
+                @DefaultComponent
+                default TestClass defaultDependency() { return new TestClass(); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+    }
+
+    @Test
+    public void testAllWithDefaultAndNonDefault() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface {}
+                class TestClass1 implements TestInterface {}
+                class TestClass2 implements TestInterface {}
+            
+                @Root
+                default Object root1(All<TestInterface> all) { return ""; }
+            
+                @DefaultComponent
+                default TestClass1 defaultDependency() { return new TestClass1(); }
+            
+                default TestClass2 nonDefaultDependency() { return new TestClass2(); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+        draw.init();
+    }
+
+    @Test
+    @Disabled
+    public void testBugged() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface {}
+                class TestClass1 implements TestInterface {}
+                class TestClass2 implements TestInterface {}
+            
+                @Root
+                default Object root2(TestClass1 cl) { return ""; }
+            
+                @Root
+                default Object root1(All<TestInterface> all) { return ""; }
+            
+                @DefaultComponent
+                default TestClass1 defaultDependency() { return new TestClass1(); }
+            
+                default TestClass2 nonDefaultDependency() { return new TestClass2(); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(4);
+        draw.init();
+    }
+
+    @Test
+    public void testEmptyAllOf() {
+        var draw = compile("""
+            @KoraApp
+            public interface ExampleApplication {
+                interface TestInterface {}
+            
+                @Root
+                default Object allOfInterface(All<TestInterface> all) { return ""; }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(1);
         draw.init();
     }
 
