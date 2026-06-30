@@ -1,8 +1,8 @@
 package io.koraframework.camunda.rest;
 
+import io.koraframework.camunda.rest.CamundaRestConfig.CamundaOpenApiConfig.CamundaCorsConfig;
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryConfig;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
-import io.koraframework.openapi.management.OpenApiManagementConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
@@ -32,7 +32,7 @@ public interface CamundaRestConfig {
 
     CamundaRestTelemetryConfig telemetry();
 
-    CamundaOpenApiConfig.CamundaCorsConfig cors();
+    CamundaCorsConfig cors();
 
     @ConfigValueExtractor
     interface CamundaOpenApiConfig {
@@ -49,9 +49,49 @@ public interface CamundaRestConfig {
             return "/openapi";
         }
 
-        OpenApiManagementConfig.SwaggerUIConfig swaggerui();
+        SwaggerUIConfig swaggerui();
 
-        OpenApiManagementConfig.RapidocConfig rapidoc();
+        RapidocConfig rapidoc();
+
+        @ConfigValueExtractor
+        interface SwaggerUIConfig {
+
+            default boolean enabled() {
+                return false;
+            }
+
+            default String path() {
+                return "/swagger-ui";
+            }
+
+            default boolean withCredentials() {
+                return true;
+            }
+
+            default Map<String, String> options() {
+                return Map.of(
+                    "layout", "StandaloneLayout",
+                    "validatorUrl", "null",
+                    "defaultModelsExpandDepth", "0",
+                    "deepLinking", "true",
+                    "persistAuthorization", "true",
+                    "displayOperationId", "true",
+                    "filter", "true"
+                );
+            }
+        }
+
+        @ConfigValueExtractor
+        interface RapidocConfig {
+
+            default boolean enabled() {
+                return false;
+            }
+
+            default String path() {
+                return "/rapidoc";
+            }
+        }
 
         @ConfigValueExtractor
         interface CamundaCorsConfig {

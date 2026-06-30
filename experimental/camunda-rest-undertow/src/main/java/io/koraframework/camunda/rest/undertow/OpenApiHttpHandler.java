@@ -9,6 +9,7 @@ import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.openapi.management.OpenApiHttpServerHandler;
+import io.koraframework.openapi.management.OpenApiManagementConfig;
 import io.koraframework.openapi.management.RapidocHttpServerHandler;
 import io.koraframework.openapi.management.SwaggerUIHttpServerHandler;
 import io.undertow.io.IoCallback;
@@ -73,7 +74,27 @@ final class OpenApiHttpHandler implements HttpHandler {
                     .getBytes(StandardCharsets.UTF_8);
             }
         });
-        this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.endpoint(), openapi.swaggerui(), openapi.file());
+        this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.endpoint(), new OpenApiManagementConfig.SwaggerUIConfig() {
+            @Override
+            public boolean enabled() {
+                return openapi.swaggerui().enabled();
+            }
+
+            @Override
+            public String path() {
+                return openapi.swaggerui().path();
+            }
+
+            @Override
+            public boolean withCredentials() {
+                return openapi.swaggerui().withCredentials();
+            }
+
+            @Override
+            public Map<String, String> options() {
+                return openapi.swaggerui().options();
+            }
+        }, openapi.file());
         this.rapidocHandler = new RapidocHttpServerHandler(openapi.endpoint(), openapi.rapidoc().path(), openapi.file());
     }
 
