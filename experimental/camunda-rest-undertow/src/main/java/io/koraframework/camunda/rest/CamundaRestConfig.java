@@ -36,7 +36,7 @@ public interface CamundaRestConfig {
     @ConfigValueExtractor
     interface CamundaOpenApiConfig {
 
-        default List<String> file() {
+        default List<String> files() {
             return List.of("openapi.json");
         }
 
@@ -44,7 +44,7 @@ public interface CamundaRestConfig {
             return false;
         }
 
-        default String endpoint() {
+        default String path() {
             return "/openapi";
         }
 

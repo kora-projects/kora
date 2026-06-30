@@ -44,16 +44,16 @@ final class OpenApiHttpHandler implements HttpHandler {
 
         final List<UndertowPathMatcher.HttpMethodPath> openapiMethods = new ArrayList<>();
         var openapi = restConfig.openapi();
-        if (openapi.file().size() == 1) {
-            openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.endpoint()));
+        if (openapi.files().size() == 1) {
+            openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.path()));
         } else {
-            openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.endpoint() + "/{file}"));
+            openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.path() + "/{file}"));
         }
         openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.rapidoc().path()));
         openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.swaggerui().path()));
         this.pathMatcher = new UndertowPathMatcher(openapiMethods);
 
-        this.openApiHandler = new OpenApiHttpServerHandler(openapi.file(), f -> {
+        this.openApiHandler = new OpenApiHttpServerHandler(openapi.files(), f -> {
             if ("/engine-rest".equals(restConfig.path())) {
                 String fileAsStr = new String(f, StandardCharsets.UTF_8);
                 return fileAsStr
@@ -71,7 +71,7 @@ final class OpenApiHttpHandler implements HttpHandler {
                     .getBytes(StandardCharsets.UTF_8);
             }
         });
-        this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.endpoint(), new OpenApiManagementConfig.SwaggerUIConfig() {
+        this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.path(), new OpenApiManagementConfig.SwaggerUIConfig() {
             @Override
             public boolean enabled() {
                 return openapi.swaggerui().enabled();
@@ -91,8 +91,8 @@ final class OpenApiHttpHandler implements HttpHandler {
             public Map<String, String> options() {
                 return openapi.swaggerui().options();
             }
-        }, openapi.file());
-        this.rapidocHandler = new RapidocHttpServerHandler(openapi.endpoint(), openapi.rapidoc().path(), openapi.file());
+        }, openapi.files());
+        this.rapidocHandler = new RapidocHttpServerHandler(openapi.path(), openapi.rapidoc().path(), openapi.files());
     }
 
     @Override
@@ -106,7 +106,7 @@ final class OpenApiHttpHandler implements HttpHandler {
         }
         var fakeRequest = getFakeRequest(match);
         var openapi = restConfig.openapi();
-        if (openapi.enabled() && requestPath.startsWith(openapi.endpoint())) {
+        if (openapi.enabled() && requestPath.startsWith(openapi.path())) {
             executeHandler(exchange, openApiHandler, fakeRequest);
         } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().path())) {
             executeHandler(exchange, swaggerUIHandler, fakeRequest);
@@ -162,7 +162,7 @@ final class OpenApiHttpHandler implements HttpHandler {
 
             @Override
             public Map<String, String> pathParams() {
-                return restConfig.openapi().file().size() == 1
+                return restConfig.openapi().files().size() == 1
                     ? Map.of()
                     : Map.of("file", match.pathParameters().get("file"));
             }
