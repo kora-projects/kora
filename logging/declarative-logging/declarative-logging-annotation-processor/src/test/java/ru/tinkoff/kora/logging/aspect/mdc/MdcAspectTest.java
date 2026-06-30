@@ -204,4 +204,71 @@ class MdcAspectTest extends AbstractMdcAspectTest {
     private static void clearCurrentContext() {
         MDC.get().values().keySet().forEach(MDC::remove);
     }
+
+    @Test
+    void testMdcNonNativeParameterNonNull() throws Exception {
+        var aopProxy = compile(
+                List.of(new AopAnnotationProcessor()),
+                """
+                        public class TestMdc {
+                        
+                          private final MDCContextHolder mdcContextHolder;
+                        
+                          public TestMdc(MDCContextHolder mdcContextHolder) {
+                              this.mdcContextHolder = mdcContextHolder;
+                          }
+                        
+                          public Integer test(@Mdc(key = "subscriptionId") java.util.UUID subscriptionId) {
+                              mdcContextHolder.set(MDC.get().values());
+                              return null;
+                          }
+                        }
+                        """
+        );
+
+        aopProxy.assertSuccess();
+
+        final UUID subscriptionId = UUID.fromString("00000000-0000-0000-0000-000000000001");
+        var generatedClass = aopProxy.loadClass("$TestMdc__AopProxy");
+        var constructor = generatedClass.getConstructors()[0];
+        final TestObject testObject = new TestObject(generatedClass, constructor.newInstance(CONTEXT_HOLDER));
+        testObject.invoke("test", subscriptionId);
+
+        final Map<String, String> context = extractMdcContextFromHolder();
+        assertEquals(Map.of("subscriptionId", "\"" + subscriptionId + "\""), context);
+        assertEquals(emptyMap(), currentMdcContext());
+    }
+
+    @Test
+    void testMdcNonNativeParameterNull() throws Exception {
+        var aopProxy = compile(
+            List.of(new AopAnnotationProcessor()),
+            """
+                public class TestMdc {
+                
+                  private final MDCContextHolder mdcContextHolder;
+                
+                  public TestMdc(MDCContextHolder mdcContextHolder) {
+                      this.mdcContextHolder = mdcContextHolder;
+                  }
+                
+                  public Integer test(@Mdc(key = "subscriptionId") java.util.UUID subscriptionId) {
+                      mdcContextHolder.set(MDC.get().values());
+                      return null;
+                  }
+                }
+                """
+        );
+
+        aopProxy.assertSuccess();
+
+        var generatedClass = aopProxy.loadClass("$TestMdc__AopProxy");
+        var constructor = generatedClass.getConstructors()[0];
+        final TestObject testObject = new TestObject(generatedClass, constructor.newInstance(CONTEXT_HOLDER));
+        testObject.invoke("test", (Object) null);
+
+        final Map<String, String> context = extractMdcContextFromHolder();
+        assertEquals(emptyMap(), context);
+        assertEquals(emptyMap(), currentMdcContext());
+    }
 }

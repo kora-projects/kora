@@ -9,7 +9,10 @@ import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +29,25 @@ import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcContaine
 public class MdcAspect implements KoraAspect {
 
     private static final String MDC_CONTEXT_VAR_NAME = "__mdcContext";
+
+    private static boolean isNativeMdcType(TypeMirror type) {
+        return switch (type.getKind()) {
+            case INT, LONG, BOOLEAN -> true;
+            case DECLARED -> {
+                final var element = ((DeclaredType) type).asElement();
+                if (element instanceof TypeElement typeElement) {
+                    final var qualifiedName = typeElement.getQualifiedName().toString();
+                    yield qualifiedName.equals("java.lang.String")
+                        || qualifiedName.equals("java.lang.Integer")
+                        || qualifiedName.equals("java.lang.Long")
+                        || qualifiedName.equals("java.lang.Boolean")
+                        || qualifiedName.equals("ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter");
+                }
+                yield false;
+            }
+            default -> false;
+        };
+    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -105,20 +127,24 @@ public class MdcAspect implements KoraAspect {
         for (VariableElement parameter : parametersWithAnnotation) {
             final String parameterName = parameter.getSimpleName().toString();
             final AnnotationMirror firstAnnotation = findAnnotations(parameter, mdcAnnotation, mdcContainerAnnotation)
-                .get(0);
+                    .get(0);
 
             final String key = extractStringParameter(firstAnnotation, "key")
-                .or(() -> extractStringParameter(firstAnnotation, "value"))
-                .orElse(parameterName);
+                    .or(() -> extractStringParameter(firstAnnotation, "value"))
+                    .orElse(parameterName);
 
             final Boolean global = parseAnnotationValueWithoutDefault(firstAnnotation, "global");
 
-            fillMdcBuilder.addStatement(
-                "$T.put($S, $N)",
-                mdc,
-                key,
-                parameterName
-            );
+            final TypeMirror parameterType = parameter.asType();
+            if (isNativeMdcType(parameterType)) {
+                fillMdcBuilder.addStatement("$T.put($S, $N)", mdc, key, parameterName);
+            } else if (parameterType.getKind().isPrimitive()) {
+                fillMdcBuilder.addStatement("$T.put($S, $T.valueOf($N))", mdc, key, String.class, parameterName);
+            } else {
+                fillMdcBuilder.beginControlFlow("if ($N != null)", parameterName)
+                        .addStatement("$T.put($S, $N.toString())", mdc, key, parameterName)
+                        .endControlFlow();
+            }
 
             if (global == null || !global) {
                 keys.add(key);

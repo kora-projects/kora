@@ -18,6 +18,7 @@ import ru.tinkoff.kora.ksp.common.FunctionUtils.isVoid
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.findRepeatableAnnotation
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 import java.util.concurrent.CompletionStage
+import com.google.devtools.ksp.symbol.KSType
 
 class MdcKoraAspect : KoraAspect {
 
@@ -98,12 +99,11 @@ class MdcKoraAspect : KoraAspect {
             } else if (!globalIsSupported) {
                 throw ProcessingErrorException("@Mdc annotation with 'global' attribute is not supported for this function", annotation.annotationType)
             }
-            fillMdcBuilder.addStatement(
-                "%T.put(%S, %S)",
-                mdc,
-                key,
-                value
-            )
+            if (value.startsWith("\${") && value.endsWith("}")) {
+                fillMdcBuilder.addStatement("%T.put(%S, %L)", mdc, key, value.substring(2, value.length - 1))
+            } else {
+                fillMdcBuilder.addStatement("%T.put(%S, %S)", mdc, key, value)
+            }
         }
         return keys
     }
@@ -126,18 +126,25 @@ class MdcKoraAspect : KoraAspect {
 
             val global = annotation.findValue("global") ?: false
 
-            fillMdcBuilder.addStatement(
-                "%T.put(%S, %N)",
-                mdc,
-                key,
-                parameterName
-            )
+            val type = parameter.type.resolve()
+            when {
+                isNativeMdcType(type) -> fillMdcBuilder.addStatement("%T.put(%S, %N)", mdc, key, parameterName)
+                type.isMarkedNullable -> fillMdcBuilder
+                    .beginControlFlow("if (%N != null)", parameterName)
+                    .addStatement("%T.put(%S, %N.toString())", mdc, key, parameterName)
+                    .endControlFlow()
+
+                else -> fillMdcBuilder.addStatement("%T.put(%S, %N.toString())", mdc, key, parameterName)
+            }
 
             if (!global) {
                 keys.add(key)
                 currentContextBuilder.addStatement("val __%L = %N[%S]", key, MDC_CONTEXT_VAL_NAME, key)
             } else if (!globalIsSupported) {
-                throw ProcessingErrorException("@Mdc annotation with 'global' attribute is not supported for this function", annotation.annotationType)
+                throw ProcessingErrorException(
+                    "@Mdc annotation with 'global' attribute is not supported for this function",
+                    annotation.annotationType
+                )
             }
         }
 
@@ -151,5 +158,14 @@ class MdcKoraAspect : KoraAspect {
             .beginControlFlow("else")
             .addStatement("%T.remove(%S)", mdc, it)
             .endControlFlow()
+    }
+
+    private fun isNativeMdcType(type: KSType): Boolean {
+        val qualifiedName = type.declaration.qualifiedName?.asString() ?: return false
+        return qualifiedName == "kotlin.String"
+            || qualifiedName == "kotlin.Int"
+            || qualifiedName == "kotlin.Long"
+            || qualifiedName == "kotlin.Boolean"
+            || qualifiedName == "ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter"
     }
 }
