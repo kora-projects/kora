@@ -25,26 +25,25 @@ import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.parseA
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdc;
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcAnnotation;
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcContainerAnnotation;
+import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcWriter;
 
 public class MdcAspect implements KoraAspect {
 
     private static final String MDC_CONTEXT_VAR_NAME = "__mdcContext";
+    private static final Set<String> NATIVE_MDC_TYPES = Set.of(
+        String.class.getCanonicalName(),
+        Integer.class.getCanonicalName(),
+        Long.class.getCanonicalName(),
+        Boolean.class.getCanonicalName(),
+        mdcWriter.canonicalName()
+    );
 
     private static boolean isNativeMdcType(TypeMirror type) {
         return switch (type.getKind()) {
+            // primitives autobox to their wrappers, which have dedicated MDC.put overloads
             case INT, LONG, BOOLEAN -> true;
-            case DECLARED -> {
-                final var element = ((DeclaredType) type).asElement();
-                if (element instanceof TypeElement typeElement) {
-                    final var qualifiedName = typeElement.getQualifiedName().toString();
-                    yield qualifiedName.equals("java.lang.String")
-                        || qualifiedName.equals("java.lang.Integer")
-                        || qualifiedName.equals("java.lang.Long")
-                        || qualifiedName.equals("java.lang.Boolean")
-                        || qualifiedName.equals("ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter");
-                }
-                yield false;
-            }
+            case DECLARED -> ((DeclaredType) type).asElement() instanceof TypeElement typeElement
+                && NATIVE_MDC_TYPES.contains(typeElement.getQualifiedName().toString());
             default -> false;
         };
     }
@@ -127,11 +126,11 @@ public class MdcAspect implements KoraAspect {
         for (VariableElement parameter : parametersWithAnnotation) {
             final String parameterName = parameter.getSimpleName().toString();
             final AnnotationMirror firstAnnotation = findAnnotations(parameter, mdcAnnotation, mdcContainerAnnotation)
-                    .get(0);
+                .get(0);
 
             final String key = extractStringParameter(firstAnnotation, "key")
-                    .or(() -> extractStringParameter(firstAnnotation, "value"))
-                    .orElse(parameterName);
+                .or(() -> extractStringParameter(firstAnnotation, "value"))
+                .orElse(parameterName);
 
             final Boolean global = parseAnnotationValueWithoutDefault(firstAnnotation, "global");
 
@@ -142,8 +141,8 @@ public class MdcAspect implements KoraAspect {
                 fillMdcBuilder.addStatement("$T.put($S, $T.valueOf($N))", mdc, key, String.class, parameterName);
             } else {
                 fillMdcBuilder.beginControlFlow("if ($N != null)", parameterName)
-                        .addStatement("$T.put($S, $N.toString())", mdc, key, parameterName)
-                        .endControlFlow();
+                    .addStatement("$T.put($S, $N.toString())", mdc, key, parameterName)
+                    .endControlFlow();
             }
 
             if (global == null || !global) {

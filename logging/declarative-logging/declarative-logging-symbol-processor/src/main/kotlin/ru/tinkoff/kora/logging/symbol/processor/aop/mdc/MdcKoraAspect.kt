@@ -25,8 +25,18 @@ class MdcKoraAspect : KoraAspect {
     companion object {
         const val MDC_CONTEXT_VAL_NAME = "__mdcContext"
         val mdc = ClassName("ru.tinkoff.kora.logging.common", "MDC")
+        val mdcWriter = ClassName("ru.tinkoff.kora.logging.common.arg", "StructuredArgumentWriter")
         val mdcAnnotation = ClassName("ru.tinkoff.kora.logging.common.annotation", "Mdc")
         val mdcContainerAnnotation = mdcAnnotation.nestedClass("MdcContainer")
+
+        // Parameter types that have a dedicated MDC.put overload and keep their JSON type
+        private val NATIVE_MDC_TYPES = setOf(
+            String::class.qualifiedName!!,
+            Int::class.qualifiedName!!,
+            Long::class.qualifiedName!!,
+            Boolean::class.qualifiedName!!,
+            mdcWriter.canonicalName,
+        )
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> = setOf(mdcAnnotation.canonicalName, mdcContainerAnnotation.canonicalName)
@@ -160,12 +170,6 @@ class MdcKoraAspect : KoraAspect {
             .endControlFlow()
     }
 
-    private fun isNativeMdcType(type: KSType): Boolean {
-        val qualifiedName = type.declaration.qualifiedName?.asString() ?: return false
-        return qualifiedName == "kotlin.String"
-            || qualifiedName == "kotlin.Int"
-            || qualifiedName == "kotlin.Long"
-            || qualifiedName == "kotlin.Boolean"
-            || qualifiedName == "ru.tinkoff.kora.logging.common.arg.StructuredArgumentWriter"
-    }
+    private fun isNativeMdcType(type: KSType): Boolean =
+        type.declaration.qualifiedName?.asString() in NATIVE_MDC_TYPES
 }
