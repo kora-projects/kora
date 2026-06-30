@@ -5,6 +5,7 @@ reactor = "3.6.18"
 kotlin-stdlib = "1.9.25" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
 kotlin-coroutines = "1.7.3"
 jackson = "2.22.0"
+jackson-annotations = "2.22"
 mockserver = "5.15.0"
 netty = "4.1.110.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
 kafka = "3.9.2"
