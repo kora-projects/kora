@@ -1,10 +1,9 @@
-[
-    {
-        "name": "ch.qos.logback.classic.AsyncAppender",
-        "allDeclaredConstructors": true,
-        "allDeclaredFields": true,
-        "allDeclaredMethods": true
-    },
+[{
+    "name": "ch.qos.logback.classic.AsyncAppender",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+},
     {
         "name": "ch.qos.logback.classic.Level",
         "allDeclaredConstructors": true,
@@ -49,6 +48,24 @@
     },
     {
         "name": "io.koraframework.logging.logback.KoraAsyncAppender",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.ConsoleTextRecordEncoder",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.KoraLoggingMarkerConverter",
+        "allDeclaredConstructors": true,
+        "allDeclaredFields": true,
+        "allDeclaredMethods": true
+    },
+    {
+        "name": "io.koraframework.logging.logback.KoraMdcConverter",
         "allDeclaredConstructors": true,
         "allDeclaredFields": true,
         "allDeclaredMethods": true
