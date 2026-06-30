@@ -14,6 +14,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames.aopAnnotation
+import io.koraframework.ksp.common.CommonClassNames.aopAnnotationUtil
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 
@@ -61,7 +62,7 @@ object CommonAopUtils {
         }
 
         for (annotationMirror in type.annotations) {
-            if (isAopAnnotation(annotationMirror)) {
+            if (isAopAnnotation(annotationMirror) || isAopAnnotationUtil(annotationMirror)) {
                 b.addAnnotation(annotationMirror.toAnnotationSpec())
             }
         }
@@ -86,7 +87,7 @@ object CommonAopUtils {
         }
         funBuilder.addModifiers(KModifier.OVERRIDE)
         for (annotation in funDeclaration.annotations) {
-            if (isAopAnnotation(annotation)) {
+            if (isAopAnnotation(annotation) || isAopAnnotationUtil(annotation)) {
                 funBuilder.addAnnotation(annotation.toAnnotationSpec())
             }
         }
@@ -104,6 +105,7 @@ object CommonAopUtils {
             for (annotation in parameter.annotations) {
                 val resolvedAnnotation = annotation.annotationType.resolveToUnderlying()
                 if (isAopAnnotation(resolvedAnnotation)
+                    || isAopAnnotationUtil(resolvedAnnotation)
                     || resolvedAnnotation.declaration.packageName.asString().endsWith(".Nonnull")
                     || resolvedAnnotation.declaration.packageName.asString().endsWith(".NotNull")
                 ) {
@@ -146,5 +148,13 @@ object CommonAopUtils {
 
     fun isAopAnnotation(annotation: KSType): Boolean {
         return annotation.declaration.isAnnotationPresent(aopAnnotation)
+    }
+
+    fun isAopAnnotationUtil(annotation: KSAnnotation): Boolean {
+        return annotation.annotationType.resolveToUnderlying().declaration.isAnnotationPresent(aopAnnotationUtil)
+    }
+
+    fun isAopAnnotationUtil(annotation: KSType): Boolean {
+        return annotation.declaration.isAnnotationPresent(aopAnnotationUtil)
     }
 }

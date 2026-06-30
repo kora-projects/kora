@@ -26,6 +26,7 @@ public class CommonClassNames {
 
     public static final ClassName root = ClassName.get("io.koraframework.common.annotation", "Root");
     public static final ClassName aopAnnotation = ClassName.get("io.koraframework.common", "AopAnnotation");
+    public static final ClassName aopAnnotationUtil = ClassName.get("io.koraframework.common", "AopUtil");
     public static final ClassName aopProxy = ClassName.get("io.koraframework.common", "AopProxy");
     public static final ClassName mapping = ClassName.get("io.koraframework.common", "Mapping");
     public static final ClassName mappings = ClassName.get("io.koraframework.common", "Mapping", "Mappings");
