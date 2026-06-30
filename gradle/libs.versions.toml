@@ -31,6 +31,7 @@ resteasy = "6.2.16.Final"
 # Data and messaging
 kafka = "4.3.1"
 cassandra = "4.19.3"
+flyway = "12.10.0"
 
 # gRPC and protobuf
 grpc-java = "1.82.1"
@@ -123,10 +124,10 @@ jackson2-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-da
 jackson2-jakarta-rs-base = { module = "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base", version.ref = "jackson2-coreline" }
 jackson2-jakarta-rs-json-provider = { module = "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider", version.ref = "jackson2-coreline" }
 jackson2-module-jakarta-xmlbind-annotations = { module = "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations", version.ref = "jackson2-coreline" }
-jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.11" }
+jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.12" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
-flyway = { module = "org.flywaydb:flyway-core", version = "12.9.0" }
-flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version = "12.9.0" }
+flyway = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
 liquibase = { module = "org.liquibase:liquibase-core", version = "5.0.3" }
 
 jms-api = { module = "javax.jms:javax.jms-api", version = "2.0.1" }
@@ -140,7 +141,7 @@ okhttp-jvm = { module = "com.squareup.okhttp3:okhttp-jvm", version.ref = "okhttp
 okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
 okio = { module = "com.squareup.okio:okio", version = "3.17.0" }
 
-apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.1" }
+apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.2" }
 jackson-coreutils = { module = "com.github.fge:jackson-coreutils", version = "1.8" }
 
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "netty" }
@@ -249,7 +250,7 @@ cxf-rt-transports-http-jetty = { module = "org.apache.cxf:cxf-rt-transports-http
 cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", version.ref = "cxf" }
 
 s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.46.17" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.46.18" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
