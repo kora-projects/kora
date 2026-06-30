@@ -22,7 +22,7 @@ jackson2-coreline = "2.22.0"
 jackson2-annotations = "2.22"
 
 # Network and HTTP
-netty = "4.2.15.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
+netty = "4.2.15.Final
 okhttp = "5.4.0"
 undertow = "2.4.2.Final"
 undertow-servlet = "2.3.25.Final"
