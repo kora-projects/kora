@@ -15,6 +15,7 @@ import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames.aopAnnotation
 import io.koraframework.ksp.common.CommonClassNames.aopPropagate
+import io.koraframework.ksp.common.FunctionUtils.isVoid
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 
