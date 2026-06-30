@@ -292,6 +292,14 @@ class GraphBuilder {
                 if (dependency is ComponentDependency.AllOfDependency) {
                     val dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
                     val dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, dependency.claim, dependencyDeclarations, resolvedComponents);
+                    for (resolvedDependency in dependencies) {
+                        if (resolvedDependency.component!!.index > component.index) {
+                            throw ProcessingErrorException(
+                                "All<T> dependency appeared in graph after component requesting it, this is a bug that we will fix later",
+                                resolvedDependency.component!!.declaration.source
+                            )
+                        }
+                    }
                     dependency.addResolved(dependencies);
                 }
                 if (dependency is ComponentDependency.PromisedProxyParameterDependency) {
@@ -331,8 +339,10 @@ class GraphBuilder {
         val dependencyClaim = componentFrame.dependenciesToFind[currentDependency]
         val dependencies = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependencyClaim)
         for (dependency in dependencies) {
-            if (dependency.declaration.isDefault()) {
-                continue
+            if (dependency.declaration.isDefault() && dependencies.size > 1) {
+                // we should not force default component resolving if there are other candidates
+                // it may appear later as direct dependency though, but let us just not think about it right now
+                continue;
             }
 
             val resolved = resolvedComponents.getByDeclaration(dependency)

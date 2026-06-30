@@ -234,7 +234,17 @@ object GraphResolutionHelper {
             if (!dependencyClaim.tagMatches(declaration.tag)) {
                 continue
             }
-            val component = resolvedComponents.getByDeclaration(declarationWithIndex)!!
+            val component = resolvedComponents.getByDeclaration(declarationWithIndex)
+            if (component == null) {
+                if (declaration.isDefault()) {
+                    // that's fine, default component wasn't directly requested by anyone, so we don't need it
+                    continue
+                } else {
+                    // something went wrong
+                    throw NullPointerException()
+                }
+            }
+
             if (dependencyClaim.type.isAssignableFrom(declaration.type)) {
                 val targetDependency = TargetDependency(dependencyClaim, component)
                 val dependency = when (claimType) {

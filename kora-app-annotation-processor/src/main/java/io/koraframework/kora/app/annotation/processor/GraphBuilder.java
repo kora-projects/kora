@@ -298,6 +298,14 @@ public class GraphBuilder {
                 if (dependency instanceof ComponentDependency.AllOfDependency allOf) {
                     var dependencyDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, allOf.claim());
                     var dependencies = GraphResolutionHelper.findDependenciesForAllOf(ctx, allOf.claim(), dependencyDeclarations, resolvedComponents);
+                    for (var resolvedDependency : dependencies) {
+                        if (resolvedDependency.component().index() > component.index()) {
+                            throw new ProcessingErrorException(
+                                "All<T> dependency appeared in graph after component requesting it, this is a bug that we will fix later",
+                                resolvedDependency.component().declaration().source()
+                            );
+                        }
+                    }
                     allOf.addResolved(dependencies);
                 }
                 if (dependency instanceof ComponentDependency.PromisedProxyParameterDependency proxy) {
@@ -310,6 +318,7 @@ public class GraphBuilder {
                 }
             }
         }
+        // todo All<T> may appear earlier than some indirectly resolved DefaultComponent components, we can try to reorder graph here
 
         // we should move conditions as early in graph as possible
         this.resolvedComponents.processConditions(this.conditionByTag);
@@ -333,7 +342,9 @@ public class GraphBuilder {
         var dependencyClaim = componentFrame.dependenciesToFind().get(currentDependency);
         var dependencies = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, dependencyClaim);
         for (var dependency : dependencies) {
-            if (dependency.declaration().isDefault()) {
+            if (dependency.declaration().isDefault() && dependencies.size() > 1) {
+                // we should not force default component resolving if there are other candidates
+                // it may appear later as direct dependency though, but let us just not think about it right now
                 continue;
             }
             var resolved = resolvedComponents.getByDeclaration(dependency);
