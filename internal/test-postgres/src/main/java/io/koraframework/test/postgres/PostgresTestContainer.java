@@ -35,7 +35,7 @@ public final class PostgresTestContainer implements TestExecutionListener, Param
             awaitForReady(params);
             return;
         }
-        container = new PostgreSQLContainer<>("postgres:14");
+        container = new PostgreSQLContainer<>("postgres:17-alpine3.23");
         container.start();
         try (var c = container.createConnection("?")) {
 

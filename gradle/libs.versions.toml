@@ -1,61 +1,106 @@
 ["versions"]
-slf4j = "2.0.17"
-micrometer = "1.12.13"
-kotlin-stdlib = "2.3.0" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
-jackson = "3.0.2"
-mockserver = "5.15.0"
-netty = "4.2.12.Final" # gRPC Java - https://github.com/grpc/grpc-java/issues/12236
-kafka = "4.2.0"
-testcontainers = "2.0.2"
-cassandra = "4.19.2"
+# Core
+guava = "33.6.0-jre"
+jetbrains-annotations = "26.1.0"
+slf4j = "2.0.18"
+logback = "1.5.37"
+
+# Kotlin and code generation
+kotlin-stdlib = "2.4.0" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
+ksp = "2.3.9"
+kotlinpoet = "2.3.0"
+mapstruct = "1.6.3"
+
+# Observability
+micrometer = "1.17.0"
+opentelemetry = "1.63.0"
+prometheus-metrics = "1.8.0"
+
+# Serialization
+jackson = "3.2.0"
+jackson2-coreline = "2.22.0"
+jackson2-annotations = "2.22"
+
+# Network and HTTP
+netty = "4.2.15.Final"
+okhttp = "5.4.0"
+undertow = "2.4.2.Final"
+undertow-servlet = "2.3.25.Final"
+resteasy = "6.2.16.Final"
+
+# Data and messaging
+kafka = "4.3.1"
+cassandra = "4.19.3"
+flyway = "12.10.0"
+
+# gRPC and protobuf
 grpc-java = "1.82.1"
 grpc-kotlin = "1.5.0"
-ksp = "2.3.4"
-kotlinpoet = "2.2.0"
-jetbrains-annotations = "24.1.0"
-swagger = "2.2.35"
-opentelemetry = "1.54.0"
-undertow = "2.3.18.Final"
-resteasy = "6.2.12.Final"
-camunda7 = "7.24.0"
-zeebe = "8.9.11"
-junit = "6.0.1"
-guava = "33.6.0-jre"
-okhttp = "5.3.2"
-protobuf-plugin = "0.9.5"
-protobuf-protoc = "3.21.9"
-mapstruct = "1.5.5.Final"
-cxf = "3.4.5"
-maven-compiler-plugin = "3.8.1"
-maven-surefire-plugin = "2.22.2"
-jmh-plugin = "0.7.2"
-byte-buddy = "1.18.10"
+protobuf-java = "4.35.1"
+protobuf-protoc = "4.35.1"
+
+# OpenAPI and SOAP
+swagger-coreline = "2.2.52"
+swagger-parser = "2.1.45"
+cxf = "3.6.11"
 jakarta-xml-api = "3.0.1"
 javax-jaxb = "2.3.1"
-jaxb-impl = "2.3.5"
+jaxb-impl = "2.3.9"
+
+# BPM
+camunda7 = "7.24.0"
+zeebe = "8.9.11"
+
+# Tests
+junit = "6.1.1"
+mockserver = "7.2.0"
+testcontainers = "2.0.5"
+byte-buddy = "1.18.10"
+
+# Build plugins
+maven-compiler-plugin = "3.8.1"
+maven-surefire-plugin = "2.22.2"
+jmh-plugin = "0.7.3"
+protobuf-plugin = "0.10.0"
+
+# Commons
+commons-cli = "1.11.0"
+commons-codec = "1.22.0"
+commons-collections = "3.2.2"
+commons-fileupload = "1.6.0"
+commons-io = "2.22.0"
+commons-lang3 = "3.20.0"
+commons-logging = "1.4.0"
+commons-text = "1.15.0"
 
 ["libraries"]
 jspecify = { module = "org.jspecify:jspecify", version = "1.0.0" }
 
 slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
 slf4j-jul = { module = "org.slf4j:jul-to-slf4j", version.ref = "slf4j" }
-logback-classic = { module = "ch.qos.logback:logback-classic", version = "1.5.18" }
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 
 micrometer-core = { module = "io.micrometer:micrometer-core", version.ref = "micrometer" }
 micrometer-registry-prometheus = { module = "io.micrometer:micrometer-registry-prometheus", version.ref = "micrometer" }
 prometheus-collector-caffeine = { module = "io.prometheus:simpleclient_caffeine", version = "0.16.0" }
+prometheus-metrics-config = { module = "io.prometheus:prometheus-metrics-config", version.ref = "prometheus-metrics" }
+prometheus-metrics-core = { module = "io.prometheus:prometheus-metrics-core", version.ref = "prometheus-metrics" }
+prometheus-metrics-exposition-formats = { module = "io.prometheus:prometheus-metrics-exposition-formats", version.ref = "prometheus-metrics" }
+prometheus-metrics-exposition-textformats = { module = "io.prometheus:prometheus-metrics-exposition-textformats", version.ref = "prometheus-metrics" }
+prometheus-metrics-model = { module = "io.prometheus:prometheus-metrics-model", version.ref = "prometheus-metrics" }
+prometheus-metrics-tracer-common = { module = "io.prometheus:prometheus-metrics-tracer-common", version.ref = "prometheus-metrics" }
 
 opentelemetry-sdk-trace = { module = "io.opentelemetry:opentelemetry-sdk-trace", version.ref = "opentelemetry" }
 opentelemetry-context = { module = "io.opentelemetry:opentelemetry-context", version.ref = "opentelemetry" }
 opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
 opentelemetry-exporter-sender-jdk = { module = "io.opentelemetry:opentelemetry-exporter-sender-jdk", version.ref = "opentelemetry" }
 opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
-opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.37.0" }
+opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.42.0" }
 opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.37.0-alpha" }
 opentelemetry-micrometer-meter-provider = { module = "io.opentelemetry.contrib:opentelemetry-micrometer-meter-provider", version = "1.48.0-alpha" }
 
-typesafe-config = { module = "com.typesafe:config", version = "1.4.4" }
-snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "2.7" }
+typesafe-config = { module = "com.typesafe:config", version = "1.4.9" }
+snakeyaml-engine = { module = "org.snakeyaml:snakeyaml-engine", version = "3.0.1" }
 
 cassandra-driver = { module = "org.apache.cassandra:java-driver-core", version.ref = "cassandra" }
 cassandra-metrics = { module = "org.apache.cassandra:java-driver-metrics-micrometer", version.ref = "cassandra" }
@@ -68,23 +113,35 @@ jetbrains-annotations = { module = "org.jetbrains:annotations", version.ref = "j
 
 jackson-core = { module = "tools.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-databind = { module = "tools.jackson.core:jackson-databind", version.ref = "jackson" }
-jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.7" }
-hikari = { module = "com.zaxxer:HikariCP", version = "5.1.0" }
-flyway = { module = "org.flywaydb:flyway-core", version = "9.22.3" }
-liquibase = { module = "org.liquibase:liquibase-core", version = "4.29.2" }
+jackson2-annotations-lib = { module = "com.fasterxml.jackson.core:jackson-annotations", version.ref = "jackson2-annotations" }
+jackson2-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson2-coreline" }
+jackson2-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson2-coreline" }
+jackson2-dataformat-yaml = { module = "com.fasterxml.jackson.dataformat:jackson-dataformat-yaml", version.ref = "jackson2-coreline" }
+jackson2-datatype-guava = { module = "com.fasterxml.jackson.datatype:jackson-datatype-guava", version.ref = "jackson2-coreline" }
+jackson2-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jdk8", version.ref = "jackson2-coreline" }
+jackson2-datatype-joda = { module = "com.fasterxml.jackson.datatype:jackson-datatype-joda", version.ref = "jackson2-coreline" }
+jackson2-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-datatype-jsr310", version.ref = "jackson2-coreline" }
+jackson2-jakarta-rs-base = { module = "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base", version.ref = "jackson2-coreline" }
+jackson2-jakarta-rs-json-provider = { module = "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider", version.ref = "jackson2-coreline" }
+jackson2-module-jakarta-xmlbind-annotations = { module = "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations", version.ref = "jackson2-coreline" }
+jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.12" }
+hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
+flyway = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
+flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
+liquibase = { module = "org.liquibase:liquibase-core", version = "5.0.3" }
 
 jms-api = { module = "javax.jms:javax.jms-api", version = "2.0.1" }
 
-jboss-threads = { module = "org.jboss.threads:jboss-threads", version = "3.9.1" }
-jboss-logging = { module = "org.jboss.logging:jboss-logging", version = "3.6.1.Final" }
+jboss-threads = { module = "org.jboss.threads:jboss-threads", version = "3.9.2" }
+jboss-logging = { module = "org.jboss.logging:jboss-logging", version = "3.6.3.Final" }
 undertow-core = { module = "io.undertow:undertow-core", version.ref = "undertow" }
-undertow-servlet = { module = "io.undertow:undertow-servlet", version.ref = "undertow" }
+undertow-servlet = { module = "io.undertow:undertow-servlet", version.ref = "undertow-servlet" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okhttp-jvm = { module = "com.squareup.okhttp3:okhttp-jvm", version.ref = "okhttp" }
 okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
-okio = { module = "com.squareup.okio:okio", version = "3.16.4" }
+okio = { module = "com.squareup.okio:okio", version = "3.17.0" }
 
-apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.1" }
+apache-httpclient = { module = "org.apache.httpcomponents.client5:httpclient5", version = "5.6.2" }
 jackson-coreutils = { module = "com.github.fge:jackson-coreutils", version = "1.8" }
 
 netty-buffer = { module = "io.netty:netty-buffer", version.ref = "netty" }
@@ -109,21 +166,21 @@ byte-buddy-core = { module = "net.bytebuddy:byte-buddy", version.ref = "byte-bud
 byte-buddy-agent = { module = "net.bytebuddy:byte-buddy-agent", version.ref = "byte-buddy" }
 
 javapoet = { module = "com.palantir.javapoet:javapoet", version = "0.17.0" }
-classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.181" }
+classgraph = { module = "io.github.classgraph:classgraph", version = "4.8.184" }
 
 lettuce-core = { module = "io.lettuce:lettuce-core", version = "6.8.0.RELEASE" }
-apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.12.1" }
-quartz = { module = "org.quartz-scheduler:quartz", version = "2.4.0" }
+apache-pool = { module = "org.apache.commons:commons-pool2", version = "2.13.1" }
+quartz = { module = "org.quartz-scheduler:quartz", version = "2.5.2" }
 
-caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.2" }
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version = "3.2.4" }
 
-awaitility = { module = "org.awaitility:awaitility", version = "4.2.2" }
+awaitility = { module = "org.awaitility:awaitility", version = "4.3.0" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
-mockito-core = { module = "org.mockito:mockito-core", version = "5.18.0" }
-mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "5.4.0" }
-mockk = { module = "io.mockk:mockk", version = "1.13.11" }
-assertj = { module = "org.assertj:assertj-core", version = "3.27.4" }
+mockito-core = { module = "org.mockito:mockito-core", version = "5.23.0" }
+mockito-kotlin = { module = "org.mockito.kotlin:mockito-kotlin", version = "6.3.0" }
+mockk = { module = "io.mockk:mockk", version = "1.14.11" }
+assertj = { module = "org.assertj:assertj-core", version = "3.27.7" }
 mockserver-netty = { module = "org.mock-server:mockserver-netty", version.ref = "mockserver" }
 mockserver-client = { module = "org.mock-server:mockserver-client-java", version.ref = "mockserver" }
 
@@ -138,6 +195,7 @@ grpc-stub = { module = "io.grpc:grpc-stub", version.ref = "grpc-java" }
 grpc-services = { module = "io.grpc:grpc-services", version.ref = "grpc-java" }
 grpc-java-gen = { module = "io.grpc:protoc-gen-grpc-java", version.ref = "grpc-java" }
 protobuf-protoc = { module = "com.google.protobuf:protoc", version.ref = "protobuf-protoc" }
+protobuf-java = { module = "com.google.protobuf:protobuf-java", version.ref = "protobuf-java" }
 
 testcontainers-core = { module = "org.testcontainers:testcontainers", version.ref = "testcontainers" }
 testcontainers-postgresql = { module = "org.testcontainers:testcontainers-postgresql", version.ref = "testcontainers" }
@@ -157,21 +215,32 @@ jakarta-xml-ws-api = { module = "jakarta.xml.ws:jakarta.xml.ws-api", version.ref
 jakarta-xml-bind-api = { module = "jakarta.xml.bind:jakarta.xml.bind-api", version.ref = "jakarta-xml-api" }
 jakarta-inject-api = { module = "jakarta.inject:jakarta.inject-api", version = "2.0.1" }
 
-glassfish-jaxb-jakarta = { module = "org.glassfish.jaxb:jaxb-runtime", version = "3.0.1" }
+glassfish-jaxb-jakarta = { module = "org.glassfish.jaxb:jaxb-runtime", version = "4.0.9" }
 sun-jaxb-impl = { module = "com.sun.xml.bind:jaxb-impl", version.ref = "jaxb-impl" }
 javax-annotation-api = { module = "javax.annotation:javax.annotation-api", version = "1.3.2" }
 javax-jaxb-api = { module = "javax.xml.bind:jaxb-api", version.ref = "javax-jaxb" }
 javax-jws-api = { module = "javax.jws:javax.jws-api", version = "1.1" }
 javax-jaxws-api = { module = "javax.xml.ws:jaxws-api", version.ref = "javax-jaxb" }
 
-commons-codec = { module = "commons-codec:commons-codec", version = "1.19.0" }
-commons-io = { module = "commons-io:commons-io", version = "2.20.0" }
+commons-cli = { module = "commons-cli:commons-cli", version.ref = "commons-cli" }
+commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
+commons-collections = { module = "commons-collections:commons-collections", version.ref = "commons-collections" }
+commons-fileupload = { module = "commons-fileupload:commons-fileupload", version.ref = "commons-fileupload" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commons-lang3" }
+commons-logging = { module = "commons-logging:commons-logging", version.ref = "commons-logging" }
+commons-text = { module = "org.apache.commons:commons-text", version.ref = "commons-text" }
 
-openapi-generator = { module = "org.openapitools:openapi-generator", version = "7.14.0" }
-translit-icu4j = { module = "com.ibm.icu:icu4j", version = "77.1" }
-swagger-core = { module = "io.swagger.core.v3:swagger-core", version.ref = "swagger" }
-swagger-models = { module = "io.swagger.core.v3:swagger-models", version.ref = "swagger" }
-swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger" }
+openapi-generator = { module = "org.openapitools:openapi-generator", version = "7.23.0" }
+translit-icu4j = { module = "com.ibm.icu:icu4j", version = "78.3" }
+swagger-core = { module = "io.swagger.core.v3:swagger-core", version.ref = "swagger-coreline" }
+swagger-models = { module = "io.swagger.core.v3:swagger-models", version.ref = "swagger-coreline" }
+swagger-annotations = { module = "io.swagger.core.v3:swagger-annotations", version.ref = "swagger-coreline" }
+swagger-parser = { module = "io.swagger.parser.v3:swagger-parser", version.ref = "swagger-parser" }
+swagger-parser-core = { module = "io.swagger.parser.v3:swagger-parser-core", version.ref = "swagger-parser" }
+swagger-parser-safe-url-resolver = { module = "io.swagger.parser.v3:swagger-parser-safe-url-resolver", version.ref = "swagger-parser" }
+swagger-parser-v2-converter = { module = "io.swagger.parser.v3:swagger-parser-v2-converter", version.ref = "swagger-parser" }
+swagger-parser-v3 = { module = "io.swagger.parser.v3:swagger-parser-v3", version.ref = "swagger-parser" }
 
 cxf-tools-wsdlto-core = { module = "org.apache.cxf:cxf-tools-wsdlto-core", version.ref = "cxf" }
 cxf-tools-wsdlto-frontend-jaxws = { module = "org.apache.cxf:cxf-tools-wsdlto-frontend-jaxws", version.ref = "cxf" }
@@ -180,16 +249,16 @@ cxf-rt-bindings-soap = { module = "org.apache.cxf:cxf-rt-bindings-soap", version
 cxf-rt-transports-http-jetty = { module = "org.apache.cxf:cxf-rt-transports-http-jetty", version.ref = "cxf" }
 cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", version.ref = "cxf" }
 
-s3client-minio = { module = "io.minio:minio", version = "8.5.17" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.29.52" }
+s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.46.18" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
 camunda7-openapi = { module = "org.camunda.bpm:camunda-engine-rest-openapi", version.ref = "camunda7" }
 resteasy-undertow = { module = "org.jboss.resteasy:resteasy-undertow", version.ref = "resteasy" }
 resteasy-jackson = { module = "org.jboss.resteasy:resteasy-jackson2-provider", version.ref = "resteasy" }
-fasterxml-uuidgenerator = { module = "com.fasterxml.uuid:java-uuid-generator", version = "5.1.0" }
-jakarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "3.1.0" }
+fasterxml-uuidgenerator = { module = "com.fasterxml.uuid:java-uuid-generator", version = "5.2.0" }
+jakarta-rs-api = { module = "jakarta.ws.rs:jakarta.ws.rs-api", version = "4.0.0" }
 
 zeebe-model = { module = "io.camunda:zeebe-bpmn-model", version.ref = "zeebe" }
 zeebe-client = { module = "io.camunda:camunda-client-java", version.ref = "zeebe" }

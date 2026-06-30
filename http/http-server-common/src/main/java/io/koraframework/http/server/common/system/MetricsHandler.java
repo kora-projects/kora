@@ -52,8 +52,8 @@ public class MetricsHandler implements HttpServerRequestHandler {
 
             @Override
             public void write(OutputStream os) throws IOException {
-                try (var w = new OutputStreamWriter(os, StandardCharsets.UTF_8)) {
-                    registry.scrape(w);
+                try (var w = os) {
+                    registry.scrape(os);
                 }
             }
 

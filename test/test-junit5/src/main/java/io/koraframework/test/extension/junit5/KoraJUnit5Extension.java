@@ -385,7 +385,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
             var koraTestContext = storage.get(KoraAppTest.class, KoraTestContext.class);
             if (koraTestContext != null) {
                 final List<Field> fieldsForInjection = ReflectionUtils.findFields(testClass,
-                    f -> !f.isSynthetic() && isCandidate(f),
+                    KoraJUnit5Extension::isFieldInjectionCandidate,
                     ReflectionUtils.HierarchyTraversalMode.TOP_DOWN);
 
                 if (!fieldsForInjection.isEmpty()) {
@@ -650,7 +650,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
 
         final List<Field> fieldsForInjection = ReflectionUtils.findFields(testClass,
-            f -> !f.isSynthetic() && isCandidate(f),
+            KoraJUnit5Extension::isFieldInjectionCandidate,
             ReflectionUtils.HierarchyTraversalMode.TOP_DOWN);
 
         final Class<?> outerTestClass;
@@ -658,7 +658,7 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
         if (testClass.isAnnotationPresent(Nested.class)) {
             outerTestClass = testClass.getDeclaringClass();
             outerFieldsForInjection = ReflectionUtils.findFields(outerTestClass,
-                f -> !f.isSynthetic() && isCandidate(f),
+                KoraJUnit5Extension::isFieldInjectionCandidate,
                 ReflectionUtils.HierarchyTraversalMode.TOP_DOWN);
         } else {
             outerTestClass = null;
@@ -805,6 +805,26 @@ final class KoraJUnit5Extension implements BeforeAllCallback, BeforeEachCallback
 
     private static boolean isCandidate(AnnotatedElement element) {
         return element.getAnnotation(TestComponent.class) != null;
+    }
+
+    private static boolean isFieldInjectionCandidate(Field field) {
+        return !field.isSynthetic()
+               && isCandidate(field)
+               && !isKotlinConstructorParameterField(field);
+    }
+
+    private static boolean isKotlinConstructorParameterField(Field field) {
+        if (!Modifier.isFinal(field.getModifiers())
+            || !Arrays.stream(field.getDeclaringClass().getAnnotations()).anyMatch(a -> a.annotationType().getName().equals("kotlin.Metadata"))) {
+            return false;
+        }
+
+        return Arrays.stream(field.getDeclaringClass().getDeclaredConstructors())
+            .flatMap(c -> Arrays.stream(c.getParameters()))
+            .filter(KoraJUnit5Extension::isCandidate)
+            .anyMatch(p -> p.isNamePresent()
+                           && p.getName().equals(field.getName())
+                           && p.getType().equals(field.getType()));
     }
 
     private static boolean isComponent(AnnotatedElement element) {

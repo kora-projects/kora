@@ -6,8 +6,8 @@ import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.TestInstancePostProcessor;
-import org.testcontainers.containers.KafkaContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.HashSet;
@@ -35,11 +35,9 @@ public class KafkaTestContainer implements AfterEachCallback, TestInstancePostPr
                 return;
             }
             if (container == null) {
-                container = new KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:7.0.0"))
-                    .withKraft()
+                container = new KafkaContainer(DockerImageName.parse("apache/kafka-native:4.3.1"))
                     .withExposedPorts(9092, 9093)
-                    .waitingFor(Wait.forListeningPort())
-                ;
+                    .waitingFor(Wait.forListeningPort());
                 container.start();
             }
 

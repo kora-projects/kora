@@ -7,6 +7,7 @@ dependencies {
 
     compileOnly libs.grpc.services
     compileOnly libs.grpc.kotlin.stub
+    compileOnly libs.protobuf.java
 
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
@@ -16,6 +17,7 @@ dependencies {
 
     testImplementation libs.grpc.java.gen
     testImplementation libs.grpc.protobuf
+    testImplementation libs.protobuf.java
     testImplementation libs.javax.annotation.api
 }
 
