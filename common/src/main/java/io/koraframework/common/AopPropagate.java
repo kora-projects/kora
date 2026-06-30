@@ -12,6 +12,6 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.ANNOTATION_TYPE)
 @Retention(RetentionPolicy.CLASS)
-public @interface AopAnnotationUtil {
+public @interface AopPropagate {
 
 }

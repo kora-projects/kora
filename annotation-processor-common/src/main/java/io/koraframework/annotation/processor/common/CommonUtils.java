@@ -303,7 +303,7 @@ public class CommonUtils {
 
         var hasAop = false;
         for (var annotationMirror : type.getAnnotationMirrors()) {
-            if (CommonUtils.isAopAnnotation(annotationMirror) || CommonUtils.isAopAnnotationUtil(annotationMirror)) {
+            if (CommonUtils.isAopAnnotation(annotationMirror) || CommonUtils.isAopPropagate(annotationMirror)) {
                 b.addAnnotation(AnnotationSpec.get(annotationMirror));
                 hasAop = true;
             }
@@ -363,7 +363,7 @@ public class CommonUtils {
         }
         for (var annotationMirror : method.getAnnotationMirrors()) {
             if (CommonUtils.isAopAnnotation(annotationMirror)
-                || CommonUtils.isAopAnnotationUtil(annotationMirror)
+                || CommonUtils.isAopPropagate(annotationMirror)
                 || CommonClassNames.mapping.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                 || CommonClassNames.mappings.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                 || annotationMirror.getAnnotationType().toString().endsWith(".Nullable")) {
@@ -382,7 +382,7 @@ public class CommonUtils {
             var pb = ParameterSpec.builder(TypeName.get(parameterType), name);
             for (var annotationMirror : parameter.getAnnotationMirrors()) {
                 if (CommonUtils.isAopAnnotation(annotationMirror)
-                    || CommonUtils.isAopAnnotationUtil(annotationMirror)
+                    || CommonUtils.isAopPropagate(annotationMirror)
                     || CommonClassNames.tag.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                     || CommonClassNames.mapping.canonicalName().equals(annotationMirror.getAnnotationType().toString())
                     || CommonClassNames.mappings.canonicalName().equals(annotationMirror.getAnnotationType().toString())
@@ -429,8 +429,8 @@ public class CommonUtils {
         return AnnotationUtils.isAnnotationPresent(am.getAnnotationType().asElement(), CommonClassNames.aopAnnotation);
     }
 
-    private static boolean isAopAnnotationUtil(AnnotationMirror am) {
-        return AnnotationUtils.isAnnotationPresent(am.getAnnotationType().asElement(), CommonClassNames.aopAnnotationUtil);
+    private static boolean isAopPropagate(AnnotationMirror am) {
+        return AnnotationUtils.isAnnotationPresent(am.getAnnotationType().asElement(), CommonClassNames.aopPropagate);
     }
 
     public static boolean isVoid(TypeMirror returnType) {

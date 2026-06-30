@@ -23,7 +23,7 @@ object CommonClassNames {
     val await = MemberName("kotlinx.coroutines.future", "await")
 
     val aopAnnotation = ClassName("io.koraframework.common", "AopAnnotation")
-    val aopAnnotationUtil = ClassName("io.koraframework.common", "AopUtil")
+    val aopPropagate = ClassName("io.koraframework.common", "AopPropagate")
     val aopProxy = ClassName("io.koraframework.common", "AopProxy")
     val mapping = ClassName("io.koraframework.common", "Mapping")
     val mappings = ClassName("io.koraframework.common", "Mapping", "Mappings")

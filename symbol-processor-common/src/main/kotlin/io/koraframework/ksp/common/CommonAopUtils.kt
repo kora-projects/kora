@@ -14,7 +14,7 @@ import com.squareup.kotlinpoet.ksp.toTypeName
 import com.squareup.kotlinpoet.ksp.toTypeVariableName
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames.aopAnnotation
-import io.koraframework.ksp.common.CommonClassNames.aopAnnotationUtil
+import io.koraframework.ksp.common.CommonClassNames.aopPropagate
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.resolveToUnderlying
 
@@ -64,7 +64,7 @@ object CommonAopUtils {
         for (annotationMirror in type.annotations) {
             val resolvedAnnotation = annotationMirror.annotationType.resolveToUnderlying()
             if (isAopAnnotation(annotationMirror)
-                || isAopAnnotationUtil(annotationMirror)
+                || isAopPropagate(annotationMirror)
                 || CommonClassNames.mapping == resolvedAnnotation.toClassName()
                 || CommonClassNames.mappings == resolvedAnnotation.toClassName()) {
                 b.addAnnotation(annotationMirror.toAnnotationSpec())
@@ -91,7 +91,7 @@ object CommonAopUtils {
         }
         funBuilder.addModifiers(KModifier.OVERRIDE)
         for (annotation in funDeclaration.annotations) {
-            if (isAopAnnotation(annotation) || isAopAnnotationUtil(annotation)) {
+            if (isAopAnnotation(annotation) || isAopPropagate(annotation)) {
                 funBuilder.addAnnotation(annotation.toAnnotationSpec())
             }
         }
@@ -109,7 +109,7 @@ object CommonAopUtils {
             for (annotation in parameter.annotations) {
                 val resolvedAnnotation = annotation.annotationType.resolveToUnderlying()
                 if (isAopAnnotation(resolvedAnnotation)
-                    || isAopAnnotationUtil(resolvedAnnotation)
+                    || isAopPropagate(resolvedAnnotation)
                     || CommonClassNames.tag == resolvedAnnotation.toClassName()
                     || CommonClassNames.mapping == resolvedAnnotation.toClassName()
                     || CommonClassNames.mappings == resolvedAnnotation.toClassName()
@@ -157,11 +157,11 @@ object CommonAopUtils {
         return annotation.declaration.isAnnotationPresent(aopAnnotation)
     }
 
-    fun isAopAnnotationUtil(annotation: KSAnnotation): Boolean {
-        return annotation.annotationType.resolveToUnderlying().declaration.isAnnotationPresent(aopAnnotationUtil)
+    fun isAopPropagate(annotation: KSAnnotation): Boolean {
+        return annotation.annotationType.resolveToUnderlying().declaration.isAnnotationPresent(aopPropagate)
     }
 
-    fun isAopAnnotationUtil(annotation: KSType): Boolean {
-        return annotation.declaration.isAnnotationPresent(aopAnnotationUtil)
+    fun isAopPropagate(annotation: KSType): Boolean {
+        return annotation.declaration.isAnnotationPresent(aopPropagate)
     }
 }
