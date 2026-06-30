@@ -23,7 +23,7 @@ dependencies {
 
 
 def modifyPom(Node pom) {
-    pom.appendNode('properties').appendNode('java.version', '17')
+    pom.appendNode('properties').appendNode('java.version', '25')
     pom.appendNode('test').replaceNode {
         delegate.build {
             plugins {

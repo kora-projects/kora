@@ -72,7 +72,11 @@ public abstract class HttpClientTest extends HttpClientTestBase {
         var responseBody = new byte[1024 * 1024 * 4];
         ThreadLocalRandom.current().nextBytes(responseBody);
 
-        server.when(request("/")).respond(response()
+        var expectedRequest = request("/")
+            .withMethod(POST)
+            .withHeader("Content-Type", "text/plain;charset=UTF-8")
+            .withBody("test-request", StandardCharsets.UTF_8);
+        server.when(expectedRequest).respond(response()
             .withBody(new String(responseBody, StandardCharsets.ISO_8859_1), StandardCharsets.ISO_8859_1)
             .withHeaders(Header.header("Content-type", "text/plain;charset=ISO_8859_1"))
         );

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
+import org.mockserver.configuration.ConfigurationProperties;
 import org.mockserver.integration.ClientAndServer;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +57,11 @@ public abstract class HttpClientTestBase {
     }
 
     protected static final LoggerContext ctx = (LoggerContext) LoggerFactory.getILoggerFactory();
+
+    static {
+        ConfigurationProperties.maxRequestBodySize(64 * 1024 * 1024);
+    }
+
     protected final ClientAndServer server = ClientAndServer.startClientAndServer(0);
 
     private final HttpClient baseClient = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(ofMillis(100), ofMillis(500000), null, false));
