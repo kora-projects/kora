@@ -1,21 +1,15 @@
 package io.koraframework.validation.symbol.processor
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Test
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableFieldRequiredTests.kt
 import io.koraframework.json.common.JsonNullable
+import io.koraframework.json.common.JsonValue
+import io.koraframework.json.common.JsonUndefined
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.validation.common.ValidationContext
 import io.koraframework.validation.common.Validator
 import io.koraframework.validation.common.constraint.ValidatorModule
-========
-import ru.tinkoff.kora.json.common.JsonValue
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
-import ru.tinkoff.kora.validation.common.ValidationContext
-import ru.tinkoff.kora.validation.common.Validator
-import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonValueFieldRequiredTests.kt
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
 
 class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
 
@@ -25,7 +19,7 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(val field: JsonNullable<String>)
+                    data class TestRecord(val field: JsonValue<String>)
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -44,8 +38,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(val field: JsonNullable<String>)
-                    
+                    data class TestRecord(val field: JsonValue<String>)
+
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -64,8 +58,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(val field: JsonNullable<String>)
-                    
+                    data class TestRecord(val field: JsonValue<String>)
+
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -84,8 +78,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotNull val field: JsonNullable<String>)
-                    
+                    data class TestRecord(@field:NotNull val field: JsonValue<String>)
+
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -104,8 +98,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotNull val field: JsonNullable<String>)
-                    
+                    data class TestRecord(@field:NotNull val field: JsonValue<String>)
+
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -124,8 +118,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotNull val field: JsonNullable<String>)
-                    
+                    data class TestRecord(@field:NotNull val field: JsonValue<String>)
+
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -144,8 +138,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>)
-                    
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonValue<String>)
+
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -154,13 +148,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableFieldRequiredTests.kt
         val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
-        val violations = validator.validate(newObject("TestRecord", JsonNullable.undefined<String>()).objectInstance)
-========
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonValue.undefined<String>()).objectInstance)
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonValueFieldRequiredTests.kt
         assertEquals(0, violations.size)
     }
 
@@ -170,8 +159,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord<T>(@field:NotBlank @field:NotEmpty val field: JsonNullable<T>)
-                    
+                    data class TestRecord<T>(@field:NotBlank @field:NotEmpty val field: JsonValue<T>)
+
                     """.trimIndent()
         )
         compileResult.assertSuccess()
@@ -180,13 +169,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableFieldRequiredTests.kt
         val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
-        val violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue<String>()).objectInstance)
-========
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonValue.nullValue<String>()).objectInstance)
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonValueFieldRequiredTests.kt
         assertEquals(2, violations.size)
     }
 
@@ -196,7 +180,49 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>)
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonValue<String>)
+
+                    """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val validatorClass = loadClass("\$TestRecord_Validator")
+        assertThat(validatorClass).isNotNull()
+        assertThat(validatorClass.constructors).hasSize(1)
+
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
+        val violations = validator.validate(newObject("TestRecord", JsonValue.of("1")).objectInstance)
+        assertEquals(0, violations.size)
+    }
+
+    @Test
+    fun fieldJsonNullableTypeWithValidatorIsNull() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+            """
+                    @Valid
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonValue<String>)
+
+                    """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val validatorClass = loadClass("\$TestRecord_Validator")
+        assertThat(validatorClass).isNotNull()
+        assertThat(validatorClass.constructors).hasSize(1)
+
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
+        val violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue<String>()).objectInstance)
+        assertEquals(2, violations.size)
+    }
+
+    @Test
+    fun fieldJsonNullableTypeWithValidatorIsPresent() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+            """
+                    @Valid
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonValue<String>)
                     
                     """.trimIndent()
         )
@@ -206,13 +232,50 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableFieldRequiredTests.kt
         val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")).objectInstance)
-========
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
-        val violations = validator.validate(newObject("TestRecord", JsonValue.of("1")).objectInstance)
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonValueFieldRequiredTests.kt
+        assertEquals(0, violations.size)
+    }
+
+    @Test
+    fun fieldJsonUndefinedWithValidatorIsUndefined() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+            """
+                    @Valid
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonUndefined<String>)
+
+                    """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val validatorClass = loadClass("\$TestRecord_Validator")
+        assertThat(validatorClass).isNotNull()
+        assertThat(validatorClass.constructors).hasSize(1)
+
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
+        val violations = validator.validate(newObject("TestRecord", JsonUndefined.undefined<String>()).objectInstance)
+        assertEquals(0, violations.size)
+    }
+
+    @Test
+    fun fieldJsonUndefinedWithValidatorIsPresent() {
+        compile0(
+            listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
+            """
+                    @Valid
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonUndefined<String>)
+
+                    """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val validatorClass = loadClass("\$TestRecord_Validator")
+        assertThat(validatorClass).isNotNull()
+        assertThat(validatorClass.constructors).hasSize(1)
+
+        val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
+        val violations = validator.validate(newObject("TestRecord", JsonUndefined.of("1")).objectInstance)
         assertEquals(0, violations.size)
     }
 
@@ -222,7 +285,7 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>)
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonValue<String>)
                     
                     """.trimIndent()
         )
@@ -232,13 +295,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableFieldRequiredTests.kt
         val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
-        val violations = validator.validate(newObject("TestRecord", JsonNullable.undefined<String>()).objectInstance, ValidationContext.failFast())
-========
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonValue.undefined<String>()).objectInstance, ValidationContext.failFast())
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonValueFieldRequiredTests.kt
         assertEquals(0, violations.size)
     }
 
@@ -248,7 +306,7 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>)
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonValue<String>)
                     
                     """.trimIndent()
         )
@@ -258,13 +316,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableFieldRequiredTests.kt
         val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
-        val violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue<String>()).objectInstance, ValidationContext.failFast())
-========
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonValue.nullValue<String>()).objectInstance, ValidationContext.failFast())
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonValueFieldRequiredTests.kt
         assertEquals(1, violations.size)
     }
 
@@ -274,7 +327,7 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
             listOf(KoraAppProcessorProvider(), ValidSymbolProcessorProvider()),
             """
                     @Valid
-                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonNullable<String>)
+                    data class TestRecord(@field:NotBlank @field:NotEmpty val field: JsonValue<String>)
                     
                     """.trimIndent()
         )
@@ -284,14 +337,8 @@ class ValidationJsonValueFieldRequiredTests : AbstractValidationSymbolProcessorT
         assertThat(validatorClass).isNotNull()
         assertThat(validatorClass.constructors).hasSize(1)
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableFieldRequiredTests.kt
         val validator = newObject("\$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory()).objectInstance as Validator<Any>
-        val violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")).objectInstance, ValidationContext.failFast())
-========
-        val validator = newObject("\$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory()).objectInstance as Validator<Any>
         val violations = validator.validate(newObject("TestRecord", JsonValue.of("1")).objectInstance, ValidationContext.failFast())
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonValueFieldRequiredTests.kt
         assertEquals(0, violations.size)
     }
-
 }

@@ -1,9 +1,9 @@
 package io.koraframework.validation.annotation.processor;
 
-import org.junit.jupiter.api.Test;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.validation.common.Validator;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 

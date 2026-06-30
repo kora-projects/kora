@@ -1,19 +1,12 @@
 package io.koraframework.validation.annotation.processor;
 
-import org.junit.jupiter.api.Test;
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableArgumentSyncTests.java
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.json.common.JsonNullable;
+import io.koraframework.json.common.JsonValue;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.validation.common.ViolationException;
 import io.koraframework.validation.common.constraint.ValidatorModule;
-========
-import ru.tinkoff.kora.aop.annotation.processor.AopAnnotationProcessor;
-import ru.tinkoff.kora.json.common.JsonValue;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
-import ru.tinkoff.kora.validation.common.ViolationException;
-import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueArgumentSyncTests.java
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -86,7 +79,7 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@Nonnull JsonValue<String> arg) { }
+                    public void test(@NonNull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -105,7 +98,7 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@Nonnull JsonValue<String> arg) { }
+                    public void test(@NonNull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -124,7 +117,7 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
                 @Component
                 public class TestComponent {
                     @Validate
-                    public void test(@Nonnull JsonValue<String> arg) { }
+                    public void test(@NonNull JsonValue<String> arg) { }
                 }
                 """);
         compileResult.assertSuccess();
@@ -151,13 +144,8 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableArgumentSyncTests.java
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test", JsonNullable.undefined()));
-========
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueArgumentSyncTests.java
     }
 
     @Test
@@ -175,13 +163,8 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableArgumentSyncTests.java
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonNullable.nullValue()));
-========
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueArgumentSyncTests.java
         assertEquals(2, ex.getViolations().size());
     }
 
@@ -200,13 +183,8 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableArgumentSyncTests.java
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test", JsonNullable.of("1")));
-========
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueArgumentSyncTests.java
     }
 
     @Test
@@ -224,13 +202,8 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableArgumentSyncTests.java
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test", JsonNullable.undefined()));
-========
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         assertDoesNotThrow(() -> invoke(component, "test", JsonValue.undefined()));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueArgumentSyncTests.java
     }
 
     @Test
@@ -248,13 +221,8 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableArgumentSyncTests.java
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonNullable.nullValue()));
-========
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         ViolationException ex = assertThrows(ViolationException.class, () -> invoke(component, "test", JsonValue.nullValue()));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueArgumentSyncTests.java
         assertEquals(1, ex.getViolations().size());
     }
 
@@ -273,12 +241,7 @@ public class ValidationJsonValueArgumentSyncTests extends AbstractValidationAnno
         var validatorClass = compileResult.loadClass("$TestComponent__AopProxy");
         assertThat(validatorClass).isNotNull();
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableArgumentSyncTests.java
         var component = newObject("$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        assertDoesNotThrow(() -> invoke(component, "test", JsonNullable.of("1")));
-========
-        var component = newObject("$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         assertDoesNotThrow(() -> invoke(component, "test", JsonValue.of("1")));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueArgumentSyncTests.java
     }
 }

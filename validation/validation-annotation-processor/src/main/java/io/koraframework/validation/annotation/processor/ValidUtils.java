@@ -56,7 +56,7 @@ public final class ValidUtils {
                         }
 
                         final TypeMirror targetType;
-                        if (parameterType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString())) {
+                        if (parameterType instanceof DeclaredType dt && jsonValue.canonicalName().equals(dt.asElement().toString())) {
                             targetType = dt.getTypeArguments().get(0);
                         } else {
                             targetType = parameterType;

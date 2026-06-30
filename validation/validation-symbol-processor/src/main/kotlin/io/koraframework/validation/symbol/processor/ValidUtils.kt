@@ -1,6 +1,7 @@
 package io.koraframework.validation.symbol.processor
 
 import com.google.devtools.ksp.symbol.*
+import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ksp.toClassName
 import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.validation.symbol.processor.ValidTypes.VALIDATED_BY_TYPE
@@ -41,7 +42,7 @@ object ValidUtils {
     }
 
     private fun getConstraints(type: KSType, annotation: Sequence<KSAnnotation>): List<Constraint> {
-        val isJsonNullable = type.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
+        val isJsonNullable = type.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null }.isJsonValueType()
         val realType = if (isJsonNullable) type.arguments[0].type!!.resolve() else type
 
         return annotation
@@ -63,5 +64,9 @@ object ValidUtils {
                     .firstOrNull()
             }
             .toList()
+    }
+
+    fun ClassName?.isJsonValueType(): Boolean {
+        return this == ValidTypes.jsonValue || this == ValidTypes.jsonNullable || this == ValidTypes.jsonUndefined
     }
 }

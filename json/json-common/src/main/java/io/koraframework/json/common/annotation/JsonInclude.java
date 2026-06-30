@@ -1,6 +1,6 @@
-package ru.tinkoff.kora.json.common.annotation;
+package io.koraframework.json.common.annotation;
 
-import ru.tinkoff.kora.json.common.JsonValue;
+import io.koraframework.json.common.JsonValue;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

@@ -90,9 +90,14 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         final boolean isCompletableStage = MethodUtils.isCompletionStage(method);
         final boolean isValid = method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()));
 
-        final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, returnType, method.getAnnotationMirrors());
+        final boolean isJsonNullable = returnType instanceof DeclaredType dt && isJsonValueType(dt);
+        final TypeMirror targetReturnType = (isJsonNullable)
+            ? ((DeclaredType) returnType).getTypeArguments().getFirst()
+            : returnType;
+
+        final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(env, targetReturnType, method.getAnnotationMirrors());
         final List<Validated> validates = (isValid)
-            ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(returnType), returnType)))
+            ? List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(env.getTypeUtils().asElement(targetReturnType), targetReturnType)))
             : Collections.emptyList();
 
         var isPrimitive = returnType instanceof PrimitiveType;
@@ -116,7 +121,6 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         }
 
         final boolean isNotNullable = (isValid || isNotNull) && !isNullable && !isPrimitive;
-        final boolean isJsonNullable = returnType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString());
         var haveValidators = !constraints.isEmpty() || !validates.isEmpty();
         if (!haveValidators && !isNotNullable) {
             return Optional.empty();
@@ -282,10 +286,13 @@ public class ValidateMethodKoraAspect implements KoraAspect {
             final boolean isNotNullable = !CommonUtils.isNullable(parameter) && !isPrimitive;
 
             final boolean isNotNull = isNotNull(parameter);
-            final boolean isJsonNullable = parameter.asType() instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString());
+            final boolean isJsonNullable = parameter.asType() instanceof DeclaredType dt && isJsonValueType(dt);
+            final TypeMirror targetParameterType = (isJsonNullable)
+                ? ((DeclaredType) parameter.asType()).getTypeArguments().getFirst()
+                : parameter.asType();
 
-            var constraints = ValidUtils.getValidatedByConstraints(env, parameter.asType(), parameter.getAnnotationMirrors());
-            var validates = getValidForArguments(parameter);
+            var constraints = ValidUtils.getValidatedByConstraints(env, targetParameterType, parameter.getAnnotationMirrors());
+            var validates = getValidForArguments(parameter, targetParameterType);
             var haveValidators = !constraints.isEmpty() || !validates.isEmpty();
             if (haveValidators || isJsonNullable || isNotNullable) {
                 final String paramName = parameter.getSimpleName().toString();
@@ -437,9 +444,16 @@ public class ValidateMethodKoraAspect implements KoraAspect {
         return false;
     }
 
-    private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter) {
+    private static boolean isJsonValueType(DeclaredType type) {
+        var typeName = type.asElement().toString();
+        return jsonValue.canonicalName().equals(typeName)
+               || jsonNullable.canonicalName().equals(typeName)
+               || jsonUndefined.canonicalName().equals(typeName);
+    }
+
+    private List<ValidMeta.Validated> getValidForArguments(VariableElement parameter, TypeMirror targetType) {
         if (parameter.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
-            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, parameter.asType())));
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(parameter, targetType)));
         }
 
         return Collections.emptyList();

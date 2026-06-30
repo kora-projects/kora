@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.json.common;
+package io.koraframework.json.common;
 
 import org.jspecify.annotations.Nullable;
 
@@ -7,11 +7,11 @@ import java.util.Objects;
 /**
  * <b>Русский</b>: Специальный тип который позволяет указывать как записывать/считывать поля из JSON в состояниях, когда
  * поле указано и/или является `null` или не является `null` в JSON
- * Работает как для {@link ru.tinkoff.kora.json.common.annotation.JsonWriter} так и {@link ru.tinkoff.kora.json.common.annotation.JsonReader}
+ * Работает как для {@link io.koraframework.json.common.annotation.JsonWriter} так и {@link io.koraframework.json.common.annotation.JsonReader}
  * <hr>
  * <b>English</b>: A special type that allows you to specify how to write/read fields from JSON in states
  * where the field is specified and/or is `null` or is not `null` in JSON
- * Works for both {@link ru.tinkoff.kora.json.common.annotation.JsonWriter} and {@link ru.tinkoff.kora.json.common.annotation.JsonReader}
+ * Works for both {@link io.koraframework.json.common.annotation.JsonWriter} and {@link io.koraframework.json.common.annotation.JsonReader}
  * <br>
  * <br>
  * Пример / Example:

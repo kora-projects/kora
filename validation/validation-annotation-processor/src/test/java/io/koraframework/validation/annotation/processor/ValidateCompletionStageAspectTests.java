@@ -1,10 +1,10 @@
 package io.koraframework.validation.annotation.processor;
 
+import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
+import io.koraframework.validation.common.ViolationException;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
-import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
-import io.koraframework.validation.common.ViolationException;
 
 import java.util.concurrent.CompletionException;
 

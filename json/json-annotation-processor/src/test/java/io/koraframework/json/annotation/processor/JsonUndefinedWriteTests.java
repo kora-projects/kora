@@ -1,10 +1,10 @@
-package ru.tinkoff.kora.json.annotation.processor;
+package io.koraframework.json.annotation.processor;
 
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.json.common.JsonUndefined;
-import ru.tinkoff.kora.json.common.JsonWriter;
-import ru.tinkoff.kora.json.common.ListJsonWriter;
+import io.koraframework.json.common.JsonUndefined;
+import io.koraframework.json.common.JsonWriter;
+import io.koraframework.json.common.ListJsonWriter;
 import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
