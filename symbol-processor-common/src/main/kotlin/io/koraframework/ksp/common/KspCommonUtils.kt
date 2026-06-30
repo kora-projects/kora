@@ -310,8 +310,22 @@ fun findMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration
     return result
 }
 
+fun findAllMethods(ksAnnotated: KSAnnotated, functionFilter: (KSFunctionDeclaration) -> Boolean): List<KSFunctionDeclaration> {
+    if (ksAnnotated !is KSClassDeclaration) {
+        return emptyList()
+    }
+    val result = ArrayList<KSFunctionDeclaration>()
+    for (function in ksAnnotated.getAllFunctions().toList()) {
+        if (!functionFilter(function)) {
+            continue
+        }
+        result.add(function)
+    }
+    return result
+}
+
 fun KSAnnotated.getOuterClassesAsPrefix(): String {
-    val prefix = if(this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
+    val prefix = if (this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
         StringBuilder()
     else
         StringBuilder("$")
@@ -332,7 +346,7 @@ fun KSDeclaration.generatedClass(generatedType: ClassName): String {
 }
 
 fun KSClassDeclaration.generatedClassName(postfix: String): String {
-    val prefix = if(this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
+    val prefix = if (this is KSClassDeclaration && this.simpleName.asString().startsWith("$"))
         StringBuilder()
     else
         StringBuilder("$")

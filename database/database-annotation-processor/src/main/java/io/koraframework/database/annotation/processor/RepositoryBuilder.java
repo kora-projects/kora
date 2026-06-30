@@ -10,6 +10,7 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.util.Elements;
 import java.util.List;
 
 import static io.koraframework.annotation.processor.common.TagUtils.makeAnnotationSpec;
@@ -17,9 +18,11 @@ import static io.koraframework.annotation.processor.common.TagUtils.parseTagValu
 
 public class RepositoryBuilder {
 
+    private final Elements elements;
     private final List<RepositoryGenerator> queryMethodGenerators;
 
-    public RepositoryBuilder(ProcessingEnvironment processingEnv) {
+    public RepositoryBuilder(Elements elements, ProcessingEnvironment processingEnv) {
+        this.elements = elements;
         this.queryMethodGenerators = List.of(
             new JdbcRepositoryGenerator(processingEnv),
             new CassandraRepositoryGenerator(processingEnv)
@@ -29,7 +32,7 @@ public class RepositoryBuilder {
     @Nullable
     public TypeSpec build(TypeElement repositoryElement) throws ProcessingErrorException {
         var name = NameUtils.generatedType(repositoryElement, "Impl");
-        var builder = CommonUtils.extendsKeepAop(repositoryElement, name)
+        var builder = CommonUtils.extendsKeepAop(elements, repositoryElement, name)
             .addAnnotation(AnnotationUtils.generated(RepositoryAnnotationProcessor.class));
 
         if (AnnotationUtils.findAnnotation(repositoryElement, CommonClassNames.root) != null) {

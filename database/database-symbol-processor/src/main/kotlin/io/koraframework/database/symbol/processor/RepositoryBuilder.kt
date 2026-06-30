@@ -14,7 +14,7 @@ import org.slf4j.LoggerFactory
 import io.koraframework.database.symbol.processor.cassandra.CassandraRepositoryGenerator
 import io.koraframework.database.symbol.processor.jdbc.JdbcRepositoryGenerator
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
-import io.koraframework.ksp.common.CommonAopUtils.extendsKeepAop
+import io.koraframework.ksp.common.CommonAopUtils.extendsKeepAopAll
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
@@ -35,7 +35,7 @@ class RepositoryBuilder(
     fun build(repositoryDeclaration: KSClassDeclaration): TypeSpec? {
         log.debug("Generating Repository for {}", repositoryDeclaration.simpleName.asString())
         val name = repositoryDeclaration.getOuterClassesAsPrefix() + repositoryDeclaration.simpleName.asString() + "_Impl"
-        val builder = repositoryDeclaration.extendsKeepAop(name, resolver)
+        val builder = repositoryDeclaration.extendsKeepAopAll(name, resolver)
             .generated(RepositoryBuilder::class)
             .addOriginatingKSFile(repositoryDeclaration)
 
