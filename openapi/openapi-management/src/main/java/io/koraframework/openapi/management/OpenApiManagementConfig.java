@@ -2,7 +2,6 @@ package io.koraframework.openapi.management;
 
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -39,15 +38,15 @@ public interface OpenApiManagementConfig {
         }
 
         default Map<String, String> options() {
-            var options = new LinkedHashMap<String, String>();
-            options.put("layout", "StandaloneLayout");
-            options.put("validatorUrl", "null");
-            options.put("defaultModelsExpandDepth", "0");
-            options.put("deepLinking", "true");
-            options.put("persistAuthorization", "true");
-            options.put("displayOperationId", "true");
-            options.put("filter", "true");
-            return options;
+            return Map.of(
+                "layout", "StandaloneLayout",
+                "validatorUrl", "null",
+                "defaultModelsExpandDepth", "0",
+                "deepLinking", "true",
+                "persistAuthorization", "true",
+                "displayOperationId", "true",
+                "filter", "true"
+            );
         }
     }
 

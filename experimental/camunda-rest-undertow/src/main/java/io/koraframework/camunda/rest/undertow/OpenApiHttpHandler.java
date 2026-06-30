@@ -51,8 +51,8 @@ final class OpenApiHttpHandler implements HttpHandler {
         } else {
             openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.endpoint() + "/{file}"));
         }
-        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.rapidoc().endpoint()));
-        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.swaggerui().endpoint()));
+        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.rapidoc().path()));
+        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.swaggerui().path()));
         this.pathMatcher = new UndertowPathMatcher(openapiMethods);
 
         this.openApiHandler = new OpenApiHttpServerHandler(openapi.file(), f -> {
@@ -73,8 +73,8 @@ final class OpenApiHttpHandler implements HttpHandler {
                     .getBytes(StandardCharsets.UTF_8);
             }
         });
-        this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.endpoint(), openapi.swaggerui().endpoint(), openapi.file());
-        this.rapidocHandler = new RapidocHttpServerHandler(openapi.endpoint(), openapi.rapidoc().endpoint(), openapi.file());
+        this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.endpoint(), openapi.swaggerui(), openapi.file());
+        this.rapidocHandler = new RapidocHttpServerHandler(openapi.endpoint(), openapi.rapidoc().path(), openapi.file());
     }
 
     @Override
@@ -90,9 +90,9 @@ final class OpenApiHttpHandler implements HttpHandler {
         var openapi = restConfig.openapi();
         if (openapi.enabled() && requestPath.startsWith(openapi.endpoint())) {
             executeHandler(exchange, openApiHandler, fakeRequest);
-        } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().endpoint())) {
+        } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().path())) {
             executeHandler(exchange, swaggerUIHandler, fakeRequest);
-        } else if (openapi.rapidoc().enabled() && requestPath.startsWith(openapi.rapidoc().endpoint())) {
+        } else if (openapi.rapidoc().enabled() && requestPath.startsWith(openapi.rapidoc().path())) {
             executeHandler(exchange, rapidocHandler, fakeRequest);
         } else {
             exchange.setStatusCode(404);

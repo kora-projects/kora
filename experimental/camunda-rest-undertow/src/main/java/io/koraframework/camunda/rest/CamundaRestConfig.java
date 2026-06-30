@@ -2,10 +2,12 @@ package io.koraframework.camunda.rest;
 
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryConfig;
 import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.openapi.management.OpenApiManagementConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 @ConfigValueExtractor
 public interface CamundaRestConfig {
@@ -30,7 +32,7 @@ public interface CamundaRestConfig {
 
     CamundaRestTelemetryConfig telemetry();
 
-    CamundaCorsConfig cors();
+    CamundaOpenApiConfig.CamundaCorsConfig cors();
 
     @ConfigValueExtractor
     interface CamundaOpenApiConfig {
@@ -47,63 +49,39 @@ public interface CamundaRestConfig {
             return "/openapi";
         }
 
-        SwaggerUIConfig swaggerui();
+        OpenApiManagementConfig.SwaggerUIConfig swaggerui();
 
-        RapidocConfig rapidoc();
+        OpenApiManagementConfig.RapidocConfig rapidoc();
 
         @ConfigValueExtractor
-        interface SwaggerUIConfig {
+        interface CamundaCorsConfig {
 
             default boolean enabled() {
                 return false;
             }
 
-            default String endpoint() {
-                return "/swagger-ui";
-            }
-        }
+            @Nullable
+            String allowOrigin();
 
-        @ConfigValueExtractor
-        interface RapidocConfig {
-
-            default boolean enabled() {
-                return false;
+            default List<String> allowHeaders() {
+                return List.of("*");
             }
 
-            default String endpoint() {
-                return "/rapidoc";
+            default List<String> allowMethods() {
+                return List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
             }
-        }
-    }
 
-    @ConfigValueExtractor
-    interface CamundaCorsConfig {
+            default Boolean allowCredentials() {
+                return true;
+            }
 
-        default boolean enabled() {
-            return false;
-        }
+            default List<String> exposeHeaders() {
+                return List.of("*");
+            }
 
-        @Nullable
-        String allowOrigin();
-
-        default List<String> allowHeaders() {
-            return List.of("*");
-        }
-
-        default List<String> allowMethods() {
-            return List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD");
-        }
-
-        default Boolean allowCredentials() {
-            return true;
-        }
-
-        default List<String> exposeHeaders() {
-            return List.of("*");
-        }
-
-        default Duration maxAge() {
-            return Duration.ofHours(1);
+            default Duration maxAge() {
+                return Duration.ofHours(1);
+            }
         }
     }
 }
