@@ -263,7 +263,7 @@ public class AnnotationConfigTest extends AbstractConfigTest {
     @Test
     public void testInterfaceNoFieldsWithSuper() {
         var extractor = this.compileConfig(List.of(), """
-            @ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor
+            @io.koraframework.config.common.annotation.ConfigValueExtractor
             public interface TestConfig extends SuperTestConfig{
             }
             """, """
