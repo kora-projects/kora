@@ -6,6 +6,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 
 @ConfigValueExtractor
 public interface CamundaRestConfig {
@@ -35,7 +36,7 @@ public interface CamundaRestConfig {
     @ConfigValueExtractor
     interface CamundaOpenApiConfig {
 
-        default List<String> file() {
+        default List<String> files() {
             return List.of("openapi.json");
         }
 
@@ -43,7 +44,7 @@ public interface CamundaRestConfig {
             return false;
         }
 
-        default String endpoint() {
+        default String path() {
             return "/openapi";
         }
 
@@ -58,8 +59,24 @@ public interface CamundaRestConfig {
                 return false;
             }
 
-            default String endpoint() {
+            default String path() {
                 return "/swagger-ui";
+            }
+
+            default boolean withCredentials() {
+                return true;
+            }
+
+            default Map<String, String> options() {
+                return Map.of(
+                    "layout", "StandaloneLayout",
+                    "validatorUrl", "null",
+                    "defaultModelsExpandDepth", "0",
+                    "deepLinking", "true",
+                    "persistAuthorization", "true",
+                    "displayOperationId", "true",
+                    "filter", "true"
+                );
             }
         }
 
@@ -70,7 +87,7 @@ public interface CamundaRestConfig {
                 return false;
             }
 
-            default String endpoint() {
+            default String path() {
                 return "/rapidoc";
             }
         }
