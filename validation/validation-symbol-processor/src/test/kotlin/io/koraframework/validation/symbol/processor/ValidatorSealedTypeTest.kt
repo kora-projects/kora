@@ -1,9 +1,9 @@
 package io.koraframework.validation.symbol.processor
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 
 class ValidatorSealedTypeTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {

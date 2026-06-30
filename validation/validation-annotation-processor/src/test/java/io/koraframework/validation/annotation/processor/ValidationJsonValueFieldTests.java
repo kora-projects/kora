@@ -1,19 +1,13 @@
 package io.koraframework.validation.annotation.processor;
 
-import org.junit.jupiter.api.Test;
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableFieldTests.java
 import io.koraframework.json.common.JsonNullable;
+import io.koraframework.json.common.JsonUndefined;
+import io.koraframework.json.common.JsonValue;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.validation.common.ValidationContext;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.constraint.ValidatorModule;
-========
-import ru.tinkoff.kora.json.common.JsonValue;
-import ru.tinkoff.kora.kora.app.annotation.processor.KoraAppProcessor;
-import ru.tinkoff.kora.validation.common.ValidationContext;
-import ru.tinkoff.kora.validation.common.Validator;
-import ru.tinkoff.kora.validation.common.constraint.ValidatorModule;
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueFieldTests.java
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -137,7 +131,7 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
             """
                     
                     @Valid
-                    record TestRecord(@Nonnull JsonValue<String> field) {}
+                    record TestRecord(@NonNull JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -155,7 +149,7 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
             """
                     
                     @Valid
-                    record TestRecord(@Nonnull JsonValue<String> field) {}
+                    record TestRecord(@NonNull JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -173,7 +167,7 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
             """
                     
                     @Valid
-                    record TestRecord(@Nonnull JsonValue<String> field) {}
+                    record TestRecord(@NonNull JsonValue<String> field) {}
                     """);
         compileResult.assertSuccess();
 
@@ -199,13 +193,8 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableFieldTests.java
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()));
-========
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         var violations = validator.validate(newObject("TestRecord", JsonValue.undefined()));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueFieldTests.java
         assertEquals(0, violations.size());
     }
 
@@ -223,14 +212,85 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableFieldTests.java
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()));
-========
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonValue.nullValue()));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueFieldTests.java
         assertEquals(2, violations.size());
+    }
+
+    @Test
+    public void fieldJsonNullableTypeWithValidatorIsNull() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            """
+
+                    @Valid
+                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    """);
+        compileResult.assertSuccess();
+
+        var validatorClass = compileResult.loadClass("$TestRecord_Validator");
+        assertThat(validatorClass).isNotNull();
+        assertThat(validatorClass.getConstructors()).hasSize(1);
+
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
+        var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()));
+        assertEquals(2, violations.size());
+    }
+
+    @Test
+    public void fieldJsonNullableTypeWithValidatorIsPresent() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            """
+
+                    @Valid
+                    record TestRecord(@NotBlank @NotEmpty JsonNullable<String> field) {}
+                    """);
+        compileResult.assertSuccess();
+
+        var validatorClass = compileResult.loadClass("$TestRecord_Validator");
+        assertThat(validatorClass).isNotNull();
+        assertThat(validatorClass.getConstructors()).hasSize(1);
+
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
+        var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")));
+        assertEquals(0, violations.size());
+    }
+
+    @Test
+    public void fieldJsonUndefinedTypeWithValidatorIsUndefined() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            """
+
+                    @Valid
+                    record TestRecord(@NotBlank @NotEmpty JsonUndefined<String> field) {}
+                    """);
+        compileResult.assertSuccess();
+
+        var validatorClass = compileResult.loadClass("$TestRecord_Validator");
+        assertThat(validatorClass).isNotNull();
+        assertThat(validatorClass.getConstructors()).hasSize(1);
+
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
+        var violations = validator.validate(newObject("TestRecord", JsonUndefined.undefined()));
+        assertEquals(0, violations.size());
+    }
+
+    @Test
+    public void fieldJsonUndefinedTypeWithValidatorIsPresent() {
+        var compileResult = compile(List.of(new KoraAppProcessor(), new ValidAnnotationProcessor()),
+            """
+
+                    @Valid
+                    record TestRecord(@NotBlank @NotEmpty JsonUndefined<String> field) {}
+                    """);
+        compileResult.assertSuccess();
+
+        var validatorClass = compileResult.loadClass("$TestRecord_Validator");
+        assertThat(validatorClass).isNotNull();
+        assertThat(validatorClass.getConstructors()).hasSize(1);
+
+        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
+        var violations = validator.validate(newObject("TestRecord", JsonUndefined.of("1")));
+        assertEquals(0, violations.size());
     }
 
     @Test
@@ -247,13 +307,8 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableFieldTests.java
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
         var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")));
-========
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonValue.of("1")));
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueFieldTests.java
         assertEquals(0, violations.size());
     }
 
@@ -271,13 +326,8 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableFieldTests.java
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.undefined()), ValidationContext.failFast());
-========
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         var violations = validator.validate(newObject("TestRecord", JsonValue.undefined()), ValidationContext.failFast());
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueFieldTests.java
         assertEquals(0, violations.size());
     }
 
@@ -295,13 +345,8 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableFieldTests.java
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.nullValue()), ValidationContext.failFast());
-========
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         var violations = validator.validate(newObject("TestRecord", JsonValue.nullValue()), ValidationContext.failFast());
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueFieldTests.java
         assertEquals(1, violations.size());
     }
 
@@ -318,13 +363,8 @@ public class ValidationJsonValueFieldTests extends AbstractValidationAnnotationP
         assertThat(validatorClass).isNotNull();
         assertThat(validatorClass.getConstructors()).hasSize(1);
 
-<<<<<<<< HEAD:validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonNullableFieldTests.java
         Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory());
-        var violations = validator.validate(newObject("TestRecord", JsonNullable.of("1")), ValidationContext.failFast());
-========
-        Validator<Object> validator = (Validator<Object>) newObject("$TestRecord_Validator", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory());
         var violations = validator.validate(newObject("TestRecord", JsonValue.of("1")), ValidationContext.failFast());
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-annotation-processor/src/test/java/io/koraframework/validation/annotation/processor/ValidationJsonValueFieldTests.java
         assertEquals(0, violations.size());
     }
 }

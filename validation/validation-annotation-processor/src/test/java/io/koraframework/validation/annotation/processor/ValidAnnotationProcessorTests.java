@@ -1,12 +1,12 @@
 package io.koraframework.validation.annotation.processor;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
 import io.koraframework.validation.annotation.processor.testdata.ValidBar;
 import io.koraframework.validation.annotation.processor.testdata.ValidFoo;
 import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
 import io.koraframework.validation.common.ValidationContext;
 import io.koraframework.validation.common.Violation;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 
 import java.time.OffsetDateTime;
 import java.util.List;

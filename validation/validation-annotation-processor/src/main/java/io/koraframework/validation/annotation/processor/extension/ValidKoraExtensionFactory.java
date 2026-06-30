@@ -2,7 +2,6 @@ package io.koraframework.validation.annotation.processor.extension;
 
 import io.koraframework.kora.app.annotation.processor.extension.ExtensionFactory;
 import io.koraframework.kora.app.annotation.processor.extension.KoraExtension;
-import io.koraframework.validation.annotation.processor.ValidMeta;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import java.util.Optional;

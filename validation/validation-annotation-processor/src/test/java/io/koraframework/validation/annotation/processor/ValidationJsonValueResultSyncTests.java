@@ -1,10 +1,10 @@
 package io.koraframework.validation.annotation.processor;
 
-import org.junit.jupiter.api.Test;
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.validation.common.ViolationException;
 import io.koraframework.validation.common.constraint.ValidatorModule;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -20,8 +20,8 @@ public class ValidationJsonValueResultSyncTests extends AbstractValidationAnnota
                 @Component
                 public class TestComponent {
                     @Validate
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
+                    public JsonValue<String> test() {
+                        return JsonValue.undefined();
                     }
                 }
                 """);
@@ -84,8 +84,8 @@ public class ValidationJsonValueResultSyncTests extends AbstractValidationAnnota
                 public class TestComponent {
                     @Validate
                     @NonNull
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
+                    public JsonValue<String> test() {
+                        return JsonValue.undefined();
                     }
                 }
                 """);
@@ -151,8 +151,8 @@ public class ValidationJsonValueResultSyncTests extends AbstractValidationAnnota
                     @Validate
                     @NotBlank
                     @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
+                    public JsonValue<String> test() {
+                        return JsonValue.undefined();
                     }
                 }
                 """);
@@ -221,8 +221,8 @@ public class ValidationJsonValueResultSyncTests extends AbstractValidationAnnota
                     @Validate(failFast = true)
                     @NotBlank
                     @NotEmpty
-                    public JsonNullable<String> test() {
-                        return JsonNullable.undefined();
+                    public JsonValue<String> test() {
+                        return JsonValue.undefined();
                     }
                 }
                 """);

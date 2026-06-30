@@ -1,10 +1,10 @@
-package ru.tinkoff.kora.json.annotation.processor;
+package io.koraframework.json.annotation.processor;
 
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.Nullable;
-import ru.tinkoff.kora.annotation.processor.common.AbstractAnnotationProcessorTest;
-import ru.tinkoff.kora.json.common.JsonReader;
-import ru.tinkoff.kora.json.common.JsonWriter;
+import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonWriter;
 import tools.jackson.core.JsonGenerator;
 import tools.jackson.core.JsonParser;
 
@@ -18,13 +18,13 @@ public abstract class AbstractJsonAnnotationProcessorTest extends AbstractAnnota
     @Override
     protected String commonImports() {
         return super.commonImports() + """
-            import ru.tinkoff.kora.json.common.annotation.*;
+            import io.koraframework.json.common.annotation.*;
             import java.sql.Timestamp;
             import java.util.List;
-            import ru.tinkoff.kora.json.common.JsonValue;
-            import ru.tinkoff.kora.json.common.JsonNullable;
-            import ru.tinkoff.kora.json.common.JsonUndefined;
-            import ru.tinkoff.kora.json.common.annotation.JsonInclude.IncludeType;
+            import io.koraframework.json.common.JsonValue;
+            import io.koraframework.json.common.JsonNullable;
+            import io.koraframework.json.common.JsonUndefined;
+            import io.koraframework.json.common.annotation.JsonInclude.IncludeType;
             import java.util.Optional;
             import tools.jackson.core.JsonParser;
             import tools.jackson.core.JsonToken;

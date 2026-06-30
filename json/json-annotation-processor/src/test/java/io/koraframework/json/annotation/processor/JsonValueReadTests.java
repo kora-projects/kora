@@ -1,8 +1,8 @@
-package ru.tinkoff.kora.json.annotation.processor;
+package io.koraframework.json.annotation.processor;
 
 import org.junit.jupiter.api.Test;
-import ru.tinkoff.kora.json.common.JsonReader;
-import ru.tinkoff.kora.json.common.JsonValue;
+import io.koraframework.json.common.JsonReader;
+import io.koraframework.json.common.JsonValue;
 import tools.jackson.core.JsonParser;
 
 import java.io.IOException;

@@ -11,6 +11,8 @@ public class AbstractValidationAnnotationProcessorTest extends AbstractAnnotatio
                    import java.util.concurrent.CompletableFuture;
                    import java.util.concurrent.CompletionStage;
                    import io.koraframework.json.common.JsonNullable;
+                   import io.koraframework.json.common.JsonUndefined;
+                   import io.koraframework.json.common.JsonValue;
                    import org.jspecify.annotations.NonNull;
                    import org.jspecify.annotations.Nullable;
                    import io.koraframework.common.KoraApp;

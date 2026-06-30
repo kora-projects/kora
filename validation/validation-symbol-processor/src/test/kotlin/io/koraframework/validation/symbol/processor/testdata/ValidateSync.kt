@@ -1,12 +1,7 @@
 package io.koraframework.validation.symbol.processor.testdata
 
-import io.koraframework.validation.common.annotation.NotEmpty
-import io.koraframework.validation.common.annotation.Pattern
-import io.koraframework.validation.common.annotation.Range
-import io.koraframework.validation.common.annotation.Size
-import io.koraframework.validation.common.annotation.Valid
-import io.koraframework.validation.common.annotation.Validate
 import io.koraframework.common.Component
+import io.koraframework.validation.common.annotation.*
 
 @Component
 open class ValidateSync {

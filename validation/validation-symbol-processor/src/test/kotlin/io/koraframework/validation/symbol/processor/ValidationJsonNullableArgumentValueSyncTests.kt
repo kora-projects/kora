@@ -1,21 +1,13 @@
 package io.koraframework.validation.symbol.processor
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Assertions.*
-import org.junit.jupiter.api.Test
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentNullableSyncTests.kt
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
-import io.koraframework.json.common.JsonNullable
+import io.koraframework.json.common.JsonValue
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.validation.common.ViolationException
 import io.koraframework.validation.common.constraint.ValidatorModule
-========
-import ru.tinkoff.kora.aop.symbol.processor.AopSymbolProcessorProvider
-import ru.tinkoff.kora.json.common.JsonValue
-import ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider
-import ru.tinkoff.kora.validation.common.ViolationException
-import ru.tinkoff.kora.validation.common.constraint.ValidatorModule
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentValueSyncTests.kt
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
 
 class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolProcessorTest(), ValidatorModule {
 
@@ -27,7 +19,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: JsonNullable<String>?) { }
+                    open fun test(arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -49,7 +41,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: JsonNullable<String>?) { }
+                    open fun test(arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -71,7 +63,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: JsonNullable<String>?) { }
+                    open fun test(arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -93,7 +85,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: @NonNull JsonNullable<String>?) { }
+                    open fun test(arg: @NonNull JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -141,7 +133,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(arg: @NonNull JsonNullable<String>?) { }
+                    open fun test(arg: @NonNull JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -163,7 +155,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>?) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -173,13 +165,8 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentNullableSyncTests.kt
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.undefined<Any>()) }
-========
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
         assertDoesNotThrow { component.invoke<Any>("test", JsonValue.undefined<Any>()) }
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentValueSyncTests.kt
     }
 
     @Test
@@ -190,7 +177,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>?) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -215,7 +202,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>?) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -225,13 +212,8 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentNullableSyncTests.kt
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.of<String>("1")) }
-========
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
         assertDoesNotThrow { component.invoke<Any>("test", JsonValue.of<String>("1")) }
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentValueSyncTests.kt
     }
 
     @Test
@@ -242,7 +224,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate(failFast = true)
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>?) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -252,13 +234,8 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentNullableSyncTests.kt
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.undefined<Any>()) }
-========
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
         assertDoesNotThrow { component.invoke<Any>("test", JsonValue.undefined<Any>()) }
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentValueSyncTests.kt
     }
 
     @Test
@@ -269,7 +246,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate(failFast = true)
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>?) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -294,7 +271,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
                 @Component
                 open class TestComponent {
                     @Validate(failFast = true)
-                    open fun test(@NotBlank @NotEmpty arg: JsonNullable<String>?) { }
+                    open fun test(@NotBlank @NotEmpty arg: JsonValue<String>?) { }
                 }
                 
                 """.trimIndent()
@@ -304,13 +281,7 @@ class ValidationJsonNullableArgumentValueSyncTests : AbstractValidationSymbolPro
         val validatorClass = loadClass("\$TestComponent__AopProxy")
         assertThat(validatorClass).isNotNull()
 
-<<<<<<<< HEAD:validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentNullableSyncTests.kt
         val component = newObject("\$TestComponent__AopProxy", notBlankStringValidatorFactory(), notEmptyStringValidatorFactory())
-        assertDoesNotThrow { component.invoke<Any>("test", JsonNullable.of<String>("1")) }
-========
-        val component = newObject("\$TestComponent__AopProxy", notBlankStringConstraintFactory(), notEmptyStringConstraintFactory())
         assertDoesNotThrow { component.invoke<Any>("test", JsonValue.of<String>("1")) }
->>>>>>>> 82ba3753b (JsonNullable refactored to JsonValue & JsonNullable & JsonUndefined contracts for Java):validation/validation-symbol-processor/src/test/kotlin/io/koraframework/validation/symbol/processor/ValidationJsonNullableArgumentValueSyncTests.kt
     }
-
 }

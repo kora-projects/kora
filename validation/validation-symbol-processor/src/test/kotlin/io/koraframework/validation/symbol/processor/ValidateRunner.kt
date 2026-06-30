@@ -1,7 +1,6 @@
 package io.koraframework.validation.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
-import org.junit.jupiter.api.Assertions
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.application.graph.TypeRef
 import io.koraframework.ksp.common.symbolProcess
@@ -9,6 +8,7 @@ import io.koraframework.validation.common.Validator
 import io.koraframework.validation.common.constraint.ValidatorModule
 import io.koraframework.validation.symbol.processor.testdata.ValidTaz
 import io.koraframework.validation.symbol.processor.testdata.ValidateSync
+import org.junit.jupiter.api.Assertions
 
 @KspExperimental
 open class ValidateRunner : Assertions(),

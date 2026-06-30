@@ -5,7 +5,9 @@ import com.squareup.kotlinpoet.MemberName
 
 object ValidTypes {
 
+    val jsonValue = ClassName("io.koraframework.json.common", "JsonValue")
     val jsonNullable = ClassName("io.koraframework.json.common", "JsonNullable")
+    val jsonUndefined = ClassName("io.koraframework.json.common", "JsonUndefined")
     val MEMBER_LIST_OF = MemberName("kotlin.collections", "mutableListOf")
 
     val VALID_TYPE = ClassName("io.koraframework.validation.common.annotation", "Valid")

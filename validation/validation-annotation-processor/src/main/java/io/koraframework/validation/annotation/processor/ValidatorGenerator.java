@@ -1,8 +1,8 @@
 package io.koraframework.validation.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -267,19 +267,19 @@ public class ValidatorGenerator {
         final List<VariableElement> elementFields = getFields(element);
         final List<ValidMeta.Field> fields = new ArrayList<>();
         for (VariableElement fieldElement : elementFields) {
-            final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement);
-            final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
-
             final boolean isNotNull = isNotNull(fieldElement);
             final boolean isJsonNullable;
             final TypeMirror targetType;
-            if (fieldElement.asType() instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString())) {
-                targetType = dt.getTypeArguments().get(0);
+            if (fieldElement.asType() instanceof DeclaredType dt && isJsonValueType(dt)) {
+                targetType = dt.getTypeArguments().getFirst();
                 isJsonNullable = true;
             } else {
                 targetType = fieldElement.asType();
                 isJsonNullable = false;
             }
+
+            final List<ValidMeta.Constraint> constraints = getValidatedByConstraints(processingEnv, fieldElement, targetType);
+            final List<ValidMeta.Validated> validateds = getValidated(fieldElement);
 
             if (!constraints.isEmpty() || !validateds.isEmpty() || (isJsonNullable && isNotNull)) {
                 final boolean isNullable = CommonUtils.isNullable(element) || CommonUtils.isNullable(fieldElement);
@@ -304,12 +304,19 @@ public class ValidatorGenerator {
         return new ValidMeta(element, fields);
     }
 
-    private static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, VariableElement field) {
+    private static boolean isJsonValueType(DeclaredType type) {
+        var typeName = type.asElement().toString();
+        return jsonValue.canonicalName().equals(typeName)
+               || jsonNullable.canonicalName().equals(typeName)
+               || jsonUndefined.canonicalName().equals(typeName);
+    }
+
+    private static List<ValidMeta.Constraint> getValidatedByConstraints(ProcessingEnvironment env, VariableElement field, TypeMirror targetType) {
         if (field.asType().getKind() == TypeKind.ERROR) {
             throw new ProcessingErrorException("Type is error in this round", field);
         }
 
-        return ValidUtils.getValidatedByConstraints(env, field.asType(), field.getAnnotationMirrors());
+        return ValidUtils.getValidatedByConstraints(env, targetType, field.getAnnotationMirrors());
     }
 
     private static List<VariableElement> getFields(TypeElement element) {

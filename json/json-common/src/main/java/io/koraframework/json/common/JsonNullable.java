@@ -1,4 +1,4 @@
-package ru.tinkoff.kora.json.common;
+package io.koraframework.json.common;
 
 import org.jspecify.annotations.Nullable;
 

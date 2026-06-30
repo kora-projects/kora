@@ -1,10 +1,10 @@
 package io.koraframework.validation.annotation.processor.testdata;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.validation.common.annotation.NotEmpty;
 import io.koraframework.validation.common.annotation.Pattern;
 import io.koraframework.validation.common.annotation.Range;
 import io.koraframework.validation.common.annotation.Valid;
+import org.jspecify.annotations.Nullable;
 
 import java.time.OffsetDateTime;
 

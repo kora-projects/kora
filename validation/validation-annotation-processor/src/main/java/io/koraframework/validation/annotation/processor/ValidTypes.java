@@ -6,7 +6,9 @@ public final class ValidTypes {
 
     private ValidTypes() {}
 
+    public static final ClassName jsonValue = ClassName.get("io.koraframework.json.common", "JsonValue");
     public static final ClassName jsonNullable = ClassName.get("io.koraframework.json.common", "JsonNullable");
+    public static final ClassName jsonUndefined = ClassName.get("io.koraframework.json.common", "JsonUndefined");
     public static final ClassName violation = ClassName.get("io.koraframework.validation.common", "Violation");
     public static final ClassName violationException = ClassName.get("io.koraframework.validation.common", "ViolationException");
 

@@ -1,11 +1,11 @@
-package ru.tinkoff.kora.json.ksp
+package io.koraframework.json.ksp
 
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import ru.tinkoff.kora.json.common.JsonNullable
-import ru.tinkoff.kora.json.common.JsonValue
-import ru.tinkoff.kora.json.common.JsonWriter
-import ru.tinkoff.kora.json.common.ListJsonWriter
+import io.koraframework.json.common.JsonNullable
+import io.koraframework.json.common.JsonValue
+import io.koraframework.json.common.JsonWriter
+import io.koraframework.json.common.ListJsonWriter
 import tools.jackson.core.JsonGenerator
 import java.sql.Timestamp
 import java.time.Instant
