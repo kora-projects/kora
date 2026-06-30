@@ -16,7 +16,6 @@ import io.undertow.io.IoCallback;
 import io.undertow.io.Sender;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.util.AttachmentKey;
 import io.undertow.util.HeaderMap;
 import io.undertow.util.Headers;
 import io.undertow.util.HttpString;
@@ -30,7 +29,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
 
 final class OpenApiHttpHandler implements HttpHandler {
 
@@ -40,7 +38,6 @@ final class OpenApiHttpHandler implements HttpHandler {
     private final OpenApiHttpServerHandler openApiHandler;
     private final SwaggerUIHttpServerHandler swaggerUIHandler;
     private final RapidocHttpServerHandler rapidocHandler;
-    private final AttachmentKey<ExecutorService> executorServiceAttachmentKey = AttachmentKey.create(ExecutorService.class);
 
     OpenApiHttpHandler(CamundaRestConfig restConfig) {
         this.restConfig = restConfig;
