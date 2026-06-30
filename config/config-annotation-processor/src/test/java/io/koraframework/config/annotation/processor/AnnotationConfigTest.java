@@ -251,11 +251,31 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             """, """
             public interface SuperTestConfig {
               default String value2() {  return "default-value"; }
+
+              String value3();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test1", "value2", "test2")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "test1", "test2"));
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test1", "value2", "test2", "value3", "test3")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "test1", "test2", "test3"));
+    }
+
+    @Test
+    public void testInterfaceNoFieldsWithSuper() {
+        var extractor = this.compileConfig(List.of(), """
+            @io.koraframework.config.common.annotation.ConfigValueExtractor
+            public interface TestConfig extends SuperTestConfig{
+            }
+            """, """
+            public interface SuperTestConfig {
+              default String value2() {  return "default-value"; }
+    
+              String value3();
+            }
+            """);
+
+        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value2", "test2", "value3", "test3")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl",  "test2", "test3"));
     }
 
     @Test
