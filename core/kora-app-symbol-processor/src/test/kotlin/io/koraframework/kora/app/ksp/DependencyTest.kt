@@ -98,6 +98,79 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
 
 
     @Test
+    fun testAllWithOnlyDefault() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface TestInterface
+                class TestClass : TestInterface
+
+                @Root
+                fun root(all: All<TestInterface>) = Any()
+
+                @DefaultComponent
+                fun defaultDependency() = TestClass()
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(2)
+        draw.init()
+    }
+
+    @Test
+    fun testAllWithDefaultAndNonDefault() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface TestInterface {}
+                class TestClass1 : TestInterface
+                class TestClass2 : TestInterface
+
+                @Root
+                fun root1(all: All<TestInterface>) = Any()
+
+                @DefaultComponent
+                fun defaultDependency() = TestClass1()
+
+                fun nonDefaultDependency() = TestClass2()
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(2)
+        draw.init()
+    }
+
+    @Test
+//    @Disabled
+    fun testBugged() {
+        val draw = compile(
+            """
+            @KoraApp
+            interface ExampleApplication {
+                interface TestInterface {}
+                class TestClass1 : TestInterface
+                class TestClass2 : TestInterface
+
+                @Root
+                fun root1(all: All<TestInterface>) = Any()
+
+                @Root
+                fun root2(cl: TestClass1) = Any()
+
+                @DefaultComponent
+                fun defaultDependency() = TestClass1()
+
+                fun nonDefaultDependency() = TestClass2()
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(draw.nodes).hasSize(4)
+        draw.init()
+    }
+
+    @Test
     fun testGraphDependency() {
         val draw = compile(
             """

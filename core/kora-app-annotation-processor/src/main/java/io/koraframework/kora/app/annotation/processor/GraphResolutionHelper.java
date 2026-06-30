@@ -13,7 +13,6 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.function.Predicate;
 
 import static io.koraframework.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType.*;
@@ -79,7 +78,16 @@ public final class GraphResolutionHelper {
             if (!dependencyClaim.tagsMatches(declaration.tag())) {
                 continue;
             }
-            var component = Objects.requireNonNull(resolvedComponents.getByDeclaration(declarationWithIndex));
+            var component = resolvedComponents.getByDeclaration(declarationWithIndex);
+            if (component == null) {
+                if (declaration.isDefault()) {
+                    // that's fine, default component wasn't directly requested by anyone, so we don't need it
+                    continue;
+                } else {
+                    // something went wrong
+                    throw new NullPointerException();
+                }
+            }
             if (ctx.types.isAssignable(declaration.type(), dependencyClaim.type())) {
                 var targetDependency = new ComponentDependency.TargetDependency(dependencyClaim, component);
                 var dependency = switch (claimType) {
