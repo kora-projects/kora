@@ -1,5 +1,6 @@
 package io.koraframework.logging.common.annotation;
 
+import io.koraframework.common.AopPropagate;
 import org.slf4j.event.Level;
 import io.koraframework.common.AopAnnotation;
 
@@ -30,14 +31,14 @@ public @interface Log {
         Level value() default Level.INFO;
     }
 
-    @AopAnnotation
+    @AopPropagate
     @Target(METHOD)
     @Retention(RetentionPolicy.RUNTIME)
     @interface result {
         Level value() default Level.DEBUG;
     }
 
-    @AopAnnotation
+    @AopPropagate
     @Target({PARAMETER, METHOD})
     @Retention(RetentionPolicy.RUNTIME)
     @interface off {}
