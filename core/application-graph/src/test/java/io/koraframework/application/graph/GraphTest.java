@@ -745,7 +745,7 @@ class GraphTest {
         }
 
         @Override
-        public TestObject preRelease(TestObject value) {
+        public TestObject beforeRelease(TestObject value) {
             assertThat(releaseTime).isEqualTo(-1L);
             value.interceptReleaseTime = absoluteTime.getAndIncrement();
             if (this.type == TestObjectFactory.Type.INTERCEPT_RELEASE_ERROR) {

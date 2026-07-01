@@ -66,7 +66,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(database, interceptor.preRelease(database), "FlywayJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(database, interceptor.beforeRelease(database), "FlywayJdbcDatabaseInterceptor should return same reference on release");
         } finally {
             database.release();
         }

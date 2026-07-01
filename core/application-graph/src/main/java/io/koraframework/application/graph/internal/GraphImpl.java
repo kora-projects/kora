@@ -286,7 +286,7 @@ public final class GraphImpl implements InitializedGraph {
             var interceptor = (GraphInterceptor<T>) objects.get(interceptorNode.index);
             this.log.trace("Intercepting release node {} of class {} with node {} of class {}", node.index, object.getClass(), interceptorNode.index, interceptor.getClass());
             try {
-                var intercepted = interceptor.preRelease(object);
+                var intercepted = interceptor.beforeRelease(object);
                 log.trace("Intercepting release node {} of class {} with node {} of class {} complete", node.index, object.getClass(), interceptorNode.index, interceptor.getClass());
                 object = intercepted;
             } catch (Throwable e) {

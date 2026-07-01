@@ -50,7 +50,7 @@ public class LiquibaseJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDa
     }
 
     @Override
-    public JdbcDatabase preRelease(JdbcDatabase value) {
+    public JdbcDatabase beforeRelease(JdbcDatabase value) {
         return value;
     }
 }

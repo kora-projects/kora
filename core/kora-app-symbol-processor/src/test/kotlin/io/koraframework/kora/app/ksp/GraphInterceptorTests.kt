@@ -23,7 +23,7 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
                     class TestInterceptor : GraphInterceptor<TestClass> {
                         override fun afterInit(value: TestClass) = value
 
-                        override fun preRelease(value: TestClass) = value
+                        override fun beforeRelease(value: TestClass) = value
                     }
 
                     @Root
@@ -60,7 +60,7 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
                     class TestInterceptor : GraphInterceptor<TestClass> {
                         override fun afterInit(value: TestClass) = value
 
-                        override fun preRelease(value: TestClass) = value
+                        override fun beforeRelease(value: TestClass) = value
                     }
 
                     @Root
@@ -93,7 +93,7 @@ class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
                     class TestInterceptor : GraphInterceptor<TestRoot> {
                         override fun afterInit(value: TestRoot) = value
 
-                        override fun preRelease(value: TestRoot) = value
+                        override fun beforeRelease(value: TestRoot) = value
                     }
 
                     @Root

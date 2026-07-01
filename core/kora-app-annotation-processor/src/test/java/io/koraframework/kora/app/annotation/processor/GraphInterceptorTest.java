@@ -22,7 +22,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                         return value;
                     }
 
-                    public TestClass preRelease(TestClass value) {
+                    public TestClass beforeRelease(TestClass value) {
                         return value;
                     }
                 }
@@ -72,7 +72,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                             return value;
                         }
 
-                        public TestClass preRelease(TestClass value) {
+                        public TestClass beforeRelease(TestClass value) {
                             return value;
                         }
                     }
@@ -109,7 +109,7 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                         return value;
                     }
 
-                    public TestRoot preRelease(TestRoot value) {
+                    public TestRoot beforeRelease(TestRoot value) {
                         return value;
                     }
                 }

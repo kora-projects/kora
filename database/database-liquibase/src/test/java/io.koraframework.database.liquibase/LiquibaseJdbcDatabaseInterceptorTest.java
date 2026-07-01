@@ -66,7 +66,7 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(database, interceptor.preRelease(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(database, interceptor.beforeRelease(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on release");
         } finally {
             database.release();
         }
