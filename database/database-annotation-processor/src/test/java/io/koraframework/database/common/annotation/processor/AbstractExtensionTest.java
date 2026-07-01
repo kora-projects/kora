@@ -24,7 +24,7 @@ public class AbstractExtensionTest extends AbstractAnnotationProcessorTest {
     @Override
     protected String commonImports() {
         return """
-            import io.koraframework.common.KoraApp;
+            import io.koraframework.common.annotation.KoraApp;
             import io.koraframework.common.annotation.Root;
             import org.jspecify.annotations.Nullable;
 

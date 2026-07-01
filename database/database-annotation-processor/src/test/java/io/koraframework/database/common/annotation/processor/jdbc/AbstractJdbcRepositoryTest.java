@@ -16,7 +16,7 @@ public abstract class AbstractJdbcRepositoryTest extends AbstractRepositoryTest 
             import io.koraframework.database.jdbc.*;
             import io.koraframework.database.jdbc.mapper.result.*;
             import io.koraframework.database.jdbc.mapper.parameter.*;
-            import io.koraframework.common.Mapping;
+            import io.koraframework.common.annotation.Mapping;
             import java.util.concurrent.CompletableFuture;
             import java.util.concurrent.CompletionStage;
 

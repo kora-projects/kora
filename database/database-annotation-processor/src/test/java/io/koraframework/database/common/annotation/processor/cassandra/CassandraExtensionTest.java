@@ -29,7 +29,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     @Test
     void testEntityRowMapper() {
         compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp extends io.koraframework.database.cassandra.CassandraModule{
               @Root
               default String root(CassandraRowMapper<TestRecord> r) {return "";}
@@ -49,7 +49,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testEntityListResultSetMapper() throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
         compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp extends io.koraframework.database.cassandra.CassandraModule {
             
               @Root
@@ -88,7 +88,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testEntitySingleResultSetMapper() {
         compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp extends io.koraframework.database.cassandra.CassandraModule {
               @Root
               default String root(CassandraResultSetMapper<TestRecord> r) {return "";}
@@ -108,7 +108,7 @@ public class CassandraExtensionTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testListAsyncResultSetMapper() {
         compile(List.of(new KoraAppProcessor(), new CassandraEntityAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp extends io.koraframework.database.cassandra.CassandraModule {
               @Root
               default String root(CassandraAsyncResultSetMapper<java.util.List<TestRecord>> r) {return "";}

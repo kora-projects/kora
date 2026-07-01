@@ -13,8 +13,8 @@ public class AbstractCacheAnnotationProcessorTests extends AbstractAnnotationPro
                    import io.koraframework.json.common.JsonNullable;
                    import org.jspecify.annotations.NonNull;
                    import org.jspecify.annotations.Nullable;
-                   import io.koraframework.common.KoraApp;
-                   import io.koraframework.common.Component;
+                   import io.koraframework.common.annotation.KoraApp;
+                   import io.koraframework.common.annotation.Component;
                    import io.koraframework.common.annotation.Root;
                    import io.koraframework.cache.annotation.Cache;
                    import io.koraframework.cache.caffeine.CaffeineCache;

@@ -18,11 +18,11 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                 class TestRoot {}
                 class TestClass {}
                 class TestInterceptor implements GraphInterceptor<TestClass> {
-                    public TestClass init(TestClass value) {
+                    public TestClass afterInit(TestClass value) {
                         return value;
                     }
 
-                    public TestClass release(TestClass value) {
+                    public TestClass preRelease(TestClass value) {
                         return value;
                     }
                 }
@@ -68,11 +68,11 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
                     }
                 
                     class TestInterceptor implements GraphInterceptor<TestClass> {
-                        public TestClass init(TestClass value) {
+                        public TestClass afterInit(TestClass value) {
                             return value;
                         }
 
-                        public TestClass release(TestClass value) {
+                        public TestClass preRelease(TestClass value) {
                             return value;
                         }
                     }
@@ -105,11 +105,11 @@ public class GraphInterceptorTest extends AbstractKoraAppTest {
             public interface ExampleApplication {
                 class TestRoot {}
                 class TestInterceptor implements GraphInterceptor<TestRoot> {
-                    public TestRoot init(TestRoot value) {
+                    public TestRoot afterInit(TestRoot value) {
                         return value;
                     }
 
-                    public TestRoot release(TestRoot value) {
+                    public TestRoot preRelease(TestRoot value) {
                         return value;
                     }
                 }

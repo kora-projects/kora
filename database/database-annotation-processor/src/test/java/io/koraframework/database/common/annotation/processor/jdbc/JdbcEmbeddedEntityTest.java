@@ -63,7 +63,7 @@ public class JdbcEmbeddedEntityTest extends AbstractJdbcEntityTest {
             "public record EmbeddedRecord(int f1, java.time.OffsetDateTime f2) {}",
             "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord(@Embedded(\"f1_\") EmbeddedRecord f1) {}",
             """
-                @io.koraframework.common.Component
+                @io.koraframework.common.annotation.Component
                 public final class TimeJdbcResultColumnMapper implements io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper<java.time.OffsetDateTime> {
                     @Override
                     public java.time.OffsetDateTime apply(java.sql.ResultSet row, int index) throws java.sql.SQLException {

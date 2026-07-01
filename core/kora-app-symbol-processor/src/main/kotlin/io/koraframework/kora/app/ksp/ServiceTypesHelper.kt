@@ -16,7 +16,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
     private val interceptorClassDeclaration = resolver.getClassDeclarationByName(resolver.getKSNameFromString(CommonClassNames.graphInterceptor.canonicalName))!!
     private val interceptorType = interceptorClassDeclaration.asStarProjectedType()
     private val interceptorInitFunction = interceptorClassDeclaration.getDeclaredFunctions()
-        .filter { it.simpleName.asString() == "init" && it.parameters.size == 1 }
+        .filter { it.simpleName.asString() == "afterInit" && it.parameters.size == 1 }
         .first()
 
 
@@ -100,7 +100,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
 
         return if (maybeInterceptor.declaration is KSClassDeclaration) {
             (maybeInterceptor.declaration as KSClassDeclaration).getDeclaredFunctions()
-                .filter { f -> f.simpleName.asString() == "init" && f.parameters.size == 1 && f.returnType != null && !f.returnType!!.isVoid() }
+                .filter { f -> f.simpleName.asString() == "afterInit" && f.parameters.size == 1 && f.returnType != null && !f.returnType!!.isVoid() }
                 .filter { f -> f.parameters.first().type.toTypeName() == f.returnType!!.toTypeName() }
                 .map { it.returnType!!.resolve() }
                 .firstOrNull() ?: throw IllegalArgumentException()

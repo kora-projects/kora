@@ -33,7 +33,7 @@ public class NativeTypesTest extends AbstractJsonAnnotationProcessorTest {
     public void testRecordNativeTypeReaderFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()),
             """
-                @io.koraframework.common.KoraApp
+                @io.koraframework.common.annotation.KoraApp
                 public interface TestApp {
                 
                   record TestRecord(java.net.URI value) { }
@@ -49,7 +49,7 @@ public class NativeTypesTest extends AbstractJsonAnnotationProcessorTest {
     public void testRecordNativeTypeWriterFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()),
             """
-                @io.koraframework.common.KoraApp
+                @io.koraframework.common.annotation.KoraApp
                 public interface TestApp {
                 
                   record TestRecord(java.net.URI value) { }

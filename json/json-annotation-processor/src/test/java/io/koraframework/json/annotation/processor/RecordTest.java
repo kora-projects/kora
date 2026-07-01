@@ -25,7 +25,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testAnnotationProcessedReaderFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
               @Json
               record TestRecord(int value){}
@@ -42,7 +42,7 @@ public class RecordTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testAnnotationProcessedWriterFromExtension() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
               @Json
               record TestRecord(int value){}

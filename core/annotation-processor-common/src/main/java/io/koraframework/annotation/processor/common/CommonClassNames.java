@@ -25,20 +25,20 @@ public class CommonClassNames {
     public static final ClassName flux = ClassName.get("reactor.core.publisher", "Flux");
 
     public static final ClassName root = ClassName.get("io.koraframework.common.annotation", "Root");
-    public static final ClassName aopAnnotation = ClassName.get("io.koraframework.common", "AopAnnotation");
-    public static final ClassName aopPropagate = ClassName.get("io.koraframework.common", "AopPropagate");
-    public static final ClassName aopProxy = ClassName.get("io.koraframework.common", "AopProxy");
-    public static final ClassName mapping = ClassName.get("io.koraframework.common", "Mapping");
-    public static final ClassName mappings = ClassName.get("io.koraframework.common", "Mapping", "Mappings");
-    public static final ClassName namingStrategy = ClassName.get("io.koraframework.common", "NamingStrategy");
-    public static final ClassName tag = ClassName.get("io.koraframework.common", "Tag");
-    public static final ClassName tagAny = ClassName.get("io.koraframework.common", "Tag", "Any");
+    public static final ClassName aopAnnotation = ClassName.get("io.koraframework.common.annotation", "AopAnnotation");
+    public static final ClassName aopPropagate = ClassName.get("io.koraframework.common.annotation", "AopPropagate");
+    public static final ClassName aopProxy = ClassName.get("io.koraframework.common.annotation", "AopProxy");
+    public static final ClassName mapping = ClassName.get("io.koraframework.common.annotation", "Mapping");
+    public static final ClassName mappings = ClassName.get("io.koraframework.common.annotation", "Mapping", "Mappings");
+    public static final ClassName namingStrategy = ClassName.get("io.koraframework.common.annotation", "NamingStrategy");
+    public static final ClassName tag = ClassName.get("io.koraframework.common.annotation", "Tag");
+    public static final ClassName tagAny = ClassName.get("io.koraframework.common.annotation", "Tag", "Any");
     public static final ClassName nameConverter = ClassName.get("io.koraframework.common.naming", "NameConverter");
-    public static final ClassName koraApp = ClassName.get("io.koraframework.common", "KoraApp");
-    public static final ClassName koraSubmodule = ClassName.get("io.koraframework.common", "KoraSubmodule");
-    public static final ClassName module = ClassName.get("io.koraframework.common", "Module");
-    public static final ClassName component = ClassName.get("io.koraframework.common", "Component");
-    public static final ClassName defaultComponent = ClassName.get("io.koraframework.common", "DefaultComponent");
+    public static final ClassName koraApp = ClassName.get("io.koraframework.common.annotation", "KoraApp");
+    public static final ClassName koraSubmodule = ClassName.get("io.koraframework.common.annotation", "KoraSubmodule");
+    public static final ClassName module = ClassName.get("io.koraframework.common.annotation", "Module");
+    public static final ClassName component = ClassName.get("io.koraframework.common.annotation", "Component");
+    public static final ClassName defaultComponent = ClassName.get("io.koraframework.common.annotation", "DefaultComponent");
     public static final ClassName conditional = ClassName.get("io.koraframework.common.annotation", "Conditional");
 
     public static final ClassName node = ClassName.get("io.koraframework.application.graph", "Node");

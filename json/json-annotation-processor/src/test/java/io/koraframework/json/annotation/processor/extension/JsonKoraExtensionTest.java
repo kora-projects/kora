@@ -16,7 +16,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testReaderFromExtensionNotFoundForInterface() {
         compile(List.of(new KoraAppProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
               interface TestInterface {}
             
@@ -36,7 +36,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testReaderFoundForAnnotatedRecord() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
               @io.koraframework.json.common.annotation.Json
               record TestRecord() {}
@@ -53,7 +53,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testWriterFromExtensionNotFoundForInterface() {
         compile(List.of(new KoraAppProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
               interface TestInterface {}
             
@@ -71,7 +71,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testWriterFoundForAnnotatedRecord() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
               @io.koraframework.json.common.annotation.Json
               record TestRecord() {}
@@ -88,7 +88,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testReaderFromExtensionGeneratedForSealedInterface() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
             
               @JsonDiscriminatorField("type")
@@ -115,7 +115,7 @@ class JsonKoraExtensionTest extends AbstractJsonAnnotationProcessorTest {
     @Test
     public void testWriterFromExtensionGeneratedForSealedInterface() {
         compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
             
               @JsonDiscriminatorField("type")

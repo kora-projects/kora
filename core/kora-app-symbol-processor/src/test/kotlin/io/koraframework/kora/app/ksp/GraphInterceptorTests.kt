@@ -1,11 +1,10 @@
 package io.koraframework.kora.app.ksp
 
+import io.koraframework.application.graph.internal.NodeImpl
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
-import io.koraframework.application.graph.internal.NodeImpl
-import kotlin.collections.get
 
-class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
+class GraphInterceptorTests : AbstractKoraAppProcessorTest() {
 
     @Test
     fun interceptor() {
@@ -22,9 +21,9 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
                     class TestClass
                     
                     class TestInterceptor : GraphInterceptor<TestClass> {
-                        override fun init(value: TestClass) = value
+                        override fun afterInit(value: TestClass) = value
 
-                        override fun release(value: TestClass) = value
+                        override fun preRelease(value: TestClass) = value
                     }
 
                     @Root
@@ -59,9 +58,9 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
                     }
                     
                     class TestInterceptor : GraphInterceptor<TestClass> {
-                        override fun init(value: TestClass) = value
+                        override fun afterInit(value: TestClass) = value
 
-                        override fun release(value: TestClass) = value
+                        override fun preRelease(value: TestClass) = value
                     }
 
                     @Root
@@ -92,9 +91,9 @@ class GraphInterceptorTests :AbstractKoraAppProcessorTest() {
                     class TestRoot 
                     
                     class TestInterceptor : GraphInterceptor<TestRoot> {
-                        override fun init(value: TestRoot) = value
+                        override fun afterInit(value: TestRoot) = value
 
-                        override fun release(value: TestRoot) = value
+                        override fun preRelease(value: TestRoot) = value
                     }
 
                     @Root

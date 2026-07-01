@@ -23,7 +23,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
                 import io.koraframework.database.jdbc.*;
                 import io.koraframework.database.jdbc.mapper.result.*;
                 import io.koraframework.database.jdbc.mapper.parameter.*;
-                import io.koraframework.common.Mapping;
+                import io.koraframework.common.annotation.Mapping;
                 import java.sql.*;
                 """;
     }
@@ -74,7 +74,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
     @Test
     public void testRowMapperWithTaggedField() {
         compile(List.of(new KoraAppProcessor(), new JdbcEntityAnnotationProcessor()), """
-            import io.koraframework.common.annotation.Tag;@io.koraframework.common.KoraApp
+            import io.koraframework.common.annotation.Tag;@io.koraframework.common.annotation.KoraApp
             public interface TestApp {
                 @Tag(TestRecord.class)
                 default io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper<String> taggedColumnMapper() {
