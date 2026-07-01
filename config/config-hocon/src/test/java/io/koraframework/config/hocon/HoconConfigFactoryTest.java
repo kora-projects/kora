@@ -1,14 +1,17 @@
 package io.koraframework.config.hocon;
 
 import com.typesafe.config.ConfigFactory;
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
+import com.typesafe.config.ConfigParseOptions;
 import io.koraframework.config.common.ConfigValue;
+import io.koraframework.config.common.origin.ContainerConfigOrigin;
+import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
+import org.junit.jupiter.api.Test;
 
-import java.math.BigDecimal;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.Comparator;
 import java.util.List;
-import java.util.function.Function;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -51,5 +54,152 @@ class HoconConfigFactoryTest {
         assertThat(config.get("testArray")).isInstanceOf(ConfigValue.ArrayValue.class)
             .extracting(v -> v.asArray().value().stream().map(ConfigValue::value).toList())
             .isEqualTo(List.of(1, 2, 3));
+    }
+
+    @Test
+    void testTrackingIncluderRecordsIncludedFile() throws IOException {
+        var tempDir = Files.createTempDirectory("hocon-test");
+        try {
+            var overrideFile = tempDir.resolve("override.conf");
+            Files.writeString(overrideFile, """
+                database.url = "jdbc:postgresql://prod:5432/db"
+                """);
+
+            var mainFile = tempDir.resolve("application.conf");
+            Files.writeString(mainFile, """
+                include file("%s")
+                database.username = "user"
+                """.formatted(overrideFile.toAbsolutePath()));
+
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
+
+            assertThat(includer.getIncludedFiles()).hasSize(1);
+            assertThat(includer.getIncludedFiles()).contains(overrideFile.toAbsolutePath());
+        } finally {
+            Files.walk(tempDir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete());
+        }
+    }
+
+    @Test
+    void testTrackingIncluderRecordsNestedIncludes() throws IOException {
+        var tempDir = Files.createTempDirectory("hocon-test");
+        try {
+            var level2File = tempDir.resolve("level2.conf");
+            Files.writeString(level2File, """
+                database.pool = 10
+                """);
+
+            var level1File = tempDir.resolve("level1.conf");
+            Files.writeString(level1File, """
+                include file("%s")
+                database.url = "jdbc:postgresql://prod:5432/db"
+                """.formatted(level2File.toAbsolutePath()));
+
+            var mainFile = tempDir.resolve("application.conf");
+            Files.writeString(mainFile, """
+                include file("%s")
+                database.username = "user"
+                """.formatted(level1File.toAbsolutePath()));
+
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
+
+            assertThat(includer.getIncludedFiles()).hasSize(2);
+            assertThat(includer.getIncludedFiles()).contains(level1File.toAbsolutePath());
+            assertThat(includer.getIncludedFiles()).contains(level2File.toAbsolutePath());
+        } finally {
+            Files.walk(tempDir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete());
+        }
+    }
+
+    @Test
+    void testTrackingIncluderRecordsHeuristicInclude() throws IOException {
+        var tempDir = Files.createTempDirectory("hocon-test");
+        try {
+            var overrideFile = tempDir.resolve("override.conf");
+            Files.writeString(overrideFile, """
+                database.url = "jdbc:postgresql://prod:5432/db"
+                """);
+
+            var mainFile = tempDir.resolve("application.conf");
+            Files.writeString(mainFile, """
+                include "override.conf"
+                database.username = "user"
+                """);
+
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
+
+            assertThat(includer.getIncludedFiles()).hasSize(1);
+            assertThat(includer.getIncludedFiles()).contains(overrideFile.toAbsolutePath());
+        } finally {
+            Files.walk(tempDir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete());
+        }
+    }
+
+    @Test
+    void testTrackingIncluderIgnoresNonExistentOptionalInclude() throws IOException {
+        var tempDir = Files.createTempDirectory("hocon-test");
+        try {
+            var mainFile = tempDir.resolve("application.conf");
+            Files.writeString(mainFile, """
+                include file("%s")
+                database.username = "user"
+                """.formatted(tempDir.resolve("nonexistent.conf").toAbsolutePath()));
+
+            var includer = new TrackingConfigIncluder();
+            var options = ConfigParseOptions.defaults().setIncluder(includer);
+            ConfigFactory.parseFile(mainFile.toFile(), options);
+
+            // Non-existent files are filtered out by TrackingConfigIncluder
+            assertThat(includer.getIncludedFiles()).isEmpty();
+        } finally {
+            Files.walk(tempDir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete());
+        }
+    }
+
+    @Test
+    void resourceOriginTracksFileIncludes() throws Exception {
+        var tempDir = Files.createTempDirectory("hocon-test");
+        try {
+            var overrideFile = tempDir.resolve("override.conf").toAbsolutePath();
+            Files.writeString(overrideFile, """
+                database.pool = 20
+                """);
+
+            var mainFile = tempDir.resolve("application.conf");
+            Files.writeString(mainFile, """
+                include file("%s")
+                database.username = "user"
+                """.formatted(overrideFile));
+
+            // application config loaded as a resource (e.g. packaged inside a jar),
+            // pulling in an external file via include file("...") (e.g. a k8s ConfigMap override)
+            var origin = HoconConfigFactory.resourceOrigin(mainFile.toUri().toURL());
+
+            assertThat(origin).isInstanceOf(ContainerConfigOrigin.class);
+            var includedFilePaths = ((ContainerConfigOrigin) origin).origins().stream()
+                .filter(o -> o instanceof FileConfigOrigin)
+                .map(o -> ((FileConfigOrigin) o).path())
+                .toList();
+
+            assertThat(includedFilePaths).contains(overrideFile);
+        } finally {
+            Files.walk(tempDir)
+                .sorted(Comparator.reverseOrder())
+                .forEach(p -> p.toFile().delete());
+        }
     }
 }
