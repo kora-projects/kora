@@ -4,7 +4,7 @@ import org.apache.kafka.common.serialization.Deserializer
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import io.koraframework.application.graph.ValueOf
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.kafka.common.consumer.ConsumerAwareRebalanceListener
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryFactory

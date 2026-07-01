@@ -1,6 +1,6 @@
 package io.koraframework.http.server.undertow;
 
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.undertow.Undertow;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;

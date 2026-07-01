@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
-import io.koraframework.common.util.Either;
+import io.koraframework.common.Either;
 import io.koraframework.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
 import io.koraframework.kafka.common.consumer.containers.KafkaAssignConsumerContainer;
 import io.koraframework.kafka.common.consumer.telemetry.*;

@@ -1,9 +1,9 @@
 dependencies {
-    implementation project(':kora-app-annotation-processor')
+    implementation project(":core:kora-app-annotation-processor")
 
     testImplementation libs.mapstruct
     testImplementation libs.mapstruct.processor
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation libs.jakarta.inject.api
 }
 

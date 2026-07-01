@@ -12,8 +12,8 @@ import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineM
 import io.koraframework.camunda.engine.bpmn.telemetry.impl.DefaultCamundaEngineTelemetryFactory;
 import io.koraframework.camunda.engine.bpmn.transaction.CamundaTransactionManager;
 import io.koraframework.camunda.engine.bpmn.transaction.JdbcCamundaTransactionManager;
-import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.telemetry.Observation;

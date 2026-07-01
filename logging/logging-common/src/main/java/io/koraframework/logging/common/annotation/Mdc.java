@@ -1,6 +1,6 @@
 package io.koraframework.logging.common.annotation;
 
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 
 import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;

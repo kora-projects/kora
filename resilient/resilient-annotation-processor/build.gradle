@@ -1,13 +1,13 @@
 dependencies {
-    implementation project(":annotation-processor-common")
+    implementation project(":core:annotation-processor-common")
     implementation project(":aop:aop-annotation-processor")
 
     implementation libs.javapoet
 
-    testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation project(":annotation-processor-common")
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
+    testImplementation project(":core:annotation-processor-common")
     testImplementation project(":aop:aop-annotation-processor")
-    testImplementation project(":kora-app-annotation-processor")
+    testImplementation project(":core:kora-app-annotation-processor")
     testImplementation project(":config:config-annotation-processor")
     testImplementation project(":config:config-hocon")
     testImplementation project(":internal:test-logging")

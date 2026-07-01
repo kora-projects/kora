@@ -1,5 +1,6 @@
 package io.koraframework.http.client.annotation.processor;
 
+import io.koraframework.common.Either;
 import org.junit.jupiter.api.Test;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
 
@@ -242,12 +243,12 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
     @Test
     public void testAbstractGenericResponseMapper() {
         compileClient(List.of(), """
-            @HttpClient
+            import io.koraframework.common.Either;@HttpClient
             public interface TestClient {
               @ResponseCodeMapper(code = 200, mapper = Test200Mapper.class)
               @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper.class)
               @HttpRoute(method = "GET", path = "/test")
-              io.koraframework.common.util.Either<String, Throwable> test();
+              Either<String, Throwable> test();
             }
             """, """
             public final class Test200Mapper extends AbstractTestMapper<String, Throwable> {
@@ -262,7 +263,7 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
               }
             }
             """, """
-            public abstract class AbstractTestMapper<T, E> implements HttpClientResponseMapper<io.koraframework.common.util.Either<T, E>> {
+            import io.koraframework.common.Either;public abstract class AbstractTestMapper<T, E> implements HttpClientResponseMapper<Either<T, E>> {
             
               private final T value;
             
@@ -270,32 +271,32 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
                 this.value = value;
               }
             
-              public io.koraframework.common.util.Either<T, E> apply(HttpClientResponse rs) {
-                  return io.koraframework.common.util.Either.left(value);
+              public Either<T, E> apply(HttpClientResponse rs) {
+                  return Either.left(value);
               }
             }
             """);
 
         reset(httpClient);
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
-        assertThat(client.<io.koraframework.common.util.Either<String, Throwable>>invoke("test"))
-            .isEqualTo(io.koraframework.common.util.Either.left("200-string-from-mapper"));
+        assertThat(client.<Either<String, Throwable>>invoke("test"))
+            .isEqualTo(Either.left("200-string-from-mapper"));
 
         reset(httpClient);
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(404));
-        assertThat(client.<io.koraframework.common.util.Either<String, Throwable>>invoke("test"))
-            .isEqualTo(io.koraframework.common.util.Either.left("default-string-from-mapper"));
+        assertThat(client.<Either<String, Throwable>>invoke("test"))
+            .isEqualTo(Either.left("default-string-from-mapper"));
     }
 
     @Test
     public void testComplexAbstractGenericResponseMapper() {
         compileClient(List.of(), """
-            @HttpClient
+            import io.koraframework.common.Either;@HttpClient
             public interface TestClient {
               @ResponseCodeMapper(code = 200, mapper = Test200Mapper.class)
               @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper.class)
               @HttpRoute(method = "GET", path = "/test")
-              io.koraframework.common.util.Either<String, Throwable> test();
+              Either<String, Throwable> test();
             }
             """, """
             public final class Test200Mapper extends AbstractChildTestMapper<String, Integer, Throwable> {
@@ -317,7 +318,7 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
               }
             }
             """, """
-            public abstract class AbstractParentTestMapper<T, E, SHIFT, STATIC> implements HttpClientResponseMapper<io.koraframework.common.util.Either<T, E>> {
+            import io.koraframework.common.Either;public abstract class AbstractParentTestMapper<T, E, SHIFT, STATIC> implements HttpClientResponseMapper<Either<T, E>> {
             
               private final T value;
             
@@ -325,32 +326,32 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
                 this.value = value;
               }
             
-              public io.koraframework.common.util.Either<T, E> apply(HttpClientResponse rs) {
-                  return io.koraframework.common.util.Either.left(value);
+              public Either<T, E> apply(HttpClientResponse rs) {
+                  return Either.left(value);
               }
             }
             """);
 
         reset(httpClient);
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
-        assertThat(client.<io.koraframework.common.util.Either<String, Throwable>>invoke("test"))
-            .isEqualTo(io.koraframework.common.util.Either.left("200-string-from-mapper"));
+        assertThat(client.<Either<String, Throwable>>invoke("test"))
+            .isEqualTo(Either.left("200-string-from-mapper"));
 
         reset(httpClient);
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(404));
-        assertThat(client.<io.koraframework.common.util.Either<String, Throwable>>invoke("test"))
-            .isEqualTo(io.koraframework.common.util.Either.left("default-string-from-mapper"));
+        assertThat(client.<Either<String, Throwable>>invoke("test"))
+            .isEqualTo(Either.left("default-string-from-mapper"));
     }
 
     @Test
     public void testHalfStaticAbstractGenericResponseMapper() {
         compileClient(List.of(), """
-            @HttpClient
+            import io.koraframework.common.Either;@HttpClient
             public interface TestClient {
               @ResponseCodeMapper(code = 200, mapper = Test200Mapper.class)
               @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper.class)
               @HttpRoute(method = "GET", path = "/test")
-              io.koraframework.common.util.Either<String, Throwable> test();
+              Either<String, Throwable> test();
             }
             """, """
             public final class Test200Mapper extends AbstractTestMapper<String> {
@@ -365,7 +366,7 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
               }
             }
             """, """
-            public abstract class AbstractTestMapper<T> implements HttpClientResponseMapper<io.koraframework.common.util.Either<T, Throwable>> {
+            import io.koraframework.common.Either;public abstract class AbstractTestMapper<T> implements HttpClientResponseMapper<Either<T, Throwable>> {
             
               private final T value;
             
@@ -373,20 +374,20 @@ public class ResponseCodeMapperTest extends AbstractHttpClientTest {
                 this.value = value;
               }
             
-              public io.koraframework.common.util.Either<T, Throwable> apply(HttpClientResponse rs) {
-                  return io.koraframework.common.util.Either.left(value);
+              public Either<T, Throwable> apply(HttpClientResponse rs) {
+                  return Either.left(value);
               }
             }
             """);
 
         reset(httpClient);
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(200));
-        assertThat(client.<io.koraframework.common.util.Either<String, Throwable>>invoke("test"))
-            .isEqualTo(io.koraframework.common.util.Either.left("200-string-from-mapper"));
+        assertThat(client.<Either<String, Throwable>>invoke("test"))
+            .isEqualTo(Either.left("200-string-from-mapper"));
 
         reset(httpClient);
         onRequest("GET", "http://test-url:8080/test", rs -> rs.withCode(404));
-        assertThat(client.<io.koraframework.common.util.Either<String, Throwable>>invoke("test"))
-            .isEqualTo(io.koraframework.common.util.Either.left("default-string-from-mapper"));
+        assertThat(client.<Either<String, Throwable>>invoke("test"))
+            .isEqualTo(Either.left("default-string-from-mapper"));
     }
 }

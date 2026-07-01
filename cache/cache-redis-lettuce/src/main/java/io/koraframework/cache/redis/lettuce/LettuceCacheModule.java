@@ -1,7 +1,7 @@
 package io.koraframework.cache.redis.lettuce;
 
 import io.koraframework.cache.redis.RedisCacheClient;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.redis.lettuce.LettuceConfig;
 import io.koraframework.redis.lettuce.LettuceFactory;
 import io.koraframework.redis.lettuce.LettuceModule;

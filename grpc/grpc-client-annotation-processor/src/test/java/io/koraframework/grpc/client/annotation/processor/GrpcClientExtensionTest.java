@@ -15,7 +15,7 @@ class GrpcClientExtensionTest extends AbstractAnnotationProcessorTest {
     protected void compile(@Language("java") String... sources) throws Exception {
         var patchedSources = Arrays.copyOf(sources, sources.length + 1);
         patchedSources[sources.length] = """
-            @io.koraframework.common.Module
+            @io.koraframework.common.annotation.Module
             public interface ConfigModule extends io.koraframework.grpc.client.GrpcClientModule, io.koraframework.config.common.extractor.ConfigValueExtractorModule {
               default io.koraframework.config.common.Config config() {
                 return io.koraframework.config.common.factory.MapConfigFactory.fromMap(java.util.Map.of(

@@ -1,7 +1,7 @@
 package io.koraframework.resilient.annotation.processor.aop.testdata;
 
 import com.typesafe.config.ConfigFactory;
-import io.koraframework.common.KoraApp;
+import io.koraframework.common.annotation.KoraApp;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractorModule;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;

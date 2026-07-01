@@ -57,7 +57,7 @@ class SchedulingSymbolProcessor(val env: SymbolProcessorEnvironment) : BaseSymbo
         val packageName = type.packageName.asString()
         val builder = TypeSpec.interfaceBuilder("\$${typeName}_SchedulingModule")
             .generated(SchedulingSymbolProcessor::class)
-            .addAnnotation(ClassName("io.koraframework.common", "Module"))
+            .addAnnotation(ClassName("io.koraframework.common.annotation", "Module"))
 
         for (function in functions) {
             val trigger = this.parseSchedulerType(function)

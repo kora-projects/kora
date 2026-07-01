@@ -1,6 +1,6 @@
 package io.koraframework.cache;
 
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 
 /**
  * Represent mapping interface that is used to map method arguments to cache key

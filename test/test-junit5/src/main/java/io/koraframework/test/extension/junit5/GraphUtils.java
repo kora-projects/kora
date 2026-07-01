@@ -4,7 +4,7 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.Node;
 import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 
 import java.lang.reflect.GenericArrayType;
 import java.lang.reflect.ParameterizedType;

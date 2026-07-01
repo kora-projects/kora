@@ -6,7 +6,7 @@ dependencies {
     implementation project(":config:config-common")
     implementation libs.fasterxml.uuidgenerator
 
-    api project(":common")
+    api project(":core:common")
     api(libs.camunda7.engine) {
         exclude group: 'org.springframework', module: 'spring-beans'
         exclude group: 'org.apache.tomcat', module: 'catalina'

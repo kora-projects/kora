@@ -1,6 +1,6 @@
 package io.koraframework.database.jdbc;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.database.common.DatabaseModule;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;

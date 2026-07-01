@@ -1,6 +1,6 @@
 package io.koraframework.resilient.retry.annotation;
 
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 import io.koraframework.resilient.retry.RetryConfig;
 import io.koraframework.resilient.retry.RetryExhaustedException;
 

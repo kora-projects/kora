@@ -3,7 +3,7 @@ package io.koraframework.database.common.annotation.processor.jdbc;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.common.UpdateCount;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
 
@@ -509,7 +509,7 @@ public class JdbcResultsTest extends AbstractJdbcRepositoryTest {
     public void testTagOnResultMapper() throws SQLException {
         var mapper = Mockito.mock(JdbcResultSetMapper.class);
         var repository = compileJdbc(List.of(mapper), """
-            import io.koraframework.common.Tag;@Repository
+            import io.koraframework.common.annotation.Tag;@Repository
             public interface TestRepository extends JdbcRepository {
                 @Tag(TestRepository.class)
                 @Query("SELECT count(*) FROM test")

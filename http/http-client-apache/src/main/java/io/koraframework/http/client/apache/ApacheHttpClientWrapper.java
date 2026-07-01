@@ -2,7 +2,7 @@ package io.koraframework.http.client.apache;
 
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.client.common.HttpClientConfig;
 import org.apache.hc.client5.http.auth.AuthScope;

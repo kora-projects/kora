@@ -1,7 +1,7 @@
 package io.koraframework.aop.ksp
 
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
-import io.koraframework.common.Component
+import io.koraframework.common.annotation.Component
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import org.assertj.core.api.Assertions
 import org.assertj.core.api.Assertions.assertThat

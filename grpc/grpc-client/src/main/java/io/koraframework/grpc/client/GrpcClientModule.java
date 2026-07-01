@@ -13,8 +13,8 @@ import io.koraframework.grpc.client.config.DefaultServiceConfigConfigValueExtrac
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientLoggerFactory;
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientMetricsFactory;
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientTelemetryFactory;
-import io.koraframework.common.DefaultComponent;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.annotation.DefaultComponent;
+import io.koraframework.common.Configurer;
 
 public interface GrpcClientModule {
 

@@ -2,7 +2,7 @@ package io.koraframework.resilient.annotation.processor.aop.testdata;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.common.Component;
+import io.koraframework.common.annotation.Component;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.resilient.retry.annotation.Retry;
 

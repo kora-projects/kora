@@ -1,14 +1,14 @@
 dependencies {
-    implementation project(':annotation-processor-common')
-    implementation project(':kora-app-annotation-processor')
+    implementation project(":core:annotation-processor-common")
+    implementation project(":core:kora-app-annotation-processor")
 
     testImplementation project(':kafka:kafka')
     testImplementation project(':config:config-common')
 
     testImplementation project(':logging:logging-common')
     testImplementation project(':aop:aop-annotation-processor')
-    testImplementation project(':logging:logging-aop:logging-aop-annotation-processor')
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation project(':logging:logging-annotation-processor')
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

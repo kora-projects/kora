@@ -1,0 +1,140 @@
+plugins {
+    id 'java-platform'
+    id 'maven-publish'
+    id 'signing'
+}
+
+dependencies {
+    constraints {
+        def addModule = { Project p ->
+            api(p)
+        }
+
+        var added = new HashSet<String>()
+        project.rootProject.subprojects { Project p ->
+            if (p.parent.name == 'internal') return
+            if (!p.subprojects.isEmpty()) return
+            if (added.add(p.name)) {
+                addModule(p)
+            }
+        }
+    }
+}
+
+
+def modifyPom(Node pom) {
+    pom.appendNode('properties').appendNode('java.version', '25')
+    pom.appendNode('test').replaceNode {
+        delegate.build {
+            plugins {
+                plugin {
+                    groupId "org.apache.maven.plugins"
+                    artifactId "maven-compiler-plugin"
+                    delegate.version libs.versions.maven.compiler.plugin.get()
+                    configuration {
+                        release '${java.version}'
+                        source '${java.version}'
+                        target '${java.version}'
+                        compilerArgs {
+                            arg "-parameters"
+                        }
+                        annotationProcessorPaths {
+                            path {
+                                groupId "io.koraframework"
+                                artifactId "annotation-processors"
+                                delegate.version project.version
+                            }
+                        }
+                    }
+                }
+                plugin {
+                    groupId "org.apache.maven.plugins"
+                    artifactId "maven-surefire-plugin"
+                    delegate.version libs.versions.maven.surefire.plugin.get()
+                    configuration {
+                        argLine "--enable-preview"
+                    }
+                }
+            }
+        }
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            artifactId = 'kora-parent'
+            from components.javaPlatform
+            // remove scope information from published BOM
+            pom {
+                withXml {
+                    modifyPom(asNode())
+                }
+                name = "Kora BOM"
+                description = "Kora Bill-Of-Materials (BOM)"
+                licenses {
+                    license {
+                        name = 'The Apache Software License, Version 2.0'
+                        url = 'https://github.com/kora-projects/kora/blob/master/LICENSE'
+                    }
+                }
+                scm {
+                    url = 'https://github.com/kora-projects/kora'
+                    connection = 'scm:git:git@github.com/kora-projects/kora.git'
+                    developerConnection = 'scm:git:git@github.com/kora-projects/kora.git'
+                }
+                url = 'https://github.com/kora-projects/kora'
+                developers {
+                    developer {
+                        id = 'a.otts'
+                        name = 'Aleksei Otts'
+                        email = 'eld0727@mail.ru'
+                    }
+                    developer {
+                        id = 'a.duyun'
+                        name = 'Anton Duyun'
+                        email = 'anton.duyun@gmail.com'
+                    }
+                    developer {
+                        id = 'a.kurako'
+                        name = 'Anton Kurako'
+                        email = 'goodforgod.dev@gmail.com'
+                    }
+                    developer {
+                        id = 'a.yakovlev'
+                        name = 'Artem Yakovlev'
+                        email = 'jakart89@gmail.com'
+                    }
+                }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = 'build'
+            url = project.rootProject.layout.buildDirectory.dir("publishing-repository")
+        }
+        maven {
+            name = 'snapshot'
+            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
+            credentials {
+                username = System.getenv().getOrDefault("SONATYPE_KORA_IO_USERNAME", "")
+                password = System.getenv().getOrDefault("SONATYPE_KORA_IO_PASSWORD", "")
+            }
+        }
+    }
+}
+
+signing {
+    signing {
+        var signingKey = System.getenv()["KORA_IO_SIGNING_KEY"]
+        var signingPassword = System.getenv()["KORA_IO_SIGNING_PASSWORD"]
+        if (signingKey == null || signingPassword == null) {
+            required = false
+        } else {
+            required = true
+            useInMemoryPgpKeys(signingKey, signingPassword)
+            sign publishing.publications.maven
+        }
+    }
+}

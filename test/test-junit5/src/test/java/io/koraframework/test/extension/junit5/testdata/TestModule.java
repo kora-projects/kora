@@ -1,6 +1,6 @@
 package io.koraframework.test.extension.junit5.testdata;
 
-import io.koraframework.common.Module;
+import io.koraframework.common.annotation.Module;
 import io.koraframework.common.annotation.Root;
 
 @Module

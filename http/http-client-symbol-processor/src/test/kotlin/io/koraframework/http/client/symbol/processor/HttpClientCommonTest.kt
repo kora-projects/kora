@@ -3,7 +3,7 @@ package io.koraframework.http.client.symbol.processor
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
-import io.koraframework.common.Component
+import io.koraframework.common.annotation.Component
 import io.koraframework.http.client.common.request.HttpClientRequestMapper
 import io.koraframework.http.client.common.response.HttpClientResponseMapper
 import io.koraframework.logging.common.annotation.Log

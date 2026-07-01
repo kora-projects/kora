@@ -1,6 +1,6 @@
 package io.koraframework.http.client.common.response;
 
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import io.koraframework.http.client.common.exception.HttpClientDecoderException;
 import org.jspecify.annotations.Nullable;
 

@@ -4,7 +4,7 @@ import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.Graph;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import org.jspecify.annotations.Nullable;
 
 import java.lang.reflect.Type;

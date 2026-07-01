@@ -2,7 +2,7 @@ package io.koraframework.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;

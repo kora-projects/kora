@@ -1,6 +1,6 @@
 package io.koraframework.resilient.circuitbreaker.annotation;
 
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 import io.koraframework.resilient.circuitbreaker.CallNotPermittedException;
 import io.koraframework.resilient.circuitbreaker.CircuitBreakerConfig;
 

@@ -1,7 +1,7 @@
 dependencies {
-    api(project(":annotation-processor-common"))
+    api(project(":core:annotation-processor-common"))
 
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
 
 

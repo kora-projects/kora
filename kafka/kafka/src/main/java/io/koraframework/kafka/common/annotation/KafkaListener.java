@@ -1,6 +1,6 @@
 package io.koraframework.kafka.common.annotation;
 
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 
 import java.lang.annotation.ElementType;

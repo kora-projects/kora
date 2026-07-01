@@ -1,6 +1,6 @@
 package io.koraframework.database.cassandra;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraRowMapper;
 import io.koraframework.database.common.DatabaseModule;

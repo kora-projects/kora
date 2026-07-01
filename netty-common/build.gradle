@@ -5,7 +5,7 @@ dependencies {
     compileOnly libs.netty.transport.kqueue
     compileOnly libs.netty.transport.uring
 
-    api project(":common")
+    api project(":core:common")
     api project(":config:config-common")
     api libs.bundles.netty
 }

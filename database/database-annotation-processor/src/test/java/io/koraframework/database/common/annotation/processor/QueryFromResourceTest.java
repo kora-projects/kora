@@ -17,6 +17,6 @@ public class QueryFromResourceTest {
     void testNativeParameter() throws SQLException {
         repository.test();
 
-        Mockito.verify(executor.mockConnection).prepareStatement("SELECT 1;\n");
+        Mockito.verify(executor.mockConnection).prepareStatement(Mockito.argThat(sql -> sql.replace("\r\n", "\n").equals("SELECT 1;\n")));
     }
 }

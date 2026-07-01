@@ -1,6 +1,6 @@
 package io.koraframework.database.common.annotation.processor.cassandra.repository;
 
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.cassandra.CassandraRepository;
 import io.koraframework.database.common.annotation.Query;
 import io.koraframework.database.common.annotation.Repository;

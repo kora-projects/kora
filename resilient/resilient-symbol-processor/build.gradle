@@ -10,15 +10,15 @@ dependencies {
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
 
-    testImplementation testFixtures(project(":annotation-processor-common"))
-    testImplementation testFixtures(project(":symbol-processor-common"))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation project(":resilient:resilient-kora")
     testImplementation project(":internal:test-logging")
-    testImplementation project(":symbol-processor-common")
+    testImplementation project(":core:symbol-processor-common")
     testImplementation project(":aop:aop-symbol-processor")
     testImplementation project(":config:config-hocon")
     testImplementation project(":config:config-symbol-processor")
-    testImplementation project(":kora-app-symbol-processor")
+    testImplementation project(":core:kora-app-symbol-processor")
     testImplementation libs.kotlin.stdlib.lib
     testImplementation libs.awaitility
 }

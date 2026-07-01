@@ -5,7 +5,7 @@ import io.mockk.mockkClass
 import org.jspecify.annotations.NullMarked
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.test.extension.junit5.KoraAppTest
 import io.koraframework.test.extension.junit5.KoraAppTestGraphModifier
 import io.koraframework.test.extension.junit5.KoraGraphModification

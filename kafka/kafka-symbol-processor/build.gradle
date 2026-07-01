@@ -1,15 +1,15 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    api project(':symbol-processor-common')
+    api project(":core:symbol-processor-common")
 
     testImplementation project(':kafka:kafka')
     testImplementation project(':config:config-common')
     testImplementation project(':logging:logging-common')
     testImplementation project(':aop:aop-symbol-processor')
-    testImplementation project(':logging:logging-aop:logging-aop-symbol-processor')
+    testImplementation project(':logging:logging-symbol-processor')
 
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"

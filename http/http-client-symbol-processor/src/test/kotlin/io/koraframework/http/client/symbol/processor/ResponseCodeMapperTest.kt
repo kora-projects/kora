@@ -1,10 +1,10 @@
 package io.koraframework.http.client.symbol.processor
 
+import io.koraframework.common.Either
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.reset
-import io.koraframework.common.util.Either
 
 class ResponseCodeMapperTest : AbstractHttpClientTest() {
 
@@ -256,7 +256,7 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
               @ResponseCodeMapper(code = 200, mapper = Test200Mapper::class)
               @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper::class)
               @HttpRoute(method = "GET", path = "/test")
-              fun test(): io.koraframework.common.util.Either<String, Throwable>
+              fun test(): io.koraframework.common.Either<String, Throwable>
             }
             """.trimIndent(),
             """
@@ -266,10 +266,10 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
             class TestDefaultMapper : AbstractTestMapper<String, Throwable>("default-string-from-mapper") 
             """.trimIndent(),
             """
-            abstract class AbstractTestMapper<T, E>(val t: T) : HttpClientResponseMapper<io.koraframework.common.util.Either<T, E>> {
+            abstract class AbstractTestMapper<T, E>(val t: T) : HttpClientResponseMapper<io.koraframework.common.Either<T, E>> {
             
-              override fun apply(rs: HttpClientResponse): io.koraframework.common.util.Either<T, E> {
-                  return io.koraframework.common.util.Either.left(t)
+              override fun apply(rs: HttpClientResponse): io.koraframework.common.Either<T, E> {
+                  return io.koraframework.common.Either.left(t)
               }
             }
             """.trimIndent()
@@ -301,7 +301,7 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
               @ResponseCodeMapper(code = 200, mapper = Test200Mapper::class)
               @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = TestDefaultMapper::class)
               @HttpRoute(method = "GET", path = "/test")
-              fun test(): io.koraframework.common.util.Either<String, Throwable>
+              fun test(): io.koraframework.common.Either<String, Throwable>
             }
             """.trimIndent(),
             """
@@ -314,10 +314,10 @@ class ResponseCodeMapperTest : AbstractHttpClientTest() {
             abstract class AbstractChildTestMapper<K, G, E>(t: K) : AbstractParentTestMapper<K, E, G, Double>(t)
             """.trimIndent(),
             """
-            abstract class AbstractParentTestMapper<T, E, GRO, STATIC>(val t: T) : HttpClientResponseMapper<io.koraframework.common.util.Either<T, E>> {
+            abstract class AbstractParentTestMapper<T, E, GRO, STATIC>(val t: T) : HttpClientResponseMapper<io.koraframework.common.Either<T, E>> {
             
-              override fun apply(rs: HttpClientResponse): io.koraframework.common.util.Either<T, E> {
-                  return io.koraframework.common.util.Either.left(t)
+              override fun apply(rs: HttpClientResponse): io.koraframework.common.Either<T, E> {
+                  return io.koraframework.common.Either.left(t)
               }
             }
             """.trimIndent()

@@ -1,5 +1,5 @@
 dependencies {
-    api project(':common')
+    api project(':core:common')
     api project(':logging:logging-common')
     api libs.opentelemetry.context
     api libs.opentelemetry.semconv

@@ -1,15 +1,15 @@
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 
 dependencies {
-    implementation project(':symbol-processor-common')
-    implementation project(':kora-app-symbol-processor')
+    implementation project(":core:symbol-processor-common")
+    implementation project(":core:kora-app-symbol-processor")
 
     implementation libs.ksp.api
     implementation libs.kotlinpoet
     implementation libs.kotlinpoet.ksp
 
-    testImplementation testFixtures(project(':symbol-processor-common'))
-    testImplementation testFixtures(project(':annotation-processor-common'))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(':config:config-common')
     testImplementation libs.mockito.kotlin
 }

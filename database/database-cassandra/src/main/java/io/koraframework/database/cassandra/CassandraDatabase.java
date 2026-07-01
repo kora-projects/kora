@@ -4,7 +4,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;

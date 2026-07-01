@@ -1,7 +1,7 @@
 package io.koraframework.cache.annotation;
 
 import io.koraframework.cache.Cache;
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 
 import java.lang.annotation.*;
 

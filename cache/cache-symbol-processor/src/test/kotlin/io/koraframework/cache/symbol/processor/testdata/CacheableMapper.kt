@@ -4,8 +4,8 @@ import io.koraframework.cache.CacheKeyMapper.CacheKeyMapper2
 import io.koraframework.cache.annotation.CachePut
 import io.koraframework.cache.annotation.Cacheable
 import io.koraframework.cache.symbol.processor.testcache.DummyCache21
-import io.koraframework.common.Mapping
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Mapping
+import io.koraframework.common.annotation.Tag
 import java.math.BigDecimal
 
 open class CacheableMapper {

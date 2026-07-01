@@ -49,11 +49,11 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName header = ClassName.get("io.koraframework.http.common.annotation", "Header");
         public static final ClassName cookie = ClassName.get("io.koraframework.http.common.annotation", "Cookie");
 
-        public static final ClassName tag = ClassName.get("io.koraframework.common", "Tag");
-        public static final ClassName component = ClassName.get("io.koraframework.common", "Component");
-        public static final ClassName defaultComponent = ClassName.get("io.koraframework.common", "DefaultComponent");
-        public static final ClassName module = ClassName.get("io.koraframework.common", "Module");
-        public static final ClassName mapping = ClassName.get("io.koraframework.common", "Mapping");
+        public static final ClassName tag = ClassName.get("io.koraframework.common.annotation", "Tag");
+        public static final ClassName component = ClassName.get("io.koraframework.common.annotation", "Component");
+        public static final ClassName defaultComponent = ClassName.get("io.koraframework.common.annotation", "DefaultComponent");
+        public static final ClassName module = ClassName.get("io.koraframework.common.annotation", "Module");
+        public static final ClassName mapping = ClassName.get("io.koraframework.common.annotation", "Mapping");
         public static final ClassName principal = ClassName.get("io.koraframework.common", "Principal");
         public static final ClassName httpResponseEntity = ClassName.get("io.koraframework.http.common", "HttpResponseEntity");
         public static final ClassName principalWithScopes = ClassName.get("io.koraframework.http.common.auth", "PrincipalWithScopes");

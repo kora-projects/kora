@@ -1,6 +1,6 @@
 package io.koraframework.validation.common.annotation;
 
-import io.koraframework.common.AopAnnotation;
+import io.koraframework.common.annotation.AopAnnotation;
 import io.koraframework.validation.common.constraint.factory.RangeValidatorFactory;
 
 import java.lang.annotation.*;

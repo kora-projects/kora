@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import io.koraframework.annotation.processor.common.TestContext;
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.common.annotation.processor.DbTestUtils;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityJavaBean;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord;
@@ -387,7 +387,7 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testParameterMappingByTag() throws SQLException {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """
-            import io.koraframework.common.Tag;@Repository
+            import io.koraframework.common.annotation.Tag;@Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("INSERT INTO test(value) VALUES (:value)")
                 void test(@Tag(TestRepository.class) String value);
@@ -409,10 +409,10 @@ public class JdbcParametersTest extends AbstractJdbcRepositoryTest {
     public void testRecordParameterMapping() {
         var mapper = Mockito.mock(JdbcParameterColumnMapper.class);
         var repository = compileJdbc(List.of(mapper), """            
-            import io.koraframework.common.Tag;@Repository
+            @Repository
             public interface TestRepository extends JdbcRepository {
                 @Query("INSERT INTO test(value) VALUES (:value::jsonb)")
-                void test(@Tag(TestRepository.class) TestRecord value);
+                void test(@io.koraframework.common.annotation.Tag(TestRepository.class) TestRecord value);
             }
             """, """
             public record TestRecord(String value){}

@@ -1,9 +1,8 @@
 package io.koraframework.validation.common.constraint;
 
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.validation.common.Validator;
-import io.koraframework.validation.common.constraint.factory.*;
 import io.koraframework.validation.common.constraint.factory.*;
 
 import java.math.BigDecimal;

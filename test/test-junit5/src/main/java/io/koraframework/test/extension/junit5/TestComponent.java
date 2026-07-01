@@ -1,6 +1,6 @@
 package io.koraframework.test.extension.junit5;
 
-import io.koraframework.common.Component;
+import io.koraframework.common.annotation.Component;
 
 import java.lang.annotation.*;
 

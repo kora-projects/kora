@@ -6,7 +6,7 @@ import com.google.devtools.ksp.KspExperimental
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import io.koraframework.application.graph.ApplicationGraphDraw
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.database.symbol.processor.app.TestKoraApp
 import io.koraframework.database.symbol.processor.app.TestKoraAppTagged
 import io.koraframework.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest

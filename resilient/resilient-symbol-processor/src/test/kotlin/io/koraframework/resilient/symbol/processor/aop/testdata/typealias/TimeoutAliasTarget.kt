@@ -1,7 +1,7 @@
 package io.koraframework.resilient.symbol.processor.aop.testdata.`typealias`
 
 
-import io.koraframework.common.Component
+import io.koraframework.common.annotation.Component
 import io.koraframework.common.annotation.Root
 import io.koraframework.resilient.timeout.annotation.Timeout
 

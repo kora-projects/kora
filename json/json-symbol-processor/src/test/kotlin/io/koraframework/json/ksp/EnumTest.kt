@@ -49,7 +49,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testAnnotationProcessedReaderFromExtension() {
         compile("""
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             public interface TestApp {
               @Json
               enum class TestEnum {
@@ -71,7 +71,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
     @Test
     fun testAnnotationProcessedWriterFromExtension() {
         compile("""
-            @io.koraframework.common.KoraApp
+            @io.koraframework.common.annotation.KoraApp
             interface TestApp {
               @Json
               enum class TestEnum {

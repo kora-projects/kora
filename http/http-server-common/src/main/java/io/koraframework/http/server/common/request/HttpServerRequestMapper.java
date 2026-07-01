@@ -1,7 +1,7 @@
 package io.koraframework.http.server.common.request;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.Mapping;
+import io.koraframework.common.annotation.Mapping;
 
 /**
  * <b>Русский</b>: Контракт обработчика HTTP запроса в определенный тип данных

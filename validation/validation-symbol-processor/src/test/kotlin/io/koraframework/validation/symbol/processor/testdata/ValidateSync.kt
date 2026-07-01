@@ -6,7 +6,7 @@ import io.koraframework.validation.common.annotation.Range
 import io.koraframework.validation.common.annotation.Size
 import io.koraframework.validation.common.annotation.Valid
 import io.koraframework.validation.common.annotation.Validate
-import io.koraframework.common.Component
+import io.koraframework.common.annotation.Component
 
 @Component
 open class ValidateSync {

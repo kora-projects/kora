@@ -1,6 +1,6 @@
 package io.koraframework.config.common.extractor;
 
-import io.koraframework.common.util.Either;
+import io.koraframework.common.Either;
 import io.koraframework.config.common.ConfigValue;
 
 public class EitherConfigExtractor<A, B> implements ConfigValueExtractor<Either<A, B>> {

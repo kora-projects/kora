@@ -9,7 +9,7 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.readiness.ReadinessProbeFailure;
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;

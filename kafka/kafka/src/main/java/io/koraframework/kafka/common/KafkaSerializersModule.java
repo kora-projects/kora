@@ -2,7 +2,7 @@ package io.koraframework.kafka.common;
 
 import org.apache.kafka.common.serialization.*;
 import org.apache.kafka.common.utils.Bytes;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;
 import io.koraframework.kafka.common.producer.serializer.JsonKafkaSerializer;

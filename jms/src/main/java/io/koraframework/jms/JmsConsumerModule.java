@@ -6,7 +6,7 @@ import io.koraframework.jms.telemetry.impl.DefaultJmsConsumerMetricsFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.jms.telemetry.impl.DefaultJmsConsumerTelemetryFactory;
 
 public interface JmsConsumerModule {

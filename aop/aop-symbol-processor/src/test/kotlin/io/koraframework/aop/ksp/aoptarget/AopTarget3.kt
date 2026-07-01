@@ -6,7 +6,7 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.CodeBlock
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.aop.symbol.processor.KoraAspectFactory
-import io.koraframework.common.AopAnnotation
+import io.koraframework.common.annotation.AopAnnotation
 
 open class AopTarget3 {
     @AopAnnotation

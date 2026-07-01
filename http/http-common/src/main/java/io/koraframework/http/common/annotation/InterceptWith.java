@@ -1,6 +1,6 @@
 package io.koraframework.http.common.annotation;
 
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 
 import java.lang.annotation.*;
 

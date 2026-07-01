@@ -3,7 +3,7 @@ dependencies {
 
     implementation project(":config:config-common")
 
-    api project(":common")
+    api project(":core:common")
     api project(":json:json-common")
     api project(":grpc:grpc-client")
     api libs.zeebe.model

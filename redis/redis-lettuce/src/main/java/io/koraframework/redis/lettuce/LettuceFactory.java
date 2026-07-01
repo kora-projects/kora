@@ -1,6 +1,6 @@
 package io.koraframework.redis.lettuce;
 
-import io.koraframework.common.util.Configurer;
+import io.koraframework.common.Configurer;
 import io.koraframework.redis.lettuce.telemetry.DefaultLettuceTelemetry;
 import io.lettuce.core.*;
 import io.lettuce.core.cluster.ClusterClientOptions;

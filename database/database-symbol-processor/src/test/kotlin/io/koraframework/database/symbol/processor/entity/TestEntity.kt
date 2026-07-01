@@ -1,6 +1,6 @@
 package io.koraframework.database.symbol.processor.entity
 
-import io.koraframework.common.Mapping
+import io.koraframework.common.annotation.Mapping
 import io.koraframework.database.symbol.processor.cassandra.TestEntityFieldCassandraParameterColumnMapper
 import io.koraframework.database.symbol.processor.cassandra.TestEntityFieldCassandraParameterColumnMapperNonFinal
 import io.koraframework.database.symbol.processor.cassandra.TestEntityFieldCassandraResultColumnMapper

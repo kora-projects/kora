@@ -3,7 +3,7 @@ package io.koraframework.soap.client.common;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.soap.client.common.telemetry.impl.DefaultSoapClientLoggerFactory;
 import io.koraframework.soap.client.common.telemetry.impl.DefaultSoapClientMetricsFactory;
 import io.koraframework.soap.client.common.telemetry.impl.DefaultSoapClientTelemetryFactory;

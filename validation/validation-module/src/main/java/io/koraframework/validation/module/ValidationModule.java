@@ -1,6 +1,6 @@
 package io.koraframework.validation.module;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.validation.common.constraint.ValidatorModule;
 import io.koraframework.validation.module.http.server.ValidationHttpServerInterceptor;

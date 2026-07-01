@@ -2,7 +2,7 @@ package io.koraframework.test.extension.junit5.mockito;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.test.extension.junit5.KoraAppTest;
 import io.koraframework.test.extension.junit5.KoraAppTestGraphModifier;
 import io.koraframework.test.extension.junit5.KoraGraphModification;

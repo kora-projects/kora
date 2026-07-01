@@ -1,6 +1,6 @@
 package io.koraframework.database.common;
 
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseMetricsFactory;

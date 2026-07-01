@@ -52,7 +52,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
         try {
 
             var interceptor = new FlywayJdbcDatabaseInterceptor(new FlywayConfig() {});
-            Assertions.assertSame(database, interceptor.init(database), "FlywayJdbcDatabaseInterceptor should return same reference on init");
+            Assertions.assertSame(database, interceptor.afterInit(database), "FlywayJdbcDatabaseInterceptor should return same reference on init");
 
             database.inTx((Connection connection) -> {
                 var resultSet = connection
@@ -66,7 +66,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(database, interceptor.release(database), "FlywayJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(database, interceptor.beforeRelease(database), "FlywayJdbcDatabaseInterceptor should return same reference on release");
         } finally {
             database.release();
         }

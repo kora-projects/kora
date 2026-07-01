@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    api project(':symbol-processor-common')
+    api project(":core:symbol-processor-common")
 
     implementation libs.ksp.api
     implementation libs.kotlinpoet
@@ -12,8 +12,8 @@ dependencies {
     testImplementation project(':scheduling:scheduling-jdk')
     testImplementation project(':scheduling:scheduling-quartz')
     testImplementation project(':config:config-annotation-processor')
-    testImplementation testFixtures(project(':annotation-processor-common'))
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
 }
 
 apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"

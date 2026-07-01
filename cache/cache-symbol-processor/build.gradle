@@ -13,7 +13,7 @@ dependencies {
     testImplementation project(":cache:cache-redis-lettuce")
     testImplementation project(":json:json-common")
     testImplementation project(":config:config-common")
-    testImplementation testFixtures(project(":symbol-processor-common"))
+    testImplementation testFixtures(project(":core:symbol-processor-common"))
     testImplementation(libs.kotlin.stdlib.lib)
 }
 

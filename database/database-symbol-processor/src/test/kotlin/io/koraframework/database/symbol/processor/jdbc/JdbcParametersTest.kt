@@ -1,6 +1,6 @@
 package io.koraframework.database.symbol.processor.jdbc
 
-import io.koraframework.common.Tag
+import io.koraframework.common.annotation.Tag
 import io.koraframework.database.common.telemetry.`$DatabaseTelemetryConfig_ConfigValueExtractor`
 import io.koraframework.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueExtractor`
 import io.koraframework.database.common.telemetry.`$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor`

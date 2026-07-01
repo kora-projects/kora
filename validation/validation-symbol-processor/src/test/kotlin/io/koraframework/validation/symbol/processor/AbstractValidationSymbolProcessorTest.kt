@@ -12,8 +12,8 @@ abstract class AbstractValidationSymbolProcessorTest : AbstractSymbolProcessorTe
            import io.koraframework.json.common.JsonNullable
            import org.jspecify.annotations.NonNull
            import org.jetbrains.annotations.NotNull
-           import io.koraframework.common.KoraApp
-           import io.koraframework.common.Component
+           import io.koraframework.common.annotation.KoraApp
+           import io.koraframework.common.annotation.Component
            import io.koraframework.common.annotation.Root
            import io.koraframework.validation.common.annotation.*
            import io.koraframework.validation.common.Validator

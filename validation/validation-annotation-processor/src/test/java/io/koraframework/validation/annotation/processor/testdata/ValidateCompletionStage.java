@@ -1,6 +1,6 @@
 package io.koraframework.validation.annotation.processor.testdata;
 
-import io.koraframework.common.Component;
+import io.koraframework.common.annotation.Component;
 import io.koraframework.validation.common.annotation.*;
 import org.jspecify.annotations.Nullable;
 

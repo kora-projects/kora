@@ -6,7 +6,7 @@ import io.opentelemetry.contrib.metrics.micrometer.CallbackRegistrar;
 import io.opentelemetry.contrib.metrics.micrometer.MicrometerMeterProvider;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.All;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 
 public interface MetricsModule {

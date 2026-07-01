@@ -105,7 +105,7 @@ addDependenciesByPattern(tasksCodegenKotlin, "ksp")
 addDependencies(tasksCodegenKotlin, "mapstruct:mapstruct-ksp-extension")
 
 rootProject.allprojects.forEach {
-    if (it.name != rootProject.name && it.name != "maven-parent" && it.childProjects.isEmpty()) {
+    if (it.name != rootProject.name && it.name != "kora-bom" && it.childProjects.isEmpty()) {
         def fullName = getProjectFullName(it)
         if (!nonOtherModules.contains(fullName)) {
             addDependencies(tasksOther, fullName)

@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 import io.koraframework.application.graph.TypeRef;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestMapper;
@@ -711,7 +711,7 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     @Test
     void testControllerTag() {
         compile("""
-            import io.koraframework.common.Tag;@Tag(String.class)
+            import io.koraframework.common.annotation.Tag;@Tag(String.class)
             @HttpController
             public class Controller {
             

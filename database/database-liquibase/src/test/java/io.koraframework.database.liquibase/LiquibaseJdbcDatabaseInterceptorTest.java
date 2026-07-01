@@ -52,7 +52,7 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
         database.init();
         try {
             var interceptor = new LiquibaseJdbcDatabaseInterceptor(new LiquibaseConfig() {});
-            Assertions.assertSame(database, interceptor.init(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on init");
+            Assertions.assertSame(database, interceptor.afterInit(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on init");
 
             database.inTx((Connection connection) -> {
                 var resultSet = connection
@@ -66,7 +66,7 @@ public class LiquibaseJdbcDatabaseInterceptorTest {
                 );
             });
 
-            Assertions.assertSame(database, interceptor.release(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on release");
+            Assertions.assertSame(database, interceptor.beforeRelease(database), "LiquibaseJdbcDatabaseInterceptor should return same reference on release");
         } finally {
             database.release();
         }

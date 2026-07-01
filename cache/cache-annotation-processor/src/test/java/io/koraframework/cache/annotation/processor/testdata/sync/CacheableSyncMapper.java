@@ -4,8 +4,8 @@ import io.koraframework.cache.CacheKeyMapper;
 import io.koraframework.cache.annotation.CachePut;
 import io.koraframework.cache.annotation.Cacheable;
 import io.koraframework.cache.annotation.processor.testcache.DummyCache11;
-import io.koraframework.common.Mapping;
-import io.koraframework.common.Tag;
+import io.koraframework.common.annotation.Mapping;
+import io.koraframework.common.annotation.Tag;
 import org.jetbrains.annotations.NotNull;
 
 import java.math.BigDecimal;

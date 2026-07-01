@@ -18,7 +18,7 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public JdbcDatabase init(JdbcDatabase value) {
+    public JdbcDatabase afterInit(JdbcDatabase value) {
         if (flywayConfig.enabled()) {
             final long started = TimeUtils.started();
             logger.debug("FlyWay migration applying...");
@@ -43,7 +43,7 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public JdbcDatabase release(JdbcDatabase value) {
+    public JdbcDatabase beforeRelease(JdbcDatabase value) {
         return value;
     }
 }

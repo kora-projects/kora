@@ -24,7 +24,7 @@ class JdbcAopTest : AbstractJdbcRepositoryTest() {
     fun compile(@Language("kotlin") vararg sources: String) {
         val classAsStrs = mutableListOf(
             """
-                @io.koraframework.common.Module
+                @io.koraframework.common.annotation.Module
                 interface ConfigModule : io.koraframework.database.jdbc.JdbcDatabaseModule, io.koraframework.config.common.extractor.ConfigValueExtractorModule, io.koraframework.logging.logback.LogbackModule {
                     fun config(): Config {
                         return MapConfigFactory.fromMap(
