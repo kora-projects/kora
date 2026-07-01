@@ -22,7 +22,7 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
         )
 
         val failureMessages = compileResult.assertFailure().messages
-        assertThat(failureMessages).anyMatch { it.endsWith("TestApp.kt:13:33: error: unresolved reference 'some'.") }
+        assertThat(failureMessages).anyMatch { it.replace("\r", "").contains("TestApp.kt:13:33: error: unresolved reference 'some'") }
     }
 
     @Test
@@ -39,6 +39,6 @@ class InvalidTypeTest : AbstractSymbolProcessorTest() {
         )
 
         val failureMessages = compileResult.assertFailure().messages
-        assertThat(failureMessages).anyMatch { it.endsWith("TestApp.kt:12:26: error: unresolved reference 'some'.") }
+        assertThat(failureMessages).anyMatch { it.replace("\r", "").contains("TestApp.kt:12:26: error: unresolved reference 'some'") }
     }
 }

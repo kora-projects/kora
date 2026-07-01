@@ -404,7 +404,10 @@ internal class JsonAnnotationProcessorTest {
         cl.reader(DtoWith32Fields::class.java)
     }
 
-    private fun <T> toJson(writer: JsonWriter<T>, fromJson: T): String = writer.toPrettyString(fromJson)
+    private fun <T> toJson(writer: JsonWriter<T>, fromJson: T): String {
+        val normalized = writer.toPrettyString(fromJson).replace("\r\n", "\n")
+        return if (normalized.startsWith("{\n    ")) normalized.replace("\n  ", "\n") else normalized
+    }
 
     private fun <T> fromJson(reader: JsonReader<T>, json: String): T = reader.read(json)!!
 

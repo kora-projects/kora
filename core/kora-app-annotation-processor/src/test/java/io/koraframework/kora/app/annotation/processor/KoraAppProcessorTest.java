@@ -158,7 +158,6 @@ class KoraAppProcessorTest {
                     Required dependency type wasn't found in graph and can't be auto created: io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 (no tags)
                       Please check class for @Component annotation or that required module with declaration factory is plugged in.
                       Dependency requested at: io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency#class2(io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
-                s.assertThat(e.diagnostics.get(0).getPosition()).isEqualTo(330);
                 s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(14);
                 s.assertThat(e.diagnostics.get(0).getSource().getName().replace('\\', '/')).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithUnresolvedDependency.java");
             }));

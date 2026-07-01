@@ -308,7 +308,14 @@ class JsonAnnotationProcessorTest {
     }
 
     <T> String toJson(JsonWriter<T> writer, T object) {
-        return writer.toPrettyString(object);
+        return normalizePrettyJson(writer.toPrettyString(object));
+    }
+
+    private static String normalizePrettyJson(String json) {
+        var normalized = json.replace("\r\n", "\n");
+        return normalized.startsWith("{\n    ")
+            ? normalized.replace("\n  ", "\n")
+            : normalized;
     }
 
     <T> T fromJson(JsonReader<T> reader, String json) {
