@@ -376,4 +376,218 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(result.isFailed()).isTrue();
         assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
     }
+
+    private void assertWrite(JsonWriter<Object> writer, Object value, String expectedJson) {
+        try {
+            assertThat(writer.toByteArray(value)).asString(StandardCharsets.UTF_8).isEqualTo(expectedJson);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    public void testEnumWriterFromStaticMethod() {
+        compile("""
+            @Json
+            public enum TestEnum {
+              VALUE1("value1"), VALUE2("value2");
+              private final String value;
+              TestEnum(String value) { this.value = value; }
+              @JsonWriter public static String toValue(TestEnum e) { return e.value; }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var w = writer("TestEnum", stringWriter);
+        assertWrite(w, enumConstant("TestEnum", "VALUE1"), "\"value1\"");
+        assertWrite(w, enumConstant("TestEnum", "VALUE2"), "\"value2\"");
+    }
+
+    @Test
+    public void testEnumWriterStaticMethodIntValue() {
+        compile("""
+            @Json
+            public enum TestEnum {
+              VALUE1(1), VALUE2(2);
+              private final int code;
+              TestEnum(int code) { this.code = code; }
+              @JsonWriter public static int toCode(TestEnum e) { return e.code; }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        JsonWriter<Integer> intWriter = JsonGenerator::writeNumber;
+        var w = writer("TestEnum", intWriter);
+        assertWrite(w, enumConstant("TestEnum", "VALUE1"), "1");
+        assertWrite(w, enumConstant("TestEnum", "VALUE2"), "2");
+    }
+
+    @Test
+    public void testEnumWriterStaticMethodOverridesJsonGetter() {
+        compile("""
+            @Json
+            public enum TestEnum {
+              VALUE1("XXX"), VALUE2("YYY");
+              private final String value;
+              TestEnum(String value) { this.value = value; }
+              @Json public String getValue() { return value; }
+              @JsonWriter public static String toValue(TestEnum e) { return e.name().toLowerCase(); }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var w = writer("TestEnum", stringWriter);
+        assertWrite(w, enumConstant("TestEnum", "VALUE1"), "\"value1\"");
+        assertWrite(w, enumConstant("TestEnum", "VALUE2"), "\"value2\"");
+    }
+
+    @Test
+    public void testEnumReaderFactoryAndWriterMethod() {
+        compile("""
+            @Json
+            public enum TestEnum {
+              VALUE1("value1"), VALUE2("value2"), OTHER("other");
+              private final String value;
+              TestEnum(String value) { this.value = value; }
+              @JsonReader public static TestEnum fromValue(String value) {
+                for (var v : values()) { if (v.value.equals(value)) return v; }
+                return OTHER;
+              }
+              @JsonWriter public static String toValue(TestEnum e) { return e.value; }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        JsonReader<Object> r = reader("TestEnum", stringReader);
+        var w = writer("TestEnum", stringWriter);
+        assertRead(r, "\"value1\"", enumConstant("TestEnum", "VALUE1"));
+        assertRead(r, "\"nonsense\"", enumConstant("TestEnum", "OTHER"));
+        assertWrite(w, enumConstant("TestEnum", "VALUE1"), "\"value1\"");
+        assertWrite(w, enumConstant("TestEnum", "OTHER"), "\"other\"");
+    }
+
+    @Test
+    public void testEnumWriterMethodTriggersWithoutJsonAnnotation() {
+        compile("""
+            public enum TestEnum {
+              VALUE1("value1"), VALUE2("value2");
+              private final String value;
+              TestEnum(String value) { this.value = value; }
+              @JsonWriter public static String toValue(TestEnum e) { return e.value; }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var w = writer("TestEnum", stringWriter);
+        assertWrite(w, enumConstant("TestEnum", "VALUE1"), "\"value1\"");
+    }
+
+    @Test
+    public void testEnumClassAndWriterMethodDedup() {
+        compile("""
+            @JsonWriter
+            public enum TestEnum {
+              VALUE1("value1"), VALUE2("value2");
+              private final String value;
+              TestEnum(String value) { this.value = value; }
+              @JsonWriter public static String toValue(TestEnum e) { return e.value; }
+            }
+            """);
+        compileResult.assertSuccess();
+
+        var w = writer("TestEnum", stringWriter);
+        assertWrite(w, enumConstant("TestEnum", "VALUE1"), "\"value1\"");
+    }
+
+    @Test
+    public void testEnumWriterMultipleMethodsFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              VALUE1, VALUE2;
+              @JsonWriter public static String toValue(TestEnum e) { return e.name(); }
+              @JsonWriter public static String toOther(TestEnum e) { return e.name(); }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("multiple @JsonWriter"));
+    }
+
+    @Test
+    public void testEnumWriterMethodNotStaticFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              VALUE1, VALUE2;
+              @JsonWriter public String toValue(TestEnum e) { return e.name(); }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
+    }
+
+    @Test
+    public void testEnumWriterMethodNonPublicFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              VALUE1, VALUE2;
+              @JsonWriter static String toValue(TestEnum e) { return e.name(); }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
+    }
+
+    @Test
+    public void testEnumWriterMethodWrongParameterCountFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              VALUE1, VALUE2;
+              @JsonWriter public static String toValue(TestEnum e, int extra) { return e.name(); }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("exactly one parameter"));
+    }
+
+    @Test
+    public void testEnumWriterMethodWrongParameterTypeFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              VALUE1, VALUE2;
+              @JsonWriter public static String toValue(int x) { return String.valueOf(x); }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("must be of type"));
+    }
+
+    @Test
+    public void testEnumWriterMethodVoidReturnFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              VALUE1, VALUE2;
+              @JsonWriter public static void toValue(TestEnum e) { }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("must return a value"));
+    }
+
+    @Test
+    public void testJsonWriterMethodOnNonEnumFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            public class NotAnEnum {
+              private final String value;
+              public NotAnEnum(String value) { this.value = value; }
+              @JsonWriter public static String toValue(NotAnEnum x) { return x.value; }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("supported only for an enum"));
+    }
 }

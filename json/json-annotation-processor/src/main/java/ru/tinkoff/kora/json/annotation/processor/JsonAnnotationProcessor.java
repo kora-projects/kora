@@ -61,10 +61,24 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
         }
         var jsonWriterElements = annotatedElements.getOrDefault(JsonTypes.jsonWriterAnnotation, List.of());
         LogUtils.logAnnotatedElementsFull(log, Level.DEBUG, "Generating JsonWriters for", jsonWriterElements);
+        var processedWriterTypes = new java.util.HashSet<String>();
         for (var annotated : jsonWriterElements) {
             var element = annotated.element();
+            if (element.getKind() == ElementKind.METHOD) {
+                var enclosing = element.getEnclosingElement();
+                if (enclosing.getKind() != ElementKind.ENUM) {
+                    messager.printMessage(Diagnostic.Kind.ERROR,
+                        "@JsonWriter on a method is supported only for an enum method, got enclosing " + enclosing.getKind(),
+                        annotated.element());
+                    continue;
+                }
+                element = enclosing;
+            }
+            if (AnnotationUtils.isAnnotationPresent(element, JsonTypes.json)) {
+                continue;
+            }
             if (element.getKind().isClass() || element.getKind().isInterface() && element.getModifiers().contains(Modifier.SEALED)) {
-                if (AnnotationUtils.findAnnotation(element, JsonTypes.json) == null) {
+                if (processedWriterTypes.add(((TypeElement) element).getQualifiedName().toString())) {
                     try {
                         this.processor.generateWriter((TypeElement) element);
                     } catch (ProcessingErrorException ex) {
@@ -72,7 +86,7 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
                     }
                 }
             } else {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Only classes and interfaces can be annotated with @JsonWriter, got " + annotated.element().getKind(), annotated.element());
+                messager.printMessage(Diagnostic.Kind.ERROR, "Only classes, interfaces and enum methods can be annotated with @JsonWriter, got " + element.getKind(), annotated.element());
             }
         }
         var jsonReaderElements = annotatedElements.getOrDefault(JsonTypes.jsonReaderAnnotation, List.of());
