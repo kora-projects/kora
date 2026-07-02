@@ -586,4 +586,57 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         Assertions.assertThat(compileResult.isFailed()).isTrue()
         Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must return a value") }
     }
+
+    @Test
+    fun testEnumWriterMethodTriggersWithoutJsonAnnotation() {
+        compile(
+            """
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter fun toValue(e: TestEnum): String = e.value
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
+    @Test
+    fun testJsonWriterMethodOnNonEnumFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            class NotAnEnum(val value: String) {
+              companion object {
+                @JsonWriter fun toValue(x: NotAnEnum): String = x.value
+              }
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("supported only for an enum") }
+    }
+
+    @Test
+    fun testEnumClassAndWriterMethodDedup() {
+        compile(
+            """
+            @JsonWriter
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter fun toValue(e: TestEnum): String = e.value
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+    }
 }

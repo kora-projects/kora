@@ -79,6 +79,17 @@ class JsonSymbolProcessor(
                                 jsonProcessor.generateReader(enclosingEnum)
                             }
                         }
+                        if (it.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
+                            val enclosingEnum = enclosingEnum(it)
+                            if (enclosingEnum == null) {
+                                kspLogger.error(
+                                    "@JsonWriter on a method is supported only for an enum method (in the companion object of an enum)",
+                                    it
+                                )
+                            } else if (processedWriters.add(enclosingEnum.qualifiedName!!.asString())) {
+                                jsonProcessor.generateWriter(enclosingEnum)
+                            }
+                        }
                     }
                 }
             } catch (e: ProcessingErrorException) {
