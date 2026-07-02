@@ -370,4 +370,29 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         Assertions.assertThat(reader("TestEnum", stringReader)).isNotNull()
     }
+
+    @Test
+    fun testMalformedFactoryFromExtensionFails() {
+        compile0(
+            listOf(ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        enum class TestEnum(val value: String) {
+          VALUE1("value1"), VALUE2("value2");
+          companion object {
+            @JsonReader
+            private fun fromValue(value: String): TestEnum = VALUE1
+          }
+        }
+        """.trimIndent(), """
+        @ru.tinkoff.kora.common.KoraApp
+        interface TestApp {
+          fun stringReader(): ru.tinkoff.kora.json.common.JsonReader<String> = ru.tinkoff.kora.json.common.JsonReader<String> { obj -> obj.valueAsString }
+
+          @Root
+          fun root(r: ru.tinkoff.kora.json.common.JsonReader<TestEnum>) = ""
+        }
+        """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be public") }
+    }
 }

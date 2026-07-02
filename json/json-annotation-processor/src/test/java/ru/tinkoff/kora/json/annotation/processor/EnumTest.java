@@ -205,6 +205,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             }
             """);
         assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("multiple @JsonReader factory"));
     }
 
     @Test
@@ -217,6 +218,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             }
             """);
         assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("exactly one parameter"));
     }
 
     @Test
@@ -229,6 +231,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             }
             """);
         assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
     }
 
     @Test
@@ -241,6 +244,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             }
             """);
         assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
     }
 
     private void assertRead(JsonReader<Object> reader, String json, Object expected) {
@@ -284,6 +288,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             }
             """);
         assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("supported only for an enum"));
     }
 
     @Test
@@ -320,6 +325,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             }
             """);
         assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("must return"));
     }
 
     @Test
@@ -346,5 +352,28 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
 
         compileResult.assertSuccess();
         assertThat(reader("TestApp_TestEnum", stringReader)).isNotNull();
+    }
+
+    @Test
+    public void testMalformedFactoryFromExtensionFails() {
+        var result = compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp {
+              enum TestEnum {
+                VALUE1, VALUE2;
+
+                @JsonReader
+                static TestEnum fromValue(String value) { return VALUE1; }
+              }
+
+              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
+
+              @Root
+              default String root(ru.tinkoff.kora.json.common.JsonReader<TestEnum> r) { return ""; }
+            }
+            """);
+
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
     }
 }
