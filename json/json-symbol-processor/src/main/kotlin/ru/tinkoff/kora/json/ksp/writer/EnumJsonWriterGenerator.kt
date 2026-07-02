@@ -12,6 +12,7 @@ import ru.tinkoff.kora.ksp.common.AnnotationUtils.isAnnotationPresent
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.addOriginatingKSFile
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
+import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
 class EnumJsonWriterGenerator {
     fun generateEnumWriter(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
@@ -72,37 +73,37 @@ class EnumJsonWriterGenerator {
             return null
         }
         if (methods.size > 1) {
-            throw ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException(
+            throw ProcessingErrorException(
                 "Enum ${enumDeclaration.simpleName.asString()} has multiple @JsonWriter methods, only one is allowed",
                 methods[1]
             )
         }
         val method = methods[0]
         if (method !in companionMethods) {
-            throw ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException(
+            throw ProcessingErrorException(
                 "@JsonWriter enum method must be static (declared in the enum's companion object)",
                 method
             )
         }
         if (!method.isPublic()) {
-            throw ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException("@JsonWriter method must be public", method)
+            throw ProcessingErrorException("@JsonWriter method must be public", method)
         }
         if (method.parameters.size != 1) {
-            throw ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException(
+            throw ProcessingErrorException(
                 "@JsonWriter method must have exactly one parameter, got ${method.parameters.size}",
                 method
             )
         }
         val paramDeclaration = method.parameters[0].type.resolve().declaration
         if (paramDeclaration != enumDeclaration) {
-            throw ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException(
+            throw ProcessingErrorException(
                 "@JsonWriter method parameter must be of type ${enumDeclaration.simpleName.asString()}",
                 method
             )
         }
         val returnDeclaration = method.returnType?.resolve()?.declaration
         if (returnDeclaration == null || returnDeclaration.qualifiedName?.asString() == "kotlin.Unit") {
-            throw ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException("@JsonWriter method must return a value", method)
+            throw ProcessingErrorException("@JsonWriter method must return a value", method)
         }
         return EnumValue(method.returnType!!.toTypeName(), method.simpleName.asString(), isStatic = true)
     }
