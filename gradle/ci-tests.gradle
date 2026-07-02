@@ -106,6 +106,7 @@ addDependenciesByPattern(tasksCodegenKotlin, "symbol-processor")
 addDependenciesByPattern(tasksCodegenKotlin, "ksp")
 addDependencies(tasksCodegenKotlin, "scheduling:scheduling-ksp")
 addDependencies(tasksCodegenKotlin, "mapstruct:mapstruct-ksp-extension")
+addDependencies(tasksCodegenKotlin, "konvert:konvert-ksp-extension")
 
 def jacocoRootReport = tasks.register("jacocoRootReport", JacocoReport) {
     group = "verification"

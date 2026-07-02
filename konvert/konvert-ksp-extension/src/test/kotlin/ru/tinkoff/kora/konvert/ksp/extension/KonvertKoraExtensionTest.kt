@@ -22,6 +22,7 @@ class KonvertKoraExtensionTest : AbstractSymbolProcessorTest() {
 
     private fun compile(@Language("kotlin") vararg sources: String): GraphUtil.GraphContainer {
         val patchedSources = Arrays.copyOf(sources, sources.size + 1)
+
         @Language("kotlin")
         val main = """
             @KoraApp
@@ -127,6 +128,39 @@ class KonvertKoraExtensionTest : AbstractSymbolProcessorTest() {
             interface TestApp {
                 @Root
                 fun root(@Tag(KonvertTag::class) mapper: CarMapper): String {
+                    return ""
+                }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val graph = loadClass("TestAppGraph").toGraph()
+        assertThat(graph.draw.size()).isEqualTo(2)
+    }
+
+    @Test
+    fun nestedKonverterInterfaceIsInjectable() {
+        super.compile0(
+            """
+            data class Car(val make: String, val numberOfSeats: Int)
+            """.trimIndent(),
+            """
+            data class CarDto(val make: String, val seatCount: Int)
+            """.trimIndent(),
+            """
+            interface Mappers {
+                @Konverter
+                interface CarMapper {
+                    @Konvert(mappings = [Mapping(source = "numberOfSeats", target = "seatCount")])
+                    fun carToDto(car: Car): CarDto
+                }
+            }
+            """.trimIndent(),
+            """
+            @KoraApp
+            interface TestApp {
+                @Root
+                fun root(mapper: Mappers.CarMapper): String {
                     return ""
                 }
             }

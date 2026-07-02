@@ -55,15 +55,8 @@ object KonvertKoraExtension : KoraExtension {
     }
 
     private fun getKonverterImplName(declaration: KSDeclaration): String {
-        val parts = mutableListOf<String>()
-        parts.add(declaration.simpleName.asString())
-        var parent = declaration.parentDeclaration
-        while (parent != null && parent is KSClassDeclaration) {
-            parts.add(parent.simpleName.asString())
-            parent = parent.parentDeclaration
-        }
-
-        parts.reverse()
-        return parts.joinToString("$") + implementationSuffix
+        // Konvert always generates a top-level `object <SimpleName>Impl` in the same package,
+        // even for a nested @Konverter interface (the enclosing type name is dropped).
+        return declaration.simpleName.asString() + implementationSuffix
     }
 }
