@@ -9,7 +9,10 @@ import ru.tinkoff.kora.aop.annotation.processor.KoraAspect;
 
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -22,10 +25,28 @@ import static ru.tinkoff.kora.annotation.processor.common.AnnotationUtils.parseA
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdc;
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcAnnotation;
 import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcContainerAnnotation;
+import static ru.tinkoff.kora.logging.aspect.mdc.MdcAspectClassNames.mdcWriter;
 
 public class MdcAspect implements KoraAspect {
 
     private static final String MDC_CONTEXT_VAR_NAME = "__mdcContext";
+    private static final Set<String> NATIVE_MDC_TYPES = Set.of(
+        String.class.getCanonicalName(),
+        Integer.class.getCanonicalName(),
+        Long.class.getCanonicalName(),
+        Boolean.class.getCanonicalName(),
+        mdcWriter.canonicalName()
+    );
+
+    private static boolean isNativeMdcType(TypeMirror type) {
+        return switch (type.getKind()) {
+            // primitives autobox to their wrappers, which have dedicated MDC.put overloads
+            case INT, LONG, BOOLEAN -> true;
+            case DECLARED -> ((DeclaredType) type).asElement() instanceof TypeElement typeElement
+                && NATIVE_MDC_TYPES.contains(typeElement.getQualifiedName().toString());
+            default -> false;
+        };
+    }
 
     @Override
     public Set<String> getSupportedAnnotationTypes() {
@@ -113,12 +134,16 @@ public class MdcAspect implements KoraAspect {
 
             final Boolean global = parseAnnotationValueWithoutDefault(firstAnnotation, "global");
 
-            fillMdcBuilder.addStatement(
-                "$T.put($S, $N)",
-                mdc,
-                key,
-                parameterName
-            );
+            final TypeMirror parameterType = parameter.asType();
+            if (isNativeMdcType(parameterType)) {
+                fillMdcBuilder.addStatement("$T.put($S, $N)", mdc, key, parameterName);
+            } else if (parameterType.getKind().isPrimitive()) {
+                fillMdcBuilder.addStatement("$T.put($S, $T.valueOf($N))", mdc, key, String.class, parameterName);
+            } else {
+                fillMdcBuilder.beginControlFlow("if ($N != null)", parameterName)
+                    .addStatement("$T.put($S, $N.toString())", mdc, key, parameterName)
+                    .endControlFlow();
+            }
 
             if (global == null || !global) {
                 keys.add(key);

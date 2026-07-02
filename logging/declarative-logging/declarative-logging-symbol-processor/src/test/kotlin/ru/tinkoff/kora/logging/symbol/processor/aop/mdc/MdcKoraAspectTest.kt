@@ -238,4 +238,102 @@ class MdcKoraAspectTest : AbstractMdcAspectTest() {
         """
         )
     }
+
+    @Test
+    fun testMdcNonNativeParameterNonNull() {
+        val aopProxy = compile0(
+            listOf(AopSymbolProcessorProvider()),
+            """
+            import java.util.UUID
+
+            open class TestMdc(
+                private val mdcContextHolder: MDCContextHolder
+            ) {
+                open fun test(@Mdc(key = "subscriptionId") subscriptionId: UUID): Int? {
+                    mdcContextHolder.set(MDC.get().values())
+                    return null
+                }
+            }
+        """.trimIndent()
+        )
+
+        aopProxy.assertSuccess()
+
+        val subscriptionId = UUID.fromString("00000000-0000-0000-0000-000000000001")
+        val generatedClass = aopProxy.loadClass("\$TestMdc__AopProxy")
+        val constructor = generatedClass.constructors.first()
+        val testObject = TestObject(generatedClass.kotlin, constructor.newInstance(contextHolder))
+        testObject.invoke<Int?>("test", subscriptionId)
+
+        val context = contextHolder.get()
+            ?.mapValues { it.value.writeToString() }
+
+        assertEquals(mapOf("subscriptionId" to "\"$subscriptionId\""), context)
+        assertEquals(emptyMap<String, String>(), currentContext())
+    }
+
+    @Test
+    fun testMdcNonNativeNullableParameterNull() {
+        val aopProxy = compile0(
+            listOf(AopSymbolProcessorProvider()),
+            """
+            import java.util.UUID
+
+            open class TestMdc(
+                private val mdcContextHolder: MDCContextHolder
+            ) {
+                open fun test(@Mdc(key = "subscriptionId") subscriptionId: UUID?): Int? {
+                    mdcContextHolder.set(MDC.get().values())
+                    return null
+                }
+            }
+        """.trimIndent()
+        )
+
+        aopProxy.assertSuccess()
+
+        val generatedClass = aopProxy.loadClass("\$TestMdc__AopProxy")
+        val constructor = generatedClass.constructors.first()
+        val testObject = TestObject(generatedClass.kotlin, constructor.newInstance(contextHolder))
+        testObject.invoke<Int?>("test", null)
+
+        val context = contextHolder.get()
+            ?.mapValues { it.value.writeToString() }
+
+        assertEquals(emptyMap<String, String>(), context)
+        assertEquals(emptyMap<String, String>(), currentContext())
+    }
+
+    @Test
+    fun testMdcMethodLevelGeneratedValue() {
+        // single literal dollar; used to emit a non-interpolated `${...}` into the compiled source
+        val dollar = "$"
+        val aopProxy = compile0(
+            listOf(AopSymbolProcessorProvider()),
+            """
+            open class TestMdc(
+                private val mdcContextHolder: MDCContextHolder
+            ) {
+                @Mdc(key = "k", value = "\${dollar}{1 + 1}")
+                open fun test(s: String): Int? {
+                    mdcContextHolder.set(MDC.get().values())
+                    return null
+                }
+            }
+        """.trimIndent()
+        )
+
+        aopProxy.assertSuccess()
+
+        val generatedClass = aopProxy.loadClass("\$TestMdc__AopProxy")
+        val constructor = generatedClass.constructors.first()
+        val testObject = TestObject(generatedClass.kotlin, constructor.newInstance(contextHolder))
+        testObject.invoke<Int?>("test", "x")
+
+        val context = contextHolder.get()
+            ?.mapValues { it.value.writeToString() }
+
+        assertEquals(mapOf("k" to "2"), context)
+        assertEquals(emptyMap<String, String>(), currentContext())
+    }
 }

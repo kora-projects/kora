@@ -6,4 +6,5 @@ public class MdcAspectClassNames {
     public static final ClassName mdcAnnotation = ClassName.get("ru.tinkoff.kora.logging.common.annotation", "Mdc");
     public static final ClassName mdcContainerAnnotation = ClassName.get("ru.tinkoff.kora.logging.common.annotation", "Mdc", "MdcContainer");
     public static final ClassName mdc = ClassName.get("ru.tinkoff.kora.logging.common", "MDC");
+    public static final ClassName mdcWriter = ClassName.get("ru.tinkoff.kora.logging.common.arg", "StructuredArgumentWriter");
 }
