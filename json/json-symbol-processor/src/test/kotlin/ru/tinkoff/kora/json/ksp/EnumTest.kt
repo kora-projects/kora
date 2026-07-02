@@ -317,4 +317,29 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         }
         throw RuntimeException("Invalid enum constant: $name");
     }
+
+    @Test
+    fun testFactoryReaderFromExtension() {
+        compile0(
+            listOf(ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        enum class TestEnum(val value: String) {
+          SHARE("share"), OTHER("other");
+          companion object {
+            @JsonReader
+            fun fromValue(value: String): TestEnum = if (value == "share") SHARE else OTHER
+          }
+        }
+        """.trimIndent(), """
+        @ru.tinkoff.kora.common.KoraApp
+        interface TestApp {
+          fun stringReader(): ru.tinkoff.kora.json.common.JsonReader<String> = ru.tinkoff.kora.json.common.JsonReader<String> { obj -> obj.valueAsString }
+
+          @Root
+          fun root(r: ru.tinkoff.kora.json.common.JsonReader<TestEnum>) = ""
+        }
+        """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        Assertions.assertThat(reader("TestEnum", stringReader)).isNotNull()
+    }
 }

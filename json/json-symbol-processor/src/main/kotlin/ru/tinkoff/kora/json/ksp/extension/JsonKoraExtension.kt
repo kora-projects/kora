@@ -9,6 +9,7 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import ru.tinkoff.kora.json.ksp.*
+import ru.tinkoff.kora.json.ksp.reader.EnumJsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.ReaderTypeMetaParser
 import ru.tinkoff.kora.json.ksp.writer.WriterTypeMetaParser
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
@@ -28,6 +29,7 @@ class JsonKoraExtension(
     private val readerTypeMetaParser: ReaderTypeMetaParser = ReaderTypeMetaParser(knownTypes, kspLogger)
     private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser(resolver)
     private val processor: JsonProcessor = JsonProcessor(resolver, kspLogger, codeGenerator, knownTypes)
+    private val enumJsonReaderGenerator = EnumJsonReaderGenerator()
 
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
         if (tags.isNotEmpty()) return null
@@ -138,8 +140,11 @@ class JsonKoraExtension(
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
         val hasJsonConstructor = jsonClass.getConstructors().filter { !it.isPrivate() }.any { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
-        if (hasJsonConstructor || jsonClass.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
-            // annotation processor will handle that
+        val hasReaderFactory = jsonClass.modifiers.contains(Modifier.ENUM) && enumJsonReaderGenerator.detectReaderFactory(jsonClass) != null
+        if (hasJsonConstructor || hasReaderFactory || jsonClass.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
+            // annotation processor will handle that (a @JsonReader factory method on the enum's companion
+            // object is discovered independently by JsonSymbolProcessor via resolver.getSymbolsWithAnnotation;
+            // generating it here too would race and write the same file twice in the same KSP round)
             return ExtensionResult.RequiresCompilingResult
         }
         processor.generateReader(jsonClass)

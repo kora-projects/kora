@@ -80,7 +80,7 @@ public class EnumReaderGenerator {
     }
 
     @Nullable
-    private ReaderFactory detectReaderFactory(TypeElement typeElement) {
+    public ReaderFactory detectReaderFactory(TypeElement typeElement) {
         var factories = typeElement.getEnclosedElements().stream()
             .filter(e -> e.getKind() == ElementKind.METHOD)
             .filter(e -> e.getModifiers().contains(Modifier.STATIC))

@@ -10,6 +10,7 @@ import ru.tinkoff.kora.json.annotation.processor.JsonProcessor;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
+import ru.tinkoff.kora.json.annotation.processor.reader.EnumReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderTypeMetaParser;
 import ru.tinkoff.kora.json.annotation.processor.writer.WriterTypeMetaParser;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
@@ -42,6 +43,7 @@ public class JsonKoraExtension implements KoraExtension {
     private final TypeMirror jsonReaderErasure;
     private final ReaderTypeMetaParser readerTypeMetaParser;
     private final WriterTypeMetaParser writerTypeMetaParser;
+    private final EnumReaderGenerator enumReaderGenerator = new EnumReaderGenerator();
     private final Messager messager;
 
     public JsonKoraExtension(ProcessingEnvironment processingEnv) {
@@ -155,8 +157,11 @@ public class JsonKoraExtension implements KoraExtension {
         var hasJsonConstructor = CommonUtils.findConstructors(jsonElement, s -> !s.contains(Modifier.PRIVATE))
             .stream()
             .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null);
-        if (hasJsonConstructor || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null) {
-            // annotation processor will handle that
+        var hasReaderFactory = jsonElement.getKind() == ElementKind.ENUM && this.enumReaderGenerator.detectReaderFactory(jsonElement) != null;
+        if (hasJsonConstructor || hasReaderFactory || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null) {
+            // annotation processor will handle that (a @JsonReader factory method on the enum is discovered
+            // independently by JsonAnnotationProcessor via its own round's annotated-elements scan; generating
+            // it here too would race and attempt to recreate the same file in the same compiler round)
             return ExtensionResult.nextRound();
         }
 

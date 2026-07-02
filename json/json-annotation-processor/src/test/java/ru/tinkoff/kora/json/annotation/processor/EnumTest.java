@@ -297,4 +297,30 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             """);
         assertThat(result.isFailed()).isTrue();
     }
+
+    @Test
+    public void testFactoryReaderFromExtension() {
+        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp {
+              enum TestEnum {
+                SHARE("share"), OTHER("other");
+            
+                private final String value;
+                TestEnum(String value) { this.value = value; }
+            
+                @JsonReader
+                public static TestEnum fromValue(String value) { return "share".equals(value) ? SHARE : OTHER; }
+              }
+            
+              default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
+            
+              @Root
+              default String root(ru.tinkoff.kora.json.common.JsonReader<TestEnum> r) { return ""; }
+            }
+            """);
+
+        compileResult.assertSuccess();
+        assertThat(reader("TestApp_TestEnum", stringReader)).isNotNull();
+    }
 }
