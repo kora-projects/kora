@@ -45,7 +45,7 @@ class EnumJsonReaderGenerator {
 
     private fun generateFactoryReader(
         declaration: KSClassDeclaration,
-        className: com.squareup.kotlinpoet.ClassName,
+        className: ClassName,
         typeName: TypeName,
         factory: ReaderFactory
     ): TypeSpec {

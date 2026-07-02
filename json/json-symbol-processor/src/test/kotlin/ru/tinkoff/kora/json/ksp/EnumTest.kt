@@ -205,8 +205,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        org.assertj.core.api.Assertions.assertThat(compileResult.isFailed()).isTrue()
-        org.assertj.core.api.Assertions.assertThat(compileResult.messages)
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages)
             .anyMatch { it.contains("multiple @JsonReader factory") }
     }
 
@@ -223,9 +223,24 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        org.assertj.core.api.Assertions.assertThat(compileResult.isFailed()).isTrue()
-        org.assertj.core.api.Assertions.assertThat(compileResult.messages)
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages)
             .anyMatch { it.contains("exactly one parameter") }
+    }
+
+    @Test
+    fun testEnumFactoryWrongReturnTypeFails() {
+        compile0(listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              A("a"), B("b");
+              companion object {
+                @JsonReader fun fromValue(value: String): String = value
+              }
+            }
+            """.trimIndent())
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must return") }
     }
 
     private fun enumConstant(className: String, name: String): Any {
