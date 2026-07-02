@@ -278,6 +278,25 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
+    public void testEnumFactoryNullableValue() {
+        compile("""
+            @Json
+            public enum TestEnum {
+              VALUE1, UNKNOWN;
+              @JsonReader
+              public static TestEnum fromValue(@jakarta.annotation.Nullable String v) {
+                return "value1".equals(v) ? VALUE1 : UNKNOWN;
+              }
+            }
+            """);
+        compileResult.assertSuccess();
+        JsonReader<String> nsr = JsonParser::getValueAsString;
+        var r = reader("TestEnum", nsr);
+        assertRead(r, "\"value1\"", enumConstant("TestEnum", "VALUE1"));
+        assertRead(r, "null", enumConstant("TestEnum", "UNKNOWN"));
+    }
+
+    @Test
     public void testEnumClassAndFactoryAnnotationUsesFactory() {
         compile("""
             @JsonReader

@@ -41,7 +41,7 @@ class EnumJsonReaderGenerator {
         return typeBuilder.build()
     }
 
-    data class ReaderFactory(val methodName: String, val valueType: TypeName)
+    data class ReaderFactory(val methodName: String, val valueType: TypeName, val valueNullable: Boolean)
 
     private fun generateFactoryReader(
         declaration: KSClassDeclaration,
@@ -50,6 +50,19 @@ class EnumJsonReaderGenerator {
         factory: ReaderFactory
     ): TypeSpec {
         val valueReaderType = JsonTypes.jsonReader.parameterizedBy(factory.valueType)
+        val readFun = FunSpec.builder("read")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("parser", JsonTypes.jsonParser)
+            .returns(typeName.copy(nullable = true))
+            .apply {
+                if (factory.valueNullable) {
+                    addStatement("return %T.%N(valueReader.read(parser))", className, factory.methodName)
+                } else {
+                    addStatement("val value = valueReader.read(parser) ?: return null")
+                    addStatement("return %T.%N(value)", className, factory.methodName)
+                }
+            }
+            .build()
         return TypeSpec.classBuilder(declaration.jsonReaderName())
             .generated(JsonReaderGenerator::class)
             .addSuperinterface(JsonTypes.jsonReader.parameterizedBy(typeName))
@@ -63,15 +76,7 @@ class EnumJsonReaderGenerator {
                     .initializer("valueReader")
                     .build()
             )
-            .addFunction(
-                FunSpec.builder("read")
-                    .addModifiers(KModifier.OVERRIDE)
-                    .addParameter("parser", JsonTypes.jsonParser)
-                    .returns(typeName.copy(nullable = true))
-                    .addStatement("val value = valueReader.read(parser) ?: return null")
-                    .addStatement("return %T.%N(value)", className, factory.methodName)
-                    .build()
-            )
+            .addFunction(readFun)
             .addOriginatingKSFile(declaration)
             .build()
     }
@@ -125,7 +130,8 @@ class EnumJsonReaderGenerator {
             )
         }
         val valueType = factory.parameters[0].type.toTypeName()
-        return ReaderFactory(factory.simpleName.asString(), valueType)
+        val valueNullable = factory.parameters[0].type.resolve().isMarkedNullable
+        return ReaderFactory(factory.simpleName.asString(), valueType, valueNullable)
     }
 
     data class EnumValue(val type: TypeName, val accessor: String)

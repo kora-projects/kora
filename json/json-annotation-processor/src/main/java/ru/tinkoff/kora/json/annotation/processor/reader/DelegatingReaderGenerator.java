@@ -21,7 +21,7 @@ import java.io.IOException;
  */
 public class DelegatingReaderGenerator {
 
-    public record DelegatingRead(TypeName valueType, String methodName) {}
+    public record DelegatingRead(TypeName valueType, String methodName, boolean valueNullable) {}
 
     public TypeSpec generate(TypeElement typeElement) {
         var typeName = ClassName.get(typeElement);
@@ -31,16 +31,20 @@ public class DelegatingReaderGenerator {
         }
         var valueReaderType = ParameterizedTypeName.get(JsonTypes.jsonReader, factory.valueType().box());
 
-        var read = MethodSpec.methodBuilder("read")
+        var readBuilder = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addException(IOException.class)
             .addParameter(JsonTypes.jsonParser, "__parser")
             .returns(typeName)
             .addAnnotation(Override.class)
-            .addAnnotation(Nullable.class)
-            .addStatement("var value = this.valueReader.read(__parser)")
-            .addStatement("return value == null ? null : $T.$N(value)", typeName, factory.methodName())
-            .build();
+            .addAnnotation(Nullable.class);
+        if (factory.valueNullable()) {
+            readBuilder.addStatement("return $T.$N(this.valueReader.read(__parser))", typeName, factory.methodName());
+        } else {
+            readBuilder.addStatement("var value = this.valueReader.read(__parser)")
+                .addStatement("return value == null ? null : $T.$N(value)", typeName, factory.methodName());
+        }
+        var read = readBuilder.build();
 
         return TypeSpec.classBuilder(JsonUtils.jsonReaderName(typeElement))
             .addAnnotation(AnnotationUtils.generated(DelegatingReaderGenerator.class))
@@ -93,6 +97,7 @@ public class DelegatingReaderGenerator {
                 "Type " + typeName + " has both a @JsonReader factory method and a @JsonReader/@Json constructor — only one is allowed",
                 factory);
         }
-        return new DelegatingRead(TypeName.get(factory.getParameters().get(0).asType()), factory.getSimpleName().toString());
+        var valueNullable = CommonUtils.isNullable(factory.getParameters().get(0));
+        return new DelegatingRead(TypeName.get(factory.getParameters().get(0).asType()), factory.getSimpleName().toString(), valueNullable);
     }
 }

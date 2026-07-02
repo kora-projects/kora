@@ -18,6 +18,9 @@ public class DelegatingValueTest extends AbstractJsonAnnotationProcessorTest {
     JsonWriter<String> stringWriter = JsonGenerator::writeString;
     JsonReader<Long> longReader = JsonParser::getLongValue;
     JsonWriter<Long> longWriter = JsonGenerator::writeNumber;
+    JsonWriter<String> nStringWriter = (g, v) -> {
+        if (v == null) g.writeNull(); else g.writeString(v);
+    };
 
     private Object newObject(String name, Class<?> argType, Object arg) throws Exception {
         return compileResult.loadClass(name).getDeclaredConstructor(argType).newInstance(arg);
@@ -64,6 +67,20 @@ public class DelegatingValueTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
         var mapper = mapper("Sku", List.of(stringReader), List.of(stringWriter));
         mapper.verify(newObject("Sku", String.class, "ABC"), "\"ABC\"");
+    }
+
+    @Test
+    public void testNullableValueRoundTrip() throws Exception {
+        compile("""
+            public record Box(@jakarta.annotation.Nullable String v) {
+              @JsonReader public static Box of(@jakarta.annotation.Nullable String v) { return new Box(v); }
+              @JsonWriter @jakarta.annotation.Nullable public String v() { return v; }
+            }
+            """);
+        compileResult.assertSuccess();
+        var mapper = mapper("Box", List.of(stringReader), List.of(nStringWriter));
+        mapper.verify(newObject("Box", String.class, "a"), "\"a\"");
+        mapper.verify(newObject("Box", String.class, null), "null");
     }
 
     @Test

@@ -22,7 +22,7 @@ import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
  * value is read as `V` and passed to the factory (Jackson `@JsonCreator(mode = DELEGATING)` semantics).
  */
 class DelegatingJsonReaderGenerator {
-    data class ReaderFactory(val methodName: String, val valueType: TypeName)
+    data class ReaderFactory(val methodName: String, val valueType: TypeName, val valueNullable: Boolean)
 
     fun generate(declaration: KSClassDeclaration): TypeSpec {
         val className = declaration.toClassName()
@@ -30,6 +30,20 @@ class DelegatingJsonReaderGenerator {
         val factory = detectReaderFactory(declaration)
             ?: throw ProcessingErrorException("No @JsonReader factory method found on ${declaration.simpleName.asString()}", declaration)
         val valueReaderType = JsonTypes.jsonReader.parameterizedBy(factory.valueType)
+
+        val readFun = FunSpec.builder("read")
+            .addModifiers(KModifier.OVERRIDE)
+            .addParameter("parser", JsonTypes.jsonParser)
+            .returns(typeName.copy(nullable = true))
+            .apply {
+                if (factory.valueNullable) {
+                    addStatement("return %T.%N(valueReader.read(parser))", className, factory.methodName)
+                } else {
+                    addStatement("val value = valueReader.read(parser) ?: return null")
+                    addStatement("return %T.%N(value)", className, factory.methodName)
+                }
+            }
+            .build()
 
         return TypeSpec.classBuilder(declaration.jsonReaderName())
             .generated(DelegatingJsonReaderGenerator::class)
@@ -44,15 +58,7 @@ class DelegatingJsonReaderGenerator {
                     .initializer("valueReader")
                     .build()
             )
-            .addFunction(
-                FunSpec.builder("read")
-                    .addModifiers(KModifier.OVERRIDE)
-                    .addParameter("parser", JsonTypes.jsonParser)
-                    .returns(typeName.copy(nullable = true))
-                    .addStatement("val value = valueReader.read(parser) ?: return null")
-                    .addStatement("return %T.%N(value)", className, factory.methodName)
-                    .build()
-            )
+            .addFunction(readFun)
             .addOriginatingKSFile(declaration)
             .build()
     }
@@ -113,6 +119,7 @@ class DelegatingJsonReaderGenerator {
             )
         }
         val valueType = factory.parameters[0].type.toTypeName()
-        return ReaderFactory(factory.simpleName.asString(), valueType)
+        val valueNullable = factory.parameters[0].type.resolve().isMarkedNullable
+        return ReaderFactory(factory.simpleName.asString(), valueType, valueNullable)
     }
 }

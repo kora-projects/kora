@@ -294,6 +294,26 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
+    fun testEnumFactoryNullableValue() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), UNKNOWN("unknown");
+              companion object {
+                @JsonReader fun fromValue(v: String?): TestEnum = if (v == "value1") VALUE1 else UNKNOWN
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val nsr = JsonReader<String?> { p: JsonParser -> p.valueAsString }
+        val r = reader("TestEnum", nsr)
+        r.assertRead("\"value1\"", enumConstant("TestEnum", "VALUE1"))
+        r.assertRead("null", enumConstant("TestEnum", "UNKNOWN"))
+    }
+
+    @Test
     fun testEnumClassAndFactoryAnnotationUsesFactory() {
         compile(
             """

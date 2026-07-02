@@ -12,6 +12,8 @@ class DelegatingValueTest : AbstractJsonSymbolProcessorTest() {
     private val stringWriter = JsonWriter<String> { g: JsonGenerator, v: String? -> g.writeString(v) }
     private val longReader = JsonReader<Long> { p: JsonParser -> p.longValue }
     private val longWriter = JsonWriter<Long> { g: JsonGenerator, v: Long? -> g.writeNumber(v!!) }
+    private val nStringReader = JsonReader<String?> { p: JsonParser -> p.valueAsString }
+    private val nStringWriter = JsonWriter<String?> { g: JsonGenerator, v: String? -> if (v == null) g.writeNull() else g.writeString(v) }
 
     private fun newObject(name: String, argType: Class<*>, arg: Any?): Any =
         compileResult.classLoader.loadClass("${testPackage()}.$name").getDeclaredConstructor(argType).newInstance(arg)
@@ -67,6 +69,24 @@ class DelegatingValueTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
         val mapper = mapper("Sku", listOf(stringReader), listOf(stringWriter))
         mapper.assert(newObject("Sku", String::class.java, "ABC"), "\"ABC\"")
+    }
+
+    @Test
+    fun testNullableValueRoundTrip() {
+        compile(
+            """
+            class Box(val v: String?) {
+              @JsonWriter fun toJson(): String? = v
+              companion object { @JsonReader fun of(x: String?): Box = Box(x) }
+              override fun equals(other: Any?) = other is Box && other.v == v
+              override fun hashCode() = v?.hashCode() ?: 0
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val mapper = mapper("Box", listOf(nStringReader), listOf(nStringWriter))
+        mapper.assert(newObject("Box", String::class.java, "a"), "\"a\"")
+        mapper.assert(newObject("Box", String::class.java, null), "null")
     }
 
     @Test
