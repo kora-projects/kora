@@ -9,8 +9,10 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import ru.tinkoff.kora.json.ksp.*
+import ru.tinkoff.kora.json.ksp.reader.DelegatingJsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.EnumJsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.ReaderTypeMetaParser
+import ru.tinkoff.kora.json.ksp.writer.DelegatingJsonWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.EnumJsonWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.WriterTypeMetaParser
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
@@ -32,6 +34,8 @@ class JsonKoraExtension(
     private val processor: JsonProcessor = JsonProcessor(resolver, kspLogger, codeGenerator, knownTypes)
     private val enumJsonReaderGenerator = EnumJsonReaderGenerator()
     private val enumJsonWriterGenerator = EnumJsonWriterGenerator()
+    private val delegatingJsonReaderGenerator = DelegatingJsonReaderGenerator()
+    private val delegatingJsonWriterGenerator = DelegatingJsonWriterGenerator()
 
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
         if (tags.isNotEmpty()) return null
@@ -73,6 +77,9 @@ class JsonKoraExtension(
             }
             if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
                 return null
+            }
+            if (delegatingJsonWriterGenerator.detectWriterMethod(possibleJsonClassDeclaration) != null) {
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter")
             }
             try {
                 writerTypeMetaParser.parse(possibleJsonClassDeclaration)
@@ -121,6 +128,9 @@ class JsonKoraExtension(
             }
             if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
                 return null
+            }
+            if (delegatingJsonReaderGenerator.detectReaderFactory(possibleJsonClassDeclaration) != null) {
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader")
             }
             try {
                 readerTypeMetaParser.parse(possibleJsonClassDeclaration)

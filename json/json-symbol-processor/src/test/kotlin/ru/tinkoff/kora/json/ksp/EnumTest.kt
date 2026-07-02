@@ -294,23 +294,6 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
-    fun testJsonReaderFactoryOnNonEnumFails() {
-        compile0(
-            listOf(JsonSymbolProcessorProvider()), """
-            class NotAnEnum(val value: String) {
-              companion object {
-                @JsonReader
-                fun fromValue(value: String): NotAnEnum = NotAnEnum(value)
-              }
-            }
-            """.trimIndent()
-        )
-        Assertions.assertThat(compileResult.isFailed()).isTrue()
-        Assertions.assertThat(compileResult.messages)
-            .anyMatch { it.contains("supported only for an enum") }
-    }
-
-    @Test
     fun testEnumClassAndFactoryAnnotationUsesFactory() {
         compile(
             """
@@ -604,21 +587,6 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         val w = writer("TestEnum", stringWriter)
         w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
         w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
-    }
-
-    @Test
-    fun testJsonWriterMethodOnNonEnumFails() {
-        compile0(
-            listOf(JsonSymbolProcessorProvider()), """
-            class NotAnEnum(val value: String) {
-              companion object {
-                @JsonWriter fun toValue(x: NotAnEnum): String = x.value
-              }
-            }
-            """.trimIndent()
-        )
-        Assertions.assertThat(compileResult.isFailed()).isTrue()
-        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("supported only for an enum") }
     }
 
     @Test
