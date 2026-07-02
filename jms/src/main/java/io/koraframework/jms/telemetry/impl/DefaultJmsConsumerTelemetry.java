@@ -1,12 +1,7 @@
 package io.koraframework.jms.telemetry.impl;
 
-import io.koraframework.jms.telemetry.JmsConsumerObservation;
-import io.koraframework.jms.telemetry.JmsConsumerTelemetry;
-import io.koraframework.jms.telemetry.JmsConsumerTelemetryConfig;
-import io.koraframework.jms.telemetry.$JmsConsumerTelemetryConfig_ConfigValueExtractor;
-import io.koraframework.jms.telemetry.$JmsConsumerTelemetryConfig_JmsConsumerLoggingConfig_ConfigValueExtractor;
-import io.koraframework.jms.telemetry.$JmsConsumerTelemetryConfig_JmsConsumerMetricsConfig_ConfigValueExtractor;
-import io.koraframework.jms.telemetry.$JmsConsumerTelemetryConfig_JmsConsumerTracingConfig_ConfigValueExtractor;
+import io.koraframework.jms.telemetry.*;
+import io.koraframework.jms.telemetry.$JmsConsumerTelemetryConfig_JmsConsumerTracingConfig_ConfigValueMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanBuilder;
@@ -35,10 +30,10 @@ public class DefaultJmsConsumerTelemetry implements JmsConsumerTelemetry {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
             "none",
-            new $JmsConsumerTelemetryConfig_ConfigValueExtractor.JmsConsumerTelemetryConfig_Impl(
-                new $JmsConsumerTelemetryConfig_JmsConsumerLoggingConfig_ConfigValueExtractor.JmsConsumerLoggingConfig_Defaults(),
-                new $JmsConsumerTelemetryConfig_JmsConsumerMetricsConfig_ConfigValueExtractor.JmsConsumerMetricsConfig_Defaults(),
-                new $JmsConsumerTelemetryConfig_JmsConsumerTracingConfig_ConfigValueExtractor.JmsConsumerTracingConfig_Defaults()
+            new $JmsConsumerTelemetryConfig_ConfigValueMapper.JmsConsumerTelemetryConfig_Impl(
+                new $JmsConsumerTelemetryConfig_JmsConsumerLoggingConfig_ConfigValueMapper.JmsConsumerLoggingConfig_Defaults(),
+                new $JmsConsumerTelemetryConfig_JmsConsumerMetricsConfig_ConfigValueMapper.JmsConsumerMetricsConfig_Defaults(),
+                new $JmsConsumerTelemetryConfig_JmsConsumerTracingConfig_ConfigValueMapper.JmsConsumerTracingConfig_Defaults()
             ),
             false,
             false,

@@ -1,14 +1,13 @@
 package io.koraframework.cache.annotation.processor;
 
-import io.koraframework.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor;
-import io.koraframework.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor;
+import io.koraframework.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper;
+import io.koraframework.cache.caffeine.$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper;
 import io.koraframework.cache.caffeine.CaffeineCacheConfig;
 import io.koraframework.cache.redis.*;
 import io.koraframework.cache.redis.RedisCacheClient;
-import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_ConfigValueExtractor;
-import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor;
-import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor;
-import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor;
+import io.koraframework.cache.redis.telemetry.*;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper;
+import io.koraframework.cache.redis.telemetry.$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper;
 import org.jspecify.annotations.NullMarked;
 import org.mockito.Mockito;
 
@@ -28,18 +27,18 @@ final class CacheRunner {
         when(config.maximumSize()).thenReturn(100_000L);
         when(config.expireAfterAccess()).thenReturn(null);
         when(config.expireAfterWrite()).thenReturn(null);
-        when(telemetry.metrics()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor.CaffeineMetricsConfig_Defaults());
-        when(telemetry.logging()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor.CaffeineLoggingConfig_Defaults());
+        when(telemetry.metrics()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper.CaffeineMetricsConfig_Defaults());
+        when(telemetry.logging()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper.CaffeineLoggingConfig_Defaults());
         return config;
     }
 
     public static RedisCacheConfig getRedisConfig() {
         var config = Mockito.mock(RedisCacheConfig.class);
         when(config.keyPrefix()).thenReturn("pref");
-        when(config.telemetry()).thenReturn(new $RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
-            new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
-            new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
-            new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
+        when(config.telemetry()).thenReturn(new $RedisCacheTelemetryConfig_ConfigValueMapper.RedisCacheTelemetryConfig_Impl(
+            new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper.RedisCacheLoggingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper.RedisCacheTracingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper.RedisCacheMetricsConfig_Defaults()
         ));
         return config;
     }

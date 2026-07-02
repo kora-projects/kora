@@ -4,7 +4,7 @@ import io.koraframework.application.graph.LifecycleWrapper;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.netty.common.NettyTransportConfig.EventLoopType;
 import io.netty.channel.*;
 import io.netty.channel.epoll.*;
@@ -31,8 +31,8 @@ public interface NettyModule {
         private EventLoopWorker() {}
     }
 
-    default NettyTransportConfig nettyTransportConfig(Config config, ConfigValueExtractor<NettyTransportConfig> extractor) {
-        return extractor.extractOrThrow(config.get("netty"));
+    default NettyTransportConfig nettyTransportConfig(Config config, ConfigValueMapper<NettyTransportConfig> mapper) {
+        return mapper.mapOrThrow(config.get("netty"));
     }
 
     @Tag(EventLoopBoss.class)

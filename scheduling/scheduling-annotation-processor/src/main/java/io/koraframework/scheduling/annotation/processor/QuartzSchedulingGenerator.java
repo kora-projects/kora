@@ -64,12 +64,12 @@ public class QuartzSchedulingGenerator {
                     .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                     .returns(configClassName)
                     .addParameter(CommonClassNames.config, "config")
-                    .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configClassName), "extractor");
+                    .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, configClassName), "mapper");
 
                 if (cron != null && !cron.isBlank()) {
                     b.addStatement("var value = config.get($S)", configPath);
                     b.beginControlFlow("if (value instanceof $T.NullValue)", CommonClassNames.configValue)
-                        .addCode("return extractor.extractOrThrow($>\n")
+                        .addCode("return mapper.mapOrThrow($>\n")
                         .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), $S)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue, cron)
                         .addCode("$<\n);\n")
                         .endControlFlow();
@@ -78,13 +78,13 @@ public class QuartzSchedulingGenerator {
                 }
                 b.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
                     .addStatement("var cron = str.value()")
-                    .addCode("return extractor.extractOrThrow($>\n")
+                    .addCode("return mapper.mapOrThrow($>\n")
                     .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), cron)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue)
                     .addCode("$<\n);\n")
                     .nextControlFlow("else if (value instanceof $T.ObjectValue obj)", CommonClassNames.configValue)
-                    .addStatement("return extractor.extractOrThrow(obj)")
+                    .addStatement("return mapper.mapOrThrow(obj)")
                     .nextControlFlow("else")
-                    .addStatement("throw io.koraframework.config.common.extractor.ConfigValueExtractionException.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValue)
+                    .addStatement("throw io.koraframework.config.common.exception.ConfigValueException.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValue)
                     .endControlFlow();
 
                 module.addMethod(b.build());
@@ -123,7 +123,7 @@ public class QuartzSchedulingGenerator {
             .addOriginatingElement(method)
             .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
             .addModifiers(Modifier.PUBLIC)
-            .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+            .addAnnotation(CommonClassNames.configMapperAnnotation)
             .addSuperinterface(schedulingJobConfigClassName);
 
         if (defaultCron != null && !defaultCron.isBlank()) {

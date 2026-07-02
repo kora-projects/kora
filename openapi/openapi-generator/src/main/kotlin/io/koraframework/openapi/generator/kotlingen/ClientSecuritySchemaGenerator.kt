@@ -60,7 +60,7 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
         val configClassName = ClassName(apiPackage, "ApiSecurity", "Config")
         val b = FunSpec.builder("config")
             .addParameter("config", Classes.config.asKt())
-            .addParameter("extractor", Classes.configValueExtractor.asKt().parameterizedBy(String::class.asTypeName()))
+            .addParameter("mapper", Classes.configValueExtractor.asKt().parameterizedBy(String::class.asTypeName()))
             .returns(configClassName)
         val params = mutableListOf<CodeBlock>()
         for (authMethod in authMethods) {
@@ -69,13 +69,13 @@ class ClientSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                 val authMethodConfig = ClassName(apiPackage, "ApiSecurity", "Config", authMethod.name + "Config")
                 val username = authMethod.name + "_username"
                 val password = authMethod.name + "_password"
-                b.addStatement("val %N = extractor.extractOrThrow(config.get(%S))", username, configPath + ".username")
-                b.addStatement("val %N = extractor.extractOrThrow(config.get(%S))", password, configPath + ".password")
+                b.addStatement("val %N = mapper.mapOrThrow(config.get(%S))", username, configPath + ".username")
+                b.addStatement("val %N = mapper.mapOrThrow(config.get(%S))", password, configPath + ".password")
                 b.addStatement("val %N = %T(%N, %N)", authMethod.name, authMethodConfig, username, password)
                 params.add(CodeBlock.of("%N", authMethod.name))
             }
             if (authMethod.type == "apiKey") {
-                b.addStatement("val %N = extractor.extractOrThrow(config.get(%S))", authMethod.name, configPath)
+                b.addStatement("val %N = mapper.mapOrThrow(config.get(%S))", authMethod.name, configPath)
                 params.add(CodeBlock.of("%N", authMethod.name))
             }
         }

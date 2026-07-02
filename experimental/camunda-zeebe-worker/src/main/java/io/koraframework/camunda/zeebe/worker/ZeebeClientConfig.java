@@ -2,7 +2,7 @@ package io.koraframework.camunda.zeebe.worker;
 
 import io.koraframework.camunda.zeebe.worker.telemetry.ZeebeWorkerTelemetryConfig;
 import io.koraframework.common.util.Size;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
@@ -10,7 +10,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface ZeebeClientConfig {
 
     default int executionThreads() {
@@ -36,13 +36,13 @@ public interface ZeebeClientConfig {
 
     ZeebeWorkerTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RestConfig {
 
         String url();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface GrpcConfig {
 
         String url();
@@ -60,7 +60,7 @@ public interface ZeebeClientConfig {
         GrpcClientTelemetryConfig telemetry();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface GrpcRetryConfig {
 
         default boolean enabled() {
@@ -84,7 +84,7 @@ public interface ZeebeClientConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface DeploymentConfig {
 
         default Duration timeout() {

@@ -4,14 +4,14 @@ import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.scheduling.common.SchedulingJobConfig;
 import io.koraframework.scheduling.common.SchedulingModule;
 
 public interface SchedulingJdkModule extends SchedulingModule {
 
-    default SchedulingJdkConfig schedulingJdkConfig(Config config, ConfigValueExtractor<SchedulingJdkConfig> extractor) {
-        return extractor.extractOrThrow(config.get("scheduling.jdk"));
+    default SchedulingJdkConfig schedulingJdkConfig(Config config, ConfigValueMapper<SchedulingJdkConfig> mapper) {
+        return mapper.mapOrThrow(config.get("scheduling.jdk"));
     }
 
     @DefaultComponent

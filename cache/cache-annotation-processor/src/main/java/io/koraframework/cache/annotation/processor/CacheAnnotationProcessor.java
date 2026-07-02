@@ -216,14 +216,14 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
         } else {
             throw new IllegalArgumentException("Unknown cache type: " + cacheType.rawType());
         }
-        var extractorType = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, returnType);
+        var extractorType = ParameterizedTypeName.get(CommonClassNames.configValueMapper, returnType);
 
         return MethodSpec.methodBuilder(methodName)
             .addAnnotation(TagUtils.makeAnnotationSpec(cacheContractName))
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(extractorType, "extractor")
-            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
+            .addParameter(extractorType, "mapper")
+            .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
             .returns(returnType)
             .build();
     }

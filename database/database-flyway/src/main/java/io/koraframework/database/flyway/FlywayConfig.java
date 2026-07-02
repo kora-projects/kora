@@ -1,11 +1,11 @@
 package io.koraframework.database.flyway;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.util.List;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface FlywayConfig {
 
     default boolean enabled() {

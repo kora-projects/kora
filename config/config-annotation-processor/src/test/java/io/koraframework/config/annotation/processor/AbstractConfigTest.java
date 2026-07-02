@@ -3,7 +3,7 @@ package io.koraframework.config.annotation.processor;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import io.koraframework.config.annotation.processor.processor.ConfigSourceAnnotationProcessor;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import org.intellij.lang.annotations.Language;
 
 import java.lang.reflect.InvocationTargetException;
@@ -18,7 +18,7 @@ public abstract class AbstractConfigTest extends AbstractAnnotationProcessorTest
             """;
     }
 
-    protected ConfigValueExtractor<Object> compileConfig(List<?> arguments, @Language("java") String... sources) {
+    protected ConfigValueMapper<Object> compileConfig(List<?> arguments, @Language("java") String... sources) {
         super.compile(List.of(new ConfigParserAnnotationProcessor(), new ConfigSourceAnnotationProcessor()), sources);
         this.compileResult.assertSuccess();
         var args = arguments
@@ -28,7 +28,7 @@ public abstract class AbstractConfigTest extends AbstractAnnotationProcessorTest
 
         try {
             @SuppressWarnings("unchecked")
-            var result = (ConfigValueExtractor<Object>) this.compileResult.loadClass("$TestConfig_ConfigValueExtractor")
+            var result = (ConfigValueMapper<Object>) this.compileResult.loadClass("$TestConfig_ConfigValueMapper")
                 .getConstructors()[0]
                 .newInstance(args);
             return result;

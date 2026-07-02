@@ -1,13 +1,13 @@
 package io.koraframework.camunda.engine.bpmn;
 
 import io.koraframework.camunda.engine.bpmn.telemetry.CamundaEngineTelemetryConfig;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.List;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface CamundaEngineBpmnConfig {
 
     ParallelInitConfig parallelInitialization();
@@ -22,7 +22,7 @@ public interface CamundaEngineBpmnConfig {
 
     CamundaEngineTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface ParallelInitConfig {
 
         default boolean enabled() {
@@ -34,7 +34,7 @@ public interface CamundaEngineBpmnConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface AdminConfig {
 
         String id();
@@ -51,13 +51,13 @@ public interface CamundaEngineBpmnConfig {
         String email();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface FilterConfig {
 
         String create();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface DeploymentConfig {
 
         @Nullable
@@ -77,7 +77,7 @@ public interface CamundaEngineBpmnConfig {
         Duration delay();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface JobExecutorConfig {
 
         default Integer corePoolSize() {

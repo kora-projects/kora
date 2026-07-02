@@ -64,7 +64,7 @@ public abstract class HttpClientTestBase {
 
     protected final ClientAndServer server = ClientAndServer.startClientAndServer(0);
 
-    private final HttpClient baseClient = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(ofMillis(100), ofMillis(500000), null, false));
+    private final HttpClient baseClient = this.createClient(new $HttpClientConfig_ConfigValueMapper.HttpClientConfig_Impl(ofMillis(100), ofMillis(500000), null, false));
     private final HttpClient client = this.baseClient
         .with((chain, request) -> chain.process(HttpClientRequest.of(
             request.method(),

@@ -1,10 +1,10 @@
 package io.koraframework.opentelemetry.tracing;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface OpentelemetryResourceConfig {
     default Map<String, String> attributes() {
         return Map.of();

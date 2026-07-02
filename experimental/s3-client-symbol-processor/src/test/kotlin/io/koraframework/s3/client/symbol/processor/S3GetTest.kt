@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
-import io.koraframework.config.common.factory.MapConfigFactory
+import io.koraframework.config.common.util.ConfigMappingUtils
 import io.koraframework.http.common.body.HttpBodyInput
 import io.koraframework.s3.client.kora.S3Credentials
 import io.koraframework.s3.client.kora.model.request.GetObjectArgs
@@ -60,7 +60,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
 
     @Test
     fun testGetWithTemplateKeyAndArgs() {
-        val bucketConfig = MapConfigFactory.fromMap(
+        val bucketConfig = ConfigMappingUtils.fromMap(
             mapOf(
                 "bucket" to "bucket_value"
             )
@@ -106,7 +106,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
 
     @Test
     fun testGetWithS3Credentials() {
-        val bucketConfig = MapConfigFactory.fromMap(
+        val bucketConfig = ConfigMappingUtils.fromMap(
             mapOf(
                 "Client" to mapOf(
                     "bucket" to "bucket_value"
@@ -188,7 +188,7 @@ internal class S3GetTest : AbstractS3ClientTest() {
 
     @Test
     fun testGetConstantKey() {
-        val bucketConfig = MapConfigFactory.fromMap(
+        val bucketConfig = ConfigMappingUtils.fromMap(
             mapOf(
                 "bucket" to "bucket_value"
             )

@@ -1,18 +1,18 @@
 package io.koraframework.opentelemetry.tracing.exporter.http;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.time.Duration;
 
-import static io.koraframework.opentelemetry.tracing.exporter.http.$OpentelemetryHttpExporterConfig_FromConfig_ConfigValueExtractor.*;
+import static io.koraframework.opentelemetry.tracing.exporter.http.$OpentelemetryHttpExporterConfig_FromConfig_ConfigValueMapper.*;
 
 
 public sealed interface OpentelemetryHttpExporterConfig {
 
     record Empty() implements OpentelemetryHttpExporterConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     sealed interface FromConfig extends OpentelemetryHttpExporterConfig permits FromConfig_Defaults, FromConfig_Impl {
 
         String endpoint();
@@ -51,7 +51,7 @@ public sealed interface OpentelemetryHttpExporterConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RetryPolicy {
         default int maxAttempts() {
             return 5;

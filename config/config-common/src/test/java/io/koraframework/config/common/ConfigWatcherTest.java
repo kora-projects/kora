@@ -5,7 +5,7 @@ import ch.qos.logback.classic.LoggerContext;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.InitializedGraph;
 import io.koraframework.application.graph.ValueOf;
-import io.koraframework.config.common.factory.MapConfigFactory;
+import io.koraframework.config.common.util.ConfigMappingUtils;
 import io.koraframework.config.common.origin.ConfigOrigin;
 import io.koraframework.config.common.origin.ContainerConfigOrigin;
 import io.koraframework.config.common.origin.FileConfigOrigin;
@@ -170,6 +170,6 @@ class ConfigWatcherTest {
         try (var is = Files.newInputStream(ConfigWatcherTest.this.configFile)) {
             properties.load(is);
         }
-        return MapConfigFactory.fromProperties(origin, properties);
+        return ConfigMappingUtils.fromProperties(origin, properties);
     }
 }

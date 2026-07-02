@@ -1,8 +1,8 @@
 package io.koraframework.s3.client.kora.annotation.processor;
 
 
+import io.koraframework.s3.client.kora.$S3ClientConfig_UploadConfig_ConfigValueMapper;
 import org.junit.jupiter.api.Test;
-import io.koraframework.s3.client.kora.$S3ClientConfig_UploadConfig_ConfigValueExtractor;
 import io.koraframework.s3.client.kora.S3Client;
 import io.koraframework.s3.client.kora.model.response.UploadedPart;
 
@@ -99,7 +99,7 @@ class S3PutTest extends AbstractS3ClientTest {
         when(s3Client.uploadPart(any(), eq("bucket"), eq("key"), eq("multipartid"), eq(1), any(), eq(0), eq(5 * 1024 * 1024))).thenReturn(part1);
         when(s3Client.uploadPart(any(), eq("bucket"), eq("key"), eq("multipartid"), eq(2), any(), eq(0), eq(3 * 1024 * 1024))).thenReturn(part2);
         when(s3Client.completeMultipartUpload(any(), eq("bucket"), eq("key"), eq("multipartid"), eq(List.of(part1, part2)), any())).thenReturn("etag-final");
-        when(config.upload()).thenReturn(new $S3ClientConfig_UploadConfig_ConfigValueExtractor.UploadConfig_Defaults());
+        when(config.upload()).thenReturn(new $S3ClientConfig_UploadConfig_ConfigValueMapper.UploadConfig_Defaults());
 
         assertThat(client.<String>invoke("put", "bucket", "key", is)).isEqualTo("etag-final");
 

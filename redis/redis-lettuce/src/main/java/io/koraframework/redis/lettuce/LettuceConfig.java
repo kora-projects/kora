@@ -1,13 +1,13 @@
 package io.koraframework.redis.lettuce;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.redis.lettuce.telemetry.LettuceTelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.List;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface LettuceConfig {
 
     String uri();
@@ -41,7 +41,7 @@ public interface LettuceConfig {
 
     SslConfig ssl();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SslConfig {
 
         default List<String> ciphers() {

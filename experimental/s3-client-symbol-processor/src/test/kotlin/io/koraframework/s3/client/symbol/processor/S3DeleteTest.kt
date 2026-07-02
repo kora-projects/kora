@@ -2,7 +2,7 @@ package io.koraframework.s3.client.symbol.processor
 
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.*
-import io.koraframework.config.common.factory.MapConfigFactory
+import io.koraframework.config.common.util.ConfigMappingUtils
 import io.koraframework.s3.client.kora.S3Credentials
 import io.koraframework.s3.client.kora.model.request.DeleteObjectArgs
 import io.koraframework.s3.client.kora.symbol.processor.AbstractS3ClientTest
@@ -30,7 +30,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
 
     @Test
     fun testDeleteWithTemplateKeyAndArgs() {
-        val bucketConfig = MapConfigFactory.fromMap(
+        val bucketConfig = ConfigMappingUtils.fromMap(
             mapOf(
                 "bucket" to "bucket_value"
             )
@@ -56,7 +56,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
 
     @Test
     fun testDeleteWithS3Credentials() {
-        val bucketConfig = MapConfigFactory.fromMap(
+        val bucketConfig = ConfigMappingUtils.fromMap(
             mapOf(
                 "Client" to mapOf(
                     "bucket" to "bucket_value"
@@ -84,7 +84,7 @@ internal class S3DeleteTest : AbstractS3ClientTest() {
 
     @Test
     fun testDeleteConstantKey() {
-        val bucketConfig = MapConfigFactory.fromMap(
+        val bucketConfig = ConfigMappingUtils.fromMap(
             mapOf(
                 "bucket" to "bucket_value"
             )

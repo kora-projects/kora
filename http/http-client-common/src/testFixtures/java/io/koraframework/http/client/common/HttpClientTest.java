@@ -178,7 +178,7 @@ public abstract class HttpClientTest extends HttpClientTestBase {
             .body(HttpBody.plaintext("test-request"))
             .build();
 
-        var client = this.createClient(new $HttpClientConfig_ConfigValueExtractor.HttpClientConfig_Impl(Duration.ofMillis(100), Duration.ofMillis(100), null, false));
+        var client = this.createClient(new $HttpClientConfig_ConfigValueMapper.HttpClientConfig_Impl(Duration.ofMillis(100), Duration.ofMillis(100), null, false));
 
 
         try {

@@ -21,10 +21,10 @@ public class DefaultS3ClientTelemetry implements S3ClientTelemetry {
                                    Tracer tracer) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new $S3ClientTelemetryConfig_ConfigValueExtractor.S3ClientTelemetryConfig_Impl(
-                new $S3ClientTelemetryConfig_S3ClientLoggingConfig_ConfigValueExtractor.S3ClientLoggingConfig_Defaults(),
-                new $S3ClientTelemetryConfig_S3ClientMetricsConfig_ConfigValueExtractor.S3ClientMetricsConfig_Defaults(),
-                new $S3ClientTelemetryConfig_S3ClientTracingConfig_ConfigValueExtractor.S3ClientTracingConfig_Defaults()
+            new $S3ClientTelemetryConfig_ConfigValueMapper.S3ClientTelemetryConfig_Impl(
+                new $S3ClientTelemetryConfig_S3ClientLoggingConfig_ConfigValueMapper.S3ClientLoggingConfig_Defaults(),
+                new $S3ClientTelemetryConfig_S3ClientMetricsConfig_ConfigValueMapper.S3ClientMetricsConfig_Defaults(),
+                new $S3ClientTelemetryConfig_S3ClientTracingConfig_ConfigValueMapper.S3ClientTracingConfig_Defaults()
             ), "none", "none", "none", false, false, DefaultS3ClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultS3ClientTelemetryFactory.NOOP_TRACER);
     }
 

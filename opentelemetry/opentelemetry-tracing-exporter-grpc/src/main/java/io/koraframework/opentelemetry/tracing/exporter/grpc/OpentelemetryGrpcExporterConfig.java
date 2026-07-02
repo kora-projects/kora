@@ -1,18 +1,18 @@
 package io.koraframework.opentelemetry.tracing.exporter.grpc;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.time.Duration;
 
-import static io.koraframework.opentelemetry.tracing.exporter.grpc.$OpentelemetryGrpcExporterConfig_FromConfig_ConfigValueExtractor.*;
+import static io.koraframework.opentelemetry.tracing.exporter.grpc.$OpentelemetryGrpcExporterConfig_FromConfig_ConfigValueMapper.*;
 
 
 public sealed interface OpentelemetryGrpcExporterConfig {
 
     record Empty() implements OpentelemetryGrpcExporterConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     sealed interface FromConfig extends OpentelemetryGrpcExporterConfig permits FromConfig_Defaults, FromConfig_Impl {
 
         String endpoint();
@@ -51,7 +51,7 @@ public sealed interface OpentelemetryGrpcExporterConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RetryPolicy {
         default int maxAttempts() {
             return 5;

@@ -16,7 +16,7 @@ class JdbcAopTest : AbstractJdbcRepositoryTest() {
             import java.sql.*;
             
             import io.koraframework.config.common.Config
-            import io.koraframework.config.common.factory.MapConfigFactory
+            import io.koraframework.config.common.util.ConfigMappingUtils
             import io.koraframework.logging.common.annotation.Log
         """.trimIndent()
     }
@@ -25,9 +25,9 @@ class JdbcAopTest : AbstractJdbcRepositoryTest() {
         val classAsStrs = mutableListOf(
             """
                 @io.koraframework.common.annotation.Module
-                interface ConfigModule : io.koraframework.database.jdbc.JdbcDatabaseModule, io.koraframework.config.common.extractor.ConfigValueExtractorModule, io.koraframework.logging.logback.LogbackModule {
+                interface ConfigModule : io.koraframework.database.jdbc.JdbcDatabaseModule, io.koraframework.config.common.mapper.ConfigValueMapperModule, io.koraframework.logging.logback.LogbackModule {
                     fun config(): Config {
-                        return MapConfigFactory.fromMap(
+                        return ConfigMappingUtils.fromMap(
                             mapOf<String, Any>(
                                 "test" to ""
                             )

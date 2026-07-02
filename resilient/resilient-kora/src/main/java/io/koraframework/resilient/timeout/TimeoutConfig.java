@@ -1,14 +1,14 @@
 package io.koraframework.resilient.timeout;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface TimeoutConfig {
 
     String DEFAULT = "default";
@@ -22,7 +22,7 @@ public interface TimeoutConfig {
     /**
      * {@link #duration} Configures maximum interval for timeout.
      */
-    @ConfigValueExtractor
+    @ConfigMapper
     interface NamedConfig {
 
         @Nullable
@@ -54,7 +54,7 @@ public interface TimeoutConfig {
             return namedConfig;
         }
 
-        return new $TimeoutConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+        return new $TimeoutConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
             namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
             namedConfig.duration() == null ? defaultConfig.duration() : namedConfig.duration());
     }

@@ -22,12 +22,13 @@ import java.util.function.Function;
 
 public class ConfigWatcher implements Lifecycle {
 
-    private static final Logger log = LoggerFactory.getLogger(ConfigWatcher.class);
+    private static final Logger logger = LoggerFactory.getLogger(ConfigWatcher.class);
 
     private final RefreshableGraph graph;
     private final @Nullable Node<? extends ConfigOrigin> applicationConfigNode;
     private final AtomicBoolean isStarted = new AtomicBoolean(false);
     private final int checkTime;
+
     private volatile Thread thread;
 
     public ConfigWatcher(RefreshableGraph graph, @Nullable Node<? extends ConfigOrigin> applicationConfigNode, int checkTime) {
@@ -80,7 +81,7 @@ public class ConfigWatcher implements Lifecycle {
                 var lastModifiedTime = Files.getLastModifiedTime(configPath).toInstant();
                 return new State(configPath, lastModifiedTime);
             } catch (IOException e) {
-                log.warn("Can't locate config file or ", e);
+                logger.warn("Can't locate config file or ", e);
                 return null;
             }
         };
@@ -100,7 +101,7 @@ public class ConfigWatcher implements Lifecycle {
                 for (var origin : origins) {
                     var currentState = state.get(origin.path());
                     if (currentState == null) {
-                        log.debug("New config origin {} no more present in graph", origin);
+                        logger.debug("New config origin {} no more present in graph", origin);
                         changed = true;
                         var originalState = stateExtractor.apply(origin.path());
                         newStates.put(origin.path(), originalState);
@@ -112,12 +113,12 @@ public class ConfigWatcher implements Lifecycle {
                     var newState = newStates.get(oldPath);
                     if (newState == null) {
                         changed = true;
-                        log.debug("Config origin {} no more present in graph", entry.getKey());
+                        logger.debug("Config origin {} no more present in graph", entry.getKey());
                     } else if (!newState.configPath.equals(oldState.configPath)) {
-                        log.debug("New config symlink target");
+                        logger.debug("New config symlink target");
                         changed = true;
                     } else if (newState.lastModifiedTime.isAfter(oldState.lastModifiedTime)) {
-                        log.debug("Config modified");
+                        logger.debug("Config modified");
                         changed = true;
                     }
                 }
@@ -125,11 +126,11 @@ public class ConfigWatcher implements Lifecycle {
                 if (changed) {
                     try {
                         this.graph.refresh(this.applicationConfigNode);
-                        log.info("Config refreshed");
+                        logger.info("Config refreshed");
                         Thread.sleep(this.checkTime);
                     } catch (InterruptedException ignore) {
                     } catch (Exception e) {
-                        log.warn("Error on checking config for changes", e);
+                        logger.warn("Error on checking config for changes", e);
                         try {
                             Thread.sleep(this.checkTime);
                         } catch (InterruptedException ignore) {
@@ -147,7 +148,7 @@ public class ConfigWatcher implements Lifecycle {
                     continue;
                 }
                 if (entry.getValue() == null) {
-                    log.debug("New config symlink target");
+                    logger.debug("New config symlink target");
                     changed.put(entry.getKey(), newState);
                     continue;
                 }
@@ -156,23 +157,23 @@ public class ConfigWatcher implements Lifecycle {
                 var currentConfigPath = newState.configPath;
                 var currentLastModifiedTime = newState.lastModifiedTime;
                 if (!currentConfigPath.equals(configPath)) {
-                    log.debug("New config symlink target");
+                    logger.debug("New config symlink target");
                     changed.put(entry.getKey(), newState);
                 } else if (currentLastModifiedTime.isAfter(lastModifiedTime)) {
-                    log.debug("Config modified");
+                    logger.debug("Config modified");
                     changed.put(entry.getKey(), newState);
                 }
             }
             try {
                 if (!changed.isEmpty()) {
                     this.graph.refresh(this.applicationConfigNode);
-                    log.info("Config refreshed");
+                    logger.info("Config refreshed");
                     state.putAll(changed);
                 }
                 Thread.sleep(this.checkTime);
             } catch (InterruptedException ignore) {
             } catch (Exception e) {
-                log.warn("Error on checking config for changes", e);
+                logger.warn("Error on checking config for changes", e);
                 try {
                     Thread.sleep(this.checkTime);
                 } catch (InterruptedException ignore) {

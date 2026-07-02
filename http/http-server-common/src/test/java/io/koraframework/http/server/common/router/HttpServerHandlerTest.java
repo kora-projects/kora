@@ -1,7 +1,7 @@
 package io.koraframework.http.server.common.router;
 
 import io.koraframework.common.util.Size;
-import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueExtractor;
+import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueMapper;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
@@ -141,7 +141,7 @@ class HttpServerHandlerTest {
     }
 
     private HttpServerConfig config(boolean ignoreTrailingSlash) {
-        return new $HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl(
+        return new $HttpServerConfig_ConfigValueMapper.HttpServerConfig_Impl(
             0,
             ignoreTrailingSlash,
             Duration.ofSeconds(1),
@@ -151,10 +151,10 @@ class HttpServerHandlerTest {
             true,
             Duration.ofMillis(1),
             Size.ofBytesBinary(1024),
-            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             )
         );
     }

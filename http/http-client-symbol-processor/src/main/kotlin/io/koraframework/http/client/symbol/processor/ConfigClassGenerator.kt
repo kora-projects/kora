@@ -6,7 +6,7 @@ import com.squareup.kotlinpoet.KModifier
 import com.squareup.kotlinpoet.TypeSpec
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.declarativeHttpClientConfig
 import io.koraframework.http.client.symbol.processor.HttpClientClassNames.httpClientOperationConfig
-import io.koraframework.ksp.common.CommonClassNames.configValueExtractorAnnotation
+import io.koraframework.ksp.common.CommonClassNames.configMapperAnnotation
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
 
@@ -22,7 +22,7 @@ class ConfigClassGenerator {
             .addOriginatingKSFile(declaration)
             .generated(HttpClientSymbolProcessor::class)
             .addSuperinterface(declarativeHttpClientConfig)
-            .addAnnotation(configValueExtractorAnnotation)
+            .addAnnotation(configMapperAnnotation)
 
         tb.addFunction(FunSpec.builder("telemetry")
             .addModifiers(KModifier.ABSTRACT, KModifier.OVERRIDE)

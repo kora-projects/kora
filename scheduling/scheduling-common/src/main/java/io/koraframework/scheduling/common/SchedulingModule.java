@@ -2,7 +2,7 @@ package io.koraframework.scheduling.common;
 
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryConfig;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryFactory;
 import io.koraframework.scheduling.common.telemetry.impl.DefaultSchedulingLoggerFactory;
@@ -14,8 +14,8 @@ import org.jspecify.annotations.Nullable;
 
 public interface SchedulingModule {
 
-    default SchedulingTelemetryConfig schedulingTelemetryConfig(Config config, ConfigValueExtractor<SchedulingTelemetryConfig> extractor) {
-        return extractor.extractOrThrow(config.get("scheduling.telemetry"));
+    default SchedulingTelemetryConfig schedulingTelemetryConfig(Config config, ConfigValueMapper<SchedulingTelemetryConfig> mapper) {
+        return mapper.mapOrThrow(config.get("scheduling.telemetry"));
     }
 
     @DefaultComponent

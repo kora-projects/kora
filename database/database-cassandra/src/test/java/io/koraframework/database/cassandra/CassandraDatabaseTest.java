@@ -25,9 +25,9 @@ class CassandraDatabaseTest {
         var profiles = new HashMap<String, CassandraConfig.Profile>();
         profiles.put(
             "profile",
-            new $CassandraConfig_Profile_ConfigValueExtractor.Profile_Impl(new $CassandraConfig_Profile_ProfileBasic_ConfigValueExtractor.ProfileBasic_Impl(
+            new $CassandraConfig_Profile_ConfigValueMapper.Profile_Impl(new $CassandraConfig_Profile_ProfileBasic_ConfigValueMapper.ProfileBasic_Impl(
                 List.of(),
-                new $CassandraConfig_Basic_BasicRequestConfig_ConfigValueExtractor.BasicRequestConfig_Impl(Duration.ofSeconds(10), null, null, null, null),
+                new $CassandraConfig_Basic_BasicRequestConfig_ConfigValueMapper.BasicRequestConfig_Impl(Duration.ofSeconds(10), null, null, null, null),
                 null,
                 null,
                 null,
@@ -35,9 +35,9 @@ class CassandraDatabaseTest {
                 null
             ), null)
         );
-        var config = new $CassandraConfig_ConfigValueExtractor.CassandraConfig_Impl(
+        var config = new $CassandraConfig_ConfigValueMapper.CassandraConfig_Impl(
             profiles,
-            new $CassandraConfig_Basic_ConfigValueExtractor.Basic_Impl(
+            new $CassandraConfig_Basic_ConfigValueMapper.Basic_Impl(
                 null,
                 null,
                 List.of(params.host() + ":" + params.port()),
@@ -46,22 +46,22 @@ class CassandraDatabaseTest {
                 null,
                 null
             ),
-            new $CassandraConfig_Advanced_ConfigValueExtractor.Advanced_Impl(
+            new $CassandraConfig_Advanced_ConfigValueMapper.Advanced_Impl(
                 null, null, null, null, null, null, null, null, null,
-                new $CassandraConfig_Advanced_MetricsConfig_ConfigValueExtractor.MetricsConfig_Impl(
-                    new $CassandraConfig_Advanced_MetricsConfig_IdGenerator_ConfigValueExtractor.IdGenerator_Defaults(),
+                new $CassandraConfig_Advanced_MetricsConfig_ConfigValueMapper.MetricsConfig_Impl(
+                    new $CassandraConfig_Advanced_MetricsConfig_IdGenerator_ConfigValueMapper.IdGenerator_Defaults(),
                     null, null, false
                 ),
                 null, null, null, null, null, null, null, null, null
             ),
-            params.username() == null ? null : new $CassandraConfig_CassandraCredentials_ConfigValueExtractor.CassandraCredentials_Impl(
+            params.username() == null ? null : new $CassandraConfig_CassandraCredentials_ConfigValueMapper.CassandraCredentials_Impl(
                 params.username(),
                 params.password()
             ),
-            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
-                new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueExtractor.DatabaseLoggingConfig_Impl(true),
-                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
-                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(true, Map.of())
+            new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(true),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
         return new CassandraDatabase(config, null, null, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE));

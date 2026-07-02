@@ -1,11 +1,11 @@
 package io.koraframework.config.yaml;
 
 import io.koraframework.common.annotation.Tag;
-import io.koraframework.config.common.CommonConfigModule;
+import io.koraframework.config.common.ConfigModule;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.annotation.ApplicationConfig;
-import io.koraframework.config.common.factory.MapConfigFactory;
-import io.koraframework.config.common.factory.MergeConfigFactory;
+import io.koraframework.config.common.util.ConfigMappingUtils;
+import io.koraframework.config.common.util.ConfigMergingUtils;
 import io.koraframework.config.common.origin.ConfigOrigin;
 import io.koraframework.config.common.origin.FileConfigOrigin;
 import io.koraframework.config.common.origin.ResourceConfigOrigin;
@@ -17,7 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.Map;
 
-public interface YamlConfigModule extends CommonConfigModule {
+public interface YamlConfigModule extends ConfigModule {
 
     @ApplicationConfig
     default ConfigOrigin applicationConfigOrigin() throws URISyntaxException {
@@ -55,7 +55,7 @@ public interface YamlConfigModule extends CommonConfigModule {
     @Tag(YamlConfigModule.class)
     default Config applicationConfigYamlReference() throws Exception {
         var references = Thread.currentThread().getContextClassLoader().getResources("reference.yaml");
-        var config = MapConfigFactory.fromMap("empty", Map.of());
+        var config = ConfigMappingUtils.fromMap("empty", Map.of());
         while (references.hasMoreElements()) {
             var referenceUrl = references.nextElement();
             var origin = new ResourceConfigOrigin(referenceUrl);
@@ -67,7 +67,7 @@ public interface YamlConfigModule extends CommonConfigModule {
                 } catch (Exception e) {
                     throw new RuntimeException("Reference config must be resolvable without external configs", e);
                 }
-                config = MergeConfigFactory.merge(yamlConfig, config);
+                config = ConfigMergingUtils.merge(yamlConfig, config);
             } finally {
                 if (connection instanceof AutoCloseable closeable) {
                     closeable.close();
@@ -82,14 +82,14 @@ public interface YamlConfigModule extends CommonConfigModule {
         if (configOrigin instanceof FileConfigOrigin fileConfigOrigin) {
             try (var is = Files.newInputStream(fileConfigOrigin.path(), StandardOpenOption.READ)) {
                 var config = YamlConfigFactory.fromYaml(configOrigin, is);
-                return MergeConfigFactory.merge(config, reference);
+                return ConfigMergingUtils.merge(config, reference);
             }
         } else if (configOrigin instanceof ResourceConfigOrigin resourceConfigOrigin) {
             var connection = resourceConfigOrigin.url().openConnection();
             connection.connect();
             try (var is = connection.getInputStream()) {
                 var config = YamlConfigFactory.fromYaml(configOrigin, is);
-                return MergeConfigFactory.merge(config, reference);
+                return ConfigMergingUtils.merge(config, reference);
             } finally {
                 if (connection instanceof AutoCloseable closeable) {
                     closeable.close();

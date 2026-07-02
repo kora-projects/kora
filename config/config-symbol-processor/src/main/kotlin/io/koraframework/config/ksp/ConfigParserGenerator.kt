@@ -32,9 +32,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         }
         f as Either.Left
 
-        val typeName = element.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
+        val typeName = element.generatedClassName(ConfigClassNames.configValueMapper.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
-            .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName()))
+            .addSuperinterface(ConfigClassNames.configValueMapper.parameterizedBy(targetType.toTypeName()))
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(element)
 
@@ -102,9 +102,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             return Either.right(f.value)
         }
         f as Either.Left
-        val typeName: String = element.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
+        val typeName: String = element.generatedClassName(ConfigClassNames.configValueMapper.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
-            .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
+            .addSuperinterface(ConfigClassNames.configValueMapper.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(element)
         val fields = f.value
@@ -144,9 +144,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         }
         f as Either.Left
 
-        val typeName = decl.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
+        val typeName = decl.generatedClassName(ConfigClassNames.configValueMapper.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
-            .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
+            .addSuperinterface(ConfigClassNames.configValueMapper.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(decl)
         val fields = f.value
@@ -198,9 +198,9 @@ class ConfigParserGenerator(private val resolver: Resolver) {
         }
         f as Either.Left
 
-        val typeName = decl.generatedClassName(ConfigClassNames.configValueExtractor.simpleName)
+        val typeName = decl.generatedClassName(ConfigClassNames.configValueMapper.simpleName)
         val typeBuilder = TypeSpec.classBuilder(typeName)
-            .addSuperinterface(ConfigClassNames.configValueExtractor.parameterizedBy(targetType.toTypeName().copy(false)))
+            .addSuperinterface(ConfigClassNames.configValueMapper.parameterizedBy(targetType.toTypeName().copy(false)))
             .generated(ConfigParserGenerator::class)
             .addOriginatingKSFile(targetType.declaration)
         val fields = f.value
@@ -269,7 +269,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             if (isSupported) {
                 continue
             }
-            val fieldParserType = ConfigClassNames.configValueExtractor.parameterizedBy(field.typeName.copy(false))
+            val fieldParserType = ConfigClassNames.configValueMapper.parameterizedBy(field.typeName.copy(false))
             val constructorParameterName = fieldFactory.add(field.mapping, fieldParserType)
             val fieldParserName: String = field.name + "_parser"
             parser.addProperty(
@@ -282,11 +282,11 @@ class ConfigParserGenerator(private val resolver: Resolver) {
     }
 
     private fun buildExtractMethod(typeDecl: KSClassDeclaration, typeName: TypeName, implClassName: ClassName, fields: List<ConfigUtils.ConfigField>): FunSpec {
-        val rootParse = FunSpec.builder("extract")
+        val rootParse = FunSpec.builder("map")
             .addModifiers(KModifier.OVERRIDE)
             .returns(typeName.copy(false))
         rootParse.addParameter("_sourceValue", ConfigClassNames.configValue.parameterizedBy(WildcardTypeName.producerOf(ANY)))
-        val mapNullAsEmptyObject = typeDecl.findAnnotation(ConfigClassNames.configValueExtractorAnnotation)
+        val mapNullAsEmptyObject = typeDecl.findAnnotation(ConfigClassNames.configValueMapperAnnotation)
             ?.findValueNoDefault<Boolean>("mapNullAsEmptyObject")
             ?: true
 
@@ -378,7 +378,7 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             } else if (field.isNullable) {
                 addStatement("return null")
             } else {
-                addStatement("throw %T.missingValue(value)", ConfigClassNames.configValueExtractionException)
+                addStatement("throw %T.missingValue(value)", ConfigClassNames.configValueException)
             }
         }.build()
 
@@ -392,16 +392,16 @@ class ConfigParserGenerator(private val resolver: Resolver) {
             parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
                 addCode(returnDefaultOrThrow)
             }
-            parse.addStatement("return %N.extract(value)", "${field.name}_parser")
+            parse.addStatement("return %N.map(value)", "${field.name}_parser")
         } else {
             if (field.hasDefault) {
                 parse.controlFlow("if (value is %T.NullValue)", ConfigClassNames.configValue) {
                     addCode(returnDefaultOrThrow)
                 }
             }
-            parse.addStatement("val parsed = %N.extract(value)", "${field.name}_parser")
+            parse.addStatement("val parsed = %N.map(value)", "${field.name}_parser")
             parse.controlFlow("if (parsed == null)") {
-                addStatement("throw %T.missingValueAfterParse(value)", ConfigClassNames.configValueExtractionException)
+                addStatement("throw %T.missingValueAfterParse(value)", ConfigClassNames.configValueException)
             }
             parse.addStatement("return parsed")
         }

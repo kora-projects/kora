@@ -65,11 +65,11 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                     val b = FunSpec.builder(configClassName.simpleName)
                         .returns(configClassName)
                         .addParameter("config", CommonClassNames.config)
-                        .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(configClassName))
+                        .addParameter("mapper", CommonClassNames.configValueMapper.parameterizedBy(configClassName))
                     if (cron.isNotBlank()) {
                         b.addStatement("val value = config.get(%S)", configPath)
                         b.controlFlow("if (value is %T.NullValue)", CommonClassNames.configValue) {
-                            addCode("return extractor.extractOrThrow(\n")
+                            addCode("return mapper.mapOrThrow(\n")
                             addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), %S)))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue, cron)
                             addCode(")!!\n")
                         }
@@ -77,16 +77,16 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
                         b.addStatement("val value = config.get(%S)!!", configPath)
                     }
                     b.controlFlow("if (value is %T.ObjectValue)", CommonClassNames.configValue) {
-                        addStatement("return extractor.extractOrThrow(value)!!")
+                        addStatement("return mapper.mapOrThrow(value)!!")
                     }
                     b.controlFlow("if (value is %T.StringValue)", CommonClassNames.configValue) {
-                        addCode("return extractor.extractOrThrow(\n")
+                        addCode("return mapper.mapOrThrow(\n")
                         addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), value.value())))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue)
                         addCode(")!!\n")
                         nextControlFlow("else")
                         addStatement(
                             "throw %T.unexpectedValueType(value, %T.StringValue::class.java)",
-                            ClassName("io.koraframework.config.common.extractor", "ConfigValueExtractionException"),
+                            ClassName("io.koraframework.config.common.exception", "ConfigValueException"),
                             CommonClassNames.configValue
                         )
                     }
@@ -163,7 +163,7 @@ class QuartzSchedulingGenerator(val env: SymbolProcessorEnvironment) {
     private fun generateCronConfigRecord(type: KSClassDeclaration, function: KSFunctionDeclaration, defaultCron: String): ClassName {
         val configClassName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_CronConfig"
         val configType = TypeSpec.interfaceBuilder(configClassName)
-            .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+            .addAnnotation(CommonClassNames.configMapperAnnotation)
             .generated(QuartzSchedulingGenerator::class)
             .addSuperinterface(schedulingJobConfigClassName)
 

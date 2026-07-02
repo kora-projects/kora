@@ -37,8 +37,8 @@ public class KafkaConsumerConfigGenerator {
         var methodBuilder = MethodSpec.methodBuilder(prepareMethodName(method, "Config"))
             .returns(KafkaClassNames.kafkaConsumerConfig)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.kafkaConsumerConfig), "extractor")
-            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, KafkaClassNames.kafkaConsumerConfig), "mapper")
+            .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addAnnotation(TagUtils.makeAnnotationSpec(targetTag));
 

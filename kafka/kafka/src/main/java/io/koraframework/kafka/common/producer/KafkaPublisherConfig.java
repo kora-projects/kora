@@ -1,20 +1,20 @@
 package io.koraframework.kafka.common.producer;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.kafka.common.producer.telemetry.KafkaPublisherTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Properties;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface KafkaPublisherConfig {
 
     Properties driverProperties();
 
     KafkaPublisherTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface TransactionConfig {
 
         default String idPrefix() {
@@ -30,7 +30,7 @@ public interface KafkaPublisherConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface TopicConfig {
 
         String topic();

@@ -1,9 +1,9 @@
 package io.koraframework.resilient.circuitbreaker.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface CircuitBreakerTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,13 +15,13 @@ public interface CircuitBreakerTelemetryConfig extends TelemetryConfig {
     @Override
     CircuitBreakerTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CircuitBreakerLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CircuitBreakerMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CircuitBreakerTracingConfig extends TelemetryConfig.TracingConfig {
 
         @Override

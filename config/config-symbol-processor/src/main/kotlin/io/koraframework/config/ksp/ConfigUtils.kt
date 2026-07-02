@@ -27,7 +27,7 @@ object ConfigUtils {
                 val name = recordComponent.simpleName.asString()
                 if (seen.add(name)) {
                     val isNullable = recordComponentType.isMarkedNullable
-                    val mapping = recordComponent.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
+                    val mapping = recordComponent.parseMappingData().getMapping(ConfigClassNames.configValueMapper)
                     fields.add(
                         ConfigField(
                             name, recordComponentType.toTypeName(), isNullable, false, false, mapping
@@ -82,7 +82,7 @@ object ConfigUtils {
                 val fieldType = it.asMemberOf(type)
                 if (seen.add(it.simpleName.asString())) {
                     val isNullable = fieldType.isMarkedNullable
-                    val mapping = it.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
+                    val mapping = it.parseMappingData().getMapping(ConfigClassNames.configValueMapper)
                     fields.add(ConfigField(it.simpleName.asString(), fieldType.toTypeName(), isNullable, true, false, mapping))
                 }
             }
@@ -100,7 +100,7 @@ object ConfigUtils {
                 val name = parameter.name!!.asString()
                 val fieldType = parameter.type.resolve()
                 val isNullable = fieldType.isMarkedNullable
-                val mapping = parameter.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
+                val mapping = parameter.parseMappingData().getMapping(ConfigClassNames.configValueMapper)
                 fields.add(ConfigField(name, fieldType.toTypeName(), isNullable, parameter.hasDefault, false, mapping))
             }
         }
@@ -111,7 +111,7 @@ object ConfigUtils {
                 val name = property.simpleName.asString()
                 val propertyType = property.type.resolve()
                 val isNullable = propertyType.nullability == Nullability.NULLABLE
-                val mapping = property.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
+                val mapping = property.parseMappingData().getMapping(ConfigClassNames.configValueMapper)
                 fields.add(
                     ConfigField(
                         name, propertyType.toTypeName().copy(isNullable), isNullable, false, true, mapping
@@ -163,7 +163,7 @@ object ConfigUtils {
                 val name = function.simpleName.asString()
                 if (seen.add(name)) {
                     val isNullable = functionType.returnType!!.nullability == Nullability.NULLABLE || function.isAnnotationPresent { it.simpleName == "Nullable" }
-                    val mapping = function.parseMappingData().getMapping(ConfigClassNames.configValueExtractor)
+                    val mapping = function.parseMappingData().getMapping(ConfigClassNames.configValueMapper)
                     fields.add(
                         ConfigField(
                             name, functionType.returnType!!.toTypeName().copy(isNullable), isNullable, !function.isAbstract, false, mapping

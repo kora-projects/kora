@@ -44,8 +44,8 @@ public class ConfigSourceAnnotationProcessor extends AbstractKoraProcessor {
                 .returns(TypeName.get(config.asType()))
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .addParameter(ConfigClassNames.config, "config")
-                .addParameter(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(config.asType())), "extractor")
-                .addStatement("return extractor.extractOrThrow(config.get($S))", path);
+                .addParameter(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(config.asType())), "mapper")
+                .addStatement("return mapper.mapOrThrow(config.get($S))", path);
 
             var type = typeBuilder.addMethod(method.build())
                 .addAnnotation(CommonClassNames.module)

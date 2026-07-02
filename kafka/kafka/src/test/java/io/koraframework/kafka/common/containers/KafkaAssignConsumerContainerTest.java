@@ -15,7 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
 import io.koraframework.common.Either;
-import io.koraframework.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
+import io.koraframework.kafka.common.consumer.$KafkaListenerConfig_ConfigValueMapper;
 import io.koraframework.kafka.common.consumer.containers.KafkaAssignConsumerContainer;
 import io.koraframework.kafka.common.consumer.telemetry.*;
 import io.koraframework.test.kafka.KafkaParams;
@@ -47,7 +47,7 @@ class KafkaAssignConsumerContainerTest {
         driverProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         var testTopic = params.createTopic("test-topic", 3);
-        var config = new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(
+        var config = new $KafkaListenerConfig_ConfigValueMapper.KafkaListenerConfig_Impl(
             driverProps,
             List.of(testTopic),
             null,
@@ -60,10 +60,10 @@ class KafkaAssignConsumerContainerTest {
             Duration.ofMillis(10000),
             true,
             null,
-            new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueExtractor.KafkaConsumerTracingConfig_Defaults()
+            new $KafkaConsumerTelemetryConfig_ConfigValueMapper.KafkaConsumerTelemetryConfig_Impl(
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueMapper.KafkaConsumerLoggingConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueMapper.KafkaConsumerMetricsConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueMapper.KafkaConsumerTracingConfig_Defaults()
             )
         );
         var deque = new ConcurrentLinkedDeque<>();

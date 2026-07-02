@@ -24,10 +24,10 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
                                    DefaultHttpServerBodyConverter bodyLogger) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             )
             , false, false, DefaultHttpServerTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpServerTelemetryFactory.NOOP_TRACER, new DefaultHttpServerBodyConverter());
     }

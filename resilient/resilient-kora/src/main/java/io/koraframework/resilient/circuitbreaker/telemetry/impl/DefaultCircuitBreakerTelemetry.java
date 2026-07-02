@@ -14,10 +14,10 @@ public class DefaultCircuitBreakerTelemetry implements CircuitBreakerTelemetry {
                                    MeterRegistry meterRegistry) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext("none",
-            new $CircuitBreakerTelemetryConfig_ConfigValueExtractor.CircuitBreakerTelemetryConfig_Impl(
-                new $CircuitBreakerTelemetryConfig_CircuitBreakerLoggingConfig_ConfigValueExtractor.CircuitBreakerLoggingConfig_Defaults(),
-                new $CircuitBreakerTelemetryConfig_CircuitBreakerMetricsConfig_ConfigValueExtractor.CircuitBreakerMetricsConfig_Defaults(),
-                new $CircuitBreakerTelemetryConfig_CircuitBreakerTracingConfig_ConfigValueExtractor.CircuitBreakerTracingConfig_Defaults()
+            new $CircuitBreakerTelemetryConfig_ConfigValueMapper.CircuitBreakerTelemetryConfig_Impl(
+                new $CircuitBreakerTelemetryConfig_CircuitBreakerLoggingConfig_ConfigValueMapper.CircuitBreakerLoggingConfig_Defaults(),
+                new $CircuitBreakerTelemetryConfig_CircuitBreakerMetricsConfig_ConfigValueMapper.CircuitBreakerMetricsConfig_Defaults(),
+                new $CircuitBreakerTelemetryConfig_CircuitBreakerTracingConfig_ConfigValueMapper.CircuitBreakerTracingConfig_Defaults()
             ), false, false, DefaultCircuitBreakerTelemetryFactory.NOOP_TRACER, DefaultCircuitBreakerTelemetryFactory.NOOP_METER_REGISTRY);
     }
 

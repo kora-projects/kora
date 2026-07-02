@@ -1,9 +1,9 @@
 package io.koraframework.jms;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.jms.telemetry.JmsConsumerTelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface JmsListenerContainerConfig {
     String queueName();
 

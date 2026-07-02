@@ -25,7 +25,7 @@ public class ConfigParserAnnotationProcessor extends AbstractKoraProcessor {
 
     @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
-        return Set.of(ConfigClassNames.configValueExtractorAnnotation, ConfigClassNames.configSourceAnnotation);
+        return Set.of(ConfigClassNames.configValueMapperAnnotation, ConfigClassNames.configSourceAnnotation);
     }
 
     @Override
@@ -43,12 +43,12 @@ public class ConfigParserAnnotationProcessor extends AbstractKoraProcessor {
                     var className = ClassName.get(te);
                     elementsToProcess.put(className, te);
                 } else {
-                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@" + ConfigClassNames.configValueExtractorAnnotation.simpleName() + " is applicable only to records, classes or interfaces");
+                    processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@" + ConfigClassNames.configValueMapperAnnotation.simpleName() + " is applicable only to records, classes or interfaces");
                 }
             }
         }
         var elements = new ArrayList<>(elementsToProcess.values());
-        LogUtils.logElementsFull(log, Level.DEBUG, "Generating ConfigValueExtractor for", elements);
+        LogUtils.logElementsFull(log, Level.DEBUG, "Generating ConfigValueMapper for", elements);
         for (var element : elements) {
             if (element.getKind() == ElementKind.INTERFACE) {
                 var result = configParserGenerator.generateForInterface((DeclaredType) element.asType());
@@ -67,7 +67,7 @@ public class ConfigParserAnnotationProcessor extends AbstractKoraProcessor {
                     }
                 }
             } else {
-                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@" + ConfigClassNames.configValueExtractorAnnotation.simpleName() + " is applicable only to records, classes or interfaces");
+                processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@" + ConfigClassNames.configValueMapperAnnotation.simpleName() + " is applicable only to records, classes or interfaces");
             }
         }
     }

@@ -2,12 +2,12 @@ package io.koraframework.cache.redis;
 
 
 import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryConfig;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface RedisCacheConfig {
 
     /**

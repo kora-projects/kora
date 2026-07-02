@@ -1,12 +1,12 @@
 package io.koraframework.s3.client.kora;
 
 import io.koraframework.common.util.Size;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetryConfig;
 
 import java.time.Duration;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface S3ClientConfig {
 
     String endpoint();
@@ -32,7 +32,7 @@ public interface S3ClientConfig {
 
     S3ClientTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface UploadConfig {
 
         /**

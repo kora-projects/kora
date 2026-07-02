@@ -6,7 +6,7 @@ import io.koraframework.application.graph.TypeRef;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.kafka.common.consumer.GeneratedListener;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.containers.ConsumerRecordWrapper;
@@ -224,7 +224,7 @@ public abstract class AbstractKafkaListenerAnnotationProcessorTest extends Abstr
                 var configMethod = Arrays.stream(moduleClass.getMethods()).filter(m -> m.getName().equals("kafkaListenerClassProcessConfig")).findFirst().orElseThrow();
                 assertThat(configMethod.getReturnType()).isEqualTo(KafkaListenerConfig.class);
                 assertThat(configMethod.getParameters()[0].getType()).isEqualTo(Config.class);
-                assertThat(configMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(ConfigValueExtractor.class, KafkaListenerConfig.class));
+                assertThat(configMethod.getParameters()[1].getParameterizedType()).isEqualTo(TypeRef.of(ConfigValueMapper.class, KafkaListenerConfig.class));
                 assertThat(configMethod.getAnnotation(Tag.class).value()).isEqualTo(tagValue);
 
                 return this;

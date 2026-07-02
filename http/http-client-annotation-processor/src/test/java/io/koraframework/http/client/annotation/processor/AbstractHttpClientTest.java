@@ -2,8 +2,8 @@ package io.koraframework.http.client.annotation.processor;
 
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
-import io.koraframework.config.common.extractor.*;
-import io.koraframework.config.common.factory.MapConfigFactory;
+import io.koraframework.config.common.mapper.*;
+import io.koraframework.config.common.util.ConfigMappingUtils;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.http.client.common.declarative.*;
 import io.koraframework.http.client.common.request.HttpClientRequest;
@@ -64,21 +64,21 @@ public abstract class AbstractHttpClientTest extends AbstractAnnotationProcessor
         compileResult.warnings().forEach(System.out::println);
 
         var clientClass = compileResult.loadClass("$TestClient_ClientImpl");
-        var durationCVE = new DurationConfigValueExtractor();
-        var telemetryCVE = new $HttpClientTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
-            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
-            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
+        var durationCVE = new DurationConfigValueMapper();
+        var telemetryCVE = new $HttpClientTelemetryConfig_ConfigValueMapper(
+            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper(new SetConfigValueMapper<>(new StringConfigValueMapper()), new SizeConfigValueMapper()),
+            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueMapper(new DurationArrayConfigValueMapper(new DurationConfigValueMapper()), new MapConfigValueMapper<>(new StringConfigValueMapper())),
+            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueMapper(new MapConfigValueMapper<>(new StringConfigValueMapper()))
         );
-        var operationTelemetryCVE = new $HttpClientOperationConfig_OperationTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientOperationConfig_OperationTelemetryConfig_LoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
-            new $HttpClientOperationConfig_OperationTelemetryConfig_TracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
-            new $HttpClientOperationConfig_OperationTelemetryConfig_MetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
+        var operationTelemetryCVE = new $HttpClientOperationConfig_OperationTelemetryConfig_ConfigValueMapper(
+            new $HttpClientOperationConfig_OperationTelemetryConfig_LoggingConfig_ConfigValueMapper(new SetConfigValueMapper<>(new StringConfigValueMapper()), new SizeConfigValueMapper()),
+            new $HttpClientOperationConfig_OperationTelemetryConfig_TracingConfig_ConfigValueMapper(new MapConfigValueMapper<>(new StringConfigValueMapper())),
+            new $HttpClientOperationConfig_OperationTelemetryConfig_MetricsConfig_ConfigValueMapper(new DurationArrayConfigValueMapper(new DurationConfigValueMapper()), new MapConfigValueMapper<>(new StringConfigValueMapper()))
         );
-        var operationConfigCVE = new $HttpClientOperationConfig_ConfigValueExtractor(durationCVE, operationTelemetryCVE);
+        var operationConfigCVE = new $HttpClientOperationConfig_ConfigValueMapper(durationCVE, operationTelemetryCVE);
 
-        var configValueExtractor = (ConfigValueExtractor<?>) newObject("$TestClient_Config_ConfigValueExtractor", telemetryCVE, operationConfigCVE, durationCVE);
-        var config = configValueExtractor.extract(MapConfigFactory.fromMap(Map.of(
+        var configValueExtractor = (ConfigValueMapper<?>) newObject("$TestClient_Config_ConfigValueMapper", telemetryCVE, operationConfigCVE, durationCVE);
+        var config = configValueExtractor.map(ConfigMappingUtils.fromMap(Map.of(
             "url", "http://test-url:8080"
         )).root());
 

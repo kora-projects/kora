@@ -1,15 +1,15 @@
 package io.koraframework.openapi.management;
 
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.common.HttpMethod;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
 
 public interface OpenApiManagementModule {
 
-    default OpenApiManagementConfig openApiManagementConfig(Config config, ConfigValueExtractor<OpenApiManagementConfig> extractor) {
-        return extractor.extractOrThrow(config.get("openapi.management"));
+    default OpenApiManagementConfig openApiManagementConfig(Config config, ConfigValueMapper<OpenApiManagementConfig> mapper) {
+        return mapper.mapOrThrow(config.get("openapi.management"));
     }
 
     default HttpServerRequestHandler openApiManagementController(OpenApiManagementConfig config) {

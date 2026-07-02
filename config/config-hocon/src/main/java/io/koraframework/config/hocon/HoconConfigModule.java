@@ -3,7 +3,7 @@ package io.koraframework.config.hocon;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigResolveOptions;
 import com.typesafe.config.impl.ConfigImpl;
-import io.koraframework.config.common.CommonConfigModule;
+import io.koraframework.config.common.ConfigModule;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.annotation.ApplicationConfig;
 import io.koraframework.config.common.origin.ConfigOrigin;
@@ -17,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-public interface HoconConfigModule extends CommonConfigModule {
+public interface HoconConfigModule extends ConfigModule {
 
     @ApplicationConfig
     default ConfigOrigin applicationConfigOrigin() throws URISyntaxException {

@@ -45,10 +45,10 @@ class ConfigSourceSymbolProcessor(
                     .addModifiers(KModifier.PUBLIC)
                     .addParameter("config", ConfigClassNames.config)
                     .addParameter(
-                        "extractor",
-                        ConfigClassNames.configValueExtractor.parameterizedBy(config.toClassName())
+                        "mapper",
+                        ConfigClassNames.configValueMapper.parameterizedBy(config.toClassName())
                     )
-                    .addStatement("return extractor.extractOrThrow(config.get(%S))", path)
+                    .addStatement("return mapper.mapOrThrow(config.get(%S))", path)
                 val type = typeBuilder.addFunction(function.build())
                     .addAnnotation(CommonClassNames.module)
                     .generated(ConfigSourceSymbolProcessor::class)

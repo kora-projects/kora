@@ -3,7 +3,7 @@ package io.koraframework.resilient.retry;
 import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.resilient.retry.telemetry.RetryTelemetryFactory;
 import io.koraframework.resilient.retry.telemetry.impl.DefaultRetryLoggerFactory;
 import io.koraframework.resilient.retry.telemetry.impl.DefaultRetryMetricsFactory;
@@ -14,8 +14,8 @@ import org.jspecify.annotations.Nullable;
 
 public interface RetryModule {
 
-    default RetryConfig koraRetryableConfig(Config config, ConfigValueExtractor<RetryConfig> extractor) {
-        return extractor.extractOrThrow(config.get("resilient"));
+    default RetryConfig koraRetryableConfig(Config config, ConfigValueMapper<RetryConfig> mapper) {
+        return mapper.mapOrThrow(config.get("resilient"));
     }
 
     default RetryManager koraRetryableManager(All<RetryPredicate> failurePredicates,

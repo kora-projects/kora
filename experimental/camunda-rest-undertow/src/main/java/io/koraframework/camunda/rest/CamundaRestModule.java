@@ -7,7 +7,7 @@ import io.koraframework.camunda.rest.telemetry.impl.DefaultCamundaRestTelemetryF
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import jakarta.ws.rs.core.Application;
@@ -35,8 +35,8 @@ public interface CamundaRestModule {
         return new DefaultCamundaRestTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
-    default CamundaRestConfig camundaRestConfig(Config config, ConfigValueExtractor<CamundaRestConfig> extractor) {
-        return extractor.extractOrThrow(config.get("camunda.rest"));
+    default CamundaRestConfig camundaRestConfig(Config config, ConfigValueMapper<CamundaRestConfig> mapper) {
+        return mapper.mapOrThrow(config.get("camunda.rest"));
     }
 
     @Tag(CamundaRest.class)

@@ -25,7 +25,7 @@ class CircuitBreakerTests {
     @Test
     fun switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosedForAccept() {
         // given
-        val config: CircuitBreakerConfig.NamedConfig = `$CircuitBreakerConfig_NamedConfig_ConfigValueExtractor`.NamedConfig_Impl(
+        val config: CircuitBreakerConfig.NamedConfig = `$CircuitBreakerConfig_NamedConfig_ConfigValueMapper`.NamedConfig_Impl(
             true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate::class.java.canonicalName
         )
         val circuitBreaker = KoraCircuitBreaker("default", config, KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE)

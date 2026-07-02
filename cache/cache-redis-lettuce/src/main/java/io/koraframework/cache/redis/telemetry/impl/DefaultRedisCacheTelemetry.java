@@ -18,10 +18,10 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
                                    String cacheImplCanonicalName,
                                    String cacheImplSimpleName) {
 
-        public static final TelemetryContext EMPTY = new TelemetryContext(new $RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
-            new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
-            new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
-            new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
+        public static final TelemetryContext EMPTY = new TelemetryContext(new $RedisCacheTelemetryConfig_ConfigValueMapper.RedisCacheTelemetryConfig_Impl(
+            new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper.RedisCacheLoggingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper.RedisCacheTracingConfig_Defaults(),
+            new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper.RedisCacheMetricsConfig_Defaults()
         ), false, false, DefaultRedisCacheTelemetryFactory.NOOP_METER_REGISTRY, DefaultRedisCacheTelemetryFactory.NOOP_TRACER, "", "", "");
     }
 

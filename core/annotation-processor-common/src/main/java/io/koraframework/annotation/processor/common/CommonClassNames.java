@@ -61,10 +61,10 @@ public class CommonClassNames {
     public static final ClassName list = ClassName.get(List.class);
 
     public static final ClassName config = ClassName.get("io.koraframework.config.common", "Config");
-    public static final ClassName configValueExtractor = ClassName.get("io.koraframework.config.common.extractor", "ConfigValueExtractor");
-    public static final ClassName configValueExtractorAnnotation = ClassName.get("io.koraframework.config.common.annotation", "ConfigValueExtractor");
+    public static final ClassName configValueMapper = ClassName.get("io.koraframework.config.common.mapper", "ConfigValueMapper");
+    public static final ClassName configMapperAnnotation = ClassName.get("io.koraframework.config.common.annotation", "ConfigMapper");
     public static final ClassName configValue = ClassName.get("io.koraframework.config.common", "ConfigValue");
-    public static final ClassName configValueExtractionException = ClassName.get("io.koraframework.config.common.extractor", "ConfigValueExtractionException");
+    public static final ClassName configValueException = ClassName.get("io.koraframework.config.common.exception", "ConfigValueException");
 
     public static final ClassName telemetryConfig = ClassName.get("io.koraframework.telemetry.common", "TelemetryConfig");
     public static final ClassName meterRegistry = ClassName.get("io.micrometer.core.instrument", "MeterRegistry");

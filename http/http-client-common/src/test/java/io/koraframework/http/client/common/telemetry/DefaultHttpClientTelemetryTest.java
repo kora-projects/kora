@@ -1,7 +1,7 @@
 package io.koraframework.http.client.common.telemetry;
 
 import com.typesafe.config.ConfigFactory;
-import io.koraframework.config.common.extractor.*;
+import io.koraframework.config.common.mapper.*;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import io.koraframework.config.hocon.HoconConfigFactory;
 import io.koraframework.http.client.common.request.HttpClientRequest;
@@ -37,12 +37,12 @@ import static org.mockito.Mockito.when;
 class DefaultHttpClientTelemetryTest {
     private HttpClientTelemetryConfig config(String str) {
         var config = HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(str));
-        var extractor = new $HttpClientTelemetryConfig_ConfigValueExtractor(
-            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueExtractor(new SetConfigValueExtractor<>(new StringConfigValueExtractor()), new SizeConfigValueExtractor()),
-            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor(new DurationArrayConfigValueExtractor(new DurationConfigValueExtractor()), new MapConfigValueExtractor<>(new StringConfigValueExtractor())),
-            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor(new MapConfigValueExtractor<>(new StringConfigValueExtractor()))
+        var mapper = new $HttpClientTelemetryConfig_ConfigValueMapper(
+            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper(new SetConfigValueMapper<>(new StringConfigValueMapper()), new SizeConfigValueMapper()),
+            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueMapper(new DurationArrayConfigValueMapper(new DurationConfigValueMapper()), new MapConfigValueMapper<>(new StringConfigValueMapper())),
+            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueMapper(new MapConfigValueMapper<>(new StringConfigValueMapper()))
         );
-        return extractor.extract(config.root());
+        return mapper.map(config.root());
     }
 
     private Tracer tracer = Mockito.mock(Tracer.class);

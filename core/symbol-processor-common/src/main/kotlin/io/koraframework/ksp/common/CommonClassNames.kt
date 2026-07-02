@@ -58,10 +58,10 @@ object CommonClassNames {
     val generated = ClassName("io.koraframework.common.annotation", "Generated")
 
     val config = ClassName("io.koraframework.config.common", "Config")
-    val configValueExtractionException = ClassName("io.koraframework.config.common.extractor", "ConfigValueExtractionException")
+    val configValueException = ClassName("io.koraframework.config.common.exception", "ConfigValueException")
     val configValue = ClassName("io.koraframework.config.common", "ConfigValue")
-    val configValueExtractor = ClassName("io.koraframework.config.common.extractor", "ConfigValueExtractor")
-    val configValueExtractorAnnotation = ClassName("io.koraframework.config.common.annotation", "ConfigValueExtractor");
+    val configValueMapper = ClassName("io.koraframework.config.common.mapper", "ConfigValueMapper")
+    val configMapperAnnotation = ClassName("io.koraframework.config.common.annotation", "ConfigMapper");
 
     val isNotEmpty = MemberName("kotlin.collections", "isNotEmpty")
 

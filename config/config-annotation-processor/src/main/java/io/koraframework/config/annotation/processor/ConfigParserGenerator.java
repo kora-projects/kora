@@ -34,11 +34,11 @@ public class ConfigParserGenerator {
         if (f.isRight()) {
             return Either.right(f.right());
         }
-        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
+        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueMapper);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
-            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
+            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
         var defaultsType = buildDefaultsType(targetType, element, fields);
@@ -79,14 +79,14 @@ public class ConfigParserGenerator {
         var nonEmptyConstructor = constructors.stream().filter(e -> !e.getParameters().isEmpty()).findFirst().orElse(null);
         var constructorParams = nonEmptyConstructor == null ? Set.of() : nonEmptyConstructor.getParameters().stream().map(VariableElement::getSimpleName).map(Objects::toString).collect(Collectors.toSet());
 
-        var rootParse = MethodSpec.methodBuilder("extract")
+        var rootParse = MethodSpec.methodBuilder("map")
             .addModifiers(Modifier.PUBLIC)
             .addAnnotation(Override.class)
             .returns(typeName.withoutAnnotations());
         rootParse.addParameter(ParameterizedTypeName.get(ConfigClassNames.configValue, WildcardTypeName.subtypeOf(ClassName.OBJECT)), "_sourceValue");
         rootParse.beginControlFlow("if (_sourceValue instanceof $T.NullValue _nullValue)", ConfigClassNames.configValue);
 
-        var annotation = AnnotationUtils.findAnnotation(element, ConfigClassNames.configValueExtractorAnnotation);
+        var annotation = AnnotationUtils.findAnnotation(element, ConfigClassNames.configValueMapperAnnotation);
         if (annotation == null || Boolean.TRUE.equals(Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "mapNullAsEmptyObject"), true))) {
             rootParse.addStatement("_sourceValue = new $T.ObjectValue(_sourceValue.origin(), $T.of())", ConfigClassNames.configValue, Map.class);
         } else {
@@ -143,11 +143,11 @@ public class ConfigParserGenerator {
         if (f.isRight()) {
             return Either.right(f.right());
         }
-        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
+        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueMapper);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
-            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
+            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
         var implClassName = ClassName.get(element);
@@ -175,11 +175,11 @@ public class ConfigParserGenerator {
         if (f.isRight()) {
             return Either.right(f.right());
         }
-        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
+        var typeName = NameUtils.generatedType(element, ConfigClassNames.configValueMapper);
         var typeBuilder = TypeSpec.classBuilder(typeName)
             .addOriginatingElement(element)
             .addAnnotation(AnnotationUtils.generated(ConfigParserGenerator.class))
-            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, TypeName.get(targetType)))
+            .addSuperinterface(ParameterizedTypeName.get(ConfigClassNames.configValueMapper, TypeName.get(targetType)))
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
         var fields = Objects.requireNonNull(f.left());
 
@@ -241,7 +241,7 @@ public class ConfigParserGenerator {
                     } else if (optionalType.isPresent()) {
                         parse.addStatement("return $T.empty()", ConfigClassNames.optional);
                     } else {
-                        parse.addStatement("throw $T.missingValue(nullValue)", ConfigClassNames.configValueExtractionException);
+                        parse.addStatement("throw $T.missingValue(nullValue)", ConfigClassNames.configValueException);
                     }
                     parse.nextControlFlow("else");
                     parse.addStatement("return defaultValue");
@@ -253,7 +253,7 @@ public class ConfigParserGenerator {
                 } else if (optionalType.isPresent()) {
                     parse.addStatement("return $T.empty()", ConfigClassNames.optional);
                 } else {
-                    parse.addStatement("throw $T.missingValue(nullValue)", ConfigClassNames.configValueExtractionException);
+                    parse.addStatement("throw $T.missingValue(nullValue)", ConfigClassNames.configValueException);
                 }
             }
             parse.endControlFlow();
@@ -279,7 +279,7 @@ public class ConfigParserGenerator {
                     } else if (optionalType.isPresent()) {
                         parse.addStatement("return $T.empty()", ConfigClassNames.optional);
                     } else {
-                        parse.addStatement("throw $T.missingValue(value)", ConfigClassNames.configValueExtractionException);
+                        parse.addStatement("throw $T.missingValue(value)", ConfigClassNames.configValueException);
                     }
                     parse.nextControlFlow("else");
                     parse.addStatement("return defaultValue");
@@ -292,11 +292,11 @@ public class ConfigParserGenerator {
                 parse.endControlFlow();
             }
             if (field.isNullable()) {
-                parse.addStatement("return $L_parser.extract(value)", field.name());
+                parse.addStatement("return $L_parser.map(value)", field.name());
             } else {
-                parse.addStatement("var parsed = $L_parser.extract(value)", field.name());
+                parse.addStatement("var parsed = $L_parser.map(value)", field.name());
                 parse.beginControlFlow("if (parsed == null)");
-                parse.addStatement("throw $T.missingValueAfterParse(value)", ConfigClassNames.configValueExtractionException);
+                parse.addStatement("throw $T.missingValueAfterParse(value)", ConfigClassNames.configValueException);
                 parse.endControlFlow();
                 parse.addStatement("return parsed");
             }
@@ -307,7 +307,7 @@ public class ConfigParserGenerator {
     private MethodSpec buildConstructor(TypeSpec.Builder parser, List<ConfigUtils.ConfigField> fields) {
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);
-        var fieldFactory = new FieldFactory(this.types, elements, null, constructor, "extractor");
+        var fieldFactory = new FieldFactory(this.types, elements, null, constructor, "mapper");
         for (var field : fields) {
             var isSupported = field.mapping() == null &&
                 (ConfigUtils.isSupportedType(field.typeName())
@@ -315,7 +315,7 @@ public class ConfigParserGenerator {
             if (isSupported) {
                 continue;
             }
-            var fieldParserType = ParameterizedTypeName.get(ConfigClassNames.configValueExtractor, field.typeName().box());
+            var fieldParserType = ParameterizedTypeName.get(ConfigClassNames.configValueMapper, field.typeName().box());
             var constructorParameterName = fieldFactory.add(field.mapping(), fieldParserType);
             var fieldParserName = field.name() + "_parser";
             parser.addField(fieldParserType, fieldParserName, Modifier.PRIVATE, Modifier.FINAL);

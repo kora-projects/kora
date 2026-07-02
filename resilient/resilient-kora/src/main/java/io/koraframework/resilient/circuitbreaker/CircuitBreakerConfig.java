@@ -1,13 +1,13 @@
 package io.koraframework.resilient.circuitbreaker;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface CircuitBreakerConfig {
 
     String DEFAULT = "default";
@@ -28,7 +28,7 @@ public interface CircuitBreakerConfig {
      * {@link #minimumRequiredCalls} Configures the minimum number of calls which are required (per sliding window period) before the CircuitBreaker can calculate the error rate.<br>
      * {@link #failurePredicateName} {@link CircuitBreakerPredicate#name()} default is {@link KoraCircuitBreakerPredicate}<br>
      */
-    @ConfigValueExtractor
+    @ConfigMapper
     interface NamedConfig {
 
         @Nullable
@@ -101,7 +101,7 @@ public interface CircuitBreakerConfig {
             return namedConfig;
         }
 
-        return new $CircuitBreakerConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+        return new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
             namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
             namedConfig.failureRateThreshold() == null ? defaultConfig.failureRateThreshold() : namedConfig.failureRateThreshold(),
             namedConfig.waitDurationInOpenState() == null ? defaultConfig.waitDurationInOpenState() : namedConfig.waitDurationInOpenState(),

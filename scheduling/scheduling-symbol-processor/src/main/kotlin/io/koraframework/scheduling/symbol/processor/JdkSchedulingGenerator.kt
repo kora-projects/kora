@@ -200,10 +200,10 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
     private fun configComponent(packageName: String, configClassName: String, configPath: String) = FunSpec.builder(configClassName)
         .addParameter("config", CommonClassNames.config)
         .addParameter(
-            "extractor", CommonClassNames.configValueExtractor
+            "mapper", CommonClassNames.configValueMapper
                 .parameterizedBy(ClassName(packageName, configClassName))
         )
-        .addStatement("return extractor.extractOrThrow(config.get(%S))", configPath)
+        .addStatement("return mapper.mapOrThrow(config.get(%S))", configPath)
         .returns(ClassName(packageName, configClassName))
         .build()
 
@@ -213,7 +213,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
     private fun configType(type: KSClassDeclaration, function: KSFunctionDeclaration, vararg params: ConfigParameter): TypeSpec {
         val configClassName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Config"
         val configType = TypeSpec.interfaceBuilder(configClassName)
-            .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+            .addAnnotation(CommonClassNames.configMapperAnnotation)
             .generated(JdkSchedulingGenerator::class)
             .addSuperinterface(schedulingJobConfigClassName)
         for (param in params) {
@@ -234,7 +234,7 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
     private fun cronConfigType(type: KSClassDeclaration, function: KSFunctionDeclaration, defaultCron: String): TypeSpec {
         val configClassName = type.getOuterClassesAsPrefix() + type.simpleName.getShortName() + "_" + function.simpleName.getShortName() + "_Config"
         val configType = TypeSpec.interfaceBuilder(configClassName)
-            .addAnnotation(CommonClassNames.configValueExtractorAnnotation)
+            .addAnnotation(CommonClassNames.configMapperAnnotation)
             .generated(JdkSchedulingGenerator::class)
             .addSuperinterface(schedulingJobConfigClassName)
         if (defaultCron.isBlank()) {
@@ -247,28 +247,28 @@ class JdkSchedulingGenerator(val environment: SymbolProcessorEnvironment) {
 
     private fun cronConfigComponent(packageName: String, configClassName: String, configPath: String, defaultCron: String) = FunSpec.builder(configClassName)
         .addParameter("config", CommonClassNames.config)
-        .addParameter("extractor", CommonClassNames.configValueExtractor.parameterizedBy(ClassName(packageName, configClassName)))
+        .addParameter("mapper", CommonClassNames.configValueMapper.parameterizedBy(ClassName(packageName, configClassName)))
         .addStatement("val value = config.get(%S)", configPath)
         .apply {
             if (defaultCron.isNotBlank()) {
                 controlFlow("if (value is %T.NullValue)", CommonClassNames.configValue) {
-                    addCode("return extractor.extractOrThrow(\n")
+                    addCode("return mapper.mapOrThrow(\n")
                     addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), %S)))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue, defaultCron)
                     addCode(")!!\n")
                 }
             }
         }
         .controlFlow("if (value is %T.ObjectValue)", CommonClassNames.configValue) {
-            addStatement("return extractor.extractOrThrow(value)!!")
+            addStatement("return mapper.mapOrThrow(value)!!")
         }
         .controlFlow("if (value is %T.StringValue)", CommonClassNames.configValue) {
-            addCode("return extractor.extractOrThrow(\n")
+            addCode("return mapper.mapOrThrow(\n")
             addCode("  %T.ObjectValue(value.origin(), mapOf(%S to %T.StringValue(value.origin(), value.value())))\n", CommonClassNames.configValue, "cron", CommonClassNames.configValue)
             addCode(")!!\n")
             nextControlFlow("else")
             addStatement(
                 "throw %T.unexpectedValueType(value, %T.StringValue::class.java)",
-                ClassName("io.koraframework.config.common.extractor", "ConfigValueExtractionException"),
+                ClassName("io.koraframework.config.common.exception", "ConfigValueException"),
                 CommonClassNames.configValue
             )
         }

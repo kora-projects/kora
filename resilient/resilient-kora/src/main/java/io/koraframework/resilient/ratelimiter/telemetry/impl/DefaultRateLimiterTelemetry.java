@@ -14,10 +14,10 @@ public class DefaultRateLimiterTelemetry implements RateLimiterTelemetry {
                                    MeterRegistry meterRegistry) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext("none",
-            new $RateLimiterTelemetryConfig_ConfigValueExtractor.RateLimiterTelemetryConfig_Impl(
-                new $RateLimiterTelemetryConfig_RateLimiterLoggingConfig_ConfigValueExtractor.RateLimiterLoggingConfig_Defaults(),
-                new $RateLimiterTelemetryConfig_RateLimiterMetricsConfig_ConfigValueExtractor.RateLimiterMetricsConfig_Defaults(),
-                new $RateLimiterTelemetryConfig_RateLimiterTracingConfig_ConfigValueExtractor.RateLimiterTracingConfig_Defaults()
+            new $RateLimiterTelemetryConfig_ConfigValueMapper.RateLimiterTelemetryConfig_Impl(
+                new $RateLimiterTelemetryConfig_RateLimiterLoggingConfig_ConfigValueMapper.RateLimiterLoggingConfig_Defaults(),
+                new $RateLimiterTelemetryConfig_RateLimiterMetricsConfig_ConfigValueMapper.RateLimiterMetricsConfig_Defaults(),
+                new $RateLimiterTelemetryConfig_RateLimiterTracingConfig_ConfigValueMapper.RateLimiterTracingConfig_Defaults()
             ), false, false, DefaultRateLimiterTelemetryFactory.NOOP_TRACER, DefaultRateLimiterTelemetryFactory.NOOP_METER_REGISTRY);
     }
 

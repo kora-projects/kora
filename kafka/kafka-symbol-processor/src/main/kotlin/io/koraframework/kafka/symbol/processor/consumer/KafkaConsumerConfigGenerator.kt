@@ -34,10 +34,10 @@ class KafkaConsumerConfigGenerator {
             .returns(kafkaConsumerConfig)
             .addParameter("config", CommonClassNames.config)
             .addParameter(
-                "extractor",
-                CommonClassNames.configValueExtractor.parameterizedBy(kafkaConsumerConfig)
+                "mapper",
+                CommonClassNames.configValueMapper.parameterizedBy(kafkaConsumerConfig)
             )
-            .addStatement("return extractor.extractOrThrow(config.get(%S))!!", configPath)
+            .addStatement("return mapper.mapOrThrow(config.get(%S))!!", configPath)
             .addTag(targetTags)
             .build()
         return KafkaConfigData(tagBuilder, funBuilder)

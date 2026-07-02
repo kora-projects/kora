@@ -1,14 +1,14 @@
 package io.koraframework.resilient.retry;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.resilient.retry.telemetry.RetryTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface RetryConfig {
 
     String DEFAULT = "default";
@@ -25,7 +25,7 @@ public interface RetryConfig {
      * {@link #attempts} Maximum number of retry attempts
      * {@link #failurePredicateName} {@link RetryPredicate#name()} default is {@link RetryPredicate}
      */
-    @ConfigValueExtractor
+    @ConfigMapper
     interface NamedConfig {
 
         @Nullable
@@ -69,7 +69,7 @@ public interface RetryConfig {
     private static NamedConfig merge(NamedConfig namedConfig, NamedConfig defaultConfig) {
         if (defaultConfig == null) {
             if (namedConfig.delayStep() == null) {
-                return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+                return new $RetryConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
                     namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : true,
                     namedConfig.delay(),
                     Duration.ZERO,
@@ -80,7 +80,7 @@ public interface RetryConfig {
             return namedConfig;
         }
 
-        return new $RetryConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+        return new $RetryConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
             namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
             namedConfig.delay() == null ? defaultConfig.delay() : namedConfig.delay(),
             namedConfig.delayStep() == null ? Objects.requireNonNullElse(defaultConfig.delayStep(), Duration.ZERO) : namedConfig.delayStep(),

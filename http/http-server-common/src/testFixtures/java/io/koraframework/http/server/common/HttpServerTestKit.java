@@ -12,7 +12,7 @@ import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.common.header.MutableHttpHeaders;
-import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
+import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueMapper.HttpServerConfig_Impl;
 import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
@@ -21,7 +21,7 @@ import io.koraframework.http.server.common.request.mapper.HttpServerRequestMappe
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
 import io.koraframework.http.server.common.router.HttpServerHandler;
-import io.koraframework.http.server.common.system.$HttpServerSystemConfig_ConfigValueExtractor;
+import io.koraframework.http.server.common.system.$HttpServerSystemConfig_ConfigValueMapper;
 import io.koraframework.http.server.common.system.LivenessHandler;
 import io.koraframework.http.server.common.system.MetricsHandler;
 import io.koraframework.http.server.common.system.ReadinessHandler;
@@ -71,12 +71,12 @@ public abstract class HttpServerTestKit {
 
     private final HttpServerHandler privateApiHandler = new HttpServerHandler(
         List.of(
-            new LivenessHandler(valueOf($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS), All.of(livenessProbePromise)),
-            new ReadinessHandler(valueOf($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS), All.of(readinessProbePromise)),
-            new MetricsHandler(valueOf($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS), valueOf(Optional.of(registry)))
+            new LivenessHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), All.of(livenessProbePromise)),
+            new ReadinessHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), All.of(readinessProbePromise)),
+            new MetricsHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), valueOf(Optional.of(registry)))
         ),
         List.of(),
-        $HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS
+        $HttpServerSystemConfig_ConfigValueMapper.DEFAULTS
     );
 
     private volatile HttpServer httpServer = null;
@@ -109,7 +109,7 @@ public abstract class HttpServerTestKit {
             when(livenessProbe.probe()).thenReturn(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS.livenessPath())
+            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.livenessPath())
                 .get()
                 .build();
 
@@ -125,7 +125,7 @@ public abstract class HttpServerTestKit {
             when(livenessProbe.probe()).thenReturn(new LivenessProbeFailure("Failure"));
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS.livenessPath())
+            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.livenessPath())
                 .get()
                 .build();
 
@@ -140,7 +140,7 @@ public abstract class HttpServerTestKit {
             livenessProbePromise.setValue(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS.livenessPath())
+            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.livenessPath())
                 .get()
                 .build();
 
@@ -155,7 +155,7 @@ public abstract class HttpServerTestKit {
             when(readinessProbe.probe()).thenReturn(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS.readinessPath())
+            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.readinessPath())
                 .get()
                 .build();
 
@@ -170,7 +170,7 @@ public abstract class HttpServerTestKit {
             when(readinessProbe.probe()).thenReturn(new ReadinessProbeFailure("Failed"));
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS.readinessPath())
+            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.readinessPath())
                 .get()
                 .build();
 
@@ -185,7 +185,7 @@ public abstract class HttpServerTestKit {
             readinessProbePromise.setValue(null);
             startSystemHttpServer();
 
-            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS.readinessPath())
+            var request = privateApiRequest($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS.readinessPath())
                 .get()
                 .build();
 
@@ -975,10 +975,10 @@ public abstract class HttpServerTestKit {
             true,
             Duration.ofMillis(1),
             Size.of(1, Size.Type.GiB),
-            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             )
         );
         var publicApiHandler = new HttpServerHandler(List.of(handlers), interceptors, config);
@@ -991,7 +991,7 @@ public abstract class HttpServerTestKit {
     }
 
     protected void startSystemHttpServer() {
-        this.privateHttpServer = this.httpServer(valueOf($HttpServerSystemConfig_ConfigValueExtractor.DEFAULTS), privateApiHandler, NoopHttpServerTelemetry.INSTANCE);
+        this.privateHttpServer = this.httpServer(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), privateApiHandler, NoopHttpServerTelemetry.INSTANCE);
         try {
             this.privateHttpServer.init();
         } catch (Exception e) {

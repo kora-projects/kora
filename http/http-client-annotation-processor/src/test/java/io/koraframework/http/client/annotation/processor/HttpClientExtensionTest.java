@@ -26,7 +26,7 @@ public class HttpClientExtensionTest extends AbstractAnnotationProcessorTest {
               default io.koraframework.http.client.common.HttpClient client() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.HttpClient.class) ;}
               default io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory telemetry() { return org.mockito.Mockito.mock(io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory.class) ;}
               default io.koraframework.config.common.Config config() { return org.mockito.Mockito.mock(io.koraframework.config.common.Config.class) ;}
-              default io.koraframework.config.common.extractor.ConfigValueExtractor<$TestClient_Config> extractor() { return org.mockito.Mockito.mock(io.koraframework.config.common.extractor.ConfigValueExtractor.class) ;}
+              default io.koraframework.config.common.mapper.ConfigValueMapper<$TestClient_Config> extractor() { return org.mockito.Mockito.mock(io.koraframework.config.common.mapper.ConfigValueMapper.class) ;}
 
               @Root
               default String root(TestClient extractor) { return ""; }
