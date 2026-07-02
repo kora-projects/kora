@@ -57,4 +57,83 @@ class KonvertKoraExtensionTest : AbstractSymbolProcessorTest() {
         )
         assertThat(graph.draw.size()).isEqualTo(2)
     }
+
+    @Test
+    fun plainInterfaceWithoutKonverterIsNotProvided() {
+        super.compile0(
+            """
+            interface NotAMapper {
+                fun map(value: String): String
+            }
+            """.trimIndent(),
+            """
+            @KoraApp
+            interface TestApp {
+                @Root
+                fun root(mapper: NotAMapper): String {
+                    return ""
+                }
+            }
+            """.trimIndent()
+        )
+        assertThat(compileResult.isFailed()).isTrue()
+    }
+
+    @Test
+    fun konverterWithMultipleFunctionsRegistersOnce() {
+        val graph = compile(
+            """
+            data class Car(val make: String, val numberOfSeats: Int)
+            """.trimIndent(),
+            """
+            data class CarDto(val make: String, val seatCount: Int)
+            """.trimIndent(),
+            """
+            @Konverter
+            interface CarMapper {
+                @Konvert(mappings = [Mapping(source = "numberOfSeats", target = "seatCount")])
+                fun carToDto(car: Car): CarDto
+
+                @Konvert(mappings = [Mapping(source = "seatCount", target = "numberOfSeats")])
+                fun dtoToCar(dto: CarDto): Car
+            }
+            """.trimIndent()
+        )
+        assertThat(graph.draw.size()).isEqualTo(2)
+    }
+
+    @Test
+    fun taggedKonverterResolvesForMatchingTag() {
+        super.compile0(
+            """
+            class KonvertTag {}
+            """.trimIndent(),
+            """
+            data class Car(val make: String, val numberOfSeats: Int)
+            """.trimIndent(),
+            """
+            data class CarDto(val make: String, val seatCount: Int)
+            """.trimIndent(),
+            """
+            @Konverter
+            @Tag(KonvertTag::class)
+            interface CarMapper {
+                @Konvert(mappings = [Mapping(source = "numberOfSeats", target = "seatCount")])
+                fun carToDto(car: Car): CarDto
+            }
+            """.trimIndent(),
+            """
+            @KoraApp
+            interface TestApp {
+                @Root
+                fun root(@Tag(KonvertTag::class) mapper: CarMapper): String {
+                    return ""
+                }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        val graph = loadClass("TestAppGraph").toGraph()
+        assertThat(graph.draw.size()).isEqualTo(2)
+    }
 }
