@@ -1,7 +1,7 @@
 package io.koraframework.database.cassandra;
 
 import com.datastax.oss.driver.api.core.data.CqlDuration;
-import io.koraframework.common.DefaultComponent;
+import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraRowColumnMapper;
