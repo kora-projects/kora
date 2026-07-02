@@ -219,6 +219,30 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(result.isFailed()).isTrue();
     }
 
+    @Test
+    public void testEnumFactoryNonPublicFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              A, B;
+              @JsonReader static TestEnum fromValue(String value) { return A; }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+    }
+
+    @Test
+    public void testEnumFactoryNonStaticFails() {
+        var result = compile(List.of(new JsonAnnotationProcessor()), """
+            @Json
+            public enum TestEnum {
+              A, B;
+              @JsonReader public TestEnum fromValue(String value) { return A; }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+    }
+
     private void assertRead(JsonReader<Object> reader, String json, Object expected) {
         try {
             assertThat(reader.read(json.getBytes(StandardCharsets.UTF_8))).isEqualTo(expected);

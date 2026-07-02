@@ -79,10 +79,16 @@ class EnumJsonReaderGenerator {
     fun detectReaderFactory(enumDeclaration: KSClassDeclaration): ReaderFactory? {
         val companion = enumDeclaration.declarations
             .filterIsInstance<KSClassDeclaration>()
-            .firstOrNull { it.isCompanionObject } ?: return null
-        val factories = companion.getAllFunctions()
-            .filter { it.isPublic() && it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
+            .firstOrNull { it.isCompanionObject }
+        val companionFactories = companion
+            ?.getAllFunctions()
+            ?.filter { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
+            ?.toList()
+            .orEmpty()
+        val bodyFactories = enumDeclaration.getAllFunctions()
+            .filter { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
             .toList()
+        val factories = companionFactories + bodyFactories
         if (factories.isEmpty()) {
             return null
         }
@@ -93,6 +99,18 @@ class EnumJsonReaderGenerator {
             )
         }
         val factory = factories[0]
+        if (factory !in companionFactories) {
+            throw ProcessingErrorException(
+                "@JsonReader factory method must be declared in the enum's companion object",
+                factory
+            )
+        }
+        if (!factory.isPublic()) {
+            throw ProcessingErrorException(
+                "@JsonReader factory method must be public",
+                factory
+            )
+        }
         if (factory.parameters.size != 1) {
             throw ProcessingErrorException(
                 "@JsonReader factory method must have exactly one parameter, got ${factory.parameters.size}",

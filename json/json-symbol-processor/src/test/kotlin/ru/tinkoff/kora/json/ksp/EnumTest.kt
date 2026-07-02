@@ -246,6 +246,34 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
+    fun testEnumFactoryNonPublicFails() {
+        compile0(listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              A("a"), B("b");
+              companion object {
+                @JsonReader private fun fromValue(value: String): TestEnum = A
+              }
+            }
+            """.trimIndent())
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be public") }
+    }
+
+    @Test
+    fun testEnumFactoryNotInCompanionFails() {
+        compile0(listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              A("a"), B("b");
+              @JsonReader fun fromValue(value: String): TestEnum = A
+            }
+            """.trimIndent())
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("companion") }
+    }
+
+    @Test
     fun testEnumReaderFactoryTriggersWithoutJsonAnnotation() {
         compile(
             """

@@ -83,8 +83,6 @@ public class EnumReaderGenerator {
     public ReaderFactory detectReaderFactory(TypeElement typeElement) {
         var factories = typeElement.getEnclosedElements().stream()
             .filter(e -> e.getKind() == ElementKind.METHOD)
-            .filter(e -> e.getModifiers().contains(Modifier.STATIC))
-            .filter(e -> e.getModifiers().contains(Modifier.PUBLIC))
             .map(ExecutableElement.class::cast)
             .filter(e -> AnnotationUtils.isAnnotationPresent(e, JsonTypes.jsonReaderAnnotation))
             .toList();
@@ -94,10 +92,13 @@ public class EnumReaderGenerator {
         if (factories.size() > 1) {
             throw new ProcessingErrorException(
                 "Enum " + typeElement.getSimpleName() + " has multiple @JsonReader factory methods, only one is allowed",
-                typeElement
+                factories.get(1)
             );
         }
         var factory = factories.get(0);
+        if (!factory.getModifiers().contains(Modifier.PUBLIC) || !factory.getModifiers().contains(Modifier.STATIC)) {
+            throw new ProcessingErrorException("@JsonReader factory method must be public static", factory);
+        }
         if (factory.getParameters().size() != 1) {
             throw new ProcessingErrorException(
                 "@JsonReader factory method must have exactly one parameter, got " + factory.getParameters().size(),
