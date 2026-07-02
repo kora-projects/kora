@@ -395,4 +395,195 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         Assertions.assertThat(compileResult.isFailed()).isTrue()
         Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be public") }
     }
+
+    @Test
+    fun testEnumWriterFromStaticMethod() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter
+                fun toValue(e: TestEnum): String = e.value
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
+    @Test
+    fun testEnumWriterStaticMethodIntValue() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val code: Int) {
+              VALUE1(1), VALUE2(2);
+              companion object {
+                @JsonWriter
+                fun toCode(e: TestEnum): Int = e.code
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val intWriter = JsonWriter { g: JsonGenerator, v: Int? -> g.writeNumber(v!!) }
+        val w = writer("TestEnum", intWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "1")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "2")
+    }
+
+    @Test
+    fun testEnumWriterStaticMethodOverridesJsonGetter() {
+        compile(
+            """
+            @Json
+            enum class TestEnum {
+              VALUE1, VALUE2;
+              @Json fun jsonValue(): String = "getter-" + name
+              companion object {
+                @JsonWriter
+                fun toValue(e: TestEnum): String = e.name.lowercase()
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val w = writer("TestEnum", stringWriter)
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "VALUE2"), "\"value2\"")
+    }
+
+    @Test
+    fun testEnumReaderFactoryAndWriterMethod() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2"), OTHER("other");
+              companion object {
+                private val byValue = entries.associateBy { it.value }
+                @JsonReader fun fromValue(value: String): TestEnum = byValue[value] ?: OTHER
+                @JsonWriter fun toValue(e: TestEnum): String = e.value
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val r = reader("TestEnum", stringReader)
+        val w = writer("TestEnum", stringWriter)
+        r.assertRead("\"value1\"", enumConstant("TestEnum", "VALUE1"))
+        r.assertRead("\"nonsense\"", enumConstant("TestEnum", "OTHER"))
+        w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
+        w.assertWrite(enumConstant("TestEnum", "OTHER"), "\"other\"")
+    }
+
+    @Test
+    fun testEnumWriterMultipleMethodsFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter fun toValue(e: TestEnum): String = e.value
+                @JsonWriter fun toOther(e: TestEnum): String = e.name
+              }
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("multiple @JsonWriter") }
+    }
+
+    @Test
+    fun testEnumWriterMethodNotStaticFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              @JsonWriter fun toValue(e: TestEnum): String = e.value
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be static") }
+    }
+
+    @Test
+    fun testEnumWriterMethodNonPublicFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter private fun toValue(e: TestEnum): String = e.value
+              }
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be public") }
+    }
+
+    @Test
+    fun testEnumWriterMethodWrongParameterCountFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter fun toValue(e: TestEnum, extra: Int): String = e.value
+              }
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("exactly one parameter") }
+    }
+
+    @Test
+    fun testEnumWriterMethodWrongParameterTypeFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter fun toValue(x: Int): String = x.toString()
+              }
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be of type") }
+    }
+
+    @Test
+    fun testEnumWriterMethodUnitReturnFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              VALUE1("value1"), VALUE2("value2");
+              companion object {
+                @JsonWriter fun toValue(e: TestEnum) { }
+              }
+            }
+            """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must return a value") }
+    }
 }
