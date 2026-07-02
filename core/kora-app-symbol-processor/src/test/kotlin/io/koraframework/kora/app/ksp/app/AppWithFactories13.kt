@@ -8,16 +8,16 @@ import io.koraframework.common.annotation.Root
 interface AppWithFactories13 {
 
     @Root
-    fun target(cl: ConfigValueExtractor<TestEnum>): Any = Any()
+    fun target(cl: ConfigValueMapper<TestEnum>): Any = Any()
 
-    fun <T> extractor1(ref: TypeRef<T>): ConfigValueExtractor<T> where T : Enum<T>, T : MarkerOne {
-        return object : ConfigValueExtractor<T> {
+    fun <T> extractor1(ref: TypeRef<T>): ConfigValueMapper<T> where T : Enum<T>, T : MarkerOne {
+        return object : ConfigValueMapper<T> {
             override fun extract(value: Any?): T? = null
         }
     }
 
-    fun <T> extractor2(ref: TypeRef<T>): ConfigValueExtractor<T> where T : Enum<T>, T : MarkerTwo {
-        return object : ConfigValueExtractor<T> {
+    fun <T> extractor2(ref: TypeRef<T>): ConfigValueMapper<T> where T : Enum<T>, T : MarkerTwo {
+        return object : ConfigValueMapper<T> {
             override fun extract(value: Any?): T? = null
         }
     }
@@ -28,7 +28,7 @@ interface AppWithFactories13 {
 
     interface MarkerTwo
 
-    interface ConfigValueExtractor<T> {
+    interface ConfigValueMapper<T> {
 
         fun extract(value: Any?): T?
     }

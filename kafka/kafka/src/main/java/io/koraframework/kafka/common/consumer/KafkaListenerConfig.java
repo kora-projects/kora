@@ -2,7 +2,7 @@ package io.koraframework.kafka.common.consumer;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.common.Either;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetryConfig;
 
 import java.time.Duration;
@@ -11,7 +11,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.regex.Pattern;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface KafkaListenerConfig {
 
     Properties driverProperties();
@@ -66,7 +66,7 @@ public interface KafkaListenerConfig {
         var props = new Properties();
         props.putAll(driverProperties());
         props.putAll(overrides);
-        return new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(
+        return new $KafkaListenerConfig_ConfigValueMapper.KafkaListenerConfig_Impl(
             props,
             topics(),
             topicsPattern(),

@@ -10,7 +10,7 @@ import io.koraframework.kora.app.ksp.extension.KoraExtension
 
 class ConfigLinkerExtensionFactory : ExtensionFactory {
     override fun create(resolver: Resolver, kspLogger: KSPLogger, codeGenerator: CodeGenerator): KoraExtension? {
-        val configValueExtractor = resolver.getClassDeclarationByName(ConfigClassNames.configValueExtractor.canonicalName)
-        return configValueExtractor?.let { ConfigKoraExtension() }
+        val configValueMapper = resolver.getClassDeclarationByName(ConfigClassNames.configValueMapper.canonicalName)
+        return configValueMapper?.let { ConfigKoraExtension() }
     }
 }

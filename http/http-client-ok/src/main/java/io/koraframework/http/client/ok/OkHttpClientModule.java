@@ -4,7 +4,7 @@ import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.Configurer;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.client.common.HttpClientConfig;
 import io.koraframework.http.client.common.HttpClientModule;
 
@@ -14,8 +14,8 @@ public interface OkHttpClientModule extends HttpClientModule {
         return new OkHttpClient(client);
     }
 
-    default OkHttpClientConfig okHttpClientConfig(Config config, ConfigValueExtractor<OkHttpClientConfig> extractor) {
-        return extractor.extractOrThrow(config.get("httpClient.ok"));
+    default OkHttpClientConfig okHttpClientConfig(Config config, ConfigValueMapper<OkHttpClientConfig> mapper) {
+        return mapper.mapOrThrow(config.get("httpClient.ok"));
     }
 
     @DefaultComponent

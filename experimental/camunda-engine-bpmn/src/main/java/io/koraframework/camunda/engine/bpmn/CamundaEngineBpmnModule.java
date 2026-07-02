@@ -18,7 +18,7 @@ import io.koraframework.common.annotation.Root;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.logging.common.MDC;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
@@ -44,8 +44,8 @@ import java.util.Optional;
 @Deprecated
 public interface CamundaEngineBpmnModule {
 
-    default CamundaEngineBpmnConfig camundaEngineBpmnConfig(Config config, ConfigValueExtractor<CamundaEngineBpmnConfig> extractor) {
-        return extractor.extractOrThrow(config.get("camunda.engine.bpmn"));
+    default CamundaEngineBpmnConfig camundaEngineBpmnConfig(Config config, ConfigValueMapper<CamundaEngineBpmnConfig> mapper) {
+        return mapper.mapOrThrow(config.get("camunda.engine.bpmn"));
     }
 
     @Tag(CamundaBpmn.class)

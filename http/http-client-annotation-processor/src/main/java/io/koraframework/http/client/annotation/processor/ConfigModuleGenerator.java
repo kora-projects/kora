@@ -8,7 +8,6 @@ import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.Elements;
-import java.util.Optional;
 
 import static io.koraframework.http.client.annotation.processor.HttpClientClassNames.httpClientAnnotation;
 
@@ -32,7 +31,7 @@ public class ConfigModuleGenerator {
         var configName = HttpClientUtils.configName(element);
         var moduleName = HttpClientUtils.moduleName(element);
         var configClass = ClassName.get(packageName, configName);
-        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configClass);
+        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueMapper, configClass);
 
         var type = TypeSpec.interfaceBuilder(moduleName)
             .addOriginatingElement(element)
@@ -43,8 +42,8 @@ public class ConfigModuleGenerator {
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
                 .returns(configClass)
                 .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
-                .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
-                .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
+                .addParameter(ParameterSpec.builder(extractorClass, "mapper").build())
+                .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
                 .build());
 
         return JavaFile.builder(packageName, type.build()).build();

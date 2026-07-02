@@ -14,10 +14,10 @@ public class DefaultFallbackTelemetry implements FallbackTelemetry {
                                    MeterRegistry meterRegistry) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext("none",
-            new $FallbackTelemetryConfig_ConfigValueExtractor.FallbackTelemetryConfig_Impl(
-                new $FallbackTelemetryConfig_FallbackLoggingConfig_ConfigValueExtractor.FallbackLoggingConfig_Defaults(),
-                new $FallbackTelemetryConfig_FallbackMetricsConfig_ConfigValueExtractor.FallbackMetricsConfig_Defaults(),
-                new $FallbackTelemetryConfig_FallbackTracingConfig_ConfigValueExtractor.FallbackTracingConfig_Defaults()
+            new $FallbackTelemetryConfig_ConfigValueMapper.FallbackTelemetryConfig_Impl(
+                new $FallbackTelemetryConfig_FallbackLoggingConfig_ConfigValueMapper.FallbackLoggingConfig_Defaults(),
+                new $FallbackTelemetryConfig_FallbackMetricsConfig_ConfigValueMapper.FallbackMetricsConfig_Defaults(),
+                new $FallbackTelemetryConfig_FallbackTracingConfig_ConfigValueMapper.FallbackTracingConfig_Defaults()
             ), false, false, DefaultFallbackTelemetryFactory.NOOP_TRACER, DefaultFallbackTelemetryFactory.NOOP_METER_REGISTRY);
     }
 

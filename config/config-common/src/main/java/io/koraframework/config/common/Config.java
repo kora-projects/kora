@@ -1,8 +1,8 @@
 package io.koraframework.config.common;
 
-import io.koraframework.config.common.impl.ConfigResolver;
-import io.koraframework.config.common.impl.ConfigUtils;
 import io.koraframework.config.common.origin.ConfigOrigin;
+import io.koraframework.config.common.util.ConfigResolverUtils;
+import io.koraframework.config.common.util.ConfigValueExtractorUtils;
 
 /**
  * <b>Русский</b>: Базовое предоставления конфигурации в Kora.
@@ -26,11 +26,11 @@ public interface Config {
     ConfigValue.ObjectValue root();
 
     default Config resolve() {
-        return ConfigResolver.resolve(this);
+        return ConfigResolverUtils.resolve(this);
     }
 
     default ConfigValue<?> get(ConfigValuePath path) {
-        return ConfigUtils.get(this, path);
+        return ConfigValueExtractorUtils.extract(this, path);
     }
 
     /**

@@ -1,9 +1,9 @@
 package io.koraframework.database.common.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface DatabaseTelemetryConfig extends TelemetryConfig {
 
     DatabaseLoggingConfig logging();
@@ -12,10 +12,10 @@ public interface DatabaseTelemetryConfig extends TelemetryConfig {
 
     DatabaseTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface DatabaseLoggingConfig extends LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface DatabaseMetricsConfig extends MetricsConfig {
 
         default boolean driverMetrics() {
@@ -23,6 +23,6 @@ public interface DatabaseTelemetryConfig extends TelemetryConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface DatabaseTracingConfig extends TracingConfig {}
 }

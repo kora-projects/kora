@@ -27,10 +27,10 @@ public class DefaultHttpClientTelemetry implements HttpClientTelemetry {
                                    String clientCanonicalName,
                                    String clientSimpleName) {
 
-        public static final TelemetryContext EMPTY = new TelemetryContext(new $HttpClientTelemetryConfig_ConfigValueExtractor.HttpClientTelemetryConfig_Impl(
-            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueExtractor.HttpClientLoggingConfig_Defaults(),
-            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueExtractor.HttpClientMetricsConfig_Defaults(),
-            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueExtractor.HttpClientTracingConfig_Defaults()
+        public static final TelemetryContext EMPTY = new TelemetryContext(new $HttpClientTelemetryConfig_ConfigValueMapper.HttpClientTelemetryConfig_Impl(
+            new $HttpClientTelemetryConfig_HttpClientLoggingConfig_ConfigValueMapper.HttpClientLoggingConfig_Defaults(),
+            new $HttpClientTelemetryConfig_HttpClientMetricsConfig_ConfigValueMapper.HttpClientMetricsConfig_Defaults(),
+            new $HttpClientTelemetryConfig_HttpClientTracingConfig_ConfigValueMapper.HttpClientTracingConfig_Defaults()
         ), false, false, DefaultHttpClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultHttpClientTelemetryFactory.NOOP_TRACER, new DefaultHttpClientBodyConverter(), "none", "none", "none");
     }
 

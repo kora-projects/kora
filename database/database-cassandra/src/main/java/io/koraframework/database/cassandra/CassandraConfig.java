@@ -2,7 +2,7 @@ package io.koraframework.database.cassandra;
 
 import com.datastax.oss.driver.api.core.metrics.DefaultNodeMetric;
 import com.datastax.oss.driver.api.core.metrics.DefaultSessionMetric;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.database.cassandra.annotation.CassandraProfile;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryConfig;
 import io.koraframework.telemetry.common.TelemetryConfig;
@@ -19,7 +19,7 @@ import java.util.Map;
  *
  * @see CassandraRepository
  */
-@ConfigValueExtractor
+@ConfigMapper
 public interface CassandraConfig {
 
     /**
@@ -37,16 +37,16 @@ public interface CassandraConfig {
 
     DatabaseTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CassandraCredentials {
         String login();
 
         String password();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface Profile {
-        @ConfigValueExtractor
+        @ConfigMapper
         interface ProfileBasic extends Basic {
             @Override
             @Nullable
@@ -61,7 +61,7 @@ public interface CassandraConfig {
         Advanced advanced();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface Basic {
         @Nullable
         BasicRequestConfig request();
@@ -83,7 +83,7 @@ public interface CassandraConfig {
         @Nullable
         CloudConfig cloud();
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface BasicRequestConfig {
             @Nullable
             Duration timeout();
@@ -101,20 +101,20 @@ public interface CassandraConfig {
             Boolean defaultIdempotence();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface LoadBalancingPolicyConfig {
             @Nullable
             Boolean slowReplicaAvoidance();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface CloudConfig {
             @Nullable
             String secureConnectBundle();
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface Advanced {
         @Nullable
         SessionLeakConfig sessionLeak();
@@ -172,18 +172,18 @@ public interface CassandraConfig {
         @Nullable
         ThrottlerConfig throttler();
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface SessionLeakConfig {
             @Nullable
             Integer threshold();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface AdvancedLoadBalancingPolicyConfig {
             @Nullable
             DcFailover dcFailover();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface DcFailover {
                 @Nullable
                 Integer maxNodesPerRemoveDc();
@@ -193,7 +193,7 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface ConnectionConfig {
             @Nullable
             Duration connectTimeout();
@@ -216,7 +216,7 @@ public interface CassandraConfig {
             @Nullable
             PoolConfig pool();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface PoolConfig {
                 @Nullable
                 Integer localSize();
@@ -226,7 +226,7 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface ReconnectionPolicyConfig {
             @Nullable
             Duration baseDelay();
@@ -235,7 +235,7 @@ public interface CassandraConfig {
             Duration maxDelay();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface SslEngineFactoryConfig {
             @Nullable
             List<String> cipherSuites();
@@ -256,7 +256,7 @@ public interface CassandraConfig {
             String truststorePassword();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface TimestampGeneratorConfig {
             @Nullable
             Boolean forceJavaClock();
@@ -264,7 +264,7 @@ public interface CassandraConfig {
             @Nullable
             DriftWarningConfig driftWarning();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface DriftWarningConfig {
                 @Nullable
                 Duration threshold();
@@ -274,7 +274,7 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface ProtocolConfig {
             @Nullable
             String version();
@@ -286,7 +286,7 @@ public interface CassandraConfig {
             Long maxFrameLength();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface AdvancedRequestConfig {
             @Nullable
             Boolean warnIfSetKeyspace();
@@ -297,7 +297,7 @@ public interface CassandraConfig {
             @Nullable
             Boolean logWarnings();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface TraceConfig {
                 @Nullable
                 Integer attempts();
@@ -310,7 +310,7 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface MetricsConfig {
 
             IdGenerator idGenerator();
@@ -325,7 +325,7 @@ public interface CassandraConfig {
                 return false;
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface IdGenerator {
 
                 default String name() {
@@ -336,7 +336,7 @@ public interface CassandraConfig {
                 String prefix();
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface NodeConfig {
 
                 /**
@@ -357,7 +357,7 @@ public interface CassandraConfig {
                 Config cqlMessages();
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface SessionConfig {
 
                 /**
@@ -379,7 +379,7 @@ public interface CassandraConfig {
                 Config throttlingDelay();
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface Config {
 
                 default Duration lowestLatency() {
@@ -402,7 +402,7 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface SocketConfig {
             @Nullable
             Boolean tcpNoDelay();
@@ -423,7 +423,7 @@ public interface CassandraConfig {
             Integer sendBufferSize();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface HeartBeatConfig {
             @Nullable
             Duration interval();
@@ -432,7 +432,7 @@ public interface CassandraConfig {
             Duration timeout();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface MetadataConfig {
             @Nullable
             SchemaConfig schema();
@@ -443,7 +443,7 @@ public interface CassandraConfig {
             @Nullable
             Boolean tokenMapEnabled();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface SchemaConfig {
                 @Nullable
                 Boolean enabled();
@@ -460,7 +460,7 @@ public interface CassandraConfig {
                 @Nullable
                 DebouncerConfig debouncer();
 
-                @ConfigValueExtractor
+                @ConfigMapper
                 interface DebouncerConfig {
                     @Nullable
                     Duration window();
@@ -470,7 +470,7 @@ public interface CassandraConfig {
                 }
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface TopologyConfig {
                 @Nullable
                 Duration window();
@@ -480,7 +480,7 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface ControlConnectionConfig {
             @Nullable
             Duration timeout();
@@ -488,7 +488,7 @@ public interface CassandraConfig {
             @Nullable
             SchemaAgreementConfig schemaAgreement();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface SchemaAgreementConfig {
                 @Nullable
                 Duration interval();
@@ -501,7 +501,7 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface PreparedStatementsConfig {
             @Nullable
             Boolean prepareOnAllNodes();
@@ -512,7 +512,7 @@ public interface CassandraConfig {
             @Nullable
             PreparedCacheConfig preparedCache();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface ReprepareConfig {
                 @Nullable
                 Boolean enabled();
@@ -530,14 +530,14 @@ public interface CassandraConfig {
                 Duration timeout();
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface PreparedCacheConfig {
                 @Nullable
                 Boolean weakValues();
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface NettyConfig {
             @Nullable
             IoGroupConfig ioGroup();
@@ -551,7 +551,7 @@ public interface CassandraConfig {
             @Nullable
             Boolean daemon();
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface IoGroupConfig {
                 @Nullable
                 Integer size();
@@ -560,7 +560,7 @@ public interface CassandraConfig {
                 ShutdownConfig shutdown();
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface AdminGroupConfig {
                 @Nullable
                 Integer size();
@@ -569,7 +569,7 @@ public interface CassandraConfig {
                 ShutdownConfig shutdown();
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface ShutdownConfig {
                 @Nullable
                 Integer quietPeriod();
@@ -581,7 +581,7 @@ public interface CassandraConfig {
                 String unit();
             }
 
-            @ConfigValueExtractor
+            @ConfigMapper
             interface TimerConfig {
                 @Nullable
                 Duration tickDuration();
@@ -591,13 +591,13 @@ public interface CassandraConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface CoalescerConfig {
             @Nullable
             Duration rescheduleInterval();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface ThrottlerConfig {
             @Nullable
             String throttlerClass();

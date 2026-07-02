@@ -1,7 +1,7 @@
 package io.koraframework.config.common;
 
+import io.koraframework.config.common.exception.ConfigValueException;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.extractor.ConfigValueExtractionException;
 
 import java.math.BigDecimal;
 import java.util.Iterator;
@@ -23,15 +23,12 @@ sealed public interface ConfigValue<T> {
     ConfigValueOrigin origin();
 
     default String asString() {
-        if (this instanceof ConfigValue.StringValue str) {
-            return str.value();
-        } else if (this instanceof ConfigValue.NumberValue number) {
-            return number.value().toString();
-        } else if (this instanceof ConfigValue.BooleanValue booleanValue) {
-            return booleanValue.value() ? "true" : "false";
-        } else {
-            throw ConfigValueExtractionException.unexpectedValueType(this, ConfigValue.StringValue.class);
-        }
+        return switch (this) {
+            case ConfigValue.StringValue str -> str.value();
+            case ConfigValue.NumberValue number -> number.value().toString();
+            case ConfigValue.BooleanValue booleanValue -> booleanValue.value() ? "true" : "false";
+            default -> throw ConfigValueException.unexpectedValueType(this, StringValue.class);
+        };
     }
 
     default Number asNumber() {
@@ -39,12 +36,12 @@ sealed public interface ConfigValue<T> {
             try {
                 return new BigDecimal(str.value());
             } catch (NumberFormatException e) {
-                throw ConfigValueExtractionException.parsingError(this, e);
+                throw ConfigValueException.parsingError(this, e);
             }
         } else if (this instanceof ConfigValue.NumberValue number) {
             return number.value();
         } else {
-            throw ConfigValueExtractionException.unexpectedValueType(this, ConfigValue.NumberValue.class);
+            throw ConfigValueException.unexpectedValueType(this, ConfigValue.NumberValue.class);
         }
     }
 
@@ -52,14 +49,14 @@ sealed public interface ConfigValue<T> {
         if (this instanceof ArrayValue arrayValue) {
             return arrayValue;
         }
-        throw ConfigValueExtractionException.unexpectedValueType(this, ConfigValue.ArrayValue.class);
+        throw ConfigValueException.unexpectedValueType(this, ConfigValue.ArrayValue.class);
     }
 
     default ObjectValue asObject() {
         if (this instanceof ObjectValue object) {
             return object;
         }
-        throw ConfigValueExtractionException.unexpectedValueType(this, ConfigValue.ObjectValue.class);
+        throw ConfigValueException.unexpectedValueType(this, ConfigValue.ObjectValue.class);
     }
 
     default boolean asBoolean() {
@@ -69,7 +66,7 @@ sealed public interface ConfigValue<T> {
         if (this instanceof BooleanValue bv) {
             return bv.value;
         }
-        throw ConfigValueExtractionException.unexpectedValueType(this, ConfigValue.BooleanValue.class);
+        throw ConfigValueException.unexpectedValueType(this, ConfigValue.BooleanValue.class);
     }
 
     default boolean isNull() {

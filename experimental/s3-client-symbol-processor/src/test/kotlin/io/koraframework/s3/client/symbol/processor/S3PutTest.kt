@@ -4,7 +4,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
-import io.koraframework.s3.client.kora.`$S3ClientConfig_UploadConfig_ConfigValueExtractor`
+import io.koraframework.s3.client.kora.`$S3ClientConfig_UploadConfig_ConfigValueMapper`
 import io.koraframework.s3.client.kora.S3Client
 import io.koraframework.s3.client.kora.model.response.UploadedPart
 import io.koraframework.s3.client.kora.symbol.processor.AbstractS3ClientTest
@@ -198,7 +198,7 @@ internal class S3PutTest : AbstractS3ClientTest() {
                 any()
             )
         ).thenReturn("etag-final")
-        `when`(config.upload()).thenReturn(`$S3ClientConfig_UploadConfig_ConfigValueExtractor`.UploadConfig_Defaults())
+        `when`(config.upload()).thenReturn(`$S3ClientConfig_UploadConfig_ConfigValueMapper`.UploadConfig_Defaults())
 
         assertThat(client.invoke<String?>("put", "bucket", "key", `is`)).isEqualTo("etag-final")
 

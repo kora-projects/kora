@@ -1,18 +1,18 @@
 package io.koraframework.redis.lettuce.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface LettuceTelemetryConfig {
 
     LettuceLoggingConfig logging();
 
     LettuceMetricsConfig metrics();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface LettuceMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface LettuceLoggingConfig extends TelemetryConfig.LoggingConfig {}
 }

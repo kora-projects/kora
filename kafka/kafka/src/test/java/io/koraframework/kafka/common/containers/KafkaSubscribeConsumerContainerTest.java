@@ -2,6 +2,7 @@ package io.koraframework.kafka.common.containers;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.koraframework.kafka.common.consumer.$KafkaListenerConfig_ConfigValueMapper;
 import io.koraframework.kafka.common.consumer.KafkaListenerConfig;
 import io.koraframework.kafka.common.consumer.telemetry.impl.NoopKafkaConsumerTelemetry;
 import org.apache.kafka.clients.CommonClientConfigs;
@@ -12,7 +13,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
 import io.koraframework.common.Either;
-import io.koraframework.kafka.common.consumer.$KafkaListenerConfig_ConfigValueExtractor;
 import io.koraframework.kafka.common.consumer.containers.KafkaSubscribeConsumerContainer;
 import io.koraframework.kafka.common.consumer.telemetry.*;
 import io.koraframework.kafka.common.exceptions.RecordValueDeserializationException;
@@ -47,7 +47,7 @@ class KafkaSubscribeConsumerContainerTest {
         driverProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
         driverProps.put(CommonClientConfigs.GROUP_ID_CONFIG, UUID.randomUUID().toString());
         var testTopic = params.createTopic("test-topic", 3);
-        var config = new $KafkaListenerConfig_ConfigValueExtractor.KafkaListenerConfig_Impl(
+        var config = new $KafkaListenerConfig_ConfigValueMapper.KafkaListenerConfig_Impl(
             driverProps,
             List.of(testTopic),
             null,
@@ -60,10 +60,10 @@ class KafkaSubscribeConsumerContainerTest {
             Duration.ofMillis(10000),
             true,
             null,
-            new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueExtractor.KafkaConsumerTracingConfig_Defaults()
+            new $KafkaConsumerTelemetryConfig_ConfigValueMapper.KafkaConsumerTelemetryConfig_Impl(
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueMapper.KafkaConsumerLoggingConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueMapper.KafkaConsumerMetricsConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueMapper.KafkaConsumerTracingConfig_Defaults()
             )
         );
         var queue = new ArrayBlockingQueue<>(3);

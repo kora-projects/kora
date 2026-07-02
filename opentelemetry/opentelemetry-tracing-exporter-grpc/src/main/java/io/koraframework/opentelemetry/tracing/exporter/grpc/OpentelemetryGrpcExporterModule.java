@@ -1,5 +1,6 @@
 package io.koraframework.opentelemetry.tracing.exporter.grpc;
 
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.opentelemetry.api.metrics.MeterProvider;
 import io.opentelemetry.exporter.otlp.trace.OtlpGrpcSpanExporter;
 import io.opentelemetry.sdk.common.export.RetryPolicy;
@@ -10,7 +11,6 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.opentelemetry.tracing.OpentelemetryTracingModule;
 
 public interface OpentelemetryGrpcExporterModule extends OpentelemetryTracingModule {
@@ -43,12 +43,12 @@ public interface OpentelemetryGrpcExporterModule extends OpentelemetryTracingMod
         return exporter.build();
     }
 
-    default OpentelemetryGrpcExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryGrpcExporterConfig.FromConfig> extractor) {
+    default OpentelemetryGrpcExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueMapper<OpentelemetryGrpcExporterConfig.FromConfig> mapper) {
         var value = config.get("tracing.exporter");
         if (value instanceof ConfigValue.NullValue || value.asObject().get("endpoint").isNull()) {
             return new OpentelemetryGrpcExporterConfig.Empty();
         }
-        return extractor.extractOrThrow(value);
+        return mapper.mapOrThrow(value);
     }
 
     @DefaultComponent

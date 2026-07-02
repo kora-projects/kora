@@ -1,9 +1,9 @@
 package io.koraframework.resilient.timeout.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface TimeoutTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,13 +15,13 @@ public interface TimeoutTelemetryConfig extends TelemetryConfig {
     @Override
     TimeoutTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface TimeoutLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface TimeoutMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface TimeoutTracingConfig extends TelemetryConfig.TracingConfig {
 
         @Override

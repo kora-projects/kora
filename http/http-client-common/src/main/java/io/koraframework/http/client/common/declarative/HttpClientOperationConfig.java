@@ -1,14 +1,14 @@
 package io.koraframework.http.client.common.declarative;
 
 import io.koraframework.common.util.Size;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Map;
 import java.util.Set;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface HttpClientOperationConfig {
 
     @Nullable
@@ -16,7 +16,7 @@ public interface HttpClientOperationConfig {
 
     OperationTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface OperationTelemetryConfig {
 
         LoggingConfig logging();
@@ -25,7 +25,7 @@ public interface HttpClientOperationConfig {
 
         MetricsConfig metrics();
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface LoggingConfig {
             @Nullable
             Boolean enabled();
@@ -49,7 +49,7 @@ public interface HttpClientOperationConfig {
             Size maxResponseBodyLogSize();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface TracingConfig {
             @Nullable
             Boolean enabled();
@@ -61,7 +61,7 @@ public interface HttpClientOperationConfig {
             Boolean pathFull();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface MetricsConfig {
             @Nullable
             Boolean enabled();

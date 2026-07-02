@@ -14,10 +14,10 @@ public class DefaultRetryTelemetry implements RetryTelemetry {
                                    MeterRegistry meterRegistry) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext("none",
-            new $RetryTelemetryConfig_ConfigValueExtractor.RetryTelemetryConfig_Impl(
-                new $RetryTelemetryConfig_RetryLoggingConfig_ConfigValueExtractor.RetryLoggingConfig_Defaults(),
-                new $RetryTelemetryConfig_RetryMetricsConfig_ConfigValueExtractor.RetryMetricsConfig_Defaults(),
-                new $RetryTelemetryConfig_RetryTracingConfig_ConfigValueExtractor.RetryTracingConfig_Defaults()
+            new $RetryTelemetryConfig_ConfigValueMapper.RetryTelemetryConfig_Impl(
+                new $RetryTelemetryConfig_RetryLoggingConfig_ConfigValueMapper.RetryLoggingConfig_Defaults(),
+                new $RetryTelemetryConfig_RetryMetricsConfig_ConfigValueMapper.RetryMetricsConfig_Defaults(),
+                new $RetryTelemetryConfig_RetryTracingConfig_ConfigValueMapper.RetryTracingConfig_Defaults()
             ), false, false, DefaultRetryTelemetryFactory.NOOP_TRACER, DefaultRetryTelemetryFactory.NOOP_METER_REGISTRY);
     }
 

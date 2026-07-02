@@ -2,13 +2,13 @@ package io.koraframework.camunda.zeebe.worker;
 
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 @NullMarked
 public interface ZeebeWorkerConfig {
 
@@ -18,7 +18,7 @@ public interface ZeebeWorkerConfig {
         return Map.of();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface JobConfig {
 
         default String name() {
@@ -53,7 +53,7 @@ public interface ZeebeWorkerConfig {
         Duration streamTimeout();
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface BackoffConfig {
 
         @Nullable
@@ -69,11 +69,11 @@ public interface ZeebeWorkerConfig {
         Double jitter();
     }
 
-    BackoffConfig DEFAULT_BACKOFF_CONFIG = new $ZeebeWorkerConfig_BackoffConfig_ConfigValueExtractor.BackoffConfig_Impl(
+    BackoffConfig DEFAULT_BACKOFF_CONFIG = new $ZeebeWorkerConfig_BackoffConfig_ConfigValueMapper.BackoffConfig_Impl(
         Duration.ofMillis(500), Duration.ofMillis(100), 1.0, 1.1
     );
 
-    JobConfig DEFAULT_JOB_CONFIG = new $ZeebeWorkerConfig_JobConfig_ConfigValueExtractor.JobConfig_Impl(
+    JobConfig DEFAULT_JOB_CONFIG = new $ZeebeWorkerConfig_JobConfig_ConfigValueMapper.JobConfig_Impl(
         "default", DEFAULT_BACKOFF_CONFIG, List.of(), Duration.ofMinutes(15), 32, Duration.ofSeconds(15), Duration.ofMillis(100), true, false, Duration.ofSeconds(15)
     );
 
@@ -99,7 +99,7 @@ public interface ZeebeWorkerConfig {
         }
 
         final BackoffConfig backoff = merge(targetConfig.backoff(), defaultConfig.backoff());
-        return new $ZeebeWorkerConfig_JobConfig_ConfigValueExtractor.JobConfig_Impl(
+        return new $ZeebeWorkerConfig_JobConfig_ConfigValueMapper.JobConfig_Impl(
             targetConfig.name() == null ? defaultConfig.name() : targetConfig.name(),
             backoff,
             targetConfig.tenantIds() == null ? defaultConfig.tenantIds() : targetConfig.tenantIds(),
@@ -118,7 +118,7 @@ public interface ZeebeWorkerConfig {
             return defaultConfig;
         }
 
-        return new $ZeebeWorkerConfig_BackoffConfig_ConfigValueExtractor.BackoffConfig_Impl(
+        return new $ZeebeWorkerConfig_BackoffConfig_ConfigValueMapper.BackoffConfig_Impl(
             targetConfig.maxDelay() == null ? defaultConfig.maxDelay() : targetConfig.maxDelay(),
             targetConfig.minDelay() == null ? defaultConfig.minDelay() : targetConfig.minDelay(),
             targetConfig.factor() == null ? defaultConfig.factor() : targetConfig.factor(),

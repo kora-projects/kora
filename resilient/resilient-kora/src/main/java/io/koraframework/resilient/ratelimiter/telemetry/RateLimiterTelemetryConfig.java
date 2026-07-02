@@ -1,9 +1,9 @@
 package io.koraframework.resilient.ratelimiter.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface RateLimiterTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,13 +15,13 @@ public interface RateLimiterTelemetryConfig extends TelemetryConfig {
     @Override
     RateLimiterTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RateLimiterLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RateLimiterMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RateLimiterTracingConfig extends TelemetryConfig.TracingConfig {
 
         @Override

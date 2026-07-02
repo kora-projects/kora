@@ -3,7 +3,7 @@ package io.koraframework.resilient.circuitbreaker;
 import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryFactory;
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.DefaultCircuitBreakerLoggerFactory;
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.DefaultCircuitBreakerMetricsFactory;
@@ -14,8 +14,8 @@ import org.jspecify.annotations.Nullable;
 
 public interface CircuitBreakerModule {
 
-    default CircuitBreakerConfig koraCircuitBreakerConfig(Config config, ConfigValueExtractor<CircuitBreakerConfig> extractor) {
-        return extractor.extractOrThrow(config.get("resilient"));
+    default CircuitBreakerConfig koraCircuitBreakerConfig(Config config, ConfigValueMapper<CircuitBreakerConfig> mapper) {
+        return mapper.mapOrThrow(config.get("resilient"));
     }
 
     default CircuitBreakerManager koraCircuitBreakerManager(CircuitBreakerConfig config,

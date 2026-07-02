@@ -2,9 +2,9 @@ package io.koraframework.netty.common;
 
 import io.netty.util.NettyRuntime;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface NettyTransportConfig {
 
     enum EventLoopType {

@@ -67,7 +67,7 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
         var b = MethodSpec.methodBuilder("config")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(Classes.config, "config")
-            .addParameter(ParameterizedTypeName.get(Classes.configValueExtractor, ClassName.get(String.class)), "extractor")
+            .addParameter(ParameterizedTypeName.get(Classes.configValueExtractor, ClassName.get(String.class)), "mapper")
             .returns(configClassName);
         var params = new ArrayList<CodeBlock>();
         for (var authMethod : authMethods) {
@@ -78,13 +78,13 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
                 var authMethodConfig = ClassName.get(apiPackage, "ApiSecurity", "Config", authMethod.name + "Config");
                 var username = authMethod.name + "_username";
                 var password = authMethod.name + "_password";
-                b.addStatement("var $N = extractor.extractOrThrow(config.get($S))", username, configPath + ".username");
-                b.addStatement("var $N = extractor.extractOrThrow(config.get($S))", password, configPath + ".password");
+                b.addStatement("var $N = mapper.mapOrThrow(config.get($S))", username, configPath + ".username");
+                b.addStatement("var $N = mapper.mapOrThrow(config.get($S))", password, configPath + ".password");
                 b.addStatement("var $N = new $T($N, $N)", authMethod.name, authMethodConfig, username, password);
                 params.add(CodeBlock.of("$N", authMethod.name));
             }
             if (authMethod.type.equals("apiKey")) {
-                b.addStatement("var $N = extractor.extractOrThrow(config.get($S))", authMethod.name, configPath);
+                b.addStatement("var $N = mapper.mapOrThrow(config.get($S))", authMethod.name, configPath);
                 params.add(CodeBlock.of("$N", authMethod.name));
             }
         }

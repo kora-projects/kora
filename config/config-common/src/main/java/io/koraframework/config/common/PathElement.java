@@ -5,6 +5,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 
 public sealed interface PathElement {
+
     static PathElement.Index get(int index) {
         return new Index(index);
     }

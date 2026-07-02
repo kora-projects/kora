@@ -1,14 +1,14 @@
 package io.koraframework.camunda.rest;
 
 import io.koraframework.camunda.rest.telemetry.CamundaRestTelemetryConfig;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface CamundaRestConfig {
 
     default boolean enabled() {
@@ -33,7 +33,7 @@ public interface CamundaRestConfig {
 
     CamundaCorsConfig cors();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CamundaOpenApiConfig {
 
         default List<String> files() {
@@ -52,7 +52,7 @@ public interface CamundaRestConfig {
 
         RapidocConfig rapidoc();
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface SwaggerUIConfig {
 
             default boolean enabled() {
@@ -80,7 +80,7 @@ public interface CamundaRestConfig {
             }
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface RapidocConfig {
 
             default boolean enabled() {
@@ -93,7 +93,7 @@ public interface CamundaRestConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CamundaCorsConfig {
 
         default boolean enabled() {

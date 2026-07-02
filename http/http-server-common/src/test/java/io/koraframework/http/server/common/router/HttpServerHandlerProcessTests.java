@@ -5,7 +5,7 @@ import io.koraframework.common.util.Size;
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.http.common.header.HttpHeaders;
-import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueExtractor.HttpServerConfig_Impl;
+import io.koraframework.http.server.common.$HttpServerConfig_ConfigValueMapper.HttpServerConfig_Impl;
 import io.koraframework.http.server.common.HttpServerConfig;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.HttpServerRequestHandlerImpl;
@@ -156,10 +156,10 @@ class HttpServerHandlerProcessTests {
             true,
             Duration.ofMillis(100),
             Size.ofBytesBinary(1024),
-            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
-                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor.HttpServerLoggingConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+            new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
+                new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper.HttpServerLoggingConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             )
         );
     }

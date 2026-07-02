@@ -58,8 +58,8 @@ public class ModuleGenerator {
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(configType)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configType), "extractor")
-            .addStatement("return extractor.extractOrThrow(config.get($S))", s3ClientConfigPath)
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, configType), "mapper")
+            .addStatement("return mapper.mapOrThrow(config.get($S))", s3ClientConfigPath)
             .build());
         var clientImpl = MethodSpec.methodBuilder("clientImpl")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)

@@ -45,7 +45,7 @@ public class SoapClientImplGenerator {
         var configPath = "soapClient." + serviceName;
 
         var moduleName = NameUtils.generatedType(element, "SoapClientModule");
-        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueExtractor, SOAP_CONFIG);
+        var extractorClass = ParameterizedTypeName.get(CommonClassNames.configValueMapper, SOAP_CONFIG);
         var elementType = ClassName.get(element.asType());
 
         var methodPrefix = serviceName.substring(0, 1).toLowerCase() + serviceName.substring(1);
@@ -59,8 +59,8 @@ public class SoapClientImplGenerator {
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT).returns(SOAP_CONFIG)
                 .addAnnotation(CommonClassNames.defaultComponent)
                 .addParameter(ParameterSpec.builder(CommonClassNames.config, "config").build())
-                .addParameter(ParameterSpec.builder(extractorClass, "extractor").build())
-                .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
+                .addParameter(ParameterSpec.builder(extractorClass, "mapper").build())
+                .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
                 .build())
             .addMethod(MethodSpec.methodBuilder(methodPrefix + "_SoapClientImpl")
                 .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)

@@ -1,10 +1,10 @@
 package io.koraframework.http.client.jdk;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.net.http.HttpClient;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface JdkHttpClientConfig {
 
     default boolean followRedirects() {

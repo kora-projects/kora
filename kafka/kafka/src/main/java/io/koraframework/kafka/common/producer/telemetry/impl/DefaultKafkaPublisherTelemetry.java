@@ -27,10 +27,10 @@ public class DefaultKafkaPublisherTelemetry implements KafkaPublisherTelemetry {
                                    String clientId) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new $KafkaPublisherTelemetryConfig_ConfigValueExtractor.KafkaPublisherTelemetryConfig_Impl(
-                new $KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueExtractor.KafkaProducerLoggingConfig_Defaults(),
-                new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueExtractor.KafkaProducerMetricsConfig_Defaults(),
-                new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueExtractor.KafkaProducerTracingConfig_Defaults()
+            new $KafkaPublisherTelemetryConfig_ConfigValueMapper.KafkaPublisherTelemetryConfig_Impl(
+                new $KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueMapper.KafkaProducerLoggingConfig_Defaults(),
+                new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueMapper.KafkaProducerMetricsConfig_Defaults(),
+                new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueMapper.KafkaProducerTracingConfig_Defaults()
             ), false, false, DefaultKafkaPublisherTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaPublisherTelemetryFactory.NOOP_TRACER, new Properties(), "none", "none", "none", "");
     }
 

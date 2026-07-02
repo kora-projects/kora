@@ -52,7 +52,7 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
 
         val configPath = "soapClient.$serviceName"
         val moduleName = declaration.generatedClassName("SoapClientModule")
-        val extractorClass = CommonClassNames.configValueExtractor.parameterizedBy(soapConfig)
+        val extractorClass = CommonClassNames.configValueMapper.parameterizedBy(soapConfig)
         val elementType = declaration.toClassName()
 
         val methodPrefix = serviceName.substring(0, 1).lowercase(Locale.getDefault()) + serviceName.substring(1)
@@ -67,8 +67,8 @@ class SoapClientImplGenerator(private val resolver: Resolver) {
                     .addAnnotation(CommonClassNames.defaultComponent)
                     .addTag(elementType.canonicalName)
                     .addParameter(ParameterSpec.builder("config", CommonClassNames.config).build())
-                    .addParameter(ParameterSpec.builder("extractor", extractorClass).build())
-                    .addStatement("return extractor.extractOrThrow(config.get(%S))", configPath)
+                    .addParameter(ParameterSpec.builder("mapper", extractorClass).build())
+                    .addStatement("return mapper.mapOrThrow(config.get(%S))", configPath)
                     .build()
             )
             .addFunction(

@@ -29,7 +29,7 @@ public class ConfigClassGenerator {
             .addAnnotation(AnnotationUtils.generated(ConfigClassGenerator.class))
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(declarativeHttpClientConfig)
-            .addAnnotation(CommonClassNames.configValueExtractorAnnotation);
+            .addAnnotation(CommonClassNames.configMapperAnnotation);
 
         b.addMethod(MethodSpec.methodBuilder("telemetry")
             .addAnnotation(Override.class)

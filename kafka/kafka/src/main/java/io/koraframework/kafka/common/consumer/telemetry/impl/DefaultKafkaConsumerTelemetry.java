@@ -28,10 +28,10 @@ public class DefaultKafkaConsumerTelemetry implements KafkaConsumerTelemetry {
                                    String groupId) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new $KafkaConsumerTelemetryConfig_ConfigValueExtractor.KafkaConsumerTelemetryConfig_Impl(
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueExtractor.KafkaConsumerLoggingConfig_Defaults(),
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueExtractor.KafkaConsumerMetricsConfig_Defaults(),
-                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueExtractor.KafkaConsumerTracingConfig_Defaults()
+            new $KafkaConsumerTelemetryConfig_ConfigValueMapper.KafkaConsumerTelemetryConfig_Impl(
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerLoggingConfig_ConfigValueMapper.KafkaConsumerLoggingConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerMetricsConfig_ConfigValueMapper.KafkaConsumerMetricsConfig_Defaults(),
+                new $KafkaConsumerTelemetryConfig_KafkaConsumerTracingConfig_ConfigValueMapper.KafkaConsumerTracingConfig_Defaults()
             ), false, false, DefaultKafkaConsumerTelemetryFactory.NOOP_METER_REGISTRY, DefaultKafkaConsumerTelemetryFactory.NOOP_TRACER, new Properties(), "none", "none", "none", "", "");
     }
 

@@ -1,11 +1,11 @@
 package io.koraframework.openapi.management;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.util.List;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface OpenApiManagementConfig {
 
     default boolean enabled() {
@@ -22,7 +22,7 @@ public interface OpenApiManagementConfig {
 
     RapidocConfig rapidoc();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SwaggerUIConfig {
 
         default boolean enabled() {
@@ -50,7 +50,7 @@ public interface OpenApiManagementConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RapidocConfig {
 
         default boolean enabled() {

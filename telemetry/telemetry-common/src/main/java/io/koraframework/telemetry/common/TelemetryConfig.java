@@ -1,11 +1,11 @@
 package io.koraframework.telemetry.common;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.time.Duration;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface TelemetryConfig {
 
     LoggingConfig logging();
@@ -14,7 +14,7 @@ public interface TelemetryConfig {
 
     MetricsConfig metrics();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface LoggingConfig {
 
         default boolean enabled() {
@@ -22,7 +22,7 @@ public interface TelemetryConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface TracingConfig {
 
         default boolean enabled() {
@@ -34,7 +34,7 @@ public interface TelemetryConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface MetricsConfig {
 
         Duration[] DEFAULT_SLO = new Duration[]{

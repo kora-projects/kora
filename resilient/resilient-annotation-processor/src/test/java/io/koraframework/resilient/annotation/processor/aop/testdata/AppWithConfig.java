@@ -3,7 +3,7 @@ package io.koraframework.resilient.annotation.processor.aop.testdata;
 import com.typesafe.config.ConfigFactory;
 import io.koraframework.common.annotation.KoraApp;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractorModule;
+import io.koraframework.config.common.mapper.ConfigValueMapperModule;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import io.koraframework.config.hocon.HoconConfigFactory;
 import io.koraframework.resilient.circuitbreaker.CircuitBreakerModule;
@@ -13,7 +13,7 @@ import io.koraframework.resilient.retry.RetryModule;
 import io.koraframework.resilient.timeout.TimeoutModule;
 
 @KoraApp
-public interface AppWithConfig extends ConfigValueExtractorModule, CircuitBreakerModule, RetryModule, TimeoutModule, FallbackModule, RateLimiterModule {
+public interface AppWithConfig extends ConfigValueMapperModule, CircuitBreakerModule, RetryModule, TimeoutModule, FallbackModule, RateLimiterModule {
 
     default Config config() {
         return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(

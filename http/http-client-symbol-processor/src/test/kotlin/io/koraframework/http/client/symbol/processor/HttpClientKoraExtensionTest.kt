@@ -9,7 +9,7 @@ import io.koraframework.ksp.common.GraphUtil.toGraphDraw
 class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {
         return super.commonImports() + """
-          import io.koraframework.config.common.extractor.ConfigValueExtractor
+          import io.koraframework.config.common.mapper.ConfigValueMapper
           import io.koraframework.http.client.common.HttpClient
           import io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory
           import io.koraframework.http.client.common.response.HttpClientResponseMapper
@@ -27,7 +27,7 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
                fun client(): HttpClient = org.mockito.Mockito.mock(HttpClient::class.java)
                fun telemetry(): HttpClientTelemetryFactory = org.mockito.Mockito.mock(HttpClientTelemetryFactory::class.java)
                fun config(): io.koraframework.config.common.Config = org.mockito.Mockito.mock(io.koraframework.config.common.Config::class.java)
-               fun extractor(): ConfigValueExtractor<`${'$'}TestClient_Config`> = org.mockito.Mockito.mock(ConfigValueExtractor::class.java) as ConfigValueExtractor<`${'$'}TestClient_Config`>
+               fun extractor(): ConfigValueMapper<`${'$'}TestClient_Config`> = org.mockito.Mockito.mock(ConfigValueMapper::class.java) as ConfigValueMapper<`${'$'}TestClient_Config`>
             
                 @io.koraframework.common.annotation.Root
                 fun root(m: TestClient) = ""

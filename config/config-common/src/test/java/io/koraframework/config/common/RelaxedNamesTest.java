@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static io.koraframework.config.common.factory.MapConfigFactory.fromMap;
+import static io.koraframework.config.common.util.ConfigMappingUtils.fromMap;
 
 public class RelaxedNamesTest {
     @Test

@@ -5,7 +5,7 @@ import org.snakeyaml.engine.v2.api.LoadSettings;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.ConfigValuePath;
-import io.koraframework.config.common.factory.MapConfigFactory;
+import io.koraframework.config.common.util.ConfigMappingUtils;
 import io.koraframework.config.common.impl.SimpleConfig;
 import io.koraframework.config.common.impl.SimpleConfigValueOrigin;
 import io.koraframework.config.common.origin.ConfigOrigin;
@@ -27,7 +27,7 @@ public final class YamlConfigFactory {
 
         var path = ConfigValuePath.root();
         if (document == null) {
-            return MapConfigFactory.fromMap(origin, Map.of());
+            return ConfigMappingUtils.fromMap(origin, Map.of());
         }
         var root = toObject(origin, path, document);
         return new SimpleConfig(origin, root);

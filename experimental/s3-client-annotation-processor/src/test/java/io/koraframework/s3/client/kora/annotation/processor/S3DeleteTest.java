@@ -2,7 +2,7 @@ package io.koraframework.s3.client.kora.annotation.processor;
 
 import io.koraframework.s3.client.kora.S3Credentials;
 import org.junit.jupiter.api.Test;
-import io.koraframework.config.common.factory.MapConfigFactory;
+import io.koraframework.config.common.util.ConfigMappingUtils;
 import io.koraframework.s3.client.kora.model.request.DeleteObjectArgs;
 
 import java.util.Map;
@@ -30,7 +30,7 @@ class S3DeleteTest extends AbstractS3ClientTest {
 
     @Test
     public void testDeleteWithTemplateKeyAndArgs() throws Exception {
-        var bucketConfig = MapConfigFactory.fromMap(Map.of(
+        var bucketConfig = ConfigMappingUtils.fromMap(Map.of(
             "bucket", "bucket_value"
         ));
         var client = this.compile("""
@@ -51,7 +51,7 @@ class S3DeleteTest extends AbstractS3ClientTest {
 
     @Test
     public void testDeleteWithAwsCredentials() throws Exception {
-        var bucketConfig = MapConfigFactory.fromMap(Map.of(
+        var bucketConfig = ConfigMappingUtils.fromMap(Map.of(
             "Client", Map.of(
                 "bucket", "bucket_value"
             )
@@ -74,7 +74,7 @@ class S3DeleteTest extends AbstractS3ClientTest {
 
     @Test
     public void testDeleteConstantKey() throws Exception {
-        var bucketConfig = MapConfigFactory.fromMap(Map.of(
+        var bucketConfig = ConfigMappingUtils.fromMap(Map.of(
             "bucket", "bucket_value"
         ));
         var client = this.compile("""

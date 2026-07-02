@@ -2,6 +2,7 @@ package io.koraframework.database.flyway;
 
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.junit.jupiter.api.Assertions;
@@ -9,7 +10,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import io.koraframework.database.common.telemetry.*;
 import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
-import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueExtractor;
 import io.koraframework.database.jdbc.JdbcDatabase;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
@@ -25,7 +25,7 @@ public class FlywayJdbcDatabaseInterceptorTest {
 
     @Test
     public void testFlywayInterceptor(PostgresParams params) throws SQLException {
-        var config = new $JdbcDatabaseConfig_ConfigValueExtractor.JdbcDatabaseConfig_Impl(
+        var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
             params.jdbcUrl(),
@@ -41,10 +41,10 @@ public class FlywayJdbcDatabaseInterceptorTest {
             Duration.ofMillis(1000L),
             false,
             new Properties(),
-            new $DatabaseTelemetryConfig_ConfigValueExtractor.DatabaseTelemetryConfig_Impl(
-                new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueExtractor.DatabaseLoggingConfig_Impl(true),
-                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
-                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor.DatabaseTracingConfig_Impl(true, Map.of())
+            new $DatabaseTelemetryConfig_ConfigValueMapper.DatabaseTelemetryConfig_Impl(
+                new $DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper.DatabaseLoggingConfig_Impl(true),
+                new $DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper.DatabaseMetricsConfig_Impl(true, true, new Duration[0], Map.of()),
+                new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
         var database = new JdbcDatabase(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);

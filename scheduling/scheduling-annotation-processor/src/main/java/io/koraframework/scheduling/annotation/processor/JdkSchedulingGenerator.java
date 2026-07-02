@@ -12,7 +12,6 @@ import javax.lang.model.util.Elements;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.Optional;
 
 public class JdkSchedulingGenerator {
     public static ClassName scheduleAtFixedRate = ClassName.get("io.koraframework.scheduling.jdk.annotation", "ScheduleAtFixedRate");
@@ -85,7 +84,7 @@ public class JdkSchedulingGenerator {
                 .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
                 .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(schedulingJobConfigClassName)
-                .addAnnotation(CommonClassNames.configValueExtractorAnnotation);
+                .addAnnotation(CommonClassNames.configMapperAnnotation);
 
             if (cron == null || cron.isBlank()) {
                 config.addMethod(MethodSpec.methodBuilder("cron")
@@ -142,7 +141,7 @@ public class JdkSchedulingGenerator {
                 .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
                 .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(schedulingJobConfigClassName)
-                .addAnnotation(CommonClassNames.configValueExtractorAnnotation);
+                .addAnnotation(CommonClassNames.configMapperAnnotation);
 
             if (delay == null || delay == 0) {
                 config.addMethod(MethodSpec.methodBuilder("delay")
@@ -200,7 +199,7 @@ public class JdkSchedulingGenerator {
                 .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
                 .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(schedulingJobConfigClassName)
-                .addAnnotation(CommonClassNames.configValueExtractorAnnotation);
+                .addAnnotation(CommonClassNames.configMapperAnnotation);
 
             componentMethod.addParameter(ClassName.get(packageName, configClassName), "config");
             if (delay == null || delay == 0) {
@@ -266,7 +265,7 @@ public class JdkSchedulingGenerator {
                 .addAnnotation(AnnotationUtils.generated(JdkSchedulingGenerator.class))
                 .addModifiers(Modifier.PUBLIC)
                 .addSuperinterface(schedulingJobConfigClassName)
-                .addAnnotation(CommonClassNames.configValueExtractorAnnotation);
+                .addAnnotation(CommonClassNames.configMapperAnnotation);
             if (period == null || period == 0) {
                 config.addMethod(MethodSpec.methodBuilder("period")
                     .returns(Duration.class)
@@ -307,12 +306,12 @@ public class JdkSchedulingGenerator {
             .addParameter(CommonClassNames.config, "config")
             .addParameter(
                 ParameterizedTypeName.get(
-                    ClassName.get("io.koraframework.config.common.extractor", "ConfigValueExtractor"),
+                    ClassName.get("io.koraframework.config.common.mapper", "ConfigValueMapper"),
                     ClassName.get(packageName, configClassName)
                 ),
-                "extractor"
+                "mapper"
             )
-            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
+            .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
             .returns(ClassName.get(packageName, configClassName))
             .build();
 
@@ -323,26 +322,26 @@ public class JdkSchedulingGenerator {
         var method = MethodSpec.methodBuilder(configClassName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configType), "extractor")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, configType), "mapper")
             .returns(configType)
             .addStatement("var value = config.get($S)", configPath);
 
         if (defaultCron != null && !defaultCron.isBlank()) {
             method.beginControlFlow("if (value instanceof $T.NullValue)", CommonClassNames.configValue)
-                .addCode("return extractor.extractOrThrow($>\n")
+                .addCode("return mapper.mapOrThrow($>\n")
                 .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), $S)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue, defaultCron)
                 .addCode("$<\n);\n")
                 .endControlFlow();
         }
         method.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
             .addStatement("var cron = str.value()")
-            .addCode("return extractor.extractOrThrow($>\n")
+            .addCode("return mapper.mapOrThrow($>\n")
             .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), cron)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue)
             .addCode("$<\n);\n")
             .nextControlFlow("else if (value instanceof $T.ObjectValue obj)", CommonClassNames.configValue)
-            .addStatement("return extractor.extractOrThrow(obj)")
+            .addStatement("return mapper.mapOrThrow(obj)")
             .nextControlFlow("else")
-            .addStatement("throw $T.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValueExtractionException, CommonClassNames.configValue)
+            .addStatement("throw $T.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValueException, CommonClassNames.configValue)
             .endControlFlow();
         return method.build();
     }

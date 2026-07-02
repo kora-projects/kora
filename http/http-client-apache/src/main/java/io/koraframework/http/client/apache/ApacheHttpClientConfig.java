@@ -1,9 +1,9 @@
 package io.koraframework.http.client.apache;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.http.client.common.HttpClientConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface ApacheHttpClientConfig extends HttpClientConfig {
 
     default boolean followRedirects() {

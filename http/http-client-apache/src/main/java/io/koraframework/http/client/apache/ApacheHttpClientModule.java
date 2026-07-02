@@ -3,7 +3,7 @@ package io.koraframework.http.client.apache;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.Configurer;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.client.common.HttpClientConfig;
 import io.koraframework.http.client.common.HttpClientModule;
 import org.apache.hc.client5.http.classic.HttpClient;
@@ -17,8 +17,8 @@ public interface ApacheHttpClientModule extends HttpClientModule {
         return new ApacheHttpClient(apacheHttpClient);
     }
 
-    default ApacheHttpClientConfig apacheHttpClientConfig(Config config, ConfigValueExtractor<ApacheHttpClientConfig> extractor) {
-        return extractor.extractOrThrow(config.get("httpClient.apache"));
+    default ApacheHttpClientConfig apacheHttpClientConfig(Config config, ConfigValueMapper<ApacheHttpClientConfig> mapper) {
+        return mapper.mapOrThrow(config.get("httpClient.apache"));
     }
 
     @DefaultComponent

@@ -1,15 +1,15 @@
 package io.koraframework.grpc.client;
 
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.grpc.client.config.DefaultServiceConfig;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
-import java.util.Objects;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface GrpcClientConfig {
 
     String url();
@@ -31,12 +31,12 @@ public interface GrpcClientConfig {
     @Nullable
     String loadBalancingPolicy();
 
-    static GrpcClientConfig defaultConfig(Config config, io.koraframework.config.common.extractor.ConfigValueExtractor<GrpcClientConfig> extractor, String serviceName) {
+    static GrpcClientConfig defaultConfig(Config config, ConfigValueMapper<GrpcClientConfig> mapper, String serviceName) {
         var packageEnding = serviceName.lastIndexOf('.');
         var serviceSimpleName = (packageEnding == -1)
             ? serviceName
             : serviceName.substring(packageEnding + 1);
 
-        return extractor.extractOrThrow(config.get("grpcClient." + serviceSimpleName));
+        return mapper.mapOrThrow(config.get("grpcClient." + serviceSimpleName));
     }
 }
