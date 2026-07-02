@@ -43,7 +43,7 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public JdbcDataSource afterInit(JdbcDataSource value) {
+    public JdbcDataSource beforeRelease(JdbcDataSource value) {
         return value;
     }
 }
