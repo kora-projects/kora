@@ -66,9 +66,9 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
             var element = annotated.element();
             if (element.getKind() == ElementKind.METHOD) {
                 var enclosing = element.getEnclosingElement();
-                if (enclosing.getKind() != ElementKind.ENUM) {
+                if (!enclosing.getKind().isClass()) {
                     messager.printMessage(Diagnostic.Kind.ERROR,
-                        "@JsonWriter on a method is supported only for an enum method, got enclosing " + enclosing.getKind(),
+                        "@JsonWriter on a method is supported only for a method of a class or enum, got enclosing " + enclosing.getKind(),
                         annotated.element());
                     continue;
                 }
@@ -98,9 +98,9 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
                 element = element.getEnclosingElement();
             } else if (element.getKind() == ElementKind.METHOD) {
                 var enclosing = element.getEnclosingElement();
-                if (enclosing.getKind() != ElementKind.ENUM) {
+                if (!enclosing.getKind().isClass()) {
                     messager.printMessage(Diagnostic.Kind.ERROR,
-                        "@JsonReader on a method is supported only for an enum factory method, got enclosing " + enclosing.getKind(),
+                        "@JsonReader on a method is supported only for a static factory method of a class or enum, got enclosing " + enclosing.getKind(),
                         annotated.element());
                     continue;
                 }

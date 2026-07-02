@@ -10,8 +10,10 @@ import ru.tinkoff.kora.json.annotation.processor.JsonProcessor;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
+import ru.tinkoff.kora.json.annotation.processor.reader.DelegatingReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.EnumReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderTypeMetaParser;
+import ru.tinkoff.kora.json.annotation.processor.writer.DelegatingWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.EnumWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.WriterTypeMetaParser;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
@@ -46,6 +48,8 @@ public class JsonKoraExtension implements KoraExtension {
     private final WriterTypeMetaParser writerTypeMetaParser;
     private final EnumReaderGenerator enumReaderGenerator = new EnumReaderGenerator();
     private final EnumWriterGenerator enumWriterGenerator = new EnumWriterGenerator();
+    private final DelegatingReaderGenerator delegatingReaderGenerator = new DelegatingReaderGenerator();
+    private final DelegatingWriterGenerator delegatingWriterGenerator = new DelegatingWriterGenerator();
     private final Messager messager;
 
     public JsonKoraExtension(ProcessingEnvironment processingEnv) {
@@ -92,6 +96,10 @@ public class JsonKoraExtension implements KoraExtension {
                 return () -> this.generateWriter(jsonElement, possibleJsonClass);
             }
 
+            if (this.delegatingWriterGenerator.detectWriterMethod(jsonElement) != null) {
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonWriter);
+            }
+
             try {
                 Objects.requireNonNull(this.writerTypeMetaParser.parse(jsonElement, possibleJsonClass));
                 return () -> this.generateWriter(jsonElement, possibleJsonClass);
@@ -129,6 +137,10 @@ public class JsonKoraExtension implements KoraExtension {
 
             if (jsonElement.getKind() == ElementKind.ENUM) {
                 return () -> this.generateReader(jsonElement, possibleJsonClass);
+            }
+
+            if (this.delegatingReaderGenerator.detectReaderFactory(jsonElement) != null) {
+                return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
             }
 
             try {

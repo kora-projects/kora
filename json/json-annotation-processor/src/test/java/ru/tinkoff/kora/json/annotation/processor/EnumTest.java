@@ -278,20 +278,6 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
-    public void testJsonReaderFactoryOnNonEnumFails() {
-        var result = compile(List.of(new JsonAnnotationProcessor()), """
-            public class NotAnEnum {
-              private final String value;
-              public NotAnEnum(String value) { this.value = value; }
-              @JsonReader
-              public static NotAnEnum fromValue(String value) { return new NotAnEnum(value); }
-            }
-            """);
-        assertThat(result.isFailed()).isTrue();
-        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("supported only for an enum"));
-    }
-
-    @Test
     public void testEnumClassAndFactoryAnnotationUsesFactory() {
         compile("""
             @JsonReader
@@ -576,19 +562,6 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             """);
         assertThat(result.isFailed()).isTrue();
         assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("must return a value"));
-    }
-
-    @Test
-    public void testJsonWriterMethodOnNonEnumFails() {
-        var result = compile(List.of(new JsonAnnotationProcessor()), """
-            public class NotAnEnum {
-              private final String value;
-              public NotAnEnum(String value) { this.value = value; }
-              @JsonWriter public static String toValue(NotAnEnum x) { return x.value; }
-            }
-            """);
-        assertThat(result.isFailed()).isTrue();
-        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("supported only for an enum"));
     }
 
     @Test
