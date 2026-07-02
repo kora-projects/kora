@@ -5,6 +5,7 @@ import com.google.devtools.ksp.processing.CodeGenerator
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.processing.SymbolProcessorEnvironment
 import com.google.devtools.ksp.processing.SymbolProcessorProvider
+import com.google.devtools.ksp.symbol.ClassKind
 import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
@@ -67,6 +68,16 @@ class JsonSymbolProcessor(
                             if (processedReaders.add(clazz.qualifiedName!!.asString())) {
                                 jsonProcessor.generateReader(clazz)
                             }
+                        } else if (it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
+                            val enclosingEnum = enclosingEnum(it)
+                            if (enclosingEnum == null) {
+                                kspLogger.error(
+                                    "@JsonReader on a method is supported only for an enum factory method (in the companion object of an enum)",
+                                    it
+                                )
+                            } else if (processedReaders.add(enclosingEnum.qualifiedName!!.asString())) {
+                                jsonProcessor.generateReader(enclosingEnum)
+                            }
                         }
                     }
                 }
@@ -75,6 +86,12 @@ class JsonSymbolProcessor(
             }
         }
         return symbolsToDelay
+    }
+
+    private fun enclosingEnum(function: KSFunctionDeclaration): KSClassDeclaration? {
+        val parent = function.parentDeclaration as? KSClassDeclaration ?: return null
+        val enum = if (parent.isCompanionObject) parent.parentDeclaration as? KSClassDeclaration else parent
+        return if (enum != null && enum.classKind == ClassKind.ENUM_CLASS) enum else null
     }
 }
 

@@ -230,7 +230,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testEnumFactoryWrongReturnTypeFails() {
-        compile0(listOf(JsonSymbolProcessorProvider()), """
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
             @Json
             enum class TestEnum(val value: String) {
               A("a"), B("b");
@@ -238,9 +239,71 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
                 @JsonReader fun fromValue(value: String): String = value
               }
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         Assertions.assertThat(compileResult.isFailed()).isTrue()
         Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must return") }
+    }
+
+    @Test
+    fun testEnumReaderFactoryTriggersWithoutJsonAnnotation() {
+        compile(
+            """
+            enum class TestEnum(val value: String) {
+              SHARE("share"), OTHER("other");
+              companion object {
+                @JsonReader
+                fun fromValue(value: String): TestEnum = if (value == "share") SHARE else OTHER
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val r = reader("TestEnum", stringReader)
+        r.assertRead("\"share\"", enumConstant("TestEnum", "SHARE"))
+        r.assertRead("\"x\"", enumConstant("TestEnum", "OTHER"))
+    }
+
+    @Test
+    fun testJsonReaderFactoryOnNonEnumFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            class NotAnEnum(val value: String) {
+              companion object {
+                @JsonReader
+                fun fromValue(value: String): NotAnEnum = NotAnEnum(value)
+              }
+            }
+            """.trimIndent()
+        )
+        org.assertj.core.api.Assertions.assertThat(compileResult.isFailed()).isTrue()
+        org.assertj.core.api.Assertions.assertThat(compileResult.messages)
+            .anyMatch { it.contains("supported only for an enum") }
+    }
+
+    @Test
+    fun testEnumClassAndFactoryAnnotationUsesFactory() {
+        compile(
+            """
+            @JsonReader
+            enum class TestEnum(val value: String) {
+              SHARE("share"), OTHER("other");
+              companion object {
+                @JsonReader
+                fun fromValue(value: String): TestEnum = if (value == "share") SHARE else OTHER
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val r = reader("TestEnum", stringReader)
+        // @JsonReader on BOTH the enum class and the factory method: the factory reader must be
+        // generated (unknown -> OTHER), not the default map-based reader (which would throw), and
+        // exactly once — the class-branch and method-branch must dedup via processedReaders.
+        r.assertRead("\"share\"", enumConstant("TestEnum", "SHARE"))
+        r.assertRead("\"unknown\"", enumConstant("TestEnum", "OTHER"))
     }
 
     private fun enumConstant(className: String, name: String): Any {
