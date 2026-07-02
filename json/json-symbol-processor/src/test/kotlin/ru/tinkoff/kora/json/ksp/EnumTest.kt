@@ -13,13 +13,15 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testEnum() {
-        compile("""
+        compile(
+            """
             @Json
             enum class TestEnum {
               VALUE1, VALUE2
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         val mapper = mapper("TestEnum", listOf(stringReader), listOf(stringWriter))
         mapper.assert(enumConstant("TestEnum", "VALUE1"), "\"VALUE1\"")
@@ -28,7 +30,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testEnumWithCustomJsonValue() {
-        compile("""
+        compile(
+            """
             @Json
             enum class TestEnum {
               VALUE1, VALUE2;
@@ -36,7 +39,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
               @Json
               fun intValue() = ordinal
             }
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         val intReader = JsonReader { obj: JsonParser -> obj.intValue }
         val intWriter = JsonWriter { obj: JsonGenerator, v: Int? -> obj.writeNumber(v!!) }
@@ -48,7 +52,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
     @Test
     fun testReaderFromExtension() {
-        compile("""
+        compile(
+            """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
               enum class TestEnum {
@@ -62,14 +67,16 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
               fun root(r: ru.tinkoff.kora.json.common.JsonReader<TestEnum>) = ""
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         Assertions.assertThat(reader("TestApp_TestEnum", stringReader)).isNotNull()
     }
 
     @Test
     fun testWriterFromExtension() {
-        compile("""
+        compile(
+            """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
               enum class TestEnum {
@@ -83,14 +90,16 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
               fun root(r: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) = ""
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         Assertions.assertThat(writer("TestApp_TestEnum", stringWriter)).isNotNull()
     }
 
     @Test
     fun testAnnotationProcessedReaderFromExtension() {
-        compile("""
+        compile(
+            """
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
               @Json
@@ -105,14 +114,16 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
               fun root(r: ru.tinkoff.kora.json.common.JsonReader<TestEnum>) = ""
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         Assertions.assertThat(reader("TestApp_TestEnum", stringReader)).isNotNull()
     }
 
     @Test
     fun testAnnotationProcessedWriterFromExtension() {
-        compile("""
+        compile(
+            """
             @ru.tinkoff.kora.common.KoraApp
             interface TestApp {
               @Json
@@ -127,9 +138,94 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
               fun root(r: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) = ""
             }
             
-            """.trimIndent())
+            """.trimIndent()
+        )
         compileResult.assertSuccess()
         Assertions.assertThat(writer("TestApp_TestEnum", stringWriter)).isNotNull()
+    }
+
+    @Test
+    fun testEnumReaderFromFactoryMethod() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val value: String) {
+              SHARE("share"), BOND("bond"), OTHER("other");
+              companion object {
+                private val byValue = entries.associateBy { it.value }
+                @JsonReader
+                fun fromValue(value: String): TestEnum = byValue[value] ?: OTHER
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val r = reader("TestEnum", stringReader)
+        r.assertRead("\"share\"", enumConstant("TestEnum", "SHARE"))
+        r.assertRead("\"bond\"", enumConstant("TestEnum", "BOND"))
+        r.assertRead("\"nonsense\"", enumConstant("TestEnum", "OTHER"))
+        r.assertRead("null", null)
+    }
+
+    @Test
+    fun testEnumReaderFactoryIntValue() {
+        compile(
+            """
+            @Json
+            enum class TestEnum(val code: Int) {
+              A(1), B(2), OTHER(-1);
+              companion object {
+                @JsonReader
+                fun fromCode(code: Int): TestEnum = entries.firstOrNull { it.code == code } ?: OTHER
+              }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val intReader = JsonReader { p: JsonParser -> p.intValue }
+        val r = reader("TestEnum", intReader)
+        r.assertRead("1", enumConstant("TestEnum", "A"))
+        r.assertRead("2", enumConstant("TestEnum", "B"))
+        r.assertRead("99", enumConstant("TestEnum", "OTHER"))
+    }
+
+    @Test
+    fun testEnumFactoryMultipleReadersFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              A("a"), B("b");
+              companion object {
+                @JsonReader fun fromValue(value: String): TestEnum = A
+                @JsonReader fun fromOther(value: String): TestEnum = B
+              }
+            }
+            """.trimIndent()
+        )
+        org.assertj.core.api.Assertions.assertThat(compileResult.isFailed()).isTrue()
+        org.assertj.core.api.Assertions.assertThat(compileResult.messages)
+            .anyMatch { it.contains("multiple @JsonReader factory") }
+    }
+
+    @Test
+    fun testEnumFactoryWrongParameterCountFails() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider()), """
+            @Json
+            enum class TestEnum(val value: String) {
+              A("a"), B("b");
+              companion object {
+                @JsonReader fun fromValue(value: String, extra: Int): TestEnum = A
+              }
+            }
+            """.trimIndent()
+        )
+        org.assertj.core.api.Assertions.assertThat(compileResult.isFailed()).isTrue()
+        org.assertj.core.api.Assertions.assertThat(compileResult.messages)
+            .anyMatch { it.contains("exactly one parameter") }
     }
 
     private fun enumConstant(className: String, name: String): Any {
