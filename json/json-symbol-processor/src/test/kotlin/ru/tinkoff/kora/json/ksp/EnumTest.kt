@@ -277,8 +277,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             }
             """.trimIndent()
         )
-        org.assertj.core.api.Assertions.assertThat(compileResult.isFailed()).isTrue()
-        org.assertj.core.api.Assertions.assertThat(compileResult.messages)
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages)
             .anyMatch { it.contains("supported only for an enum") }
     }
 
