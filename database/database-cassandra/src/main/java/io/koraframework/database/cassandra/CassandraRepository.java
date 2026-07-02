@@ -21,5 +21,6 @@ import io.koraframework.database.common.annotation.Repository;
  * @see Repository
  */
 public interface CassandraRepository {
-    CassandraConnectionFactory getCassandraConnectionFactory();
+
+    CassandraExecutor executor();
 }

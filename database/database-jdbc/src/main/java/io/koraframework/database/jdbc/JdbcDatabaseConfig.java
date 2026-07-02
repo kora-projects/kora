@@ -18,6 +18,7 @@ import java.util.Properties;
  */
 @ConfigValueExtractor
 public interface JdbcDatabaseConfig {
+
     String username();
 
     String password();

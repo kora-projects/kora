@@ -2,9 +2,9 @@ package io.koraframework.database.jdbc;
 
 import java.sql.SQLException;
 
-public class RuntimeSqlException extends RuntimeException {
+public class UncheckedSqlException extends RuntimeException {
 
-    public RuntimeSqlException(SQLException cause) {
+    public UncheckedSqlException(SQLException cause) {
         super(cause.getMessage(), cause);
     }
 }

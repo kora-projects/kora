@@ -31,5 +31,6 @@ import java.sql.SQLException;
  * @see Mapping
  */
 public interface JdbcParameterColumnMapper<T> extends Mapping.MappingFunction {
+
     void set(PreparedStatement stmt, int index, @Nullable T value) throws SQLException;
 }

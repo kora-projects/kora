@@ -5,9 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import io.koraframework.application.graph.GraphInterceptor;
 import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.jdbc.JdbcDatabase;
+import io.koraframework.database.jdbc.JdbcDataSource;
 
-public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDatabase> {
+public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDataSource> {
 
     private static final Logger logger = LoggerFactory.getLogger(FlywayJdbcDatabaseInterceptor.class);
 
@@ -18,7 +18,7 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public JdbcDatabase afterInit(JdbcDatabase value) {
+    public JdbcDataSource afterInit(JdbcDataSource value) {
         if (flywayConfig.enabled()) {
             final long started = TimeUtils.started();
             logger.debug("FlyWay migration applying...");
@@ -43,7 +43,7 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public JdbcDatabase beforeRelease(JdbcDatabase value) {
+    public JdbcDataSource beforeRelease(JdbcDataSource value) {
         return value;
     }
 }

@@ -21,6 +21,7 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
         return super.commonImports() +
             """
                 import io.koraframework.database.jdbc.*;
+                import io.koraframework.database.jdbc.annotation.*;
                 import io.koraframework.database.jdbc.mapper.result.*;
                 import io.koraframework.database.jdbc.mapper.parameter.*;
                 import io.koraframework.common.annotation.Mapping;

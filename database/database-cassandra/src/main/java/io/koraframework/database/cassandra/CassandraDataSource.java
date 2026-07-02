@@ -14,9 +14,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-public final class CassandraDatabase implements CassandraConnectionFactory, Lifecycle {
+public final class CassandraDataSource implements CassandraExecutor, Lifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger(CassandraDatabase.class);
+    private static final Logger logger = LoggerFactory.getLogger(CassandraDataSource.class);
 
     private final CassandraConfig config;
     @Nullable
@@ -26,7 +26,7 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     private final DatabaseTelemetry telemetry;
     private volatile CqlSession cqlSession;
 
-    public CassandraDatabase(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, DatabaseTelemetryFactory telemetryFactory) {
+    public CassandraDataSource(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, DatabaseTelemetryFactory telemetryFactory) {
         this.config = config;
         this.loaderConfigurer = loaderConfigurer;
         this.sessionBuilderConfigurer = sessionBuilderConfigurer;
@@ -49,30 +49,30 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
 
     @Override
     public void init() {
-        logger.debug("CassandraDatabase {} starting...", config.basic().contactPoints());
+        logger.debug("CassandraDataSource {} starting...", config.basic().contactPoints());
         var started = System.nanoTime();
 
         try {
             cqlSession = new CassandraSessionBuilder().build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
         } catch (Exception e) {
-            throw new RuntimeException("CassandraDatabase '%s' failed to start, due to: %s".formatted(
+            throw new RuntimeException("CassandraDataSource '%s' failed to start, due to: %s".formatted(
                 config.basic().contactPoints(), e.getMessage()), e);
         }
 
-        logger.info("CassandraDatabase {} started in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
+        logger.info("CassandraDataSource {} started in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
         var s = cqlSession;
         if (s != null) {
-            logger.debug("CassandraDatabase '{}' stopping...", config.basic().contactPoints());
+            logger.debug("CassandraDataSource '{}' stopping...", config.basic().contactPoints());
             var started = System.nanoTime();
 
             s.close();
             cqlSession = null;
 
-            logger.info("CassandraDatabase '{}' stopped in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
+            logger.info("CassandraDataSource '{}' stopped in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
         }
     }
 }

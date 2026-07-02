@@ -107,17 +107,17 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         )
 
         val connection = parameters.firstOrNull { it is QueryParameter.ConnectionParameter }
-            ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("_jdbcConnectionFactory.currentConnection()")
+            ?.let { CodeBlock.of("%L", it.variable) } ?: CodeBlock.of("_jdbcExecutor.currentConnection()")
 
         val b = method.queryMethodBuilder(resolver)
         b.addStatement("val _query = %L", queryContextFieldName)
-        b.addStatement("val _observation = _jdbcConnectionFactory.telemetry().observe(_query)")
+        b.addStatement("val _observation = _jdbcExecutor.telemetry().observe(_query)")
         b.addCode("return ")
         b.observe("_observation", returnTypeName) {
             addStatement("var _conToUse = %L", connection)
             addStatement("val _conToClose = ")
             controlFlow("if (_conToUse == null)") {
-                addStatement("_conToUse = _jdbcConnectionFactory.newConnection()")
+                addStatement("_conToUse = _jdbcExecutor.acquireConnection()")
                 addStatement("_conToUse")
                 nextControlFlow("else")
                 addStatement("null")
@@ -170,7 +170,7 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
                 }
                 nextControlFlow("catch (_e: java.sql.SQLException)")
                 addStatement("_observation.observeError(_e)")
-                addStatement("throw io.koraframework.database.jdbc.RuntimeSqlException(_e)")
+                addStatement("throw io.koraframework.database.jdbc.UncheckedSqlException(_e)")
                 nextControlFlow("catch (_e: Exception)")
                 addStatement("_observation.observeError(_e)")
                 addStatement("throw _e")
@@ -230,23 +230,23 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
     }
 
     private fun enrichWithExecutor(repositoryElement: KSClassDeclaration, builder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder) {
-        builder.addProperty("_jdbcConnectionFactory", JdbcTypes.connectionFactory, KModifier.PRIVATE)
+        builder.addProperty("_jdbcExecutor", JdbcTypes.connectionFactory, KModifier.PRIVATE)
         builder.addSuperinterface(JdbcTypes.jdbcRepository)
         builder.addFunction(
-            FunSpec.builder("getJdbcConnectionFactory")
+            FunSpec.builder("executor")
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(JdbcTypes.connectionFactory)
-                .addStatement("return this._jdbcConnectionFactory")
+                .addStatement("return this._jdbcExecutor")
                 .build()
         )
         val executorTag = repositoryElement.parseExecutorTag()
         if (executorTag != null) {
             constructorBuilder.addParameter(
-                ParameterSpec.builder("_jdbcConnectionFactory", JdbcTypes.connectionFactory).addAnnotation(executorTag).build()
+                ParameterSpec.builder("_jdbcExecutor", JdbcTypes.connectionFactory).addAnnotation(executorTag).build()
             )
         } else {
-            constructorBuilder.addParameter("_jdbcConnectionFactory", JdbcTypes.connectionFactory)
+            constructorBuilder.addParameter("_jdbcExecutor", JdbcTypes.connectionFactory)
         }
-        constructorBuilder.addStatement("this._jdbcConnectionFactory = _jdbcConnectionFactory")
+        constructorBuilder.addStatement("this._jdbcExecutor = _jdbcExecutor")
     }
 }
