@@ -16,6 +16,7 @@ grpc-java = "1.74.0"
 grpc-kotlin = "1.4.3"
 kotlin-testing = "1.5.0"
 ksp = "1.9.25-1.0.20"
+konvert = "3.2.3"
 kotlinpoet = "1.18.1"
 jetbrains-annotations = "24.1.0"
 swagger = "2.2.52"
@@ -160,6 +161,9 @@ kotlin-compile-testing = { module = "com.github.tschuchortdev:kotlin-compile-tes
 
 kotlinpoet = { module = "com.squareup:kotlinpoet", version.ref = "kotlinpoet" }
 kotlinpoet-ksp = { module = "com.squareup:kotlinpoet-ksp", version.ref = "kotlinpoet" }
+
+konvert-api = { module = "io.mcarle:konvert-api", version.ref = "konvert" }
+konvert-processor = { module = "io.mcarle:konvert", version.ref = "konvert" }
 
 jakarta-jws-api = { module = "jakarta.jws:jakarta.jws-api", version = "3.0.0" }
 jakarta-xml-ws-api = { module = "jakarta.xml.ws:jakarta.xml.ws-api", version = "3.0.1" }

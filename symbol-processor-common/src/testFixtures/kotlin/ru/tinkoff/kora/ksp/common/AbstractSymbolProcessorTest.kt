@@ -204,7 +204,7 @@ abstract class AbstractSymbolProcessorTest {
             .toList()
             .toTypedArray()
         val processors = classpath.stream()
-            .filter { it.contains("symbol-processor") || it.contains("scheduling-ksp") }
+            .filter { it.contains("symbol-processor") || it.contains("scheduling-ksp") || it.contains("konvert") }
             .collect(Collectors.joining(File.pathSeparator))
         k2JvmArgs.pluginClasspaths = pluginClassPath
         val ksp = "plugin:com.google.devtools.ksp.symbol-processing:"
