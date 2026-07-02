@@ -104,6 +104,7 @@ include(
     'test:test-junit5',
     'mapstruct:mapstruct-java-extension',
     'mapstruct:mapstruct-ksp-extension',
+    'konvert:konvert-ksp-extension',
     'experimental:s3-client-annotation-processor',
     'experimental:s3-client-symbol-processor',
     'experimental:s3-client-common',
