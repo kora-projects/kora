@@ -102,12 +102,7 @@ public interface HttpBodyOutput extends HttpBody, Flow.Publisher<ByteBuffer> {
 
             @Override
             public void onComplete() {
-                try {
-                    os.flush();
-                    f.complete(null);
-                } catch (IOException e) {
-                    f.completeExceptionally(e);
-                }
+                f.complete(null);
             }
         });
         try {
