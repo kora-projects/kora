@@ -4,10 +4,12 @@ import com.squareup.javapoet.JavaFile;
 import ru.tinkoff.kora.annotation.processor.common.CommonUtils;
 import ru.tinkoff.kora.annotation.processor.common.ComparableTypeMirror;
 import ru.tinkoff.kora.annotation.processor.common.SealedTypeUtils;
+import ru.tinkoff.kora.json.annotation.processor.reader.DelegatingReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.EnumReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.JsonReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderTypeMetaParser;
 import ru.tinkoff.kora.json.annotation.processor.reader.SealedInterfaceReaderGenerator;
+import ru.tinkoff.kora.json.annotation.processor.writer.DelegatingWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.EnumWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.JsonWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.SealedInterfaceWriterGenerator;
@@ -34,6 +36,8 @@ public class JsonProcessor {
     private final SealedInterfaceWriterGenerator sealedWriterGenerator;
     private final EnumReaderGenerator enumReaderGenerator;
     private final EnumWriterGenerator enumWriterGenerator;
+    private final DelegatingReaderGenerator delegatingReaderGenerator;
+    private final DelegatingWriterGenerator delegatingWriterGenerator;
 
     public JsonProcessor(ProcessingEnvironment processingEnv) {
         this.processingEnv = processingEnv;
@@ -48,6 +52,8 @@ public class JsonProcessor {
         this.sealedWriterGenerator = new SealedInterfaceWriterGenerator(this.processingEnv);
         this.enumReaderGenerator = new EnumReaderGenerator();
         this.enumWriterGenerator = new EnumWriterGenerator();
+        this.delegatingReaderGenerator = new DelegatingReaderGenerator();
+        this.delegatingWriterGenerator = new DelegatingWriterGenerator();
     }
 
     public void generateReader(TypeElement jsonElement) {
@@ -64,6 +70,11 @@ public class JsonProcessor {
         }
         if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
             this.generateSealedRootReader(jsonElement);
+            return;
+        }
+        if (this.delegatingReaderGenerator.detectReaderFactory(jsonElement) != null) {
+            var readerType = this.delegatingReaderGenerator.generate(jsonElement);
+            CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageElement, readerType).build());
             return;
         }
         this.generateDtoReader(jsonElement, jsonElementType);
@@ -115,6 +126,11 @@ public class JsonProcessor {
         }
         if (jsonElement.getModifiers().contains(Modifier.SEALED)) {
             this.generateSealedWriter(jsonElement);
+            return;
+        }
+        if (this.delegatingWriterGenerator.detectWriterMethod(jsonElement) != null) {
+            var writerType = this.delegatingWriterGenerator.generate(jsonElement);
+            CommonUtils.safeWriteTo(this.processingEnv, JavaFile.builder(packageElement, writerType).build());
             return;
         }
         this.tryGenerateWriter(jsonElement, jsonElement.asType());
