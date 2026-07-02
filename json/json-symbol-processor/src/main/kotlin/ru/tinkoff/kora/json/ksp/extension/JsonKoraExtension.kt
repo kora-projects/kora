@@ -140,7 +140,7 @@ class JsonKoraExtension(
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
         val hasJsonConstructor = jsonClass.getConstructors().filter { !it.isPrivate() }.any { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
-        val hasReaderFactory = jsonClass.modifiers.contains(Modifier.ENUM) && enumJsonReaderGenerator.detectReaderFactory(jsonClass) != null
+        val hasReaderFactory = (jsonClass.modifiers.contains(Modifier.ENUM) || jsonClass.classKind == ClassKind.ENUM_CLASS) && enumJsonReaderGenerator.detectReaderFactory(jsonClass) != null
         if (hasJsonConstructor || hasReaderFactory || jsonClass.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
             // annotation processor will handle that (a @JsonReader factory method on the enum's companion
             // object is discovered independently by JsonSymbolProcessor via resolver.getSymbolsWithAnnotation;

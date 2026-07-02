@@ -95,7 +95,7 @@ class EnumJsonReaderGenerator {
         if (factories.size > 1) {
             throw ProcessingErrorException(
                 "Enum ${enumDeclaration.simpleName.asString()} has multiple @JsonReader factory methods, only one is allowed",
-                enumDeclaration
+                factories[1]
             )
         }
         val factory = factories[0]
