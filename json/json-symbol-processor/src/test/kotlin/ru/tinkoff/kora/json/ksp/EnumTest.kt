@@ -150,7 +150,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             """
             @Json
             enum class TestEnum(val value: String) {
-              SHARE("share"), BOND("bond"), OTHER("other");
+              VALUE1("value1"), VALUE2("value2"), OTHER("other");
               companion object {
                 private val byValue = entries.associateBy { it.value }
                 @JsonReader
@@ -162,8 +162,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
 
         val r = reader("TestEnum", stringReader)
-        r.assertRead("\"share\"", enumConstant("TestEnum", "SHARE"))
-        r.assertRead("\"bond\"", enumConstant("TestEnum", "BOND"))
+        r.assertRead("\"value1\"", enumConstant("TestEnum", "VALUE1"))
+        r.assertRead("\"value2\"", enumConstant("TestEnum", "VALUE2"))
         r.assertRead("\"nonsense\"", enumConstant("TestEnum", "OTHER"))
         r.assertRead("null", null)
     }
@@ -174,7 +174,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             """
             @Json
             enum class TestEnum(val code: Int) {
-              A(1), B(2), OTHER(-1);
+              VALUE1(1), VALUE2(2), OTHER(-1);
               companion object {
                 @JsonReader
                 fun fromCode(code: Int): TestEnum = entries.firstOrNull { it.code == code } ?: OTHER
@@ -186,8 +186,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
 
         val intReader = JsonReader { p: JsonParser -> p.intValue }
         val r = reader("TestEnum", intReader)
-        r.assertRead("1", enumConstant("TestEnum", "A"))
-        r.assertRead("2", enumConstant("TestEnum", "B"))
+        r.assertRead("1", enumConstant("TestEnum", "VALUE1"))
+        r.assertRead("2", enumConstant("TestEnum", "VALUE2"))
         r.assertRead("99", enumConstant("TestEnum", "OTHER"))
     }
 
@@ -197,10 +197,10 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             listOf(JsonSymbolProcessorProvider()), """
             @Json
             enum class TestEnum(val value: String) {
-              A("a"), B("b");
+              VALUE1("value1"), VALUE2("value2");
               companion object {
-                @JsonReader fun fromValue(value: String): TestEnum = A
-                @JsonReader fun fromOther(value: String): TestEnum = B
+                @JsonReader fun fromValue(value: String): TestEnum = VALUE1
+                @JsonReader fun fromOther(value: String): TestEnum = VALUE2
               }
             }
             """.trimIndent()
@@ -216,9 +216,9 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             listOf(JsonSymbolProcessorProvider()), """
             @Json
             enum class TestEnum(val value: String) {
-              A("a"), B("b");
+              VALUE1("value1"), VALUE2("value2");
               companion object {
-                @JsonReader fun fromValue(value: String, extra: Int): TestEnum = A
+                @JsonReader fun fromValue(value: String, extra: Int): TestEnum = VALUE1
               }
             }
             """.trimIndent()
@@ -234,7 +234,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             listOf(JsonSymbolProcessorProvider()), """
             @Json
             enum class TestEnum(val value: String) {
-              A("a"), B("b");
+              VALUE1("value1"), VALUE2("value2");
               companion object {
                 @JsonReader fun fromValue(value: String): String = value
               }
@@ -250,9 +250,9 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         compile0(listOf(JsonSymbolProcessorProvider()), """
             @Json
             enum class TestEnum(val value: String) {
-              A("a"), B("b");
+              VALUE1("value1"), VALUE2("value2");
               companion object {
-                @JsonReader private fun fromValue(value: String): TestEnum = A
+                @JsonReader private fun fromValue(value: String): TestEnum = VALUE1
               }
             }
             """.trimIndent())
@@ -265,8 +265,8 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         compile0(listOf(JsonSymbolProcessorProvider()), """
             @Json
             enum class TestEnum(val value: String) {
-              A("a"), B("b");
-              @JsonReader fun fromValue(value: String): TestEnum = A
+              VALUE1("value1"), VALUE2("value2");
+              @JsonReader fun fromValue(value: String): TestEnum = VALUE1
             }
             """.trimIndent())
         Assertions.assertThat(compileResult.isFailed()).isTrue()
@@ -278,10 +278,10 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         compile(
             """
             enum class TestEnum(val value: String) {
-              SHARE("share"), OTHER("other");
+              VALUE1("value1"), OTHER("other");
               companion object {
                 @JsonReader
-                fun fromValue(value: String): TestEnum = if (value == "share") SHARE else OTHER
+                fun fromValue(value: String): TestEnum = if (value == "value1") VALUE1 else OTHER
               }
             }
             """.trimIndent()
@@ -289,7 +289,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         compileResult.assertSuccess()
 
         val r = reader("TestEnum", stringReader)
-        r.assertRead("\"share\"", enumConstant("TestEnum", "SHARE"))
+        r.assertRead("\"value1\"", enumConstant("TestEnum", "VALUE1"))
         r.assertRead("\"x\"", enumConstant("TestEnum", "OTHER"))
     }
 
@@ -316,10 +316,10 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
             """
             @JsonReader
             enum class TestEnum(val value: String) {
-              SHARE("share"), OTHER("other");
+              VALUE1("value1"), OTHER("other");
               companion object {
                 @JsonReader
-                fun fromValue(value: String): TestEnum = if (value == "share") SHARE else OTHER
+                fun fromValue(value: String): TestEnum = if (value == "value1") VALUE1 else OTHER
               }
             }
             """.trimIndent()
@@ -330,7 +330,7 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         // @JsonReader on BOTH the enum class and the factory method: the factory reader must be
         // generated (unknown -> OTHER), not the default map-based reader (which would throw), and
         // exactly once — the class-branch and method-branch must dedup via processedReaders.
-        r.assertRead("\"share\"", enumConstant("TestEnum", "SHARE"))
+        r.assertRead("\"value1\"", enumConstant("TestEnum", "VALUE1"))
         r.assertRead("\"unknown\"", enumConstant("TestEnum", "OTHER"))
     }
 
@@ -351,10 +351,10 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         compile0(
             listOf(ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
         enum class TestEnum(val value: String) {
-          SHARE("share"), OTHER("other");
+          VALUE1("value1"), OTHER("other");
           companion object {
             @JsonReader
-            fun fromValue(value: String): TestEnum = if (value == "share") SHARE else OTHER
+            fun fromValue(value: String): TestEnum = if (value == "value1") VALUE1 else OTHER
           }
         }
         """.trimIndent(), """

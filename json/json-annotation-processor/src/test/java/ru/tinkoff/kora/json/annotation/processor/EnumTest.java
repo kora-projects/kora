@@ -148,7 +148,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         compile("""
                 @Json
                 public enum TestEnum {
-                  SHARE("share"), BOND("bond"), OTHER("other");
+                  VALUE1("value1"), VALUE2("value2"), OTHER("other");
                 
                   private final String value;
                   TestEnum(String value) { this.value = value; }
@@ -163,8 +163,8 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         compileResult.assertSuccess();
 
         JsonReader<Object> r = reader("TestEnum", stringReader);
-        assertRead(r, "\"share\"", enumConstant("TestEnum", "SHARE"));
-        assertRead(r, "\"bond\"", enumConstant("TestEnum", "BOND"));
+        assertRead(r, "\"value1\"", enumConstant("TestEnum", "VALUE1"));
+        assertRead(r, "\"value2\"", enumConstant("TestEnum", "VALUE2"));
         assertRead(r, "\"nonsense\"", enumConstant("TestEnum", "OTHER"));
         assertRead(r, "null", null);
     }
@@ -174,7 +174,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         compile("""
             @Json
             public enum TestEnum {
-              A(1), B(2), OTHER(-1);
+              VALUE1(1), VALUE2(2), OTHER(-1);
             
               private final int code;
               TestEnum(int code) { this.code = code; }
@@ -190,7 +190,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
 
         JsonReader<Integer> intReader = JsonParser::getIntValue;
         JsonReader<Object> r = reader("TestEnum", intReader);
-        assertRead(r, "1", enumConstant("TestEnum", "A"));
+        assertRead(r, "1", enumConstant("TestEnum", "VALUE1"));
         assertRead(r, "99", enumConstant("TestEnum", "OTHER"));
     }
 
@@ -199,9 +199,9 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         var result = compile(List.of(new JsonAnnotationProcessor()), """
             @Json
             public enum TestEnum {
-              A, B;
-              @JsonReader public static TestEnum fromValue(String value) { return A; }
-              @JsonReader public static TestEnum fromOther(String value) { return B; }
+              VALUE1, VALUE2;
+              @JsonReader public static TestEnum fromValue(String value) { return VALUE1; }
+              @JsonReader public static TestEnum fromOther(String value) { return VALUE2; }
             }
             """);
         assertThat(result.isFailed()).isTrue();
@@ -212,8 +212,8 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         var result = compile(List.of(new JsonAnnotationProcessor()), """
             @Json
             public enum TestEnum {
-              A, B;
-              @JsonReader public static TestEnum fromValue(String value, int extra) { return A; }
+              VALUE1, VALUE2;
+              @JsonReader public static TestEnum fromValue(String value, int extra) { return VALUE1; }
             }
             """);
         assertThat(result.isFailed()).isTrue();
@@ -224,8 +224,8 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         var result = compile(List.of(new JsonAnnotationProcessor()), """
             @Json
             public enum TestEnum {
-              A, B;
-              @JsonReader static TestEnum fromValue(String value) { return A; }
+              VALUE1, VALUE2;
+              @JsonReader static TestEnum fromValue(String value) { return VALUE1; }
             }
             """);
         assertThat(result.isFailed()).isTrue();
@@ -236,8 +236,8 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         var result = compile(List.of(new JsonAnnotationProcessor()), """
             @Json
             public enum TestEnum {
-              A, B;
-              @JsonReader public TestEnum fromValue(String value) { return A; }
+              VALUE1, VALUE2;
+              @JsonReader public TestEnum fromValue(String value) { return VALUE1; }
             }
             """);
         assertThat(result.isFailed()).isTrue();
@@ -255,21 +255,21 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
     public void testEnumReaderFactoryTriggersWithoutJsonAnnotation() {
         compile("""
             public enum TestEnum {
-              SHARE("share"), OTHER("other");
+              VALUE1("value1"), OTHER("other");
             
               private final String value;
               TestEnum(String value) { this.value = value; }
             
               @JsonReader
               public static TestEnum fromValue(String value) {
-                return "share".equals(value) ? SHARE : OTHER;
+                return "value1".equals(value) ? VALUE1 : OTHER;
               }
             }
             """);
         compileResult.assertSuccess();
 
         JsonReader<Object> r = reader("TestEnum", stringReader);
-        assertRead(r, "\"share\"", enumConstant("TestEnum", "SHARE"));
+        assertRead(r, "\"value1\"", enumConstant("TestEnum", "VALUE1"));
         assertRead(r, "\"x\"", enumConstant("TestEnum", "OTHER"));
     }
 
@@ -291,13 +291,13 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         compile("""
             @JsonReader
             public enum TestEnum {
-              SHARE("share"), OTHER("other");
+              VALUE1("value1"), OTHER("other");
             
               private final String value;
               TestEnum(String value) { this.value = value; }
             
               @JsonReader
-              public static TestEnum fromValue(String value) { return "share".equals(value) ? SHARE : OTHER; }
+              public static TestEnum fromValue(String value) { return "value1".equals(value) ? VALUE1 : OTHER; }
             }
             """);
         compileResult.assertSuccess();
@@ -306,7 +306,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         // @JsonReader on BOTH the enum class and the factory method: exactly one factory reader must be
         // generated. Without the within-round dedup set this crashes with a duplicate-file FilerException
         // (safeWriteTo rethrows it); without the factory short-circuit "unknown" would throw instead of OTHER.
-        assertRead(r, "\"share\"", enumConstant("TestEnum", "SHARE"));
+        assertRead(r, "\"value1\"", enumConstant("TestEnum", "VALUE1"));
         assertRead(r, "\"unknown\"", enumConstant("TestEnum", "OTHER"));
     }
 
@@ -315,7 +315,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         var result = compile(List.of(new JsonAnnotationProcessor()), """
             @Json
             public enum TestEnum {
-              A, B;
+              VALUE1, VALUE2;
               @JsonReader public static String fromValue(String value) { return value; }
             }
             """);
@@ -328,13 +328,13 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             @ru.tinkoff.kora.common.KoraApp
             public interface TestApp {
               enum TestEnum {
-                SHARE("share"), OTHER("other");
+                VALUE1("value1"), OTHER("other");
             
                 private final String value;
                 TestEnum(String value) { this.value = value; }
             
                 @JsonReader
-                public static TestEnum fromValue(String value) { return "share".equals(value) ? SHARE : OTHER; }
+                public static TestEnum fromValue(String value) { return "value1".equals(value) ? VALUE1 : OTHER; }
               }
             
               default ru.tinkoff.kora.json.common.JsonReader<String> stringReader() { return com.fasterxml.jackson.core.JsonParser::getValueAsString; }
