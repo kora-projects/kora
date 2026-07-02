@@ -639,4 +639,52 @@ class EnumTest : AbstractJsonSymbolProcessorTest() {
         val w = writer("TestEnum", stringWriter)
         w.assertWrite(enumConstant("TestEnum", "VALUE1"), "\"value1\"")
     }
+
+    @Test
+    fun testWriterMethodFromExtension() {
+        compile0(
+            listOf(ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        enum class TestEnum(val value: String) {
+          VALUE1("value1"), VALUE2("value2");
+          companion object {
+            @JsonWriter fun toValue(e: TestEnum): String = e.value
+          }
+        }
+        """.trimIndent(), """
+        @ru.tinkoff.kora.common.KoraApp
+        interface TestApp {
+          fun stringWriter(): ru.tinkoff.kora.json.common.JsonWriter<String> = ru.tinkoff.kora.json.common.JsonWriter<String> { obj, text -> obj.writeString(text) }
+
+          @Root
+          fun root(w: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) = ""
+        }
+        """.trimIndent()
+        )
+        compileResult.assertSuccess()
+        Assertions.assertThat(writer("TestEnum", stringWriter)).isNotNull()
+    }
+
+    @Test
+    fun testMalformedWriterMethodFromExtensionFails() {
+        compile0(
+            listOf(ru.tinkoff.kora.kora.app.ksp.KoraAppProcessorProvider(), JsonSymbolProcessorProvider()), """
+        enum class TestEnum(val value: String) {
+          VALUE1("value1"), VALUE2("value2");
+          companion object {
+            @JsonWriter private fun toValue(e: TestEnum): String = e.value
+          }
+        }
+        """.trimIndent(), """
+        @ru.tinkoff.kora.common.KoraApp
+        interface TestApp {
+          fun stringWriter(): ru.tinkoff.kora.json.common.JsonWriter<String> = ru.tinkoff.kora.json.common.JsonWriter<String> { obj, text -> obj.writeString(text) }
+
+          @Root
+          fun root(w: ru.tinkoff.kora.json.common.JsonWriter<TestEnum>) = ""
+        }
+        """.trimIndent()
+        )
+        Assertions.assertThat(compileResult.isFailed()).isTrue()
+        Assertions.assertThat(compileResult.messages).anyMatch { it.contains("must be public") }
+    }
 }

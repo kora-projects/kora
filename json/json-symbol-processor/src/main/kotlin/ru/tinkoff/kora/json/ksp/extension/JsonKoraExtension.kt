@@ -11,6 +11,7 @@ import com.google.devtools.ksp.symbol.*
 import ru.tinkoff.kora.json.ksp.*
 import ru.tinkoff.kora.json.ksp.reader.EnumJsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.ReaderTypeMetaParser
+import ru.tinkoff.kora.json.ksp.writer.EnumJsonWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.WriterTypeMetaParser
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
@@ -30,6 +31,7 @@ class JsonKoraExtension(
     private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser(resolver)
     private val processor: JsonProcessor = JsonProcessor(resolver, kspLogger, codeGenerator, knownTypes)
     private val enumJsonReaderGenerator = EnumJsonReaderGenerator()
+    private val enumJsonWriterGenerator = EnumJsonWriterGenerator()
 
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
         if (tags.isNotEmpty()) return null
@@ -159,8 +161,11 @@ class JsonKoraExtension(
         if (resultDeclaration != null) {
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
-        if (declaration.isAnnotationPresent(JsonTypes.json) || declaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
-            // annotation processor will handle that
+        val hasWriterMethod = (declaration.modifiers.contains(Modifier.ENUM) || declaration.classKind == ClassKind.ENUM_CLASS) && enumJsonWriterGenerator.detectWriterMethod(declaration) != null
+        if (declaration.isAnnotationPresent(JsonTypes.json) || declaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation) || hasWriterMethod) {
+            // annotation processor will handle that (a @JsonWriter method on the enum's companion object is
+            // discovered independently by JsonSymbolProcessor via resolver.getSymbolsWithAnnotation; generating
+            // it here too would race and write the same file twice in the same KSP round)
             return ExtensionResult.RequiresCompilingResult
         }
         processor.generateWriter(declaration)

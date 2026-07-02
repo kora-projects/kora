@@ -590,4 +590,46 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(result.isFailed()).isTrue();
         assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("supported only for an enum"));
     }
+
+    @Test
+    public void testWriterMethodFromExtension() {
+        compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp {
+              enum TestEnum {
+                VALUE1("value1"), VALUE2("value2");
+                private final String value;
+                TestEnum(String value) { this.value = value; }
+                @JsonWriter public static String toValue(TestEnum e) { return e.value; }
+              }
+
+              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
+
+              @Root
+              default String root(ru.tinkoff.kora.json.common.JsonWriter<TestEnum> w) { return ""; }
+            }
+            """);
+        compileResult.assertSuccess();
+        assertThat(writer("TestApp_TestEnum", stringWriter)).isNotNull();
+    }
+
+    @Test
+    public void testMalformedWriterMethodFromExtensionFails() {
+        var result = compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+            @ru.tinkoff.kora.common.KoraApp
+            public interface TestApp {
+              enum TestEnum {
+                VALUE1, VALUE2;
+                @JsonWriter static String toValue(TestEnum e) { return e.name(); }
+              }
+
+              default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
+
+              @Root
+              default String root(ru.tinkoff.kora.json.common.JsonWriter<TestEnum> w) { return ""; }
+            }
+            """);
+        assertThat(result.isFailed()).isTrue();
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
+    }
 }

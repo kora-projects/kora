@@ -12,6 +12,7 @@ import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 import ru.tinkoff.kora.json.annotation.processor.KnownType;
 import ru.tinkoff.kora.json.annotation.processor.reader.EnumReaderGenerator;
 import ru.tinkoff.kora.json.annotation.processor.reader.ReaderTypeMetaParser;
+import ru.tinkoff.kora.json.annotation.processor.writer.EnumWriterGenerator;
 import ru.tinkoff.kora.json.annotation.processor.writer.WriterTypeMetaParser;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.ExtensionResult;
 import ru.tinkoff.kora.kora.app.annotation.processor.extension.KoraExtension;
@@ -44,6 +45,7 @@ public class JsonKoraExtension implements KoraExtension {
     private final ReaderTypeMetaParser readerTypeMetaParser;
     private final WriterTypeMetaParser writerTypeMetaParser;
     private final EnumReaderGenerator enumReaderGenerator = new EnumReaderGenerator();
+    private final EnumWriterGenerator enumWriterGenerator = new EnumWriterGenerator();
     private final Messager messager;
 
     public JsonKoraExtension(ProcessingEnvironment processingEnv) {
@@ -112,8 +114,8 @@ public class JsonKoraExtension implements KoraExtension {
             if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null
                 || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonReaderAnnotation) != null
                 || CommonUtils.findConstructors(jsonElement, s -> s.contains(Modifier.PUBLIC))
-                    .stream()
-                    .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
+                .stream()
+                .anyMatch(e -> AnnotationUtils.findAnnotation(e, JsonTypes.jsonReaderAnnotation) != null)) {
                 return KoraExtensionDependencyGenerator.generatedFrom(elements, jsonElement, JsonTypes.jsonReader);
             }
 
@@ -183,7 +185,8 @@ public class JsonKoraExtension implements KoraExtension {
             return buildExtensionResult(resultElement);
         }
 
-        if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null) {
+        var hasWriterMethod = jsonElement.getKind() == ElementKind.ENUM && this.enumWriterGenerator.detectWriterMethod(jsonElement) != null;
+        if (AnnotationUtils.findAnnotation(jsonElement, JsonTypes.json) != null || AnnotationUtils.findAnnotation(jsonElement, JsonTypes.jsonWriterAnnotation) != null || hasWriterMethod) {
             // annotation processor will handle that
             return ExtensionResult.nextRound();
         }
