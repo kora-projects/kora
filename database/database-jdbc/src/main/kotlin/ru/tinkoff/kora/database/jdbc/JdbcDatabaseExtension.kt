@@ -81,3 +81,31 @@ suspend fun <T> JdbcConnectionFactory.inTxSuspend(context: CoroutineDispatcher? 
         result
     }
 }
+
+/**
+ * <b>Русский</b>: Выполняет операцию на JDBC-соединении в ручном режиме. Kotlin-обёртка над
+ * перегруженными методами [JdbcConnectionFactory.withConnection], которая снимает неоднозначность
+ * вывода перегрузок (overload resolution ambiguity) при передаче лямбды из Kotlin.
+ * <hr>
+ * <b>English</b>: Runs an operation on a JDBC connection in manual mode. A Kotlin wrapper over the
+ * overloaded [JdbcConnectionFactory.withConnection] methods that removes the overload-resolution
+ * ambiguity when a lambda is passed from Kotlin.
+ *
+ * @see withConnectionSuspend coroutine variant
+ */
+inline fun <T> JdbcConnectionFactory.withConnectionKt(crossinline callback: (Connection) -> T): T =
+    withConnection(JdbcHelper.SqlFunction1<Connection, T> { callback(it) })
+
+/**
+ * <b>Русский</b>: Выполняет операцию на JDBC-соединении в рамках транзакции. Kotlin-обёртка над
+ * перегруженными методами [JdbcConnectionFactory.inTx], которая снимает неоднозначность вывода
+ * перегрузок (overload resolution ambiguity) при передаче лямбды из Kotlin.
+ * <hr>
+ * <b>English</b>: Runs an operation on a JDBC connection within a transaction. A Kotlin wrapper over
+ * the overloaded [JdbcConnectionFactory.inTx] methods that removes the overload-resolution ambiguity
+ * when a lambda is passed from Kotlin.
+ *
+ * @see inTxSuspend coroutine variant
+ */
+inline fun <T> JdbcConnectionFactory.inTxKt(crossinline callback: (Connection) -> T): T =
+    inTx(JdbcHelper.SqlFunction1<Connection, T> { callback(it) })
