@@ -9,7 +9,11 @@ import com.google.devtools.ksp.processing.KSPLogger
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.*
 import ru.tinkoff.kora.json.ksp.*
+import ru.tinkoff.kora.json.ksp.reader.DelegatingJsonReaderGenerator
+import ru.tinkoff.kora.json.ksp.reader.EnumJsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.ReaderTypeMetaParser
+import ru.tinkoff.kora.json.ksp.writer.DelegatingJsonWriterGenerator
+import ru.tinkoff.kora.json.ksp.writer.EnumJsonWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.WriterTypeMetaParser
 import ru.tinkoff.kora.kora.app.ksp.extension.ExtensionResult
 import ru.tinkoff.kora.kora.app.ksp.extension.KoraExtension
@@ -28,6 +32,10 @@ class JsonKoraExtension(
     private val readerTypeMetaParser: ReaderTypeMetaParser = ReaderTypeMetaParser(knownTypes, kspLogger)
     private val writerTypeMetaParser: WriterTypeMetaParser = WriterTypeMetaParser(resolver)
     private val processor: JsonProcessor = JsonProcessor(resolver, kspLogger, codeGenerator, knownTypes)
+    private val enumJsonReaderGenerator = EnumJsonReaderGenerator()
+    private val enumJsonWriterGenerator = EnumJsonWriterGenerator()
+    private val delegatingJsonReaderGenerator = DelegatingJsonReaderGenerator()
+    private val delegatingJsonWriterGenerator = DelegatingJsonWriterGenerator()
 
     override fun getDependencyGenerator(resolver: Resolver, type: KSType, tags: Set<String>): (() -> ExtensionResult)? {
         if (tags.isNotEmpty()) return null
@@ -69,6 +77,9 @@ class JsonKoraExtension(
             }
             if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
                 return null
+            }
+            if (delegatingJsonWriterGenerator.detectWriterMethod(possibleJsonClassDeclaration) != null) {
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonWriter")
             }
             try {
                 writerTypeMetaParser.parse(possibleJsonClassDeclaration)
@@ -118,6 +129,9 @@ class JsonKoraExtension(
             if (possibleJsonClassDeclaration.classKind != ClassKind.CLASS) {
                 return null
             }
+            if (delegatingJsonReaderGenerator.detectReaderFactory(possibleJsonClassDeclaration) != null) {
+                return generatedByProcessor(resolver, possibleJsonClassDeclaration, "JsonReader")
+            }
             try {
                 readerTypeMetaParser.parse(possibleJsonClassDeclaration)
                 return { generateReader(resolver, type, possibleJsonClassDeclaration) }
@@ -138,8 +152,11 @@ class JsonKoraExtension(
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
         val hasJsonConstructor = jsonClass.getConstructors().filter { !it.isPrivate() }.any { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
-        if (hasJsonConstructor || jsonClass.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
-            // annotation processor will handle that
+        val hasReaderFactory = (jsonClass.modifiers.contains(Modifier.ENUM) || jsonClass.classKind == ClassKind.ENUM_CLASS) && enumJsonReaderGenerator.detectReaderFactory(jsonClass) != null
+        if (hasJsonConstructor || hasReaderFactory || jsonClass.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
+            // annotation processor will handle that (a @JsonReader factory method on the enum's companion
+            // object is discovered independently by JsonSymbolProcessor via resolver.getSymbolsWithAnnotation;
+            // generating it here too would race and write the same file twice in the same KSP round)
             return ExtensionResult.RequiresCompilingResult
         }
         processor.generateReader(jsonClass)
@@ -154,8 +171,11 @@ class JsonKoraExtension(
         if (resultDeclaration != null) {
             return ExtensionResult.fromConstructor(findDefaultConstructor(resultDeclaration), resultDeclaration)
         }
-        if (declaration.isAnnotationPresent(JsonTypes.json) || declaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
-            // annotation processor will handle that
+        val hasWriterMethod = (declaration.modifiers.contains(Modifier.ENUM) || declaration.classKind == ClassKind.ENUM_CLASS) && enumJsonWriterGenerator.detectWriterMethod(declaration) != null
+        if (declaration.isAnnotationPresent(JsonTypes.json) || declaration.isAnnotationPresent(JsonTypes.jsonWriterAnnotation) || hasWriterMethod) {
+            // annotation processor will handle that (a @JsonWriter method on the enum's companion object is
+            // discovered independently by JsonSymbolProcessor via resolver.getSymbolsWithAnnotation; generating
+            // it here too would race and write the same file twice in the same KSP round)
             return ExtensionResult.RequiresCompilingResult
         }
         processor.generateWriter(declaration)

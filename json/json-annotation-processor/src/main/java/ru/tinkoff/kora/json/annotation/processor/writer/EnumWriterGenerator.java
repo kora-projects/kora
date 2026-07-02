@@ -3,7 +3,7 @@ package ru.tinkoff.kora.json.annotation.processor.writer;
 import com.squareup.javapoet.*;
 import jakarta.annotation.Nullable;
 import ru.tinkoff.kora.annotation.processor.common.AnnotationUtils;
-import ru.tinkoff.kora.annotation.processor.common.CommonClassNames;
+import ru.tinkoff.kora.annotation.processor.common.ProcessingErrorException;
 import ru.tinkoff.kora.json.annotation.processor.JsonTypes;
 import ru.tinkoff.kora.json.annotation.processor.JsonUtils;
 
@@ -11,6 +11,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeKind;
 import java.io.IOException;
 
 public class EnumWriterGenerator {
@@ -43,9 +44,50 @@ public class EnumWriterGenerator {
         return typeBuilder.build();
     }
 
+    @Nullable
+    public EnumValue detectWriterMethod(TypeElement typeElement) {
+        var methods = typeElement.getEnclosedElements().stream()
+            .filter(e -> e.getKind() == ElementKind.METHOD)
+            .map(ExecutableElement.class::cast)
+            .filter(e -> AnnotationUtils.isAnnotationPresent(e, JsonTypes.jsonWriterAnnotation))
+            .toList();
+        if (methods.isEmpty()) {
+            return null;
+        }
+        if (methods.size() > 1) {
+            throw new ProcessingErrorException(
+                "Enum " + typeElement.getSimpleName() + " has multiple @JsonWriter methods, only one is allowed",
+                methods.get(1)
+            );
+        }
+        var method = methods.get(0);
+        if (!method.getModifiers().contains(Modifier.PUBLIC) || !method.getModifiers().contains(Modifier.STATIC)) {
+            throw new ProcessingErrorException("@JsonWriter enum method must be public static", method);
+        }
+        if (method.getParameters().size() != 1) {
+            throw new ProcessingErrorException(
+                "@JsonWriter method must have exactly one parameter, got " + method.getParameters().size(),
+                method
+            );
+        }
+        var enumTypeName = ClassName.get(typeElement);
+        if (!TypeName.get(method.getParameters().get(0).asType()).equals(enumTypeName)) {
+            throw new ProcessingErrorException("@JsonWriter method parameter must be of type " + enumTypeName, method);
+        }
+        if (method.getReturnType().getKind() == TypeKind.VOID) {
+            throw new ProcessingErrorException("@JsonWriter method must return a value", method);
+        }
+        var valueType = TypeName.get(method.getReturnType());
+        return new EnumValue(valueType, method.getSimpleName().toString());
+    }
+
     record EnumValue(TypeName type, String accessor) {}
 
     private EnumValue detectValueType(TypeElement typeElement) {
+        var writerMethod = this.detectWriterMethod(typeElement);
+        if (writerMethod != null) {
+            return writerMethod;
+        }
         for (var enclosedElement : typeElement.getEnclosedElements()) {
             if (!enclosedElement.getModifiers().contains(Modifier.PUBLIC)) continue;
             if (enclosedElement.getModifiers().contains(Modifier.STATIC)) continue;

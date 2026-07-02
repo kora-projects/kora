@@ -67,6 +67,27 @@ class JsonSymbolProcessor(
                             if (processedReaders.add(clazz.qualifiedName!!.asString())) {
                                 jsonProcessor.generateReader(clazz)
                             }
+                        } else if (it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation)) {
+                            val enclosing = enclosingType(it)
+                            if (enclosing == null) {
+                                kspLogger.error(
+                                    "@JsonReader on a method is supported only for a static factory method of a class or enum (in Kotlin: declared in the companion object)",
+                                    it
+                                )
+                            } else if (processedReaders.add(enclosing.qualifiedName!!.asString())) {
+                                jsonProcessor.generateReader(enclosing)
+                            }
+                        }
+                        if (it.isAnnotationPresent(JsonTypes.jsonWriterAnnotation)) {
+                            val enclosing = enclosingType(it)
+                            if (enclosing == null) {
+                                kspLogger.error(
+                                    "@JsonWriter on a method is supported only for a method of a class or enum",
+                                    it
+                                )
+                            } else if (processedWriters.add(enclosing.qualifiedName!!.asString())) {
+                                jsonProcessor.generateWriter(enclosing)
+                            }
                         }
                     }
                 }
@@ -75,6 +96,11 @@ class JsonSymbolProcessor(
             }
         }
         return symbolsToDelay
+    }
+
+    private fun enclosingType(function: KSFunctionDeclaration): KSClassDeclaration? {
+        val parent = function.parentDeclaration as? KSClassDeclaration ?: return null
+        return if (parent.isCompanionObject) parent.parentDeclaration as? KSClassDeclaration else parent
     }
 }
 

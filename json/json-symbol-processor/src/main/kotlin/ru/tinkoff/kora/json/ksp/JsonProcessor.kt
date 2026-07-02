@@ -8,10 +8,12 @@ import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.Modifier
 import com.squareup.kotlinpoet.FileSpec
 import com.squareup.kotlinpoet.ksp.writeTo
+import ru.tinkoff.kora.json.ksp.reader.DelegatingJsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.EnumJsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.JsonReaderGenerator
 import ru.tinkoff.kora.json.ksp.reader.ReaderTypeMetaParser
 import ru.tinkoff.kora.json.ksp.reader.SealedInterfaceReaderGenerator
+import ru.tinkoff.kora.json.ksp.writer.DelegatingJsonWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.EnumJsonWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.JsonWriterGenerator
 import ru.tinkoff.kora.json.ksp.writer.SealedInterfaceWriterGenerator
@@ -31,6 +33,8 @@ class JsonProcessor(
     private val sealedWriterGenerator = SealedInterfaceWriterGenerator()
     private val enumJsonReaderGenerator = EnumJsonReaderGenerator()
     private val enumJsonWriterGenerator = EnumJsonWriterGenerator()
+    private val delegatingJsonReaderGenerator = DelegatingJsonReaderGenerator()
+    private val delegatingJsonWriterGenerator = DelegatingJsonWriterGenerator()
 
     fun generateReader(jsonClassDeclaration: KSClassDeclaration) {
         val packageElement = jsonClassPackage(jsonClassDeclaration)
@@ -42,6 +46,7 @@ class JsonProcessor(
         val readerType = when {
             isSealed(jsonClassDeclaration) -> sealedReaderGenerator.generateSealedReader(jsonClassDeclaration)
             jsonClassDeclaration.modifiers.contains(Modifier.ENUM) -> enumJsonReaderGenerator.generateEnumReader(jsonClassDeclaration)
+            delegatingJsonReaderGenerator.detectReaderFactory(jsonClassDeclaration) != null -> delegatingJsonReaderGenerator.generate(jsonClassDeclaration)
             else -> {
                 val meta = readerTypeMetaParser.parse(jsonClassDeclaration)
                 readerGenerator.generate(meta)
@@ -65,6 +70,7 @@ class JsonProcessor(
         val writerType = when {
             isSealed(declaration) -> sealedWriterGenerator.generateSealedWriter(declaration)
             declaration.modifiers.contains(Modifier.ENUM) -> enumJsonWriterGenerator.generateEnumWriter(declaration)
+            delegatingJsonWriterGenerator.detectWriterMethod(declaration) != null -> delegatingJsonWriterGenerator.generate(declaration)
             else -> {
                 val meta = writerTypeMetaParser.parse(declaration)
                 writerGenerator.generate(meta)

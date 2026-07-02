@@ -1,5 +1,7 @@
 package ru.tinkoff.kora.json.ksp.reader
 
+import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.squareup.kotlinpoet.*
@@ -14,44 +16,23 @@ import ru.tinkoff.kora.ksp.common.KspCommonUtils.generated
 import ru.tinkoff.kora.ksp.common.KspCommonUtils.toTypeName
 import ru.tinkoff.kora.ksp.common.exception.ProcessingErrorException
 
-class EnumJsonReaderGenerator {
-    fun generateEnumReader(jsonClassDeclaration: KSClassDeclaration): TypeSpec {
-        val className = jsonClassDeclaration.toClassName()
-        val typeName = jsonClassDeclaration.toTypeName()
-
-        val factory = detectReaderFactory(jsonClassDeclaration)
-        if (factory != null) {
-            return generateFactoryReader(jsonClassDeclaration, className, typeName, factory)
-        }
-
-        val enumType = detectValueType(jsonClassDeclaration)
-
-        val typeBuilder = TypeSpec.classBuilder(jsonClassDeclaration.jsonReaderName())
-            .generated(JsonReaderGenerator::class)
-            .primaryConstructor(
-                FunSpec.constructorBuilder()
-                    .addParameter("valueReader", JsonTypes.jsonReader.parameterizedBy(enumType.type))
-                    .build()
-            )
-            .addSuperinterface(
-                JsonTypes.jsonReader.parameterizedBy(typeName),
-                CodeBlock.of("%T(%T.values(), %T::%N, valueReader)", JsonTypes.enumJsonReader, className, className, enumType.accessor)
-            )
-            .addOriginatingKSFile(jsonClassDeclaration)
-        return typeBuilder.build()
-    }
-
+/**
+ * Generates a delegating [ru.tinkoff.kora.json.common.JsonReader] for a non-enum type that declares a
+ * `@JsonReader`-annotated static factory method `(V) -> T` (Kotlin: in the companion object). The JSON
+ * value is read as `V` and passed to the factory (Jackson `@JsonCreator(mode = DELEGATING)` semantics).
+ */
+class DelegatingJsonReaderGenerator {
     data class ReaderFactory(val methodName: String, val valueType: TypeName)
 
-    private fun generateFactoryReader(
-        declaration: KSClassDeclaration,
-        className: ClassName,
-        typeName: TypeName,
-        factory: ReaderFactory
-    ): TypeSpec {
+    fun generate(declaration: KSClassDeclaration): TypeSpec {
+        val className = declaration.toClassName()
+        val typeName = declaration.toTypeName()
+        val factory = detectReaderFactory(declaration)
+            ?: throw ProcessingErrorException("No @JsonReader factory method found on ${declaration.simpleName.asString()}", declaration)
         val valueReaderType = JsonTypes.jsonReader.parameterizedBy(factory.valueType)
+
         return TypeSpec.classBuilder(declaration.jsonReaderName())
-            .generated(JsonReaderGenerator::class)
+            .generated(DelegatingJsonReaderGenerator::class)
             .addSuperinterface(JsonTypes.jsonReader.parameterizedBy(typeName))
             .primaryConstructor(
                 FunSpec.constructorBuilder()
@@ -76,8 +57,8 @@ class EnumJsonReaderGenerator {
             .build()
     }
 
-    fun detectReaderFactory(enumDeclaration: KSClassDeclaration): ReaderFactory? {
-        val companion = enumDeclaration.declarations
+    fun detectReaderFactory(declaration: KSClassDeclaration): ReaderFactory? {
+        val companion = declaration.declarations
             .filterIsInstance<KSClassDeclaration>()
             .firstOrNull { it.isCompanionObject }
         val companionFactories = companion
@@ -85,7 +66,8 @@ class EnumJsonReaderGenerator {
             ?.filter { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
             ?.toList()
             .orEmpty()
-        val bodyFactories = enumDeclaration.getAllFunctions()
+        val bodyFactories = declaration.getAllFunctions()
+            .filter { !it.isConstructor() }
             .filter { it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) }
             .toList()
         val factories = companionFactories + bodyFactories
@@ -94,22 +76,19 @@ class EnumJsonReaderGenerator {
         }
         if (factories.size > 1) {
             throw ProcessingErrorException(
-                "Enum ${enumDeclaration.simpleName.asString()} has multiple @JsonReader factory methods, only one is allowed",
+                "Type ${declaration.simpleName.asString()} has multiple @JsonReader factory methods, only one is allowed",
                 factories[1]
             )
         }
         val factory = factories[0]
         if (factory !in companionFactories) {
             throw ProcessingErrorException(
-                "@JsonReader factory method must be declared in the enum's companion object",
+                "@JsonReader factory method must be static (declared in the companion object)",
                 factory
             )
         }
         if (!factory.isPublic()) {
-            throw ProcessingErrorException(
-                "@JsonReader factory method must be public",
-                factory
-            )
+            throw ProcessingErrorException("@JsonReader factory method must be public", factory)
         }
         if (factory.parameters.size != 1) {
             throw ProcessingErrorException(
@@ -118,26 +97,22 @@ class EnumJsonReaderGenerator {
             )
         }
         val returnDeclaration = factory.returnType?.resolve()?.declaration
-        if (returnDeclaration != enumDeclaration) {
+        if (returnDeclaration != declaration) {
             throw ProcessingErrorException(
-                "@JsonReader factory method must return ${enumDeclaration.simpleName.asString()}",
+                "@JsonReader factory method must return ${declaration.simpleName.asString()}",
+                factory
+            )
+        }
+        val hasReaderConstructor = declaration.getConstructors().any {
+            it.isAnnotationPresent(JsonTypes.jsonReaderAnnotation) || it.isAnnotationPresent(JsonTypes.json)
+        }
+        if (hasReaderConstructor) {
+            throw ProcessingErrorException(
+                "Type ${declaration.simpleName.asString()} has both a @JsonReader factory method and a @JsonReader/@Json constructor — only one is allowed",
                 factory
             )
         }
         val valueType = factory.parameters[0].type.toTypeName()
         return ReaderFactory(factory.simpleName.asString(), valueType)
-    }
-
-    data class EnumValue(val type: TypeName, val accessor: String)
-
-    fun detectValueType(typeElement: KSClassDeclaration): EnumValue {
-        for (function in typeElement.getAllFunctions()) {
-            if (function.isPublic() && function.parameters.isEmpty() && function.isAnnotationPresent(JsonTypes.json)) {
-                val typeName = function.returnType!!.toTypeName()
-                return EnumValue(typeName, function.simpleName.asString())
-            }
-        }
-        val typeName = String::class.asTypeName()
-        return EnumValue(typeName, "toString")
     }
 }
