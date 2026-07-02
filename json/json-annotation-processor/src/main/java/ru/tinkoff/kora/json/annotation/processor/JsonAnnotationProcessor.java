@@ -77,19 +77,31 @@ public class JsonAnnotationProcessor extends AbstractKoraProcessor {
         }
         var jsonReaderElements = annotatedElements.getOrDefault(JsonTypes.jsonReaderAnnotation, List.of());
         LogUtils.logAnnotatedElementsFull(log, Level.DEBUG, "Generating JsonReaders for", jsonReaderElements);
+        var processedReaderTypes = new java.util.HashSet<String>();
         for (var annotated : jsonReaderElements) {
             var element = annotated.element();
             if (element.getKind() == ElementKind.CONSTRUCTOR) {
                 element = element.getEnclosingElement();
+            } else if (element.getKind() == ElementKind.METHOD) {
+                var enclosing = element.getEnclosingElement();
+                if (enclosing.getKind() != ElementKind.ENUM) {
+                    messager.printMessage(Diagnostic.Kind.ERROR,
+                        "@JsonReader on a method is supported only for an enum factory method, got enclosing " + enclosing.getKind(),
+                        annotated.element());
+                    continue;
+                }
+                element = enclosing;
             }
             if (AnnotationUtils.isAnnotationPresent(element, JsonTypes.json)) {
                 continue;
             }
             if (element.getKind().isClass() || element.getKind().isInterface() && element.getModifiers().contains(Modifier.SEALED)) {
-                try {
-                    this.processor.generateReader((TypeElement) element);
-                } catch (ProcessingErrorException ex) {
-                    ex.printError(this.processingEnv);
+                if (processedReaderTypes.add(((TypeElement) element).getQualifiedName().toString())) {
+                    try {
+                        this.processor.generateReader((TypeElement) element);
+                    } catch (ProcessingErrorException ex) {
+                        ex.printError(this.processingEnv);
+                    }
                 }
             } else {
                 messager.printMessage(Diagnostic.Kind.ERROR, "Only classes and sealed interfaces can be annotated with @JsonReader, got " + element.getKind(), annotated.element());
