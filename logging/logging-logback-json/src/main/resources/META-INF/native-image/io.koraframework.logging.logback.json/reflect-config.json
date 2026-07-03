@@ -1,0 +1,14 @@
+[
+  {
+    "name": "io.koraframework.logging.logback.json.BootstrapJsonLogbackRecordEncoder",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+  },
+  {
+    "name": "io.koraframework.logging.logback.json.JsonLogbackRecordEncoder",
+    "allDeclaredConstructors": true,
+    "allDeclaredFields": true,
+    "allDeclaredMethods": true
+  }
+]
