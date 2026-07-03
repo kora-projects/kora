@@ -1,4 +1,4 @@
-package io.koraframework.logging.logback.json;
+package io.koraframework.logging.logback.json.writer;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import tools.jackson.core.JsonGenerator;
