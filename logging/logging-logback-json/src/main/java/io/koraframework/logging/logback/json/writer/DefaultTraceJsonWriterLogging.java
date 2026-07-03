@@ -1,4 +1,4 @@
-package io.koraframework.logging.logback.json;
+package io.koraframework.logging.logback.json.writer;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.logback.KoraLoggingEvent;
@@ -7,7 +7,7 @@ import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
 
-public final class DefaultTraceJsonWriter implements LoggingEventJsonWriter {
+public final class DefaultTraceJsonWriterLogging implements LoggingEventJsonWriter {
 
     @Override
     public void write(JsonGenerator gen, ILoggingEvent event) throws IOException {

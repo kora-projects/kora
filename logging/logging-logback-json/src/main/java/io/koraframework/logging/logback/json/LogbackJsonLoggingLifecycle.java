@@ -9,6 +9,8 @@ import ch.qos.logback.core.OutputStreamAppender;
 import ch.qos.logback.core.spi.AppenderAttachable;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.logging.logback.KoraAsyncAppender;
+import io.koraframework.logging.logback.json.writer.LoggingEventJsonWriter;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
@@ -16,12 +18,15 @@ import java.util.*;
 public final class LogbackJsonLoggingLifecycle implements Lifecycle {
 
     private final List<LoggingEventJsonWriter> writers;
+    private final LoggingEventJsonMasker eventMasker;
 
+    @Nullable
     private Appender<ILoggingEvent> appender;
-    private List<BootstrapJsonLogbackRecordEncoder> bootstrapEncoders = List.of();
+    private List<JsonBootstrapLogbackRecordEncoder> bootstrapEncoders = List.of();
 
-    public LogbackJsonLoggingLifecycle(LoggingEventJsonWriterProvider configuration) {
-        this.writers = List.copyOf(configuration.get());
+    public LogbackJsonLoggingLifecycle(List<LoggingEventJsonWriter> jsonWriters, LoggingEventJsonMasker eventMasker) {
+        this.eventMasker = eventMasker;
+        this.writers = List.copyOf(jsonWriters);
     }
 
     @Override
@@ -29,7 +34,7 @@ public final class LogbackJsonLoggingLifecycle implements Lifecycle {
         var context = (LoggerContext) LoggerFactory.getILoggerFactory();
         var root = context.getLogger(Logger.ROOT_LOGGER_NAME);
 
-        var encoder = new JsonLogbackRecordEncoder(this.writers);
+        var encoder = new JsonReadyLogbackRecordEncoder(this.writers, this.eventMasker);
         encoder.setContext(context);
         encoder.start();
 
@@ -93,7 +98,7 @@ public final class LogbackJsonLoggingLifecycle implements Lifecycle {
             return;
         }
         if (appender instanceof OutputStreamAppender<?> outputStreamAppender
-            && outputStreamAppender.getEncoder() instanceof BootstrapJsonLogbackRecordEncoder encoder) {
+            && outputStreamAppender.getEncoder() instanceof JsonBootstrapLogbackRecordEncoder encoder) {
             result.add(new BootstrapAppender(rootAppender, encoder));
         }
         if (appender instanceof AppenderAttachable<?> appenderAttachable) {
@@ -106,5 +111,5 @@ public final class LogbackJsonLoggingLifecycle implements Lifecycle {
         }
     }
 
-    private record BootstrapAppender(Appender<ILoggingEvent> appender, BootstrapJsonLogbackRecordEncoder encoder) {}
+    private record BootstrapAppender(Appender<ILoggingEvent> appender, JsonBootstrapLogbackRecordEncoder encoder) {}
 }

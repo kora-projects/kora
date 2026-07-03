@@ -1,4 +1,4 @@
-package io.koraframework.logging.logback.json;
+package io.koraframework.logging.logback.json.writer;
 
 import java.util.List;
 

@@ -8,4 +8,5 @@ module kora.logging.logback.json {
     requires transitive ch.qos.logback.core;
 
     exports io.koraframework.logging.logback.json;
+    exports io.koraframework.logging.logback.json.writer;
 }

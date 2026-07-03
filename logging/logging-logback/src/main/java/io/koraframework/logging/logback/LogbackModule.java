@@ -2,12 +2,14 @@ package io.koraframework.logging.logback;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.LoggerContext;
+import io.koraframework.common.annotation.DefaultComponent;
 import org.slf4j.LoggerFactory;
 import io.koraframework.logging.common.LoggingLevelApplier;
 import io.koraframework.logging.common.LoggingModule;
 
 public interface LogbackModule extends LoggingModule {
 
+    @DefaultComponent
     default LoggingLevelApplier logbackLoggingLevelApplier() {
         var ctx = (LoggerContext) LoggerFactory.getILoggerFactory();
         return new LoggingLevelApplier() {
