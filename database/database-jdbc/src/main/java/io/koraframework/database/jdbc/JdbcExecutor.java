@@ -6,6 +6,7 @@ import io.koraframework.database.common.QueryContext;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext.PostCommitAction;
 import io.koraframework.database.jdbc.ConnectionContext.PostRollbackAction;
+import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
 import io.opentelemetry.context.Context;

@@ -2,6 +2,7 @@ package io.koraframework.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

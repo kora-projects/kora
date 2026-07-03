@@ -1,4 +1,4 @@
-package io.koraframework.database.jdbc;
+package io.koraframework.database.jdbc.exception;
 
 import java.sql.SQLException;
 

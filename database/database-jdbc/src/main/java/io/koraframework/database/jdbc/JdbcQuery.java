@@ -1,5 +1,6 @@
 package io.koraframework.database.jdbc;
 
+import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import org.jspecify.annotations.Nullable;
 

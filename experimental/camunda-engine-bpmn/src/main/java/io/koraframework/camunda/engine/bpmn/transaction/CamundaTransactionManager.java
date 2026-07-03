@@ -1,6 +1,6 @@
 package io.koraframework.camunda.engine.bpmn.transaction;
 
-import io.koraframework.database.jdbc.UncheckedSqlException;
+import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 
 import java.util.function.Supplier;
 
