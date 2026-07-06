@@ -382,7 +382,63 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
         assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
     }
 
-    private void assertWrite(JsonWriter<Object> writer, Object value, String expectedJson) {
+    @Test
+  public void testEnumWriterFromInstanceMethod() {
+    compile("""
+        @Json
+        public enum TestEnum {
+          VALUE1("value1"), VALUE2("value2");
+          private final String value;
+          TestEnum(String value) { this.value = value; }
+          @JsonWriter public String toValue() { return value; }
+        }
+        """);
+    compileResult.assertSuccess();
+
+    var w = writer("TestEnum", stringWriter);
+    assertWrite(w, enumConstant("TestEnum", "VALUE1"), "\"value1\"");
+    assertWrite(w, enumConstant("TestEnum", "VALUE2"), "\"value2\"");
+  }
+
+  @Test
+  public void testEnumWriterInstanceMethodTriggersWithoutJsonAnnotation() {
+    compile("""
+        public enum TestEnum {
+          VALUE1("value1"), VALUE2("value2");
+          private final String value;
+          TestEnum(String value) { this.value = value; }
+          @JsonWriter public String toValue() { return value; }
+        }
+        """);
+    compileResult.assertSuccess();
+
+    var w = writer("TestEnum", stringWriter);
+    assertWrite(w, enumConstant("TestEnum", "VALUE1"), "\"value1\"");
+  }
+
+  @Test
+  public void testEnumWriterInstanceMethodFromExtension() {
+    compile(List.of(new KoraAppProcessor(), new JsonAnnotationProcessor()), """
+        @ru.tinkoff.kora.common.KoraApp
+        public interface TestApp {
+          enum TestEnum {
+            VALUE1("value1"), VALUE2("value2");
+            private final String value;
+            TestEnum(String value) { this.value = value; }
+            @JsonWriter public String toValue() { return value; }
+          }
+
+          default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
+
+          @Root
+          default String root(ru.tinkoff.kora.json.common.JsonWriter<TestEnum> w) { return ""; }
+        }
+        """);
+    compileResult.assertSuccess();
+    assertThat(writer("TestApp_TestEnum", stringWriter)).isNotNull();
+  }
+
+  private void assertWrite(JsonWriter<Object> writer, Object value, String expectedJson) {
         try {
             assertThat(writer.toByteArray(value)).asString(StandardCharsets.UTF_8).isEqualTo(expectedJson);
         } catch (IOException e) {
@@ -519,16 +575,16 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
     }
 
     @Test
-    public void testEnumWriterMethodNotStaticFails() {
+    public void testEnumWriterInstanceMethodWithParamsFails() {
         var result = compile(List.of(new JsonAnnotationProcessor()), """
-            @Json
-            public enum TestEnum {
-              VALUE1, VALUE2;
-              @JsonWriter public String toValue(TestEnum e) { return e.name(); }
-            }
-            """);
+                @Json
+                public enum TestEnum {
+                  VALUE1, VALUE2;
+                  @JsonWriter public String toValue(TestEnum e) { return e.name(); }
+                }
+                """);
         assertThat(result.isFailed()).isTrue();
-        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("no parameters"));
     }
 
     @Test
@@ -541,7 +597,7 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
             }
             """);
         assertThat(result.isFailed()).isTrue();
-        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("must be public"));
     }
 
     @Test
@@ -614,14 +670,14 @@ public class EnumTest extends AbstractJsonAnnotationProcessorTest {
                 VALUE1, VALUE2;
                 @JsonWriter static String toValue(TestEnum e) { return e.name(); }
               }
-
+            
               default ru.tinkoff.kora.json.common.JsonWriter<String> stringWriter() { return com.fasterxml.jackson.core.JsonGenerator::writeString; }
-
+            
               @Root
               default String root(ru.tinkoff.kora.json.common.JsonWriter<TestEnum> w) { return ""; }
             }
             """);
         assertThat(result.isFailed()).isTrue();
-        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("public static"));
+        assertThat(result.errors()).anyMatch(d -> d.getMessage(null).contains("must be public"));
     }
 }
