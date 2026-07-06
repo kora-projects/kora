@@ -6,6 +6,7 @@ import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_Confi
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueExtractor;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueExtractor;
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueExtractor;
+import io.koraframework.database.common.UpdateCount;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
@@ -20,13 +21,17 @@ import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
 
 import java.lang.reflect.Proxy;
+import java.sql.JDBCType;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Connection;
+import java.sql.Statement;
 import java.sql.Types;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
@@ -110,11 +115,14 @@ class JdbcDataSourceTest {
     void testJdbcQueryBuilder() {
         var status = "active";
         String name = null;
-        var query = JdbcQuery.builder()
+        var query = JdbcQuery.named()
             .sql("SELECT * FROM users WHERE 1 = 1")
-            .bindIf(" AND status = :status", "status", status, status != null)
-            .bindIf(" AND name = :name", "name", name, name != null)
-            .bind(" AND id IN (:ids)", "ids", List.of(1L, 2L, 3L))
+            .sqlIf(" AND status = :status", status != null)
+            .bindIf("status", status, status != null)
+            .sqlIf(" AND name = :name", name != null)
+            .bindIf("name", name, name != null)
+            .sql(" AND id IN (:ids)")
+            .bind("ids", List.of(1L, 2L, 3L))
             .sqlIf(" ORDER BY id", true)
             .build();
 
@@ -153,11 +161,11 @@ class JdbcDataSourceTest {
                 : null
         );
 
-        var query = JdbcQuery.builder()
+        var query = JdbcQuery.named()
             .sql("SELECT :nullable_value, :mapped_value, :ids")
-            .param("nullable_value", null, Types.VARCHAR)
-            .param("mapped_value", "test", (stmt, index, value) -> stmt.setString(index, "mapped-" + value))
-            .param("ids", List.of(1L, 2L), Types.BIGINT)
+            .bind("nullable_value", null, Types.VARCHAR)
+            .bind("mapped_value", "test", (stmt, index, value) -> stmt.setString(index, "mapped-" + value))
+            .bind("ids", List.of(1L, 2L), Types.BIGINT)
             .build();
 
         try (var ignored = query.prepare(connection)) {
@@ -169,6 +177,114 @@ class JdbcDataSourceTest {
                     "setObject:4:2:" + Types.BIGINT
                 );
         }
+    }
+
+    @Test
+    void testJdbcTemplateQueryBuilder() throws SQLException {
+        var calls = new ArrayList<String>();
+        var statement = (PreparedStatement) Proxy.newProxyInstance(
+            PreparedStatement.class.getClassLoader(),
+            new Class<?>[] {PreparedStatement.class},
+            (proxy, method, args) -> {
+                if (method.getName().equals("setObject")) {
+                    calls.add(args.length == 2
+                        ? "setObject:" + args[0] + ":" + args[1]
+                        : "setObject:" + args[0] + ":" + args[1] + ":" + args[2]);
+                }
+                return null;
+            }
+        );
+        var connection = (Connection) Proxy.newProxyInstance(
+            Connection.class.getClassLoader(),
+            new Class<?>[] {Connection.class},
+            (proxy, method, args) -> method.getName().equals("prepareStatement")
+                ? statement
+                : null
+        );
+
+        var query = JdbcQuery.template()
+            .sql("SELECT * FROM %s WHERE name = ?", "users")
+            .sqlIf(" AND age > ?", true)
+            .sqlIf(" AND deleted = ?", false)
+            .bindAll("alice")
+            .bind(42, JDBCType.INTEGER)
+            .build();
+
+        Assertions.assertThat(query.sourceSql()).isEqualTo("SELECT * FROM users WHERE name = ? AND age > ?");
+        Assertions.assertThat(query.sql()).isEqualTo("SELECT * FROM users WHERE name = ? AND age > ?");
+        Assertions.assertThat(query.parameterValues()).containsExactly("alice", 42);
+
+        try (var ignored = query.prepare(connection)) {
+            Assertions.assertThat(calls)
+                .containsExactly(
+                    "setObject:1:alice",
+                    "setObject:2:42:" + Types.INTEGER
+                );
+        }
+    }
+
+    @Test
+    void testJdbcQueryOptionsDefaults() {
+        var generatedKeys = JdbcQuery.OptsBuilder.builder()
+            .fetchSize(100)
+            .maxRows(10)
+            .queryTimeoutSeconds(5)
+            .resultSetType(JdbcQueryOptions.ResultSetType.SCROLL_INSENSITIVE)
+            .resultSetConcurrency(JdbcQueryOptions.ResultSetConcurrency.UPDATABLE)
+            .resultSetHoldability(JdbcQueryOptions.ResultSetHoldability.CLOSE_CURSORS_AT_COMMIT)
+            .returnGeneratedKeys()
+            .build();
+
+        Assertions.assertThat(generatedKeys.fetchSize()).isEqualTo(100);
+        Assertions.assertThat(generatedKeys.maxRows()).isEqualTo(10);
+        Assertions.assertThat(generatedKeys.queryTimeoutSeconds()).isEqualTo(5);
+        Assertions.assertThat(generatedKeys.resultSetType()).isEqualTo(ResultSet.TYPE_SCROLL_INSENSITIVE);
+        Assertions.assertThat(generatedKeys.resultSetConcurrency()).isEqualTo(ResultSet.CONCUR_UPDATABLE);
+        Assertions.assertThat(generatedKeys.resultSetHoldability()).isEqualTo(ResultSet.CLOSE_CURSORS_AT_COMMIT);
+        Assertions.assertThat(generatedKeys.autoGeneratedKeys()).isEqualTo(Statement.RETURN_GENERATED_KEYS);
+        Assertions.assertThat(generatedKeys.generatedKeyColumns()).isEmpty();
+
+        var generatedKeyColumns = JdbcQuery.OptsBuilder.builder()
+            .generatedKeys(JdbcQueryOptions.GeneratedKeys.NO_GENERATED_KEYS)
+            .returnGeneratedKeys("id", "version")
+            .build();
+
+        Assertions.assertThat(generatedKeyColumns.autoGeneratedKeys()).isNull();
+        Assertions.assertThat(generatedKeyColumns.generatedKeyColumns()).containsExactly("id", "version");
+    }
+
+    @Test
+    void testJdbcBatchBuildersDefaults() {
+        var first = new LinkedHashMap<String, Object>();
+        first.put("value", "test1");
+        first.put("status", "active");
+        var second = new LinkedHashMap<String, Object>();
+        second.put("value", "test2");
+        second.put("status", "archived");
+
+        var namedBatch = JdbcQuery.named()
+            .sql("INSERT INTO %s(value, status) VALUES (:value, :status)", "users")
+            .batch()
+            .bindAll(List.of(first, second), (row, values) -> row.bindAll(values))
+            .build();
+
+        Assertions.assertThat(namedBatch.sourceSql()).isEqualTo("INSERT INTO users(value, status) VALUES (:value, :status)");
+        Assertions.assertThat(namedBatch.sql()).isEqualTo("INSERT INTO users(value, status) VALUES (?, ?)");
+        Assertions.assertThat(namedBatch.size()).isEqualTo(2);
+        Assertions.assertThat(namedBatch.parameters(0).stream().map(JdbcQuery.Parameter::value)).containsExactly("test1", "active");
+        Assertions.assertThat(namedBatch.parameters(1).stream().map(JdbcQuery.Parameter::value)).containsExactly("test2", "archived");
+
+        var templateBatch = JdbcQuery.template()
+            .sql("INSERT INTO %s(value, status) VALUES (?, ?)", "users")
+            .batch()
+            .bindAll(List.of(List.of("test1", "active"), List.of("test2", "archived")), (row, values) -> row.bindAll(values.toArray()))
+            .build();
+
+        Assertions.assertThat(templateBatch.sourceSql()).isEqualTo("INSERT INTO users(value, status) VALUES (?, ?)");
+        Assertions.assertThat(templateBatch.sql()).isEqualTo("INSERT INTO users(value, status) VALUES (?, ?)");
+        Assertions.assertThat(templateBatch.size()).isEqualTo(2);
+        Assertions.assertThat(templateBatch.parameters(0).stream().map(JdbcQuery.Parameter::value)).containsExactly("test1", "active");
+        Assertions.assertThat(templateBatch.parameters(1).stream().map(JdbcQuery.Parameter::value)).containsExactly("test2", "archived");
     }
 
     @Test
@@ -185,10 +301,12 @@ class JdbcDataSourceTest {
 
         withDb(params, db -> {
             var status = "active";
-            var query = JdbcQuery.builder()
-                .sql("SELECT id, value FROM %s WHERE 1 = 1".formatted(tableName))
-                .bindIf(" AND status = :status", "status", status, status != null)
-                .bind(" AND value IN (:values)", "values", Arrays.asList("test1", "test3"))
+            var query = JdbcQuery.named()
+                .sql("SELECT id, value FROM %s WHERE 1 = 1", tableName)
+                .sqlIf(" AND status = :status", status != null)
+                .bindIf("status", status, status != null)
+                .sql(" AND value IN (:values)")
+                .bind("values", Arrays.asList("test1", "test3"))
                 .sql(" ORDER BY id")
                 .build();
             JdbcRowMapper<Entity> mapper = rs -> new Entity(rs.getLong("id"), rs.getString("value"));
@@ -199,22 +317,71 @@ class JdbcDataSourceTest {
                 .containsExactly(new Entity(1, "test1"), new Entity(3, "test3"));
 
             var one = db.queryOne(
-                JdbcQuery.builder()
-                    .sql("SELECT id, value FROM %s WHERE value = :value".formatted(tableName))
-                    .param("value", "test1")
+                JdbcQuery.named()
+                    .sql("SELECT id, value FROM %s WHERE value = :value", tableName)
+                    .bind("value", "test1")
                     .build(),
                 mapper
             );
             Assertions.assertThat(one).isEqualTo(new Entity(1, "test1"));
 
             var optional = db.queryOptional(
-                JdbcQuery.builder()
-                    .sql("SELECT id, value FROM %s WHERE value = :value".formatted(tableName))
-                    .param("value", "missing")
+                JdbcQuery.named()
+                    .sql("SELECT id, value FROM %s WHERE value = :value", tableName)
+                    .bind("value", "missing")
                     .build(),
                 mapper
             );
             Assertions.assertThat(optional).isEmpty();
+        });
+    }
+
+    @Test
+    void testJdbcQueryNewContracts(PostgresParams params) throws SQLException {
+        var tableName = PostgresTestContainer.randomName("test_table");
+        params.execute("CREATE TABLE %s(id BIGSERIAL, value VARCHAR);".formatted(tableName));
+
+        withDb(params, db -> {
+            var insert = JdbcQuery.named()
+                .sql("INSERT INTO %s(value) VALUES (:value)", tableName)
+                .bind("value", "test1", JDBCType.VARCHAR)
+                .build();
+            Assertions.assertThat(db.executeUpdate(insert)).isEqualTo(new UpdateCount(1));
+
+            var generatedId = db.executeUpdate(
+                JdbcQuery.named()
+                    .sql("INSERT INTO %s(value) VALUES (:value)", tableName)
+                    .opts(o -> o.returnGeneratedKeys("id"))
+                    .bind("value", "test2")
+                    .build(),
+                rs -> {
+                    Assertions.assertThat(rs.next()).isTrue();
+                    return rs.getLong(1);
+                }
+            );
+            Assertions.assertThat(generatedId).isEqualTo(2L);
+
+            var result = db.queryList(
+                JdbcQuery.template("SELECT value FROM %s WHERE id > ? ORDER BY id".formatted(tableName), 0),
+                rs -> rs.getString("value")
+            );
+            Assertions.assertThat(result).containsExactly("test1", "test2");
+
+            var namedBatch = JdbcQuery.named()
+                .sql("INSERT INTO %s(value) VALUES (:value)", tableName)
+                .batch()
+                .bind(Map.of("value", "test3"))
+                .bind(row -> row.bind("value", "test4"))
+                .build();
+            Assertions.assertThat(db.executeUpdateBatch(namedBatch)).isEqualTo(new UpdateCount(2));
+
+            var templateBatch = JdbcQuery.template()
+                .sql("INSERT INTO %s(value) VALUES (?)", tableName)
+                .batch()
+                .bind("test5")
+                .bindAll(List.of("test6"), (row, value) -> row.bind(value))
+                .build();
+            Assertions.assertThat(db.executeUpdateBatch(templateBatch)).isEqualTo(new UpdateCount(2));
         });
     }
 
@@ -269,14 +436,14 @@ class JdbcDataSourceTest {
     @Test
     void testTransactionIsolationLevel(PostgresParams params) throws SQLException {
         withDb(params, db -> {
-            var previousIsolationLevel = db.withConnection((JdbcExecutor.SqlFunction<Connection, Integer>) Connection::getTransactionIsolation);
+            var previousIsolationLevel = db.withConnection(Connection::getTransactionIsolation);
 
             db.inTx(JdbcExecutor.TxIsolation.SERIALIZABLE, context -> {
                 Assertions.assertThat(context.connection().getTransactionIsolation())
                     .isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
             });
 
-            var currentIsolationLevel = db.withConnection((JdbcExecutor.SqlFunction<Connection, Integer>) Connection::getTransactionIsolation);
+            var currentIsolationLevel = db.withConnection(Connection::getTransactionIsolation);
             Assertions.assertThat(currentIsolationLevel).isEqualTo(previousIsolationLevel);
         });
     }

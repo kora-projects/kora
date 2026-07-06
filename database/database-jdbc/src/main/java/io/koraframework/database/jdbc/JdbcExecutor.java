@@ -3,6 +3,7 @@ package io.koraframework.database.jdbc;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.database.common.QueryContext;
+import io.koraframework.database.common.UpdateCount;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext.PostCommitAction;
 import io.koraframework.database.jdbc.ConnectionContext.PostRollbackAction;
@@ -15,6 +16,7 @@ import org.jspecify.annotations.Nullable;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -28,33 +30,6 @@ import java.util.Optional;
  */
 @SuppressWarnings("overloads")
 public interface JdbcExecutor {
-
-    /**
-     * <b>Русский</b>: Уровень изоляции JDBC транзакции.
-     * В большинстве баз данных уровень по умолчанию - {@link #READ_COMMITTED}, но точное значение зависит от JDBC драйвера и настроек базы данных.
-     * <hr>
-     * <b>English</b>: JDBC transaction isolation level.
-     * Most databases use {@link #READ_COMMITTED} by default, but the exact value depends on the JDBC driver and database settings.
-     *
-     * @see Connection#setTransactionIsolation(int)
-     */
-    enum TxIsolation {
-
-        READ_UNCOMMITTED(Connection.TRANSACTION_READ_UNCOMMITTED),
-        READ_COMMITTED(Connection.TRANSACTION_READ_COMMITTED),
-        REPEATABLE_READ(Connection.TRANSACTION_REPEATABLE_READ),
-        SERIALIZABLE(Connection.TRANSACTION_SERIALIZABLE);
-
-        private final int value;
-
-        TxIsolation(int value) {
-            this.value = value;
-        }
-
-        public int value() {
-            return this.value;
-        }
-    }
 
     /**
      * <b>Русский</b>: Выполняет callback с текущим или новым контекстом соединения.
@@ -200,6 +175,67 @@ public interface JdbcExecutor {
         return this.query(query, JdbcResultSetMapper.listResultSetMapper(mapper));
     }
 
+    default UpdateCount executeUpdate(JdbcQuery query) {
+        return this.query(query, (SqlFunction<PreparedStatement, UpdateCount>) statement -> new UpdateCount(statement.executeUpdate()));
+    }
+
+    default <T> T executeUpdate(JdbcQuery query, JdbcResultSetMapper<T> generatedKeysMapper) {
+        return this.query(query, (SqlFunction<PreparedStatement, T>) statement -> {
+            statement.executeUpdate();
+            try (var resultSet = statement.getGeneratedKeys()) {
+                return generatedKeysMapper.apply(resultSet);
+            }
+        });
+    }
+
+    default UpdateCount executeUpdateBatch(JdbcQuery.JdbcQueryBatch batch) {
+        var queryContext = new QueryContext(batch.sourceSql(), batch.sql());
+        var observation = this.telemetry().observe(queryContext);
+        return ScopedValue.where(Observation.VALUE, observation)
+            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
+            .call(() -> withConnection(connection -> {
+                try (PreparedStatement ps = batch.prepare(connection)) {
+                    int[] batchResult = ps.executeBatch();
+                    long total = 0;
+                    for (var count : batchResult) {
+                        if (count == Statement.SUCCESS_NO_INFO) {
+                            return new UpdateCount(-1);
+                        }
+                        if (count == Statement.EXECUTE_FAILED) {
+                            throw new SQLException("Batch execution failed");
+                        }
+                        total += count;
+                    }
+                    return new UpdateCount(total);
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    throw e;
+                } finally {
+                    observation.end();
+                }
+            }));
+    }
+
+    default <T> T executeUpdateBatch(JdbcQuery.JdbcQueryBatch batch, JdbcResultSetMapper<T> generatedKeysMapper) {
+        var queryContext = new QueryContext(batch.sourceSql(), batch.sql());
+        var observation = this.telemetry().observe(queryContext);
+        return ScopedValue.where(Observation.VALUE, observation)
+            .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
+            .call(() -> withConnection(connection -> {
+                try (PreparedStatement ps = batch.prepare(connection)) {
+                    ps.executeBatch();
+                    try (var resultSet = ps.getGeneratedKeys()) {
+                        return generatedKeysMapper.apply(resultSet);
+                    }
+                } catch (Exception e) {
+                    observation.observeError(e);
+                    throw e;
+                } finally {
+                    observation.end();
+                }
+            }));
+    }
+
     default <T> T withConnection(SqlSupplier<T> callback) throws UncheckedSqlException {
         return this.withConnection(_ -> {
             return callback.apply();
@@ -238,52 +274,6 @@ public interface JdbcExecutor {
     default <T> T inTx(TxIsolation isolationLevel, SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
         Objects.requireNonNull(isolationLevel);
         return this.doInTx(isolationLevel, callback);
-    }
-
-    private <T> T doInTx(@Nullable TxIsolation isolationLevel, SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
-        return this.withContext(ctx -> {
-            Connection connection = ctx.connection();
-            if (!connection.getAutoCommit()) {
-                return callback.apply(ctx);
-            }
-
-            int previousIsolationLevel = connection.getTransactionIsolation();
-            boolean isolationLevelChanged = false;
-            T result;
-            try {
-                if (isolationLevel != null) {
-                    connection.setTransactionIsolation(isolationLevel.value());
-                    isolationLevelChanged = true;
-                }
-                connection.setAutoCommit(false);
-                result = callback.apply(ctx);
-                connection.commit();
-                connection.setAutoCommit(true);
-            } catch (Exception e) {
-                try {
-                    connection.rollback();
-                    connection.setAutoCommit(true);
-                    for (PostRollbackAction action : ctx.postRollbackActions()) {
-                        try {
-                            action.run(connection, e);
-                        } catch (SQLException ex) {
-                            e.addSuppressed(ex);
-                        }
-                    }
-                } catch (Exception suppressed) {
-                    e.addSuppressed(suppressed);
-                }
-                throw e;
-            } finally {
-                if (isolationLevelChanged) {
-                    connection.setTransactionIsolation(previousIsolationLevel);
-                }
-            }
-            for (PostCommitAction action : ctx.postCommitActions()) {
-                action.run(connection);
-            }
-            return result;
-        });
     }
 
     default <T> T inTx(SqlSupplier<T> callback) throws UncheckedSqlException {
@@ -331,6 +321,7 @@ public interface JdbcExecutor {
      * <hr>
      * <b>English</b>: JDBC callback without arguments that returns a result.
      */
+    @FunctionalInterface
     interface SqlSupplier<T> {
         T apply() throws SQLException;
     }
@@ -340,6 +331,7 @@ public interface JdbcExecutor {
      * <hr>
      * <b>English</b>: JDBC callback that accepts an argument and returns a result.
      */
+    @FunctionalInterface
     interface SqlFunction<T, R> {
         R apply(T t) throws SQLException;
     }
@@ -349,6 +341,7 @@ public interface JdbcExecutor {
      * <hr>
      * <b>English</b>: JDBC callback that accepts an argument and returns no result.
      */
+    @FunctionalInterface
     interface SqlConsumer<T> {
         void accept(T t) throws SQLException;
     }
@@ -358,7 +351,81 @@ public interface JdbcExecutor {
      * <hr>
      * <b>English</b>: JDBC callback without arguments and result.
      */
+    @FunctionalInterface
     interface SqlRunnable {
         void run() throws SQLException;
+    }
+
+    /**
+     * <b>Русский</b>: Уровень изоляции JDBC транзакции.
+     * В большинстве баз данных уровень по умолчанию - {@link #READ_COMMITTED}, но точное значение зависит от JDBC драйвера и настроек базы данных.
+     * <hr>
+     * <b>English</b>: JDBC transaction isolation level.
+     * Most databases use {@link #READ_COMMITTED} by default, but the exact value depends on the JDBC driver and database settings.
+     *
+     * @see Connection#setTransactionIsolation(int)
+     */
+    enum TxIsolation {
+
+        READ_UNCOMMITTED(Connection.TRANSACTION_READ_UNCOMMITTED),
+        READ_COMMITTED(Connection.TRANSACTION_READ_COMMITTED),
+        REPEATABLE_READ(Connection.TRANSACTION_REPEATABLE_READ),
+        SERIALIZABLE(Connection.TRANSACTION_SERIALIZABLE);
+
+        private final int value;
+
+        TxIsolation(int value) {
+            this.value = value;
+        }
+
+        public int value() {
+            return this.value;
+        }
+    }
+
+    private <T> T doInTx(@Nullable TxIsolation isolationLevel, SqlFunction<ConnectionContext, T> callback) throws UncheckedSqlException {
+        return this.withContext(ctx -> {
+            Connection connection = ctx.connection();
+            if (!connection.getAutoCommit()) {
+                return callback.apply(ctx);
+            }
+
+            int previousIsolationLevel = connection.getTransactionIsolation();
+            boolean isolationLevelChanged = false;
+            T result;
+            try {
+                if (isolationLevel != null) {
+                    connection.setTransactionIsolation(isolationLevel.value());
+                    isolationLevelChanged = true;
+                }
+                connection.setAutoCommit(false);
+                result = callback.apply(ctx);
+                connection.commit();
+                connection.setAutoCommit(true);
+            } catch (Exception e) {
+                try {
+                    connection.rollback();
+                    connection.setAutoCommit(true);
+                    for (PostRollbackAction action : ctx.postRollbackActions()) {
+                        try {
+                            action.run(connection, e);
+                        } catch (SQLException ex) {
+                            e.addSuppressed(ex);
+                        }
+                    }
+                } catch (Exception suppressed) {
+                    e.addSuppressed(suppressed);
+                }
+                throw e;
+            } finally {
+                if (isolationLevelChanged) {
+                    connection.setTransactionIsolation(previousIsolationLevel);
+                }
+            }
+            for (PostCommitAction action : ctx.postCommitActions()) {
+                action.run(connection);
+            }
+            return result;
+        });
     }
 }

@@ -4,478 +4,342 @@ import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import org.jspecify.annotations.Nullable;
 
-import java.lang.reflect.Array;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.SQLType;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.sql.*;
+import java.util.List;
+import java.util.Map;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
- * <b>Русский</b>: Неизменяемое описание JDBC запроса с именованными параметрами, которое умеет создавать
- * {@link PreparedStatement} и проставлять все параметры в правильном порядке.
- * <hr>
- * <b>English</b>: An immutable JDBC query descriptor with named parameters that can create a {@link PreparedStatement}
- * and bind all parameters in the correct order.
- * <br>
- * <br>
- * Пример / Example:
- * <pre>
- * {@code
- * var query = JdbcQuery.builder()
- *     .sql("SELECT * FROM users WHERE 1 = 1")
- *     .bindIf(" AND status = :status", "status", status, status != null)
- *     .bind(" AND id IN (:ids)", "ids", List.of(1L, 2L, 3L))
- *     .build();
- *
- * try (var statement = query.prepare(connection)) {
- *     try (var rs = statement.executeQuery()) {
- *         // read result set
- *     }
- * }
- * }
- * </pre>
+ * Immutable JDBC query descriptor that can prepare a {@link PreparedStatement} and bind all parameters.
  *
  * @see JdbcExecutor#query(JdbcQuery, JdbcExecutor.SqlFunction)
  */
-public final class JdbcQuery {
+public interface JdbcQuery {
 
-    private final String sourceSql;
-    private final String sql;
-    private final List<Parameter> parameters;
-
-    private JdbcQuery(String sourceSql, String sql, List<Parameter> parameters) {
-        this.sourceSql = sourceSql;
-        this.sql = sql;
-        this.parameters = List.copyOf(parameters);
+    static NamedQueryBuilder named() {
+        return JdbcQueryImpl.named();
     }
 
-    public static Builder builder() {
-        return new Builder();
+    static TemplateBuilder template() {
+        return JdbcQueryImpl.template();
     }
 
-    /**
-     * <b>Русский</b>: Возвращает исходный SQL с именованными параметрами.
-     * <hr>
-     * <b>English</b>: Returns the original SQL with named parameters.
-     *
-     * @return исходный SQL / original SQL
-     */
-    public String sourceSql() {
-        return this.sourceSql;
+    static JdbcQuery template(String sql, @Nullable Object... args) {
+        return template()
+            .sql(sql)
+            .bindAll(args)
+            .build();
     }
 
-    /**
-     * <b>Русский</b>: Возвращает JDBC SQL, где именованные параметры заменены на {@code ?}.
-     * <hr>
-     * <b>English</b>: Returns JDBC SQL where named parameters are replaced with {@code ?}.
-     *
-     * @return JDBC SQL
-     */
-    public String sql() {
-        return this.sql;
+    String sourceSql();
+
+    String sql();
+
+    JdbcQueryOptions options();
+
+    List<Object> parameterValues();
+
+    List<Parameter> parameters();
+
+    PreparedStatement prepare(Connection connection) throws UncheckedSqlException;
+
+    record Parameter(String name, @Nullable Object value, JdbcParameterBinder binder) {}
+
+    @FunctionalInterface
+    interface JdbcParameterBinder {
+        void set(PreparedStatement statement, int index) throws SQLException;
     }
 
-    /**
-     * <b>Русский</b>: Возвращает значения параметров в порядке их привязки к {@link PreparedStatement}.
-     * <hr>
-     * <b>English</b>: Returns parameter values in the order they are bound to a {@link PreparedStatement}.
-     *
-     * @return значения параметров / parameter values
-     */
-    public List<Object> parameterValues() {
-        return this.parameters.stream()
-            .map(Parameter::value)
-            .collect(Collectors.toUnmodifiableList());
-    }
+    interface NamedQueryBuilder {
 
-    /**
-     * <b>Русский</b>: Создает {@link PreparedStatement} из переданного соединения и проставляет все параметры.
-     * <hr>
-     * <b>English</b>: Creates a {@link PreparedStatement} from the provided connection and binds all parameters.
-     *
-     * @param connection JDBC соединение / JDBC connection
-     * @return подготовленный запрос с параметрами / prepared statement with bound parameters
-     * @throws UncheckedSqlException если JDBC драйвер вернул ошибку / when the JDBC driver returns an error
-     */
-    public PreparedStatement prepare(Connection connection) throws UncheckedSqlException {
-        PreparedStatement statement = null;
-        try {
-            statement = connection.prepareStatement(this.sql);
-            for (int i = 0; i < this.parameters.size(); i++) {
-                this.parameters.get(i).binder().set(statement, i + 1);
+        NamedQueryBuilder sql(String sql);
+
+        default NamedQueryBuilder sql(String sql, Object... args) {
+            return this.sql(sql.formatted(args));
+        }
+
+        default NamedQueryBuilder sqlIf(String sql, boolean condition) {
+            return condition
+                ? this.sql(sql)
+                : this;
+        }
+
+        default NamedQueryBuilder sqlIf(String sql, boolean condition, Object... args) {
+            return condition
+                ? this.sql(sql, args)
+                : this;
+        }
+
+        default NamedQueryBuilder opts(Consumer<OptsBuilder> options) {
+            var builder = OptsBuilder.builder();
+            options.accept(builder);
+            return this.opts(builder.build());
+        }
+
+        NamedQueryBuilder opts(JdbcQueryOptions options);
+
+        NamedQueryBuilder bind(String name, @Nullable Object value);
+
+        NamedQueryBuilder bind(String name, @Nullable Object value, int sqlType);
+
+        default NamedQueryBuilder bind(String name, @Nullable Object value, JDBCType sqlType) {
+            return bind(name, value, sqlType.getVendorTypeNumber());
+        }
+
+        NamedQueryBuilder bind(String name, @Nullable Object value, SQLType sqlType);
+
+        <T> NamedQueryBuilder bind(String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper);
+
+        NamedQueryBuilder bind(String name, JdbcParameterBinder parameter);
+
+        default NamedQueryBuilder bindAll(Map<String, ?> values) {
+            for (var entry : values.entrySet()) {
+                this.bind(entry.getKey(), entry.getValue());
             }
-            return statement;
-        } catch (SQLException e) {
-            if (statement != null) {
-                try {
-                    statement.close();
-                } catch (SQLException suppressed) {
-                    e.addSuppressed(suppressed);
-                }
+            return this;
+        }
+
+        default NamedQueryBuilder bindIf(String name, @Nullable Object value, boolean condition) {
+            return condition
+                ? this.bind(name, value)
+                : this;
+        }
+
+        default NamedQueryBuilder bindIf(String name, @Nullable Object value, int sqlType, boolean condition) {
+            return condition
+                ? this.bind(name, value, sqlType)
+                : this;
+        }
+
+        default NamedQueryBuilder bindIf(String name, @Nullable Object value, JDBCType sqlType, boolean condition) {
+            return condition
+                ? this.bind(name, value, sqlType)
+                : this;
+        }
+
+        default NamedQueryBuilder bindIf(String name, @Nullable Object value, SQLType sqlType, boolean condition) {
+            return condition
+                ? this.bind(name, value, sqlType)
+                : this;
+        }
+
+        default <T> NamedQueryBuilder bindIf(String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper, boolean condition) {
+            return condition
+                ? this.bind(name, value, mapper)
+                : this;
+        }
+
+        default NamedQueryBuilder bindIf(String name, JdbcParameterBinder parameter, boolean condition) {
+            return condition
+                ? this.bind(name, parameter)
+                : this;
+        }
+
+        JdbcQuery build();
+
+        NamedBatchBuilder batch();
+    }
+
+    interface TemplateBuilder {
+
+        TemplateBuilder sql(String sql);
+
+        default TemplateBuilder sql(String sql, Object... args) {
+            return this.sql(sql.formatted(args));
+        }
+
+        default TemplateBuilder sqlIf(String sql, boolean condition) {
+            return condition
+                ? this.sql(sql)
+                : this;
+        }
+
+        default TemplateBuilder sqlIf(String sql, boolean condition, Object... args) {
+            return condition
+                ? this.sql(sql, args)
+                : this;
+        }
+
+        default TemplateBuilder opts(Consumer<OptsBuilder> options) {
+            var builder = OptsBuilder.builder();
+            options.accept(builder);
+            return this.opts(builder.build());
+        }
+
+        TemplateBuilder opts(JdbcQueryOptions options);
+
+        TemplateBuilder bind(@Nullable Object value);
+
+        TemplateBuilder bind(@Nullable Object value, int sqlType);
+
+        default TemplateBuilder bind(@Nullable Object value, JDBCType sqlType) {
+            return this.bind(value, sqlType.getVendorTypeNumber());
+        }
+
+        TemplateBuilder bind(@Nullable Object value, SQLType sqlType);
+
+        <T> TemplateBuilder bind(@Nullable T value, JdbcParameterColumnMapper<T> mapper);
+
+        default TemplateBuilder bindAll(@Nullable Object... values) {
+            for (var value : values) {
+                this.bind(value);
             }
-            throw new UncheckedSqlException(e);
+            return this;
+        }
+
+        JdbcQuery build();
+
+        TemplateBatchBuilder batch();
+    }
+
+    interface JdbcQueryBatch {
+
+        String sourceSql();
+
+        String sql();
+
+        JdbcQueryOptions options();
+
+        int size();
+
+        List<Parameter> parameters(int index);
+
+        PreparedStatement prepare(Connection connection) throws UncheckedSqlException;
+    }
+
+    interface OptsBuilder {
+
+        static OptsBuilder builder() {
+            return JdbcQueryImpl.opts();
+        }
+
+        OptsBuilder fetchSize(int fetchSize);
+
+        OptsBuilder maxRows(int maxRows);
+
+        OptsBuilder queryTimeoutSeconds(int seconds);
+
+        default OptsBuilder resultSetType(JdbcQueryOptions.ResultSetType type) {
+            return this.resultSetType(type.value());
+        }
+
+        OptsBuilder resultSetType(int type);
+
+        default OptsBuilder resultSetConcurrency(JdbcQueryOptions.ResultSetConcurrency concurrency) {
+            return this.resultSetConcurrency(concurrency.value());
+        }
+
+        OptsBuilder resultSetConcurrency(int concurrency);
+
+        default OptsBuilder resultSetHoldability(JdbcQueryOptions.ResultSetHoldability holdability) {
+            return this.resultSetHoldability(holdability.value());
+        }
+
+        OptsBuilder resultSetHoldability(int holdability);
+
+        default OptsBuilder generatedKeys(JdbcQueryOptions.GeneratedKeys generatedKeys) {
+            return this.generatedKeys(generatedKeys.value());
+        }
+
+        OptsBuilder generatedKeys(int generatedKeys);
+
+        default OptsBuilder returnGeneratedKeys() {
+            return this.generatedKeys(JdbcQueryOptions.GeneratedKeys.RETURN_GENERATED_KEYS);
+        }
+
+        OptsBuilder returnGeneratedKeys(String... columns);
+
+        JdbcQueryOptions build();
+    }
+
+    interface NamedBatchBuilder {
+
+        NamedBatchBuilder bind(Map<String, ?> values);
+
+        NamedBatchBuilder bind(Consumer<NamedRowBinder> binder);
+
+        default <T> NamedBatchBuilder bindAll(Iterable<T> values, BiConsumer<NamedRowBinder, T> binder) {
+            for (var value : values) {
+                this.bind(row -> binder.accept(row, value));
+            }
+            return this;
+        }
+
+        <T> NamedBatchBuilder bindAllSql(Iterable<T> values, JdbcNamedBatchBinder<T> binder);
+
+        JdbcQueryBatch build();
+    }
+
+    interface TemplateBatchBuilder {
+
+        TemplateBatchBuilder bind(@Nullable Object... values);
+
+        TemplateBatchBuilder bind(Consumer<TemplateRowBinder> binder);
+
+        default <T> TemplateBatchBuilder bindAll(Iterable<T> values, BiConsumer<TemplateRowBinder, T> binder) {
+            for (var value : values) {
+                this.bind(row -> binder.accept(row, value));
+            }
+            return this;
+        }
+
+        <T> TemplateBatchBuilder bindAllSql(Iterable<T> values, JdbcTemplateBatchBinder<T> binder);
+
+        JdbcQueryBatch build();
+    }
+
+    interface NamedRowBinder {
+
+        NamedRowBinder bind(String name, @Nullable Object value);
+
+        NamedRowBinder bind(String name, @Nullable Object value, int sqlType);
+
+        default NamedRowBinder bind(String name, @Nullable Object value, JDBCType sqlType) {
+            return this.bind(name, value, sqlType.getVendorTypeNumber());
+        }
+
+        NamedRowBinder bind(String name, @Nullable Object value, SQLType sqlType);
+
+        <T> NamedRowBinder bind(String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper);
+
+        default NamedRowBinder bindAll(Map<String, ?> values) {
+            for (var entry : values.entrySet()) {
+                this.bind(entry.getKey(), entry.getValue());
+            }
+            return this;
+        }
+    }
+
+    interface TemplateRowBinder {
+
+        TemplateRowBinder bind(@Nullable Object value);
+
+        TemplateRowBinder bind(@Nullable Object value, int sqlType);
+
+        default TemplateRowBinder bind(@Nullable Object value, JDBCType sqlType) {
+            return this.bind(value, sqlType.getVendorTypeNumber());
+        }
+
+        TemplateRowBinder bind(@Nullable Object value, SQLType sqlType);
+
+        <T> TemplateRowBinder bind(@Nullable T value, JdbcParameterColumnMapper<T> mapper);
+
+        default TemplateRowBinder bindAll(@Nullable Object... values) {
+            for (var value : values) {
+                this.bind(value);
+            }
+            return this;
         }
     }
 
     @FunctionalInterface
-    public interface JdbcParameter {
-        void set(PreparedStatement statement, int index) throws SQLException;
+    interface JdbcNamedBatchBinder<T> {
+        void bind(NamedRowBinder binder, T value) throws SQLException;
     }
 
-    private record Parameter(String name, @Nullable Object value, JdbcParameter binder) {}
-
-    public static final class Builder {
-
-        private final StringBuilder sql = new StringBuilder();
-        private final Map<String, ParameterValue> params = new LinkedHashMap<>();
-
-        private Builder() {}
-
-        /**
-         * <b>Русский</b>: Добавляет фрагмент SQL без параметров.
-         * <hr>
-         * <b>English</b>: Appends a SQL fragment without parameters.
-         *
-         * @param sql SQL фрагмент / SQL fragment
-         * @return этот билдер / this builder
-         */
-        public Builder sql(String sql) {
-            this.sql.append(Objects.requireNonNull(sql));
-            return this;
-        }
-
-        /**
-         * <b>Русский</b>: Добавляет фрагмент SQL только если условие истинно.
-         * <hr>
-         * <b>English</b>: Appends a SQL fragment only when the condition is true.
-         *
-         * @param sql       SQL фрагмент / SQL fragment
-         * @param condition условие добавления / append condition
-         * @return этот билдер / this builder
-         */
-        public Builder sqlIf(String sql, boolean condition) {
-            if (condition) {
-                this.sql(sql);
-            }
-            return this;
-        }
-
-        /**
-         * <b>Русский</b>: Добавляет значение именованного параметра.
-         * <hr>
-         * <b>English</b>: Adds a named parameter value.
-         *
-         * @param name  имя параметра без {@code :} / parameter name without {@code :}
-         * @param value значение параметра / parameter value
-         * @return этот билдер / this builder
-         */
-        public Builder param(String name, @Nullable Object value) {
-            Objects.requireNonNull(name);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> statement.setObject(index, item)));
-            return this;
-        }
-
-        public Builder param(String name, @Nullable Object value, int sqlType) {
-            Objects.requireNonNull(name);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> {
-                if (item == null) {
-                    statement.setNull(index, sqlType);
-                } else {
-                    statement.setObject(index, item, sqlType);
-                }
-            }));
-            return this;
-        }
-
-        public Builder param(String name, @Nullable Object value, SQLType sqlType) {
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(sqlType);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> statement.setObject(index, item, sqlType)));
-            return this;
-        }
-
-        @SuppressWarnings("unchecked")
-        public <T> Builder param(String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper) {
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(mapper);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> mapper.set(statement, index, (T) item)));
-            return this;
-        }
-
-        public Builder param(String name, JdbcParameter parameter) {
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(parameter);
-            this.params.put(name, new ParameterValue(null, false, item -> parameter));
-            return this;
-        }
-
-        /**
-         * <b>Русский</b>: Добавляет значение именованного параметра только если условие истинно.
-         * <hr>
-         * <b>English</b>: Adds a named parameter value only when the condition is true.
-         *
-         * @param name      имя параметра без {@code :} / parameter name without {@code :}
-         * @param value     значение параметра / parameter value
-         * @param condition условие добавления / append condition
-         * @return этот билдер / this builder
-         */
-        public Builder paramIf(String name, @Nullable Object value, boolean condition) {
-            if (condition) {
-                this.param(name, value);
-            }
-            return this;
-        }
-
-        public Builder paramIf(String name, @Nullable Object value, int sqlType, boolean condition) {
-            if (condition) {
-                this.param(name, value, sqlType);
-            }
-            return this;
-        }
-
-        public Builder paramIf(String name, @Nullable Object value, SQLType sqlType, boolean condition) {
-            if (condition) {
-                this.param(name, value, sqlType);
-            }
-            return this;
-        }
-
-        public <T> Builder paramIf(String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper, boolean condition) {
-            if (condition) {
-                this.param(name, value, mapper);
-            }
-            return this;
-        }
-
-        public Builder paramIf(String name, JdbcParameter parameter, boolean condition) {
-            if (condition) {
-                this.param(name, parameter);
-            }
-            return this;
-        }
-
-        /**
-         * <b>Русский</b>: Добавляет SQL фрагмент и значение параметра одним вызовом.
-         * <hr>
-         * <b>English</b>: Appends a SQL fragment and adds a parameter value in one call.
-         *
-         * @param sql   SQL фрагмент с именованным параметром / SQL fragment with a named parameter
-         * @param name  имя параметра без {@code :} / parameter name without {@code :}
-         * @param value значение параметра / parameter value
-         * @return этот билдер / this builder
-         */
-        public Builder bind(String sql, String name, @Nullable Object value) {
-            return this.sql(sql).param(name, value);
-        }
-
-        public Builder bind(String sql, String name, @Nullable Object value, int sqlType) {
-            return this.sql(sql).param(name, value, sqlType);
-        }
-
-        public Builder bind(String sql, String name, @Nullable Object value, SQLType sqlType) {
-            return this.sql(sql).param(name, value, sqlType);
-        }
-
-        public <T> Builder bind(String sql, String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper) {
-            return this.sql(sql).param(name, value, mapper);
-        }
-
-        public Builder bind(String sql, String name, JdbcParameter parameter) {
-            return this.sql(sql).param(name, parameter);
-        }
-
-        /**
-         * <b>Русский</b>: Добавляет SQL фрагмент и значение параметра одним вызовом только если условие истинно.
-         * <hr>
-         * <b>English</b>: Appends a SQL fragment and adds a parameter value in one call only when the condition is true.
-         *
-         * @param sql       SQL фрагмент с именованным параметром / SQL fragment with a named parameter
-         * @param name      имя параметра без {@code :} / parameter name without {@code :}
-         * @param value     значение параметра / parameter value
-         * @param condition условие добавления / append condition
-         * @return этот билдер / this builder
-         */
-        public Builder bindIf(String sql, String name, @Nullable Object value, boolean condition) {
-            if (condition) {
-                this.bind(sql, name, value);
-            }
-            return this;
-        }
-
-        public Builder bindIf(String sql, String name, @Nullable Object value, int sqlType, boolean condition) {
-            if (condition) {
-                this.bind(sql, name, value, sqlType);
-            }
-            return this;
-        }
-
-        public Builder bindIf(String sql, String name, @Nullable Object value, SQLType sqlType, boolean condition) {
-            if (condition) {
-                this.bind(sql, name, value, sqlType);
-            }
-            return this;
-        }
-
-        public <T> Builder bindIf(String sql, String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper, boolean condition) {
-            if (condition) {
-                this.bind(sql, name, value, mapper);
-            }
-            return this;
-        }
-
-        public Builder bindIf(String sql, String name, JdbcParameter parameter, boolean condition) {
-            if (condition) {
-                this.bind(sql, name, parameter);
-            }
-            return this;
-        }
-
-        /**
-         * <b>Русский</b>: Создает неизменяемый {@link JdbcQuery}, заменяя именованные параметры на JDBC плейсхолдеры.
-         * Коллекции и массивы, кроме {@code byte[]}, раскрываются в несколько плейсхолдеров для {@code IN (:ids)}.
-         * <hr>
-         * <b>English</b>: Creates an immutable {@link JdbcQuery}, replacing named parameters with JDBC placeholders.
-         * Collections and arrays, except {@code byte[]}, are expanded into multiple placeholders for {@code IN (:ids)}.
-         *
-         * @return готовый JDBC запрос / built JDBC query
-         */
-        public JdbcQuery build() {
-            var sourceSql = this.sql.toString();
-            var parsed = parse(sourceSql, this.params);
-            return new JdbcQuery(sourceSql, parsed.sql(), parsed.parameters());
-        }
-
-        private static ParsedQuery parse(String sourceSql, Map<String, ParameterValue> params) {
-            var sql = new StringBuilder(sourceSql.length());
-            var parameters = new ArrayList<Parameter>();
-            var usedParams = new ArrayList<String>();
-            boolean singleQuoted = false;
-            boolean doubleQuoted = false;
-
-            for (int i = 0; i < sourceSql.length(); i++) {
-                char c = sourceSql.charAt(i);
-                if (c == '\'' && !doubleQuoted) {
-                    singleQuoted = !singleQuoted;
-                    sql.append(c);
-                    continue;
-                }
-                if (c == '"' && !singleQuoted) {
-                    doubleQuoted = !doubleQuoted;
-                    sql.append(c);
-                    continue;
-                }
-                if (c != ':' || singleQuoted || doubleQuoted) {
-                    sql.append(c);
-                    continue;
-                }
-                if (i + 1 < sourceSql.length() && sourceSql.charAt(i + 1) == ':') {
-                    sql.append("::");
-                    i++;
-                    continue;
-                }
-                if (i > 0 && sourceSql.charAt(i - 1) == ':') {
-                    sql.append(c);
-                    continue;
-                }
-
-                int nameStart = i + 1;
-                if (nameStart >= sourceSql.length() || !isNameStart(sourceSql.charAt(nameStart))) {
-                    sql.append(c);
-                    continue;
-                }
-
-                int nameEnd = nameStart + 1;
-                while (nameEnd < sourceSql.length() && isNamePart(sourceSql.charAt(nameEnd))) {
-                    nameEnd++;
-                }
-
-                var name = sourceSql.substring(nameStart, nameEnd);
-                if (!params.containsKey(name)) {
-                    throw new IllegalArgumentException("Parameter '%s' is not specified".formatted(name));
-                }
-                usedParams.add(name);
-                appendParameter(sql, parameters, name, params.get(name));
-                i = nameEnd - 1;
-            }
-
-            for (var param : params.keySet()) {
-                if (!usedParams.contains(param)) {
-                    throw new IllegalArgumentException("Parameter '%s' is not used in SQL".formatted(param));
-                }
-            }
-
-            return new ParsedQuery(sql.toString(), parameters);
-        }
-
-        private static void appendParameter(StringBuilder sql, List<Parameter> parameters, String name, ParameterValue value) {
-            var values = value.expandable()
-                ? expand(value.value())
-                : null;
-            if (values == null) {
-                sql.append('?');
-                parameters.add(new Parameter(name, value.value(), value.binder(value.value())));
-                return;
-            }
-            if (values.isEmpty()) {
-                throw new IllegalArgumentException("Parameter '%s' collection is empty".formatted(name));
-            }
-            sql.append(String.join(", ", Collections.nCopies(values.size(), "?")));
-            for (var item : values) {
-                parameters.add(new Parameter(name, item, value.binder(item)));
-            }
-        }
-
-        @Nullable
-        private static List<?> expand(@Nullable Object value) {
-            if (value instanceof Collection<?> collection) {
-                return new ArrayList<>(collection);
-            }
-            if (value != null && value.getClass().isArray() && !(value instanceof byte[])) {
-                var result = new ArrayList<>();
-                for (int i = 0; i < Array.getLength(value); i++) {
-                    result.add(Array.get(value, i));
-                }
-                return result;
-            }
-            return null;
-        }
-
-        private static boolean isNameStart(char c) {
-            return Character.isLetter(c) || c == '_';
-        }
-
-        private static boolean isNamePart(char c) {
-            return Character.isLetterOrDigit(c) || c == '_';
-        }
-    }
-
-    private record ParameterValue(@Nullable Object value, boolean expandable, BinderFactory binderFactory) {
-        JdbcParameter binder(@Nullable Object value) {
-            return this.binderFactory.create(value);
-        }
-    }
-
-    private interface BinderFactory {
-        JdbcParameter create(@Nullable Object value);
-    }
-
-    private record ParsedQuery(String sql, List<Parameter> parameters) {}
-
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof JdbcQuery jdbcQuery)) return false;
-        return Objects.equals(sql, jdbcQuery.sql) && Objects.equals(parameterValues(), jdbcQuery.parameterValues());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(sql, parameterValues());
-    }
-
-    @Override
-    public String toString() {
-        return sourceSql;
+    @FunctionalInterface
+    interface JdbcTemplateBatchBinder<T> {
+        void bind(TemplateRowBinder binder, T value) throws SQLException;
     }
 }
