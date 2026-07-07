@@ -109,8 +109,8 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
         val returnType = function.returnType!!
         val isSuspend = funDeclaration.isSuspend()
 
-        b.addStatement("val _observation = this._cassandraConnectionFactory.telemetry().observe(_query)")
-        b.addStatement("val _session = this._cassandraConnectionFactory.currentSession()")
+        b.addStatement("val _observation = this._cassandraSession.telemetry().observe(_query)")
+        b.addStatement("val _session = this._cassandraSession.currentSession()")
         b.addStatement("_observation.observeConnection()")
         if (isSuspend) {
             val code = CodeBlock.builder()
@@ -239,24 +239,24 @@ class CassandraRepositoryGenerator(private val resolver: Resolver) : RepositoryG
 
 
     private fun enrichWithExecutor(repositoryElement: KSClassDeclaration, builder: TypeSpec.Builder, constructorBuilder: FunSpec.Builder) {
-        builder.addProperty("_cassandraConnectionFactory", CassandraTypes.connectionFactory, KModifier.PRIVATE)
+        builder.addProperty("_cassandraSession", CassandraTypes.connectionFactory, KModifier.PRIVATE)
         builder.addSuperinterface(CassandraTypes.repository)
         builder.addFunction(
             FunSpec.builder("executor")
                 .addModifiers(KModifier.OVERRIDE)
                 .returns(CassandraTypes.connectionFactory)
-                .addStatement("return this._cassandraConnectionFactory")
+                .addStatement("return this._cassandraSession")
                 .build()
         )
         val executorTag = repositoryElement.parseExecutorTag()
         if (executorTag != null) {
             constructorBuilder.addParameter(
-                ParameterSpec.builder("_cassandraConnectionFactory", CassandraTypes.connectionFactory).addAnnotation(executorTag).build()
+                ParameterSpec.builder("_cassandraSession", CassandraTypes.connectionFactory).addAnnotation(executorTag).build()
             )
         } else {
-            constructorBuilder.addParameter("_cassandraConnectionFactory", CassandraTypes.connectionFactory)
+            constructorBuilder.addParameter("_cassandraSession", CassandraTypes.connectionFactory)
         }
-        constructorBuilder.addStatement("this._cassandraConnectionFactory = _cassandraConnectionFactory")
+        constructorBuilder.addStatement("this._cassandraSession = _cassandraSession")
     }
 
 }

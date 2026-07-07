@@ -9,7 +9,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 /**
  * Immutable JDBC query descriptor that can create a {@link PreparedStatement} and bind all parameters.
@@ -26,14 +25,14 @@ public interface JdbcQuery {
      * <p>
      * Use named queries when SQL is easier to read with {@code :name} placeholders. Parameters are
      * bound separately by name, then converted to JDBC {@code ?} placeholders when {@link NamedQueryBuilder#build()}
-     * is called. Collections and arrays except {@code byte[]} are expanded, which is useful for
+     * is called. {@link NamedQueryBuilder#bindIn(String, Iterable)} expands values for
      * {@code IN (:ids)} clauses.
      * <pre>{@code
      * var query = JdbcQuery.named()
      *     .sql("SELECT id, name FROM %s WHERE status = :status".formatted(tableName))
      *     .bind("status", status)
      *     .sqlIf(" AND id IN (:ids)", !ids.isEmpty())
-     *     .bindIf("ids", ids, !ids.isEmpty())
+     *     .bindInIf("ids", ids, !ids.isEmpty())
      *     .build();
      *
      * var users = jdbc.queryList(query, row -> new User(row.getLong("id"), row.getString("name")));
@@ -174,6 +173,32 @@ public interface JdbcQuery {
         NamedQueryBuilder bind(String name, JdbcParameterBinder parameter);
 
         /**
+         * Binds and expands a named parameter value for an {@code IN (:name)} clause.
+         * <p>
+         * Unlike {@link #bind(String, Object)}, this method intentionally creates one JDBC
+         * placeholder per iterable item. Use regular {@code bind(...)} for scalar values,
+         * collections stored as one database value, arrays, or {@code byte[]}.
+         * <pre>{@code
+         * JdbcQuery.named()
+         *     .sql("SELECT * FROM users WHERE id IN (:ids)")
+         *     .bindIn("ids", ids);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        NamedQueryBuilder bindIn(String name, Iterable<?> values);
+
+        NamedQueryBuilder bindIn(String name, Iterable<?> values, int sqlType);
+
+        default NamedQueryBuilder bindIn(String name, Iterable<?> values, JDBCType sqlType) {
+            return bindIn(name, values, sqlType.getVendorTypeNumber());
+        }
+
+        NamedQueryBuilder bindIn(String name, Iterable<?> values, SQLType sqlType);
+
+        <T> NamedQueryBuilder bindIn(String name, Iterable<T> values, JdbcParameterColumnMapper<T> mapper);
+
+        /**
          * Binds all map entries as named parameters.
          * <pre>{@code
          * var values = Map.of("id", id, "status", status);
@@ -236,6 +261,36 @@ public interface JdbcQuery {
         default NamedQueryBuilder bindIf(String name, JdbcParameterBinder parameter, boolean condition) {
             return condition
                 ? this.bind(name, parameter)
+                : this;
+        }
+
+        default NamedQueryBuilder bindInIf(String name, Iterable<?> values, boolean condition) {
+            return condition
+                ? this.bindIn(name, values)
+                : this;
+        }
+
+        default NamedQueryBuilder bindInIf(String name, Iterable<?> values, int sqlType, boolean condition) {
+            return condition
+                ? this.bindIn(name, values, sqlType)
+                : this;
+        }
+
+        default NamedQueryBuilder bindInIf(String name, Iterable<?> values, JDBCType sqlType, boolean condition) {
+            return condition
+                ? this.bindIn(name, values, sqlType)
+                : this;
+        }
+
+        default NamedQueryBuilder bindInIf(String name, Iterable<?> values, SQLType sqlType, boolean condition) {
+            return condition
+                ? this.bindIn(name, values, sqlType)
+                : this;
+        }
+
+        default <T> NamedQueryBuilder bindInIf(String name, Iterable<T> values, JdbcParameterColumnMapper<T> mapper, boolean condition) {
+            return condition
+                ? this.bindIn(name, values, mapper)
                 : this;
         }
 

@@ -80,7 +80,7 @@ class JdbcQueryExecutorTest {
                 .sqlIf(" AND status = :status", status != null)
                 .bindIf("status", status, status != null)
                 .sql(" AND value IN (:values)")
-                .bind("values", Arrays.asList("test1", "test3"))
+                .bindIn("values", Arrays.asList("test1", "test3"))
                 .sql(" ORDER BY id")
                 .build();
             JdbcRowMapper<Entity> mapper = rs -> new Entity(rs.getLong("id"), rs.getString("value"));

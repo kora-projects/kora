@@ -4,7 +4,6 @@ import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import org.jspecify.annotations.Nullable;
 
-import java.lang.reflect.Array;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -12,14 +11,12 @@ import java.sql.SQLException;
 import java.sql.SQLType;
 import java.sql.Statement;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 final class JdbcQueryImpl implements JdbcQuery {
 
@@ -240,14 +237,14 @@ final class JdbcQueryImpl implements JdbcQuery {
         @Override
         public NamedQueryBuilder bind(String name, @Nullable Object value) {
             Objects.requireNonNull(name);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> statement.setObject(index, item)));
+            this.params.put(name, new ParameterValue(Collections.singletonList(value), false, item -> (statement, index) -> statement.setObject(index, item)));
             return this;
         }
 
         @Override
         public NamedQueryBuilder bind(String name, @Nullable Object value, int sqlType) {
             Objects.requireNonNull(name);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> {
+            this.params.put(name, new ParameterValue(Collections.singletonList(value), false, item -> (statement, index) -> {
                 if (item == null) {
                     statement.setNull(index, sqlType);
                 } else {
@@ -261,7 +258,7 @@ final class JdbcQueryImpl implements JdbcQuery {
         public NamedQueryBuilder bind(String name, @Nullable Object value, SQLType sqlType) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(sqlType);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> statement.setObject(index, item, sqlType)));
+            this.params.put(name, new ParameterValue(Collections.singletonList(value), false, item -> (statement, index) -> statement.setObject(index, item, sqlType)));
             return this;
         }
 
@@ -270,7 +267,7 @@ final class JdbcQueryImpl implements JdbcQuery {
         public <T> NamedQueryBuilder bind(String name, @Nullable T value, JdbcParameterColumnMapper<T> mapper) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(mapper);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> mapper.set(statement, index, (T) item)));
+            this.params.put(name, new ParameterValue(Collections.singletonList(value), false, item -> (statement, index) -> mapper.set(statement, index, (T) item)));
             return this;
         }
 
@@ -278,7 +275,48 @@ final class JdbcQueryImpl implements JdbcQuery {
         public NamedQueryBuilder bind(String name, JdbcParameterBinder parameter) {
             Objects.requireNonNull(name);
             Objects.requireNonNull(parameter);
-            this.params.put(name, new ParameterValue(null, false, item -> parameter));
+            this.params.put(name, new ParameterValue(Collections.singletonList(null), false, item -> parameter));
+            return this;
+        }
+
+        @Override
+        public NamedQueryBuilder bindIn(String name, Iterable<?> values) {
+            Objects.requireNonNull(name);
+            Objects.requireNonNull(values);
+            this.params.put(name, new ParameterValue(values(values), true, item -> (statement, index) -> statement.setObject(index, item)));
+            return this;
+        }
+
+        @Override
+        public NamedQueryBuilder bindIn(String name, Iterable<?> values, int sqlType) {
+            Objects.requireNonNull(name);
+            Objects.requireNonNull(values);
+            this.params.put(name, new ParameterValue(values(values), true, item -> (statement, index) -> {
+                if (item == null) {
+                    statement.setNull(index, sqlType);
+                } else {
+                    statement.setObject(index, item, sqlType);
+                }
+            }));
+            return this;
+        }
+
+        @Override
+        public NamedQueryBuilder bindIn(String name, Iterable<?> values, SQLType sqlType) {
+            Objects.requireNonNull(name);
+            Objects.requireNonNull(values);
+            Objects.requireNonNull(sqlType);
+            this.params.put(name, new ParameterValue(values(values), true, item -> (statement, index) -> statement.setObject(index, item, sqlType)));
+            return this;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public <T> NamedQueryBuilder bindIn(String name, Iterable<T> values, JdbcParameterColumnMapper<T> mapper) {
+            Objects.requireNonNull(name);
+            Objects.requireNonNull(values);
+            Objects.requireNonNull(mapper);
+            this.params.put(name, new ParameterValue(values(values), true, item -> (statement, index) -> mapper.set(statement, index, (T) item)));
             return this;
         }
 
@@ -625,12 +663,11 @@ final class JdbcQueryImpl implements JdbcQuery {
     }
 
     private static void appendParameter(StringBuilder sql, List<Parameter> parameters, String name, ParameterValue value) {
-        var values = value.expandable()
-            ? expand(value.value())
-            : null;
-        if (values == null) {
+        var values = value.values();
+        if (!value.expandable()) {
             sql.append('?');
-            parameters.add(new Parameter(name, value.value(), value.binder(value.value())));
+            var parameterValue = values.get(0);
+            parameters.add(new Parameter(name, parameterValue, value.binder(parameterValue)));
             return;
         }
         if (values.isEmpty()) {
@@ -642,19 +679,12 @@ final class JdbcQueryImpl implements JdbcQuery {
         }
     }
 
-    @Nullable
-    private static List<?> expand(@Nullable Object value) {
-        if (value instanceof Collection<?> collection) {
-            return new ArrayList<>(collection);
+    private static List<Object> values(Iterable<?> values) {
+        var result = new ArrayList<>();
+        for (var value : values) {
+            result.add(value);
         }
-        if (value != null && value.getClass().isArray() && !(value instanceof byte[])) {
-            var result = new ArrayList<>();
-            for (int i = 0; i < Array.getLength(value); i++) {
-                result.add(Array.get(value, i));
-            }
-            return result;
-        }
-        return null;
+        return result;
     }
 
     private static Parameter templateParameter(@Nullable Object value, BinderFactory binderFactory) {
@@ -669,7 +699,7 @@ final class JdbcQueryImpl implements JdbcQuery {
         return Character.isLetterOrDigit(c) || c == '_';
     }
 
-    private record ParameterValue(@Nullable Object value, boolean expandable, BinderFactory binderFactory) {
+    private record ParameterValue(List<?> values, boolean expandable, BinderFactory binderFactory) {
         JdbcParameterBinder binder(@Nullable Object value) {
             return this.binderFactory.create(value);
         }

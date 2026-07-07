@@ -14,7 +14,10 @@ public interface CassandraDatabaseModule extends CassandraMapperModule {
         return mapper.mapOrThrow(config.get("cassandra"));
     }
 
-    default CassandraDataSource cassandraDatabase(CassandraConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
-        return new CassandraDataSource(config, loaderConfigurer, sessionBuilderConfigurer, telemetryFactory);
+    default CassandraSession cassandraSession(CassandraConfig config,
+                                              DatabaseTelemetryFactory telemetryFactory,
+                                              @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer,
+                                              @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
+        return new CassandraSession(config, telemetryFactory, loaderConfigurer, sessionBuilderConfigurer);
     }
 }

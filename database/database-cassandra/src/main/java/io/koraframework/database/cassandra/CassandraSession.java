@@ -4,6 +4,7 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
@@ -14,9 +15,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-public final class CassandraDataSource implements CassandraExecutor, Lifecycle {
+public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>, Lifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger(CassandraDataSource.class);
+    private static final Logger logger = LoggerFactory.getLogger(CassandraSession.class);
 
     private final CassandraConfig config;
     @Nullable
@@ -24,9 +25,13 @@ public final class CassandraDataSource implements CassandraExecutor, Lifecycle {
     @Nullable
     private final Configurer<CqlSessionBuilder> sessionBuilderConfigurer;
     private final DatabaseTelemetry telemetry;
+
     private volatile CqlSession cqlSession;
 
-    public CassandraDataSource(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, DatabaseTelemetryFactory telemetryFactory) {
+    public CassandraSession(CassandraConfig config,
+                            DatabaseTelemetryFactory telemetryFactory,
+                            @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer,
+                            @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
         this.config = config;
         this.loaderConfigurer = loaderConfigurer;
         this.sessionBuilderConfigurer = sessionBuilderConfigurer;
@@ -45,6 +50,11 @@ public final class CassandraDataSource implements CassandraExecutor, Lifecycle {
     @Override
     public DatabaseTelemetry telemetry() {
         return this.telemetry;
+    }
+
+    @Override
+    public CqlSession value() {
+        return this.cqlSession;
     }
 
     @Override

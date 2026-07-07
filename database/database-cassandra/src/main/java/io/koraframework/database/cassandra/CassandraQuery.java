@@ -1,330 +1,404 @@
 package io.koraframework.database.cassandra;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.data.SettableByName;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import org.jspecify.annotations.Nullable;
 
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.function.Consumer;
 
 /**
- * <b>Русский</b>: Неизменяемое описание CQL запроса с именованными параметрами, которое умеет создавать
- * {@link BoundStatement} из {@link PreparedStatement} и проставлять все параметры в правильном порядке.
- * <hr>
- * <b>English</b>: An immutable CQL query descriptor with named parameters that can create a {@link BoundStatement}
- * from a {@link PreparedStatement} and bind all parameters in the correct order.
- * <br>
- * <br>
- * Пример / Example:
- * <pre>
- * {@code
- * var query = CassandraQuery.builder()
- *     .sql("SELECT * FROM users WHERE tenant_id = :tenant_id")
- *     .bindIf(" AND status = :status", "status", status, status != null)
+ * Immutable CQL query descriptor that can create a {@link BoundStatement} and bind all parameters.
+ * <p>
+ * A query stores original CQL, executable Cassandra CQL, statement options, and binders in the order
+ * required by Cassandra.
+ * <pre>{@code
+ * var query = CassandraQuery.named()
+ *     .cql("SELECT id, name FROM users WHERE tenant_id = :tenant_id AND id = :id")
+ *     .bind("tenant_id", tenantId)
+ *     .bind("id", id)
  *     .build();
- *
- * var statement = query.prepare(session);
- * var resultSet = session.execute(statement);
- * }
- * </pre>
+ * }</pre>
  *
  * @see CassandraExecutor#query(CassandraQuery, java.util.function.Function)
  */
-public final class CassandraQuery {
+public interface CassandraQuery {
 
-    private final String sourceCql;
-    private final String cql;
-    private final List<Parameter> parameters;
-
-    private CassandraQuery(String sourceCql, String cql, List<Parameter> parameters) {
-        this.sourceCql = sourceCql;
-        this.cql = cql;
-        this.parameters = List.copyOf(parameters);
+    /**
+     * Creates a builder for CQL with named parameters.
+     * <p>
+     * Use named queries when CQL is easier to read with {@code :name} placeholders. Parameters are
+     * bound separately by name, then converted to Cassandra positional placeholders when
+     * {@link NamedQueryBuilder#build()} is called. {@link NamedQueryBuilder#bindIn(String, Iterable)}
+     * expands values for {@code IN (:ids)} clauses.
+     * <pre>{@code
+     * var query = CassandraQuery.named()
+     *     .cql("SELECT id, name FROM users WHERE tenant_id = :tenant_id")
+     *     .bind("tenant_id", tenantId)
+     *     .cqlIf(" AND status = :status", status != null)
+     *     .bindIf("status", status, status != null)
+     *     .cqlIf(" AND id IN (:ids)", !ids.isEmpty())
+     *     .bindInIf("ids", ids, !ids.isEmpty())
+     *     .build();
+     *
+     * var users = cassandra.queryList(query, row -> new User(row.getUuid("id"), row.getString("name")));
+     * }</pre>
+     * CQL identifiers or fragments should be formatted before they are passed to the builder.
+     * User values should be passed through {@code bind(...)} or {@code bindIn(...)}.
+     *
+     * @return named query builder
+     */
+    static NamedQueryBuilder named() {
+        return CassandraQueryImpl.named();
     }
 
-    public static Builder builder() {
-        return new Builder();
+    /**
+     * Creates a builder for CQL with positional Cassandra placeholders.
+     * <p>
+     * Use template queries when CQL already has Cassandra positional placeholders and parameters are
+     * bound by position.
+     * <pre>{@code
+     * var query = CassandraQuery.template()
+     *     .cql("SELECT id, name FROM users WHERE tenant_id = ?")
+     *     .bind(tenantId)
+     *     .cqlIf(" AND status = ?", status != null, status)
+     *     .build();
+     *
+     * var users = cassandra.queryList(query, row -> new User(row.getUuid("id"), row.getString("name")));
+     * }</pre>
+     * CQL identifiers or fragments should be formatted before they are passed to the builder.
+     * User values should be passed through {@code bind(...)}.
+     *
+     * @return template query builder
+     */
+    static TemplateBuilder template() {
+        return CassandraQueryImpl.template();
     }
 
-    public String sourceCql() {
-        return this.sourceCql;
+    /**
+     * Creates a positional query in one call.
+     * <p>
+     * This is a compact form of {@link #template()} for simple CQL with Cassandra positional
+     * placeholders. Arguments are bound in placeholder order.
+     * <pre>{@code
+     * var query = CassandraQuery.template(
+     *     "SELECT id, name FROM users WHERE tenant_id = ? AND id = ?",
+     *     tenantId,
+     *     id
+     * );
+     *
+     * var users = cassandra.queryList(query, row -> new User(row.getUuid("id"), row.getString("name")));
+     * }</pre>
+     *
+     * @param cql  CQL with positional Cassandra placeholders
+     * @param args parameter values in placeholder order
+     * @return built query
+     */
+    static CassandraQuery template(String cql, @Nullable Object... args) {
+        return template()
+            .cql(cql)
+            .bindAll(args)
+            .build();
     }
 
-    public String cql() {
-        return this.cql;
-    }
+    /** @return original CQL before named parameters are converted */
+    String sourceCql();
 
-    public List<Object> parameterValues() {
-        return this.parameters.stream()
-            .map(Parameter::value)
-            .collect(Collectors.toUnmodifiableList());
-    }
+    /** @return executable CQL with positional placeholders */
+    String cql();
 
-    public BoundStatement prepare(CqlSession session) {
-        return this.bind(session.prepare(this.cql));
-    }
+    /** @return statement options applied to the bound statement */
+    CassandraQueryOptions options();
 
-    public BoundStatement bind(PreparedStatement statement) {
-        var builder = statement.boundStatementBuilder();
-        for (int i = 0; i < this.parameters.size(); i++) {
-            this.parameters.get(i).binder().set(builder, i);
+    /** @return full parameter descriptors in Cassandra binding order */
+    List<Parameter> parameters();
+
+    BoundStatement prepare(CqlSession session);
+
+    BoundStatement bind(PreparedStatement statement);
+
+    /**
+     * Builder for CQL with named parameters.
+     * <p>
+     * CQL fragments and parameter values are added separately: {@link #cql(String)} changes CQL,
+     * {@link #bind(String, Object)} supplies values. All named parameters used in CQL must be bound,
+     * and all bound parameters must be used in CQL.
+     * <pre>{@code
+     * var query = CassandraQuery.named()
+     *     .cql("SELECT id, name FROM users WHERE tenant_id = :tenant_id")
+     *     .bind("tenant_id", tenantId)
+     *     .cqlIf(" AND status = :status", status != null)
+     *     .bindIf("status", status, status != null)
+     *     .build();
+     * }</pre>
+     */
+    interface NamedQueryBuilder {
+
+        NamedQueryBuilder cql(String cql);
+
+        default NamedQueryBuilder cqlIf(String cql, boolean condition) {
+            return condition
+                ? this.cql(cql)
+                : this;
         }
-        return builder.build();
+
+        default NamedQueryBuilder opts(Consumer<OptsBuilder> options) {
+            var builder = OptsBuilder.builder();
+            options.accept(builder);
+            return this.opts(builder.build());
+        }
+
+        /** @return this builder after setting statement options */
+        NamedQueryBuilder opts(CassandraQueryOptions options);
+
+        /**
+         * Binds a named parameter value.
+         * <pre>{@code
+         * CassandraQuery.named()
+         *     .cql("SELECT * FROM users WHERE id = :id")
+         *     .bind("id", id);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        NamedQueryBuilder bind(String name, @Nullable Object value);
+
+        <T> NamedQueryBuilder bind(String name, @Nullable T value, CassandraParameterColumnMapper<T> mapper);
+
+        NamedQueryBuilder bind(String name, CassandraParameterBinder parameter);
+
+        /**
+         * Binds all map entries as named parameters.
+         * <pre>{@code
+         * var values = Map.of("tenant_id", tenantId, "status", status);
+         *
+         * CassandraQuery.named()
+         *     .cql("SELECT * FROM users WHERE tenant_id = :tenant_id AND status = :status")
+         *     .bindAll(values);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        default NamedQueryBuilder bindAll(Map<String, ?> values) {
+            for (var entry : values.entrySet()) {
+                this.bind(entry.getKey(), entry.getValue());
+            }
+            return this;
+        }
+
+        /**
+         * Binds and expands a named parameter value for an {@code IN (:name)} clause.
+         * <pre>{@code
+         * CassandraQuery.named()
+         *     .cql("SELECT * FROM users WHERE tenant_id = :tenant_id AND id IN (:ids)")
+         *     .bind("tenant_id", tenantId)
+         *     .bindIn("ids", ids);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        NamedQueryBuilder bindIn(String name, Iterable<?> values);
+
+        <T> NamedQueryBuilder bindIn(String name, Iterable<T> values, CassandraParameterColumnMapper<T> mapper);
+
+        /**
+         * Binds a named parameter only when condition is true.
+         * <pre>{@code
+         * CassandraQuery.named()
+         *     .cql("SELECT * FROM users WHERE tenant_id = :tenant_id")
+         *     .bind("tenant_id", tenantId)
+         *     .cqlIf(" AND status = :status", status != null)
+         *     .bindIf("status", status, status != null);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        default NamedQueryBuilder bindIf(String name, @Nullable Object value, boolean condition) {
+            return condition
+                ? this.bind(name, value)
+                : this;
+        }
+
+        default <T> NamedQueryBuilder bindIf(String name, @Nullable T value, CassandraParameterColumnMapper<T> mapper, boolean condition) {
+            return condition
+                ? this.bind(name, value, mapper)
+                : this;
+        }
+
+        default NamedQueryBuilder bindIf(String name, CassandraParameterBinder parameter, boolean condition) {
+            return condition
+                ? this.bind(name, parameter)
+                : this;
+        }
+
+        default NamedQueryBuilder bindInIf(String name, Iterable<?> values, boolean condition) {
+            return condition
+                ? this.bindIn(name, values)
+                : this;
+        }
+
+        default <T> NamedQueryBuilder bindInIf(String name, Iterable<T> values, CassandraParameterColumnMapper<T> mapper, boolean condition) {
+            return condition
+                ? this.bindIn(name, values, mapper)
+                : this;
+        }
+
+        /** @return built immutable named query */
+        CassandraQuery build();
     }
 
+    /**
+     * Builder for CQL with positional Cassandra placeholders.
+     * <pre>{@code
+     * var query = CassandraQuery.template()
+     *     .cql("SELECT id, name FROM users WHERE tenant_id = ?")
+     *     .bind(tenantId)
+     *     .cqlIf(" AND status = ?", status != null, status)
+     *     .build();
+     * }</pre>
+     */
+    interface TemplateBuilder {
+
+        TemplateBuilder cql(String cql);
+
+        default TemplateBuilder cqlIf(String cql, boolean condition) {
+            return condition
+                ? this.cql(cql)
+                : this;
+        }
+
+        /**
+         * Appends CQL and binds positional values only when condition is true.
+         * <pre>{@code
+         * CassandraQuery.template()
+         *     .cql("SELECT * FROM users WHERE tenant_id = ?")
+         *     .bind(tenantId)
+         *     .cqlIf(" AND status = ?", status != null, status);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        default TemplateBuilder cqlIf(String cql, boolean condition, @Nullable Object... args) {
+            if (condition) {
+                this.cql(cql);
+                this.bindAll(args);
+            }
+            return this;
+        }
+
+        default TemplateBuilder opts(Consumer<OptsBuilder> options) {
+            var builder = OptsBuilder.builder();
+            options.accept(builder);
+            return this.opts(builder.build());
+        }
+
+        /** @return this builder after setting statement options */
+        TemplateBuilder opts(CassandraQueryOptions options);
+
+        /**
+         * Binds next positional parameter value.
+         * <pre>{@code
+         * CassandraQuery.template()
+         *     .cql("SELECT * FROM users WHERE id = ?")
+         *     .bind(id);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        TemplateBuilder bind(@Nullable Object value);
+
+        <T> TemplateBuilder bind(@Nullable T value, CassandraParameterColumnMapper<T> mapper);
+
+        TemplateBuilder bind(CassandraParameterBinder parameter);
+
+        /**
+         * Binds values in placeholder order.
+         * <pre>{@code
+         * CassandraQuery.template()
+         *     .cql("SELECT * FROM users WHERE tenant_id = ? AND status = ?")
+         *     .bindAll(tenantId, status);
+         * }</pre>
+         *
+         * @return this builder
+         */
+        default TemplateBuilder bindAll(@Nullable Object... values) {
+            for (var value : values) {
+                this.bind(value);
+            }
+            return this;
+        }
+
+        /** @return built immutable template query */
+        CassandraQuery build();
+    }
+
+    interface OptsBuilder {
+
+        static OptsBuilder builder() {
+            return CassandraQueryImpl.opts();
+        }
+
+        /**
+         * @return this builder after setting request consistency level
+         * @see BoundStatementBuilder#setConsistencyLevel(ConsistencyLevel)
+         */
+        OptsBuilder consistencyLevel(ConsistencyLevel consistencyLevel);
+
+        /**
+         * @return this builder after setting request serial consistency level
+         * @see BoundStatementBuilder#setSerialConsistencyLevel(ConsistencyLevel)
+         */
+        OptsBuilder serialConsistencyLevel(ConsistencyLevel consistencyLevel);
+
+        /**
+         * @return this builder after setting request page size
+         * @see BoundStatementBuilder#setPageSize(int)
+         */
+        OptsBuilder pageSize(int pageSize);
+
+        /**
+         * @return this builder after setting request timeout
+         * @see BoundStatementBuilder#setTimeout(Duration)
+         */
+        OptsBuilder timeout(Duration timeout);
+
+        /**
+         * @return this builder after setting request idempotence flag
+         * @see BoundStatementBuilder#setIdempotence(Boolean)
+         */
+        OptsBuilder idempotent(boolean idempotent);
+
+        /**
+         * @return this builder after enabling or disabling request tracing
+         * @see BoundStatementBuilder#setTracing(boolean)
+         */
+        OptsBuilder tracing(boolean tracing);
+
+        /** @return built immutable statement options */
+        CassandraQueryOptions build();
+    }
+
+    /**
+     * Bound parameter descriptor.
+     *
+     * @param name   named parameter name, or empty string for positional template parameters
+     * @param value  original parameter value
+     * @param binder binder that writes this value to a {@link BoundStatement}
+     */
+    record Parameter(String name, @Nullable Object value, CassandraParameterBinder binder) {}
+
+    /**
+     * Custom binder for a single Cassandra placeholder.
+     */
     @FunctionalInterface
-    public interface CassandraParameter {
+    interface CassandraParameterBinder {
         void set(SettableByName<?> statement, int index);
-    }
-
-    private record Parameter(String name, @Nullable Object value, CassandraParameter binder) {}
-
-    public static final class Builder {
-
-        private final StringBuilder cql = new StringBuilder();
-        private final Map<String, ParameterValue> params = new LinkedHashMap<>();
-
-        private Builder() {}
-
-        public Builder sql(String cql) {
-            this.cql.append(Objects.requireNonNull(cql));
-            return this;
-        }
-
-        public Builder sqlIf(String cql, boolean condition) {
-            if (condition) {
-                this.sql(cql);
-            }
-            return this;
-        }
-
-        @SuppressWarnings("unchecked")
-        public Builder param(String name, @Nullable Object value) {
-            Objects.requireNonNull(name);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> {
-                if (item == null) {
-                    statement.setToNull(index);
-                } else {
-                    statement.set(index, item, (Class<Object>) item.getClass());
-                }
-            }));
-            return this;
-        }
-
-        @SuppressWarnings("unchecked")
-        public <T> Builder param(String name, @Nullable T value, CassandraParameterColumnMapper<T> mapper) {
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(mapper);
-            this.params.put(name, new ParameterValue(value, true, item -> (statement, index) -> mapper.apply(statement, index, (T) item)));
-            return this;
-        }
-
-        public Builder param(String name, CassandraParameter parameter) {
-            Objects.requireNonNull(name);
-            Objects.requireNonNull(parameter);
-            this.params.put(name, new ParameterValue(null, false, item -> parameter));
-            return this;
-        }
-
-        public Builder paramIf(String name, @Nullable Object value, boolean condition) {
-            if (condition) {
-                this.param(name, value);
-            }
-            return this;
-        }
-
-        public <T> Builder paramIf(String name, @Nullable T value, CassandraParameterColumnMapper<T> mapper, boolean condition) {
-            if (condition) {
-                this.param(name, value, mapper);
-            }
-            return this;
-        }
-
-        public Builder paramIf(String name, CassandraParameter parameter, boolean condition) {
-            if (condition) {
-                this.param(name, parameter);
-            }
-            return this;
-        }
-
-        public Builder bind(String cql, String name, @Nullable Object value) {
-            return this.sql(cql).param(name, value);
-        }
-
-        public <T> Builder bind(String cql, String name, @Nullable T value, CassandraParameterColumnMapper<T> mapper) {
-            return this.sql(cql).param(name, value, mapper);
-        }
-
-        public Builder bind(String cql, String name, CassandraParameter parameter) {
-            return this.sql(cql).param(name, parameter);
-        }
-
-        public Builder bindIf(String cql, String name, @Nullable Object value, boolean condition) {
-            if (condition) {
-                this.bind(cql, name, value);
-            }
-            return this;
-        }
-
-        public <T> Builder bindIf(String cql, String name, @Nullable T value, CassandraParameterColumnMapper<T> mapper, boolean condition) {
-            if (condition) {
-                this.bind(cql, name, value, mapper);
-            }
-            return this;
-        }
-
-        public Builder bindIf(String cql, String name, CassandraParameter parameter, boolean condition) {
-            if (condition) {
-                this.bind(cql, name, parameter);
-            }
-            return this;
-        }
-
-        public CassandraQuery build() {
-            var sourceCql = this.cql.toString();
-            var parsed = parse(sourceCql, this.params);
-            return new CassandraQuery(sourceCql, parsed.cql(), parsed.parameters());
-        }
-
-        private static ParsedQuery parse(String sourceCql, Map<String, ParameterValue> params) {
-            var cql = new StringBuilder(sourceCql.length());
-            var parameters = new ArrayList<Parameter>();
-            var usedParams = new ArrayList<String>();
-            boolean singleQuoted = false;
-            boolean doubleQuoted = false;
-
-            for (int i = 0; i < sourceCql.length(); i++) {
-                char c = sourceCql.charAt(i);
-                if (c == '\'' && !doubleQuoted) {
-                    singleQuoted = !singleQuoted;
-                    cql.append(c);
-                    continue;
-                }
-                if (c == '"' && !singleQuoted) {
-                    doubleQuoted = !doubleQuoted;
-                    cql.append(c);
-                    continue;
-                }
-                if (c != ':' || singleQuoted || doubleQuoted) {
-                    cql.append(c);
-                    continue;
-                }
-                if (i + 1 < sourceCql.length() && sourceCql.charAt(i + 1) == ':') {
-                    cql.append("::");
-                    i++;
-                    continue;
-                }
-                if (i > 0 && sourceCql.charAt(i - 1) == ':') {
-                    cql.append(c);
-                    continue;
-                }
-
-                int nameStart = i + 1;
-                if (nameStart >= sourceCql.length() || !isNameStart(sourceCql.charAt(nameStart))) {
-                    cql.append(c);
-                    continue;
-                }
-
-                int nameEnd = nameStart + 1;
-                while (nameEnd < sourceCql.length() && isNamePart(sourceCql.charAt(nameEnd))) {
-                    nameEnd++;
-                }
-
-                var name = sourceCql.substring(nameStart, nameEnd);
-                if (!params.containsKey(name)) {
-                    throw new IllegalArgumentException("Parameter '%s' is not specified".formatted(name));
-                }
-                usedParams.add(name);
-                appendParameter(cql, parameters, name, params.get(name));
-                i = nameEnd - 1;
-            }
-
-            for (var param : params.keySet()) {
-                if (!usedParams.contains(param)) {
-                    throw new IllegalArgumentException("Parameter '%s' is not used in CQL".formatted(param));
-                }
-            }
-
-            return new ParsedQuery(cql.toString(), parameters);
-        }
-
-        private static void appendParameter(StringBuilder cql, List<Parameter> parameters, String name, ParameterValue value) {
-            var values = value.expandable()
-                ? expand(value.value())
-                : null;
-            if (values == null) {
-                cql.append('?');
-                parameters.add(new Parameter(name, value.value(), value.binder(value.value())));
-                return;
-            }
-            if (values.isEmpty()) {
-                throw new IllegalArgumentException("Parameter '%s' collection is empty".formatted(name));
-            }
-            cql.append(String.join(", ", Collections.nCopies(values.size(), "?")));
-            for (var item : values) {
-                parameters.add(new Parameter(name, item, value.binder(item)));
-            }
-        }
-
-        @Nullable
-        private static List<?> expand(@Nullable Object value) {
-            if (value instanceof Collection<?> collection) {
-                return new ArrayList<>(collection);
-            }
-            if (value != null && value.getClass().isArray() && !(value instanceof byte[])) {
-                var result = new ArrayList<>();
-                for (int i = 0; i < Array.getLength(value); i++) {
-                    result.add(Array.get(value, i));
-                }
-                return result;
-            }
-            return null;
-        }
-
-        private static boolean isNameStart(char c) {
-            return Character.isLetter(c) || c == '_';
-        }
-
-        private static boolean isNamePart(char c) {
-            return Character.isLetterOrDigit(c) || c == '_';
-        }
-    }
-
-    private record ParameterValue(@Nullable Object value, boolean expandable, BinderFactory binderFactory) {
-        CassandraParameter binder(@Nullable Object value) {
-            return this.binderFactory.create(value);
-        }
-    }
-
-    private interface BinderFactory {
-        CassandraParameter create(@Nullable Object value);
-    }
-
-    private record ParsedQuery(String cql, List<Parameter> parameters) {}
-
-    @Override
-    public boolean equals(Object o) {
-        if (!(o instanceof CassandraQuery that)) return false;
-        return Objects.equals(cql, that.cql) && Objects.equals(parameterValues(), that.parameterValues());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(cql, parameterValues());
-    }
-
-    @Override
-    public String toString() {
-        return sourceCql;
     }
 }

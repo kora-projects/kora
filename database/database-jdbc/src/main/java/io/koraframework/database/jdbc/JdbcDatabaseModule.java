@@ -13,7 +13,9 @@ public interface JdbcDatabaseModule extends JdbcMapperModule {
         return mapper.mapOrThrow(config.get("db.jdbc"));
     }
 
-    default JdbcDataSource jdbcDatabase(JdbcDatabaseConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<HikariConfig> configurer) {
+    default JdbcDataSource jdbcDataSource(JdbcDatabaseConfig config,
+                                          DatabaseTelemetryFactory telemetryFactory,
+                                          @Nullable Configurer<HikariConfig> configurer) {
         return new JdbcDataSource(config, telemetryFactory, configurer);
     }
 }

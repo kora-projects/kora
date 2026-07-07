@@ -28,7 +28,7 @@ class JdbcQueryTest {
             .sqlIf(" AND name = :name", name != null)
             .bindIf("name", name, name != null)
             .sql(" AND id IN (:ids)")
-            .bind("ids", List.of(1L, 2L, 3L))
+            .bindIn("ids", List.of(1L, 2L, 3L))
             .sqlIf(" ORDER BY id", true)
             .build();
 
@@ -71,7 +71,7 @@ class JdbcQueryTest {
             .sql("SELECT :nullable_value, :mapped_value, :ids")
             .bind("nullable_value", null, Types.VARCHAR)
             .bind("mapped_value", "test", (stmt, index, value) -> stmt.setString(index, "mapped-" + value))
-            .bind("ids", List.of(1L, 2L), Types.BIGINT)
+            .bindIn("ids", List.of(1L, 2L), Types.BIGINT)
             .build();
 
         try (var ignored = query.prepare(connection)) {
@@ -83,6 +83,19 @@ class JdbcQueryTest {
                     "setObject:4:2:" + Types.BIGINT
                 );
         }
+    }
+
+    @Test
+    void testJdbcNamedBindKeepsCollectionAsSingleParameter() {
+        var values = List.of(1L, 2L);
+        var query = JdbcQuery.named()
+            .sql("SELECT :ids")
+            .bind("ids", values)
+            .build();
+
+        Assertions.assertThat(query.sql()).isEqualTo("SELECT ?");
+        Assertions.assertThat(query.parameters().stream().map(JdbcQuery.Parameter::value).toList())
+            .containsExactly(values);
     }
 
     @Test
