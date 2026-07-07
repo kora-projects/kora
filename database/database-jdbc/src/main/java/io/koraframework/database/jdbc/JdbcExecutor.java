@@ -175,10 +175,27 @@ public interface JdbcExecutor {
         return this.query(query, JdbcResultSetMapper.listResultSetMapper(mapper));
     }
 
+    /**
+     * <b>Русский</b>: Выполняет готовый {@link JdbcQuery} через {@link PreparedStatement#executeUpdate()} и возвращает количество измененных строк.
+     * <hr>
+     * <b>English</b>: Executes a built {@link JdbcQuery} with {@link PreparedStatement#executeUpdate()} and returns affected rows count.
+     *
+     * @param query готовый JDBC запрос / built JDBC query
+     * @return количество измененных строк / affected rows count
+     */
     default UpdateCount executeUpdate(JdbcQuery query) {
         return this.query(query, (SqlFunction<PreparedStatement, UpdateCount>) statement -> new UpdateCount(statement.executeUpdate()));
     }
 
+    /**
+     * <b>Русский</b>: Выполняет готовый {@link JdbcQuery} через {@link PreparedStatement#executeUpdate()} и преобразует сгенерированные ключи.
+     * <hr>
+     * <b>English</b>: Executes a built {@link JdbcQuery} with {@link PreparedStatement#executeUpdate()} and maps generated keys.
+     *
+     * @param query               готовый JDBC запрос / built JDBC query
+     * @param generatedKeysMapper маппер для {@link PreparedStatement#getGeneratedKeys()} / mapper for {@link PreparedStatement#getGeneratedKeys()}
+     * @return результат маппера сгенерированных ключей / generated keys mapper result
+     */
     default <T> T executeUpdate(JdbcQuery query, JdbcResultSetMapper<T> generatedKeysMapper) {
         return this.query(query, (SqlFunction<PreparedStatement, T>) statement -> {
             statement.executeUpdate();
@@ -188,6 +205,17 @@ public interface JdbcExecutor {
         });
     }
 
+    /**
+     * <b>Русский</b>: Выполняет готовый JDBC batch и возвращает суммарное количество измененных строк.
+     * Если JDBC возвращает {@link Statement#SUCCESS_NO_INFO}, метод возвращает {@code UpdateCount(-1)}.
+     * <hr>
+     * <b>English</b>: Executes a built JDBC batch and returns total affected rows count.
+     * Returns {@code UpdateCount(-1)} when JDBC reports {@link Statement#SUCCESS_NO_INFO}.
+     *
+     * @param batch готовый JDBC batch / built JDBC batch
+     * @return суммарное количество измененных строк / total affected rows count
+     * @see PreparedStatement#executeBatch()
+     */
     default UpdateCount executeUpdateBatch(JdbcQuery.JdbcQueryBatch batch) {
         var queryContext = new QueryContext(batch.sourceSql(), batch.sql());
         var observation = this.telemetry().observe(queryContext);
@@ -216,6 +244,16 @@ public interface JdbcExecutor {
             }));
     }
 
+    /**
+     * <b>Русский</b>: Выполняет готовый JDBC batch и преобразует сгенерированные ключи.
+     * <hr>
+     * <b>English</b>: Executes a built JDBC batch and maps generated keys.
+     *
+     * @param batch               готовый JDBC batch / built JDBC batch
+     * @param generatedKeysMapper маппер для {@link PreparedStatement#getGeneratedKeys()} / mapper for {@link PreparedStatement#getGeneratedKeys()}
+     * @return результат маппера сгенерированных ключей / generated keys mapper result
+     * @see PreparedStatement#executeBatch()
+     */
     default <T> T executeUpdateBatch(JdbcQuery.JdbcQueryBatch batch, JdbcResultSetMapper<T> generatedKeysMapper) {
         var queryContext = new QueryContext(batch.sourceSql(), batch.sql());
         var observation = this.telemetry().observe(queryContext);

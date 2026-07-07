@@ -63,13 +63,6 @@ final class JdbcQueryImpl implements JdbcQuery {
     }
 
     @Override
-    public List<Object> parameterValues() {
-        return this.parameters.stream()
-            .map(Parameter::value)
-            .collect(Collectors.toUnmodifiableList());
-    }
-
-    @Override
     public List<Parameter> parameters() {
         return this.parameters;
     }
@@ -394,7 +387,7 @@ final class JdbcQueryImpl implements JdbcQuery {
         }
 
         @Override
-        public <T> NamedBatchBuilder bindAllSql(Iterable<T> values, JdbcNamedBatchBinder<T> binder) {
+        public <T> NamedBatchBuilder bindAll(Iterable<T> values, JdbcNamedBatchBinder<T> binder) {
             for (var value : values) {
                 var row = new NamedRowBinderImpl(this.sourceSql, this.options);
                 try {
@@ -442,7 +435,7 @@ final class JdbcQueryImpl implements JdbcQuery {
         }
 
         @Override
-        public <T> TemplateBatchBuilder bindAllSql(Iterable<T> values, JdbcTemplateBatchBinder<T> binder) {
+        public <T> TemplateBatchBuilder bindAll(Iterable<T> values, JdbcTemplateBatchBinder<T> binder) {
             for (var value : values) {
                 var row = new TemplateRowBinderImpl(this.sql, this.options);
                 try {
@@ -694,13 +687,13 @@ final class JdbcQueryImpl implements JdbcQuery {
             return false;
         }
         return Objects.equals(this.sql, jdbcQuery.sql())
-            && Objects.equals(this.parameterValues(), jdbcQuery.parameterValues())
+            && Objects.equals(this.parameters(), jdbcQuery.parameters())
             && Objects.equals(this.options, jdbcQuery.options());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.sql, this.parameterValues(), this.options);
+        return Objects.hash(this.sql, this.parameters(), this.options);
     }
 
     @Override
