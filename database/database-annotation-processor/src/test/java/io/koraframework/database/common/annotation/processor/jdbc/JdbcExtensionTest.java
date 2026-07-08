@@ -1,13 +1,13 @@
 package io.koraframework.database.common.annotation.processor.jdbc;
 
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.function.Predicate;

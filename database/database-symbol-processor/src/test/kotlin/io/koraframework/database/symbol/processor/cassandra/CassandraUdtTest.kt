@@ -1,14 +1,14 @@
 package io.koraframework.database.symbol.processor.cassandra
 
-import org.assertj.core.api.Assertions.assertThat
-import org.assertj.core.api.ClassAssert
-import org.assertj.core.api.Condition
-import org.junit.jupiter.api.Test
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper
 import io.koraframework.database.cassandra.mapper.result.CassandraRowColumnMapper
 import io.koraframework.database.symbol.processor.AbstractRepositoryTest
 import io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider
 import io.koraframework.database.symbol.processor.cassandra.udt.CassandraUdtSymbolProcessorProvider
+import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.ClassAssert
+import org.assertj.core.api.Condition
+import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass
 
 class CassandraUdtTest : AbstractRepositoryTest() {

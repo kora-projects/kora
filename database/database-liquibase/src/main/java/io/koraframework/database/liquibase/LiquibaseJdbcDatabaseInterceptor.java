@@ -1,5 +1,8 @@
 package io.koraframework.database.liquibase;
 
+import io.koraframework.application.graph.GraphInterceptor;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.database.jdbc.JdbcDataSource;
 import liquibase.Liquibase;
 import liquibase.database.Database;
 import liquibase.database.DatabaseFactory;
@@ -8,9 +11,6 @@ import liquibase.exception.LiquibaseException;
 import liquibase.resource.ClassLoaderResourceAccessor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.GraphInterceptor;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.jdbc.JdbcDataSource;
 
 import javax.sql.DataSource;
 import java.sql.Connection;

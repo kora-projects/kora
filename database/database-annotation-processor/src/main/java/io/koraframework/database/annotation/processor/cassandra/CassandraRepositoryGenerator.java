@@ -1,7 +1,6 @@
 package io.koraframework.database.annotation.processor.cassandra;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.FieldFactory;
@@ -11,6 +10,7 @@ import io.koraframework.database.annotation.processor.QueryWithParameters;
 import io.koraframework.database.annotation.processor.RepositoryGenerator;
 import io.koraframework.database.annotation.processor.model.QueryParameter;
 import io.koraframework.database.annotation.processor.model.QueryParameterParser;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;

@@ -1,9 +1,9 @@
 package io.koraframework.database.common.annotation.processor;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import io.koraframework.database.common.annotation.processor.jdbc.MockJdbcExecutor;
 import io.koraframework.database.common.annotation.processor.repository.QueryFromResourceRepository;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.sql.SQLException;
 

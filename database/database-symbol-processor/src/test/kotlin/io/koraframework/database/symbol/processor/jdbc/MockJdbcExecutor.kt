@@ -1,15 +1,15 @@
 package io.koraframework.database.symbol.processor.jdbc
 
-import io.opentelemetry.api.trace.Span
-import org.mockito.ArgumentMatchers
-import org.mockito.Mockito
-import org.mockito.kotlin.any
-import org.mockito.kotlin.whenever
 import io.koraframework.database.common.telemetry.DatabaseObservation
 import io.koraframework.database.common.telemetry.DatabaseTelemetry
 import io.koraframework.database.jdbc.ConnectionContext
 import io.koraframework.database.jdbc.JdbcExecutor
 import io.koraframework.database.jdbc.exception.UncheckedSqlException
+import io.opentelemetry.api.trace.Span
+import org.mockito.ArgumentMatchers
+import org.mockito.Mockito
+import org.mockito.kotlin.any
+import org.mockito.kotlin.whenever
 import java.sql.*
 
 class MockJdbcExecutor : JdbcExecutor {

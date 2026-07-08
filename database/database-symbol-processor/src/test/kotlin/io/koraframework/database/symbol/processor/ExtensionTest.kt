@@ -3,8 +3,6 @@
 package io.koraframework.database.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
-import org.assertj.core.api.Assertions
-import org.junit.jupiter.api.Test
 import io.koraframework.application.graph.ApplicationGraphDraw
 import io.koraframework.common.annotation.Tag
 import io.koraframework.database.symbol.processor.app.TestKoraApp
@@ -13,6 +11,8 @@ import io.koraframework.database.symbol.processor.jdbc.AbstractJdbcRepositoryTes
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.ksp.common.GraphUtil.toGraph
 import io.koraframework.ksp.common.symbolProcess
+import org.assertj.core.api.Assertions
+import org.junit.jupiter.api.Test
 import java.lang.reflect.Constructor
 import java.util.function.Supplier
 

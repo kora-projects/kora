@@ -1,6 +1,5 @@
 package io.koraframework.database.common.annotation.processor;
 
-import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.common.annotation.Tag;
@@ -9,6 +8,7 @@ import io.koraframework.database.common.annotation.processor.app.TestKoraApp;
 import io.koraframework.database.common.annotation.processor.app.TestKoraAppExecutorTagged;
 import io.koraframework.database.common.annotation.processor.app.TestKoraAppRepoTagged;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
 import java.util.Arrays;

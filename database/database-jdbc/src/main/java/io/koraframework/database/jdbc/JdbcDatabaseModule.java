@@ -1,11 +1,11 @@
 package io.koraframework.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.Configurer;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
+import org.jspecify.annotations.Nullable;
 
 public interface JdbcDatabaseModule extends JdbcMapperModule {
 

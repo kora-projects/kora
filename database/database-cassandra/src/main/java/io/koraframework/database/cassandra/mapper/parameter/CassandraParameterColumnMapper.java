@@ -1,9 +1,9 @@
 package io.koraframework.database.cassandra.mapper.parameter;
 
 import com.datastax.oss.driver.api.core.data.SettableByName;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.cassandra.CassandraRepository;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <b>Русский</b>: Контракт для создания конвертер входящих параметров CQL запроса.

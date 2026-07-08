@@ -2,9 +2,9 @@ package io.koraframework.database.common.annotation.processor.jdbc;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
-import org.junit.jupiter.api.Test;
 import io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
+import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
 import java.time.OffsetDateTime;

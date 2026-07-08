@@ -1,9 +1,9 @@
 package io.koraframework.database.symbol.processor.jdbc
 
-import org.intellij.lang.annotations.Language
-import org.junit.jupiter.api.Test
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.database.symbol.processor.RepositorySymbolProcessorProvider
+import org.intellij.lang.annotations.Language
+import org.junit.jupiter.api.Test
 
 class JdbcAopTest : AbstractJdbcRepositoryTest() {
 

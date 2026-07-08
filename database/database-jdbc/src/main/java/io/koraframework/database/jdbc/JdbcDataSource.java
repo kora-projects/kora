@@ -2,18 +2,18 @@ package io.koraframework.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
+import io.koraframework.common.Configurer;
+import io.koraframework.common.readiness.ReadinessProbe;
+import io.koraframework.common.readiness.ReadinessProbeFailure;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.database.common.telemetry.DatabaseTelemetry;
+import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.Lifecycle;
-import io.koraframework.application.graph.Wrapped;
-import io.koraframework.common.readiness.ReadinessProbe;
-import io.koraframework.common.readiness.ReadinessProbeFailure;
-import io.koraframework.common.Configurer;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.common.telemetry.DatabaseTelemetry;
-import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 
 import javax.sql.DataSource;
 import java.sql.Connection;

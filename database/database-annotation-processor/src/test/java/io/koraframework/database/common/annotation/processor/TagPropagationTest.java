@@ -1,10 +1,10 @@
 package io.koraframework.database.common.annotation.processor;
 
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.common.annotation.processor.jdbc.AbstractJdbcRepositoryTest;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 

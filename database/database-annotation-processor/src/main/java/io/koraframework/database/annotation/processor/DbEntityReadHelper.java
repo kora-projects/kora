@@ -1,9 +1,9 @@
 package io.koraframework.database.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.database.annotation.processor.entity.DbEntity;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Modifier;
 import javax.lang.model.type.TypeMirror;

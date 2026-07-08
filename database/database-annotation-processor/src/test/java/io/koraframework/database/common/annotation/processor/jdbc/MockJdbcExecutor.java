@@ -1,11 +1,11 @@
 package io.koraframework.database.common.annotation.processor.jdbc;
 
-import org.mockito.Mockito;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetry;
 import io.koraframework.database.jdbc.ConnectionContext;
 import io.koraframework.database.jdbc.JdbcExecutor;
 import io.koraframework.database.jdbc.exception.UncheckedSqlException;
+import org.mockito.Mockito;
 
 import java.sql.*;
 

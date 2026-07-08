@@ -1,11 +1,11 @@
 package io.koraframework.database.symbol.processor.jdbc.entity
 
-import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Test
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper
 import io.koraframework.database.symbol.processor.jdbc.JdbcEntitySymbolProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
+import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Test
 
 class JdbcEntitySymbolProcessorTest : AbstractSymbolProcessorTest() {
     @Test

@@ -3,13 +3,13 @@ package io.koraframework.database.annotation.processor.jdbc.extension;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.GenericTypeResolver;
 import io.koraframework.annotation.processor.common.NameUtils;
 import io.koraframework.database.annotation.processor.jdbc.JdbcTypes;
 import io.koraframework.kora.app.annotation.processor.extension.ExtensionResult;
 import io.koraframework.kora.app.annotation.processor.extension.KoraExtension;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;

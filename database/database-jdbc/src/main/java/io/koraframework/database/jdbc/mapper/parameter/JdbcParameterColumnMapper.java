@@ -1,8 +1,8 @@
 package io.koraframework.database.jdbc.mapper.parameter;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.jdbc.JdbcRepository;
+import org.jspecify.annotations.Nullable;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;

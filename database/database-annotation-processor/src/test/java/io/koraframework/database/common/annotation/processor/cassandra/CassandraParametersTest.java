@@ -7,8 +7,6 @@ import com.datastax.oss.driver.api.core.cql.Statement;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodec;
 import com.datastax.oss.driver.api.core.type.codec.registry.CodecRegistry;
 import com.datastax.oss.driver.internal.core.cql.DefaultColumnDefinitions;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import io.koraframework.annotation.processor.common.TestContext;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.annotation.Tag;
@@ -21,6 +19,8 @@ import io.koraframework.database.common.annotation.processor.entity.TestEntityJa
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord.TestUnknownType;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord.UnknownTypeField;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.sql.SQLException;
 import java.util.List;

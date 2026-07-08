@@ -1,7 +1,5 @@
 package io.koraframework.database.common.annotation.processor.jdbc;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import io.koraframework.annotation.processor.common.TestContext;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.common.annotation.Tag;
@@ -9,10 +7,12 @@ import io.koraframework.database.common.annotation.processor.DbTestUtils;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityJavaBean;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord;
 import io.koraframework.database.common.annotation.processor.jdbc.repository.AllowedParametersRepository;
-import io.koraframework.database.jdbc.JdbcExecutor;
 import io.koraframework.database.jdbc.JdbcDatabaseConfig;
+import io.koraframework.database.jdbc.JdbcExecutor;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import io.koraframework.json.common.annotation.Json;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.sql.SQLException;

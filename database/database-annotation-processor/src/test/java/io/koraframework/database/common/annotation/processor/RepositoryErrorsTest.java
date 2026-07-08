@@ -1,10 +1,10 @@
 package io.koraframework.database.common.annotation.processor;
 
-import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.common.annotation.processor.repository.error.InvalidParameterUsage;
+import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 public class RepositoryErrorsTest {
     @Test

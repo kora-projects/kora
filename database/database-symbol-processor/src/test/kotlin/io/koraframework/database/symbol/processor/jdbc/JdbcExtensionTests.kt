@@ -1,7 +1,7 @@
 package io.koraframework.database.symbol.processor.jdbc
 
-import org.junit.jupiter.api.Test
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
+import org.junit.jupiter.api.Test
 
 class JdbcExtensionTests : AbstractJdbcRepositoryTest() {
     @Test

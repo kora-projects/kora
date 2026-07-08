@@ -12,7 +12,6 @@ import io.koraframework.database.symbol.processor.model.DbEntity
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.generatedClassName
-import kotlin.collections.get
 
 class UserDefinedTypeResultExtractorGenerator(private val environment: SymbolProcessorEnvironment) {
     fun generate(classDeclaration: KSClassDeclaration) {

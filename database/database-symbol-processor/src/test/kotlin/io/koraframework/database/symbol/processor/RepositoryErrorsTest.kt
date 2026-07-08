@@ -1,11 +1,11 @@
 package io.koraframework.database.symbol.processor
 
-import org.assertj.core.api.Assertions
-import org.assertj.core.api.SoftAssertions
-import org.junit.jupiter.api.Test
 import io.koraframework.database.symbol.processor.repository.error.InvalidParameterUsage
 import io.koraframework.ksp.common.CompilationErrorException
 import io.koraframework.ksp.common.symbolProcess
+import org.assertj.core.api.Assertions
+import org.assertj.core.api.SoftAssertions
+import org.junit.jupiter.api.Test
 import kotlin.reflect.KClass
 
 class RepositoryErrorsTest {

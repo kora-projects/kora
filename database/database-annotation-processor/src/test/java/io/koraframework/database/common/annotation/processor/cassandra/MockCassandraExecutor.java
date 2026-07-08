@@ -3,11 +3,11 @@ package io.koraframework.database.common.annotation.processor.cassandra;
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.*;
-import io.opentelemetry.api.trace.Span;
-import org.mockito.Mockito;
 import io.koraframework.database.cassandra.CassandraExecutor;
 import io.koraframework.database.common.telemetry.DatabaseObservation;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
+import io.opentelemetry.api.trace.Span;
+import org.mockito.Mockito;
 
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;

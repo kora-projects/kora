@@ -1,20 +1,22 @@
 package io.koraframework.database.flyway;
 
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
 import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
+import io.koraframework.database.jdbc.JdbcDataSource;
+import io.koraframework.test.postgres.PostgresParams;
+import io.koraframework.test.postgres.PostgresTestContainer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import io.koraframework.database.common.telemetry.*;
-import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
-import io.koraframework.database.jdbc.JdbcDataSource;
-import io.koraframework.test.postgres.PostgresParams;
-import io.koraframework.test.postgres.PostgresTestContainer;
 
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.Map;

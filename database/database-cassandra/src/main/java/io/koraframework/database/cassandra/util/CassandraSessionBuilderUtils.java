@@ -5,10 +5,10 @@ import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
+import io.koraframework.common.Configurer;
 import io.koraframework.database.cassandra.CassandraConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.common.Configurer;
 
 import java.util.Arrays;
 

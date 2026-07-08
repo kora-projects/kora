@@ -2,10 +2,10 @@ package io.koraframework.database.annotation.processor;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.JavaFile;
+import io.koraframework.annotation.processor.common.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.event.Level;
-import io.koraframework.annotation.processor.common.*;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.RoundEnvironment;
