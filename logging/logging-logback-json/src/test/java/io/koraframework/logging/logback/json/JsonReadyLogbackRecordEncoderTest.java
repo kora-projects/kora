@@ -53,7 +53,7 @@ class JsonReadyLogbackRecordEncoderTest {
         assertThat(json).contains("\"message\":\"message formatted\"");
         assertThat(json).contains("\"mdc\":{\"kora\":42,\"slf4j\":\"value\"}");
         assertThat(json).contains("\"data\":\"payload\"");
-        assertThat(json).contains("\"attributes\":{\"attribute\":\"argument\",\"key\":\"value\"}");
+        assertThat(json).contains("\"args\":{\"attribute\":\"argument\",\"key\":\"value\"}");
         assertThat(json).endsWith("\n");
     }
 
@@ -92,7 +92,7 @@ class JsonReadyLogbackRecordEncoderTest {
 
         var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
 
-        assertThat(json).isEqualTo("{\"data\":{\"first\":\"1\",\"second\":\"2\"},\"attributes\":{\"attribute\":\"value\"}}\n");
+        assertThat(json).isEqualTo("{\"data\":{\"first\":\"1\",\"second\":\"2\"},\"args\":{\"attribute\":\"value\"}}\n");
     }
 
     @Test
@@ -259,7 +259,7 @@ class JsonReadyLogbackRecordEncoderTest {
 
         var json = new String(encoder.encode(event), StandardCharsets.UTF_8);
 
-        assertThat(json).isEqualTo("{\"attributes\":{\"string\":\"value\",\"int\":1,\"long\":2,\"boolean\":true,\"double\":3.5,\"null\":null}}\n");
+        assertThat(json).isEqualTo("{\"args\":{\"string\":\"value\",\"int\":1,\"long\":2,\"boolean\":true,\"double\":3.5,\"null\":null}}\n");
     }
 
     @Test
