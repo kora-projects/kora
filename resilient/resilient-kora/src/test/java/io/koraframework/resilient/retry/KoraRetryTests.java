@@ -300,8 +300,8 @@ class KoraRetryTests {
         return new TestJitterConfig(RetryConfig.JitterType.FULL, ratio);
     }
 
-    private static RetryConfig.BackoffConfig backoff(double multiplier, Duration maxDelay) {
-        return new TestBackoffConfig(RetryConfig.BackoffType.EXPONENTIAL, multiplier, maxDelay);
+    private static RetryConfig.BackoffConfig backoff(double multiplier, Duration delayMax) {
+        return new TestBackoffConfig(RetryConfig.BackoffType.EXPONENTIAL, multiplier, delayMax);
     }
 
     private static RetryConfig.RetryBudgetConfig budget() {
@@ -312,8 +312,8 @@ class KoraRetryTests {
         return new TestRetryBudgetConfig(true, name, 0.0, 1, 1, 0.0);
     }
 
-    private static RetryConfig.RetryBudgetConfig budget(double ratio, int maxTokens, int initialTokens) {
-        return new TestRetryBudgetConfig(true, null, ratio, maxTokens, initialTokens, 0.0);
+    private static RetryConfig.RetryBudgetConfig budget(double ratio, int tokensMax, int tokensInitial) {
+        return new TestRetryBudgetConfig(true, null, ratio, tokensMax, tokensInitial, 0.0);
     }
 
     private record TestRetryConfig(Map<String, RetryConfig.NamedConfig> retry) implements RetryConfig {
@@ -336,14 +336,14 @@ class KoraRetryTests {
 
     private record TestJitterConfig(RetryConfig.JitterType type, Double ratio) implements RetryConfig.JitterConfig {}
 
-    private record TestBackoffConfig(RetryConfig.BackoffType type, Double multiplier, Duration maxDelay) implements RetryConfig.BackoffConfig {}
+    private record TestBackoffConfig(RetryConfig.BackoffType type, Double multiplier, Duration delayMax) implements RetryConfig.BackoffConfig {}
 
     private record TestRetryBudgetConfig(
         Boolean enabled,
         String name,
         Double ratio,
-        Integer maxTokens,
-        Integer initialTokens,
+        Integer tokensMax,
+        Integer tokensInitial,
         Double minTokensPerSecond
     ) implements RetryConfig.RetryBudgetConfig {}
 

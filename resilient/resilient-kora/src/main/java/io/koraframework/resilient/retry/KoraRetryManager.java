@@ -58,8 +58,8 @@ final class KoraRetryManager implements RetryManager {
         var budgetName = retryBudget.name() == null ? name : retryBudget.name();
         return budgetByName.computeIfAbsent(budgetName, ignored -> new KoraRetryBudget(
             retryBudget.ratio(),
-            retryBudget.maxTokens(),
-            retryBudget.initialTokens(),
+            retryBudget.tokensMax(),
+            retryBudget.tokensInitial(),
             retryBudget.minTokensPerSecond()
         ));
     }

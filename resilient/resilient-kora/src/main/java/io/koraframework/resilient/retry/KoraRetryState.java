@@ -110,10 +110,10 @@ record KoraRetryState(
 
         var delay = delayNanos * Math.pow(backoff.multiplier(), attempt - 1);
         var computed = delay >= Long.MAX_VALUE ? Long.MAX_VALUE : (long) delay;
-        if (backoff.maxDelay() == null) {
+        if (backoff.delayMax() == null) {
             return computed;
         }
-        return Math.min(computed, backoff.maxDelay().toNanos());
+        return Math.min(computed, backoff.delayMax().toNanos());
     }
 
     private boolean isJitterEnabled() {

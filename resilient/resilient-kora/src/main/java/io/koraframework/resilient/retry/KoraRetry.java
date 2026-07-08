@@ -366,10 +366,10 @@ final class KoraRetry implements Retry {
         var multiplier = config.backoff().multiplier();
         var delay = delayNanos * Math.pow(multiplier, retryAttempt - 1);
         var computed = delay >= Long.MAX_VALUE ? Long.MAX_VALUE : (long) delay;
-        if (config.backoff().maxDelay() == null) {
+        if (config.backoff().delayMax() == null) {
             return computed;
         }
-        return Math.min(computed, config.backoff().maxDelay().toNanos());
+        return Math.min(computed, config.backoff().delayMax().toNanos());
     }
 
     long delayNanos(int retryAttempt) {
