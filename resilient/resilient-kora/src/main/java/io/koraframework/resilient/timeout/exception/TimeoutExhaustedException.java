@@ -1,6 +1,6 @@
-package io.koraframework.resilient.timeout;
+package io.koraframework.resilient.timeout.exception;
 
-import io.koraframework.resilient.ResilientException;
+import io.koraframework.resilient.exception.ResilientException;
 
 public final class TimeoutExhaustedException extends ResilientException {
 

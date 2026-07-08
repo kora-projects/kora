@@ -4,6 +4,7 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.binder.BaseUnits;
+import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -41,9 +42,9 @@ public class DefaultRetryMetricsFactory {
             meter.increment();
         }
 
-        public void recordExhaustedAttempts(int totalAttempts) {
-            var key = createMetricExhaustedKey(totalAttempts);
-            var meter = this.exhaustedCache.computeIfAbsent(key, k -> createMetricExhausted(k, totalAttempts).register(this.context.meterRegistry()));
+        public void recordExhausted(int totalAttempts, RetryObservation.StopReason reason) {
+            var key = createMetricExhaustedKey(totalAttempts, reason);
+            var meter = this.exhaustedCache.computeIfAbsent(key, k -> createMetricExhausted(k, totalAttempts, reason).register(this.context.meterRegistry()));
             meter.increment();
         }
 
@@ -51,15 +52,15 @@ public class DefaultRetryMetricsFactory {
             return new RetryKey(this.context.name(), null);
         }
 
-        protected RetryKey createMetricExhaustedKey(int totalAttempts) {
-            return new RetryKey(this.context.name(), null);
+        protected RetryKey createMetricExhaustedKey(int totalAttempts, RetryObservation.StopReason reason) {
+            return new RetryKey(this.context.name(), Tags.of(Tag.of("reason", reason.name())));
         }
 
         protected Counter.Builder createMetricAttempt(RetryKey metricKey, long delayInNanos) {
             return createMetricCounter("resilient.retry.attempts", metricKey);
         }
 
-        protected Counter.Builder createMetricExhausted(RetryKey metricKey, int totalAttempts) {
+        protected Counter.Builder createMetricExhausted(RetryKey metricKey, int totalAttempts, RetryObservation.StopReason reason) {
             return createMetricCounter("resilient.retry.exhausted", metricKey);
         }
 

@@ -6,7 +6,7 @@ import org.junit.jupiter.api.TestInstance
 import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
 import io.koraframework.resilient.symbol.processor.aop.testdata.TimeoutTarget
 import io.koraframework.resilient.symbol.processor.aop.testdata.`typealias`.TimeoutAliasTarget
-import io.koraframework.resilient.timeout.TimeoutExhaustedException
+import io.koraframework.resilient.timeout.exception.TimeoutExhaustedException
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental

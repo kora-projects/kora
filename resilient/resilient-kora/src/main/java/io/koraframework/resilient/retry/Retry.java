@@ -1,5 +1,7 @@
 package io.koraframework.resilient.retry;
 
+import io.koraframework.resilient.retry.exception.RetryExhaustedException;
+
 import java.util.concurrent.CompletionStage;
 import java.util.function.Supplier;
 
@@ -31,7 +33,7 @@ public interface Retry {
             EXHAUSTED
         }
 
-            RetryStatus onException(Throwable throwable);
+        RetryStatus onException(Throwable throwable);
 
         int getAttempts();
 

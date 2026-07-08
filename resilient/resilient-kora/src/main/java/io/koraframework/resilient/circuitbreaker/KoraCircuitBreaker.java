@@ -1,5 +1,6 @@
 package io.koraframework.resilient.circuitbreaker;
 
+import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallAcquireStatus;

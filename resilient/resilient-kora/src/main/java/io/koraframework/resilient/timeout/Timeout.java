@@ -1,5 +1,7 @@
 package io.koraframework.resilient.timeout;
 
+import io.koraframework.resilient.timeout.exception.TimeoutExhaustedException;
+
 import java.time.Duration;
 import java.util.concurrent.Callable;
 

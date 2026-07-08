@@ -32,7 +32,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         private val RETRY_RUNNER = ClassName("io.koraframework.resilient.retry", "Retry", "RetryRunnable")
         private val RETRY_SUPPLIER = ClassName("io.koraframework.resilient.retry", "Retry", "RetrySupplier")
         private val MEMBER_RETRY_STATUS = ClassName("io.koraframework.resilient.retry", "Retry", "RetryState", "RetryStatus")
-        private val MEMBER_RETRY_EXCEPTION = MemberName("io.koraframework.resilient.retry", "RetryExhaustedException")
+        private val MEMBER_RETRY_EXCEPTION = MemberName("io.koraframework.resilient.retry.exception", "RetryExhaustedException")
         private val MEMBER_DELAY = MemberName("kotlinx.coroutines", "delay")
         private val MEMBER_TIME = MemberName("kotlin.time.Duration.Companion", "nanoseconds")
         private val MEMBER_FLOW = MemberName("kotlinx.coroutines.flow", "flow")

@@ -1,6 +1,7 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
+import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
 import io.opentelemetry.api.trace.Span;
 
 public final class NoopRetryObservation implements RetryObservation {
@@ -13,7 +14,7 @@ public final class NoopRetryObservation implements RetryObservation {
     public void recordAttempt(long delayInNanos) {}
 
     @Override
-    public void recordExhaustedAttempts(int totalAttempts) {}
+    public void recordExhausted(StopReason reason, int totalAttempts) {}
 
     @Override
     public Span span() {

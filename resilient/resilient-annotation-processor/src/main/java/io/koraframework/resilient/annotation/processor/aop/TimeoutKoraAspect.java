@@ -23,7 +23,7 @@ import static com.palantir.javapoet.CodeBlock.joining;
 public class TimeoutKoraAspect implements KoraAspect {
 
     private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.timeout.annotation", "Timeout");
-    private static final ClassName EXHAUSTED_EXCEPTION = ClassName.get("io.koraframework.resilient.timeout", "TimeoutExhaustedException");
+    private static final ClassName EXHAUSTED_EXCEPTION = ClassName.get("io.koraframework.resilient.timeout.exception", "TimeoutExhaustedException");
     private static final ClassName TIMEOUT_TELEMETRY_CONFIG = ClassName.get("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryConfig");
 
     private final ProcessingEnvironment env;

@@ -21,7 +21,7 @@ import static com.palantir.javapoet.CodeBlock.joining;
 public class CircuitBreakerKoraAspect implements KoraAspect {
 
     private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.circuitbreaker.annotation", "CircuitBreaker");
-    private static final ClassName PERMITTED_EXCEPTION = ClassName.get("io.koraframework.resilient.circuitbreaker", "CallNotPermittedException");
+    private static final ClassName PERMITTED_EXCEPTION = ClassName.get("io.koraframework.resilient.circuitbreaker.exception", "CallNotPermittedException");
 
     private final ProcessingEnvironment env;
 

@@ -1,6 +1,7 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
+import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
 import io.opentelemetry.api.trace.Span;
 import org.jspecify.annotations.Nullable;
 
@@ -15,7 +16,8 @@ public class DefaultRetryObservation implements RetryObservation {
     protected final long startNanos = System.nanoTime();
 
     protected int attempts;
-    protected boolean exhausted;
+    @Nullable
+    protected StopReason stopReason;
     protected long lastDelayInNanos;
     protected final List<Long> attemptDelaysInNanos = new ArrayList<>();
     @Nullable
@@ -38,9 +40,9 @@ public class DefaultRetryObservation implements RetryObservation {
     }
 
     @Override
-    public void recordExhaustedAttempts(int totalAttempts) {
+    public void recordExhausted(StopReason reason, int totalAttempts) {
         this.attempts = totalAttempts;
-        this.exhausted = true;
+        this.stopReason = reason;
     }
 
     @Override
@@ -53,10 +55,10 @@ public class DefaultRetryObservation implements RetryObservation {
         for (var attemptDelayInNanos : this.attemptDelaysInNanos) {
             this.metrics.recordAttempt(attemptDelayInNanos);
         }
-        if (this.exhausted) {
-            this.metrics.recordExhaustedAttempts(this.attempts);
+        if (this.stopReason != null) {
+            this.metrics.recordExhausted(this.attempts, this.stopReason);
         }
-        this.logger.logRetry(this.attempts, this.exhausted, this.lastDelayInNanos, System.nanoTime() - this.startNanos, this.exception);
+        this.logger.logRetry(this.attempts, this.stopReason, this.lastDelayInNanos, System.nanoTime() - this.startNanos, this.exception);
     }
 
     @Override

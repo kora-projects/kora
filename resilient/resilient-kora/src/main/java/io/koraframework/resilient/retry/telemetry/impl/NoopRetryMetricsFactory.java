@@ -1,5 +1,7 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
+import io.koraframework.resilient.retry.telemetry.RetryObservation;
+
 public final class NoopRetryMetricsFactory extends DefaultRetryMetricsFactory {
 
     public static final NoopRetryMetricsFactory INSTANCE = new NoopRetryMetricsFactory();
@@ -23,6 +25,6 @@ public final class NoopRetryMetricsFactory extends DefaultRetryMetricsFactory {
         public void recordAttempt(long delayInNanos) {}
 
         @Override
-        public void recordExhaustedAttempts(int totalAttempts) {}
+        public void recordExhausted(int totalAttempts, RetryObservation.StopReason reason) {}
     }
 }

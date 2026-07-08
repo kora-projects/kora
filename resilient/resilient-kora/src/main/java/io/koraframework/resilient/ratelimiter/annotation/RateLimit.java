@@ -1,7 +1,7 @@
 package io.koraframework.resilient.ratelimiter.annotation;
 
 import io.koraframework.common.annotation.AopAnnotation;
-import io.koraframework.resilient.ratelimiter.RateLimitExceededException;
+import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException;
 import io.koraframework.resilient.ratelimiter.RateLimiterConfig;
 
 import java.lang.annotation.*;

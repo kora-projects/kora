@@ -24,7 +24,7 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
         private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.circuitbreaker.annotation", "CircuitBreaker")
-        private val PERMITTED_EXCEPTION = ClassName("io.koraframework.resilient.circuitbreaker", "CallNotPermittedException")
+        private val PERMITTED_EXCEPTION = ClassName("io.koraframework.resilient.circuitbreaker.exception", "CallNotPermittedException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {

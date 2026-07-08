@@ -1,6 +1,8 @@
 package io.koraframework.resilient.circuitbreaker;
 
 
+import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
+
 import java.util.function.Supplier;
 
 /**

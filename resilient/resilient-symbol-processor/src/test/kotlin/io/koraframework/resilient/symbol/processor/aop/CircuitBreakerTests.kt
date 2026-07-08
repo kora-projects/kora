@@ -4,7 +4,7 @@ import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
-import io.koraframework.resilient.circuitbreaker.CallNotPermittedException
+import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException
 import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
 import io.koraframework.resilient.symbol.processor.aop.testdata.CircuitBreakerTarget
 import io.koraframework.resilient.symbol.processor.aop.testdata.`typealias`.CircuitBreakerAliasTarget
