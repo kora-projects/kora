@@ -439,4 +439,32 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         repository.invoke("insert", newGeneratedObject("Entity", "1", 1, "1", "1").get());
         verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ? WHERE id = ?");
     }
+
+    @Test
+    void typeUseColumnArgumentWhere() throws SQLException {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends AbstractJdbcRepository<@Column("id") String, TestRepository.Entity> {
+
+                @Table("entities")
+                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            }
+            """, """
+            public interface AbstractJdbcRepository<K, V> extends JdbcRepository {
+
+                @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{keyArg#where}")
+                @Nullable
+                V findById(K keyArg);
+            }
+            """, """
+            public class TestRowMapper implements JdbcResultSetMapper<TestRepository.Entity> {
+                public TestRepository.Entity apply(ResultSet rs) {
+                  return null;
+                }
+            }
+            """);
+
+        repository.invoke("findById", "1");
+        verify(executor.mockConnection).prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?");
+    }
 }

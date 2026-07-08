@@ -27,8 +27,8 @@ class QueryMacrosParser {
         private const val SPECIAL_ID = "@id"
     }
 
-    data class Target(val type: KSClassDeclaration, val name: String)
-    data class Field(val field: KSPropertyDeclaration, val column: String, val path: String, val isId: Boolean)
+    data class Target(val type: KSClassDeclaration, val name: String, val column: String?)
+    data class Field(val field: KSPropertyDeclaration?, val column: String, val path: String, val isId: Boolean)
 
     fun parse(sql: String, method: KSFunctionDeclaration): String {
         val sqlBuilder = StringBuilder()
@@ -87,6 +87,15 @@ class QueryMacrosParser {
         } else {
             return columnPrefix + nameConverter.convert(field.simpleName.asString())
         }
+    }
+
+    private fun getFields(method: KSFunctionDeclaration, target: Target): List<Field> {
+        val nativeType = JdbcNativeTypes.findNativeType(target.type.toClassName())
+        if (nativeType != null && target.column != null) {
+            return listOf(Field(field = null, column = target.column, path = target.name, isId = false))
+        }
+
+        return getPathField(method, target.type, target.name, "").toList()
     }
 
     private fun getCommandSelectorPaths(type: KSClassDeclaration, rootPath: String, selects: String): Set<String> {
@@ -158,9 +167,9 @@ class QueryMacrosParser {
                 setOf()
 
             val fields = if (paths.isEmpty()) {
-                getPathField(method, target.type, target.name, "").toList()
+                getFields(method, target)
             } else {
-                getPathField(method, target.type, target.name, "").filter { include == paths.contains(it.path) }.toList()
+                getFields(method, target).filter { include == paths.contains(it.path) }
             }
 
             val nameConverter = target.type.getNameConverter(snakeCaseNameConverter)
@@ -234,12 +243,28 @@ class QueryMacrosParser {
 
         val resolved = reference.resolve().declaration
         return if (resolved is KSClassDeclaration) {
-            Target(resolved, targetName)
+            Target(resolved, targetName, getColumnName(method, targetName, reference))
         } else {
             throw ProcessingErrorException(
                 "Macros command unprocessable target type: $targetName",
                 method
             )
         }
+    }
+
+    private fun getColumnName(method: KSFunctionDeclaration, targetName: String, typeReference: KSTypeReference): String? {
+        if (TARGET_RETURN != targetName) {
+            method.parameters
+                .firstOrNull { it.name!!.asString().contentEquals(targetName) }
+                ?.findAnnotation(DbUtils.columnAnnotation)
+                ?.findValueNoDefault<String>("value")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+
+        return typeReference.resolve().annotations
+            .firstOrNull { DbUtils.columnAnnotation == (it.annotationType.resolve().declaration as KSClassDeclaration).toClassName() }
+            ?.findValueNoDefault<String>("value")
+            ?.takeIf { it.isNotEmpty() }
     }
 }
