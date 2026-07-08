@@ -467,4 +467,60 @@ final class JdbcMacrosTest extends AbstractJdbcRepositoryTest {
         repository.invoke("findById", "1");
         verify(executor.mockConnection).prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?");
     }
+
+    @Test
+    void genericTypeArgumentSelectsAndTable() throws SQLException {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends AbstractJdbcRepository<TestRepository.Entity> {
+
+                @Table("entities")
+                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            }
+            """, """
+            public interface AbstractJdbcRepository<V> extends JdbcRepository {
+
+                @Query("SELECT %{V#selects} FROM %{V#table}")
+                @Nullable
+                V findOne();
+            }
+            """, """
+            public class TestRowMapper implements JdbcResultSetMapper<TestRepository.Entity> {
+                public TestRepository.Entity apply(ResultSet rs) {
+                  return null;
+                }
+            }
+            """);
+
+        repository.invoke("findOne");
+        verify(executor.mockConnection).prepareStatement("SELECT id, value1, value2, value3 FROM entities");
+    }
+
+    @Test
+    void genericTypeArgumentWhereId() throws SQLException {
+        var repository = compileJdbc(List.of(newGeneratedObject("TestRowMapper")), """
+            @Repository
+            public interface TestRepository extends AbstractJdbcRepository<TestRepository.Entity> {
+
+                @Table("entities")
+                record Entity(@Id String id, @Column("value1") int field1, String value2, @Nullable String value3) {}
+            }
+            """, """
+            public interface AbstractJdbcRepository<V> extends JdbcRepository {
+
+                @Query("SELECT %{V#selects} FROM %{V#table} WHERE %{V#where = @id}")
+                @Nullable
+                V findByEntity(V entity);
+            }
+            """, """
+            public class TestRowMapper implements JdbcResultSetMapper<TestRepository.Entity> {
+                public TestRepository.Entity apply(ResultSet rs) {
+                  return null;
+                }
+            }
+            """);
+
+        repository.invoke("findByEntity", newGeneratedObject("TestRepository$Entity", "1", 1, "1", "1").get());
+        verify(executor.mockConnection).prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?");
+    }
 }

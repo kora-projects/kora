@@ -1,6 +1,8 @@
 package io.koraframework.database.symbol.processor
 
+import com.google.devtools.ksp.symbol.KSFunction
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import java.io.BufferedInputStream
 import java.nio.charset.Charset
@@ -32,7 +34,13 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
 
     companion object {
 
-        fun parse(rq: String, parameters: List<io.koraframework.database.symbol.processor.model.QueryParameter>, method: KSFunctionDeclaration): QueryWithParameters {
+        fun parse(
+            rq: String,
+            parameters: List<io.koraframework.database.symbol.processor.model.QueryParameter>,
+            method: KSFunctionDeclaration,
+            methodType: KSFunction,
+            repositoryType: KSType
+        ): QueryWithParameters {
             val params = mutableListOf<QueryParameter>()
             var rawSql = rq
             if (rawSql.startsWith("classpath:/")) {
@@ -45,7 +53,7 @@ data class QueryWithParameters(val rawQuery: String, val parameters: List<QueryP
             rawSql = rawSql.trim()
 
             val parser = QueryMacrosParser()
-            rawSql = parser.parse(rawSql, method)
+            rawSql = parser.parse(rawSql, method, methodType, repositoryType)
 
             parameters.forEachIndexed { i, _parameter ->
                 var parameter = _parameter

@@ -628,4 +628,68 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
         Mockito.verify(executor.mockConnection)
             .prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?")
     }
+
+    @Test
+    fun genericTypeArgumentSelectsAndTable() {
+        val repository = compile(
+            listOf(newGenerated("TestRowMapper")), """
+            interface AbstractJdbcRepository<V> : JdbcRepository {
+
+                @Query("SELECT %{V#selects} FROM %{V#table}")
+                fun findOne(): V?
+            }
+
+            @Repository
+            interface TestRepository : AbstractJdbcRepository<TestRepository.Entity> {
+
+                @Table("entities")
+                data class Entity(@field:Id val id: String,
+                                  @field:Column("value1") val field1: Long,
+                                  val value2: String,
+                                  val value3: String?)
+            }
+            """.trimIndent(), """
+            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
+                override fun apply(rs: ResultSet): TestRepository.Entity? {
+                  return null
+                }
+            }
+            """.trimIndent()
+        )
+        repository.invoke<Any>("findOne")
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("SELECT id, value1, value2, value3 FROM entities")
+    }
+
+    @Test
+    fun genericTypeArgumentWhereId() {
+        val repository = compile(
+            listOf(newGenerated("TestRowMapper")), """
+            interface AbstractJdbcRepository<V> : JdbcRepository {
+
+                @Query("SELECT %{V#selects} FROM %{V#table} WHERE %{V#where = @id}")
+                fun findByEntity(entity: V): V?
+            }
+
+            @Repository
+            interface TestRepository : AbstractJdbcRepository<TestRepository.Entity> {
+
+                @Table("entities")
+                data class Entity(@field:Id val id: String,
+                                  @field:Column("value1") val field1: Long,
+                                  val value2: String,
+                                  val value3: String?)
+            }
+            """.trimIndent(), """
+            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
+                override fun apply(rs: ResultSet): TestRepository.Entity? {
+                  return null
+                }
+            }
+            """.trimIndent()
+        )
+        repository.invoke<Any>("findByEntity", newGenerated("TestRepository\$Entity", "1", 1, "1", "1").invoke())
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?")
+    }
 }

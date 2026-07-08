@@ -258,6 +258,10 @@ final class QueryMacrosParser {
             }
 
             if (targetMirror == null) {
+                var genericTarget = getTypeParameterTarget(repositoryType, method, targetName);
+                if (genericTarget != null) {
+                    return genericTarget;
+                }
                 throw new ProcessingErrorException("Macros command unspecified target received: " + targetName, method);
             }
 
@@ -274,6 +278,46 @@ final class QueryMacrosParser {
         } else {
             throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
         }
+    }
+
+    private Target getTypeParameterTarget(DeclaredType repositoryType, ExecutableElement method, String targetName) {
+        var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
+        var parameters = method.getParameters();
+        for (int i = 0; i < parameters.size(); i++) {
+            var parameter = parameters.get(i);
+            if (parameter.asType() instanceof javax.lang.model.type.TypeVariable typeVariable
+                && typeVariable.asElement().getSimpleName().contentEquals(targetName)) {
+                var type = methodType.getParameterTypes().get(i);
+                if (type instanceof DeclaredType dt) {
+                    return new Target(dt, parameter.getSimpleName().toString(), getColumnName(method, targetName, type));
+                }
+                throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+            }
+        }
+
+        if (method.getEnclosingElement() instanceof TypeElement enclosingType) {
+            for (var typeParameter : enclosingType.getTypeParameters()) {
+                if (typeParameter.getSimpleName().contentEquals(targetName)) {
+                    var type = this.types.asMemberOf(repositoryType, typeParameter);
+                    if (type instanceof DeclaredType dt) {
+                        return new Target(dt, targetName, getColumnName(method, targetName, type));
+                    }
+                    throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+                }
+            }
+        }
+
+        for (var typeParameter : method.getTypeParameters()) {
+            if (typeParameter.getSimpleName().contentEquals(targetName)) {
+                var type = this.types.asMemberOf(repositoryType, typeParameter);
+                if (type instanceof DeclaredType dt) {
+                    return new Target(dt, targetName, getColumnName(method, targetName, type));
+                }
+                throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+            }
+        }
+
+        return null;
     }
 
     private String getColumnName(ExecutableElement method, String targetName, TypeMirror targetMirror) {
