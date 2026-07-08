@@ -11,7 +11,16 @@ public interface CircuitBreakerObservation extends Observation {
         DISABLED,
     }
 
+    enum CallResult {
+        SUCCESS,
+        FAILURE,
+        IGNORED_FAILURE,
+        FALLBACK
+    }
+
     void recordCallAcquire(CircuitBreaker.State state, CallAcquireStatus callStatus);
+
+    void recordCallResult(CircuitBreaker.State state, CallResult callResult);
 
     void recordStateChange(CircuitBreaker.State previousState, CircuitBreaker.State newState);
 }

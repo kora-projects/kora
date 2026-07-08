@@ -29,7 +29,7 @@ class CircuitBreakerTests {
         val config: CircuitBreakerConfig.NamedConfig = `$CircuitBreakerConfig_NamedConfig_ConfigValueMapper`.NamedConfig_Impl(
             true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate::class.java.canonicalName
         )
-        val circuitBreaker = KoraCircuitBreaker("default", config, KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE)
+        val circuitBreaker = FixedWindowKoraCircuitBreaker("default", config, KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE)
 
         val successCallable = Callable {
             try {

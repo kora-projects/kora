@@ -50,10 +50,21 @@ public class DefaultCircuitBreakerMetricsFactory {
             }
         }
 
+        public record ResultKey(String name,
+                                CircuitBreaker.State state,
+                                CircuitBreakerObservation.CallResult result,
+                                @Nullable Tags extraTags) {
+
+            public ResultKey withExtraTags(Tags tags) {
+                return new ResultKey(name, state, result, tags);
+            }
+        }
+
         protected final ConcurrentHashMap<StateKey, AtomicInteger> stateValueCache = new ConcurrentHashMap<>();
         protected final ConcurrentHashMap<StateKey, Gauge> stateCache = new ConcurrentHashMap<>();
         protected final ConcurrentHashMap<TransitionKey, Counter> transitionCache = new ConcurrentHashMap<>();
         protected final ConcurrentHashMap<AcquireKey, Counter> acquireCache = new ConcurrentHashMap<>();
+        protected final ConcurrentHashMap<ResultKey, Counter> resultCache = new ConcurrentHashMap<>();
         protected final DefaultCircuitBreakerTelemetry.TelemetryContext context;
 
         public DefaultCircuitBreakerMetrics(DefaultCircuitBreakerTelemetry.TelemetryContext context) {
@@ -71,6 +82,12 @@ public class DefaultCircuitBreakerMetricsFactory {
                 var meter = this.acquireCache.computeIfAbsent(key, k -> createMetricAcquire(k).register(this.context.meterRegistry()));
                 meter.increment();
             }
+        }
+
+        public void recordCallResult(CircuitBreaker.State state, CircuitBreakerObservation.CallResult callResult) {
+            var key = createMetricResultKey(state, callResult);
+            var meter = this.resultCache.computeIfAbsent(key, k -> createMetricResult(k).register(this.context.meterRegistry()));
+            meter.increment();
         }
 
         public void recordState(CircuitBreaker.State newState) {
@@ -98,6 +115,10 @@ public class DefaultCircuitBreakerMetricsFactory {
             return new AcquireKey(this.context.name(), state, callStatus, null);
         }
 
+        protected ResultKey createMetricResultKey(CircuitBreaker.State state, CircuitBreakerObservation.CallResult callResult) {
+            return new ResultKey(this.context.name(), state, callResult, null);
+        }
+
         // DO NOT ADD DYNAMIC TAGS IN BUILDER, use metric key instead of metric collision will happen
         protected Gauge.Builder<?> createMetricState(StateKey metricKey, AtomicInteger stateValue) {
             return Gauge.builder("resilient.circuitbreaker.state", stateValue::get)
@@ -117,6 +138,13 @@ public class DefaultCircuitBreakerMetricsFactory {
             return Counter.builder("resilient.circuitbreaker.call.acquire")
                 .baseUnit(BaseUnits.OPERATIONS)
                 .tags(Tags.of(createTags(metricKey.name, metricKey.state.name(), metricKey.status.name(), metricKey.extraTags)));
+        }
+
+        // DO NOT ADD DYNAMIC TAGS IN BUILDER, use metric key instead of metric collision will happen
+        protected Counter.Builder createMetricResult(ResultKey metricKey) {
+            return Counter.builder("resilient.circuitbreaker.call.result")
+                .baseUnit(BaseUnits.OPERATIONS)
+                .tags(Tags.of(createTags(metricKey.name, metricKey.state.name(), metricKey.result.name(), metricKey.extraTags)));
         }
 
         protected ArrayList<Tag> createTags(String name, @Nullable String state, @Nullable String status, @Nullable Tags extraTags) {

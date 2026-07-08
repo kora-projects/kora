@@ -26,6 +26,9 @@ public final class NoopCircuitBreakerMetricsFactory extends DefaultCircuitBreake
         public void recordCallAcquire(CircuitBreaker.State state, CircuitBreakerObservation.CallAcquireStatus callStatus) {}
 
         @Override
+        public void recordCallResult(CircuitBreaker.State state, CircuitBreakerObservation.CallResult callResult) {}
+
+        @Override
         public void recordState(CircuitBreaker.State newState) {}
     }
 }

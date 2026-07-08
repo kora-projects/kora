@@ -35,5 +35,11 @@ public final class NoopCircuitBreakerLoggerFactory extends DefaultCircuitBreaker
 
         @Override
         public void logStateChange(CircuitBreaker.State previousState, CircuitBreaker.State newState) {}
+
+        @Override
+        public void logResult(CircuitBreaker.State state,
+                              CircuitBreakerObservation.CallResult callResult,
+                              long processingTimeNanos,
+                              @Nullable Throwable exception) {}
     }
 }

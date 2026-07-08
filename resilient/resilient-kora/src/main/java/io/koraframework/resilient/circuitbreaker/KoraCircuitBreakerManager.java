@@ -34,7 +34,7 @@ final class KoraCircuitBreakerManager implements CircuitBreakerManager {
                 .addKeyValue("config", config)
                 .log("Creating CircuitBreaker");
 
-            return new KoraCircuitBreaker(name, config, failurePredicate, this.telemetryFactory.get(name, this.config.telemetry()));
+            return new FixedWindowKoraCircuitBreaker(name, config, failurePredicate, this.telemetryFactory.get(name, this.config.telemetry()));
         });
     }
 
