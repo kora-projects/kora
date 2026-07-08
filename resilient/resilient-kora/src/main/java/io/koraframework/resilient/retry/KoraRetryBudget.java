@@ -7,14 +7,14 @@ final class KoraRetryBudget {
     static final long SCALE = 1_000_000L;
 
     private final AtomicLong tokens;
-    private final long tokensMax;
+    private final long maxTokens;
     private final long successIncrement;
     private final long minTokenIncrementPerSecond;
     private final AtomicLong lastMinTokenRefillNanos = new AtomicLong(System.nanoTime());
 
-    KoraRetryBudget(double ratio, int tokensMax, int tokensInitial, double minTokensPerSecond) {
-        this.tokens = new AtomicLong(scale(tokensInitial));
-        this.tokensMax = scale(tokensMax);
+    KoraRetryBudget(double ratio, int maxTokens, int initialTokens, double minTokensPerSecond) {
+        this.tokens = new AtomicLong(scale(initialTokens));
+        this.maxTokens = scale(maxTokens);
         this.successIncrement = Math.round(ratio * SCALE);
         this.minTokenIncrementPerSecond = Math.round(minTokensPerSecond * SCALE);
     }
@@ -65,7 +65,7 @@ final class KoraRetryBudget {
     private void addTokens(long amount) {
         while (true) {
             long current = tokens.get();
-            long next = Math.min(tokensMax, current + amount);
+            long next = Math.min(maxTokens, current + amount);
             if (tokens.compareAndSet(current, next)) {
                 return;
             }
