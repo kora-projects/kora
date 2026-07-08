@@ -1,0 +1,68 @@
+plugins {
+    id "java-gradle-plugin"
+    id "maven-publish"
+}
+
+// java-library + Java 17 toolchain + JavaCompile options are applied by the root
+// build.gradle "config libraries" subprojects block. This module only adds the
+// gradle-plugin specifics.
+
+dependencies {
+    // Needed at compile time to read the applied Kotlin plugin version and to reference
+    // KotlinJvmProjectExtension. Provided by the consumer's Kotlin plugin at runtime.
+    compileOnly libs.kotlin.gradle.plugin
+    // Bundled so `pluginManager.apply("com.google.devtools.ksp")` resolves for consumers.
+    implementation libs.ksp.gradle.plugin
+
+    testImplementation gradleTestKit()
+    testImplementation libs.junit.jupiter
+    testImplementation libs.assertj
+    testImplementation libs.kotlin.gradle.plugin
+    testRuntimeOnly libs.junit.platform.launcher
+}
+
+gradlePlugin {
+    plugins {
+        kora {
+            id = "ru.tinkoff.kora"
+            displayName = "Kora Gradle Plugin"
+            description = "Configures Kora BOM, annotation processor / KSP wiring and generated sources for a Kora project."
+            implementationClass = "ru.tinkoff.kora.gradle.KoraPlugin"
+        }
+    }
+}
+
+// Bake versions into the plugin classpath so the plugin version == Kora version.
+tasks.named("processResources") {
+    def props = [
+        koraVersion  : project.version.toString(),
+        kspVersion   : libs.versions.ksp.get(),
+        kotlinVersion: libs.versions.kotlin.stdlib.get(),
+    ]
+    inputs.properties(props)
+    filesMatching("ru/tinkoff/kora/gradle/version.properties") {
+        expand(props)
+    }
+}
+
+tasks.named("test") {
+    useJUnitPlatform()
+}
+
+// --- Functional tests (Gradle TestKit). Resolve Kora from Sonatype snapshots, so they need
+// network access and are deliberately NOT wired into `check` / the fast unit `test` task. ---
+def functionalTestSourceSet = sourceSets.create("functionalTest")
+gradlePlugin.testSourceSets(functionalTestSourceSet)
+configurations.named("functionalTestImplementation") { extendsFrom(configurations.testImplementation) }
+configurations.named("functionalTestRuntimeOnly") { extendsFrom(configurations.testRuntimeOnly) }
+
+tasks.register("functionalTest", Test) {
+    description = "Runs Gradle TestKit functional tests (requires network to resolve Kora snapshots)."
+    group = "verification"
+    // Functional tests apply the plugin the real way (plugins block + mavenLocal), so publish first.
+    dependsOn("publishToMavenLocal")
+    systemProperty("koraPluginVersion", project.version.toString())
+    testClassesDirs = functionalTestSourceSet.output.classesDirs
+    classpath = functionalTestSourceSet.runtimeClasspath
+    useJUnitPlatform()
+}

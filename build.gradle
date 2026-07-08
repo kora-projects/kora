@@ -85,6 +85,9 @@ def isPublishedLibrary = { Project p ->
     if (p.name == "maven-parent") {
         return false
     }
+    if (p.name == "gradle-plugin") {
+        return false
+    }
     return true
 }
 

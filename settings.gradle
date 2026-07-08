@@ -13,6 +13,7 @@ include(
     'aop:aop-annotation-processor',
     'aop:aop-symbol-processor',
     'common',
+    'gradle-plugin',
     'annotation-processor-common',
     'symbol-processor-common',
     'annotation-processors',
