@@ -20,7 +20,7 @@ import java.lang.annotation.Target;
  *
  * @see Repository
  */
-@Target({ElementType.TYPE})
+@Target({ElementType.TYPE, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.CLASS)
 public @interface Table {
 
