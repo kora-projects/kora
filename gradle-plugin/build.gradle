@@ -1,6 +1,8 @@
 plugins {
     id "java-gradle-plugin"
     id "maven-publish"
+    id "signing"
+    id "com.gradle.plugin-publish" version "1.3.1"
 }
 
 // java-library + Java 17 toolchain + JavaCompile options are applied by the root
@@ -22,11 +24,14 @@ dependencies {
 }
 
 gradlePlugin {
+    website = "https://github.com/kora-projects/kora"
+    vcsUrl = "https://github.com/kora-projects/kora"
     plugins {
         kora {
             id = "ru.tinkoff.kora"
             displayName = "Kora Gradle Plugin"
-            description = "Configures Kora BOM, annotation processor / KSP wiring and generated sources for a Kora project."
+            description = "Configures the Kora BOM, annotation processor / KSP wiring and generated sources for a Kora project."
+            tags.set(["kora", "ksp", "annotation-processor", "dependency-injection"])
             implementationClass = "ru.tinkoff.kora.gradle.KoraPlugin"
         }
     }
@@ -43,6 +48,17 @@ tasks.named("processResources") {
     filesMatching("ru/tinkoff/kora/gradle/version.properties") {
         expand(props)
     }
+}
+
+java {
+    withSourcesJar()
+    withJavadocJar()
+}
+
+tasks.withType(Javadoc).configureEach {
+    options.encoding = "UTF-8"
+    options.addBooleanOption("html5", true)
+    options.addStringOption("Xdoclint:none", "-quiet")
 }
 
 tasks.named("test") {
@@ -65,4 +81,65 @@ tasks.register("functionalTest", Test) {
     testClassesDirs = functionalTestSourceSet.output.classesDirs
     classpath = functionalTestSourceSet.runtimeClasspath
     useJUnitPlatform()
+}
+
+// --- Publishing. Rides the Kora release: Maven Central via the root's aggregate archive
+// (createPublishArchive -> uploadPublishArchive), and the Gradle Plugin Portal via publishPlugins
+// (invoked from .github/workflows/publish-release.yml). ---
+publishing {
+    publications.withType(MavenPublication).configureEach {
+        pom {
+            name = "Kora Gradle Plugin"
+            description = "Kora Gradle Plugin"
+            url = "https://github.com/kora-projects/kora"
+            licenses {
+                license {
+                    name = "The Apache Software License, Version 2.0"
+                    url = "https://github.com/kora-projects/kora/blob/master/LICENSE"
+                }
+            }
+            scm {
+                url = "https://github.com/kora-projects/kora"
+                connection = "scm:git:git@github.com/kora-projects/kora.git"
+                developerConnection = "scm:git:git@github.com/kora-projects/kora.git"
+            }
+            developers {
+                developer { id = "a.otts"; name = "Aleksei Otts"; email = "eld0727@mail.ru" }
+                developer { id = "a.duyun"; name = "Anton Duyun"; email = "anton.duyun@gmail.com" }
+                developer { id = "a.kurako"; name = "Anton Kurako"; email = "goodforgod.dev@gmail.com" }
+                developer { id = "a.yakovlev"; name = "Artem Yakovlev"; email = "jakart89@gmail.com" }
+            }
+        }
+    }
+    repositories {
+        maven {
+            name = "build"
+            url = rootProject.layout.buildDirectory.dir("publishing-repository")
+        }
+        maven {
+            name = "snapshot"
+            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            credentials {
+                username = System.getenv().getOrDefault("REPO_USER", "")
+                password = System.getenv().getOrDefault("REPO_PASSWORD", "")
+            }
+        }
+    }
+}
+
+signing {
+    required = false
+    sign publishing.publications
+}
+
+// Route the plugin jar + marker into the aggregate release archive built by the root build,
+// mirroring how every published library wires itself into createPublishArchive.
+def buildRepoPublishTasks = tasks.matching {
+    it.name.startsWith("publish") && it.name.endsWith("PublicationToBuildRepository")
+}
+buildRepoPublishTasks.configureEach {
+    dependsOn(rootProject.tasks.named("cleanPublishDir"))
+}
+rootProject.tasks.named("createPublishArchive").configure {
+    dependsOn(buildRepoPublishTasks)
 }
