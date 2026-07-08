@@ -22,5 +22,13 @@ import io.koraframework.database.common.annotation.Repository;
  * @see Repository
  */
 public interface JdbcRepository {
-    JdbcConnectionFactory getJdbcConnectionFactory();
+
+    /**
+     * <b>Русский</b>: Возвращает JDBC исполнитель, который используется репозиторием для запросов и транзакций.
+     * <hr>
+     * <b>English</b>: Returns the JDBC executor used by the repository for queries and transactions.
+     *
+     * @return JDBC исполнитель / JDBC executor
+     */
+    JdbcExecutor executor();
 }

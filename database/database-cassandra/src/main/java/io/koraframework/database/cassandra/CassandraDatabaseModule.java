@@ -8,13 +8,16 @@ import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
 
-public interface CassandraDatabaseModule extends CassandraModule {
+public interface CassandraDatabaseModule extends CassandraMapperModule {
 
     default CassandraConfig cassandraConfig(Config config, ConfigValueMapper<CassandraConfig> mapper) {
         return mapper.mapOrThrow(config.get("cassandra"));
     }
 
-    default CassandraDatabase cassandraDatabase(CassandraConfig config, DatabaseTelemetryFactory telemetryFactory, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
-        return new CassandraDatabase(config, loaderConfigurer, sessionBuilderConfigurer, telemetryFactory);
+    default CassandraSession cassandraSession(CassandraConfig config,
+                                              DatabaseTelemetryFactory telemetryFactory,
+                                              @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer,
+                                              @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
+        return new CassandraSession(config, telemetryFactory, loaderConfigurer, sessionBuilderConfigurer);
     }
 }

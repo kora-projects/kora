@@ -1,9 +1,9 @@
 package io.koraframework.database.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
+import io.koraframework.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito
-import io.koraframework.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
 
 class QueryFromResourceTest : AbstractJdbcRepositoryTest() {
     @KspExperimental
@@ -21,6 +21,6 @@ class QueryFromResourceTest : AbstractJdbcRepositoryTest() {
 
         repository.invoke<Unit>("test")
 
-        Mockito.verify(executor.mockConnection).prepareStatement("SELECT 1;\n")
+        Mockito.verify(executor.mockConnection).prepareStatement("SELECT 1;")
     }
 }

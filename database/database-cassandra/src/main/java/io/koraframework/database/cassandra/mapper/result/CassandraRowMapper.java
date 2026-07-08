@@ -1,10 +1,10 @@
 package io.koraframework.database.cassandra.mapper.result;
 
 import com.datastax.oss.driver.api.core.cql.Row;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.cassandra.CassandraRepository;
 import io.koraframework.database.common.RowMapper;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <b>Русский</b>: Контракт для создания конвертера <b>строки</b> CQL запроса.
@@ -33,6 +33,7 @@ import io.koraframework.database.common.RowMapper;
  * @see Mapping
  */
 public interface CassandraRowMapper<T> extends Mapping.MappingFunction, RowMapper<T> {
+
     @Nullable
     T apply(Row row);
 }

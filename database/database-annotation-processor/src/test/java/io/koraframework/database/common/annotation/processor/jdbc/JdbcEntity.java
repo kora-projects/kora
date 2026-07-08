@@ -1,9 +1,9 @@
 package io.koraframework.database.common.annotation.processor.jdbc;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.database.common.annotation.processor.entity.TestEntityRecord;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
+import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;

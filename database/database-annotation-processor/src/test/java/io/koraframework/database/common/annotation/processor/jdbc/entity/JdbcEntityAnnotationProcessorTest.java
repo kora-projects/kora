@@ -3,12 +3,12 @@ package io.koraframework.database.common.annotation.processor.jdbc.entity;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeName;
-import org.junit.jupiter.api.Test;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
 import io.koraframework.database.common.RowMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultColumnMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
     @Test
     public void testRecordMappersGenerated() {
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
-            import io.koraframework.database.jdbc.EntityJdbc;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
             
             @EntityJdbc
             public record TestRecord(int id){}
@@ -38,7 +38,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
     @Test
     public void testUnknownFieldTypeRequiresMapper() {
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
-            import io.koraframework.database.jdbc.EntityJdbc;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
             
             @EntityJdbc
             public record TestRecord(TestRecord id){}
@@ -62,7 +62,7 @@ public class JdbcEntityAnnotationProcessorTest extends AbstractAnnotationProcess
     @Test
     public void testJavaBeanMappersGenerated() {
         compile(List.of(new JdbcEntityAnnotationProcessor()), """
-            import io.koraframework.database.jdbc.EntityJdbc;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
             
             @EntityJdbc
             public class TestClass {

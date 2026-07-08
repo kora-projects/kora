@@ -2,19 +2,23 @@ package io.koraframework.database.jdbc;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseLoggingConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseMetricsConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper;
+import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseLoggerFactory;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseMetricsFactory;
+import io.koraframework.test.postgres.PostgresParams;
+import io.koraframework.test.postgres.PostgresTestContainer;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.TracerProvider;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.LoggerFactory;
-import io.koraframework.database.common.telemetry.*;
-import io.koraframework.database.common.telemetry.impl.DefaultDatabaseTelemetryFactory;
-import io.koraframework.test.postgres.PostgresParams;
-import io.koraframework.test.postgres.PostgresTestContainer;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -25,7 +29,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
 
 @ExtendWith({PostgresTestContainer.class})
-class JdbcDatabaseTest {
+class JdbcDataSourceTest {
     static {
         if (LoggerFactory.getLogger("ROOT") instanceof Logger log) {
             log.setLevel(Level.INFO);
@@ -35,7 +39,7 @@ class JdbcDatabaseTest {
         }
     }
 
-    private static void withDb(PostgresParams params, Consumer<JdbcDatabase> consumer) throws SQLException {
+    private static void withDb(PostgresParams params, Consumer<JdbcDataSource> consumer) throws SQLException {
         var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
@@ -58,7 +62,7 @@ class JdbcDatabaseTest {
                 new $DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper.DatabaseTracingConfig_Impl(true, Map.of())
             )
         );
-        var db = new JdbcDatabase(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
+        var db = new JdbcDataSource(config, new DefaultDatabaseTelemetryFactory(TracerProvider.noop().get(""), new CompositeMeterRegistry(), NoopDatabaseLoggerFactory.INSTANCE, NoopDatabaseMetricsFactory.INSTANCE), null);
         db.init();
         try {
             consumer.accept(db);
@@ -84,7 +88,7 @@ class JdbcDatabaseTest {
         withDb(params, db -> {
             var result = db.withConnection(() -> {
                 var r = new ArrayList<Entity>();
-                try (var stmt = db.currentConnection().prepareStatement(sql);) {
+                try (var stmt = db.connectionCurrent().prepareStatement(sql);) {
                     stmt.setString(1, "test1");
                     var rs = stmt.executeQuery();
                     while (rs.next()) {
@@ -117,9 +121,9 @@ class JdbcDatabaseTest {
 
         withDb(params, db -> {
             var latch = new CountDownLatch(1);
-            Assertions.assertThatThrownBy(() -> db.inTx((JdbcHelper.SqlRunnable) () -> {
-                db.currentContext().addPostRollbackAction((conn, e) -> latch.countDown());
-                try (var stmt = db.currentConnection().prepareStatement(sql)) {
+            Assertions.assertThatThrownBy(() -> db.inTx((JdbcExecutor.SqlRunnable) () -> {
+                db.currentContext().afterRollback((conn, e) -> latch.countDown());
+                try (var stmt = db.connectionCurrent().prepareStatement(sql)) {
                     stmt.execute();
                 }
                 throw new RuntimeException();
@@ -132,8 +136,8 @@ class JdbcDatabaseTest {
 
             var latch1 = new CountDownLatch(1);
             db.inTx(() -> {
-                db.currentContext().addPostCommitAction((conn) -> latch1.countDown());
-                try (var stmt = db.currentConnection().prepareStatement(sql)) {
+                db.currentContext().afterCommit((conn) -> latch1.countDown());
+                try (var stmt = db.connectionCurrent().prepareStatement(sql)) {
                     stmt.execute();
                 }
             });
@@ -142,6 +146,21 @@ class JdbcDatabaseTest {
 
             values = params.query("SELECT value FROM %s".formatted(tableName), extractor);
             Assertions.assertThat(values).hasSize(1);
+        });
+    }
+
+    @Test
+    void testTransactionIsolationLevel(PostgresParams params) throws SQLException {
+        withDb(params, db -> {
+            var previousIsolationLevel = db.withConnection(Connection::getTransactionIsolation);
+
+            db.inTx(JdbcExecutor.TxIsolation.SERIALIZABLE, context -> {
+                Assertions.assertThat(context.connection().getTransactionIsolation())
+                    .isEqualTo(Connection.TRANSACTION_SERIALIZABLE);
+            });
+
+            var currentIsolationLevel = db.withConnection(Connection::getTransactionIsolation);
+            Assertions.assertThat(currentIsolationLevel).isEqualTo(previousIsolationLevel);
         });
     }
 }

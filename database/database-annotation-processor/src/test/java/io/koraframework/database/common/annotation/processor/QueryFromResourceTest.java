@@ -1,9 +1,9 @@
 package io.koraframework.database.common.annotation.processor;
 
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import io.koraframework.database.common.annotation.processor.jdbc.MockJdbcExecutor;
 import io.koraframework.database.common.annotation.processor.repository.QueryFromResourceRepository;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.sql.SQLException;
 
@@ -17,6 +17,6 @@ public class QueryFromResourceTest {
     void testNativeParameter() throws SQLException {
         repository.test();
 
-        Mockito.verify(executor.mockConnection).prepareStatement(Mockito.argThat(sql -> sql.replace("\r\n", "\n").equals("SELECT 1;\n")));
+        Mockito.verify(executor.mockConnection).prepareStatement(Mockito.argThat(sql -> sql.replace("\r\n", "\n").equals("SELECT 1;")));
     }
 }

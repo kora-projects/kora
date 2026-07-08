@@ -1,10 +1,10 @@
 package io.koraframework.database.jdbc;
 
 import com.zaxxer.hikari.HikariConfig;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.Configurer;
 import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Properties;
@@ -18,6 +18,7 @@ import java.util.Properties;
  */
 @ConfigMapper
 public interface JdbcDatabaseConfig {
+
     String username();
 
     String password();

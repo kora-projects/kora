@@ -1,7 +1,6 @@
 package io.koraframework.database.annotation.processor.cassandra;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.FieldFactory;
@@ -11,6 +10,7 @@ import io.koraframework.database.annotation.processor.QueryWithParameters;
 import io.koraframework.database.annotation.processor.RepositoryGenerator;
 import io.koraframework.database.annotation.processor.model.QueryParameter;
 import io.koraframework.database.annotation.processor.model.QueryParameterParser;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -114,8 +114,8 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
         }
         var returnType = methodType.getReturnType();
         var isFuture = CommonUtils.isCompletionStage(returnType);
-        mb.addStatement("var _observation = this._connectionFactory.telemetry().observe(_query)");
-        mb.addStatement("var _session = this._connectionFactory.currentSession()");
+        mb.addStatement("var _observation = this._cassandraSession.telemetry().observe(_query)");
+        mb.addStatement("var _session = this._cassandraSession.currentSession()");
         if (isFuture) {
             mb.addCode("return ");
             CommonUtils.observe(mb, "_observation", "call", b -> {
@@ -224,21 +224,21 @@ public class CassandraRepositoryGenerator implements RepositoryGenerator {
     }
 
     public void enrichWithExecutor(TypeElement repositoryElement, TypeSpec.Builder builder, MethodSpec.Builder constructorBuilder) {
-        builder.addField(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory", Modifier.PRIVATE, Modifier.FINAL);
+        builder.addField(CassandraTypes.CONNECTION_FACTORY, "_cassandraSession", Modifier.PRIVATE, Modifier.FINAL);
         builder.addSuperinterface(CassandraTypes.REPOSITORY);
-        builder.addMethod(MethodSpec.methodBuilder("getCassandraConnectionFactory")
+        builder.addMethod(MethodSpec.methodBuilder("executor")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(Override.class)
             .returns(CassandraTypes.CONNECTION_FACTORY)
-            .addCode("return this._connectionFactory;")
+            .addCode("return this._cassandraSession;")
             .build());
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(executorTag).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(CassandraTypes.CONNECTION_FACTORY, "_cassandraSession").addAnnotation(executorTag).build());
         } else {
-            constructorBuilder.addParameter(CassandraTypes.CONNECTION_FACTORY, "_connectionFactory");
+            constructorBuilder.addParameter(CassandraTypes.CONNECTION_FACTORY, "_cassandraSession");
         }
-        constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
+        constructorBuilder.addStatement("this._cassandraSession = _cassandraSession");
     }
 }

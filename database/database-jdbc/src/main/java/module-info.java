@@ -9,6 +9,8 @@ module kora.database.jdbc {
     requires transitive com.zaxxer.hikari;
 
     exports io.koraframework.database.jdbc;
-    exports io.koraframework.database.jdbc.mapper.parameter;
+    exports io.koraframework.database.jdbc.annotation;
+    exports io.koraframework.database.jdbc.exception;
     exports io.koraframework.database.jdbc.mapper.result;
+    exports io.koraframework.database.jdbc.mapper.parameter;
 }

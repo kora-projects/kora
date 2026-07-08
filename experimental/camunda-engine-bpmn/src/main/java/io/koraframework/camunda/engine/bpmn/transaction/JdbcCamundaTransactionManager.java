@@ -1,6 +1,6 @@
 package io.koraframework.camunda.engine.bpmn.transaction;
 
-import io.koraframework.database.jdbc.RuntimeSqlException;
+import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -21,24 +21,24 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
     public TransactionConnection currentConnection() {
         return new TransactionConnection() {
             @Override
-            public void commit() throws RuntimeSqlException {
+            public void commit() throws UncheckedSqlException {
                 try {
                     if (camundaConnectionKey.isBound()) {
                         camundaConnectionKey.get().commit();
                     }
                 } catch (SQLException e) {
-                    throw new RuntimeSqlException(e);
+                    throw new UncheckedSqlException(e);
                 }
             }
 
             @Override
-            public void rollback() throws RuntimeSqlException {
+            public void rollback() throws UncheckedSqlException {
                 try {
                     if (camundaConnectionKey.isBound()) {
                         camundaConnectionKey.get().rollback();
                     }
                 } catch (SQLException e) {
-                    throw new RuntimeSqlException(e);
+                    throw new UncheckedSqlException(e);
                 }
             }
         };
@@ -59,7 +59,7 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
                 try {
                     return processSupplier(currentConnection, supplier);
                 } catch (SQLException e) {
-                    throw new RuntimeSqlException(e);
+                    throw new UncheckedSqlException(e);
                 }
             }
         }
@@ -80,7 +80,7 @@ public class JdbcCamundaTransactionManager implements CamundaTransactionManager 
         try (var connection = this.dataSource.getConnection()) {
             return ScopedValue.where(this.camundaConnectionKey, connection).call(() -> processSupplier(connection, supplier));
         } catch (SQLException e) {
-            throw new RuntimeSqlException(e);
+            throw new UncheckedSqlException(e);
         }
     }
 

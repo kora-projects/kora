@@ -15,7 +15,7 @@ public class CassandraTypes {
     public static final ClassName BOUND_STATEMENT_BUILDER = ClassName.get("com.datastax.oss.driver.api.core.cql", "BoundStatementBuilder");
 
 
-    public static final ClassName CONNECTION_FACTORY = ClassName.get("io.koraframework.database.cassandra", "CassandraConnectionFactory");
+    public static final ClassName CONNECTION_FACTORY = ClassName.get("io.koraframework.database.cassandra", "CassandraExecutor");
     public static final ClassName REPOSITORY = ClassName.get("io.koraframework.database.cassandra", "CassandraRepository");
 
     public static final ClassName CASSANDRA_PROFILE = ClassName.get("io.koraframework.database.cassandra.annotation", "CassandraProfile");

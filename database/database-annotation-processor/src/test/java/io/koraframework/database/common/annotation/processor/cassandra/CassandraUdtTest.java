@@ -8,11 +8,11 @@ import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.datastax.oss.driver.internal.core.type.UserDefinedTypeBuilder;
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
-import org.junit.jupiter.api.Test;
 import io.koraframework.database.annotation.processor.cassandra.CassandraUdtAnnotationProcessor;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraRowColumnMapper;
 import io.koraframework.database.common.annotation.processor.AbstractExtensionTest;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.UUID;

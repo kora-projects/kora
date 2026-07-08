@@ -8,7 +8,6 @@ import io.koraframework.database.symbol.processor.model.QueryParameter
 import io.koraframework.ksp.common.FieldFactory
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.parseMappingData
-import kotlin.text.get
 
 object StatementSetterGenerator {
     fun CodeBlock.Builder.setPreparedStatementParams(

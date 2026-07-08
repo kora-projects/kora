@@ -4,8 +4,10 @@ import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
+import io.koraframework.database.cassandra.util.CassandraSessionBuilderUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
@@ -14,9 +16,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
 
-public final class CassandraDatabase implements CassandraConnectionFactory, Lifecycle {
+public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>, Lifecycle {
 
-    private static final Logger logger = LoggerFactory.getLogger(CassandraDatabase.class);
+    private static final Logger logger = LoggerFactory.getLogger(CassandraSession.class);
 
     private final CassandraConfig config;
     @Nullable
@@ -24,9 +26,13 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     @Nullable
     private final Configurer<CqlSessionBuilder> sessionBuilderConfigurer;
     private final DatabaseTelemetry telemetry;
+
     private volatile CqlSession cqlSession;
 
-    public CassandraDatabase(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, DatabaseTelemetryFactory telemetryFactory) {
+    public CassandraSession(CassandraConfig config,
+                            DatabaseTelemetryFactory telemetryFactory,
+                            @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer,
+                            @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer) {
         this.config = config;
         this.loaderConfigurer = loaderConfigurer;
         this.sessionBuilderConfigurer = sessionBuilderConfigurer;
@@ -48,31 +54,36 @@ public final class CassandraDatabase implements CassandraConnectionFactory, Life
     }
 
     @Override
+    public CqlSession value() {
+        return this.cqlSession;
+    }
+
+    @Override
     public void init() {
-        logger.debug("CassandraDatabase {} starting...", config.basic().contactPoints());
+        logger.debug("CassandraDataSource {} starting...", config.basic().contactPoints());
         var started = System.nanoTime();
 
         try {
-            cqlSession = new CassandraSessionBuilder().build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
+            cqlSession = CassandraSessionBuilderUtils.build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
         } catch (Exception e) {
-            throw new RuntimeException("CassandraDatabase '%s' failed to start, due to: %s".formatted(
+            throw new RuntimeException("CassandraDataSource '%s' failed to start, due to: %s".formatted(
                 config.basic().contactPoints(), e.getMessage()), e);
         }
 
-        logger.info("CassandraDatabase {} started in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
+        logger.info("CassandraDataSource {} started in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
     }
 
     @Override
     public void release() {
         var s = cqlSession;
         if (s != null) {
-            logger.debug("CassandraDatabase '{}' stopping...", config.basic().contactPoints());
+            logger.debug("CassandraDataSource '{}' stopping...", config.basic().contactPoints());
             var started = System.nanoTime();
 
             s.close();
             cqlSession = null;
 
-            logger.info("CassandraDatabase '{}' stopped in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
+            logger.info("CassandraDataSource '{}' stopped in {}", config.basic().contactPoints(), TimeUtils.tookForLogging(started));
         }
     }
 }

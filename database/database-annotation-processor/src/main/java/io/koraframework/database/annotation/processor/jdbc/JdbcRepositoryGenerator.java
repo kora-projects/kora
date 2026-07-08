@@ -1,7 +1,6 @@
 package io.koraframework.database.annotation.processor.jdbc;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.database.annotation.processor.DbUtils;
 import io.koraframework.database.annotation.processor.DbUtils.Mapper;
@@ -9,6 +8,7 @@ import io.koraframework.database.annotation.processor.QueryWithParameters;
 import io.koraframework.database.annotation.processor.RepositoryGenerator;
 import io.koraframework.database.annotation.processor.model.QueryParameter;
 import io.koraframework.database.annotation.processor.model.QueryParameterParser;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
@@ -136,7 +136,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
         var returnType = methodType.getReturnType();
         var connection = parameters.stream().filter(QueryParameter.ConnectionParameter.class::isInstance).findFirst()
             .map(p -> CodeBlock.of("$L", p.variable()))
-            .orElse(CodeBlock.of("this._connectionFactory.currentConnection()"));
+            .orElse(CodeBlock.of("this._jdbcExecutor.currentConnection()"));
 
         var queryContextFieldName = "QUERY_CONTEXT_" + methodNumber;
         type.addField(
@@ -149,7 +149,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                         )""", DbUtils.QUERY_CONTEXT, query.rawQuery(), sql, DbUtils.operationName(method))
                 .build());
         mb.addStatement("var _query = $L", queryContextFieldName);
-        mb.addStatement("var _observation = this._connectionFactory.telemetry().observe(_query)");
+        mb.addStatement("var _observation = this._jdbcExecutor.telemetry().observe(_query)");
         if (methodType.getReturnType().getKind() != TypeKind.VOID) {
             mb.addCode("return ");
         }
@@ -158,7 +158,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
                 var _conToUse = $L;
                 $T _conToClose;
                 if (_conToUse == null) {
-                    _conToUse = this._connectionFactory.newConnection();
+                    _conToUse = this._jdbcExecutor.acquireConnection();
                     _conToClose = _conToUse;
                 } else {
                     _conToClose = null;
@@ -229,7 +229,7 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
             }
             b.nextControlFlow("catch (java.sql.SQLException e)")
                 .addStatement("_observation.observeError(e)")
-                .addStatement("throw new io.koraframework.database.jdbc.RuntimeSqlException(e)");
+                .addStatement("throw new io.koraframework.database.jdbc.exception.UncheckedSqlException(e)");
             b.nextControlFlow("catch (Exception e)")
                 .addStatement("_observation.observeError(e)")
                 .addStatement("throw e");
@@ -242,21 +242,21 @@ public final class JdbcRepositoryGenerator implements RepositoryGenerator {
     }
 
     public void enrichWithExecutor(TypeElement repositoryElement, TypeSpec.Builder builder, MethodSpec.Builder constructorBuilder) {
-        builder.addField(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory", Modifier.PRIVATE, Modifier.FINAL);
+        builder.addField(JdbcTypes.CONNECTION_FACTORY, "_jdbcExecutor", Modifier.PRIVATE, Modifier.FINAL);
         builder.addSuperinterface(JdbcTypes.JDBC_REPOSITORY);
-        builder.addMethod(MethodSpec.methodBuilder("getJdbcConnectionFactory")
+        builder.addMethod(MethodSpec.methodBuilder("executor")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addAnnotation(Override.class)
             .returns(JdbcTypes.CONNECTION_FACTORY)
-            .addCode("return this._connectionFactory;")
+            .addCode("return this._jdbcExecutor;")
             .build());
 
         var executorTag = DbUtils.getTag(repositoryElement);
         if (executorTag != null) {
-            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory").addAnnotation(executorTag).build());
+            constructorBuilder.addParameter(ParameterSpec.builder(JdbcTypes.CONNECTION_FACTORY, "_jdbcExecutor").addAnnotation(executorTag).build());
         } else {
-            constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_connectionFactory");
+            constructorBuilder.addParameter(JdbcTypes.CONNECTION_FACTORY, "_jdbcExecutor");
         }
-        constructorBuilder.addStatement("this._connectionFactory = _connectionFactory");
+        constructorBuilder.addStatement("this._jdbcExecutor = _jdbcExecutor");
     }
 }

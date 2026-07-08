@@ -1,13 +1,13 @@
 package io.koraframework.database.flyway;
 
+import io.koraframework.application.graph.GraphInterceptor;
+import io.koraframework.common.util.TimeUtils;
+import io.koraframework.database.jdbc.JdbcDataSource;
 import org.flywaydb.core.Flyway;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.GraphInterceptor;
-import io.koraframework.common.util.TimeUtils;
-import io.koraframework.database.jdbc.JdbcDatabase;
 
-public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDatabase> {
+public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<JdbcDataSource> {
 
     private static final Logger logger = LoggerFactory.getLogger(FlywayJdbcDatabaseInterceptor.class);
 
@@ -18,12 +18,12 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public JdbcDatabase afterInit(JdbcDatabase value) {
+    public JdbcDataSource afterInit(JdbcDataSource value) {
         if (flywayConfig.enabled()) {
             final long started = TimeUtils.started();
             logger.debug("FlyWay migration applying...");
 
-            Flyway.configure()
+            var flyway = Flyway.configure()
                 .dataSource(value.value())
                 .locations(flywayConfig.locations().toArray(String[]::new))
                 .mixed(flywayConfig.mixed())
@@ -31,10 +31,18 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
                 .validateOnMigrate(flywayConfig.validateOnMigrate())
                 .configuration(flywayConfig.configurationProperties())
                 .loggers("slf4j")
-                .load()
-                .migrate();
+                .load();
 
-            logger.info("FlyWay migration applied in {}", TimeUtils.tookForLogging(started));
+            switch (flywayConfig.mode()) {
+                case MIGRATE -> flyway.migrate();
+                case REPAIR -> flyway.repair();
+                case CLEAN_MIGRATE -> {
+                    flyway.clean();
+                    flyway.migrate();
+                }
+            }
+
+            logger.info("FlyWay migration in mode '{}' applied in {}", flywayConfig.mode(), TimeUtils.tookForLogging(started));
         } else {
             logger.info("FlyWay is disabled, skipping migrate...");
         }
@@ -43,7 +51,7 @@ public final class FlywayJdbcDatabaseInterceptor implements GraphInterceptor<Jdb
     }
 
     @Override
-    public JdbcDatabase beforeRelease(JdbcDatabase value) {
+    public JdbcDataSource beforeRelease(JdbcDataSource value) {
         return value;
     }
 }

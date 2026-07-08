@@ -1,9 +1,9 @@
 package io.koraframework.database.cassandra.mapper.parameter;
 
 import com.datastax.oss.driver.api.core.data.SettableByName;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.cassandra.CassandraRepository;
+import org.jspecify.annotations.Nullable;
 
 /**
  * <b>Русский</b>: Контракт для создания конвертер входящих параметров CQL запроса.
@@ -29,5 +29,6 @@ import io.koraframework.database.cassandra.CassandraRepository;
  * @see Mapping
  */
 public interface CassandraParameterColumnMapper<T> extends Mapping.MappingFunction {
+
     void apply(SettableByName<?> stmt, int index, @Nullable T value);
 }

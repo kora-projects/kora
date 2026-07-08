@@ -10,7 +10,6 @@ import com.squareup.kotlinpoet.*
 import com.squareup.kotlinpoet.ksp.toAnnotationSpec
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
-import org.slf4j.LoggerFactory
 import io.koraframework.database.symbol.processor.cassandra.CassandraRepositoryGenerator
 import io.koraframework.database.symbol.processor.jdbc.JdbcRepositoryGenerator
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
@@ -20,6 +19,7 @@ import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.ksp.common.getOuterClassesAsPrefix
+import org.slf4j.LoggerFactory
 
 class RepositoryBuilder(
     val resolver: Resolver,

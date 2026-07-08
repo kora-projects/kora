@@ -1,10 +1,10 @@
 package io.koraframework.database.annotation.processor;
 
 import com.palantir.javapoet.*;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.*;
 import io.koraframework.database.annotation.processor.cassandra.CassandraRepositoryGenerator;
 import io.koraframework.database.annotation.processor.jdbc.JdbcRepositoryGenerator;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.Modifier;

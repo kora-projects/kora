@@ -1,4 +1,4 @@
-package io.koraframework.database.jdbc;
+package io.koraframework.database.jdbc.annotation;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;

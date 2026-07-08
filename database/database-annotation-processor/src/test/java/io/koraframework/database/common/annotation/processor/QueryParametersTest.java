@@ -1,7 +1,7 @@
 package io.koraframework.database.common.annotation.processor;
 
-import org.junit.jupiter.api.Test;
 import io.koraframework.database.common.annotation.processor.jdbc.AbstractJdbcRepositoryTest;
+import org.junit.jupiter.api.Test;
 
 import java.sql.SQLException;
 import java.util.List;

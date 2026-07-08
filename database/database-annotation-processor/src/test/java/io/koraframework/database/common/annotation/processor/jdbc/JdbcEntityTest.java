@@ -2,10 +2,10 @@ package io.koraframework.database.common.annotation.processor.jdbc;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.ParameterizedTypeName;
-import org.junit.jupiter.api.Test;
 import io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
 import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
+import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
@@ -18,7 +18,7 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcRowMapper.class), className("TestRecord"));
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -30,7 +30,7 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcResultSetMapper.class), className("TestRecord"));
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 
@@ -42,7 +42,7 @@ public class JdbcEntityTest extends AbstractJdbcEntityTest {
         var expectedType = ParameterizedTypeName.get(ClassName.get(JdbcResultSetMapper.class), ParameterizedTypeName.get(ClassName.get(List.class), className("TestRecord")));
 
         var graph = compile(expectedType, List.of(), List.of(new JdbcEntityAnnotationProcessor()),
-            "@io.koraframework.database.jdbc.EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
+            "@io.koraframework.database.jdbc.annotation.EntityJdbc public record TestRecord(Integer f1, Integer f2){}"
         );
         assertThat(draw.getNodes()).hasSize(2);
 

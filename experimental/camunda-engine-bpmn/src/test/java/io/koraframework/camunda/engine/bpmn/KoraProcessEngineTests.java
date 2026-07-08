@@ -11,7 +11,7 @@ import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_Datab
 import io.koraframework.database.common.telemetry.$DatabaseTelemetryConfig_DatabaseTracingConfig_ConfigValueMapper;
 import io.koraframework.database.common.telemetry.impl.NoopDatabaseTelemetryFactory;
 import io.koraframework.database.jdbc.$JdbcDatabaseConfig_ConfigValueMapper;
-import io.koraframework.database.jdbc.JdbcDatabase;
+import io.koraframework.database.jdbc.JdbcDataSource;
 import io.koraframework.telemetry.common.TelemetryConfig;
 import io.koraframework.test.postgres.PostgresParams;
 import io.koraframework.test.postgres.PostgresTestContainer;
@@ -153,7 +153,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
         });
     }
 
-    private static void withDatabase(PostgresParams params, Consumer<JdbcDatabase> consumer) {
+    private static void withDatabase(PostgresParams params, Consumer<JdbcDataSource> consumer) {
         var config = new $JdbcDatabaseConfig_ConfigValueMapper.JdbcDatabaseConfig_Impl(
             params.user(),
             params.password(),
@@ -177,7 +177,7 @@ public class KoraProcessEngineTests implements CamundaEngineBpmnModule {
             )
         );
 
-        var db = new JdbcDatabase(config, NoopDatabaseTelemetryFactory.INSTANCE, null);
+        var db = new JdbcDataSource(config, NoopDatabaseTelemetryFactory.INSTANCE, null);
         try {
             db.init();
         } catch (SQLException e) {

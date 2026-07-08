@@ -1,7 +1,7 @@
 [
     {
         "tags": [],
-        "typeRegex": "io.koraframework.database.jdbc.JdbcConnectionFactory",
+        "typeRegex": "io.koraframework.database.jdbc.JdbcExecutor",
         "moduleName": "io.koraframework.database.jdbc.JdbcDatabaseModule",
         "artifact": "io.koraframework:database-jdbc"
     }

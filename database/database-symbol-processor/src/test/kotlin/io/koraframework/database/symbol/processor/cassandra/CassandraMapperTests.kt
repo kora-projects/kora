@@ -3,11 +3,11 @@ package io.koraframework.database.symbol.processor.cassandra
 import com.datastax.oss.driver.api.core.cql.ColumnDefinitions
 import com.datastax.oss.driver.api.core.cql.ResultSet
 import com.datastax.oss.driver.api.core.cql.Row
+import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper
+import io.koraframework.database.cassandra.mapper.result.CassandraRowMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
-import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper
-import io.koraframework.database.cassandra.mapper.result.CassandraRowMapper
 
 class CassandraMapperTests : AbstractCassandraRepositoryTest() {
 

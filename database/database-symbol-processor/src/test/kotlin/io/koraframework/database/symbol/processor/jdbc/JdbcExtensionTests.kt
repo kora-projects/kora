@@ -1,7 +1,7 @@
 package io.koraframework.database.symbol.processor.jdbc
 
-import org.junit.jupiter.api.Test
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
+import org.junit.jupiter.api.Test
 
 class JdbcExtensionTests : AbstractJdbcRepositoryTest() {
     @Test
@@ -17,7 +17,7 @@ class JdbcExtensionTests : AbstractJdbcRepositoryTest() {
             }
             """.trimIndent(),
             """
-            @io.koraframework.database.jdbc.EntityJdbc
+            @io.koraframework.database.jdbc.annotation.EntityJdbc
             data class TestRow(val id: Int)
             """.trimIndent()
         )

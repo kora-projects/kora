@@ -1,10 +1,10 @@
 package io.koraframework.database.annotation.processor;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.ProcessingError;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.*;
 import java.util.List;

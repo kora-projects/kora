@@ -1,5 +1,8 @@
 package io.koraframework.database.symbol.processor.jdbc
 
+import io.koraframework.common.annotation.Tag
+import io.koraframework.database.common.UpdateCount
+import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper
 import org.assertj.core.api.Assertions
 import org.junit.jupiter.api.Test
 import org.mockito.ArgumentMatchers
@@ -7,9 +10,6 @@ import org.mockito.Mockito
 import org.mockito.kotlin.any
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
-import io.koraframework.common.annotation.Tag
-import io.koraframework.database.common.UpdateCount
-import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper
 import java.sql.Statement
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.jvm.jvmErasure

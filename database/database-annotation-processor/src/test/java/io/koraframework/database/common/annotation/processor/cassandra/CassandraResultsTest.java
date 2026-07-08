@@ -1,11 +1,11 @@
 package io.koraframework.database.common.annotation.processor.cassandra;
 
 import com.datastax.oss.driver.api.core.cql.Statement;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.cassandra.mapper.result.CassandraAsyncResultSetMapper;
 import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;

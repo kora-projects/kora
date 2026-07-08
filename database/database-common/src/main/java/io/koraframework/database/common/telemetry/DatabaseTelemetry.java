@@ -1,7 +1,7 @@
 package io.koraframework.database.common.telemetry;
 
-import io.micrometer.core.instrument.MeterRegistry;
 import io.koraframework.database.common.QueryContext;
+import io.micrometer.core.instrument.MeterRegistry;
 
 public interface DatabaseTelemetry {
 

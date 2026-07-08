@@ -1,9 +1,9 @@
 package io.koraframework.database.cassandra.mapper.result;
 
 import com.datastax.oss.driver.api.core.cql.ResultSet;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.cassandra.CassandraRepository;
+import org.jspecify.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,6 +36,7 @@ import java.util.Optional;
  * @see Mapping
  */
 public interface CassandraResultSetMapper<T> extends Mapping.MappingFunction {
+
     @Nullable
     T apply(ResultSet rows);
 

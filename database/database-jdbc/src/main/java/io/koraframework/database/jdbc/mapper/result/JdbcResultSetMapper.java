@@ -1,8 +1,8 @@
 package io.koraframework.database.jdbc.mapper.result;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.jdbc.JdbcRepository;
+import org.jspecify.annotations.Nullable;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -37,6 +37,7 @@ import java.util.Optional;
  * @see Mapping
  */
 public interface JdbcResultSetMapper<T> extends Mapping.MappingFunction {
+
     @Nullable
     T apply(ResultSet rows) throws SQLException;
 

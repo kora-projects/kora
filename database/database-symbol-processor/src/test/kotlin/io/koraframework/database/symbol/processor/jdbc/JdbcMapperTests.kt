@@ -1,10 +1,10 @@
 package io.koraframework.database.symbol.processor.jdbc
 
+import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper
+import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.mockito.kotlin.*
-import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper
-import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper
 import java.sql.ResultSet
 
 class JdbcMapperTests : AbstractJdbcRepositoryTest() {

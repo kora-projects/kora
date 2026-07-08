@@ -1,6 +1,8 @@
 package io.koraframework.database.symbol.processor.cassandra
 
 import com.datastax.oss.driver.api.core.cql.Statement
+import io.koraframework.common.annotation.Tag
+import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -8,8 +10,6 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.mockito.Mockito.verify
 import org.mockito.kotlin.whenever
-import io.koraframework.common.annotation.Tag
-import io.koraframework.database.cassandra.mapper.result.CassandraResultSetMapper
 import kotlin.reflect.full.findAnnotations
 import kotlin.reflect.full.primaryConstructor
 import kotlin.reflect.jvm.jvmErasure

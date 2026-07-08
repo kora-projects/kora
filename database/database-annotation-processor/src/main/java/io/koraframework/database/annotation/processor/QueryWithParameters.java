@@ -1,8 +1,7 @@
 package io.koraframework.database.annotation.processor;
 
-import io.koraframework.database.annotation.processor.model.QueryParameter;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
+import org.jspecify.annotations.Nullable;
 
 import javax.annotation.processing.Filer;
 import javax.lang.model.element.ExecutableElement;
@@ -73,6 +72,8 @@ public record QueryWithParameters(String rawQuery, List<QueryParameter> paramete
                 }
             }
         }
+
+        rawSql = rawSql.strip();
 
         var sql = new QueryMacrosParser(types).parse(rawSql, repositoryType, method);
         List<QueryParameter> params = new ArrayList<>();

@@ -10,7 +10,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
             @KoraApp
-            interface TestApp : CassandraModule {
+            interface TestApp : CassandraMapperModule {
                 @Root
                 fun root(m: CassandraRowMapper<TestEntity>) = ""
             }
@@ -29,7 +29,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
             @KoraApp
-            interface TestApp : CassandraModule {
+            interface TestApp : CassandraMapperModule {
                 @Root
                 fun root(m: CassandraResultSetMapper<List<TestEntity>>) = ""
             }
@@ -48,7 +48,7 @@ class CassandraExtensionTest : AbstractCassandraRepositoryTest() {
             listOf(KoraAppProcessorProvider(), CassandraEntitySymbolProcessorProvider()),
             """
             @KoraApp
-            interface TestApp : CassandraModule {
+            interface TestApp : CassandraMapperModule {
                 @Root
                 fun root(m: CassandraResultSetMapper<TestEntity>) = ""
             }

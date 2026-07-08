@@ -35,8 +35,8 @@ class AbstractClassTest : AbstractJdbcRepositoryTest() {
         """.trimIndent(), """
                     @KoraApp
                     interface TestApp {
-                        fun factory() : io.koraframework.database.jdbc.JdbcConnectionFactory {
-                          return org.mockito.Mockito.mock(io.koraframework.database.jdbc.JdbcConnectionFactory::class.java)
+                        fun factory() : io.koraframework.database.jdbc.JdbcExecutor {
+                          return org.mockito.Mockito.mock(io.koraframework.database.jdbc.JdbcExecutor::class.java)
                         }
                         
                         @Root

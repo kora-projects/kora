@@ -1,8 +1,8 @@
 package io.koraframework.database.jdbc.mapper.parameter;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.Mapping;
 import io.koraframework.database.jdbc.JdbcRepository;
+import org.jspecify.annotations.Nullable;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -31,5 +31,6 @@ import java.sql.SQLException;
  * @see Mapping
  */
 public interface JdbcParameterColumnMapper<T> extends Mapping.MappingFunction {
+
     void set(PreparedStatement stmt, int index, @Nullable T value) throws SQLException;
 }

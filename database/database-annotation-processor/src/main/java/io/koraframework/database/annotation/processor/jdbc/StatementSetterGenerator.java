@@ -2,12 +2,12 @@ package io.koraframework.database.annotation.processor.jdbc;
 
 import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.TypeName;
-import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.CommonUtils;
 import io.koraframework.annotation.processor.common.FieldFactory;
 import io.koraframework.database.annotation.processor.QueryWithParameters;
 import io.koraframework.database.annotation.processor.entity.DbEntity;
 import io.koraframework.database.annotation.processor.model.QueryParameter;
+import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.ExecutableElement;
 import java.util.List;

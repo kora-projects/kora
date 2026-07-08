@@ -3,11 +3,11 @@ package io.koraframework.database.common.annotation.processor.cassandra;
 import com.datastax.dse.driver.api.core.cql.reactive.ReactiveResultSet;
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.*;
-import io.opentelemetry.api.trace.Span;
-import org.mockito.Mockito;
-import io.koraframework.database.cassandra.CassandraConnectionFactory;
+import io.koraframework.database.cassandra.CassandraExecutor;
 import io.koraframework.database.common.telemetry.DatabaseObservation;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
+import io.opentelemetry.api.trace.Span;
+import org.mockito.Mockito;
 
 import java.util.Iterator;
 import java.util.concurrent.CompletableFuture;
@@ -16,7 +16,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
-public class MockCassandraExecutor implements CassandraConnectionFactory {
+public class MockCassandraExecutor implements CassandraExecutor {
 
     public final ResultSet resultSet = Mockito.mock(ResultSet.class);
     public final AsyncResultSet asyncResultSet = Mockito.mock(AsyncResultSet.class);

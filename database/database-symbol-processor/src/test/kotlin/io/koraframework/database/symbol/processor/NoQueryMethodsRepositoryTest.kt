@@ -1,7 +1,7 @@
 package io.koraframework.database.symbol.processor
 
-import org.junit.jupiter.api.Test
 import io.koraframework.database.symbol.processor.jdbc.AbstractJdbcRepositoryTest
+import org.junit.jupiter.api.Test
 
 class NoQueryMethodsRepositoryTest : AbstractJdbcRepositoryTest() {
     @Test

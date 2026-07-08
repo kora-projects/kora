@@ -12,7 +12,7 @@ object CassandraTypes {
     val defaultBatchType = ClassName("com.datastax.oss.driver.api.core.cql", "DefaultBatchType")
     val statement = ClassName("com.datastax.oss.driver.api.core.cql", "Statement")
     val boundStatementBuilder = ClassName("com.datastax.oss.driver.api.core.cql", "BoundStatementBuilder")
-    val connectionFactory = ClassName("io.koraframework.database.cassandra", "CassandraConnectionFactory")
+    val connectionFactory = ClassName("io.koraframework.database.cassandra", "CassandraExecutor")
     val repository = ClassName("io.koraframework.database.cassandra", "CassandraRepository")
     val cassandraProfileAnnotation = ClassName("io.koraframework.database.cassandra.annotation", "CassandraProfile")
     val parameterColumnMapper = ClassName("io.koraframework.database.cassandra.mapper.parameter", "CassandraParameterColumnMapper")
