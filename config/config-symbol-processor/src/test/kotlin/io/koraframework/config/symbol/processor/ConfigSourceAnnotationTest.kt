@@ -3,13 +3,13 @@ package io.koraframework.config.symbol.processor
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import io.koraframework.config.common.Config
-import io.koraframework.config.common.extractor.ConfigValueExtractor
-import io.koraframework.config.common.factory.MapConfigFactory
+import io.koraframework.config.common.mapper.ConfigValueMapper
+import io.koraframework.config.common.util.ConfigMappingUtils
 
 class ConfigSourceAnnotationTest : AbstractConfigTest() {
     @Test
     fun testConfigSourceGeneratesConfigExtractor() {
-        val extractor = compileConfig(
+        val mapper = compileConfig(
             listOf<Any>(), """
             @ConfigSource("test.path")
             interface TestConfig {
@@ -18,8 +18,8 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
             
             """.trimIndent()
         )
-        assertThat(extractor.extract(MapConfigFactory.fromMap(mapOf("value" to 42)).root()))
-            .isEqualTo(new($$"$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("value" to 42)).root()))
+            .isEqualTo(new($$"$TestConfig_ConfigValueMapper$TestConfig_Impl", 42))
     }
 
     @Test
@@ -39,7 +39,7 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
             .isInterface()
             .hasMethods("testConfig")
 
-        val method = moduleClass.getMethod("testConfig", Config::class.java, ConfigValueExtractor::class.java)
+        val method = moduleClass.getMethod("testConfig", Config::class.java, ConfigValueMapper::class.java)
         assertThat(method).isNotNull()
         assertThat(method.returnType).isEqualTo(loadClass("TestConfig"))
         assertThat(method.isDefault).isTrue()

@@ -1,9 +1,9 @@
 package io.koraframework.config.annotation.processor;
 
 import io.koraframework.config.common.ConfigValue;
-import io.koraframework.config.common.extractor.ConfigValueExtractionException;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
-import io.koraframework.config.common.factory.MapConfigFactory;
+import io.koraframework.config.common.exception.ConfigValueException;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
+import io.koraframework.config.common.util.ConfigMappingUtils;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
@@ -21,153 +21,153 @@ import static org.mockito.Mockito.when;
 public class AnnotationConfigTest extends AbstractConfigTest {
     @Test
     public void testIntSupported() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               int value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", 42)).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", 42)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", 42));
     }
 
     @Test
     public void testIntArraySupported() {
-        var mapper = Mockito.mock(ConfigValueExtractor.class);
-        when(mapper.extract(any())).thenReturn((Object) new int[] {42});
+        var mockMapper = Mockito.mock(ConfigValueMapper.class);
+        when(mockMapper.map(any())).thenReturn((Object) new int[] {42});
 
-        var extractor = this.compileConfig(List.of(mapper), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(mockMapper), """
+            @ConfigMapper
             public interface TestConfig {
               int[] value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value",  List.of(42))).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", (Object) new int[] {42}));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value",  List.of(42))).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", (Object) new int[] {42}));
 
-        verify(mapper).extract(any());
+        verify(mockMapper).map(any());
     }
 
     @Test
     public void testIntArrayNullableSupported() {
-        var mapper = Mockito.mock(ConfigValueExtractor.class);
-        when(mapper.extract(any())).thenReturn((Object) new int[] {42});
+        var mockMapper = Mockito.mock(ConfigValueMapper.class);
+        when(mockMapper.map(any())).thenReturn((Object) new int[] {42});
 
-        var extractor = this.compileConfig(List.of(mapper), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(mockMapper), """
+            @ConfigMapper
             public interface TestConfig {
               @Nullable
               int[] value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", List.of(42))).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", (Object) new int[] {42}));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", List.of(42))).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", (Object) new int[] {42}));
 
-        verify(mapper).extract(any());
+        verify(mockMapper).map(any());
     }
 
     @Test
     public void testIntegerSupported() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               @Nullable
               Integer value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", 42)).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42));
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", new Object[]{null}));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", 42)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", 42));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", new Object[]{null}));
     }
 
     @Test
     public void testStringSupported() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               String value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "test"));
-        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
-            .isInstanceOf(ConfigValueExtractionException.class)
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", "test"));
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isInstanceOf(ConfigValueException.class)
             .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
     }
 
     @Test
     public void testLongSupported() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               Long value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", 42L)).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42L));
-        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
-            .isInstanceOf(ConfigValueExtractionException.class)
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", 42L)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", 42L));
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isInstanceOf(ConfigValueException.class)
             .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
     }
 
     @Test
     public void testBooleanSupported() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               Boolean value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", true)).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", true));
-        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
-            .isInstanceOf(ConfigValueExtractionException.class)
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", true)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", true));
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isInstanceOf(ConfigValueException.class)
             .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
     }
 
     @Test
     public void testDoubleSupported() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               Double value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", 42.5)).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", 42.5));
-        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
-            .isInstanceOf(ConfigValueExtractionException.class)
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", 42.5)).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", 42.5));
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isInstanceOf(ConfigValueException.class)
             .hasMessageStartingWith("Config expected value, but got null at path: 'ROOT.value' for origin");
     }
 
     @Test
     public void testDefaultValues() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               default String value() { return "default-value"; }
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "test"));
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "default-value"));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", "test"));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", "default-value"));
     }
 
     @Test
     public void testDefaultAndNullable() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig {
               default String value1() { return "default-value"; }
 
@@ -176,24 +176,24 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "test", null));
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "default-value", null));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value1", "test")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", "test", null));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", "default-value", null));
     }
 
     @Test
     public void testInterfaceWithUnknownType() {
-        var mapper = Mockito.mock(ConfigValueExtractor.class);
-        when(mapper.extract(any())).thenAnswer(invocation -> {
+        var mockMapper = Mockito.mock(ConfigValueMapper.class);
+        when(mockMapper.map(any())).thenAnswer(invocation -> {
             if (invocation.getArguments()[0] instanceof ConfigValue.NullValue) {
                 throw new IllegalArgumentException();
             }
             return Duration.ofDays(3000);
         });
 
-        var extractor = this.compileConfig(List.of(mapper), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(mockMapper), """
+            @ConfigMapper
             public interface TestConfig {
               java.time.Duration value();
 
@@ -201,16 +201,16 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", Duration.ofDays(3000), null));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", Duration.ofDays(3000), null));
 
-        verify(mapper).extract(any());
+        verify(mockMapper).map(any());
     }
 
     @Test
     public void testInterfaceWithUnknownTypeAndMapping() {
-        var extractor = this.compileConfig(List.of(newGeneratedObject("TestExtractor")), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(newGeneratedObject("TestExtractor")), """
+            @ConfigMapper
             public interface TestConfig {
               @Mapping(TestExtractor.class)
               @Tag(TestExtractor.class)
@@ -220,31 +220,31 @@ public class AnnotationConfigTest extends AbstractConfigTest {
               java.time.@Nullable Duration value2();
             }
             """, """
-            import io.koraframework.config.common.extractor.ConfigValueExtractor;import io.koraframework.config.common.ConfigValue;
+            import io.koraframework.config.common.mapper.ConfigValueMapper;import io.koraframework.config.common.ConfigValue;
 
-            public class TestExtractor implements ConfigValueExtractor<java.time.Duration> {
-                public java.time.Duration extract(ConfigValue<?> value) {
+            public class TestExtractor implements ConfigValueMapper<java.time.Duration> {
+                public java.time.Duration map(ConfigValue<?> value) {
                   return value instanceof ConfigValue.NullValue ? null : java.time.Duration.ofDays(3000);
                 }
             }
             """, """
-            import io.koraframework.config.common.extractor.ConfigValueExtractor;import io.koraframework.config.common.ConfigValue;
+            import io.koraframework.config.common.mapper.ConfigValueMapper;import io.koraframework.config.common.ConfigValue;
 
-            public final class TestFinalExtractor implements ConfigValueExtractor<java.time.Duration> {
-                public java.time.Duration extract(ConfigValue<?> value) {
+            public final class TestFinalExtractor implements ConfigValueMapper<java.time.Duration> {
+                public java.time.Duration map(ConfigValue<?> value) {
                   return value instanceof ConfigValue.NullValue ? null : java.time.Duration.ofDays(3000);
                 }
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", Duration.ofDays(3000), null));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value1", "test")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", Duration.ofDays(3000), null));
     }
 
     @Test
     public void testInterfaceWithSuper() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig extends SuperTestConfig{
               String value1();
             }
@@ -256,14 +256,14 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test1", "value2", "test2", "value3", "test3")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", "test1", "test2", "test3"));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value1", "test1", "value2", "test2", "value3", "test3")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", "test1", "test2", "test3"));
     }
 
     @Test
     public void testInterfaceNoFieldsWithSuper() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public interface TestConfig extends SuperTestConfig{
             }
             """, """
@@ -274,74 +274,74 @@ public class AnnotationConfigTest extends AbstractConfigTest {
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value2", "test2", "value3", "test3")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl",  "test2", "test3"));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value2", "test2", "value3", "test3")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl",  "test2", "test3"));
     }
 
     @Test
     public void testInterfaceWithArray() {
-        var mapper = Mockito.mock(ConfigValueExtractor.class);
-        when(mapper.extract(any())).thenAnswer(invocation -> new int[]{1, 2, 3});
+        var mockMapper = Mockito.mock(ConfigValueMapper.class);
+        when(mockMapper.map(any())).thenAnswer(invocation -> new int[]{1, 2, 3});
 
-        var extractor = this.compileConfig(List.of(mapper), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(mockMapper), """
+            @ConfigMapper
             public interface TestConfig {
               int[] value();
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
-            .isEqualTo(newObject("$TestConfig_ConfigValueExtractor$TestConfig_Impl", (Object) new int[]{1, 2, 3}));
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value1", "test")).root()))
+            .isEqualTo(newObject("$TestConfig_ConfigValueMapper$TestConfig_Impl", (Object) new int[]{1, 2, 3}));
 
-        verify(mapper).extract(any());
+        verify(mockMapper).map(any());
     }
 
     @Test
     public void testRecord() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public record TestConfig(String value) {
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root()))
             .isEqualTo(newObject("TestConfig", "test"));
     }
 
     @Test
     public void testRecordAllNullable() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public record TestConfig(@Nullable String value) {
             }
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root()))
             .isEqualTo(newObject("TestConfig", "test"));
     }
 
     @Test
     public void testRecordWithUnknownType() {
-        var mapper = Mockito.mock(ConfigValueExtractor.class);
-        when(mapper.extract(any())).thenReturn(Duration.ofDays(3000));
+        var mockMapper = Mockito.mock(ConfigValueMapper.class);
+        when(mockMapper.map(any())).thenReturn(Duration.ofDays(3000));
 
-        var extractor = this.compileConfig(List.of(mapper), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(mockMapper), """
+            @ConfigMapper
             public record TestConfig (
               java.time.Duration value
             ){}
             """);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value1", "test")).root()))
             .isEqualTo(newObject("TestConfig", Duration.ofDays(3000)));
 
-        verify(mapper).extract(any());
+        verify(mockMapper).map(any());
     }
 
     @Test
     public void testPojo() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public class TestConfig {
               private String value;
 
@@ -370,14 +370,14 @@ public class AnnotationConfigTest extends AbstractConfigTest {
         var expected = newObject("TestConfig");
         invoke(expected, "setValue", "test");
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root()))
             .isEqualTo(expected);
     }
 
     @Test
     public void testPojoWithDefault() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public class TestConfig {
               private String value = "default-value";
 
@@ -401,18 +401,18 @@ public class AnnotationConfigTest extends AbstractConfigTest {
         var expected = newObject("TestConfig");
 
         invoke(expected, "setValue", "test");
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value", "test")).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value", "test")).root()))
             .isEqualTo(expected);
 
         invoke(expected, "setValue", "default-value");
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of()).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of()).root()))
             .isEqualTo(expected);
     }
 
     @Test
     public void testPojoWithConstructor() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public class TestConfig {
               @Nullable
               private final String value1;
@@ -447,14 +447,14 @@ public class AnnotationConfigTest extends AbstractConfigTest {
 
         var expected = newObject("TestConfig", "test", null);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value1", "test")).root()))
             .isEqualTo(expected);
     }
 
     @Test
     public void testPojoWithFluent() {
-        var extractor = this.compileConfig(List.of(), """
-            @io.koraframework.config.common.annotation.ConfigValueExtractor
+        var mapper = this.compileConfig(List.of(), """
+            @ConfigMapper
             public class TestConfig {
               @Nullable
               private final String value1;
@@ -489,10 +489,10 @@ public class AnnotationConfigTest extends AbstractConfigTest {
 
         var expected = newObject("TestConfig", "test", null);
 
-        assertThat(extractor.extract(MapConfigFactory.fromMap(Map.of("value1", "test")).root()))
+        assertThat(mapper.map(ConfigMappingUtils.fromMap(Map.of("value1", "test")).root()))
             .isEqualTo(expected);
 
-        assertThatThrownBy(() -> extractor.extract(MapConfigFactory.fromMap(Map.of("value2", "test")).root()));
+        assertThatThrownBy(() -> mapper.map(ConfigMappingUtils.fromMap(Map.of("value2", "test")).root()));
     }
 
 }

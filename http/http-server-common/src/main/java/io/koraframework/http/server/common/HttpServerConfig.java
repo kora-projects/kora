@@ -1,12 +1,12 @@
 package io.koraframework.http.server.common;
 
 import io.koraframework.common.util.Size;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryConfig;
 
 import java.time.Duration;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface HttpServerConfig {
 
     default int port() {

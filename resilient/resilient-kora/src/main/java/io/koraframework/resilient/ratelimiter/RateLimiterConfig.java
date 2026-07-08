@@ -1,13 +1,13 @@
 package io.koraframework.resilient.ratelimiter;
 
 import org.jspecify.annotations.Nullable;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetryConfig;
 
 import java.time.Duration;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface RateLimiterConfig {
 
     String DEFAULT = "default";
@@ -24,7 +24,7 @@ public interface RateLimiterConfig {
      * {@link #limitRefreshPeriod} Configures the period of a limit refresh. After each period the rate limiter
      * sets its permissions count to the {@link #limitForPeriod} value. Must be greater than 0.<br>
      */
-    @ConfigValueExtractor
+    @ConfigMapper
     interface NamedConfig {
 
         @Nullable
@@ -76,7 +76,7 @@ public interface RateLimiterConfig {
             return namedConfig;
         }
 
-        return new $RateLimiterConfig_NamedConfig_ConfigValueExtractor.NamedConfig_Impl(
+        return new $RateLimiterConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
             namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
             namedConfig.limitForPeriod() == null ? defaultConfig.limitForPeriod() : namedConfig.limitForPeriod(),
             namedConfig.limitRefreshPeriod() == null ? defaultConfig.limitRefreshPeriod() : namedConfig.limitRefreshPeriod()

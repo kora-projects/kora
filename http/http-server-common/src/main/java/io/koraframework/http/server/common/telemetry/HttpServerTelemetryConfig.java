@@ -1,14 +1,14 @@
 package io.koraframework.http.server.common.telemetry;
 
 import io.koraframework.common.util.Size;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 import org.jspecify.annotations.Nullable;
 
 import java.util.Collections;
 import java.util.Set;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface HttpServerTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -20,7 +20,7 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
     @Override
     HttpServerTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface HttpServerLoggingConfig extends LoggingConfig {
 
         default boolean stacktrace() {
@@ -51,10 +51,10 @@ public interface HttpServerTelemetryConfig extends TelemetryConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface HttpServerMetricsConfig extends TelemetryConfig.MetricsConfig { }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface HttpServerTracingConfig extends TelemetryConfig.TracingConfig {
 
         default boolean tracePathFull() {

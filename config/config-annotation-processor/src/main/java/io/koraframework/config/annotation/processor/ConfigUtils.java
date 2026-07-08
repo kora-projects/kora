@@ -52,7 +52,7 @@ public class ConfigUtils {
         for (var recordComponent : te.getRecordComponents()) {
             var recordComponentType = types.asMemberOf(typeMirror, recordComponent);
             var name = recordComponent.getSimpleName().toString();
-            var mapping = CommonUtils.parseMapping(recordComponent).getMapping(ConfigClassNames.configValueExtractor);
+            var mapping = CommonUtils.parseMapping(recordComponent).getMapping(ConfigClassNames.configValueMapper);
             var isNullable = CommonUtils.isNullable(recordComponent) && !recordComponentType.getKind().isPrimitive();
             fields.add(new ConfigUtils.ConfigField(
                 name, TypeName.get(recordComponentType), isNullable, false, mapping
@@ -106,7 +106,7 @@ public class ConfigUtils {
             var name = method.getSimpleName().toString();
             if (seen.add(name)) {
                 var isNullable = CommonUtils.isNullable(method) && !methodType.getReturnType().getKind().isPrimitive();
-                var mapping = CommonUtils.parseMapping(method).getMapping(ConfigClassNames.configValueExtractor);
+                var mapping = CommonUtils.parseMapping(method).getMapping(ConfigClassNames.configValueMapper);
                 fields.add(new ConfigUtils.ConfigField(
                     name, TypeName.get(methodType.getReturnType()), isNullable, method.getModifiers().contains(Modifier.DEFAULT), mapping
                 ));
@@ -189,11 +189,11 @@ public class ConfigUtils {
             var fieldType = types.asMemberOf(typeMirror, value.field);
             if (seen.add(name)) {
                 var isNullable = CommonUtils.isNullable(value.field) && !fieldType.getKind().isPrimitive();
-                var mapping = CommonUtils.parseMapping(value.field).getMapping(ConfigClassNames.configValueExtractor);
+                var mapping = CommonUtils.parseMapping(value.field).getMapping(ConfigClassNames.configValueMapper);
                 var constructorParam = constructorParams.get(name);
                 if (constructorParam != null) {
                     if (mapping == null) {
-                        mapping = CommonUtils.parseMapping(constructorParam).getMapping(ConfigClassNames.configValueExtractor);
+                        mapping = CommonUtils.parseMapping(constructorParam).getMapping(ConfigClassNames.configValueMapper);
                     }
                     isNullable = CommonUtils.isNullable(constructorParam) && !fieldType.getKind().isPrimitive();
                     ;

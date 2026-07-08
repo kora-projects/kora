@@ -71,12 +71,12 @@ class TransactionalPublisherImplTest {
         var producerProps = new Properties();
         producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
 
-        var producerConfig = new $KafkaPublisherConfig_ConfigValueExtractor.KafkaPublisherConfig_Impl(producerProps, new $KafkaPublisherTelemetryConfig_ConfigValueExtractor.KafkaPublisherTelemetryConfig_Impl(
-            new $KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueExtractor.KafkaProducerLoggingConfig_Defaults(),
-            new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueExtractor.KafkaProducerMetricsConfig_Defaults(),
-            new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueExtractor.KafkaProducerTracingConfig_Defaults()
+        var producerConfig = new $KafkaPublisherConfig_ConfigValueMapper.KafkaPublisherConfig_Impl(producerProps, new $KafkaPublisherTelemetryConfig_ConfigValueMapper.KafkaPublisherTelemetryConfig_Impl(
+            new $KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueMapper.KafkaProducerLoggingConfig_Defaults(),
+            new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueMapper.KafkaProducerMetricsConfig_Defaults(),
+            new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueMapper.KafkaProducerTracingConfig_Defaults()
         ));
-        var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueExtractor.TransactionConfig_Impl(
+        var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl(
             "test-", 5, Duration.ofSeconds(5)
         );
 
@@ -130,12 +130,12 @@ class TransactionalPublisherImplTest {
         var producerProps = new Properties();
         producerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, params.bootstrapServers());
 
-        var producerConfig = new $KafkaPublisherConfig_ConfigValueExtractor.KafkaPublisherConfig_Impl(producerProps, new $KafkaPublisherTelemetryConfig_ConfigValueExtractor.KafkaPublisherTelemetryConfig_Impl(
-            new $KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueExtractor.KafkaProducerLoggingConfig_Defaults(),
-            new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueExtractor.KafkaProducerMetricsConfig_Defaults(),
-            new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueExtractor.KafkaProducerTracingConfig_Defaults()
+        var producerConfig = new $KafkaPublisherConfig_ConfigValueMapper.KafkaPublisherConfig_Impl(producerProps, new $KafkaPublisherTelemetryConfig_ConfigValueMapper.KafkaPublisherTelemetryConfig_Impl(
+            new $KafkaPublisherTelemetryConfig_KafkaProducerLoggingConfig_ConfigValueMapper.KafkaProducerLoggingConfig_Defaults(),
+            new $KafkaPublisherTelemetryConfig_KafkaProducerMetricsConfig_ConfigValueMapper.KafkaProducerMetricsConfig_Defaults(),
+            new $KafkaPublisherTelemetryConfig_KafkaProducerTracingConfig_ConfigValueMapper.KafkaProducerTracingConfig_Defaults()
         ));
-        var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueExtractor.TransactionConfig_Impl(
+        var transactionalConfig = new $KafkaPublisherConfig_TransactionConfig_ConfigValueMapper.TransactionConfig_Impl(
             "test-", 5, Duration.ofSeconds(5)
         );
 

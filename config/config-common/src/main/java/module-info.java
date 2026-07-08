@@ -7,8 +7,9 @@ module kora.config.common {
 
     exports io.koraframework.config.common;
     exports io.koraframework.config.common.annotation;
-    exports io.koraframework.config.common.extractor;
-    exports io.koraframework.config.common.factory;
+    exports io.koraframework.config.common.mapper;
     exports io.koraframework.config.common.origin;
     exports io.koraframework.config.common.impl;
+    exports io.koraframework.config.common.util;
+    exports io.koraframework.config.common.exception;
 }

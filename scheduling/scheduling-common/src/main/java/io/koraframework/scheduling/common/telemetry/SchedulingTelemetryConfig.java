@@ -1,9 +1,9 @@
 package io.koraframework.scheduling.common.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface SchedulingTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,12 +15,12 @@ public interface SchedulingTelemetryConfig extends TelemetryConfig {
     @Override
     SchedulingTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SchedulingLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SchedulingMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SchedulingTracingConfig extends TelemetryConfig.TracingConfig {}
 }

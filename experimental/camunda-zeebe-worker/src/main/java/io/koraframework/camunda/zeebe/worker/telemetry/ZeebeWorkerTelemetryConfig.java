@@ -1,9 +1,9 @@
 package io.koraframework.camunda.zeebe.worker.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface ZeebeWorkerTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,12 +15,12 @@ public interface ZeebeWorkerTelemetryConfig extends TelemetryConfig {
     @Override
     ZeebeWorkerTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface ZeebeWorkerLoggingConfig extends LoggingConfig { }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface ZeebeWorkerMetricsConfig extends MetricsConfig { }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface ZeebeWorkerTracingConfig extends TracingConfig { }
 }

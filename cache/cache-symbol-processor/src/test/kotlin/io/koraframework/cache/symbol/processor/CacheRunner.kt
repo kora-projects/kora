@@ -1,15 +1,15 @@
 package io.koraframework.cache.symbol.processor
 
-import io.koraframework.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor`
-import io.koraframework.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor`
+import io.koraframework.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper`
+import io.koraframework.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper`
 import io.koraframework.cache.caffeine.CaffeineCacheConfig
 import io.koraframework.cache.caffeine.CaffeineCacheConfig.CaffeineTelemetryConfig
 import io.koraframework.cache.redis.*
 import io.koraframework.cache.redis.RedisCacheClient
-import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_ConfigValueExtractor`
-import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor`
-import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor`
-import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor`
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_ConfigValueMapper`
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper`
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper`
+import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper`
 import org.mockito.Mockito
 import org.mockito.Mockito.`when`
 import java.nio.ByteBuffer
@@ -30,8 +30,8 @@ class CacheRunner {
             `when`(config.maximumSize()).thenReturn(100000L)
             `when`(config.expireAfterAccess()).thenReturn(null)
             `when`(config.expireAfterWrite()).thenReturn(null)
-            `when`(telemetry.metrics()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor`.CaffeineMetricsConfig_Defaults())
-            `when`(telemetry.logging()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor`.CaffeineLoggingConfig_Defaults())
+            `when`(telemetry.metrics()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper`.CaffeineMetricsConfig_Defaults())
+            `when`(telemetry.logging()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper`.CaffeineLoggingConfig_Defaults())
             return config
         }
 
@@ -43,10 +43,10 @@ class CacheRunner {
                 override fun expireAfterWrite(): Duration? = null
 
                 override fun expireAfterAccess(): Duration? = null
-                override fun telemetry() = `$RedisCacheTelemetryConfig_ConfigValueExtractor`.RedisCacheTelemetryConfig_Impl(
-                    `$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor`.RedisCacheLoggingConfig_Defaults(),
-                    `$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor`.RedisCacheTracingConfig_Defaults(),
-                    `$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor`.RedisCacheMetricsConfig_Defaults()
+                override fun telemetry() = `$RedisCacheTelemetryConfig_ConfigValueMapper`.RedisCacheTelemetryConfig_Impl(
+                    `$RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper`.RedisCacheLoggingConfig_Defaults(),
+                    `$RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper`.RedisCacheTracingConfig_Defaults(),
+                    `$RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper`.RedisCacheMetricsConfig_Defaults()
                 )
             }
         }

@@ -2,12 +2,12 @@ package io.koraframework.grpc.server;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.common.util.Size;
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.grpc.server.telemetry.GrpcServerTelemetryConfig;
 
 import java.time.Duration;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface GrpcServerConfig {
 
     default int port() {

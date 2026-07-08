@@ -3,7 +3,7 @@ package io.koraframework.http.client.jdk;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.client.common.HttpClientConfig;
 import io.koraframework.http.client.common.HttpClientModule;
 
@@ -15,12 +15,12 @@ public interface JdkHttpClientModule extends HttpClientModule {
         return new JdkHttpClient(client);
     }
 
-    default JdkHttpClientConfig jdkHttpClientConfig(Config config, ConfigValueExtractor<JdkHttpClientConfig> extractor) {
-        return extractor.extractOrThrow(config.get("httpClient.jdk"));
+    default JdkHttpClientConfig jdkHttpClientConfig(Config config, ConfigValueMapper<JdkHttpClientConfig> mapper) {
+        return mapper.mapOrThrow(config.get("httpClient.jdk"));
     }
 
     @DefaultComponent
-    default ConfigValueExtractor<HttpClient.Version> jdkHttpClientVersionExtractor() {
+    default ConfigValueMapper<HttpClient.Version> jdkHttpClientVersionExtractor() {
         return value -> {
             if (value instanceof ConfigValue.NullValue) {
                 return null;

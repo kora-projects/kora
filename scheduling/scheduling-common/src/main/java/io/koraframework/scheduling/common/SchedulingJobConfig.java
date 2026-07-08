@@ -1,17 +1,17 @@
 package io.koraframework.scheduling.common;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Map;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface SchedulingJobConfig {
 
     JobTelemetryConfig telemetry();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface JobTelemetryConfig {
 
         JobLoggingConfig logging();
@@ -20,13 +20,13 @@ public interface SchedulingJobConfig {
 
         JobTracingConfig tracing();
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface JobLoggingConfig {
             @Nullable
             Boolean enabled();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface JobMetricsConfig {
             @Nullable
             Boolean enabled();
@@ -37,7 +37,7 @@ public interface SchedulingJobConfig {
             Map<String, String> tags();
         }
 
-        @ConfigValueExtractor
+        @ConfigMapper
         interface JobTracingConfig {
             @Nullable
             Boolean enabled();

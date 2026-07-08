@@ -1,7 +1,7 @@
 package io.koraframework.grpc.client;
 
 import io.grpc.ManagedChannelBuilder;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.grpc.client.channel.GrpcClientChannelFactory;
 import io.koraframework.grpc.client.channel.GrpcOkHttpClientChannelFactory;
 import io.koraframework.grpc.client.config.DefaultServiceConfig;
@@ -9,7 +9,7 @@ import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
-import io.koraframework.grpc.client.config.DefaultServiceConfigConfigValueExtractor;
+import io.koraframework.grpc.client.config.DefaultServiceConfigConfigValueMapper;
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientLoggerFactory;
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientMetricsFactory;
 import io.koraframework.grpc.client.telemetry.impl.DefaultGrpcClientTelemetryFactory;
@@ -19,8 +19,8 @@ import io.koraframework.common.Configurer;
 public interface GrpcClientModule {
 
     @DefaultComponent
-    default ConfigValueExtractor<DefaultServiceConfig> defaultServiceConfigConfigValueExtractor() {
-        return new DefaultServiceConfigConfigValueExtractor();
+    default ConfigValueMapper<DefaultServiceConfig> defaultServiceConfigConfigValueMapper() {
+        return new DefaultServiceConfigConfigValueMapper();
     }
 
     @DefaultComponent

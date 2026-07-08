@@ -1,9 +1,9 @@
 package io.koraframework.cache.redis.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface RedisCacheTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,12 +15,12 @@ public interface RedisCacheTelemetryConfig extends TelemetryConfig {
     @Override
     RedisCacheMetricsConfig metrics();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RedisCacheTracingConfig extends TelemetryConfig.TracingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RedisCacheLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RedisCacheMetricsConfig extends TelemetryConfig.MetricsConfig {}
 }

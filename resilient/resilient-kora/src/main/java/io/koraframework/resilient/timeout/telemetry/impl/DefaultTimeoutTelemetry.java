@@ -16,10 +16,10 @@ public class DefaultTimeoutTelemetry implements TimeoutTelemetry {
                                    MeterRegistry meterRegistry) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext("none",
-            new $TimeoutTelemetryConfig_ConfigValueExtractor.TimeoutTelemetryConfig_Impl(
-                new $TimeoutTelemetryConfig_TimeoutLoggingConfig_ConfigValueExtractor.TimeoutLoggingConfig_Defaults(),
-                new $TimeoutTelemetryConfig_TimeoutMetricsConfig_ConfigValueExtractor.TimeoutMetricsConfig_Defaults(),
-                new $TimeoutTelemetryConfig_TimeoutTracingConfig_ConfigValueExtractor.TimeoutTracingConfig_Defaults()
+            new $TimeoutTelemetryConfig_ConfigValueMapper.TimeoutTelemetryConfig_Impl(
+                new $TimeoutTelemetryConfig_TimeoutLoggingConfig_ConfigValueMapper.TimeoutLoggingConfig_Defaults(),
+                new $TimeoutTelemetryConfig_TimeoutMetricsConfig_ConfigValueMapper.TimeoutMetricsConfig_Defaults(),
+                new $TimeoutTelemetryConfig_TimeoutTracingConfig_ConfigValueMapper.TimeoutTracingConfig_Defaults()
             ), false, false, DefaultTimeoutTelemetryFactory.NOOP_TRACER, DefaultTimeoutTelemetryFactory.NOOP_METER_REGISTRY);
     }
 

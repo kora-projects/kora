@@ -1,11 +1,11 @@
 package io.koraframework.soap.client.common;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryConfig;
 
 import java.time.Duration;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface SoapServiceConfig {
 
     String url();

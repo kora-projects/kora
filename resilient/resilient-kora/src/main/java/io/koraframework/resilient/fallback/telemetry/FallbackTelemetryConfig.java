@@ -1,9 +1,9 @@
 package io.koraframework.resilient.fallback.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface FallbackTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,13 +15,13 @@ public interface FallbackTelemetryConfig extends TelemetryConfig {
     @Override
     FallbackTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface FallbackLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface FallbackMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface FallbackTracingConfig extends TelemetryConfig.TracingConfig {
 
         @Override

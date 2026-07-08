@@ -1,9 +1,9 @@
 package io.koraframework.http.server.common.system;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.http.server.common.HttpServerConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface HttpServerSystemConfig extends HttpServerConfig {
 
     default String metricsPath() {

@@ -18,19 +18,19 @@ import javax.lang.model.util.Types;
 public final class ConfigKoraExtension implements KoraExtension {
     private final Elements elements;
     private final Types types;
-    private final TypeMirror configValueExtractorTypeErasure;
+    private final TypeMirror configValueMapperTypeErasure;
 
     public ConfigKoraExtension(ProcessingEnvironment processingEnv) {
         this.elements = processingEnv.getElementUtils();
         this.types = processingEnv.getTypeUtils();
-        this.configValueExtractorTypeErasure = types.erasure(elements.getTypeElement(ConfigClassNames.configValueExtractor.canonicalName()).asType());
+        this.configValueMapperTypeErasure = types.erasure(elements.getTypeElement(ConfigClassNames.configValueMapper.canonicalName()).asType());
     }
 
     @Override
     @Nullable
     public KoraExtensionDependencyGenerator getDependencyGenerator(RoundEnvironment roundEnvironment, TypeMirror typeMirror, String tag) {
         if (tag != null) return null;
-        if (!types.isSameType(types.erasure(typeMirror), configValueExtractorTypeErasure)) {
+        if (!types.isSameType(types.erasure(typeMirror), configValueMapperTypeErasure)) {
             return null;
         }
 
@@ -39,8 +39,8 @@ public final class ConfigKoraExtension implements KoraExtension {
             return null;
         }
         var element = ((TypeElement) types.asElement(paramType));
-        var mapperName = NameUtils.generatedType(element, ConfigClassNames.configValueExtractor);
-        if (AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configValueExtractorAnnotation) || AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configSourceAnnotation)) {
+        var mapperName = NameUtils.generatedType(element, ConfigClassNames.configValueMapper);
+        if (AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configValueMapperAnnotation) || AnnotationUtils.isAnnotationPresent(element, ConfigClassNames.configSourceAnnotation)) {
             return KoraExtensionDependencyGenerator.generatedFromWithName(this.elements, element, mapperName);
         }
         return null;

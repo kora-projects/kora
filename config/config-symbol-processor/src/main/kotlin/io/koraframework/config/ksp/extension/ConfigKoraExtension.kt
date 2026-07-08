@@ -17,10 +17,10 @@ class ConfigKoraExtension() : KoraExtension {
         if (tag != null) return null
         val actualType = if (type.nullability == Nullability.PLATFORM) type.makeNotNullable() else type
         actualType.toTypeName().let {
-            if (it is ParameterizedTypeName && it.rawType == CommonClassNames.configValueExtractor) {
+            if (it is ParameterizedTypeName && it.rawType == CommonClassNames.configValueMapper) {
                 val configTypeDecl = actualType.arguments.first().type?.resolve()?.declaration
-                if (configTypeDecl?.isAnnotationPresent(ConfigClassNames.configSourceAnnotation) == true || configTypeDecl?.isAnnotationPresent(ConfigClassNames.configValueExtractorAnnotation) == true) {
-                    return generatedByProcessor(resolver, configTypeDecl as KSClassDeclaration, ConfigClassNames.configValueExtractor.simpleName)
+                if (configTypeDecl?.isAnnotationPresent(ConfigClassNames.configSourceAnnotation) == true || configTypeDecl?.isAnnotationPresent(ConfigClassNames.configValueMapperAnnotation) == true) {
+                    return generatedByProcessor(resolver, configTypeDecl as KSClassDeclaration, ConfigClassNames.configValueMapper.simpleName)
                 }
             }
         }

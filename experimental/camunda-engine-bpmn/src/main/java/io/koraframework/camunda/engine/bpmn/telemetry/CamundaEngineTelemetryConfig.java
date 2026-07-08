@@ -1,9 +1,9 @@
 package io.koraframework.camunda.engine.bpmn.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface CamundaEngineTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,7 +15,7 @@ public interface CamundaEngineTelemetryConfig extends TelemetryConfig {
     @Override
     CamundaEngineTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CamundaEngineLoggingConfig extends LoggingConfig {
 
         default boolean stacktrace() {
@@ -23,7 +23,7 @@ public interface CamundaEngineTelemetryConfig extends TelemetryConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CamundaEngineMetricsConfig extends TelemetryConfig.MetricsConfig {
 
         default boolean engineMetrics() {
@@ -31,6 +31,6 @@ public interface CamundaEngineTelemetryConfig extends TelemetryConfig {
         }
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface CamundaEngineTracingConfig extends TelemetryConfig.TracingConfig {}
 }

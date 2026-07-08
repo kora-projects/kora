@@ -8,7 +8,7 @@ import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.liveness.LivenessProbe;
 import io.koraframework.common.readiness.ReadinessProbe;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.request.mapper.HttpServerParameterReaderModule;
@@ -30,8 +30,8 @@ import java.util.Optional;
 
 public interface HttpServerModule extends HttpServerParameterReaderModule, HttpServerRequestMapperModule, HttpServerResponseMapperModule {
 
-    default HttpServerConfig publicHttpServerConfig(Config config, ConfigValueExtractor<HttpServerConfig> extractor) {
-        return extractor.extractOrThrow(config.get("httpServer"));
+    default HttpServerConfig publicHttpServerConfig(Config config, ConfigValueMapper<HttpServerConfig> mapper) {
+        return mapper.mapOrThrow(config.get("httpServer"));
     }
 
     default HttpServerHandler publicHttpServerHandler(All<HttpServerRequestHandler> handlers,
@@ -50,8 +50,8 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
     }
 
     @SystemApi
-    default HttpServerSystemConfig systemHttpServerConfig(Config config, ConfigValueExtractor<HttpServerSystemConfig> extractor) {
-        return extractor.extractOrThrow(config.get("httpServer.system"));
+    default HttpServerSystemConfig systemHttpServerConfig(Config config, ConfigValueMapper<HttpServerSystemConfig> mapper) {
+        return mapper.mapOrThrow(config.get("httpServer.system"));
     }
 
     @SystemApi

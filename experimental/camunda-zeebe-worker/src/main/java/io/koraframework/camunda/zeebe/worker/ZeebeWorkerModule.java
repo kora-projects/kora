@@ -20,7 +20,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.grpc.client.GrpcClientModule;
 import io.koraframework.grpc.client.channel.GrpcClientChannelFactory;
 import io.koraframework.grpc.client.telemetry.GrpcClientTelemetryFactory;
@@ -34,12 +34,12 @@ import java.util.concurrent.ScheduledExecutorService;
 
 public interface ZeebeWorkerModule extends GrpcClientModule, JsonModule {
 
-    default ZeebeWorkerConfig zeebeWorkerConfig(Config config, ConfigValueExtractor<ZeebeWorkerConfig> extractor) {
-        return extractor.extractOrThrow(config.get("zeebe.worker"));
+    default ZeebeWorkerConfig zeebeWorkerConfig(Config config, ConfigValueMapper<ZeebeWorkerConfig> mapper) {
+        return mapper.mapOrThrow(config.get("zeebe.worker"));
     }
 
-    default ZeebeClientConfig zeebeClientConfig(Config config, ConfigValueExtractor<ZeebeClientConfig> extractor) {
-        return extractor.extractOrThrow(config.get("zeebe.client"));
+    default ZeebeClientConfig zeebeClientConfig(Config config, ConfigValueMapper<ZeebeClientConfig> mapper) {
+        return mapper.mapOrThrow(config.get("zeebe.client"));
     }
 
     @DefaultComponent

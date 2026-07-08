@@ -25,10 +25,10 @@ public class DefaultGrpcClientTelemetry implements GrpcClientTelemetry {
                                    Tracer tracer) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new $GrpcClientTelemetryConfig_ConfigValueExtractor.GrpcClientTelemetryConfig_Impl(
-                new $GrpcClientTelemetryConfig_GrpcClientLoggingConfig_ConfigValueExtractor.GrpcClientLoggingConfig_Defaults(),
-                new $GrpcClientTelemetryConfig_GrpcClientMetricsConfig_ConfigValueExtractor.GrpcClientMetricsConfig_Defaults(),
-                new $GrpcClientTelemetryConfig_GrpcClientTracingConfig_ConfigValueExtractor.GrpcClientTracingConfig_Defaults()
+            new $GrpcClientTelemetryConfig_ConfigValueMapper.GrpcClientTelemetryConfig_Impl(
+                new $GrpcClientTelemetryConfig_GrpcClientLoggingConfig_ConfigValueMapper.GrpcClientLoggingConfig_Defaults(),
+                new $GrpcClientTelemetryConfig_GrpcClientMetricsConfig_ConfigValueMapper.GrpcClientMetricsConfig_Defaults(),
+                new $GrpcClientTelemetryConfig_GrpcClientTracingConfig_ConfigValueMapper.GrpcClientTracingConfig_Defaults()
             ),
             new ServiceDescriptor("none"),
             URI.create("http://localhost"),

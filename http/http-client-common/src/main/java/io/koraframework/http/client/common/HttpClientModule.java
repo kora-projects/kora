@@ -2,7 +2,7 @@ package io.koraframework.http.client.common;
 
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.client.common.request.mapper.HttpClientParameterWriterModule;
 import io.koraframework.http.client.common.request.mapper.HttpClientRequestMapperModule;
 import io.koraframework.http.client.common.response.HttpClientResponseMapperModule;
@@ -17,9 +17,9 @@ import org.jspecify.annotations.Nullable;
 
 public interface HttpClientModule extends HttpClientRequestMapperModule, HttpClientResponseMapperModule, HttpClientParameterWriterModule {
 
-    default HttpClientConfig httpClientConfig(Config config, ConfigValueExtractor<HttpClientConfig> configValueExtractor) {
+    default HttpClientConfig httpClientConfig(Config config, ConfigValueMapper<HttpClientConfig> mapper) {
         var configValue = config.get("httpClient");
-        return configValueExtractor.extract(configValue);
+        return mapper.map(configValue);
     }
 
     @DefaultComponent

@@ -140,6 +140,6 @@ public class ApacheHttpClientWrapper implements Lifecycle, Wrapped<org.apache.hc
 
     @Override
     public org.apache.hc.client5.http.classic.HttpClient value() {
-        return null;
+        return this.httpClient;
     }
 }

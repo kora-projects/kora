@@ -1,13 +1,13 @@
 package io.koraframework.http.client.common;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import org.jspecify.annotations.Nullable;
 
 import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface HttpClientConfig {
 
     default Duration connectTimeout() {
@@ -25,7 +25,7 @@ public interface HttpClientConfig {
         return false;
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface HttpClientProxyConfig {
 
         String host();
@@ -71,7 +71,7 @@ public interface HttpClientConfig {
                 nonProxyHosts = List.of(noProxyString.split(","));
             }
 
-            return new $HttpClientConfig_HttpClientProxyConfig_ConfigValueExtractor.HttpClientProxyConfig_Impl(
+            return new $HttpClientConfig_HttpClientProxyConfig_ConfigValueMapper.HttpClientProxyConfig_Impl(
                 host, port, nonProxyHosts, user, password
             );
         }

@@ -1,8 +1,8 @@
 package io.koraframework.http.client.ok;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface OkHttpClientConfig {
 
     default boolean followRedirects() {

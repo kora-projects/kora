@@ -373,8 +373,8 @@ public class BlockingApiTest extends AbstractHttpClientTest {
 
     @Test
     public void testBlockingRequestBody() throws Exception {
-        var mapper = Mockito.mock(HttpClientRequestMapper.class);
-        var client = compileClient(List.of(mapper), """
+        var mockMapper = Mockito.mock(HttpClientRequestMapper.class);
+        var client = compileClient(List.of(mockMapper), """
             @HttpClient
             public interface TestClient {
               @HttpRoute(method = "POST", path = "/test")
@@ -382,17 +382,17 @@ public class BlockingApiTest extends AbstractHttpClientTest {
             }
             """);
 
-        when(mapper.apply(any())).thenAnswer(invocation -> HttpBody.plaintext("test-value"));
+        when(mockMapper.apply(any())).thenAnswer(invocation -> HttpBody.plaintext("test-value"));
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         client.invoke("request", "test-value");
-        verify(mapper).apply(eq("test-value"));
+        verify(mockMapper).apply(eq("test-value"));
 
-        reset(httpClient, mapper);
-        when(mapper.apply(any()))
+        reset(httpClient, mockMapper);
+        when(mockMapper.apply(any()))
             .thenThrow(RuntimeException.class);
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(200));
         assertThatThrownBy(() -> client.invoke("request", "test-value")).isInstanceOf(HttpClientEncoderException.class);
-        verify(mapper).apply(eq("test-value"));
+        verify(mockMapper).apply(eq("test-value"));
     }
 
     @Test

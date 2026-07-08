@@ -1,9 +1,9 @@
 package io.koraframework.soap.client.common.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface SoapClientTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,12 +15,12 @@ public interface SoapClientTelemetryConfig extends TelemetryConfig {
     @Override
     SoapClientTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SoapClientLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SoapClientMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface SoapClientTracingConfig extends TelemetryConfig.TracingConfig {}
 }

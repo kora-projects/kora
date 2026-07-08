@@ -6,6 +6,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.LoggingEvent;
 import ch.qos.logback.core.Appender;
 import com.typesafe.config.ConfigFactory;
+import io.koraframework.config.common.mapper.*;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -13,10 +14,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.LoggerFactory;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
-import io.koraframework.config.common.extractor.SetConfigValueExtractor;
-import io.koraframework.config.common.extractor.SizeConfigValueExtractor;
-import io.koraframework.config.common.extractor.StringConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
+import io.koraframework.config.common.mapper.SizeConfigValueMapper;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 import io.koraframework.config.hocon.HoconConfigFactory;
 import io.koraframework.http.common.HttpResultCode;
@@ -57,9 +56,9 @@ public class DefaultHttpServerLoggerTests {
     @SuppressWarnings("unchecked")
     private final Appender<ILoggingEvent> mockAppender = mock(Appender.class);
 
-    private static final ConfigValueExtractor<HttpServerTelemetryConfig.HttpServerLoggingConfig> logConfigExtractor = new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueExtractor(
-        new SetConfigValueExtractor<>(new StringConfigValueExtractor()),
-        new SizeConfigValueExtractor()
+    private static final ConfigValueMapper<HttpServerTelemetryConfig.HttpServerLoggingConfig> logConfigExtractor = new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper(
+        new SetConfigValueMapper<>(new StringConfigValueMapper()),
+        new SizeConfigValueMapper()
     );
 
     private static HttpServerTelemetryConfig.HttpServerLoggingConfig config(String hocon) {
@@ -68,7 +67,7 @@ public class DefaultHttpServerLoggerTests {
             maskHeaders = ["authorization"]
             mask = "<test-mask>"
             """ + hocon);
-        return logConfigExtractor.extract(HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), config).root());
+        return logConfigExtractor.map(HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), config).root());
     }
 
     private static Stream<Arguments> getLogStartTestsData() {
@@ -226,10 +225,10 @@ public class DefaultHttpServerLoggerTests {
 
     private DefaultHttpServerTelemetry.TelemetryContext context(HttpServerTelemetryConfig.HttpServerLoggingConfig loggingConfig) {
         return new DefaultHttpServerTelemetry.TelemetryContext(
-            new $HttpServerTelemetryConfig_ConfigValueExtractor.HttpServerTelemetryConfig_Impl(
+            new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
                 loggingConfig,
-                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueExtractor.HttpServerMetricsConfig_Defaults(),
-                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueExtractor.HttpServerTracingConfig_Defaults()
+                new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
+                new $HttpServerTelemetryConfig_HttpServerTracingConfig_ConfigValueMapper.HttpServerTracingConfig_Defaults()
             ),
             false,
             false,

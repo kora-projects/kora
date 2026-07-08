@@ -17,7 +17,7 @@ class ConfigParserSymbolProcessor(val environment: SymbolProcessorEnvironment) :
     override fun process(resolver: Resolver): List<KSAnnotated> {
         val configParserGenerator = ConfigParserGenerator(resolver)
         val seen = HashSet<String>()
-        val elements = resolver.getSymbolsWithAnnotation(ConfigClassNames.configValueExtractorAnnotation.canonicalName)
+        val elements = resolver.getSymbolsWithAnnotation(ConfigClassNames.configValueMapperAnnotation.canonicalName)
             .plus(resolver.getSymbolsWithAnnotation(ConfigClassNames.configSourceAnnotation.canonicalName))
             .filterIsInstance<KSClassDeclaration>()
 
@@ -42,7 +42,7 @@ class ConfigParserSymbolProcessor(val environment: SymbolProcessorEnvironment) :
                     }
                 }
             } else {
-                environment.logger.error("@${ConfigClassNames.configValueExtractorAnnotation.simpleName} is applicable only to data classes or interfaces")
+                environment.logger.error("@${ConfigClassNames.configValueMapperAnnotation.simpleName} is applicable only to data classes or interfaces")
             }
         }
         return emptyList()

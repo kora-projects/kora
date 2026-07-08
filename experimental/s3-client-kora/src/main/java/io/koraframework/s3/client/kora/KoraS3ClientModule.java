@@ -3,8 +3,8 @@ package io.koraframework.s3.client.kora;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.config.common.ConfigValue;
-import io.koraframework.config.common.extractor.ConfigValueExtractionException;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.exception.ConfigValueException;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.client.common.HttpClient;
 import io.koraframework.s3.client.kora.impl.KoraS3Client;
 import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetryFactory;
@@ -49,7 +49,7 @@ public interface KoraS3ClientModule {
     }
 
     @DefaultComponent
-    default ConfigValueExtractor<S3Credentials> koraS3CredentialsValueExtractor() {
+    default ConfigValueMapper<S3Credentials> koraS3CredentialsValueExtractor() {
         return src -> {
             if (src instanceof ConfigValue.NullValue) {
                 return null;
@@ -57,11 +57,11 @@ public interface KoraS3ClientModule {
             var configObject = src.asObject();
             var accessKey = configObject.get("accessKey");
             if (accessKey.isNull()) {
-                throw ConfigValueExtractionException.missingValue(accessKey);
+                throw ConfigValueException.missingValue(accessKey);
             }
             var secretKey = configObject.get("secretKey");
             if (secretKey.isNull()) {
-                throw ConfigValueExtractionException.missingValue(secretKey);
+                throw ConfigValueException.missingValue(secretKey);
             }
             return S3Credentials.of(accessKey.asString(), secretKey.asString());
         };

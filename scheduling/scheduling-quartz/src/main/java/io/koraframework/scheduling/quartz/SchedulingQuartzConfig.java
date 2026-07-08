@@ -1,8 +1,8 @@
 package io.koraframework.scheduling.quartz;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface SchedulingQuartzConfig {
 
     default boolean waitForJobComplete() {

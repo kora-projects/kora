@@ -1,10 +1,10 @@
 package io.koraframework.scheduling.jdk;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
 import java.time.Duration;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface SchedulingJdkConfig {
 
     default Duration shutdownWait() {

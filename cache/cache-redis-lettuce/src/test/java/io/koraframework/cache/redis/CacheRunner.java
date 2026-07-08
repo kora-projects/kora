@@ -3,12 +3,11 @@ package io.koraframework.cache.redis;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.cache.redis.telemetry.*;
 import io.koraframework.cache.redis.testdata.DummyCache;
-import io.koraframework.redis.lettuce.$LettuceConfig_SslConfig_ConfigValueExtractor;
+import io.koraframework.redis.lettuce.$LettuceConfig_SslConfig_ConfigValueMapper;
 import io.koraframework.redis.lettuce.LettuceConfig;
-import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_ConfigValueExtractor;
-import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_LettuceLoggingConfig_ConfigValueExtractor;
-import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueExtractor;
-import io.koraframework.redis.lettuce.telemetry.LettuceTelemetryConfig;
+import io.koraframework.redis.lettuce.telemetry.*;
+import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_ConfigValueMapper;
+import io.koraframework.redis.lettuce.telemetry.$LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueMapper;
 import io.koraframework.test.redis.RedisParams;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Assertions;
@@ -42,10 +41,10 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
 
             @Override
             public RedisCacheTelemetryConfig telemetry() {
-                return new $RedisCacheTelemetryConfig_ConfigValueExtractor.RedisCacheTelemetryConfig_Impl(
-                    new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueExtractor.RedisCacheLoggingConfig_Defaults(),
-                    new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueExtractor.RedisCacheTracingConfig_Defaults(),
-                    new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueExtractor.RedisCacheMetricsConfig_Defaults()
+                return new $RedisCacheTelemetryConfig_ConfigValueMapper.RedisCacheTelemetryConfig_Impl(
+                    new $RedisCacheTelemetryConfig_RedisCacheLoggingConfig_ConfigValueMapper.RedisCacheLoggingConfig_Defaults(),
+                    new $RedisCacheTelemetryConfig_RedisCacheTracingConfig_ConfigValueMapper.RedisCacheTracingConfig_Defaults(),
+                    new $RedisCacheTelemetryConfig_RedisCacheMetricsConfig_ConfigValueMapper.RedisCacheMetricsConfig_Defaults()
                 );
             }
         };
@@ -76,14 +75,14 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
 
             @Override
             public LettuceConfig.SslConfig ssl() {
-                return new $LettuceConfig_SslConfig_ConfigValueExtractor.SslConfig_Defaults();
+                return new $LettuceConfig_SslConfig_ConfigValueMapper.SslConfig_Defaults();
             }
 
             @Override
             public LettuceTelemetryConfig telemetry() {
-                return new $LettuceTelemetryConfig_ConfigValueExtractor.LettuceTelemetryConfig_Impl(
-                    new $LettuceTelemetryConfig_LettuceLoggingConfig_ConfigValueExtractor.LettuceLoggingConfig_Defaults(),
-                    new $LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueExtractor.LettuceMetricsConfig_Defaults()
+                return new $LettuceTelemetryConfig_ConfigValueMapper.LettuceTelemetryConfig_Impl(
+                    new $LettuceTelemetryConfig_LettuceLoggingConfig_ConfigValueMapper.LettuceLoggingConfig_Defaults(),
+                    new $LettuceTelemetryConfig_LettuceMetricsConfig_ConfigValueMapper.LettuceMetricsConfig_Defaults()
                 );
             }
         };

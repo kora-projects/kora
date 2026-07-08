@@ -2,7 +2,6 @@ package io.koraframework.camunda.zeebe.worker.telemetry.impl;
 
 import io.camunda.client.api.response.ActivatedJob;
 import io.koraframework.camunda.zeebe.worker.telemetry.*;
-import io.koraframework.telemetry.common.TelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.SpanKind;
@@ -18,10 +17,10 @@ public class DefaultZeebeWorkerTelemetry implements ZeebeWorkerTelemetry {
                                    Tracer tracer) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new $ZeebeWorkerTelemetryConfig_ConfigValueExtractor.ZeebeWorkerTelemetryConfig_Impl(
-                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerLoggingConfig_ConfigValueExtractor.ZeebeWorkerLoggingConfig_Defaults(),
-                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerMetricsConfig_ConfigValueExtractor.ZeebeWorkerMetricsConfig_Defaults(),
-                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerTracingConfig_ConfigValueExtractor.ZeebeWorkerTracingConfig_Defaults()
+            new $ZeebeWorkerTelemetryConfig_ConfigValueMapper.ZeebeWorkerTelemetryConfig_Impl(
+                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerLoggingConfig_ConfigValueMapper.ZeebeWorkerLoggingConfig_Defaults(),
+                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerMetricsConfig_ConfigValueMapper.ZeebeWorkerMetricsConfig_Defaults(),
+                new $ZeebeWorkerTelemetryConfig_ZeebeWorkerTracingConfig_ConfigValueMapper.ZeebeWorkerTracingConfig_Defaults()
             ),
             "none",
             false,

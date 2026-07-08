@@ -1,9 +1,9 @@
 package io.koraframework.kafka.common.producer.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface KafkaPublisherTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,15 +15,15 @@ public interface KafkaPublisherTelemetryConfig extends TelemetryConfig {
     @Override
     KafkaProducerTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface KafkaProducerLoggingConfig extends LoggingConfig {
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface KafkaProducerTracingConfig extends TracingConfig {
     }
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface KafkaProducerMetricsConfig extends MetricsConfig {
         default boolean driverMetrics() {
             return false;

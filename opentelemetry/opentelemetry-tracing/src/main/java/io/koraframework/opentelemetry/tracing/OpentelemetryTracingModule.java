@@ -12,14 +12,14 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.application.graph.LifecycleWrapper;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 
 import java.util.function.Supplier;
 
 public interface OpentelemetryTracingModule {
 
-    default OpentelemetryResourceConfig opentelemetryResourceConfig(Config config, ConfigValueExtractor<OpentelemetryResourceConfig> extractor) {
-        return extractor.extractOrThrow(config.get("tracing"));
+    default OpentelemetryResourceConfig opentelemetryResourceConfig(Config config, ConfigValueMapper<OpentelemetryResourceConfig> mapper) {
+        return mapper.mapOrThrow(config.get("tracing"));
     }
 
     default Resource opentelemetryTracingResource(OpentelemetryResourceConfig config) {

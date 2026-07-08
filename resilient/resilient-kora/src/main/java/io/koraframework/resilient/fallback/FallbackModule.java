@@ -3,7 +3,7 @@ package io.koraframework.resilient.fallback;
 import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.resilient.fallback.telemetry.FallbackTelemetryFactory;
 import io.koraframework.resilient.fallback.telemetry.impl.DefaultFallbackLoggerFactory;
 import io.koraframework.resilient.fallback.telemetry.impl.DefaultFallbackMetricsFactory;
@@ -14,8 +14,8 @@ import org.jspecify.annotations.Nullable;
 
 public interface FallbackModule {
 
-    default FallbackConfig koraFallbackConfig(Config config, ConfigValueExtractor<FallbackConfig> extractor) {
-        return extractor.extractOrThrow(config.get("resilient"));
+    default FallbackConfig koraFallbackConfig(Config config, ConfigValueMapper<FallbackConfig> mapper) {
+        return mapper.mapOrThrow(config.get("resilient"));
     }
 
     default FallbackManager koraFallbackManager(FallbackConfig config,

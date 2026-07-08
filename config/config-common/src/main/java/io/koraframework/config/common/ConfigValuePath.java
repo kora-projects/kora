@@ -6,6 +6,7 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 public interface ConfigValuePath {
+
     ConfigValuePath ROOT = new SimpleConfigValuePath(null, null);
 
     PathElement last();
@@ -49,5 +50,4 @@ public interface ConfigValuePath {
         }
         return path;
     }
-
 }

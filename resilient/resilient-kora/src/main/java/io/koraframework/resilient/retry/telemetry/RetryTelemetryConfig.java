@@ -1,9 +1,9 @@
 package io.koraframework.resilient.retry.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface RetryTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,13 +15,13 @@ public interface RetryTelemetryConfig extends TelemetryConfig {
     @Override
     RetryTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RetryLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RetryMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface RetryTracingConfig extends TelemetryConfig.TracingConfig {
 
         @Override

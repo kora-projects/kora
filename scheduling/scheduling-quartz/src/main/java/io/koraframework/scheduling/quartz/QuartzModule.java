@@ -7,7 +7,7 @@ import io.koraframework.application.graph.ValueOf;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.scheduling.common.SchedulingModule;
 
 import java.io.IOException;
@@ -16,7 +16,7 @@ import java.util.Properties;
 public interface QuartzModule extends SchedulingModule {
 
     @Tag(QuartzModule.class)
-    default Properties quartzProperties(Config config, ConfigValueExtractor<Properties> extractor) throws IOException {
+    default Properties quartzProperties(Config config, ConfigValueMapper<Properties> mapper) throws IOException {
         var value = config.get("scheduling.quartz.properties");
         var defaults = new Properties();
         try (var is = Thread.currentThread().getContextClassLoader().getResourceAsStream("org/quartz/quartz.properties")) {
@@ -27,7 +27,7 @@ public interface QuartzModule extends SchedulingModule {
         defaults.setProperty(StdSchedulerFactory.PROP_SCHED_INSTANCE_NAME, "kora-quartz-scheduler");
         defaults.setProperty(StdSchedulerFactory.PROP_SCHED_INSTANCE_ID, StdSchedulerFactory.AUTO_GENERATE_INSTANCE_ID);
 
-        var props = extractor.extract(value);
+        var props = mapper.map(value);
         if (props == null) {
             return defaults;
         } else {
@@ -40,8 +40,8 @@ public interface QuartzModule extends SchedulingModule {
         return props;
     }
 
-    default SchedulingQuartzConfig schedulingQuartzConfig(Config config, ConfigValueExtractor<SchedulingQuartzConfig> extractor) {
-        return extractor.extractOrThrow(config.get("scheduling.quartz"));
+    default SchedulingQuartzConfig schedulingQuartzConfig(Config config, ConfigValueMapper<SchedulingQuartzConfig> mapper) {
+        return mapper.mapOrThrow(config.get("scheduling.quartz"));
     }
 
     default KoraQuartzJobFactory koraQuartzJobFactory(All<ValueOf<KoraQuartzJob>> jobs) {

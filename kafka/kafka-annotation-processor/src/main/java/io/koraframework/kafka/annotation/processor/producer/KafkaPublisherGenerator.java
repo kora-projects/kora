@@ -64,8 +64,8 @@ final class KafkaPublisherGenerator {
             .returns(KafkaClassNames.publisherConfig)
             .addAnnotation(TagUtils.makeAnnotationSpec(className))
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, KafkaClassNames.publisherConfig), "extractor")
-            .addStatement("return extractor.extractOrThrow(config.get($S))", configPath)
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, KafkaClassNames.publisherConfig), "mapper")
+            .addStatement("return mapper.mapOrThrow(config.get($S))", configPath)
             .build();
     }
 
@@ -341,7 +341,7 @@ final class KafkaPublisherGenerator {
         var m = MethodSpec.methodBuilder(CommonUtils.decapitalize(configName))
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, publisherTopicConfig), "extractor")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, publisherTopicConfig), "mapper")
             .returns(configTypeName)
             .addCode("return new $T(\n$>", configTypeName);
 
@@ -357,7 +357,7 @@ final class KafkaPublisherGenerator {
                 if (i > 0) {
                     m.addCode(",\n");
                 }
-                m.addCode("extractor.extractOrThrow(config.get($S))", path);
+                m.addCode("mapper.mapOrThrow(config.get($S))", path);
             }
         }
         m.addCode("$<\n);\n");

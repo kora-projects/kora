@@ -35,9 +35,9 @@ public abstract class AbstractGenerator<C, R> {
 
         public static final ClassName config = ClassName.get("io.koraframework.config.common", "Config");
         public static final ClassName configSource = ClassName.get("io.koraframework.config.common.annotation", "ConfigSource");
-        public static final ClassName configValueExtractorAnnotation = ClassName.get("io.koraframework.config.common.annotation", "ConfigValueExtractor");
-        public static final ClassName configValueExtractionException = ClassName.get("io.koraframework.config.common.extractor", "ConfigValueExtractionException");
-        public static final ClassName configValueExtractor = ClassName.get("io.koraframework.config.common.extractor", "ConfigValueExtractor");
+        public static final ClassName configValueExtractorAnnotation = ClassName.get("io.koraframework.config.common.annotation", "ConfigMapper");
+        public static final ClassName configValueException = ClassName.get("io.koraframework.config.common.exception", "ConfigValueException");
+        public static final ClassName configValueExtractor = ClassName.get("io.koraframework.config.common.mapper", "ConfigValueMapper");
 
         public static final ClassName generated = ClassName.get("io.koraframework.common.annotation", "Generated");
         public static final ClassName httpRoute = ClassName.get("io.koraframework.http.common.annotation", "HttpRoute");

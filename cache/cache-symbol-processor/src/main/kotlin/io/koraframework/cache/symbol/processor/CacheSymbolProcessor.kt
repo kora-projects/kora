@@ -18,7 +18,7 @@ import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonAopUtils.extendsKeepAop
 import io.koraframework.ksp.common.CommonClassNames
-import io.koraframework.ksp.common.CommonClassNames.configValueExtractor
+import io.koraframework.ksp.common.CommonClassNames.configValueMapper
 import io.koraframework.ksp.common.KspCommonUtils.addOriginatingKSFile
 import io.koraframework.ksp.common.KspCommonUtils.generated
 import io.koraframework.ksp.common.KspCommonUtils.toTypeName
@@ -216,14 +216,14 @@ class CacheSymbolProcessor(
             REDIS_CACHE -> resolver.getClassDeclarationByName(REDIS_CACHE_CONFIG.canonicalName)!!
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
-        val extractorType = configValueExtractor.parameterizedBy(returnType.asType(listOf()).toTypeName())
+        val extractorType = configValueMapper.parameterizedBy(returnType.asType(listOf()).toTypeName())
 
         return FunSpec.builder(methodName)
             .addAnnotation(cacheImpl.toClassName().toTagAnnotation())
             .addModifiers(KModifier.PUBLIC)
             .addParameter("config", CommonClassNames.config)
-            .addParameter("extractor", extractorType)
-            .addStatement("return extractor.extractOrThrow(config.get(%S))!!", configPath)
+            .addParameter("mapper", extractorType)
+            .addStatement("return mapper.mapOrThrow(config.get(%S))!!", configPath)
             .returns(returnType.asType(listOf()).toTypeName())
             .build()
     }

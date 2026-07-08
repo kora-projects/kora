@@ -6,21 +6,21 @@ import io.koraframework.common.annotation.Root;
 @KoraApp
 public interface AppWithFactories12 {
     @Root
-    default Object mock1(ConfigValueExtractor<TestEnum> object) {
+    default Object mock1(ConfigValueMapper<TestEnum> object) {
         return new Object();
     }
 
-    default <T extends Enum<T>> EnumConfigValueExtractor<T> enumConfigValueExtractor() {
-        return new EnumConfigValueExtractor<>();
+    default <T extends Enum<T>> EnumConfigValueMapper<T> enumConfigValueMapper() {
+        return new EnumConfigValueMapper<>();
     }
 
     enum TestEnum {}
 
-    interface ConfigValueExtractor<T> {
+    interface ConfigValueMapper<T> {
         T extract(Object value);
     }
 
-    class EnumConfigValueExtractor<T extends Enum<T>> implements ConfigValueExtractor<T> {
+    class EnumConfigValueMapper<T extends Enum<T>> implements ConfigValueMapper<T> {
         @Override
         public T extract(Object value) {
             return null;

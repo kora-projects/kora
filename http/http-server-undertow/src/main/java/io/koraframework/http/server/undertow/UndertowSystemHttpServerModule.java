@@ -6,7 +6,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.common.Configurer;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.http.server.common.HttpServerModule;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.system.HttpServerSystemConfig;
@@ -39,8 +39,8 @@ public interface UndertowSystemHttpServerModule extends HttpServerModule {
         return handler;
     }
 
-    default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueExtractor<UndertowConfig> extractor) {
-        return extractor.extractOrThrow(config.get("httpServer.undertow"));
+    default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueMapper<UndertowConfig> mapper) {
+        return mapper.mapOrThrow(config.get("httpServer.undertow"));
     }
 
     @DefaultComponent

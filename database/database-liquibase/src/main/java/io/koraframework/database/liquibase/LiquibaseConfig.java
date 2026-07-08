@@ -1,9 +1,9 @@
 package io.koraframework.database.liquibase;
 
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface LiquibaseConfig {
 
     default String changelog() {

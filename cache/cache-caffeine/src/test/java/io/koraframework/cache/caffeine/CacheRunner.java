@@ -14,8 +14,8 @@ abstract class CacheRunner extends Assertions implements CaffeineCacheModule {
         when(config.maximumSize()).thenReturn(100_000L);
         when(config.expireAfterAccess()).thenReturn(null);
         when(config.expireAfterWrite()).thenReturn(null);
-        when(telemetry.metrics()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor.CaffeineMetricsConfig_Defaults());
-        when(telemetry.logging()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor.CaffeineLoggingConfig_Defaults());
+        when(telemetry.metrics()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper.CaffeineMetricsConfig_Defaults());
+        when(telemetry.logging()).thenReturn(new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper.CaffeineLoggingConfig_Defaults());
         return config;
     }
 //    public static CaffeineCacheConfig getConfig() {
@@ -40,9 +40,9 @@ abstract class CacheRunner extends Assertions implements CaffeineCacheModule {
 //
 //            @Override
 //            public CaffeineTelemetryConfig telemetry() {
-//                return new $CaffeineCacheConfig_CaffeineTelemetryConfig_ConfigValueExtractor.CaffeineTelemetryConfig_Impl(
-//                    new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueExtractor.CaffeineMetricsConfig_Defaults(),
-//                    new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueExtractor.CaffeineLoggingConfig_Defaults()
+//                return new $CaffeineCacheConfig_CaffeineTelemetryConfig_ConfigValueMapper.CaffeineTelemetryConfig_Impl(
+//                    new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper.CaffeineMetricsConfig_Defaults(),
+//                    new $CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper.CaffeineLoggingConfig_Defaults()
 //                );
 //            }
 //        };

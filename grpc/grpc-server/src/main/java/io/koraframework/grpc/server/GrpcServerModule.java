@@ -10,7 +10,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.common.Configurer;
 import io.koraframework.config.common.Config;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.grpc.server.handler.DynamicBindableService;
 import io.koraframework.grpc.server.handler.VirtualThreadExecutorTransportFilter;
 import io.koraframework.grpc.server.interceptors.DynamicServerInterceptor;
@@ -29,8 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 public interface GrpcServerModule {
 
-    default GrpcServerConfig grpcServerConfig(Config config, ConfigValueExtractor<GrpcServerConfig> configValueExtractor) {
-        return configValueExtractor.extract(config.get("grpcServer"));
+    default GrpcServerConfig grpcServerConfig(Config config, ConfigValueMapper<GrpcServerConfig> mapper) {
+        return mapper.map(config.get("grpcServer"));
     }
 
     @Root

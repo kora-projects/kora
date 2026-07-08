@@ -1,12 +1,12 @@
 package io.koraframework.scheduling.quartz;
 
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.ConfigValueOrigin;
 import io.koraframework.config.common.ConfigValuePath;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
 import io.koraframework.config.common.origin.SimpleConfigOrigin;
 
 import java.util.List;
@@ -26,11 +26,11 @@ class KoraQuartzConfigTests {
             defaults.load(is);
         }
 
-        var mockExtractor = Mockito.mock(ConfigValueExtractor.class);
+        var mockExtractor = Mockito.mock(ConfigValueMapper.class);
         var mockConfig = Mockito.mock(Config.class);
         ConfigValue stringValue = new ConfigValue.StringValue(ConfigValueOrigin.of(new SimpleConfigOrigin(""), ConfigValuePath.ROOT), "some");
 
-        when(mockExtractor.extract(any())).thenReturn(null);
+        when(mockExtractor.map(any())).thenReturn(null);
         when(mockConfig.get(anyString())).thenReturn(stringValue);
 
         Properties properties = new QuartzModule() {}.quartzProperties(mockConfig, mockExtractor);
@@ -40,11 +40,11 @@ class KoraQuartzConfigTests {
 
     @Test
     void quartzNameChanged() throws Exception {
-        var mockExtractor = Mockito.mock(ConfigValueExtractor.class);
+        var mockExtractor = Mockito.mock(ConfigValueMapper.class);
         var mockConfig = Mockito.mock(Config.class);
         ConfigValue stringValue = new ConfigValue.StringValue(ConfigValueOrigin.of(new SimpleConfigOrigin(""), ConfigValuePath.ROOT), "some");
 
-        when(mockExtractor.extract(any())).thenReturn(null);
+        when(mockExtractor.map(any())).thenReturn(null);
         when(mockConfig.get(anyString())).thenReturn(stringValue);
 
         QuartzModule quartzModule = new QuartzModule() {};

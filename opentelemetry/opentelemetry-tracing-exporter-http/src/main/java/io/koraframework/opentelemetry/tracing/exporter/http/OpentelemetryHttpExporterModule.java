@@ -10,7 +10,7 @@ import org.jspecify.annotations.Nullable;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.config.common.Config;
 import io.koraframework.config.common.ConfigValue;
-import io.koraframework.config.common.extractor.ConfigValueExtractor;
+import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.opentelemetry.tracing.OpentelemetryTracingModule;
 
 public interface OpentelemetryHttpExporterModule extends OpentelemetryTracingModule {
@@ -45,12 +45,12 @@ public interface OpentelemetryHttpExporterModule extends OpentelemetryTracingMod
         return exporter.build();
     }
 
-    default OpentelemetryHttpExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueExtractor<OpentelemetryHttpExporterConfig.FromConfig> extractor) {
+    default OpentelemetryHttpExporterConfig otlpGrpcSpanExporterConfig(Config config, ConfigValueMapper<OpentelemetryHttpExporterConfig.FromConfig> mapper) {
         var value = config.get("tracing.exporter");
         if (value instanceof ConfigValue.NullValue || value.asObject().get("endpoint").isNull()) {
             return new OpentelemetryHttpExporterConfig.Empty();
         }
-        return extractor.extractOrThrow(value);
+        return mapper.mapOrThrow(value);
     }
 
     @DefaultComponent

@@ -27,10 +27,10 @@ public class DefaultSoapClientTelemetry implements SoapClientTelemetry {
                                    String url) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
-            new $SoapClientTelemetryConfig_ConfigValueExtractor.SoapClientTelemetryConfig_Impl(
-                new $SoapClientTelemetryConfig_SoapClientLoggingConfig_ConfigValueExtractor.SoapClientLoggingConfig_Defaults(),
-                new $SoapClientTelemetryConfig_SoapClientMetricsConfig_ConfigValueExtractor.SoapClientMetricsConfig_Defaults(),
-                new $SoapClientTelemetryConfig_SoapClientTracingConfig_ConfigValueExtractor.SoapClientTracingConfig_Defaults()
+            new $SoapClientTelemetryConfig_ConfigValueMapper.SoapClientTelemetryConfig_Impl(
+                new $SoapClientTelemetryConfig_SoapClientLoggingConfig_ConfigValueMapper.SoapClientLoggingConfig_Defaults(),
+                new $SoapClientTelemetryConfig_SoapClientMetricsConfig_ConfigValueMapper.SoapClientMetricsConfig_Defaults(),
+                new $SoapClientTelemetryConfig_SoapClientTracingConfig_ConfigValueMapper.SoapClientTracingConfig_Defaults()
             ), false, false, DefaultSoapClientTelemetryFactory.NOOP_METER_REGISTRY, DefaultSoapClientTelemetryFactory.NOOP_TRACER, "none", "none", "none", new SoapMethodDescriptor("none", "none", "none", null), "http://localhost");
     }
 

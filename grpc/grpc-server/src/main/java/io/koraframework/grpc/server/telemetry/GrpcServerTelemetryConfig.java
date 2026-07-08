@@ -1,9 +1,9 @@
 package io.koraframework.grpc.server.telemetry;
 
-import io.koraframework.config.common.annotation.ConfigValueExtractor;
+import io.koraframework.config.common.annotation.ConfigMapper;
 import io.koraframework.telemetry.common.TelemetryConfig;
 
-@ConfigValueExtractor
+@ConfigMapper
 public interface GrpcServerTelemetryConfig extends TelemetryConfig {
 
     @Override
@@ -15,12 +15,12 @@ public interface GrpcServerTelemetryConfig extends TelemetryConfig {
     @Override
     GrpcServerTracingConfig tracing();
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface GrpcServerLoggingConfig extends TelemetryConfig.LoggingConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface GrpcServerMetricsConfig extends TelemetryConfig.MetricsConfig {}
 
-    @ConfigValueExtractor
+    @ConfigMapper
     interface GrpcServerTracingConfig extends TelemetryConfig.TracingConfig {}
 }
