@@ -7,6 +7,7 @@ import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
+import io.koraframework.database.cassandra.util.CassandraSessionBuilderUtils;
 import io.koraframework.database.common.telemetry.DatabaseTelemetry;
 import io.koraframework.database.common.telemetry.DatabaseTelemetryFactory;
 import org.jspecify.annotations.Nullable;
@@ -63,7 +64,7 @@ public class CassandraSession implements CassandraExecutor, Wrapped<CqlSession>,
         var started = System.nanoTime();
 
         try {
-            cqlSession = new CassandraSessionBuilder().build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
+            cqlSession = CassandraSessionBuilderUtils.build(config, this.loaderConfigurer, this.sessionBuilderConfigurer, this.telemetry.meterRegistry());
         } catch (Exception e) {
             throw new RuntimeException("CassandraDataSource '%s' failed to start, due to: %s".formatted(
                 config.basic().contactPoints(), e.getMessage()), e);

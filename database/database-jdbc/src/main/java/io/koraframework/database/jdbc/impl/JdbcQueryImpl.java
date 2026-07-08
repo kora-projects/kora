@@ -1,5 +1,7 @@
-package io.koraframework.database.jdbc;
+package io.koraframework.database.jdbc.impl;
 
+import io.koraframework.database.jdbc.JdbcQuery;
+import io.koraframework.database.jdbc.JdbcQueryOptions;
 import io.koraframework.database.jdbc.exception.UncheckedSqlException;
 import io.koraframework.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
 import org.jspecify.annotations.Nullable;
@@ -18,7 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-final class JdbcQueryImpl implements JdbcQuery {
+public final class JdbcQueryImpl implements JdbcQuery {
 
     private final String sourceSql;
     private final String sql;
@@ -32,15 +34,15 @@ final class JdbcQueryImpl implements JdbcQuery {
         this.options = Objects.requireNonNull(options);
     }
 
-    static NamedQueryBuilder named() {
+    public static NamedQueryBuilder named() {
         return new NamedQueryBuilderImpl();
     }
 
-    static TemplateBuilder template() {
+    public static TemplateBuilder template() {
         return new TemplateQueryBuilderImpl();
     }
 
-    static OptsBuilder opts() {
+    public static OptsBuilder opts() {
         return new OptsBuilderImpl();
     }
 
@@ -203,7 +205,7 @@ final class JdbcQueryImpl implements JdbcQuery {
 
         @Override
         public JdbcQueryOptions build() {
-            return new JdbcQueryOptions(
+            return new JdbcQueryOptionsImpl(
                 this.fetchSize,
                 this.maxRows,
                 this.queryTimeoutSeconds,

@@ -1,9 +1,11 @@
-package io.koraframework.database.cassandra;
+package io.koraframework.database.cassandra.impl;
 
 import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import io.koraframework.database.cassandra.CassandraQuery;
+import io.koraframework.database.cassandra.CassandraQueryOptions;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import org.jspecify.annotations.Nullable;
 
@@ -15,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-final class CassandraQueryImpl implements CassandraQuery {
+public final class CassandraQueryImpl implements CassandraQuery {
 
     private final String sourceCql;
     private final String cql;
@@ -29,15 +31,15 @@ final class CassandraQueryImpl implements CassandraQuery {
         this.options = Objects.requireNonNull(options);
     }
 
-    static NamedQueryBuilder named() {
+    public static NamedQueryBuilder named() {
         return new NamedQueryBuilderImpl();
     }
 
-    static TemplateBuilder template() {
+    public static TemplateBuilder template() {
         return new TemplateQueryBuilderImpl();
     }
 
-    static OptsBuilder opts() {
+    public static OptsBuilder opts() {
         return new OptsBuilderImpl();
     }
 
@@ -149,7 +151,7 @@ final class CassandraQueryImpl implements CassandraQuery {
 
         @Override
         public CassandraQueryOptions build() {
-            return new CassandraQueryOptions(
+            return new CassandraQueryOptionsImpl(
                 this.consistencyLevel,
                 this.serialConsistencyLevel,
                 this.pageSize,

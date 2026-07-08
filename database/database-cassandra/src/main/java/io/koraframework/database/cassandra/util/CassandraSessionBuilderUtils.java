@@ -1,10 +1,11 @@
-package io.koraframework.database.cassandra;
+package io.koraframework.database.cassandra.util;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.CqlSessionBuilder;
 import com.datastax.oss.driver.api.core.config.ProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.internal.core.config.typesafe.DefaultProgrammaticDriverConfigLoaderBuilder;
 import com.datastax.oss.driver.internal.metrics.micrometer.MicrometerMetricsFactory;
+import io.koraframework.database.cassandra.CassandraConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import org.jspecify.annotations.Nullable;
 import io.koraframework.common.Configurer;
@@ -13,9 +14,11 @@ import java.util.Arrays;
 
 import static com.datastax.oss.driver.api.core.config.DefaultDriverOption.*;
 
-public class CassandraSessionBuilder {
+public final class CassandraSessionBuilderUtils {
 
-    public CqlSession build(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, @Nullable MeterRegistry meterRegistry) {
+    private CassandraSessionBuilderUtils() { }
+
+    public static CqlSession build(CassandraConfig config, @Nullable Configurer<ProgrammaticDriverConfigLoaderBuilder> loaderConfigurer, @Nullable Configurer<CqlSessionBuilder> sessionBuilderConfigurer, @Nullable MeterRegistry meterRegistry) {
         var builder = CqlSession.builder();
         var loaderBuilder = (ProgrammaticDriverConfigLoaderBuilder) new DefaultProgrammaticDriverConfigLoaderBuilder();
         loaderBuilder.withStringList(CONTACT_POINTS, config.basic().contactPoints());
@@ -51,13 +54,13 @@ public class CassandraSessionBuilder {
         }
     }
 
-    void setBasicOptions(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Basic config) {
+    private static void setBasicOptions(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Basic config) {
         if (config.sessionName() != null) builder.withString(SESSION_NAME, config.sessionName());
 
         if (config.cloud() != null && config.cloud().secureConnectBundle() != null) builder.withString(CLOUD_SECURE_CONNECT_BUNDLE, config.cloud().secureConnectBundle());
     }
 
-    void setAdvancedOptions(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced config) {
+    private static void setAdvancedOptions(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced config) {
         if (config == null) return;
 
         if (config.sessionLeak() != null && config.sessionLeak().threshold() != null) builder.withInt(SESSION_LEAK_THRESHOLD, config.sessionLeak().threshold());
@@ -139,7 +142,7 @@ public class CassandraSessionBuilder {
         }
     }
 
-    private void applyMetricsNodeConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetricsConfig.NodeConfig node) {
+    private static void applyMetricsNodeConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetricsConfig.NodeConfig node) {
         if (node.enabled() != null && !node.enabled().isEmpty()) builder.withStringList(METRICS_NODE_ENABLED, node.enabled());
         if (node.cqlMessages() != null) {
             if (node.cqlMessages().highestLatency() != null) builder.withDuration(METRICS_NODE_CQL_MESSAGES_HIGHEST, node.cqlMessages().highestLatency());
@@ -157,7 +160,7 @@ public class CassandraSessionBuilder {
         }
     }
 
-    private void applyMetricsSessionConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetricsConfig.SessionConfig session) {
+    private static void applyMetricsSessionConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetricsConfig.SessionConfig session) {
         if (session.enabled() != null && !session.enabled().isEmpty()) builder.withStringList(METRICS_SESSION_ENABLED, session.enabled());
         if (session.cqlRequests() != null) {
             if (session.cqlRequests().highestLatency() != null) builder.withDuration(METRICS_SESSION_CQL_REQUESTS_HIGHEST, session.cqlRequests().highestLatency());
@@ -187,13 +190,13 @@ public class CassandraSessionBuilder {
         }
     }
 
-    private void applyProtocolConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.ProtocolConfig protocol) {
+    private static void applyProtocolConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.ProtocolConfig protocol) {
         if (protocol.version() != null) builder.withString(PROTOCOL_VERSION, protocol.version());
         if (protocol.compression() != null) builder.withString(PROTOCOL_COMPRESSION, protocol.compression());
         if (protocol.maxFrameLength() != null) builder.withLong(PROTOCOL_MAX_FRAME_LENGTH, protocol.maxFrameLength());
     }
 
-    private void applyTimestampGeneratorConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.TimestampGeneratorConfig timestampGenerator) {
+    private static void applyTimestampGeneratorConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.TimestampGeneratorConfig timestampGenerator) {
         if (timestampGenerator.driftWarning() != null && timestampGenerator.driftWarning().threshold() != null)
             builder.withDuration(TIMESTAMP_GENERATOR_DRIFT_WARNING_THRESHOLD, timestampGenerator.driftWarning().threshold());
         if (timestampGenerator.driftWarning() != null && timestampGenerator.driftWarning().interval() != null)
@@ -201,7 +204,7 @@ public class CassandraSessionBuilder {
         if (timestampGenerator.forceJavaClock() != null) builder.withBoolean(TIMESTAMP_GENERATOR_FORCE_JAVA_CLOCK, timestampGenerator.forceJavaClock());
     }
 
-    private void applySslEngineFactoryConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.SslEngineFactoryConfig sslEngineFactory) {
+    private static void applySslEngineFactoryConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.SslEngineFactoryConfig sslEngineFactory) {
         if (sslEngineFactory.cipherSuites() != null) builder.withStringList(SSL_CIPHER_SUITES, sslEngineFactory.cipherSuites());
         if (sslEngineFactory.hostnameValidation() != null) builder.withBoolean(SSL_HOSTNAME_VALIDATION, sslEngineFactory.hostnameValidation());
         if (sslEngineFactory.truststorePath() != null) builder.withString(SSL_TRUSTSTORE_PATH, sslEngineFactory.truststorePath());
@@ -210,7 +213,7 @@ public class CassandraSessionBuilder {
         if (sslEngineFactory.keystorePassword() != null) builder.withString(SSL_KEYSTORE_PASSWORD, sslEngineFactory.keystorePassword());
     }
 
-    private void applyConnectionConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.ConnectionConfig connection) {
+    private static void applyConnectionConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.ConnectionConfig connection) {
         if (connection.connectTimeout() != null) builder.withDuration(CONNECTION_CONNECT_TIMEOUT, connection.connectTimeout());
         if (connection.initQueryTimeout() != null) builder.withDuration(CONNECTION_INIT_QUERY_TIMEOUT, connection.initQueryTimeout());
         if (connection.setKeyspaceTimeout() != null) builder.withDuration(CONNECTION_SET_KEYSPACE_TIMEOUT, connection.setKeyspaceTimeout());
@@ -221,7 +224,7 @@ public class CassandraSessionBuilder {
         if (connection.warnOnInitError() != null) builder.withBoolean(CONNECTION_WARN_INIT_ERROR, connection.warnOnInitError());
     }
 
-    private void applyNettyConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.NettyConfig netty) {
+    private static void applyNettyConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.NettyConfig netty) {
         if (netty.daemon() != null) builder.withBoolean(NETTY_DAEMON, netty.daemon());
 
         if (netty.ioGroup() != null) {
@@ -248,7 +251,7 @@ public class CassandraSessionBuilder {
         }
     }
 
-    private void applyPreparedStatementsConf(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.PreparedStatementsConfig preparedStatements) {
+    private static void applyPreparedStatementsConf(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.PreparedStatementsConfig preparedStatements) {
         if (preparedStatements.reprepareOnUp() != null) {
             if (preparedStatements.reprepareOnUp().enabled() != null) builder.withBoolean(REPREPARE_ENABLED, preparedStatements.reprepareOnUp().enabled());
             if (preparedStatements.reprepareOnUp().checkSystemTable() != null) builder.withBoolean(REPREPARE_CHECK_SYSTEM_TABLE, preparedStatements.reprepareOnUp().checkSystemTable());
@@ -261,7 +264,7 @@ public class CassandraSessionBuilder {
             builder.withBoolean(PREPARED_CACHE_WEAK_VALUES, preparedStatements.preparedCache().weakValues());
     }
 
-    private void applyControlConnection(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.ControlConnectionConfig controlConnection) {
+    private static void applyControlConnection(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.ControlConnectionConfig controlConnection) {
         if (controlConnection.timeout() != null) builder.withDuration(CONTROL_CONNECTION_TIMEOUT, controlConnection.timeout());
         if (controlConnection.schemaAgreement() != null) {
             if (controlConnection.schemaAgreement().interval() != null) builder.withDuration(CONTROL_CONNECTION_AGREEMENT_INTERVAL, controlConnection.schemaAgreement().interval());
@@ -270,12 +273,12 @@ public class CassandraSessionBuilder {
         }
     }
 
-    private void applyHeartbeatConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.HeartBeatConfig heartbeat) {
+    private static void applyHeartbeatConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.HeartBeatConfig heartbeat) {
         if (heartbeat.interval() != null) builder.withDuration(HEARTBEAT_INTERVAL, heartbeat.interval());
         if (heartbeat.timeout() != null) builder.withDuration(HEARTBEAT_TIMEOUT, heartbeat.timeout());
     }
 
-    private void applySocketConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.SocketConfig socket) {
+    private static void applySocketConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.SocketConfig socket) {
         if (socket.tcpNoDelay() != null) builder.withBoolean(SOCKET_TCP_NODELAY, socket.tcpNoDelay());
         if (socket.keepAlive() != null) builder.withBoolean(SOCKET_KEEP_ALIVE, socket.keepAlive());
         if (socket.reuseAddress() != null) builder.withBoolean(SOCKET_REUSE_ADDRESS, socket.reuseAddress());
@@ -284,7 +287,7 @@ public class CassandraSessionBuilder {
         if (socket.sendBufferSize() != null) builder.withInt(SOCKET_SEND_BUFFER_SIZE, socket.sendBufferSize());
     }
 
-    private void applyMetadataConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetadataConfig metadata) {
+    private static void applyMetadataConfig(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Advanced.MetadataConfig metadata) {
         if (metadata.topologyEventDebouncer() != null) {
             if (metadata.topologyEventDebouncer().window() != null) builder.withDuration(METADATA_TOPOLOGY_WINDOW, metadata.topologyEventDebouncer().window());
             if (metadata.topologyEventDebouncer().maxEvents() != null) builder.withInt(METADATA_TOPOLOGY_MAX_EVENTS, metadata.topologyEventDebouncer().maxEvents());
@@ -302,14 +305,14 @@ public class CassandraSessionBuilder {
         if (metadata.tokenMapEnabled() != null) builder.withBoolean(METADATA_TOKEN_MAP_ENABLED, metadata.tokenMapEnabled());
     }
 
-    void setProfile(CqlSessionBuilder builder, ProgrammaticDriverConfigLoaderBuilder loaderBuilder, String profileName, CassandraConfig.Basic basic, CassandraConfig.Advanced advanced) {
+    private static void setProfile(CqlSessionBuilder builder, ProgrammaticDriverConfigLoaderBuilder loaderBuilder, String profileName, CassandraConfig.Basic basic, CassandraConfig.Advanced advanced) {
         loaderBuilder.startProfile(profileName);
         if (basic.dc() != null) builder.withLocalDatacenter(profileName, basic.dc());
         applyOverridable(loaderBuilder, basic, advanced);
         loaderBuilder.endProfile();
     }
 
-    void applyOverridable(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Basic basic, CassandraConfig.Advanced advanced) {
+    private static void applyOverridable(ProgrammaticDriverConfigLoaderBuilder builder, CassandraConfig.Basic basic, CassandraConfig.Advanced advanced) {
         if (basic.request() != null) {
             if (basic.request().timeout() != null) builder.withDuration(REQUEST_TIMEOUT, basic.request().timeout());
             if (basic.request().consistency() != null) builder.withString(REQUEST_CONSISTENCY, basic.request().consistency());
@@ -338,6 +341,5 @@ public class CassandraSessionBuilder {
             if (advanced.preparedStatements() != null && advanced.preparedStatements().prepareOnAllNodes() != null)
                 builder.withBoolean(PREPARE_ON_ALL_NODES, advanced.preparedStatements().prepareOnAllNodes());
         }
-
     }
 }

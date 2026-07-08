@@ -6,6 +6,7 @@ import com.datastax.oss.driver.api.core.cql.BoundStatement;
 import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.data.SettableByName;
+import io.koraframework.database.cassandra.impl.CassandraQueryImpl;
 import io.koraframework.database.cassandra.mapper.parameter.CassandraParameterColumnMapper;
 import org.jspecify.annotations.Nullable;
 

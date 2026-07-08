@@ -12,6 +12,10 @@ public interface FlywayConfig {
         return true;
     }
 
+    default Mode mode() {
+        return Mode.MIGRATE;
+    }
+
     default List<String> locations() {
         return List.of("db/migration");
     }
@@ -30,5 +34,11 @@ public interface FlywayConfig {
 
     default Map<String, String> configurationProperties() {
         return Map.of();
+    }
+
+    enum Mode {
+        MIGRATE,
+        REPAIR,
+        CLEAN_MIGRATE
     }
 }
