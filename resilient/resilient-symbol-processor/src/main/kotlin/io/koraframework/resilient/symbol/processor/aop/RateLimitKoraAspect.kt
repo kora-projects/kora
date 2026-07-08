@@ -24,7 +24,7 @@ class RateLimitKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
         private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.ratelimiter.annotation", "RateLimit")
-        private val EXCEEDED_EXCEPTION = ClassName("io.koraframework.resilient.ratelimiter", "RateLimitExceededException")
+        private val EXCEEDED_EXCEPTION = ClassName("io.koraframework.resilient.ratelimiter.exception", "RateLimitExceededException")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {

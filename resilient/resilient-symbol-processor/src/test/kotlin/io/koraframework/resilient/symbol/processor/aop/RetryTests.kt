@@ -4,7 +4,7 @@ import com.google.devtools.ksp.KspExperimental
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
-import io.koraframework.resilient.retry.RetryExhaustedException
+import io.koraframework.resilient.retry.exception.RetryExhaustedException
 import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
 import io.koraframework.resilient.symbol.processor.aop.testdata.RetryTarget
 import io.koraframework.resilient.symbol.processor.aop.testdata.`typealias`.RetryAliasTarget

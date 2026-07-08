@@ -1,5 +1,6 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
+import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.helpers.NOPLogger;
 
@@ -26,6 +27,6 @@ public final class NoopRetryLoggerFactory extends DefaultRetryLoggerFactory {
         public void logStartRetry() {}
 
         @Override
-        public void logRetry(int attempts, boolean exhausted, long lastDelayInNanos, long processingTimeNanos, @Nullable Throwable exception) {}
+        public void logRetry(int attempts, @Nullable StopReason stopReason, long lastDelayInNanos, long processingTimeNanos, @Nullable Throwable exception) {}
     }
 }

@@ -1,6 +1,6 @@
-package io.koraframework.resilient.retry;
+package io.koraframework.resilient.retry.exception;
 
-import io.koraframework.resilient.ResilientException;
+import io.koraframework.resilient.exception.ResilientException;
 
 /**
  * Exception that indicates all Retry attempts exhausted

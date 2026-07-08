@@ -1,5 +1,7 @@
 package io.koraframework.resilient.ratelimiter;
 
+import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException;
+
 import java.util.function.Supplier;
 
 /**

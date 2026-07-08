@@ -1,4 +1,4 @@
-package io.koraframework.resilient;
+package io.koraframework.resilient.exception;
 
 public class ResilientException extends RuntimeException {
 

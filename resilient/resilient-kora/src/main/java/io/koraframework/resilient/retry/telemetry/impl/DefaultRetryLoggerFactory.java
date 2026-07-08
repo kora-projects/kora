@@ -1,6 +1,7 @@
 package io.koraframework.resilient.retry.telemetry.impl;
 
 import io.koraframework.resilient.retry.Retry;
+import io.koraframework.resilient.retry.telemetry.RetryObservation.StopReason;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,14 +35,15 @@ public class DefaultRetryLoggerFactory {
                 .log("Retry started...");
         }
 
-        public void logRetry(int attempts, boolean exhausted, long lastDelayInNanos, long processingTimeNanos, @Nullable Throwable exception) {
-            if (exhausted) {
+        public void logRetry(int attempts, @Nullable StopReason stopReason, long lastDelayInNanos, long processingTimeNanos, @Nullable Throwable exception) {
+            if (stopReason != null) {
                 if (!logger.isWarnEnabled()) {
                     return;
                 }
                 var event = logger.atWarn()
                     .addKeyValue("resilientType", "retry")
                     .addKeyValue("resilientName", this.context.name())
+                    .addKeyValue("reason", stopReason.name())
                     .addKeyValue("attempts", attempts)
                     .addKeyValue("processingTime", processingTimeNanos / 1_000_000);
                 addException(event, exception);

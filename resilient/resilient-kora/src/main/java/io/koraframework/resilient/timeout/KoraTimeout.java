@@ -1,5 +1,6 @@
 package io.koraframework.resilient.timeout;
 
+import io.koraframework.resilient.timeout.exception.TimeoutExhaustedException;
 import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,9 +30,7 @@ final class KoraTimeout implements Timeout {
         this.delayMaxDuration = delayMaxDuration;
         this.telemetry = telemetry;
         this.config = config;
-        var threadFactory = Thread.ofVirtual()
-            .name("timeout-" + name + "-", 1)
-            .factory();
+        var threadFactory = Thread.ofVirtual().name("timeout-" + name + "-", 1).factory();
         this.executor = e -> threadFactory.newThread(e).start();
     }
 

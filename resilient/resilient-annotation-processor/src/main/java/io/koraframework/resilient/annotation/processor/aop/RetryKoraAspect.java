@@ -20,7 +20,7 @@ import static com.palantir.javapoet.CodeBlock.joining;
 
 public class RetryKoraAspect implements KoraAspect {
 
-    private static final ClassName RETRY_EXCEPTION = ClassName.get("io.koraframework.resilient.retry", "RetryExhaustedException");
+    private static final ClassName RETRY_EXCEPTION = ClassName.get("io.koraframework.resilient.retry.exception", "RetryExhaustedException");
     private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.retry.annotation", "Retry");
     private static final ClassName RETRY_STATE = ClassName.get("io.koraframework.resilient.retry", "Retry", "RetryState", "RetryStatus");
 

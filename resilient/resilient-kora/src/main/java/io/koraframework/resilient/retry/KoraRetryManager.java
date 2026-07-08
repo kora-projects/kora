@@ -1,6 +1,7 @@
 package io.koraframework.resilient.retry;
 
 import io.koraframework.resilient.retry.telemetry.RetryTelemetryFactory;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,6 +13,7 @@ final class KoraRetryManager implements RetryManager {
     private static final Logger logger = LoggerFactory.getLogger(KoraRetryManager.class);
 
     private final Map<String, Retry> retryableByName = new ConcurrentHashMap<>();
+    private final Map<String, KoraRetryBudget> budgetByName = new ConcurrentHashMap<>();
     private final Iterable<RetryPredicate> failurePredicates;
     private final RetryConfig config;
     private final RetryTelemetryFactory telemetryFactory;
@@ -32,7 +34,8 @@ final class KoraRetryManager implements RetryManager {
                 .addKeyValue("resilientName", name)
                 .addKeyValue("config", config)
                 .log("Creating Retry");
-            return new KoraRetry(name, config, failurePredicate, this.telemetryFactory.get(name, this.config.telemetry()));
+            var retryBudget = getRetryBudget(name, config);
+            return new KoraRetry(name, config, failurePredicate, retryBudget, this.telemetryFactory.get(name, this.config.telemetry()));
         });
     }
 
@@ -43,5 +46,21 @@ final class KoraRetryManager implements RetryManager {
             }
         }
         throw new IllegalArgumentException("FailurePredicateClassName " + config.failurePredicateName() + " is not present as bean, please declare it as bean");
+    }
+
+    @Nullable
+    private KoraRetryBudget getRetryBudget(String name, RetryConfig.NamedConfig config) {
+        if (config.retryBudget() == null || !Boolean.TRUE.equals(config.retryBudget().enabled())) {
+            return null;
+        }
+
+        var retryBudget = config.retryBudget();
+        var budgetName = retryBudget.name() == null ? name : retryBudget.name();
+        return budgetByName.computeIfAbsent(budgetName, ignored -> new KoraRetryBudget(
+            retryBudget.ratio(),
+            retryBudget.tokensMax(),
+            retryBudget.tokensInitial(),
+            retryBudget.minTokensPerSecond()
+        ));
     }
 }

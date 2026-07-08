@@ -19,7 +19,7 @@ import static com.palantir.javapoet.CodeBlock.joining;
 public class RateLimitKoraAspect implements KoraAspect {
 
     private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.ratelimiter.annotation", "RateLimit");
-    private static final ClassName EXCEEDED_EXCEPTION = ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimitExceededException");
+    private static final ClassName EXCEEDED_EXCEPTION = ClassName.get("io.koraframework.resilient.ratelimiter.exception", "RateLimitExceededException");
 
     private final ProcessingEnvironment env;
 

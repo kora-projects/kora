@@ -1,5 +1,6 @@
 package io.koraframework.resilient.circuitbreaker;
 
+import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.jspecify.annotations.NullMarked;

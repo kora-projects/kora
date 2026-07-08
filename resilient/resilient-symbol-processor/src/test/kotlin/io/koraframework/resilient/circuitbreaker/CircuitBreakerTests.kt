@@ -1,6 +1,7 @@
 package io.koraframework.resilient.circuitbreaker
 
 import com.google.devtools.ksp.KspExperimental
+import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException
 import org.awaitility.Awaitility.*
 import org.awaitility.core.ConditionFactory
 import org.junit.jupiter.api.Assertions.assertEquals

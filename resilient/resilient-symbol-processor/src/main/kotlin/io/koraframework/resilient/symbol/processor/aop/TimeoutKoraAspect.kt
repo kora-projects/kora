@@ -36,7 +36,7 @@ class TimeoutKoraAspect(val resolver: Resolver) : KoraAspect {
         val whileMember = MemberName("kotlinx.coroutines.flow", "takeWhile")
         val systemMember = MemberName("java.lang", "System")
         val atomicMember = MemberName("java.util.concurrent.atomic", "AtomicLong")
-        val timeoutKoraMember = MemberName("io.koraframework.resilient.timeout", "TimeoutExhaustedException")
+        val timeoutKoraMember = MemberName("io.koraframework.resilient.timeout.exception", "TimeoutExhaustedException")
         val timeoutTelemetryConfig = ClassName("io.koraframework.resilient.timeout.telemetry", "TimeoutTelemetryConfig")
     }
 
