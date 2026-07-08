@@ -10,16 +10,16 @@ plugins {
 // gradle-plugin specifics.
 
 dependencies {
-    // Needed at compile time to read the applied Kotlin plugin version and to reference
-    // KotlinJvmProjectExtension. Provided by the consumer's Kotlin plugin at runtime.
+    // Used at compile time only to read the Kotlin source sets (register KSP-generated dirs).
+    // The consumer's Kotlin plugin provides it at runtime.
     compileOnly libs.kotlin.gradle.plugin
-    // Bundled so `pluginManager.apply("com.google.devtools.ksp")` resolves for consumers.
-    implementation libs.ksp.gradle.plugin
 
     testImplementation gradleTestKit()
     testImplementation libs.junit.jupiter
     testImplementation libs.assertj
     testImplementation libs.kotlin.gradle.plugin
+    // The consumer applies KSP; the ProjectBuilder tests exercise the KSP wiring, so KSP is on the test classpath.
+    testImplementation libs.ksp.gradle.plugin
     testRuntimeOnly libs.junit.platform.launcher
 }
 
@@ -39,11 +39,7 @@ gradlePlugin {
 
 // Bake versions into the plugin classpath so the plugin version == Kora version.
 tasks.named("processResources") {
-    def props = [
-        koraVersion  : project.version.toString(),
-        kspVersion   : libs.versions.ksp.get(),
-        kotlinVersion: libs.versions.kotlin.stdlib.get(),
-    ]
+    def props = [koraVersion: project.version.toString()]
     inputs.properties(props)
     filesMatching("ru/tinkoff/kora/gradle/version.properties") {
         expand(props)

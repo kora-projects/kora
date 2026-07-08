@@ -30,7 +30,7 @@ class KotlinEndToEndFunctionalTest {
             rootProject.name = 'e2ek'
             """);
         Files.writeString(dir.resolve("build.gradle"), """
-            plugins { id 'ru.tinkoff.kora' version '%s'; id 'org.jetbrains.kotlin.jvm' version '1.9.25' }
+            plugins { id 'ru.tinkoff.kora' version '%s'; id 'org.jetbrains.kotlin.jvm' version '1.9.25'; id 'com.google.devtools.ksp' version '1.9.25-1.0.20' }
             repositories {
                 mavenCentral()
                 maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }

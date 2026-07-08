@@ -5,21 +5,17 @@ import java.io.InputStream;
 import java.util.Properties;
 
 /**
- * Versions baked into the plugin at build time (see gradle-plugin/build.gradle processResources).
- * The Kora version equals the plugin version; the KSP and Kotlin versions come from the Kora
- * version catalog. Read from a classpath resource so a single source of truth is preserved.
+ * The Kora version baked into the plugin at build time (see gradle-plugin/build.gradle
+ * processResources). It equals the plugin version and pins the {@code kora-parent} BOM. Read from a
+ * classpath resource so a single source of truth is preserved.
  */
 public final class KoraPluginVersions {
     private static final String RESOURCE = "/ru/tinkoff/kora/gradle/version.properties";
 
     private final String koraVersion;
-    private final String kspVersion;
-    private final String kotlinVersion;
 
-    private KoraPluginVersions(String koraVersion, String kspVersion, String kotlinVersion) {
+    private KoraPluginVersions(String koraVersion) {
         this.koraVersion = koraVersion;
-        this.kspVersion = kspVersion;
-        this.kotlinVersion = kotlinVersion;
     }
 
     public static KoraPluginVersions load() {
@@ -32,29 +28,14 @@ public final class KoraPluginVersions {
         } catch (IOException e) {
             throw new IllegalStateException("Failed to read " + RESOURCE, e);
         }
-        return new KoraPluginVersions(
-            require(props, "koraVersion"),
-            require(props, "kspVersion"),
-            require(props, "kotlinVersion"));
-    }
-
-    private static String require(Properties props, String key) {
-        String value = props.getProperty(key);
-        if (value == null || value.isBlank()) {
-            throw new IllegalStateException("Missing '" + key + "' in " + RESOURCE);
+        String koraVersion = props.getProperty("koraVersion");
+        if (koraVersion == null || koraVersion.isBlank()) {
+            throw new IllegalStateException("Missing 'koraVersion' in " + RESOURCE);
         }
-        return value;
+        return new KoraPluginVersions(koraVersion);
     }
 
     public String koraVersion() {
         return koraVersion;
-    }
-
-    public String kspVersion() {
-        return kspVersion;
-    }
-
-    public String kotlinVersion() {
-        return kotlinVersion;
     }
 }

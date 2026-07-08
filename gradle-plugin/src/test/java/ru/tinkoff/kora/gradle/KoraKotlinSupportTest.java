@@ -15,14 +15,21 @@ class KoraKotlinSupportTest {
         return project;
     }
 
-    @Test
-    void appliesKspPlugin() {
-        assertThat(kotlinProject().getPlugins().hasPlugin("com.google.devtools.ksp")).isTrue();
+    private Project kotlinKspProject() {
+        Project project = kotlinProject();
+        project.getPluginManager().apply("com.google.devtools.ksp");
+        return project;
     }
 
     @Test
-    void addsSymbolProcessorToMainAndTest() {
-        Project project = kotlinProject();
+    void doesNotApplyKspItself() {
+        // The consumer applies KSP (choosing the version); the plugin must not apply it for them.
+        assertThat(kotlinProject().getPlugins().hasPlugin("com.google.devtools.ksp")).isFalse();
+    }
+
+    @Test
+    void addsSymbolProcessorWhenKspApplied() {
+        Project project = kotlinKspProject();
         assertThat(project.getConfigurations().getByName("ksp").getDependencies())
             .anySatisfy(d -> assertThat(d.getName()).isEqualTo("symbol-processors"));
         assertThat(project.getConfigurations().getByName("kspTest").getDependencies())
@@ -31,8 +38,15 @@ class KoraKotlinSupportTest {
 
     @Test
     void wiresBomOntoKspClasspath() {
-        Project project = kotlinProject();
+        Project project = kotlinKspProject();
         Configuration bom = project.getConfigurations().getByName("koraBom");
         assertThat(project.getConfigurations().getByName("ksp").getExtendsFrom()).contains(bom);
+    }
+
+    @Test
+    void wiresBomOntoKotlinCompileClasspath() {
+        Project project = kotlinProject();
+        Configuration bom = project.getConfigurations().getByName("koraBom");
+        assertThat(project.getConfigurations().getByName("implementation").getExtendsFrom()).contains(bom);
     }
 }
