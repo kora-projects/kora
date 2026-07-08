@@ -1,8 +1,11 @@
 package io.koraframework.database.symbol.processor.model
 
+import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSFunction
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeParameter
+import com.google.devtools.ksp.symbol.KSTypeReference
 import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.ParameterizedTypeName
@@ -19,13 +22,55 @@ object QueryParameterParser {
         return parse(listOf(connectionType), parameterMapperType, method, methodType)
     }
 
+    fun parse(connectionType: ClassName, parameterMapperType: ClassName, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): List<QueryParameter> {
+        return parse(listOf(connectionType), parameterMapperType, method, methodType, repositoryType)
+    }
+
     fun parse(connectionTypes: List<ClassName>, parameterMapperType: ClassName, method: KSFunctionDeclaration, methodType: KSFunction): List<QueryParameter> {
+        return parse(connectionTypes, parameterMapperType, method, methodType, null)
+    }
+
+    fun parse(connectionTypes: List<ClassName>, parameterMapperType: ClassName, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType?): List<QueryParameter> {
         val result = ArrayList<QueryParameter>(method.parameters.size)
         for (i in method.parameters.indices) {
-            val parameter = this.parse(connectionTypes, parameterMapperType, method.parameters[i], methodType.parameterTypes[i]!!)
+            val type = resolveTypeParameter(methodType.parameterTypes[i]!!, repositoryType, method.parameters[i].type)
+            val parameter = this.parse(connectionTypes, parameterMapperType, method.parameters[i], type)
             result.add(parameter)
         }
         return result
+    }
+
+    private fun resolveTypeParameter(type: KSType, repositoryType: KSType?, originalType: KSTypeReference): KSType {
+        if (repositoryType == null) {
+            return type
+        }
+
+        val declaration = originalType.resolve().declaration
+        if (declaration is KSClassDeclaration) {
+            return originalType.resolve()
+        }
+        val typeParameter = if (declaration is KSTypeParameter) {
+            declaration
+        } else {
+            type.declaration as? KSTypeParameter
+        }
+        if (typeParameter == null) {
+            return type
+        }
+
+        return findGenericArgument(repositoryType, typeParameter.name.asString()) ?: type
+    }
+
+    private fun findGenericArgument(type: KSType, targetName: String): KSType? {
+        val declaration = type.declaration as? KSClassDeclaration ?: return null
+        val index = declaration.typeParameters.indexOfFirst { it.name.asString() == targetName }
+        if (index >= 0) {
+            return type.arguments.getOrNull(index)?.type?.resolve()
+        }
+
+        return declaration.superTypes
+            .map { it.resolve() }
+            .firstNotNullOfOrNull { findGenericArgument(it, targetName) }
     }
 
     private fun parse(connectionTypes: List<ClassName>, parameterMapperType: ClassName, parameter: KSValueParameter, type: KSType): QueryParameter {

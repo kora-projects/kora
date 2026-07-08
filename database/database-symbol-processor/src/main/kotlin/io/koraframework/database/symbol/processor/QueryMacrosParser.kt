@@ -1,8 +1,11 @@
 package io.koraframework.database.symbol.processor
 
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSFunction
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.google.devtools.ksp.symbol.KSPropertyDeclaration
+import com.google.devtools.ksp.symbol.KSType
+import com.google.devtools.ksp.symbol.KSTypeParameter
 import com.google.devtools.ksp.symbol.KSTypeReference
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
@@ -27,10 +30,10 @@ class QueryMacrosParser {
         private const val SPECIAL_ID = "@id"
     }
 
-    data class Target(val type: KSClassDeclaration, val name: String)
-    data class Field(val field: KSPropertyDeclaration, val column: String, val path: String, val isId: Boolean)
+    data class Target(val type: KSClassDeclaration, val name: String, val column: String?)
+    data class Field(val field: KSPropertyDeclaration?, val column: String, val path: String, val isId: Boolean)
 
-    fun parse(sql: String, method: KSFunctionDeclaration): String {
+    fun parse(sql: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): String {
         val sqlBuilder = StringBuilder()
         var prevCmdIndex = 0
         while (true) {
@@ -40,7 +43,7 @@ class QueryMacrosParser {
             }
             val cmdIndexEnd = sql.indexOf(MACROS_END, cmdIndexStart)
             val targetAndCmdAsStr = sql.substring(cmdIndexStart + 2, cmdIndexEnd)
-            val substitution = getSubstitution(targetAndCmdAsStr, method)
+            val substitution = getSubstitution(targetAndCmdAsStr, method, methodType, repositoryType)
             sqlBuilder.append(sql, prevCmdIndex, cmdIndexStart).append(substitution)
             prevCmdIndex = cmdIndexEnd + 1
         }
@@ -89,6 +92,15 @@ class QueryMacrosParser {
         }
     }
 
+    private fun getFields(method: KSFunctionDeclaration, target: Target): List<Field> {
+        val nativeType = JdbcNativeTypes.findNativeType(target.type.toClassName())
+        if (nativeType != null && target.column != null) {
+            return listOf(Field(field = null, column = target.column, path = target.name, isId = false))
+        }
+
+        return getPathField(method, target.type, target.name, "").toList()
+    }
+
     private fun getCommandSelectorPaths(type: KSClassDeclaration, rootPath: String, selects: String): Set<String> {
         val fields = getFields(type)
         return selects.trim().split(",".toRegex())
@@ -131,7 +143,7 @@ class QueryMacrosParser {
 
     private fun parseDataClassFields(typeDecl: KSClassDeclaration) = typeDecl.getAllProperties()
 
-    private fun getSubstitution(targetAndCommand: String, method: KSFunctionDeclaration): String {
+    private fun getSubstitution(targetAndCommand: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): String {
         try {
             val targetAndCmd = targetAndCommand.split("#".toRegex()).dropLastWhile { it.isEmpty() }.toList()
             if (targetAndCmd.size == 1) {
@@ -140,7 +152,7 @@ class QueryMacrosParser {
                     method
                 )
             }
-            val target = getTarget(targetAndCmd[0].trim(), method)
+            val target = getTarget(targetAndCmd[0].trim(), method, methodType, repositoryType)
             var selectors = targetAndCmd[1].split("-=".toRegex()).dropLastWhile { it.isEmpty() }
                 .toTypedArray()
             val include: Boolean
@@ -158,9 +170,9 @@ class QueryMacrosParser {
                 setOf()
 
             val fields = if (paths.isEmpty()) {
-                getPathField(method, target.type, target.name, "").toList()
+                getFields(method, target)
             } else {
-                getPathField(method, target.type, target.name, "").filter { include == paths.contains(it.path) }.toList()
+                getFields(method, target).filter { include == paths.contains(it.path) }
             }
 
             val nameConverter = target.type.getNameConverter(snakeCaseNameConverter)
@@ -190,8 +202,9 @@ class QueryMacrosParser {
         }
     }
 
-    private fun getTarget(targetName: String, method: KSFunctionDeclaration): Target {
-        val reference: KSTypeReference
+    private fun getTarget(targetName: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): Target {
+        var reference: KSTypeReference? = null
+        var type: KSType? = null
 
         if (TARGET_RETURN == targetName) {
             if (method.isVoid()) {
@@ -207,39 +220,159 @@ class QueryMacrosParser {
             }
 
             val resolved = method.returnType!!.resolve()
-            reference = if (method.isCompletionStage() || method.isMono() || method.isFlux() || resolved.isCollection()) {
-                resolved.arguments[0].type!!
+            if (method.isCompletionStage() || method.isMono() || method.isFlux() || resolved.isCollection()) {
+                reference = resolved.arguments[0].type
+                type = methodType.returnType!!.arguments[0].type!!.resolve()
             } else {
-                method.returnType!!
+                reference = method.returnType
+                type = methodType.returnType
             }
         } else {
-            reference = method.parameters.stream()
-                .filter { p -> p.name!!.asString().contentEquals(targetName) }
-                .findFirst()
-                .map { obj ->
-                    val resolved = obj.type.resolve()
+            for (i in method.parameters.indices) {
+                val parameter = method.parameters[i]
+                if (parameter.name!!.asString().contentEquals(targetName)) {
+                    val resolved = parameter.type.resolve()
                     if (resolved.isCollection()) {
-                        resolved.arguments[0].type!!
+                        reference = resolved.arguments[0].type
+                        type = methodType.parameterTypes[i]!!.arguments[0].type!!.resolve()
                     } else {
-                        obj.type
+                        reference = parameter.type
+                        type = methodType.parameterTypes[i]
                     }
+                    break
                 }
-                .orElseThrow {
-                    ProcessingErrorException(
-                        "Macros command unspecified target received: $targetName",
-                        method
-                    )
+            }
+
+            if (type == null) {
+                val genericType = getGenericTarget(targetName, method, methodType, repositoryType)
+                if (genericType != null) {
+                    return genericType
                 }
+                throw ProcessingErrorException(
+                    "Macros command unspecified target received: $targetName",
+                    method
+                )
+            }
         }
 
-        val resolved = reference.resolve().declaration
+        val resolved = type!!.declaration
         return if (resolved is KSClassDeclaration) {
-            Target(resolved, targetName)
+            Target(resolved, targetName, getColumnName(method, targetName, reference, type))
         } else {
             throw ProcessingErrorException(
                 "Macros command unprocessable target type: $targetName",
                 method
             )
         }
+    }
+
+    private fun getGenericTarget(targetName: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): Target? {
+        getTypeParameterTargetName(method.returnType)?.takeIf { it == targetName }?.let {
+            val type = unwrapReturnType(method, methodType.returnType!!)
+            return targetFromType(targetName, type)
+        }
+
+        for (i in method.parameters.indices) {
+            val parameterTargetName = getTypeParameterTargetName(method.parameters[i].type)
+                ?: (methodType.parameterTypes[i]?.declaration as? KSTypeParameter)?.name?.asString()
+            parameterTargetName?.takeIf { it == targetName }?.let {
+                val type = unwrapParameterType(method.parameters[i].type.resolve(), methodType.parameterTypes[i]!!)
+                return targetFromType(method.parameters[i].name!!.asString(), type)
+            }
+        }
+
+        findGenericArgument(repositoryType, targetName)?.let {
+            val parameter = method.parameters.firstOrNull { parameter ->
+                parameter.type.resolve().declaration == it.declaration
+            }
+            return targetFromType(parameter?.name?.asString() ?: targetName, it)
+        }
+
+        val parent = method.parentDeclaration
+        if (parent is KSClassDeclaration) {
+            parent.typeParameters.firstOrNull { it.name.asString() == targetName } ?: return null
+        } else {
+            return null
+        }
+
+        val superType = findSuperType(repositoryType, parent) ?: return null
+        val index = parent.typeParameters.indexOfFirst { it.name.asString() == targetName }
+        val type = superType.arguments.getOrNull(index)?.type?.resolve() ?: return null
+        return targetFromType(targetName, type)
+    }
+
+    private fun findGenericArgument(type: KSType, targetName: String): KSType? {
+        val declaration = type.declaration as? KSClassDeclaration ?: return null
+        val index = declaration.typeParameters.indexOfFirst { it.name.asString() == targetName }
+        if (index >= 0) {
+            return type.arguments.getOrNull(index)?.type?.resolve()
+        }
+
+        return declaration.superTypes
+            .map { it.resolve() }
+            .firstNotNullOfOrNull { findGenericArgument(it, targetName) }
+    }
+
+    private fun targetFromType(targetName: String, type: KSType): Target {
+        val resolved = type.declaration
+        return if (resolved is KSClassDeclaration) {
+            Target(resolved, targetName, getColumnName(method = null, targetName, typeReference = null, type))
+        } else {
+            throw ProcessingErrorException("Macros command unprocessable target type: $targetName", resolved)
+        }
+    }
+
+    private fun getTypeParameterTargetName(typeReference: KSTypeReference?): String? {
+        val declaration = typeReference?.resolve()?.declaration
+        return if (declaration is KSTypeParameter) {
+            declaration.name.asString()
+        } else {
+            null
+        }
+    }
+
+    private fun unwrapReturnType(method: KSFunctionDeclaration, returnType: KSType): KSType {
+        val original = method.returnType!!.resolve()
+        return if (method.isCompletionStage() || method.isMono() || method.isFlux() || original.isCollection()) {
+            returnType.arguments[0].type!!.resolve()
+        } else {
+            returnType
+        }
+    }
+
+    private fun unwrapParameterType(originalType: KSType, parameterType: KSType): KSType {
+        return if (originalType.isCollection()) {
+            parameterType.arguments[0].type!!.resolve()
+        } else {
+            parameterType
+        }
+    }
+
+    private fun findSuperType(type: KSType, expectedDeclaration: KSClassDeclaration): KSType? {
+        if (type.declaration == expectedDeclaration) {
+            return type
+        }
+
+        val declaration = type.declaration as? KSClassDeclaration ?: return null
+        return declaration.superTypes
+            .map { it.resolve() }
+            .firstNotNullOfOrNull { findSuperType(it, expectedDeclaration) }
+    }
+
+    private fun getColumnName(method: KSFunctionDeclaration?, targetName: String, typeReference: KSTypeReference?, type: KSType): String? {
+        if (TARGET_RETURN != targetName) {
+            method?.parameters
+                ?.asSequence()
+                ?.firstOrNull { it.name!!.asString().contentEquals(targetName) }
+                ?.findAnnotation(DbUtils.columnAnnotation)
+                ?.findValueNoDefault<String>("value")
+                ?.takeIf { it.isNotEmpty() }
+                ?.let { return it }
+        }
+
+        return (typeReference?.resolve()?.annotations ?: type.annotations)
+            .firstOrNull { DbUtils.columnAnnotation == (it.annotationType.resolve().declaration as KSClassDeclaration).toClassName() }
+            ?.findValueNoDefault<String>("value")
+            ?.takeIf { it.isNotEmpty() }
     }
 }

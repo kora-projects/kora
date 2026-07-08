@@ -49,10 +49,10 @@ class JdbcRepositoryGenerator(private val resolver: Resolver) : RepositoryGenera
         var methodCounter = 1
         for (method in queryMethods) {
             val methodType = method.asMemberOf(repositoryResolvedType)
-            val parameters = QueryParameterParser.parse(JdbcTypes.connection, JdbcTypes.jdbcParameterColumnMapper, method, methodType)
+            val parameters = QueryParameterParser.parse(JdbcTypes.connection, JdbcTypes.jdbcParameterColumnMapper, method, methodType, repositoryResolvedType)
             val queryAnnotation = method.findAnnotation(DbUtils.queryAnnotation)!!
             val queryString = queryAnnotation.findValue<String>("value")!!
-            val query = QueryWithParameters.parse(queryString, parameters, method)
+            val query = QueryWithParameters.parse(queryString, parameters, method, methodType, repositoryResolvedType)
             val resultMapper = this.parseResultMapper(method, parameters, methodType)?.let { resultMappers.addMapper(it) }
             DbUtils.parseParameterMappers(method, parameters, query, JdbcTypes.jdbcParameterColumnMapper) { JdbcNativeTypes.findNativeType(it.toTypeName()) != null }
                 .forEach { parameterMappers.addMapper(it) }

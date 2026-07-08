@@ -596,4 +596,100 @@ class JdbcMacrosTest : AbstractJdbcRepositoryTest() {
         repository.invoke<Any>("insert", newGenerated("Entity", "1", 1, "1", "1").invoke())
         Mockito.verify(executor.mockConnection).prepareStatement("UPDATE entities SET value1 = ? WHERE id = ?")
     }
+
+    @Test
+    fun typeUseColumnArgumentWhere() {
+        val repository = compile(
+            listOf(newGenerated("TestRowMapper")), """
+            interface AbstractJdbcRepository<K, V> : JdbcRepository {
+
+                @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{keyArg#where}")
+                fun findById(keyArg: K): V?
+            }
+
+            @Repository
+            interface TestRepository : AbstractJdbcRepository<@Column("id") String, TestRepository.Entity> {
+
+                @Table("entities")
+                data class Entity(@field:Id val id: String,
+                                  @field:Column("value1") val field1: Long,
+                                  val value2: String,
+                                  val value3: String?)
+            }
+            """.trimIndent(), """
+            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
+                override fun apply(rs: ResultSet): TestRepository.Entity? {
+                  return null
+                }
+            }
+            """.trimIndent()
+        )
+        repository.invoke<Any>("findById", "1")
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?")
+    }
+
+    @Test
+    fun genericTypeArgumentSelectsAndTable() {
+        val repository = compile(
+            listOf(newGenerated("TestRowMapper")), """
+            interface AbstractJdbcRepository<V> : JdbcRepository {
+
+                @Query("SELECT %{V#selects} FROM %{V#table}")
+                fun findOne(): V?
+            }
+
+            @Repository
+            interface TestRepository : AbstractJdbcRepository<TestRepository.Entity> {
+
+                @Table("entities")
+                data class Entity(@field:Id val id: String,
+                                  @field:Column("value1") val field1: Long,
+                                  val value2: String,
+                                  val value3: String?)
+            }
+            """.trimIndent(), """
+            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
+                override fun apply(rs: ResultSet): TestRepository.Entity? {
+                  return null
+                }
+            }
+            """.trimIndent()
+        )
+        repository.invoke<Any>("findOne")
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("SELECT id, value1, value2, value3 FROM entities")
+    }
+
+    @Test
+    fun genericTypeArgumentWhereId() {
+        val repository = compile(
+            listOf(newGenerated("TestRowMapper")), """
+            interface AbstractJdbcRepository<V> : JdbcRepository {
+
+                @Query("SELECT %{V#selects} FROM %{V#table} WHERE %{V#where = @id}")
+                fun findByEntity(entity: V): V?
+            }
+
+            @Repository
+            interface TestRepository : AbstractJdbcRepository<TestRepository.Entity> {
+
+                @Table("entities")
+                data class Entity(@field:Id val id: String,
+                                  @field:Column("value1") val field1: Long,
+                                  val value2: String,
+                                  val value3: String?)
+            }
+            """.trimIndent(), """
+            class TestRowMapper : JdbcResultSetMapper<TestRepository.Entity?> {
+                override fun apply(rs: ResultSet): TestRepository.Entity? {
+                  return null
+                }
+            }
+            """.trimIndent()
+        )
+        repository.invoke<Any>("findByEntity", newGenerated("TestRepository\$Entity", "1", 1, "1", "1").invoke())
+        Mockito.verify(executor.mockConnection)
+            .prepareStatement("SELECT id, value1, value2, value3 FROM entities WHERE id = ?")
+    }
 }

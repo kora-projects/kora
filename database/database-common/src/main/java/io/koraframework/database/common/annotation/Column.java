@@ -21,7 +21,7 @@ import java.lang.annotation.Target;
  * @see Table
  * @see Repository
  */
-@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT})
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.RECORD_COMPONENT, ElementType.TYPE_USE})
 @Retention(RetentionPolicy.CLASS)
 public @interface Column {
 

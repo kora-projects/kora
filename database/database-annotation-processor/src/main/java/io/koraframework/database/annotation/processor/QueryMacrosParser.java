@@ -32,7 +32,7 @@ final class QueryMacrosParser {
 
     record Field(Element field, String column, String path, boolean isId) {}
 
-    record Target(DeclaredType type, String name) {}
+    record Target(DeclaredType type, String name, String column) {}
 
     public String parse(String sqlWithSyntax, DeclaredType repositoryType, ExecutableElement method) {
         var sqlBuilder = new StringBuilder();
@@ -144,6 +144,15 @@ final class QueryMacrosParser {
         }
     }
 
+    private List<Field> getFields(ExecutableElement method, Target target) {
+        final JdbcNativeType nativeType = JdbcNativeTypes.findNativeType(TypeName.get(target.type()));
+        if (nativeType != null && target.column() != null) {
+            return List.of(new Field(null, target.column(), target.name(), false));
+        }
+
+        return getPathField(method, target.type(), target.name(), "");
+    }
+
     private String getSubstitution(String targetAndCommand, DeclaredType repositoryType, ExecutableElement method) {
         try {
             var targetAndCmd = targetAndCommand.split("#");
@@ -168,8 +177,8 @@ final class QueryMacrosParser {
                 : Set.<String>of();
 
             var fields = paths.isEmpty()
-                ? getPathField(method, target.type(), target.name(), "")
-                : getPathField(method, target.type(), target.name(), "").stream()
+                ? getFields(method, target)
+                : getFields(method, target).stream()
                 .filter(f -> include == paths.contains(f.path()))
                 .toList();
 
@@ -249,6 +258,10 @@ final class QueryMacrosParser {
             }
 
             if (targetMirror == null) {
+                var genericTarget = getTypeParameterTarget(repositoryType, method, targetName);
+                if (genericTarget != null) {
+                    return genericTarget;
+                }
                 throw new ProcessingErrorException("Macros command unspecified target received: " + targetName, method);
             }
 
@@ -261,9 +274,70 @@ final class QueryMacrosParser {
         }
 
         if (targetMirror instanceof DeclaredType dt) {
-            return new Target(dt, targetName);
+            return new Target(dt, targetName, getColumnName(method, targetName, targetMirror));
         } else {
             throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
         }
+    }
+
+    private Target getTypeParameterTarget(DeclaredType repositoryType, ExecutableElement method, String targetName) {
+        var methodType = (ExecutableType) this.types.asMemberOf(repositoryType, method);
+        var parameters = method.getParameters();
+        for (int i = 0; i < parameters.size(); i++) {
+            var parameter = parameters.get(i);
+            if (parameter.asType() instanceof javax.lang.model.type.TypeVariable typeVariable
+                && typeVariable.asElement().getSimpleName().contentEquals(targetName)) {
+                var type = methodType.getParameterTypes().get(i);
+                if (type instanceof DeclaredType dt) {
+                    return new Target(dt, parameter.getSimpleName().toString(), getColumnName(method, targetName, type));
+                }
+                throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+            }
+        }
+
+        if (method.getEnclosingElement() instanceof TypeElement enclosingType) {
+            for (var typeParameter : enclosingType.getTypeParameters()) {
+                if (typeParameter.getSimpleName().contentEquals(targetName)) {
+                    var type = this.types.asMemberOf(repositoryType, typeParameter);
+                    if (type instanceof DeclaredType dt) {
+                        return new Target(dt, targetName, getColumnName(method, targetName, type));
+                    }
+                    throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+                }
+            }
+        }
+
+        for (var typeParameter : method.getTypeParameters()) {
+            if (typeParameter.getSimpleName().contentEquals(targetName)) {
+                var type = this.types.asMemberOf(repositoryType, typeParameter);
+                if (type instanceof DeclaredType dt) {
+                    return new Target(dt, targetName, getColumnName(method, targetName, type));
+                }
+                throw new ProcessingErrorException("Macros command unprocessable target type: " + targetName, method);
+            }
+        }
+
+        return null;
+    }
+
+    private String getColumnName(ExecutableElement method, String targetName, TypeMirror targetMirror) {
+        if (!TARGET_RETURN.equals(targetName)) {
+            for (var parameter : method.getParameters()) {
+                if (parameter.getSimpleName().contentEquals(targetName)) {
+                    var column = AnnotationUtils.findAnnotation(parameter, DbUtils.COLUMN_ANNOTATION);
+                    var columnName = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(column, "value");
+                    if (columnName != null && !columnName.isEmpty()) {
+                        return columnName;
+                    }
+                }
+            }
+        }
+
+        return targetMirror.getAnnotationMirrors().stream()
+            .filter(a -> DbUtils.COLUMN_ANNOTATION.equals(ClassName.get(a.getAnnotationType())))
+            .findFirst()
+            .map(a -> AnnotationUtils.<String>parseAnnotationValueWithoutDefault(a, "value"))
+            .filter(columnName -> !columnName.isEmpty())
+            .orElse(null);
     }
 }
