@@ -85,4 +85,27 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(e.getMessage().contains("clientConfig is required for java-client"));
         assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
     }
+
+    @Test
+    void sameResponseModelGetsSharedInterface() throws Exception {
+        var files = generate(
+            "petstoreV3_same_response_model",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_same_response_model.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().endsWith("ApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("non-sealed interface GetErrorsModelErrorApiResponse extends GetErrorsApiResponse"));
+        assertTrue(content.contains("ModelError content()"));
+        assertTrue(content.contains("default String message()"));
+        assertTrue(content.contains("int _statusCode()"));
+        assertTrue(content.contains("record GetErrors400ApiResponse(ModelError content) implements GetErrorsModelErrorApiResponse"));
+        assertTrue(content.contains("return 400"));
+    }
 }

@@ -85,4 +85,28 @@ public class HttpClientKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(e.getMessage().contains("clientConfig is required for kotlin-client"));
         assertTrue(e.getMessage().contains("httpClient.petstoreV3"));
     }
+
+    @Test
+    void sameResponseModelGetsSharedInterface() throws Exception {
+        var files = generate(
+            "petstoreV3_same_response_model",
+            "kotlin-client",
+            getClass().getResource("/example/petstoreV3_same_response_model.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().endsWith("ApiResponses.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("public interface GetErrorsModelErrorApiResponse : GetErrorsApiResponse"));
+        assertTrue(content.contains("public val content: ModelError"));
+        assertTrue(content.contains("public val message: String"));
+        assertTrue(content.contains("public val _statusCode: Int"));
+        assertTrue(content.contains("public data class GetErrors400ApiResponse("));
+        assertTrue(content.contains(": GetErrorsModelErrorApiResponse"));
+        assertTrue(content.contains("get() = 400"));
+    }
 }
