@@ -100,6 +100,7 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_security_multi.yaml",
             "/example/petstoreV3_single_response.yaml",
+            "/example/petstoreV3_same_response_model.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",

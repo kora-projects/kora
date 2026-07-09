@@ -34,8 +34,7 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             .addAnnotation(Classes.component)
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpClientResponseMapper, responseType));
-        var constructor = MethodSpec.constructorBuilder()
-            .addModifiers(Modifier.PUBLIC);
+        MethodSpec.Builder constructor = null;
         if (response.dataType != null) {
             var mapperType = ParameterizedTypeName.get(Classes.httpClientResponseMapper, asType(response));
             b.addField(mapperType, "delegate", Modifier.PRIVATE, Modifier.FINAL);
@@ -43,7 +42,9 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             if (isContentJson(response.getContent())) {
                 mapperParam.addAnnotation(jsonAnnotation());
             }
-            constructor.addParameter(mapperParam.build())
+            constructor = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(mapperParam.build())
                 .addStatement("this.delegate = delegate");
         }
 
@@ -87,8 +88,10 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             newArgs.add(header.name);
         }
 
-        return b
-            .addMethod(constructor.build())
-            .addMethod(apply.addStatement("return new $T($L)", responseWithCodeType, newArgs.build()).build()).build();
+        if (constructor != null) {
+            b.addMethod(constructor.build());
+        }
+
+        return b.addMethod(apply.addStatement("return new $T($L)", responseWithCodeType, newArgs.build()).build()).build();
     }
 }
