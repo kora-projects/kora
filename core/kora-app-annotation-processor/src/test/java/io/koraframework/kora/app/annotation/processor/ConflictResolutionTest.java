@@ -74,4 +74,188 @@ public class ConflictResolutionTest extends AbstractKoraAppTest {
         assertThat(g.get(draw.getNodes().get(0))).isInstanceOf(this.compileResult.loadClass("TestImpl2"));
     }
 
+    @Test
+    public void testDefaultComponentAnnotatedComponentUsedWhenNoOverride() throws ClassNotFoundException {
+        var draw = compile("""
+            public interface TestInterface {}
+            """, """
+            @Component
+            @DefaultComponent
+            public class DefaultTestImpl implements TestInterface {}
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(TestInterface t) {return t;}
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var defaultImpl = this.compileResult.loadClass("DefaultTestImpl");
+        var g = draw.init();
+        assertThat(draw.getNodes())
+            .extracting(g::get)
+            .anySatisfy(value -> assertThat(value).isInstanceOf(defaultImpl));
+    }
+
+    @Test
+    public void testDefaultComponentAnnotatedComponentOverrideByComponentClass() throws ClassNotFoundException {
+        var draw = compile("""
+            public interface TestInterface {}
+            """, """
+            @Component
+            @DefaultComponent
+            public class DefaultTestImpl implements TestInterface {}
+            """, """
+            @Component
+            public class OverrideTestImpl implements TestInterface {}
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(TestInterface t) {return t;}
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var defaultImpl = this.compileResult.loadClass("DefaultTestImpl");
+        var overrideImpl = this.compileResult.loadClass("OverrideTestImpl");
+        var g = draw.init();
+        assertThat(draw.getNodes())
+            .extracting(g::get)
+            .anySatisfy(value -> assertThat(value).isInstanceOf(overrideImpl))
+            .noneSatisfy(value -> assertThat(value).isInstanceOf(defaultImpl));
+    }
+
+    @Test
+    public void testDefaultComponentAnnotatedComponentOverrideByFactoryMethod() throws ClassNotFoundException {
+        var draw = compile("""
+            public interface TestInterface {}
+            """, """
+            @Component
+            @DefaultComponent
+            public class DefaultTestImpl implements TestInterface {}
+            """, """
+            public class OverrideTestImpl implements TestInterface {}
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(TestInterface t) {return t;}
+
+                default OverrideTestImpl testImpl() { return new OverrideTestImpl(); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var defaultImpl = this.compileResult.loadClass("DefaultTestImpl");
+        var overrideImpl = this.compileResult.loadClass("OverrideTestImpl");
+        var g = draw.init();
+        assertThat(draw.getNodes())
+            .extracting(g::get)
+            .anySatisfy(value -> assertThat(value).isInstanceOf(overrideImpl))
+            .noneSatisfy(value -> assertThat(value).isInstanceOf(defaultImpl));
+    }
+
+    @Test
+    public void testDefaultComponentAnnotatedComponentOverrideBySameTagOnly() throws ClassNotFoundException {
+        var draw = compile("""
+            public interface TestInterface {}
+            """, """
+            public final class DefaultTag {}
+            """, """
+            public final class OverrideTag {}
+            """, """
+            @Component
+            @DefaultComponent
+            @Tag(DefaultTag.class)
+            public class DefaultTestImpl implements TestInterface {}
+            """, """
+            @Component
+            @Tag(OverrideTag.class)
+            public class OverrideTestImpl implements TestInterface {}
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(@Tag(DefaultTag.class) TestInterface t) {return t;}
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var defaultImpl = this.compileResult.loadClass("DefaultTestImpl");
+        var overrideImpl = this.compileResult.loadClass("OverrideTestImpl");
+        var g = draw.init();
+        assertThat(draw.getNodes())
+            .extracting(g::get)
+            .anySatisfy(value -> assertThat(value).isInstanceOf(defaultImpl))
+            .noneSatisfy(value -> assertThat(value).isInstanceOf(overrideImpl));
+    }
+
+    @Test
+    public void testDefaultComponentAnnotatedComponentOverrideByComponentClassWithSameTag() throws ClassNotFoundException {
+        var draw = compile("""
+            public interface TestInterface {}
+            """, """
+            public final class TestTag {}
+            """, """
+            @Component
+            @DefaultComponent
+            @Tag(TestTag.class)
+            public class DefaultTestImpl implements TestInterface {}
+            """, """
+            @Component
+            @Tag(TestTag.class)
+            public class OverrideTestImpl implements TestInterface {}
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(@Tag(TestTag.class) TestInterface t) {return t;}
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(2);
+
+        var defaultImpl = this.compileResult.loadClass("DefaultTestImpl");
+        var overrideImpl = this.compileResult.loadClass("OverrideTestImpl");
+        var g = draw.init();
+        assertThat(draw.getNodes())
+            .extracting(g::get)
+            .anySatisfy(value -> assertThat(value).isInstanceOf(overrideImpl))
+            .noneSatisfy(value -> assertThat(value).isInstanceOf(defaultImpl));
+    }
+
+    @Test
+    public void testDefaultComponentAnnotatedComponentOverrideByConditionalComponent() throws ClassNotFoundException {
+        var draw = compile("""
+            public interface TestInterface {}
+            """, """
+            @Component
+            @DefaultComponent
+            public class DefaultTestImpl implements TestInterface {}
+            """, """
+            @Component
+            @Conditional(tag = io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+            public class OverrideTestImpl implements TestInterface {}
+            """, """
+            @KoraApp
+            public interface ExampleApplication {
+                @Root
+                default Object root(TestInterface t) {return t;}
+
+                @Tag(io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition.class)
+                default GraphCondition matches() { return new io.koraframework.kora.app.annotation.processor.ConditionalComponentTest.MatchesCondition(); }
+            }
+            """);
+        assertThat(draw.getNodes()).hasSize(3);
+
+        var defaultImpl = this.compileResult.loadClass("DefaultTestImpl");
+        var overrideImpl = this.compileResult.loadClass("OverrideTestImpl");
+        var g = draw.init();
+        assertThat(draw.getNodes())
+            .extracting(g::get)
+            .anySatisfy(value -> assertThat(value).isInstanceOf(overrideImpl))
+            .noneSatisfy(value -> assertThat(value).isInstanceOf(defaultImpl));
+    }
+
 }
