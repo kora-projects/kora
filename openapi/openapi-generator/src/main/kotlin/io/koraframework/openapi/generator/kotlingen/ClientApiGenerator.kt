@@ -138,8 +138,11 @@ class ClientApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun buildHttpClientAnnotation(ctx: OperationsMap): AnnotationSpec {
         val httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient.asKt())
-        params.clientConfigPrefix?.let {
-            httpClientAnnotation.addMember("value = %S", it + "." + ctx.get("classname"))
+        params.clientConfigPrefix?.let { clientConfigPrefix ->
+            val configPath = clientConfigPrefix + "." + StringUtils.uncapitalize(ctx.get("classname").toString())
+            httpClientAnnotation.addMember("value = %S", configPath)
+        } ?: params.clientConfig?.let { clientConfig ->
+            httpClientAnnotation.addMember("value = %S", clientConfig)
         }
         val tag = ctx.get("baseName").toString()
         val clientTag = params.clientTags[tag]
