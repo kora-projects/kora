@@ -335,8 +335,11 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
     private AnnotationSpec buildHttpClientAnnotation(OperationsMap ctx) {
         var httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient);
-        if (params.clientConfigPrefix != null) {
-            httpClientAnnotation.addMember("value", "$S", params.clientConfigPrefix + "." + ctx.get("classname"));
+        if (params.clientConfig != null || params.clientConfigPrefix != null) {
+            var configPath = params.clientConfigPrefix != null
+                ? params.clientConfigPrefix + "." + StringUtils.uncapitalize(ctx.get("classname").toString())
+                : params.clientConfig;
+            httpClientAnnotation.addMember("value", "$S", configPath);
         }
         var tag = ctx.get("baseName").toString();
         var clientTag = params.clientTags.get(tag);
