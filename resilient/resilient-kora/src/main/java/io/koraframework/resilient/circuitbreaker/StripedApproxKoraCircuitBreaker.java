@@ -1,56 +1,52 @@
 package io.koraframework.resilient.circuitbreaker;
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
-import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallAcquireStatus;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallResult;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 /**
- * CircuitBreaker - Fixed Window implementation
+ * CircuitBreaker - striped approximate count window implementation.
  * <p>
- * Cheapest implementation: one packed {@link AtomicLong} stores CLOSED and HALF_OPEN counters.
- * It has very low memory overhead and a small hot path, but CLOSED statistics are a fixed counter window,
- * not an exact ring of the globally latest N calls.
- * --------------------------------------------------------------------------------------------------
- * Closed {@link #state}
- * 10 | 0000000000000000000000000000000 | 0000000000000000000000000000000
- * ^                     ^                              ^
- * state sign     errors count (31 bits)      request count (31 bits)
+ * CLOSED-state statistics are intentionally approximate: every stripe owns a local ring and local counters,
+ * and global snapshot is the sum of stripe snapshots. Under uneven thread distribution the effective global
+ * window can be shifted and does not represent a strict FIFO of last N calls. The state machine remains strict
+ * and atomic.
  * <p>
- * Open {@link #state}
- * 00 | 00000000000000000000000000000000000000000000000000000000000000
- * ^                                    ^
- * state sign             start time of open state (millis)
- * <p>
- * Half open {@link #state}
- * 01 | 00000000000000 | 0000000000000000 | 0000000000000000 | 0000000000000000
- * ^                           ^                   ^                  ^
- * state sign     error count (16 bit)   success count (16 bits)   acquired count (16 bits)
- * --------------------------------------------------------------------------------------------------
+ * This is the fastest hot-path implementation for high concurrency: writes avoid a global sequencer and
+ * update only one stripe. The trade-off is approximate statistics instead of exact global count-based order.
  */
 @SuppressWarnings("ConstantConditions")
-final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
+final class StripedApproxKoraCircuitBreaker implements CircuitBreaker {
 
-    private static final long CLOSED_COUNTER_MASK = 0x7FFF_FFFFL;
-    private static final long CLOSED_STATE = 1L << 63;
     private static final long HALF_OPEN_COUNTER_MASK = 0xFFFFL;
+    private static final long CLOSED_STATE = 1L << 63;
     private static final long HALF_OPEN_STATE = 1L << 62;
     private static final long HALF_OPEN_INCREMENT_SUCCESS = 1L << 16;
     private static final long HALF_OPEN_INCREMENT_ERROR = 1L << 32;
-    private static final long OPEN_STATE = 0;
 
-    private static final long COUNTER_INC = 1L;
-    private static final long ERR_COUNTER_INC = 1L << 31;
-    private static final long BOTH_COUNTERS_INC = ERR_COUNTER_INC + COUNTER_INC;
+    private static final int OUTCOME_EMPTY = 0;
+    private static final int OUTCOME_SUCCESS = 1;
+    private static final int OUTCOME_FAILURE = 2;
+    private static final int OUTCOME_IGNORED = 3;
+    private static final int OUTCOME_SLOW = 4;
 
-    private final AtomicLong state;
+    private static final int COUNTER_BITS = 16;
+    private static final long COUNTER_MASK = 0xFFFFL;
+    private static final int FAILURE_SHIFT = 16;
+    private static final int SLOW_SHIFT = 32;
+    private static final int IGNORED_SHIFT = 48;
+
+    private final AtomicLong state = new AtomicLong(CLOSED_STATE);
     private final String name;
     private final CircuitBreakerConfig.NamedConfig config;
     private final CircuitBreakerPredicate failurePredicate;
@@ -58,13 +54,14 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     private final long waitDurationInOpenStateInNanos;
     private final LongSupplier currentTimeNanos;
     private final long startedNanos;
+    private final Stripe[] stripes;
+    private final int stripeMask;
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
-        this.state = new AtomicLong(CLOSED_STATE);
+    StripedApproxKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
@@ -72,6 +69,15 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         this.waitDurationInOpenStateInNanos = toNanosSaturated(config.waitDurationInOpenState());
         this.currentTimeNanos = currentTimeNanos;
         this.startedNanos = currentTimeNanos.getAsLong();
+
+        var stripeCount = Math.min(config.countBased().stripedApprox().stripes(), Math.toIntExact(config.countBased().windowSize()));
+        stripeCount = nextPowerOfTwo(stripeCount);
+        this.stripes = new Stripe[stripeCount];
+        this.stripeMask = stripeCount - 1;
+        var stripeWindowSize = Math.toIntExact((config.countBased().windowSize() + stripeCount - 1) / stripeCount);
+        for (int i = 0; i < stripeCount; i++) {
+            this.stripes[i] = new Stripe(stripeWindowSize);
+        }
     }
 
     State getState() {
@@ -80,6 +86,21 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         } else {
             return getState(state.get());
         }
+    }
+
+    Snapshot snapshot() {
+        long total = 0;
+        long failures = 0;
+        long slowCalls = 0;
+        long ignored = 0;
+        for (Stripe localStripe : this.stripes) {
+            var counters = localStripe.counters.get();
+            total += total(counters);
+            failures += failures(counters);
+            slowCalls += slowCalls(counters);
+            ignored += ignored(counters);
+        }
+        return new Snapshot(total, failures, slowCalls, ignored);
     }
 
     @Override
@@ -111,9 +132,9 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
         try {
             acquire();
-            var t = supplier.get();
+            var result = supplier.get();
             releaseOnSuccess();
-            return t;
+            return result;
         } catch (CallNotPermittedException e) {
             if (fallback == null) {
                 throw e;
@@ -135,20 +156,8 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         };
     }
 
-    private int countClosedErrors(long value) {
-        return (int) ((value >> 31) & CLOSED_COUNTER_MASK);
-    }
-
-    private int countClosedTotal(long value) {
-        return (int) (value & CLOSED_COUNTER_MASK);
-    }
-
     private int countHalfOpenSuccess(long value) {
         return (int) ((value >> 16) & HALF_OPEN_COUNTER_MASK);
-    }
-
-    private int countHalfOpenError(long value) {
-        return (int) ((value >> 32) & HALF_OPEN_COUNTER_MASK);
     }
 
     private int countHalfOpenAcquired(long value) {
@@ -224,14 +233,12 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
         final long currentTimeInNanos = currentElapsedNanos();
         final long beenInOpenState = currentTimeInNanos - stateLong;
-        // go to half open
         if (beenInOpenState >= waitDurationInOpenStateInNanos) {
             if (this.state.compareAndSet(stateLong, HALF_OPEN_STATE + 1)) {
                 onStateChange(State.OPEN, State.HALF_OPEN, null, observation);
                 observation.recordCallAcquire(State.HALF_OPEN, CallAcquireStatus.PERMITTED);
                 return true;
             } else {
-                // prob concurrently switched to half open and have to reacquire
                 return tryAcquire(observation);
             }
         } else {
@@ -248,19 +255,27 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
                 return;
             }
 
+            final long currentStateLong = state.get();
+            final State currentState = getState(currentStateLong);
+            if (currentState == State.CLOSED) {
+                stripe().record(OUTCOME_SUCCESS);
+                observation.recordCallResult(State.CLOSED, CallResult.SUCCESS);
+                return;
+            }
+
             State prevState;
             State newState;
             while (true) {
-                final long currentStateLong = state.get();
-                final long newStateLong = calculateStateOnSuccess(currentStateLong);
-                if (state.compareAndSet(currentStateLong, newStateLong)) {
+                final long observedStateLong = state.get();
+                final long newStateLong = calculateStateOnSuccess(observedStateLong);
+                if (state.compareAndSet(observedStateLong, newStateLong)) {
+                    prevState = getState(observedStateLong);
                     newState = getState(newStateLong);
-                    prevState = getState(currentStateLong);
                     break;
                 }
             }
-
             if (prevState != newState) {
+                clearWindow();
                 onStateChange(prevState, newState, null, observation);
             }
             observation.recordCallResult(prevState, CallResult.SUCCESS);
@@ -271,15 +286,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
     private long calculateStateOnSuccess(long currentState) {
         final State state = getState(currentState);
-        if (state == State.CLOSED) {
-            final int total = countClosedTotal(currentState) + 1;
-            if (total == config.countBased().windowSize()) {
-                return CLOSED_STATE;
-            } else {
-                // just increase counter
-                return currentState + COUNTER_INC;
-            }
-        } else if (state == State.HALF_OPEN) {
+        if (state == State.HALF_OPEN) {
             final int success = countHalfOpenSuccess(currentState) + 1;
             final int permitted = config.permittedCallsInHalfOpenState();
             if (success >= permitted) {
@@ -288,7 +295,6 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
             return currentState + HALF_OPEN_INCREMENT_SUCCESS;
         } else {
-            //do nothing with open state
             return currentState;
         }
     }
@@ -303,23 +309,40 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
             if (!failurePredicate.test(throwable)) {
                 releaseIgnoredError();
+                if (getState(state.get()) == State.CLOSED) {
+                    stripe().record(OUTCOME_IGNORED);
+                }
                 observation.recordCallResult(getState(state.get()), CallResult.IGNORED_FAILURE);
+                return;
+            }
+
+            final long currentStateLong = state.get();
+            final State currentState = getState(currentStateLong);
+            if (currentState == State.CLOSED) {
+                stripe().record(OUTCOME_FAILURE);
+                if (shouldOpen()) {
+                    openFromClosed(observation, throwable);
+                } else {
+                    observation.observeError(throwable);
+                }
+                observation.recordCallResult(State.CLOSED, CallResult.FAILURE);
                 return;
             }
 
             State prevState;
             State newState;
             while (true) {
-                final long currentStateLong = state.get();
-                final long newStateLong = calculateStateOnFailure(currentStateLong);
-                if (state.compareAndSet(currentStateLong, newStateLong)) {
+                final long observedStateLong = state.get();
+                final long newStateLong = calculateStateOnFailure(observedStateLong);
+                if (state.compareAndSet(observedStateLong, newStateLong)) {
+                    prevState = getState(observedStateLong);
                     newState = getState(newStateLong);
-                    prevState = getState(currentStateLong);
                     break;
                 }
             }
 
             if (prevState != newState) {
+                clearWindow();
                 onStateChange(prevState, newState, throwable, observation);
             } else {
                 observation.observeError(throwable);
@@ -332,29 +355,35 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
     private long calculateStateOnFailure(long currentState) {
         final State state = getState(currentState);
-        if (state == State.CLOSED) {
-            final int total = countClosedTotal(currentState) + 1;
-            if (total < config.minimumRequiredCalls()) {
-                // just increase both counters
-                return currentState + BOTH_COUNTERS_INC;
-            }
-
-            final float errors = countClosedErrors(currentState) + 1;
-            final int failureRatePercentage = (int) (errors / total * 100);
-            if (failureRatePercentage >= config.failureRateThreshold()) {
-                return getOpenState();
-            } else if (total == config.countBased().windowSize()) {
-                return CLOSED_STATE;
-            } else {
-                // just increase both counters
-                return currentState + BOTH_COUNTERS_INC;
-            }
-        } else if (state == State.HALF_OPEN) {
-            // if any error in half-open then go to open state
+        if (state == State.HALF_OPEN) {
             return getOpenState();
         } else {
-            // do nothing with open state
             return currentState;
+        }
+    }
+
+    private boolean shouldOpen() {
+        long total = 0;
+        long failures = 0;
+        for (Stripe localStripe : this.stripes) {
+            var counters = localStripe.counters.get();
+            total += total(counters);
+            failures += failures(counters);
+        }
+        if (total < config.minimumRequiredCalls()) {
+            return false;
+        }
+
+        return (int) (failures * 100 / total) >= config.failureRateThreshold();
+    }
+
+    private void openFromClosed(CircuitBreakerObservation observation, Throwable throwable) {
+        final long currentStateLong = state.get();
+        if (getState(currentStateLong) == State.CLOSED && state.compareAndSet(currentStateLong, getOpenState())) {
+            clearWindow();
+            onStateChange(State.CLOSED, State.OPEN, throwable, observation);
+        } else {
+            observation.observeError(throwable);
         }
     }
 
@@ -372,6 +401,24 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         }
     }
 
+    private void clearWindow() {
+        for (Stripe localStripe : this.stripes) {
+            localStripe.clear();
+        }
+    }
+
+    private Stripe stripe() {
+        return this.stripes[stripeIndex()];
+    }
+
+    private int stripeIndex() {
+        var x = (int) Thread.currentThread().threadId();
+        x ^= x >>> 16;
+        x *= 0x7feb352d;
+        x ^= x >>> 15;
+        return x & stripeMask;
+    }
+
     private void recordFallback(CallNotPermittedException exception) {
         var observation = this.telemetry.observe();
         try {
@@ -381,11 +428,70 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         }
     }
 
+    private static long packedDelta(int outcome) {
+        return switch (outcome) {
+            case OUTCOME_SUCCESS -> 1L;
+            case OUTCOME_FAILURE -> 1L | (1L << FAILURE_SHIFT);
+            case OUTCOME_IGNORED -> 1L << IGNORED_SHIFT;
+            case OUTCOME_SLOW -> 1L | (1L << SLOW_SHIFT);
+            default -> 0L;
+        };
+    }
+
+    private static long total(long counters) {
+        return counters & COUNTER_MASK;
+    }
+
+    private static long failures(long counters) {
+        return (counters >>> FAILURE_SHIFT) & COUNTER_MASK;
+    }
+
+    private static long slowCalls(long counters) {
+        return (counters >>> SLOW_SHIFT) & COUNTER_MASK;
+    }
+
+    private static long ignored(long counters) {
+        return (counters >>> IGNORED_SHIFT) & COUNTER_MASK;
+    }
+
+    private static int nextPowerOfTwo(int value) {
+        var highest = Integer.highestOneBit(value);
+        return highest == value ? value : highest << 1;
+    }
+
     private static long toNanosSaturated(Duration duration) {
         try {
             return duration.toNanos();
         } catch (ArithmeticException e) {
             return Long.MAX_VALUE;
+        }
+    }
+
+    record Snapshot(long total, long failures, long slowCalls, long ignored) {}
+
+    private static final class Stripe {
+
+        private final AtomicInteger cursor = new AtomicInteger();
+        private final AtomicIntegerArray outcomes;
+        private final AtomicLong counters = new AtomicLong();
+
+        private Stripe(int windowSize) {
+            this.outcomes = new AtomicIntegerArray(windowSize);
+        }
+
+        private void record(int outcome) {
+            var position = cursor.getAndIncrement();
+            var slot = (position & Integer.MAX_VALUE) % outcomes.length();
+            var previous = outcomes.getAndSet(slot, outcome);
+            counters.addAndGet(packedDelta(outcome) - packedDelta(previous));
+        }
+
+        private void clear() {
+            for (int i = 0; i < outcomes.length(); i++) {
+                outcomes.set(i, OUTCOME_EMPTY);
+            }
+            counters.set(0);
+            cursor.set(0);
         }
     }
 }

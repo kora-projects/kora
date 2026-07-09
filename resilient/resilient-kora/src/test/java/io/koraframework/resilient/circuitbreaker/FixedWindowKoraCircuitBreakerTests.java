@@ -48,7 +48,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 30, WAIT_IN_OPEN, 3, 10L, 8L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(10L, null), null, 30, WAIT_IN_OPEN, 3, 8L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -84,7 +84,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenForMinimumNumberOfCalls() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 1, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(2L, null), null, 100, WAIT_IN_OPEN, 1, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -104,7 +104,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(2L, null), null, 100, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -130,7 +130,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(2L, null), null, 100, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -163,7 +163,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosed() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(2L, null), null, 100, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -200,7 +200,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosedComplex() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(4L, null), null, 50, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -237,7 +237,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenCorrectlyRestoreIgnoredExceptionToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(4L, null), null, 50, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new CircuitBreakerPredicate() {
             @Override
             public String name() {
@@ -280,7 +280,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosedForAccept() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 50, WAIT_IN_OPEN, 2, 4L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(4L, null), null, 50, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         Callable<Boolean> successCallable = () -> {
@@ -322,7 +322,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToOpenToHalfOpenWhenPartFailToOpen() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(2L, null), null, 100, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -359,7 +359,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenToHalfOpenToClosed() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 2, 2L, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(2L, null), null, 100, WAIT_IN_OPEN, 2, 2L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -387,7 +387,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromOpenToHalfOpenAndValidateAcquireCalls() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 1, 1L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(1L, null), null, 100, WAIT_IN_OPEN, 1, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -411,7 +411,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void switchFromClosedToOpenForCustomFailurePredicate() {
         // given
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 1, 1L, 1L, "custom");
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(1L, null), null, 100, WAIT_IN_OPEN, 1, 1L, "custom");
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new CustomPredicate(), NoopCircuitBreakerTelemetry.INSTANCE);
 
         // when
@@ -430,7 +430,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     @Test
     void openToHalfOpenUsesMonotonicTicker() {
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 1, 1L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(1L, null), null, 100, WAIT_IN_OPEN, 1, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         var ticker = new AtomicLong();
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE, ticker::get);
 
@@ -449,7 +449,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void configValidationRejectsFixedWindowCounterOverflow() {
         var config = new TestCircuitBreakerConfig(Map.of(CircuitBreakerConfig.DEFAULT,
             new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-                true, 100, WAIT_IN_OPEN, 1, 0x8000_0000L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName())));
+                true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(0x8000_0000L, null), null, 100, WAIT_IN_OPEN, 1, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName())));
 
         assertThrows(IllegalArgumentException.class, () -> config.getNamedConfig(CircuitBreakerConfig.DEFAULT));
     }
@@ -458,7 +458,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     void configValidationRejectsHalfOpenCounterOverflow() {
         var config = new TestCircuitBreakerConfig(Map.of(CircuitBreakerConfig.DEFAULT,
             new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-                true, 100, WAIT_IN_OPEN, 0x1_0000, 1L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName())));
+                true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(1L, null), null, 100, WAIT_IN_OPEN, 0x1_0000, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName())));
 
         assertThrows(IllegalArgumentException.class, () -> config.getNamedConfig(CircuitBreakerConfig.DEFAULT));
     }
@@ -466,7 +466,7 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
     @Test
     void telemetryRecordsCallResults() {
         final CircuitBreakerConfig.NamedConfig config = new $CircuitBreakerConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            true, 100, WAIT_IN_OPEN, 1, 1L, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
+            true, CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW, countBased(1L, null), null, 100, WAIT_IN_OPEN, 1, 1L, KoraCircuitBreakerPredicate.class.getCanonicalName());
         var telemetry = new CountingTelemetry();
         final FixedWindowKoraCircuitBreaker circuitBreaker = new FixedWindowKoraCircuitBreaker("default", config, new KoraCircuitBreakerPredicate(), telemetry);
 
@@ -486,6 +486,10 @@ class FixedWindowKoraCircuitBreakerTests extends Assertions {
         public CircuitBreakerTelemetryConfig telemetry() {
             return null;
         }
+    }
+
+    private static CircuitBreakerConfig.CountBasedConfig countBased(Long windowSize, CircuitBreakerConfig.StripedApproxConfig stripedApprox) {
+        return new $CircuitBreakerConfig_CountBasedConfig_ConfigValueMapper.CountBasedConfig_Impl(windowSize, stripedApprox);
     }
 
     private static final class CountingTelemetry implements CircuitBreakerTelemetry {

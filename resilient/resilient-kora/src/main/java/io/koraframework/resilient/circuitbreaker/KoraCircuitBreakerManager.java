@@ -34,7 +34,13 @@ final class KoraCircuitBreakerManager implements CircuitBreakerManager {
                 .addKeyValue("config", config)
                 .log("Creating CircuitBreaker");
 
-            return new FixedWindowKoraCircuitBreaker(name, config, failurePredicate, this.telemetryFactory.get(name, this.config.telemetry()));
+            var telemetry = this.telemetryFactory.get(name, this.config.telemetry());
+            return switch (config.type()) {
+                case FIXED_WINDOW -> new FixedWindowKoraCircuitBreaker(name, config, failurePredicate, telemetry);
+                case STRIPED_APPROX -> new StripedApproxKoraCircuitBreaker(name, config, failurePredicate, telemetry);
+                case RING_BUFFER -> new RingBufferKoraCircuitBreaker(name, config, failurePredicate, telemetry);
+                case TIME_BASED -> new TimeBasedKoraCircuitBreaker(name, config, failurePredicate, telemetry);
+            };
         });
     }
 

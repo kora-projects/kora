@@ -1,56 +1,50 @@
 package io.koraframework.resilient.circuitbreaker;
 
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
-import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallAcquireStatus;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallResult;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 /**
- * CircuitBreaker - Fixed Window implementation
+ * CircuitBreaker - exact count-based sequenced ring buffer implementation.
  * <p>
- * Cheapest implementation: one packed {@link AtomicLong} stores CLOSED and HALF_OPEN counters.
- * It has very low memory overhead and a small hot path, but CLOSED statistics are a fixed counter window,
- * not an exact ring of the globally latest N calls.
- * --------------------------------------------------------------------------------------------------
- * Closed {@link #state}
- * 10 | 0000000000000000000000000000000 | 0000000000000000000000000000000
- * ^                     ^                              ^
- * state sign     errors count (31 bits)      request count (31 bits)
+ * CLOSED-state statistics use one global completion sequence and per-slot CAS. This preserves a global
+ * order for completed calls without locks, synchronized blocks, or a global CAS loop around the whole ring.
+ * Counters are maintained incrementally and can be briefly eventually consistent while a completion owns a
+ * sequence but has not yet published its slot. The state machine itself remains strict and atomic.
  * <p>
- * Open {@link #state}
- * 00 | 00000000000000000000000000000000000000000000000000000000000000
- * ^                                    ^
- * state sign             start time of open state (millis)
- * <p>
- * Half open {@link #state}
- * 01 | 00000000000000 | 0000000000000000 | 0000000000000000 | 0000000000000000
- * ^                           ^                   ^                  ^
- * state sign     error count (16 bit)   success count (16 bits)   acquired count (16 bits)
- * --------------------------------------------------------------------------------------------------
+ * This is the strongest count-based implementation: the CLOSED window tracks the globally latest N completion
+ * events by sequence. It is more precise than {@link StripedApproxKoraCircuitBreaker}, but the global sequencer
+ * and slot CAS make the hot path more expensive under very high contention.
  */
 @SuppressWarnings("ConstantConditions")
-final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
+final class RingBufferKoraCircuitBreaker implements CircuitBreaker {
 
-    private static final long CLOSED_COUNTER_MASK = 0x7FFF_FFFFL;
-    private static final long CLOSED_STATE = 1L << 63;
     private static final long HALF_OPEN_COUNTER_MASK = 0xFFFFL;
+    private static final long CLOSED_STATE = 1L << 63;
     private static final long HALF_OPEN_STATE = 1L << 62;
     private static final long HALF_OPEN_INCREMENT_SUCCESS = 1L << 16;
-    private static final long HALF_OPEN_INCREMENT_ERROR = 1L << 32;
-    private static final long OPEN_STATE = 0;
 
-    private static final long COUNTER_INC = 1L;
-    private static final long ERR_COUNTER_INC = 1L << 31;
-    private static final long BOTH_COUNTERS_INC = ERR_COUNTER_INC + COUNTER_INC;
+    private static final int OUTCOME_EMPTY = 0;
+    private static final int OUTCOME_SUCCESS = 1;
+    private static final int OUTCOME_FAILURE = 2;
+    private static final int OUTCOME_IGNORED = 8;
 
-    private final AtomicLong state;
+    private static final long OUTCOME_MASK = 0xFFL;
+    private static final long SEQUENCE_MASK = 0xFFFF_FFFFFFL;
+    private static final int SEQUENCE_SHIFT = 8;
+    private static final int EPOCH_SHIFT = 48;
+
+    private final AtomicLong state = new AtomicLong(CLOSED_STATE);
     private final String name;
     private final CircuitBreakerConfig.NamedConfig config;
     private final CircuitBreakerPredicate failurePredicate;
@@ -58,13 +52,20 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     private final long waitDurationInOpenStateInNanos;
     private final LongSupplier currentTimeNanos;
     private final long startedNanos;
+    private final AtomicLong sequence = new AtomicLong();
+    private final AtomicLong windowEpoch = new AtomicLong(2);
+    private final AtomicLongArray ringSlots;
+    private final int windowSize;
+    private final AtomicInteger bufferedCalls = new AtomicInteger();
+    private final AtomicInteger failedCalls = new AtomicInteger();
+    private final AtomicInteger slowCalls = new AtomicInteger();
+    private final AtomicInteger ignoredCalls = new AtomicInteger();
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
-        this.state = new AtomicLong(CLOSED_STATE);
+    RingBufferKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
@@ -72,6 +73,8 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         this.waitDurationInOpenStateInNanos = toNanosSaturated(config.waitDurationInOpenState());
         this.currentTimeNanos = currentTimeNanos;
         this.startedNanos = currentTimeNanos.getAsLong();
+        this.windowSize = Math.toIntExact(config.countBased().windowSize());
+        this.ringSlots = new AtomicLongArray(this.windowSize);
     }
 
     State getState() {
@@ -80,6 +83,15 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         } else {
             return getState(state.get());
         }
+    }
+
+    Snapshot snapshot() {
+        return new Snapshot(
+            bufferedCalls.get(),
+            failedCalls.get(),
+            slowCalls.get(),
+            ignoredCalls.get()
+        );
     }
 
     @Override
@@ -111,9 +123,9 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
         try {
             acquire();
-            var t = supplier.get();
+            var result = supplier.get();
             releaseOnSuccess();
-            return t;
+            return result;
         } catch (CallNotPermittedException e) {
             if (fallback == null) {
                 throw e;
@@ -135,20 +147,8 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         };
     }
 
-    private int countClosedErrors(long value) {
-        return (int) ((value >> 31) & CLOSED_COUNTER_MASK);
-    }
-
-    private int countClosedTotal(long value) {
-        return (int) (value & CLOSED_COUNTER_MASK);
-    }
-
     private int countHalfOpenSuccess(long value) {
         return (int) ((value >> 16) & HALF_OPEN_COUNTER_MASK);
-    }
-
-    private int countHalfOpenError(long value) {
-        return (int) ((value >> 32) & HALF_OPEN_COUNTER_MASK);
     }
 
     private int countHalfOpenAcquired(long value) {
@@ -224,14 +224,13 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
         final long currentTimeInNanos = currentElapsedNanos();
         final long beenInOpenState = currentTimeInNanos - stateLong;
-        // go to half open
         if (beenInOpenState >= waitDurationInOpenStateInNanos) {
             if (this.state.compareAndSet(stateLong, HALF_OPEN_STATE + 1)) {
+                clearWindow();
                 onStateChange(State.OPEN, State.HALF_OPEN, null, observation);
                 observation.recordCallAcquire(State.HALF_OPEN, CallAcquireStatus.PERMITTED);
                 return true;
             } else {
-                // prob concurrently switched to half open and have to reacquire
                 return tryAcquire(observation);
             }
         } else {
@@ -248,19 +247,27 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
                 return;
             }
 
+            final long currentStateLong = state.get();
+            final State currentState = getState(currentStateLong);
+            if (currentState == State.CLOSED) {
+                record(OUTCOME_SUCCESS);
+                observation.recordCallResult(State.CLOSED, CallResult.SUCCESS);
+                return;
+            }
+
             State prevState;
             State newState;
             while (true) {
-                final long currentStateLong = state.get();
-                final long newStateLong = calculateStateOnSuccess(currentStateLong);
-                if (state.compareAndSet(currentStateLong, newStateLong)) {
+                final long observedStateLong = state.get();
+                final long newStateLong = calculateStateOnSuccess(observedStateLong);
+                if (state.compareAndSet(observedStateLong, newStateLong)) {
+                    prevState = getState(observedStateLong);
                     newState = getState(newStateLong);
-                    prevState = getState(currentStateLong);
                     break;
                 }
             }
-
             if (prevState != newState) {
+                clearWindow();
                 onStateChange(prevState, newState, null, observation);
             }
             observation.recordCallResult(prevState, CallResult.SUCCESS);
@@ -271,15 +278,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
     private long calculateStateOnSuccess(long currentState) {
         final State state = getState(currentState);
-        if (state == State.CLOSED) {
-            final int total = countClosedTotal(currentState) + 1;
-            if (total == config.countBased().windowSize()) {
-                return CLOSED_STATE;
-            } else {
-                // just increase counter
-                return currentState + COUNTER_INC;
-            }
-        } else if (state == State.HALF_OPEN) {
+        if (state == State.HALF_OPEN) {
             final int success = countHalfOpenSuccess(currentState) + 1;
             final int permitted = config.permittedCallsInHalfOpenState();
             if (success >= permitted) {
@@ -288,7 +287,6 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
             return currentState + HALF_OPEN_INCREMENT_SUCCESS;
         } else {
-            //do nothing with open state
             return currentState;
         }
     }
@@ -303,23 +301,40 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
             if (!failurePredicate.test(throwable)) {
                 releaseIgnoredError();
+                if (getState(state.get()) == State.CLOSED) {
+                    record(OUTCOME_IGNORED);
+                }
                 observation.recordCallResult(getState(state.get()), CallResult.IGNORED_FAILURE);
+                return;
+            }
+
+            final long currentStateLong = state.get();
+            final State currentState = getState(currentStateLong);
+            if (currentState == State.CLOSED) {
+                record(OUTCOME_FAILURE);
+                if (shouldOpen()) {
+                    openFromClosed(observation, throwable);
+                } else {
+                    observation.observeError(throwable);
+                }
+                observation.recordCallResult(State.CLOSED, CallResult.FAILURE);
                 return;
             }
 
             State prevState;
             State newState;
             while (true) {
-                final long currentStateLong = state.get();
-                final long newStateLong = calculateStateOnFailure(currentStateLong);
-                if (state.compareAndSet(currentStateLong, newStateLong)) {
+                final long observedStateLong = state.get();
+                final long newStateLong = calculateStateOnFailure(observedStateLong);
+                if (state.compareAndSet(observedStateLong, newStateLong)) {
+                    prevState = getState(observedStateLong);
                     newState = getState(newStateLong);
-                    prevState = getState(currentStateLong);
                     break;
                 }
             }
 
             if (prevState != newState) {
+                clearWindow();
                 onStateChange(prevState, newState, throwable, observation);
             } else {
                 observation.observeError(throwable);
@@ -332,29 +347,90 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
     private long calculateStateOnFailure(long currentState) {
         final State state = getState(currentState);
-        if (state == State.CLOSED) {
-            final int total = countClosedTotal(currentState) + 1;
-            if (total < config.minimumRequiredCalls()) {
-                // just increase both counters
-                return currentState + BOTH_COUNTERS_INC;
-            }
-
-            final float errors = countClosedErrors(currentState) + 1;
-            final int failureRatePercentage = (int) (errors / total * 100);
-            if (failureRatePercentage >= config.failureRateThreshold()) {
-                return getOpenState();
-            } else if (total == config.countBased().windowSize()) {
-                return CLOSED_STATE;
-            } else {
-                // just increase both counters
-                return currentState + BOTH_COUNTERS_INC;
-            }
-        } else if (state == State.HALF_OPEN) {
-            // if any error in half-open then go to open state
+        if (state == State.HALF_OPEN) {
             return getOpenState();
         } else {
-            // do nothing with open state
             return currentState;
+        }
+    }
+
+    private boolean record(int outcome) {
+        final long fullEpoch = stableEpoch();
+        final long slotEpoch = slotEpoch(fullEpoch);
+        final long seq = sequence.getAndIncrement() & SEQUENCE_MASK;
+        final int slot = (int) (seq % windowSize);
+        final long newPacked = pack(slotEpoch, seq, outcome);
+
+        while (windowEpoch.get() == fullEpoch) {
+            final long oldPacked = ringSlots.get(slot);
+            final long oldEpoch = epoch(oldPacked);
+            if (oldEpoch == slotEpoch && sequence(oldPacked) >= seq) {
+                return false;
+            }
+
+            if (ringSlots.compareAndSet(slot, oldPacked, newPacked)) {
+                if (windowEpoch.get() != fullEpoch) {
+                    ringSlots.compareAndSet(slot, newPacked, 0);
+                    return false;
+                }
+
+                final int oldOutcome = oldEpoch == slotEpoch ? outcome(oldPacked) : OUTCOME_EMPTY;
+                applyDelta(oldOutcome, outcome);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private long stableEpoch() {
+        while (true) {
+            final long epoch = windowEpoch.get();
+            if ((epoch & 1L) == 0) {
+                return epoch;
+            }
+            Thread.onSpinWait();
+        }
+    }
+
+    private void applyDelta(int oldOutcome, int newOutcome) {
+        final int totalDelta = totalDelta(newOutcome) - totalDelta(oldOutcome);
+        if (totalDelta != 0) {
+            bufferedCalls.addAndGet(totalDelta);
+        }
+
+        final int failureDelta = failureDelta(newOutcome) - failureDelta(oldOutcome);
+        if (failureDelta != 0) {
+            failedCalls.addAndGet(failureDelta);
+        }
+
+        final int slowDelta = slowDelta(newOutcome) - slowDelta(oldOutcome);
+        if (slowDelta != 0) {
+            slowCalls.addAndGet(slowDelta);
+        }
+
+        final int ignoredDelta = ignoredDelta(newOutcome) - ignoredDelta(oldOutcome);
+        if (ignoredDelta != 0) {
+            ignoredCalls.addAndGet(ignoredDelta);
+        }
+    }
+
+    private boolean shouldOpen() {
+        final int total = bufferedCalls.get();
+        if (total < config.minimumRequiredCalls()) {
+            return false;
+        }
+
+        return failedCalls.get() * 100 / total >= config.failureRateThreshold();
+    }
+
+    private void openFromClosed(CircuitBreakerObservation observation, Throwable throwable) {
+        final long currentStateLong = state.get();
+        if (getState(currentStateLong) == State.CLOSED && state.compareAndSet(currentStateLong, getOpenState())) {
+            clearWindow();
+            onStateChange(State.CLOSED, State.OPEN, throwable, observation);
+        } else {
+            observation.observeError(throwable);
         }
     }
 
@@ -372,6 +448,19 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         }
     }
 
+    private void clearWindow() {
+        windowEpoch.incrementAndGet();
+        for (int i = 0; i < ringSlots.length(); i++) {
+            ringSlots.set(i, 0);
+        }
+        sequence.set(0);
+        bufferedCalls.set(0);
+        failedCalls.set(0);
+        slowCalls.set(0);
+        ignoredCalls.set(0);
+        windowEpoch.incrementAndGet();
+    }
+
     private void recordFallback(CallNotPermittedException exception) {
         var observation = this.telemetry.observe();
         try {
@@ -381,6 +470,45 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
         }
     }
 
+    private static long pack(long epoch, long sequence, int outcome) {
+        return (epoch << EPOCH_SHIFT) | ((sequence & SEQUENCE_MASK) << SEQUENCE_SHIFT) | (outcome & OUTCOME_MASK);
+    }
+
+    private static long slotEpoch(long epoch) {
+        return epoch & 0xFFFFL;
+    }
+
+    private static long epoch(long packed) {
+        return packed >>> EPOCH_SHIFT;
+    }
+
+    private static long sequence(long packed) {
+        return (packed >>> SEQUENCE_SHIFT) & SEQUENCE_MASK;
+    }
+
+    private static int outcome(long packed) {
+        return (int) (packed & OUTCOME_MASK);
+    }
+
+    private static int totalDelta(int outcome) {
+        return switch (outcome) {
+            case OUTCOME_SUCCESS, OUTCOME_FAILURE -> 1;
+            default -> 0;
+        };
+    }
+
+    private static int failureDelta(int outcome) {
+        return outcome == OUTCOME_FAILURE ? 1 : 0;
+    }
+
+    private static int slowDelta(int outcome) {
+        return 0;
+    }
+
+    private static int ignoredDelta(int outcome) {
+        return outcome == OUTCOME_IGNORED ? 1 : 0;
+    }
+
     private static long toNanosSaturated(Duration duration) {
         try {
             return duration.toNanos();
@@ -388,4 +516,6 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
             return Long.MAX_VALUE;
         }
     }
+
+    record Snapshot(int total, int failures, int slowCalls, int ignored) {}
 }
