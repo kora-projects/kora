@@ -5,6 +5,7 @@ import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.application.graph.TypeRef;
 import io.koraframework.validation.annotation.processor.testdata.ValidBar;
 import io.koraframework.validation.annotation.processor.testdata.ValidFoo;
+import io.koraframework.validation.annotation.processor.testdata.ValidOneOf;
 import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
 import io.koraframework.validation.common.Validator;
 import io.koraframework.validation.common.constraint.ValidatorModule;
@@ -45,6 +46,13 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
         );
     }
 
+    protected Validator<ValidOneOf> getOneOfValidator() {
+        Class<?> clazz = getClazz("io.koraframework.validation.annotation.processor.testdata.$ValidOneOf_Validator");
+        return getClazzInstance(clazz,
+            oneOfStringValidatorFactory()
+        );
+    }
+
     protected <T> T getClazzInstance(Class<?> clazz, Object... params) {
         try {
             Constructor<?> constructor = clazz.getConstructors()[0];
@@ -80,7 +88,7 @@ public abstract class ValidRunner extends Assertions implements ValidatorModule 
     private ClassLoader getClassLoader() {
         try {
             if (classLoader == null) {
-                final List<Class<?>> classes = List.of(ValidFoo.class, ValidBar.class, ValidTaz.class);
+                final List<Class<?>> classes = List.of(ValidFoo.class, ValidBar.class, ValidTaz.class, ValidOneOf.class);
                 classLoader = TestUtils.annotationProcess(classes, new ValidAnnotationProcessor());
             }
 

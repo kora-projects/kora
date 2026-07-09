@@ -198,7 +198,7 @@ public class ValidatorGenerator {
             var factory = factoryToField.getKey();
             final String fieldName = factoryToField.getValue();
             final String createParameters = factory.parameters().values().stream()
-                .map(Object::toString)
+                .map(ValidatorGenerator::createParameter)
                 .collect(Collectors.joining(", "));
 
             validatorSpecBuilder.addField(FieldSpec.builder(
@@ -261,6 +261,16 @@ public class ValidatorGenerator {
             .build();
 
         return new ValidAnnotationProcessor.ValidatorSpec(meta, validatorSpec, parameterSpecs);
+    }
+
+    private static String createParameter(Object parameter) {
+        if (parameter instanceof List<?> list) {
+            return list.stream()
+                .map(ValidatorGenerator::createParameter)
+                .collect(Collectors.joining(", ", "new String[] {", "}"));
+        }
+
+        return parameter.toString();
     }
 
     private ValidMeta getValidatorMetas(TypeElement element) {
