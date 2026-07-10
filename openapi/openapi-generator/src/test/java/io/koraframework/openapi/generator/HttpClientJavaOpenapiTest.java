@@ -110,4 +110,166 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(content.contains("return 400"));
         assertTrue(content.contains("return this.content().details()"));
     }
+
+    @Test
+    void javadocsIncludeOpenapiModelAndOperationMetadata() throws Exception {
+        var files = generate(
+            "petstoreV2_javadocs",
+            "java-client",
+            getClass().getResource("/example/petstoreV2.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var petContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetApi.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(petContent.contains("* Pet - A pet for sale in the pet store"));
+        assertTrue(petContent.contains("* @param status pet status in the store"));
+        assertTrue(petContent.contains("* @param name name (example: doggie)"));
+        assertTrue(apiContent.contains("* POST /pet : Add a new pet to the store"));
+        assertTrue(apiContent.contains("* @param body Pet object that needs to be added to the store (required)"));
+        assertTrue(apiContent.contains("* @return Invalid input (status code 405)"));
+    }
+
+    @Test
+    void enumMappersAreGeneratedAsModuleFactories() throws Exception {
+        var files = generate(
+            "petstoreV3_filter",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_filter.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var petDogContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetDog.java"))
+            .findFirst()
+            .orElseThrow());
+
+        var moduleContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("$PetDogBreedEnumMapperModule.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertFalse(petDogContent.contains("MapperModule"));
+        assertTrue(petDogContent.contains("DINGO_DON(\"Dingo-Don\")"));
+        assertTrue(petDogContent.contains("NUMBER_5(5)"));
+        assertFalse(petDogContent.contains("Constants."));
+        assertFalse(petDogContent.contains("public static final class Constants"));
+        assertFalse(petDogContent.contains("public static final class JsonWriter"));
+        assertFalse(petDogContent.contains("public static final class JsonReader"));
+        assertFalse(petDogContent.contains("public static final class StringParameterConverter"));
+        assertTrue(petDogContent.contains("* Dingo breed"));
+        assertTrue(petDogContent.contains("* enum with int value"));
+
+        assertTrue(moduleContent.contains("public interface $PetDogBreedEnumMapperModule"));
+        assertTrue(moduleContent.contains("@DefaultComponent"));
+        assertTrue(moduleContent.contains("default JsonWriter<PetDog.BreedEnum> breedEnumJsonWriter()"));
+        assertTrue(moduleContent.contains("default JsonReader<PetDog.BreedEnum> breedEnumJsonReader()"));
+        assertTrue(moduleContent.contains("default HttpClientParameterWriter<PetDog.BreedEnum> breedEnumStringParameterConverter()"));
+        assertTrue(moduleContent.contains("new EnumJsonWriter<>(PetDog.BreedEnum.values(), PetDog.BreedEnum::getValue, (gen, object) ->"));
+        assertTrue(moduleContent.contains("new EnumJsonReader<>(PetDog.BreedEnum.values(), PetDog.BreedEnum::getValue, parser -> switch (parser.currentToken())"));
+    }
+
+    @Test
+    void enumMappersUseJsonDelegateForNonInlineValueTypes() throws Exception {
+        var files = generate(
+            "petstoreV3_enum",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var moduleContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("$PetNonReqDoubleEnumMapperModule.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(moduleContent.contains("default JsonWriter<Pet.NonReqDoubleEnum> nonReqDoubleEnumJsonWriter(JsonWriter<Double> delegate)"));
+        assertTrue(moduleContent.contains("return new EnumJsonWriter<>(Pet.NonReqDoubleEnum.values(), Pet.NonReqDoubleEnum::getValue, delegate)"));
+        assertTrue(moduleContent.contains("default JsonReader<Pet.NonReqDoubleEnum> nonReqDoubleEnumJsonReader(JsonReader<Double> delegate)"));
+        assertTrue(moduleContent.contains("return new EnumJsonReader<>(Pet.NonReqDoubleEnum.values(), Pet.NonReqDoubleEnum::getValue, delegate)"));
+        assertFalse(moduleContent.contains("parser -> switch"));
+    }
+
+    @Test
+    void recordsGetWithBuilderMethods() throws Exception {
+        var files = generate(
+            "petstoreV3_enum",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_enum.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("public Pet withId(long id)"));
+        assertTrue(content.contains("if (this.id == id) return this; return new Pet(id, this.nullableType"));
+        assertTrue(content.contains("public Pet withNonReqDouble(@Nullable NonReqDoubleEnum nonReqDouble)"));
+        assertTrue(content.contains("if (Objects.equals(this.nonReqDouble, nonReqDouble)) return this; return new Pet(this.id, this.nullableType"));
+        assertFalse(content.contains("* (nonReqDouble)"));
+
+        var filesWithDefaults = generate(
+            "petstoreV3_types",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_types.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var contentWithDefaults = Files.readString(filesWithDefaults.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(contentWithDefaults.contains("* (default: 1)"));
+    }
+
+    @Test
+    void optionalArgsAreGeneratedAsMutableClasses() throws Exception {
+        var files = generate(
+            "petstoreV3_request_parameters",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_request_parameters.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var optionalArgsContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiListPetsOptArgs.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.contains("PetsApiListPetsOptArgs optionalArguments"));
+        assertFalse(apiContent.contains("final class ListPetsOptArgs"));
+        assertTrue(optionalArgsContent.contains("public final class PetsApiListPetsOptArgs"));
+        assertFalse(optionalArgsContent.contains("record PetsApiListPetsOptArgs"));
+        assertTrue(optionalArgsContent.contains("public static PetsApiListPetsOptArgs empty()"));
+        assertTrue(optionalArgsContent.contains("public static PetsApiListPetsOptArgs defaults()"));
+        assertTrue(optionalArgsContent.contains("private PetsApiListPetsOptArgs("));
+        assertTrue(optionalArgsContent.contains("private @Nullable Integer intOptional;"));
+        assertTrue(optionalArgsContent.contains("public @Nullable Integer intOptional()"));
+        assertTrue(optionalArgsContent.contains("this.intOptional = intOptional;"));
+        assertTrue(optionalArgsContent.contains("public PetsApiListPetsOptArgs withIntOptional(Integer intOptional)"));
+        assertTrue(optionalArgsContent.contains("return this;"));
+    }
 }

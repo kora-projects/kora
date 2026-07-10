@@ -36,7 +36,7 @@ public interface HttpClientRequestMapperModule {
         return new FormMultipartClientRequestMapper();
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
     default <T> JsonHttpClientRequestMapper<T> httpClientRequestJsonMapper(JsonWriter<T> writer) {
         return new JsonHttpClientRequestMapper<>(writer);
