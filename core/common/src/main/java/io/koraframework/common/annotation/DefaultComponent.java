@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  * если другой такой же тип с таким же {@link Tag} не найдет в графе зависимостей контейнера.
  * Является Singleton, то есть дает гарантию, что у класса будет всего один экземпляр класса.
  * <hr>
- * <b>English</b>: Indicates that the annotated factory provides the default component for injection, will be used
+ * <b>English</b>: Indicates that the annotated factory or component provides the default component for injection, will be used
  * if another component of the same type with the same {@link Tag} is not found in the container's dependency graph.
  * Is Singleton, that is, it provides a guarantee that the class will have only one instance of the class.
  * <br>
@@ -28,7 +28,7 @@ import java.lang.annotation.Target;
  *  }
  * </pre>
  */
-@Target(ElementType.METHOD)
+@Target({ElementType.METHOD, ElementType.TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface DefaultComponent {
 

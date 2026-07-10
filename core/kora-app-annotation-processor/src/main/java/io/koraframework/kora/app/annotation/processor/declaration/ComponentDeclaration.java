@@ -90,6 +90,11 @@ public sealed interface ComponentDeclaration {
         }
 
         @Override
+        public boolean isDefault() {
+            return AnnotationUtils.findAnnotation(this.typeElement, CommonClassNames.defaultComponent) != null;
+        }
+
+        @Override
         public String declarationString() {
             return "component  " + TypeName.get(type);
         }

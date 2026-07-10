@@ -93,6 +93,7 @@ sealed interface ComponentDeclaration {
     ) : ComponentDeclaration {
         override val source get() = this.constructor
         override fun declarationString() = "component  " + classDeclaration.qualifiedName?.asString().toString()
+        override fun isDefault(): Boolean = classDeclaration.findAnnotation(CommonClassNames.defaultComponent) != null
     }
 
     data class FromExtensionComponent(
