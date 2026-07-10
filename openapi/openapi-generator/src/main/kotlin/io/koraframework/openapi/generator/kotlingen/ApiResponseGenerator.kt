@@ -18,7 +18,7 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
                 val t = TypeSpec.interfaceBuilder(responseClassName)
                     .addAnnotation(generated())
                     .addModifiers(KModifier.SEALED)
-                val sharedResponses = sharedResponses(responseClassName, operation.responses)
+                val sharedResponses = if (params.codegenMode.isClient) sharedResponses(responseClassName, operation.responses) else emptyMap()
                 sharedResponses.values.forEach { t.addType(it.type) }
                 for (response in operation.responses) {
                     val codeResponseClassName = if (response.isDefault)

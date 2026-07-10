@@ -24,13 +24,18 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
                 var t = TypeSpec.interfaceBuilder(responseClassName)
                     .addAnnotation(generated())
                     .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.SEALED);
-                var sharedResponses = sharedResponses(ctx, responseClassName, operation.responses);
+                var sharedResponses = params.codegenMode.isClient()
+                    ? sharedResponses(ctx, responseClassName, operation.responses)
+                    : Map.<String, SharedResponse>of();
                 for (var sharedResponse : sharedResponses.values()) {
                     t.addType(sharedResponse.type);
                 }
                 for (var response : operation.responses) {
                     var codeResponseName = responseClassName.nestedClass(capitalize(operation.operationId) + (response.isDefault ? "Default" : response.code) + "ApiResponse");
-                    t.addType(response(ctx, codeResponseName, response, sharedResponses.get(response.dataType)));
+                    var sharedResponse = response.dataType == null
+                        ? null
+                        : sharedResponses.get(response.dataType);
+                    t.addType(response(ctx, codeResponseName, response, sharedResponse));
                 }
                 b.addType(t.build());
             }
