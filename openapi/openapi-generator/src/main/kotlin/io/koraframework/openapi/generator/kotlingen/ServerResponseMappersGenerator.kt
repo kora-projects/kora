@@ -36,7 +36,7 @@ class ServerResponseMappersGenerator : AbstractKotlinGenerator<OperationsMap>() 
                 val mapperName = "response" + response.code + "Delegate"
                 b.addProperty(PropertySpec.builder(mapperName, mapperType).initializer(mapperName).build())
                 val param = ParameterSpec.builder(mapperName, mapperType)
-                if (KoraCodegen.isContentJson(response.content)) {
+                if (KoraCodegen.isContentJson(response.content) && !isBareObject(response)) {
                     param.addAnnotation(Classes.json.asKt())
                 }
                 constructor.addParameter(param.build())

@@ -40,7 +40,7 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
                 var mapperName = "response" + response.code + "Delegate";
                 b.addField(mapperType, mapperName, Modifier.PRIVATE, Modifier.FINAL);
                 var param = ParameterSpec.builder(mapperType, mapperName);
-                if (KoraCodegen.isContentJson(response.getContent())) {
+                if (KoraCodegen.isContentJson(response.getContent()) && !isBareObject(response)) {
                     param.addAnnotation(Classes.json);
                 }
                 constructor.addParameter(param.build());

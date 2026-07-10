@@ -60,6 +60,7 @@ public abstract class AbstractGenerator<C, R> {
         public static final ClassName httpBody = ClassName.get("io.koraframework.http.common.body", "HttpBody");
         public static final ClassName formMultipart = ClassName.get("io.koraframework.http.common.form", "FormMultipart");
         public static final ClassName formPart = formMultipart.nestedClass("FormPart");
+        public static final ClassName httpBodyInput = ClassName.get("io.koraframework.http.common.body", "HttpBodyInput");
         public static final ClassName httpBodyOutput = ClassName.get("io.koraframework.http.common.body", "HttpBodyOutput");
 
         // Client
@@ -143,6 +144,9 @@ public abstract class AbstractGenerator<C, R> {
     }
 
     public TypeName asType(OperationsMap ctx, CodegenOperation operation, CodegenParameter param) {
+        if (param.isBodyParam && isBareObject(param)) {
+            return requestBodyType();
+        }
         if (param.getSchema() != null) {
             return asType(param.getSchema());
         }
@@ -186,6 +190,9 @@ public abstract class AbstractGenerator<C, R> {
             if (rs.isFile) {
                 return ArrayTypeName.of(TypeName.BYTE);
             }
+            if (isBareObject(rs)) {
+                return responseBodyType();
+            }
         }
         if (schema.getIsModel() && schema instanceof CodegenModel c) {
             return ClassName.get(modelPackage, c.getClassname());
@@ -200,6 +207,9 @@ public abstract class AbstractGenerator<C, R> {
             return ParameterizedTypeName.get(ClassName.get(List.class), asType(schema.getItems()).box());
         }
         if (schema.getIsMap()) {
+            if (schema.getAdditionalProperties() == null) {
+                return ClassName.get(Object.class);
+            }
             return ParameterizedTypeName.get(ClassName.get(Map.class), ClassName.get(String.class), asType(schema.getAdditionalProperties()).box());
         }
         if (schema.getIsModel()) {
@@ -290,5 +300,31 @@ public abstract class AbstractGenerator<C, R> {
             return ClassName.get(modelPackage, schema.getDataType());
         }
         throw new IllegalArgumentException(schema.toString());
+    }
+
+    protected TypeName requestBodyType() {
+        if (params.rawBodyMode == CodegenParams.RawBodyMode.BYTES) {
+            return ArrayTypeName.of(TypeName.BYTE);
+        }
+        return params.codegenMode.isClient()
+            ? Classes.httpBodyOutput
+            : Classes.httpBodyInput;
+    }
+
+    protected TypeName responseBodyType() {
+        if (params.rawBodyMode == CodegenParams.RawBodyMode.BYTES) {
+            return ArrayTypeName.of(TypeName.BYTE);
+        }
+        return params.codegenMode.isClient()
+            ? Classes.httpBodyInput
+            : Classes.httpBodyOutput;
+    }
+
+    protected boolean isBareObject(IJsonSchemaValidationProperties schema) {
+        return "Object".equals(schema.getDataType())
+               || schema.getIsMap() && schema.getAdditionalProperties() == null
+               || schema instanceof CodegenProperty p && p.isFreeFormObject
+               || schema instanceof CodegenParameter cp && cp.isFreeFormObject
+               || schema instanceof CodegenResponse r && r.isFreeFormObject;
     }
 }

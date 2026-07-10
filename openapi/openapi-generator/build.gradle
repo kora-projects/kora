@@ -81,6 +81,7 @@ sourceSets {
             addOpenapiDir("petstoreV3_request_parameters")
             addOpenapiDir("petstoreV3_responses")
             addOpenapiDir("petstoreV3_same_response_model")
+            addOpenapiDir("petstoreV3_bare_object")
             addOpenapiDir("petstoreV3_security_all")
             addOpenapiDir("petstoreV3_security_all_auth_arg")
             addOpenapiDir("petstoreV3_security_multi")
