@@ -4,6 +4,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.client.common.response.mapper.JsonHttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;
+import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.annotation.Json;
 
@@ -37,6 +38,11 @@ public interface HttpClientResponseMapperModule {
                 return ByteBuffer.wrap(body.asInputStream().readAllBytes());
             }
         };
+    }
+
+    @DefaultComponent
+    default HttpClientResponseMapper<HttpBodyInput> httpClientResponseBodyInputMapper() {
+        return HttpClientResponse::body;
     }
 
     @DefaultComponent

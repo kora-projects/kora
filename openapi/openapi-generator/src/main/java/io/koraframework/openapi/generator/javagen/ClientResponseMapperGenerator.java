@@ -39,7 +39,7 @@ public class ClientResponseMapperGenerator extends AbstractJavaGenerator<Operati
             var mapperType = ParameterizedTypeName.get(Classes.httpClientResponseMapper, asType(response));
             b.addField(mapperType, "delegate", Modifier.PRIVATE, Modifier.FINAL);
             var mapperParam = ParameterSpec.builder(mapperType, "delegate");
-            if (isContentJson(response.getContent())) {
+            if (isContentJson(response.getContent()) && !isBareObject(response)) {
                 mapperParam.addAnnotation(jsonAnnotation());
             }
             constructor = MethodSpec.constructorBuilder()

@@ -137,6 +137,11 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                 enumModel.isString = enumSource.isString
                 enumModel.isLong = enumSource.isLong
                 enumModel.isInteger = enumSource.isInteger
+                enumModel.isBoolean = enumSource.isBoolean
+                enumModel.isFloat = enumSource.isFloat
+                enumModel.isDouble = enumSource.isDouble
+                enumModel.isDecimal = enumSource.isDecimal
+                enumModel.isNumber = enumSource.isNumber
                 val enumTypeSpec = buildEnum(ctx, enumModel)
                 b.addType(enumTypeSpec)
                 fieldType = ClassName(modelPackage, model.getClassname(), enumModel.name)
@@ -383,7 +388,22 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
         if (model.isInteger || "Integer" == model.dataType) {
             return INT
         }
-        throw RuntimeException("Illegal enum value type")
+        if ("Boolean" == model.dataType) {
+            return BOOLEAN
+        }
+        if ("Float" == model.dataType) {
+            return FLOAT
+        }
+        if ("Double" == model.dataType) {
+            return DOUBLE
+        }
+        if ("BigDecimal" == model.dataType) {
+            return java.math.BigDecimal::class.asClassName()
+        }
+        if (!model.dataType.isNullOrBlank()) {
+            return com.palantir.javapoet.ClassName.bestGuess(model.dataType).asKt()
+        }
+        return ANY
     }
 
 

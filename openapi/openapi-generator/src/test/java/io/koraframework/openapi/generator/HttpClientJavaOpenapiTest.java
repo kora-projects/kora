@@ -270,4 +270,110 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(optionalArgsContent.contains("public PetsApiListPetsOptArgs withIntOptional(Integer intOptional)"));
         assertTrue(optionalArgsContent.contains("return this;"));
     }
+
+    @Test
+    void bareObjectPropertiesAreGeneratedAsObject() throws Exception {
+        var files = generate(
+            "petstoreV3_bare_object_bytes_default",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var content = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(content.contains("public record Pet(long id, Object metadata, @Nullable Object optionalMetadata)"));
+        assertTrue(content.contains("public Pet withMetadata(Object metadata)"));
+        assertTrue(content.contains("public Pet withOptionalMetadata(@Nullable Object optionalMetadata)"));
+    }
+
+    @Test
+    void bareObjectRequestAndResponseAreGeneratedAsRawHttpBodyTypes() throws Exception {
+        var files = generate(
+            "petstoreV3_bare_object_raw",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
+            new SwaggerParams.Options().setRawBodyMode("RAW")
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_raw"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var responsesContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_raw"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+        var responseMapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_raw"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.contains("StoreInventoryApiResponse storeInventory(HttpBodyOutput body)"));
+        assertTrue(apiContent.contains("RawObjectApiResponse rawObject(HttpBodyOutput body)"));
+        assertTrue(responsesContent.contains("sealed interface StoreInventoryApiResponse"));
+        assertTrue(responsesContent.contains("record StoreInventory200ApiResponse("));
+        assertTrue(responsesContent.contains("HttpBodyInput content) implements StoreInventoryObjectApiResponse"));
+        assertTrue(responsesContent.contains("StoreInventory400ApiResponse"));
+        assertTrue(responsesContent.contains("ErrorMessage"));
+        assertTrue(responsesContent.contains("implements StoreInventory"));
+        assertTrue(responsesContent.contains("record StoreInventory500ApiResponse("));
+        assertTrue(responsesContent.contains("HttpBodyInput content) implements StoreInventoryObjectApiResponse"));
+        assertTrue(responsesContent.contains("sealed interface RawObjectApiResponse"));
+        assertTrue(responsesContent.contains("record RawObject200ApiResponse("));
+        assertTrue(responsesContent.contains("HttpBodyInput content) implements RawObjectObjectApiResponse"));
+        assertTrue(responsesContent.contains("record RawObject400ApiResponse("));
+        assertTrue(responsesContent.contains("record RawObject500ApiResponse("));
+        assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<HttpBodyInput> delegate"));
+        assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<ErrorMessage> delegate"));
+        assertFalse(responseMapperContent.contains("@Json HttpClientResponseMapper<HttpBodyInput>"));
+    }
+
+    @Test
+    void bareObjectRequestAndResponseUseByteArrayByDefault() throws Exception {
+        var files = generate(
+            "petstoreV3_bare_object_bytes_default",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_bare_object.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var responsesContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApiResponses.java"))
+            .findFirst()
+            .orElseThrow());
+        var responseMapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.toString().contains("petstoreV3_bare_object_bytes_default"))
+            .filter(path -> path.getFileName().toString().equals("DefaultApiClientResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.contains("StoreInventoryApiResponse storeInventory(byte[] body)"));
+        assertTrue(apiContent.contains("RawObjectApiResponse rawObject(byte[] body)"));
+        assertTrue(responsesContent.contains("record StoreInventory200ApiResponse(byte[] content)"));
+        assertTrue(responsesContent.contains("record StoreInventory500ApiResponse(byte[] content)"));
+        assertTrue(responsesContent.contains("record RawObject200ApiResponse(byte[] content)"));
+        assertTrue(responsesContent.contains("record RawObject400ApiResponse(byte[] content)"));
+        assertTrue(responsesContent.contains("record RawObject500ApiResponse(byte[] content)"));
+        assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<byte[]> delegate"));
+    }
 }
