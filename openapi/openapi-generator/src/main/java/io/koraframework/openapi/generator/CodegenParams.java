@@ -29,6 +29,7 @@ public class CodegenParams {
     public static final String IMPLICIT_HEADERS = "implicitHeaders";
     public static final String IMPLICIT_HEADERS_REGEX = "implicitHeadersRegex";
     public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
+    public static final String RAW_BODY_MODE = "rawBodyMode";
     
     public CodegenMode codegenMode = CodegenMode.JAVA_CLIENT;
     public boolean enableValidation = false;
@@ -47,6 +48,7 @@ public class CodegenParams {
     public boolean implicitHeaders = false;
     public @Nullable Pattern implicitHeadersRegex = null;
     public boolean forceIncludeOptional = false;
+    public RawBodyMode rawBodyMode = RawBodyMode.BYTES;
 
     static List<CliOption> cliOptions() {
         var cliOptions = new ArrayList<CliOption>();
@@ -65,6 +67,7 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(PREFIX_PATH, "Path prefix for HTTP Server controllers"));
         cliOptions.add(CliOption.newString(DELEGATE_METHOD_BODY_MODE, "Delegate method generation mode"));
         cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
+        cliOptions.add(CliOption.newString(RAW_BODY_MODE, "Bare object request and response body mode (one of BYTES, RAW)"));
         return cliOptions;
     }
 
@@ -143,6 +146,18 @@ public class CodegenParams {
         if (additionalProperties.containsKey(FORCE_INCLUDE_OPTIONAL)) {
             params.forceIncludeOptional = Boolean.parseBoolean(additionalProperties.get(FORCE_INCLUDE_OPTIONAL).toString());
         }
+        if (additionalProperties.containsKey(RAW_BODY_MODE)) {
+            params.rawBodyMode = RawBodyMode.of(additionalProperties.get(RAW_BODY_MODE).toString());
+        }
         return params;
+    }
+
+    public enum RawBodyMode {
+        BYTES,
+        RAW;
+
+        public static RawBodyMode of(String value) {
+            return RawBodyMode.valueOf(value.toUpperCase(Locale.ROOT));
+        }
     }
 }
