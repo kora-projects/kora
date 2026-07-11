@@ -26,7 +26,6 @@ public class ServerApiDelegateGenerator extends AbstractJavaGenerator<Operations
     }
 
     private MethodSpec buildMethod(OperationsMap ctx, CodegenOperation operation) {
-        var tag = ctx.get("baseName").toString();
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC)
             .addJavadoc(buildMethodJavadoc(ctx, operation))
@@ -39,7 +38,7 @@ public class ServerApiDelegateGenerator extends AbstractJavaGenerator<Operations
         } else {
             b.addModifiers(Modifier.ABSTRACT);
         }
-        this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
+        this.buildAdditionalMethodAnnotations(ctx, operation).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(this.buildHttpRoute(operation));
         if (params.delegateMethodBodyMode == DelegateMethodBodyMode.THROW_EXCEPTION) {
@@ -47,6 +46,9 @@ public class ServerApiDelegateGenerator extends AbstractJavaGenerator<Operations
         }
         if (params.requestInDelegateParams) {
             b.addParameter(Classes.httpServerRequest, "_serverRequest");
+        }
+        if (hasBareObjectBody(operation)) {
+            b.addParameter(Classes.httpHeaders, "_headers");
         }
         for (var param : operation.allParams) {
             if (param.isFormParam) {

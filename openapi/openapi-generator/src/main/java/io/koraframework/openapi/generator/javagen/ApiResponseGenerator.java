@@ -105,18 +105,6 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
                     .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
                     .returns(contentType)
                     .build());
-            if (model != null) {
-                for (var property : model.vars) {
-                    if ("content".equals(property.name) || Objects.equals(property.name, statusCodeMethod)) {
-                        continue;
-                    }
-                    type.addMethod(MethodSpec.methodBuilder(property.name)
-                        .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
-                        .returns(asType(property))
-                        .addStatement("return this.content().$N()", property.name)
-                        .build());
-                }
-            }
             if (statusCodeMethod != null) {
                 type.addMethod(MethodSpec.methodBuilder(statusCodeMethod)
                     .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)

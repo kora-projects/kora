@@ -52,10 +52,6 @@ public class KoraCodegen extends DefaultCodegen {
     private static final Logger LOGGER = LoggerFactory.getLogger(KoraCodegen.class);
     public record TagClient(@Nullable String httpClientTag, @Nullable String telemetryTag) {}
 
-    public record Interceptor(@Nullable String type, @Nullable Object tag) {}
-
-    public record AdditionalAnnotation(@Nullable String annotation) {}
-
     @Override
     public String getName() {
         return "kora";
@@ -1391,7 +1387,7 @@ public class KoraCodegen extends DefaultCodegen {
         if (openAPI == null) {
             return;
         }
-        security.fromOpenapi(openAPI);
+        security.fromOpenapi(openAPI, params.useSecurityDeclarationOrder);
         var securitySchemas = openAPI.getComponents().getSecuritySchemes();
         if (params.codegenMode.isJava()) {
             var modelPackage = modelFileFolder() + File.separator + "package-info.java";

@@ -101,15 +101,6 @@ class ApiResponseGenerator : AbstractKotlinGenerator<OperationsMap>() {
                     .addAnnotation(generated())
                     .addSuperinterface(responseClassName)
                     .addProperty(PropertySpec.builder("content", contentType).build())
-                model?.vars.orEmpty().forEach { property ->
-                    if (property.name != "content" && property.name != statusCodeProperty) {
-                        type.addProperty(
-                            PropertySpec.builder(property.name, asType(property).asKt())
-                                .getter(FunSpec.getterBuilder().addStatement("return content.%N", property.name).build())
-                                .build()
-                        )
-                    }
-                }
                 if (statusCodeProperty != null) {
                     type.addProperty(PropertySpec.builder(statusCodeProperty, INT).build())
                 }

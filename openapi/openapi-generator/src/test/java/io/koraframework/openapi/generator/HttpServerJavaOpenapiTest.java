@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
@@ -49,6 +50,66 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void extensionsUseServerConfigPathInAnnotations() throws Exception {
+        var files = generate(
+            "petstoreV3_server_extensions",
+            "java-server",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+                .setExtensions("""
+                    {
+                      "*": {
+                        "additionalMethodAnnotations": [
+                          "@java.lang.SuppressWarnings(\\"%{configPath}\\")"
+                        ]
+                      }
+                    }
+                    """)
+        );
+
+        var controllerContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiController.java"))
+            .findFirst()
+            .orElseThrow());
+        var delegateContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiDelegate.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(controllerContent.contains("@SuppressWarnings(\"httpServer.controller.petsApiController\")"));
+        assertTrue(delegateContent.contains("@SuppressWarnings(\"httpServer.controller.petsApiController\")"));
+    }
+
+    @Test
+    void anonymousSecurityDoesNotRequireServerInterceptor() throws Exception {
+        var files = generate(
+            "petstoreV3_security_anonymous",
+            "java-server",
+            getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var controllerContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PublicApiController.java"))
+            .findFirst()
+            .orElseThrow());
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(controllerContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0.class") < controllerContent.indexOf("optionalAccess("));
+        assertTrue(controllerContent.lastIndexOf("OperationSecuritySchemaTag") < controllerContent.indexOf("publicAccess("));
+        assertFalse(securityContent.contains("SecurityRequirementTag1"));
+        assertTrue(securityContent.contains("return chain.process(request);"));
+        assertFalse(securityContent.contains("Unauthorized"));
+    }
+
+    @Test
     void bareObjectRequestAndResponseAreGeneratedAsRawHttpBodyTypes() throws Exception {
         var files = generate(
             "petstoreV3_bare_object_raw",
@@ -82,10 +143,14 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(controllerContent.contains("StoreInventoryApiResponse storeInventory(HttpBodyInput body)"));
-        assertTrue(delegateContent.contains("StoreInventoryApiResponse storeInventory(HttpBodyInput body)"));
-        assertTrue(controllerContent.contains("RawObjectApiResponse rawObject(HttpBodyInput body)"));
-        assertTrue(delegateContent.contains("RawObjectApiResponse rawObject(HttpBodyInput body)"));
+        assertTrue(controllerContent.contains("StoreInventoryApiResponse storeInventory("));
+        assertTrue(delegateContent.contains("StoreInventoryApiResponse storeInventory("));
+        assertTrue(controllerContent.contains("RawObjectApiResponse rawObject("));
+        assertTrue(delegateContent.contains("RawObjectApiResponse rawObject("));
+        assertTrue(controllerContent.contains("HttpHeaders _headers"));
+        assertTrue(delegateContent.contains("HttpHeaders _headers"));
+        assertTrue(controllerContent.contains("HttpBodyInput body"));
+        assertTrue(delegateContent.contains("HttpBodyInput body"));
         assertTrue(responsesContent.contains("record StoreInventory200ApiResponse("));
         assertTrue(responsesContent.contains("HttpBodyOutput content) implements StoreInventoryApiResponse"));
         assertTrue(responsesContent.contains("record StoreInventory400ApiResponse(ErrorMessage content) implements StoreInventoryApiResponse"));
@@ -96,6 +161,9 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(responsesContent.contains("record RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<HttpBodyOutput>> response200Delegate"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<ErrorMessage>> response400Delegate"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("class StoreInventoryApiResponseMapper implements HttpServerResponseMapper"));
+        assertFalse(responseMapperContent.contains("final class StoreInventoryApiResponseMapper"));
     }
 
     @Test
@@ -126,13 +194,18 @@ public class HttpServerJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(controllerContent.contains("StoreInventoryApiResponse storeInventory(byte[] body)"));
-        assertTrue(controllerContent.contains("RawObjectApiResponse rawObject(byte[] body)"));
+        assertTrue(controllerContent.contains("StoreInventoryApiResponse storeInventory("));
+        assertTrue(controllerContent.contains("RawObjectApiResponse rawObject("));
+        assertTrue(controllerContent.contains("HttpHeaders _headers"));
+        assertTrue(controllerContent.contains("byte[] body"));
         assertTrue(responsesContent.contains("record StoreInventory200ApiResponse(byte[] content) implements StoreInventoryApiResponse"));
         assertTrue(responsesContent.contains("record StoreInventory500ApiResponse(byte[] content) implements StoreInventoryApiResponse"));
         assertTrue(responsesContent.contains("record RawObject200ApiResponse(byte[] content) implements RawObjectApiResponse"));
         assertTrue(responsesContent.contains("record RawObject400ApiResponse(byte[] content) implements RawObjectApiResponse"));
         assertTrue(responsesContent.contains("record RawObject500ApiResponse(byte[] content) implements RawObjectApiResponse"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<byte[]>> response200Delegate"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("class StoreInventoryApiResponseMapper implements HttpServerResponseMapper"));
+        assertFalse(responseMapperContent.contains("final class StoreInventoryApiResponseMapper"));
     }
 }

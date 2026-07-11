@@ -24,6 +24,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             return b.build()
         }
         b.addModifiers(KModifier.DATA)
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
         for (field in model.allVars) {
             b.addKdoc("@param %N %L, %L\n", field.name, field.description ?: field.baseName, if (field.example == null) "" else "(example: " + field.example + ")")
         }
@@ -217,6 +218,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
                     .addMember("value = %S", model.discriminator.propertyBaseName)
                     .build()
             )
+        buildAdditionalModelTypeAnnotations().forEach { b.addAnnotation(it) }
         if (params.enableValidation) {
             b.addAnnotation(Classes.valid.asKt())
         }
@@ -241,6 +243,7 @@ class ModelGenerator : AbstractKotlinGenerator<ModelsMap>() {
             ClassName(modelPackage, contextModel.classname, model.name)
         val b = TypeSpec.enumBuilder(enumClassName)
             .addAnnotation(generated())
+        buildAdditionalEnumTypeAnnotations().forEach { b.addAnnotation(it) }
         val enumVars = model.allowableValues["enumVars"] as List<Map<String, Any>>
         for (enumVar in enumVars) {
             val enumName = enumVar["name"].toString()

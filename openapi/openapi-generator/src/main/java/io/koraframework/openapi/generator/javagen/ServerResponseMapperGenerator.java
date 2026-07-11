@@ -28,9 +28,9 @@ public class ServerResponseMapperGenerator extends AbstractJavaGenerator<Operati
         var className = ClassName.get(ctx.get("classname") + "ServerResponseMappers", capitalize(operation.operationId) + "ApiResponseMapper");
         var responseClassName = ClassName.get(apiPackage, ctx.get("classname") + "Responses", capitalize(operation.operationId) + "ApiResponse");
         var b = TypeSpec.classBuilder(className)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .addAnnotation(generated())
-            .addAnnotation(Classes.component)
+            .addAnnotation(Classes.defaultComponent)
             .addSuperinterface(ParameterizedTypeName.get(Classes.httpServerResponseMapper, responseClassName));
         var constructor = MethodSpec.constructorBuilder()
             .addModifiers(Modifier.PUBLIC);

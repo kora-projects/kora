@@ -2,6 +2,7 @@ package io.koraframework.openapi.generator.kotlingen
 
 import com.squareup.kotlinpoet.*
 import org.apache.commons.lang3.StringUtils
+import io.koraframework.openapi.generator.SecurityData
 import org.openapitools.codegen.CodegenOperation
 import org.openapitools.codegen.model.OperationsMap
 
@@ -15,7 +16,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         } else {
             b.addAnnotation(AnnotationSpec.builder(Classes.httpController.asKt()).build())
         }
-        val allowAspects = params.enableValidation || !params.additionalContractAnnotations.isEmpty()
+        val allowAspects = params.enableValidation || hasAdditionalMethodAnnotations()
         if (allowAspects) {
             b.addModifiers(KModifier.OPEN)
         }
@@ -35,15 +36,20 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
         return FileSpec.get(apiPackage, b.build())
     }
 
+    private fun hasAdditionalMethodAnnotations(): Boolean {
+        return params.extensions.global()?.additionalMethodAnnotations()?.isNotEmpty() == true
+            || params.extensions.tags().values.any { it.additionalMethodAnnotations().isNotEmpty() }
+            || params.extensions.operations().values.any { it.additionalMethodAnnotations().isNotEmpty() }
+    }
+
     private fun buildFunction(ctx: OperationsMap, operation: CodegenOperation): FunSpec {
-        val tag = ctx["baseName"] as String
         val b = FunSpec.builder(operation.operationId)
             .addKdoc(buildFunctionKdoc(ctx, operation))
-        val allowAspects = params.enableValidation || !params.additionalContractAnnotations.isEmpty()
+        val allowAspects = params.enableValidation || hasAdditionalMethodAnnotations()
         if (allowAspects) {
             b.addModifiers(KModifier.OPEN)
         }
-        buildAdditionalAnnotations(tag).forEach { b.addAnnotation(it) }
+        buildAdditionalMethodAnnotations(ctx, operation).forEach { b.addAnnotation(it) }
         this.buildImplicitHeaders(operation).forEach { b.addAnnotation(it) }
         b.addAnnotation(buildRouteAnnotation(operation))
         buildMethodAuth(operation)?.let { auth ->
@@ -53,7 +59,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith.asKt()).addMember("value = %T::class", Classes.validationHttpServerInterceptor.asKt()).build())
             b.addAnnotation(AnnotationSpec.builder(Classes.validate.asKt()).build())
         }
-        this.buildInterceptors(tag, Classes.httpServerInterceptor.asKt()).forEach(b::addAnnotation)
+        this.buildInterceptors(ctx, operation, Classes.httpServerInterceptor.asKt()).forEach(b::addAnnotation)
         b.addAnnotation(
             AnnotationSpec.builder(Classes.mapping.asKt())
                 .addMember("value = %T::class", ClassName(apiPackage, ctx.get("classname") as String + "ServerResponseMappers", StringUtils.capitalize(operation.operationId) + "ApiResponseMapper"))
@@ -65,6 +71,14 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
             hasParams = true
             b.addCode("_serverRequest")
             b.addParameter("_serverRequest", Classes.httpServerRequest.asKt())
+        }
+        if (hasBareObjectBody(operation)) {
+            if (hasParams) {
+                b.addCode(", ")
+            }
+            b.addCode("_headers")
+            b.addParameter("_headers", Classes.httpHeaders.asKt())
+            hasParams = true
         }
         for (param in operation.allParams) {
             if (param.isFormParam) {
@@ -107,7 +121,7 @@ class ServerApiGenerator() : AbstractKotlinGenerator<OperationsMap>() {
 
     private fun buildMethodAuth(operation: CodegenOperation): AnnotationSpec? {
         val securityRequirement = security.securityRequirementByOperation[operation.operationId]
-        if (securityRequirement.isNullOrEmpty()) {
+        if (!SecurityData.hasNonAnonymousRequirements(securityRequirement)) {
             return null
         }
         val operationSecurityRequirement = security.securityRequirementByOperation[operation.operationId]

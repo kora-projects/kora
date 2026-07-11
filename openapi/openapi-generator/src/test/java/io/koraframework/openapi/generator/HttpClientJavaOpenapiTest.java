@@ -87,6 +87,159 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void extensionsAddAnnotationsAndInterceptors() throws Exception {
+        var files = generate(
+            "petstoreV3_extensions",
+            "java-client",
+            getClass().getResource("/example/petstoreV3.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+                .setClientConfig("httpClient.petstoreV3")
+                .setExtensions("""
+                    {
+                      "*": {
+                        "additionalMethodAnnotations": [
+                          "@java.lang.SuppressWarnings(\\"%{configPath}\\")"
+                        ],
+                        "additionalModelTypeAnnotations": ["@java.lang.Deprecated"],
+                        "additionalEnumTypeAnnotations": ["@java.lang.Deprecated"],
+                        "interceptorTag": "java.lang.String"
+                      },
+                      "operations": {
+                        "createPets": {
+                          "additionalMethodAnnotations": [
+                            "@java.lang.Deprecated(since = \\"operation\\")"
+                          ],
+                          "clientMapping": {
+                            "type": "ru.example.CreatePetsMapper"
+                          },
+                          "interceptorTag": "java.lang.Integer"
+                        }
+                      }
+                    }
+                    """)
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var petContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("Pet.java"))
+            .findFirst()
+            .orElseThrow());
+        assertTrue(apiContent.contains("@SuppressWarnings(\"httpClient.petstoreV3\")"));
+        assertTrue(apiContent.contains("since = \"operation\""));
+        assertTrue(apiContent.contains("import ru.example.CreatePetsMapper;"));
+        assertTrue(apiContent.contains("@Mapping(CreatePetsMapper.class)"));
+        assertFalse(apiContent.contains("CreatePets200ApiResponseMapper.class"));
+        assertTrue(apiContent.contains("tag = String.class"));
+        assertTrue(apiContent.contains("tag = Integer.class"));
+        assertTrue(petContent.contains("@Deprecated"));
+    }
+
+    @Test
+    void securityDeclarationOrderCanAffectGeneratedTags() throws Exception {
+        var defaultFiles = generate(
+            "petstoreV3_security_order_default",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_order.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+        var orderedFiles = generate(
+            "petstoreV3_security_order_enabled",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_order.yaml").toExternalForm(),
+            new SwaggerParams.Options().setUseSecurityDeclarationOrder(true)
+        );
+
+        var defaultApiContent = Files.readString(defaultFiles.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var orderedApiContent = Files.readString(orderedFiles.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var orderedSecurityContent = Files.readString(orderedFiles.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(defaultApiContent.contains("ApiSecurity.OperationSecuritySchemaTag0.class"));
+        assertFalse(defaultApiContent.contains("ApiSecurity.OperationSecuritySchemaTag1.class"));
+        assertTrue(orderedApiContent.contains("ApiSecurity.OperationSecuritySchemaTag0.class"));
+        assertTrue(orderedApiContent.contains("ApiSecurity.OperationSecuritySchemaTag1.class"));
+        assertTrue(orderedSecurityContent.contains("OperationSecuritySchemaTag0HttpClientInterceptor"));
+        assertTrue(orderedSecurityContent.contains("OperationSecuritySchemaTag1HttpClientInterceptor"));
+    }
+
+    @Test
+    void anonymousSecurityDoesNotRequireClientInterceptor() throws Exception {
+        var files = generate(
+            "petstoreV3_security_anonymous",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PublicApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0.class") < apiContent.indexOf("optionalAccess("));
+        assertTrue(apiContent.lastIndexOf("OperationSecuritySchemaTag") < apiContent.indexOf("publicAccess("));
+        assertFalse(securityContent.contains("if ()"));
+        assertTrue(securityContent.contains("return chain.process(request);"));
+    }
+
+    @Test
+    void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
+        var files = generate(
+            "petstoreV3_client_successful_response",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_client_successful_response.yaml").toExternalForm(),
+            new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")
+        );
+
+        var apiContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApi.java"))
+            .findFirst()
+            .orElseThrow());
+        var mapperContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PetsApiClientResponseMappers.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(apiContent.contains("@Mapping(PetsApiClientResponseMappers.CreatePetSuccessfulResponseMapper.class)"));
+        assertTrue(apiContent.contains("CreatePet200ApiResponse createPet("));
+        assertTrue(apiContent.contains("FindPetPetApiResponse findPet("));
+        assertTrue(apiContent.contains("AmbiguousPetApiResponse ambiguousPet("));
+        assertTrue(apiContent.contains("class PetsApiCreatePetHttpClientResponseException extends HttpClientResponseException"));
+        assertTrue(apiContent.contains("CreatePetApiResponse response"));
+        assertTrue(mapperContent.contains("class CreatePetSuccessfulResponseMapper implements HttpClientResponseMapper<"));
+        assertTrue(mapperContent.contains("CreatePet200ApiResponse"));
+        assertTrue(mapperContent.contains("case 400 ->"));
+        assertTrue(mapperContent.contains("throw new PetsApi.PetsApiCreatePetHttpClientResponseException(response.code(), response.headers(), this.createPet400ResponseMapper.apply(response))"));
+        assertTrue(mapperContent.contains("class FindPetSuccessfulResponseMapper implements HttpClientResponseMapper<"));
+        assertTrue(mapperContent.contains("FindPetPetApiResponse"));
+        assertFalse(apiContent.contains("@Mapping(PetsApiClientResponseMappers.AmbiguousPetSuccessfulResponseMapper.class)"));
+    }
+
+    @Test
     void sameResponseModelGetsSharedInterface() throws Exception {
         var files = generate(
             "petstoreV3_same_response_model",
@@ -103,7 +256,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
 
         assertTrue(content.contains("non-sealed interface GetErrorsModelErrorApiResponse extends GetErrorsApiResponse"));
         assertTrue(content.contains("ModelError content()"));
-        assertTrue(content.contains("default String message()"));
+        assertFalse(content.contains("default String message()"));
         assertTrue(content.contains("int _statusCode()"));
         assertTrue(content.contains("record GetErrors400ApiResponse(ModelError content) implements GetErrorsModelErrorApiResponse"));
         assertTrue(content.contains("return 400"));
@@ -319,8 +472,10 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(apiContent.contains("StoreInventoryApiResponse storeInventory(HttpBodyOutput body)"));
-        assertTrue(apiContent.contains("RawObjectApiResponse rawObject(HttpBodyOutput body)"));
+        assertTrue(apiContent.contains("StoreInventoryApiResponse storeInventory("));
+        assertTrue(apiContent.contains("RawObjectApiResponse rawObject("));
+        assertTrue(apiContent.contains("@Header HttpHeaders additionalHeaders"));
+        assertTrue(apiContent.contains("HttpBodyOutput body"));
         assertTrue(responsesContent.contains("sealed interface StoreInventoryApiResponse"));
         assertTrue(responsesContent.contains("record StoreInventory200ApiResponse("));
         assertTrue(responsesContent.contains("HttpBodyInput content) implements StoreInventoryObjectApiResponse"));
@@ -337,6 +492,9 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
         assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<HttpBodyInput> delegate"));
         assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<ErrorMessage> delegate"));
         assertFalse(responseMapperContent.contains("@Json HttpClientResponseMapper<HttpBodyInput>"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("class StoreInventory200ApiResponseMapper implements HttpClientResponseMapper"));
+        assertFalse(responseMapperContent.contains("final class StoreInventory200ApiResponseMapper"));
     }
 
     @Test
@@ -367,13 +525,18 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(apiContent.contains("StoreInventoryApiResponse storeInventory(byte[] body)"));
-        assertTrue(apiContent.contains("RawObjectApiResponse rawObject(byte[] body)"));
+        assertTrue(apiContent.contains("StoreInventoryApiResponse storeInventory("));
+        assertTrue(apiContent.contains("RawObjectApiResponse rawObject("));
+        assertTrue(apiContent.contains("@Header HttpHeaders additionalHeaders"));
+        assertTrue(apiContent.contains("byte[] body"));
         assertTrue(responsesContent.contains("record StoreInventory200ApiResponse(byte[] content)"));
         assertTrue(responsesContent.contains("record StoreInventory500ApiResponse(byte[] content)"));
         assertTrue(responsesContent.contains("record RawObject200ApiResponse(byte[] content)"));
         assertTrue(responsesContent.contains("record RawObject400ApiResponse(byte[] content)"));
         assertTrue(responsesContent.contains("record RawObject500ApiResponse(byte[] content)"));
         assertTrue(responseMapperContent.contains("private final HttpClientResponseMapper<byte[]> delegate"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("class StoreInventory200ApiResponseMapper implements HttpClientResponseMapper"));
+        assertFalse(responseMapperContent.contains("final class StoreInventory200ApiResponseMapper"));
     }
 }

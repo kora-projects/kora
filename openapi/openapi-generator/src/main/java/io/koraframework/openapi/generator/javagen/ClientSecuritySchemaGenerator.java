@@ -8,6 +8,8 @@ import org.slf4j.LoggerFactory;
 import javax.lang.model.element.Modifier;
 import java.util.*;
 
+import static io.koraframework.openapi.generator.SecurityData.hasAnonymousRequirement;
+
 public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<String, Object>> {
     @Override
     public JavaFile generate(Map<String, Object> ctx) {
@@ -170,7 +172,11 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addException(Exception.class);
 
         var securitySchemaSeen = new HashSet<String>();
+        var allowAnonymous = hasAnonymousRequirement(security);
         for (var securityRequirement : security) {
+            if (securityRequirement.isEmpty()) {
+                continue;
+            }
             for (var entry : securityRequirement.entrySet()) {
                 var securitySchemaName = entry.getKey();
                 var scopes = entry.getValue();
@@ -206,7 +212,9 @@ public class ClientSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             }
             intercept.endControlFlow();
         }
-        intercept.addStatement("log.warn($S)", "Security schema is defined for api but no data was provided");
+        if (!allowAnonymous) {
+            intercept.addStatement("log.warn($S)", "Security schema is defined for api but no data was provided");
+        }
         intercept.addStatement("return chain.process(request)");
         b.addMethod(intercept.build());
         return b.build();

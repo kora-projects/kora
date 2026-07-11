@@ -6,6 +6,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import java.nio.file.Files;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
@@ -54,10 +55,14 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(controllerContent.contains("public fun storeInventory(body: HttpBodyInput): DefaultApiResponses.StoreInventoryApiResponse"));
-        assertTrue(delegateContent.contains("public fun storeInventory(body: HttpBodyInput): DefaultApiResponses.StoreInventoryApiResponse"));
-        assertTrue(controllerContent.contains("public fun rawObject(body: HttpBodyInput): DefaultApiResponses.RawObjectApiResponse"));
-        assertTrue(delegateContent.contains("public fun rawObject(body: HttpBodyInput): DefaultApiResponses.RawObjectApiResponse"));
+        assertTrue(controllerContent.contains("public fun storeInventory("));
+        assertTrue(delegateContent.contains("public fun storeInventory("));
+        assertTrue(controllerContent.contains("public fun rawObject("));
+        assertTrue(delegateContent.contains("public fun rawObject("));
+        assertTrue(controllerContent.contains("_headers: HttpHeaders"));
+        assertTrue(delegateContent.contains("_headers: HttpHeaders"));
+        assertTrue(controllerContent.contains("body: HttpBodyInput"));
+        assertTrue(delegateContent.contains("body: HttpBodyInput"));
         assertTrue(responsesContent.contains("public val content: HttpBodyOutput"));
         assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
@@ -65,6 +70,35 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
         assertTrue(responsesContent.contains("public val content: ErrorMessage"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<HttpBodyOutput>>"));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<ErrorMessage>>"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("public open class StoreInventoryApiResponseMapper"));
+    }
+
+    @Test
+    void anonymousSecurityDoesNotRequireServerInterceptor() throws Exception {
+        var files = generate(
+            "petstoreV3_security_anonymous",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_anonymous.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var controllerContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("PublicApiController.kt"))
+            .findFirst()
+            .orElseThrow());
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(controllerContent.indexOf("tag = ApiSecurity.OperationSecuritySchemaTag0::class") < controllerContent.indexOf("optionalAccess("));
+        assertTrue(controllerContent.lastIndexOf("OperationSecuritySchemaTag") < controllerContent.indexOf("publicAccess("));
+        assertFalse(securityContent.contains("SecurityRequirementTag1"));
+        assertTrue(securityContent.contains("return chain.process(request)"));
+        assertFalse(securityContent.contains("Unauthorized"));
     }
 
     @Test
@@ -95,12 +129,16 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(controllerContent.contains("public fun storeInventory(body: ByteArray): DefaultApiResponses.StoreInventoryApiResponse"));
-        assertTrue(controllerContent.contains("public fun rawObject(body: ByteArray): DefaultApiResponses.RawObjectApiResponse"));
+        assertTrue(controllerContent.contains("public fun storeInventory("));
+        assertTrue(controllerContent.contains("public fun rawObject("));
+        assertTrue(controllerContent.contains("_headers: HttpHeaders"));
+        assertTrue(controllerContent.contains("body: ByteArray"));
         assertTrue(responsesContent.contains("public val content: ByteArray"));
         assertTrue(responsesContent.contains("public data class RawObject200ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject400ApiResponse("));
         assertTrue(responsesContent.contains("public data class RawObject500ApiResponse("));
         assertTrue(responseMapperContent.contains("HttpServerResponseMapper<HttpResponseEntity<ByteArray>>"));
+        assertTrue(responseMapperContent.contains("@DefaultComponent"));
+        assertTrue(responseMapperContent.contains("public open class StoreInventoryApiResponseMapper"));
     }
 }

@@ -31,6 +31,13 @@ public abstract class BaseOpenapiTest {
             public String clientConfig = "test";
             @Nullable
             public String clientConfigPrefix;
+            @Nullable
+            public String extensions;
+            @Nullable
+            public String serverConfigPrefix;
+            public boolean useSecurityDeclarationOrder;
+            @Nullable
+            public String clientResponseMode;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -72,6 +79,26 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setExtensions(@Nullable String extensions) {
+                this.extensions = extensions;
+                return this;
+            }
+
+            public Options setServerConfigPrefix(@Nullable String serverConfigPrefix) {
+                this.serverConfigPrefix = serverConfigPrefix;
+                return this;
+            }
+
+            public Options setUseSecurityDeclarationOrder(boolean useSecurityDeclarationOrder) {
+                this.useSecurityDeclarationOrder = useSecurityDeclarationOrder;
+                return this;
+            }
+
+            public Options setClientResponseMode(@Nullable String clientResponseMode) {
+                this.clientResponseMode = clientResponseMode;
+                return this;
+            }
+
             @Override
             public String toString() {
                 return "Options{" +
@@ -83,6 +110,10 @@ public abstract class BaseOpenapiTest {
                        ", rawBodyMode='" + rawBodyMode + '\'' +
                        ", clientConfig='" + clientConfig + '\'' +
                        ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
+                       ", extensions='" + extensions + '\'' +
+                       ", serverConfigPrefix='" + serverConfigPrefix + '\'' +
+                       ", useSecurityDeclarationOrder=" + useSecurityDeclarationOrder +
+                       ", clientResponseMode='" + clientResponseMode + '\'' +
                        '}';
             }
         }
@@ -109,9 +140,11 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_security_cookie.yaml",
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_security_multi.yaml",
+            "/example/petstoreV3_security_anonymous.yaml",
             "/example/petstoreV3_single_response.yaml",
             "/example/petstoreV3_same_response_model.yaml",
             "/example/petstoreV3_bare_object.yaml",
+            "/example/petstoreV3_client_successful_response.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
@@ -137,6 +170,14 @@ public abstract class BaseOpenapiTest {
             if (name.equals("petstoreV3")) {
                 result.add(new SwaggerParams(fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
             }
+
+            if (name.equals("petstoreV3_bare_object")) {
+                result.add(new SwaggerParams(fileName, name + "_raw", new SwaggerParams.Options().setRawBodyMode("RAW")));
+            }
+
+            if (name.equals("petstoreV3_client_successful_response")) {
+                result.add(new SwaggerParams(fileName, name + "_successful", new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")));
+            }
         }
 
         return result.toArray(SwaggerParams[]::new);
@@ -157,14 +198,19 @@ public abstract class BaseOpenapiTest {
                 "skipFormModel", "false"
             ))
             .addAdditionalProperty("mode", mode)
-            .addAdditionalProperty("additionalModelTypeAnnotations", "@io.koraframework.json.common.annotation.JsonInclude(io.koraframework.json.common.annotation.JsonInclude.IncludeType.ALWAYS)")
-            .addAdditionalProperty("interceptors", """
+            .addAdditionalProperty("extensions", """
                 {
-                  "*": [
-                    {
-                      "tag": "java.lang.String"
+                  "*": {
+                    "additionalModelTypeAnnotations": [
+                      "@io.koraframework.json.common.annotation.JsonInclude(io.koraframework.json.common.annotation.JsonInclude.IncludeType.ALWAYS)"
+                    ],
+                    "interceptorTag": "java.lang.String"
+                  },
+                  "operations": {
+                    "findPetsByStatus": {
+                      "interceptorTag": "java.lang.Integer"
                     }
-                  ]
+                  }
                 }
                 """)
             .addAdditionalProperty("tags", """
@@ -189,6 +235,18 @@ public abstract class BaseOpenapiTest {
         }
         if (options.rawBodyMode != null) {
             configurator.addAdditionalProperty("rawBodyMode", options.rawBodyMode);
+        }
+        if (options.extensions != null) {
+            configurator.addAdditionalProperty("extensions", options.extensions);
+        }
+        if (options.serverConfigPrefix != null) {
+            configurator.addAdditionalProperty("serverConfigPrefix", options.serverConfigPrefix);
+        }
+        if (options.useSecurityDeclarationOrder) {
+            configurator.addAdditionalProperty("useSecurityDeclarationOrder", "true");
+        }
+        if (options.clientResponseMode != null) {
+            configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);
         }
 
         if (options.defaultDelegate) {

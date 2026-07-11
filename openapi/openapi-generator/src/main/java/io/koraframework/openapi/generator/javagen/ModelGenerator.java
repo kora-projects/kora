@@ -43,6 +43,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
             .addJavadoc(Objects.requireNonNullElse(model.description, model.classname))
             .addAnnotation(Classes.json)
             .addAnnotation(AnnotationSpec.builder(Classes.jsonDiscriminatorField).addMember("value", "$S", model.discriminator.getPropertyBaseName()).build());
+        buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
         if (params.enableValidation) {
             b.addAnnotation(Classes.valid);
         }
@@ -68,6 +69,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var b = TypeSpec.recordBuilder(model.getClassname())
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
+        buildAdditionalModelTypeAnnotations().forEach(b::addAnnotation);
         if (model.description == null || model.description.isBlank()) {
             b.addJavadoc("$L\n", model.classname);
         } else {
@@ -348,6 +350,7 @@ public class ModelGenerator extends AbstractJavaGenerator<ModelsMap> {
         var b = TypeSpec.enumBuilder(model.name)
             .addAnnotation(generated())
             .addModifiers(Modifier.PUBLIC);
+        buildAdditionalEnumTypeAnnotations().forEach(b::addAnnotation);
         if (model.description != null && !model.description.isBlank()) {
             b.addJavadoc("$L\n", model.description);
         }

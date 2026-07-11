@@ -557,6 +557,32 @@ public class ControllerParamsTest extends AbstractHttpControllerTest {
     }
 
     @Test
+    void testHeadersParameter() {
+        var module = compile("""
+            @HttpController
+            public class Controller {
+                @HttpRoute(method = "POST", path = "/headers")
+                String headers(HttpHeaders headers) {
+                    return headers.getFirst("x-test");
+                }
+            
+                @HttpRoute(method = "POST", path = "/headers-body")
+                String headersBody(HttpHeaders headers, String body) {
+                    return headers.getFirst("x-test") + ":" + body;
+                }
+            }
+            """);
+
+        var headers = HttpHeaders.of("x-test", "test-header");
+        assertThat(module.getHandler("post_headers", strResponseMapper()), request("POST", "/headers", "", headers))
+            .hasStatus(200)
+            .hasBody("test-header");
+        assertThat(module.getHandler("post_headers_body", stringRequestMapper(), strResponseMapper()), request("POST", "/headers-body", "test-body", headers))
+            .hasStatus(200)
+            .hasBody("test-header:test-body");
+    }
+
+    @Test
     void testMappedRequest() {
         var m = compile("""
             @HttpController

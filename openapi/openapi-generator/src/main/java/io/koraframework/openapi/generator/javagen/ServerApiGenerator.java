@@ -8,6 +8,8 @@ import org.openapitools.codegen.model.OperationsMap;
 
 import javax.lang.model.element.Modifier;
 
+import static io.koraframework.openapi.generator.SecurityData.hasNonAnonymousRequirements;
+
 public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     @Override
     public JavaFile generate(OperationsMap ctx) {
@@ -20,7 +22,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         } else {
             b.addAnnotation(AnnotationSpec.builder(Classes.httpController).build());
         }
-        var allowAspects = params.enableValidation || !params.additionalContractAnnotations.isEmpty();
+        var allowAspects = params.enableValidation || hasAdditionalMethodAnnotations();
         if (!allowAspects) {
             b.addModifiers(Modifier.FINAL);
         }
@@ -42,8 +44,13 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         return JavaFile.builder(apiPackage, b.build()).build();
     }
 
+    private boolean hasAdditionalMethodAnnotations() {
+        return params.extensions.global() != null && !params.extensions.global().additionalMethodAnnotations().isEmpty()
+               || params.extensions.tags().values().stream().anyMatch(extension -> !extension.additionalMethodAnnotations().isEmpty())
+               || params.extensions.operations().values().stream().anyMatch(extension -> !extension.additionalMethodAnnotations().isEmpty());
+    }
+
     private MethodSpec buildMethod(OperationsMap ctx, CodegenOperation operation) {
-        var tag = ctx.get("baseName").toString();
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC)
             .addJavadoc(buildMethodJavadoc(ctx, operation))
@@ -51,7 +58,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         if (operation.isDeprecated) {
             b.addAnnotation(Deprecated.class);
         }
-        this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
+        this.buildAdditionalMethodAnnotations(ctx, operation).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(this.buildHttpRoute(operation));
         var auth = buildServerMethodAuth(operation);
@@ -62,7 +69,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addAnnotation(AnnotationSpec.builder(Classes.interceptWith).addMember("value", "$T.class", Classes.validationHttpServerInterceptor).build());
             b.addAnnotation(AnnotationSpec.builder(Classes.validate).build());
         }
-        this.buildInterceptors(tag, Classes.httpServerInterceptor).forEach(b::addAnnotation);
+        this.buildInterceptors(ctx, operation, Classes.httpServerInterceptor).forEach(b::addAnnotation);
         b.addAnnotation(AnnotationSpec.builder(Classes.mapping)
             .addMember("value", "$T.class", ClassName.get(apiPackage, ctx.get("classname").toString() + "ServerResponseMappers", StringUtils.capitalize(operation.operationId) + "ApiResponseMapper"))
             .build());
@@ -72,6 +79,14 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             hasParams = true;
             b.addCode("_serverRequest");
             b.addParameter(Classes.httpServerRequest, "_serverRequest");
+        }
+        if (hasBareObjectBody(operation)) {
+            if (hasParams) {
+                b.addCode(", ");
+            }
+            b.addCode("_headers");
+            b.addParameter(Classes.httpHeaders, "_headers");
+            hasParams = true;
         }
         for (var param : operation.allParams) {
             if (param.isFormParam) {
@@ -114,7 +129,7 @@ public class ServerApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     @Nullable
     protected AnnotationSpec buildServerMethodAuth(CodegenOperation operation) {
         var securityRequirement = security.securityRequirementByOperation.get(operation.operationId);
-        if (securityRequirement == null || securityRequirement.isEmpty()) {
+        if (!hasNonAnonymousRequirements(securityRequirement)) {
             return null;
         }
         var operationSecurityRequirement = security.securityRequirementByOperation.get(operation.operationId);
