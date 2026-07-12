@@ -287,7 +287,7 @@ String latestVersion(String group, String artifact, String currentVersion, Strin
             versions = versions.findAll { !(it ==~ /(?i).*(alpha|beta|rc|snapshot|milestone|preview|ea|[.-]M\d+).*/) }
         }
         if (currentVersion ==~ /\d+(\.\d+)+/) {
-            def plainVersions = versions.findAll { it ==~ /\d+(\.\d+)+/ }
+            def plainVersions = versions.findAll { it ==~ /\d+(\.\d+)+/ && !isTimestampLikeVersion(it) }
             if (!plainVersions.isEmpty()) {
                 versions = plainVersions
             }
@@ -315,6 +315,10 @@ String versionSortKey(String version) {
         it ==~ /\d+/ ? it.toLong().toString().padLeft(10, '0') : it.toLowerCase(Locale.ROOT)
     }
     parts.join(".")
+}
+
+boolean isTimestampLikeVersion(String version) {
+    version ==~ /\d{8}\.\d{6}(\.\d+)?/
 }
 
 boolean isAllowedUpdate(String currentVersion, String candidateVersion, String updateLevel) {
