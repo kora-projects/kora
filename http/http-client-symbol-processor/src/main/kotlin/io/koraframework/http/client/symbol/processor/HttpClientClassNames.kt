@@ -21,6 +21,7 @@ object HttpClientClassNames {
     val httpClientAnnotation = ClassName("io.koraframework.http.client.common.annotation", "HttpClient")
     val responseCodeMapper = ClassName("io.koraframework.http.client.common.annotation", "ResponseCodeMapper")
     val responseCodeMappers = responseCodeMapper.nestedClass("ResponseCodeMappers")
+    val responseCodeMapperRange = ClassName("io.koraframework.http.client.common.annotation", "ResponseCodeMapperRange")
     val httpClientException = ClassName("io.koraframework.http.client.common.exception", "HttpClientException")
     val httpClientEncoderException = ClassName("io.koraframework.http.client.common.exception", "HttpClientEncoderException")
     val httpClientResponseException = ClassName("io.koraframework.http.client.common.exception", "HttpClientResponseException")
@@ -33,6 +34,11 @@ object HttpClientClassNames {
     val httpClientResponse = ClassName("io.koraframework.http.client.common.response", "HttpClientResponse")
     val httpClientResponseMapper = ClassName("io.koraframework.http.client.common.response", "HttpClientResponseMapper")
     val httpClientResponseEntityMapper = ClassName("io.koraframework.http.client.common.response.mapper", "HttpClientResponseEntityMapper");
+    val httpClientEitherResponseMapper = ClassName("io.koraframework.http.client.common.response.mapper", "HttpClientEitherResponseMapper")
+    val jsonHttpClientResponseMapper = ClassName("io.koraframework.http.client.common.response.mapper", "JsonHttpClientResponseMapper")
+    val either = ClassName("io.koraframework.common", "Either")
+    val jsonReader = ClassName("io.koraframework.json.common", "JsonReader")
+    val json = ClassName("io.koraframework.json.common.annotation", "Json")
 
     val httpClientTelemetryFactory = ClassName("io.koraframework.http.client.common.telemetry", "HttpClientTelemetryFactory")
     val stringParameterConverter = ClassName("io.koraframework.http.client.common.request", "HttpClientParameterWriter")
