@@ -10,6 +10,45 @@ import java.sql.ResultSet
 class JdbcMapperTests : AbstractJdbcRepositoryTest() {
 
     @Test
+    fun testOneToManyListResultSetMapperGenerated() {
+        compile0(
+            listOf(JdbcEntitySymbolProcessorProvider()),
+            """
+            @EntityJdbc
+            data class UserOrdersView(@field:Embedded("u_") val user: User, @field:Embedded("o_") val orders: List<Order>)
+
+            @Table("users")
+            data class User(@field:Id val id: String, val name: String)
+
+            @Table("orders")
+            data class Order(@field:Id val id: String, @field:Column("user_id") val userId: String, val number: String)
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val mapper = newGenerated("\$UserOrdersView_ListJdbcResultSetMapper").invoke() as JdbcResultSetMapper<*>
+        val rs = mock<ResultSet>()
+        whenever(rs.next()).thenReturn(true, true, false)
+        whenever(rs.findColumn("u_id")).thenReturn(1)
+        whenever(rs.findColumn("u_name")).thenReturn(2)
+        whenever(rs.findColumn("o_id")).thenReturn(3)
+        whenever(rs.findColumn("o_user_id")).thenReturn(4)
+        whenever(rs.findColumn("o_number")).thenReturn(5)
+        whenever(rs.getString(1)).thenReturn("u1", "u1")
+        whenever(rs.getString(2)).thenReturn("User 1", "User 1")
+        whenever(rs.getString(3)).thenReturn("o1", "o2")
+        whenever(rs.getString(4)).thenReturn("u1", "u1")
+        whenever(rs.getString(5)).thenReturn("n1", "n2")
+        whenever(rs.wasNull()).thenReturn(false, false, false, false, false, false, false, false, false, false)
+
+        val result = mapper.apply(rs) as List<*>
+
+        assertThat(result).hasSize(1)
+        val orders = result[0]!!.javaClass.getMethod("getOrders").invoke(result[0]) as List<*>
+        assertThat(orders).hasSize(2)
+    }
+
+    @Test
     fun testRowMapperGenerated() {
         compile0(
             listOf(JdbcEntitySymbolProcessorProvider()),

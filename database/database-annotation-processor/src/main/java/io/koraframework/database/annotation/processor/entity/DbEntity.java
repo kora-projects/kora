@@ -4,12 +4,15 @@ import com.palantir.javapoet.CodeBlock;
 import com.palantir.javapoet.TypeName;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonUtils;
+import io.koraframework.annotation.processor.common.MethodUtils;
+import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.annotation.processor.common.RecordUtils;
 import io.koraframework.database.annotation.processor.DbUtils;
 import io.koraframework.database.annotation.processor.EntityUtils;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.*;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Types;
@@ -36,11 +39,15 @@ public class DbEntity {
             .<Column>flatMap(ef -> {
                 if (ef instanceof SimpleEntityField simple) {
                     return Stream.of(new ColumnImpl(simple));
-                } else {
-                    var embedded = (EmbeddedEntityField) ef;
+                } else if (ef instanceof EmbeddedEntityField embedded) {
                     return embedded.fields()
                         .stream()
                         .map(ColumnImpl::new);
+                } else {
+                    var embedded = (EmbeddedCollectionEntityField) ef;
+                    return embedded.fields()
+                        .stream()
+                        .map(f -> new ColumnImpl(embedded, f));
                 }
             })
             .toList();
@@ -58,6 +65,51 @@ public class DbEntity {
         return this.typeElement;
     }
 
+    public boolean hasEmbeddedCollection() {
+        return this.entityFields.stream().anyMatch(EmbeddedCollectionEntityField.class::isInstance);
+    }
+
+    public List<EmbeddedCollectionEntityField> embeddedCollections() {
+        return this.entityFields.stream()
+            .filter(EmbeddedCollectionEntityField.class::isInstance)
+            .map(EmbeddedCollectionEntityField.class::cast)
+            .toList();
+    }
+
+    public List<Column> rootIdColumns() {
+        return this.columns.stream()
+            .filter(c -> !(c.entityField() instanceof EmbeddedCollectionEntityField))
+            .filter(c -> AnnotationUtils.isAnnotationPresent(c.element(), DbUtils.ID_ANNOTATION))
+            .toList();
+    }
+
+    public String rootFieldsDescription() {
+        return this.entityFields.stream()
+            .filter(e -> !(e instanceof EmbeddedCollectionEntityField))
+            .map(e -> {
+                if (e instanceof SimpleEntityField simple) {
+                    return simple.element().getSimpleName() + " (" + simple.typeMirror() + ")";
+                }
+                var embedded = (EmbeddedEntityField) e;
+                return embedded.element().getSimpleName() + " (" + embedded.typeMirror() + ")";
+            })
+            .collect(Collectors.joining(", "));
+    }
+
+    public Element rootErrorElement() {
+        var rootField = this.entityFields.stream()
+            .filter(e -> !(e instanceof EmbeddedCollectionEntityField))
+            .findFirst()
+            .orElse(null);
+        if (rootField == null) {
+            return this.typeElement;
+        }
+        if (rootField instanceof EmbeddedEntityField embedded && embedded.typeMirror() instanceof DeclaredType declaredType) {
+            return declaredType.asElement();
+        }
+        return rootField.element();
+    }
+
     public CodeBlock buildInstance(String variableName) {
         return switch (entityType) {
             case RECORD -> {
@@ -71,6 +123,8 @@ public class DbEntity {
                     if (entityField instanceof SimpleEntityField simple) {
                         b.add("$N", simple.element().getSimpleName());
                     } else if (entityField instanceof EmbeddedEntityField embedded) {
+                        b.add("$N", embedded.parent().element().getSimpleName());
+                    } else if (entityField instanceof EmbeddedCollectionEntityField embedded) {
                         b.add("$N", embedded.parent().element().getSimpleName());
                     }
                 }
@@ -86,6 +140,9 @@ public class DbEntity {
                     } else if (entityField instanceof EmbeddedEntityField embedded) {
                         var setter = "set" + CommonUtils.capitalize(embedded.element().getSimpleName().toString());
                         b.addStatement("$N.$N($L)", variableName, setter, embedded.buildInstance());
+                    } else if (entityField instanceof EmbeddedCollectionEntityField embedded) {
+                        var setter = "set" + CommonUtils.capitalize(embedded.element().getSimpleName().toString());
+                        b.addStatement("$N.$N($N)", variableName, setter, embedded.parent().element().getSimpleName());
                     }
                 }
                 yield b.build();
@@ -124,6 +181,30 @@ public class DbEntity {
                 } else {
                     b.add("\n");
                 }
+            } else if (entityField instanceof EmbeddedCollectionEntityField embedded) {
+                var collectionName = embedded.parent().element().getSimpleName();
+                b.addStatement("var $N = new $T<$T>()", collectionName, ArrayList.class, TypeName.get(embedded.elementTypeMirror()));
+                b.add("if (");
+                for (int j = 0; j < embedded.fields().size(); j++) {
+                    var field = embedded.fields().get(j);
+                    if (j > 0) {
+                        b.add(" && ");
+                    }
+                    b.add("$N == null", field.variableName());
+                }
+                b.add(") {$>\n");
+                b.add("// no joined rows for collection\n");
+                b.add("$<\n} else {$>\n");
+                for (int j = 0; j < embedded.fields().size(); j++) {
+                    var field = embedded.fields().get(j);
+                    if (!field.nullable()) {
+                        b.beginControlFlow("if ($N == null)", field.variableName())
+                            .addStatement("throw new $T($S)", NullPointerException.class, "Field %s is not nullable, but column %s is null".formatted(field.element().getSimpleName(), field.columnName()))
+                            .endControlFlow();
+                    }
+                }
+                b.addStatement("$N.add($L)", collectionName, embedded.buildElementInstance());
+                b.add("$<\n}\n");
             }
         }
 
@@ -177,6 +258,20 @@ public class DbEntity {
                 f.nullable,
                 f.parent.accessor() + "()." + f.element.getSimpleName().toString(), // todo,
                 f.parent
+            );
+        }
+
+        public ColumnImpl(EmbeddedCollectionEntityField embedded, EmbeddedCollectionEntityField.Field f) {
+            this(
+                f.element(),
+                f.typeMirror(),
+                f.parent().element.getSimpleName() + "." + f.element.getSimpleName(),
+                f.variableName(),
+                f.columnName(),
+                new String[]{f.parent.element.getSimpleName().toString(), f.element.getSimpleName().toString()},
+                f.nullable,
+                f.parent.accessor() + "()." + f.element.getSimpleName().toString(),
+                embedded
             );
         }
 
@@ -237,6 +332,38 @@ public class DbEntity {
         }
     }
 
+    public record EmbeddedCollectionEntityField(SimpleEntityField parent, TypeMirror typeMirror, TypeMirror elementTypeMirror, VariableElement element, List<Field> fields) implements EntityField {
+
+        @Override
+        public String accessor() {
+            return parent.accessor();
+        }
+
+        public CodeBlock buildElementInstance() {
+            var eb = CodeBlock.builder();
+            eb.add("new $T(", TypeName.get(this.elementTypeMirror())).indent().add("\n");
+            for (int j = 0; j < this.fields().size(); j++) {
+                var field = this.fields().get(j);
+                if (j > 0) {
+                    eb.add(",\n");
+                }
+                eb.add("$N", field.variableName());
+            }
+            eb.unindent().add("\n)");
+            return eb.build();
+        }
+
+        public String recordAccessor() {
+            return this.parent.accessor() + "()";
+        }
+
+        public record Field(SimpleEntityField parent, VariableElement element, TypeMirror typeMirror, String columnName, DtoType entityType, boolean nullable) {
+            public String variableName() {
+                return parent.element.getSimpleName() + "_" + element.getSimpleName().toString();
+            }
+        }
+    }
+
 
     public static DbEntity parseEntity(Types types, TypeMirror typeMirror) {
         var typeElement = (TypeElement) types.asElement(typeMirror);
@@ -269,7 +396,27 @@ public class DbEntity {
                     return field;
                 }
                 var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
+                if (CommonUtils.isCollection(fieldType)) {
+                    var elementType = MethodUtils.getGenericType(fieldType)
+                        .orElseThrow(() -> new ProcessingErrorException("Embedded collection field should declare element type", fieldElement));
+                    var entity = parseEntity(types, elementType);
+                    if (entity == null) {
+                        throw new ProcessingErrorException("Embedded collection field should be of data type", fieldElement);
+                    }
+                    var embeddedFields = new ArrayList<EmbeddedCollectionEntityField.Field>();
+                    for (var entityField : entity.entityFields) {
+                        boolean isNullableEmbedded = isNullableRecordField(entityField.element(), entity.typeElement);
+                        String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
+                        embeddedFields.add(new EmbeddedCollectionEntityField.Field(
+                            field, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
+                        ));
+                    }
+                    return new EmbeddedCollectionEntityField(field, fieldType, elementType, fieldElement, embeddedFields);
+                }
                 var entity = parseEntity(types, fieldType);
+                if (entity == null) {
+                    throw new ProcessingErrorException("Embedded field should be of data type", fieldElement);
+                }
                 var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                 for (var entityField : entity.entityFields) {
                     boolean isNullableEmbedded = isNullableField || isNullableRecordField(entityField.element(), entity.typeElement);
@@ -353,7 +500,28 @@ public class DbEntity {
                     sink.accept(simpleField);
                 } else {
                     var prefix = Objects.requireNonNullElse(AnnotationUtils.parseAnnotationValueWithoutDefault(embedded, "value"), "");
+                    if (CommonUtils.isCollection(fieldType)) {
+                        var elementType = MethodUtils.getGenericType(fieldType)
+                            .orElseThrow(() -> new ProcessingErrorException("Embedded collection field should declare element type", fieldElement));
+                        var entity = parseEntity(types, elementType);
+                        if (entity == null) {
+                            throw new ProcessingErrorException("Embedded collection field should be of data type", fieldElement);
+                        }
+                        var embeddedFields = new ArrayList<EmbeddedCollectionEntityField.Field>();
+                        for (var entityField : entity.entityFields) {
+                            boolean isNullableEmbedded = isNullableRecordField(entityField.element(), entity.typeElement);
+                            String prefixEmbedded = prefix + ((SimpleEntityField) entityField).columnName();
+                            embeddedFields.add(new EmbeddedCollectionEntityField.Field(
+                                simpleField, entityField.element(), entityField.typeMirror(), prefixEmbedded, DtoType.RECORD, isNullableEmbedded
+                            ));
+                        }
+                        sink.accept(new EmbeddedCollectionEntityField(simpleField, fieldType, elementType, fieldElement, embeddedFields));
+                        return;
+                    }
                     var entity = parseEntity(types, fieldType);
+                    if (entity == null) {
+                        throw new ProcessingErrorException("Embedded field should be of data type", fieldElement);
+                    }
                     var embeddedFields = new ArrayList<EmbeddedEntityField.Field>();
                     for (var entityField : entity.entityFields) {
                         boolean isNullableEmbedded = isNullableField || isNullableRecordField(entityField.element(), entity.typeElement);

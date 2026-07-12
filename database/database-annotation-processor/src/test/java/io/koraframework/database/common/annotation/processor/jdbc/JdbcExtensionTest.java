@@ -4,11 +4,14 @@ import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorT
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.database.annotation.processor.RepositoryAnnotationProcessor;
 import io.koraframework.database.annotation.processor.jdbc.JdbcEntityAnnotationProcessor;
+import io.koraframework.database.jdbc.mapper.result.JdbcResultSetMapper;
 import io.koraframework.database.jdbc.mapper.result.JdbcRowMapper;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
+import java.sql.ResultSet;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -27,6 +30,52 @@ public class JdbcExtensionTest extends AbstractAnnotationProcessorTest {
                 import io.koraframework.common.annotation.Mapping;
                 import java.sql.*;
                 """;
+    }
+
+    @Test
+    public void testOneToManyListResultSetMapperGenerated() throws Exception {
+        compile(List.of(new JdbcEntityAnnotationProcessor()),
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @Table("users")
+            record User(@Id String id, String name) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            @Table("orders")
+            record Order(@Id String id, @Column("user_id") String userId, String number) {}
+            """,
+            """
+            import io.koraframework.database.common.annotation.*;
+            import io.koraframework.database.jdbc.annotation.EntityJdbc;
+            @EntityJdbc
+            record UserOrdersView(@Embedded("u_") User user, @Embedded("o_") java.util.List<Order> orders) {}
+            """
+        );
+
+        compileResult.assertSuccess();
+        var mapper = (JdbcResultSetMapper<?>) compileResult.loadClass("$UserOrdersView_ListJdbcResultSetMapper").getConstructor().newInstance();
+        var rs = Mockito.mock(ResultSet.class);
+        Mockito.when(rs.next()).thenReturn(true, true, false);
+        Mockito.when(rs.findColumn("u_id")).thenReturn(1);
+        Mockito.when(rs.findColumn("u_name")).thenReturn(2);
+        Mockito.when(rs.findColumn("o_id")).thenReturn(3);
+        Mockito.when(rs.findColumn("o_user_id")).thenReturn(4);
+        Mockito.when(rs.findColumn("o_number")).thenReturn(5);
+        Mockito.when(rs.getString(1)).thenReturn("u1", "u1");
+        Mockito.when(rs.getString(2)).thenReturn("User 1", "User 1");
+        Mockito.when(rs.getString(3)).thenReturn("o1", "o2");
+        Mockito.when(rs.getString(4)).thenReturn("u1", "u1");
+        Mockito.when(rs.getString(5)).thenReturn("n1", "n2");
+        Mockito.when(rs.wasNull()).thenReturn(false, false, false, false, false, false, false, false, false, false);
+
+        var result = (List<?>) mapper.apply(rs);
+
+        assertThat(result).hasSize(1);
+        var orders = result.get(0).getClass().getMethod("orders");
+        orders.setAccessible(true);
+        assertThat((List<?>) orders.invoke(result.get(0))).hasSize(2);
     }
 
     @Test
