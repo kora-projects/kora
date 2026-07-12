@@ -30,10 +30,20 @@ class QueryMacrosParser {
         private const val SPECIAL_ID = "@id"
     }
 
-    data class Target(val type: KSClassDeclaration, val name: String, val column: String?)
-    data class Field(val field: KSPropertyDeclaration?, val column: String, val path: String, val isId: Boolean)
+    data class Target(val type: KSClassDeclaration, val name: String, val column: String?, val columnPrefix: String)
+    data class Field(
+        val field: KSPropertyDeclaration?,
+        val column: String,
+        val rawColumn: String,
+        val path: String,
+        val targetPath: String,
+        val isId: Boolean
+    )
+
+    data class Command(val target: String, val command: String, val alias: String?)
 
     fun parse(sql: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): String {
+        val aliases = collectAliases(sql, method, methodType, repositoryType)
         val sqlBuilder = StringBuilder()
         var prevCmdIndex = 0
         while (true) {
@@ -43,13 +53,65 @@ class QueryMacrosParser {
             }
             val cmdIndexEnd = sql.indexOf(MACROS_END, cmdIndexStart)
             val targetAndCmdAsStr = sql.substring(cmdIndexStart + 2, cmdIndexEnd)
-            val substitution = getSubstitution(targetAndCmdAsStr, method, methodType, repositoryType)
+            val substitution = getSubstitution(targetAndCmdAsStr, method, methodType, repositoryType, aliases)
             sqlBuilder.append(sql, prevCmdIndex, cmdIndexStart).append(substitution)
             prevCmdIndex = cmdIndexEnd + 1
         }
     }
 
-    private fun getPathField(method: KSFunctionDeclaration, target: KSClassDeclaration, rootPath: String, columnPrefix: String): Sequence<Field> {
+    private fun collectAliases(sql: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): Map<String, String> {
+        val aliases = HashMap<String, String>()
+        var prevCmdIndex = 0
+        while (true) {
+            val cmdIndexStart = sql.indexOf(MACROS_START, prevCmdIndex)
+            if (cmdIndexStart == -1) {
+                return aliases
+            }
+            val cmdIndexEnd = sql.indexOf(MACROS_END, cmdIndexStart)
+            val targetAndCmdAsStr = sql.substring(cmdIndexStart + 2, cmdIndexEnd)
+            val command = parseCommand(targetAndCmdAsStr, method)
+            if (command.command == "table" && command.alias != null) {
+                getTarget(command.target, method, methodType, repositoryType)
+                aliases[command.target] = command.alias
+            }
+            prevCmdIndex = cmdIndexEnd + 1
+        }
+    }
+
+    private fun parseCommand(targetAndCommand: String, method: KSFunctionDeclaration): Command {
+        val targetAndCmd = targetAndCommand.split("#", limit = 2)
+        if (targetAndCmd.size == 1) {
+            throw ProcessingErrorException(
+                "Can't extract query marcos and target from: $targetAndCommand",
+                method
+            )
+        }
+
+        val target = targetAndCmd[0].trim()
+        var selectors = targetAndCmd[1].split("-=", limit = 2)
+        if (selectors.size == 1) {
+            selectors = targetAndCmd[1].split("=", limit = 2)
+        }
+
+        val commandAsStr = selectors[0].trim()
+        val lowerCommand = commandAsStr.lowercase()
+        if (lowerCommand.startsWith("table as ")) {
+            val alias = commandAsStr.substring("table as ".length).trim()
+            if (alias.isEmpty()) {
+                throw ProcessingErrorException("Table alias is empty in query marcos: $targetAndCommand", method)
+            }
+            return Command(target, "table", alias)
+        }
+        return Command(target, lowerCommand, null)
+    }
+
+    private fun getPathField(
+        method: KSFunctionDeclaration,
+        target: KSClassDeclaration,
+        rootPath: String,
+        rootTargetPath: String,
+        columnPrefix: String
+    ): Sequence<Field> {
         val nativeType = JdbcNativeTypes.findNativeType(target.toClassName())
         if (nativeType != null) {
             throw ProcessingErrorException("Can't process argument '$rootPath' as macros cause it is Native Type: $target", method)
@@ -68,37 +130,48 @@ class QueryMacrosParser {
 
             if (isEmbedded != null) {
                 val declaration = field.type.resolve().declaration
-                if (declaration !is KSClassDeclaration) {
+                val fieldType = field.type.resolve()
+                val embeddedDeclaration = if (fieldType.isCollection()) {
+                    fieldType.arguments[0].type!!.resolve().declaration
+                } else {
+                    declaration
+                }
+                if (embeddedDeclaration !is KSClassDeclaration) {
                     throw IllegalArgumentException("@Embedded annotation placed on field that can't be embedded: $target")
                 }
                 val prefix = isEmbedded.findValueNoDefault("value") ?: ""
+                val targetPath = if (rootTargetPath.isEmpty())
+                    field.simpleName.asString()
+                else
+                    "$rootTargetPath." + field.simpleName.asString()
 
-                return@flatMap getPathField(method, declaration, path, prefix)
-                    .map { f -> Field(f.field, f.column, f.path, isId) }
+                return@flatMap getPathField(method, embeddedDeclaration, path, targetPath, columnPrefix + prefix)
+                    .map { f -> Field(f.field, f.column, f.rawColumn, f.path, f.targetPath, isId || f.isId) }
             } else {
-                val columnName = getColumnName(target, field, columnPrefix)
-                return@flatMap sequenceOf(Field(field, columnName, path, isId))
+                val rawColumnName = getColumnName(target, field)
+                val columnName = if (columnPrefix.isBlank()) rawColumnName else columnPrefix + rawColumnName
+                return@flatMap sequenceOf(Field(field, columnName, rawColumnName, path, rootTargetPath, isId))
             }
         }
     }
 
-    private fun getColumnName(target: KSClassDeclaration, field: KSPropertyDeclaration, columnPrefix: String): String {
+    private fun getColumnName(target: KSClassDeclaration, field: KSPropertyDeclaration): String {
         val nameConverter = target.getNameConverter(snakeCaseNameConverter)
         val columnAnnotation = field.findAnnotation(DbUtils.columnAnnotation)?.findValueNoDefault<String>("value")
         if (columnAnnotation != null) {
-            return columnPrefix + columnAnnotation
+            return columnAnnotation
         } else {
-            return columnPrefix + nameConverter.convert(field.simpleName.asString())
+            return nameConverter.convert(field.simpleName.asString())
         }
     }
 
     private fun getFields(method: KSFunctionDeclaration, target: Target): List<Field> {
         val nativeType = JdbcNativeTypes.findNativeType(target.type.toClassName())
         if (nativeType != null && target.column != null) {
-            return listOf(Field(field = null, column = target.column, path = target.name, isId = false))
+            return listOf(Field(field = null, column = target.column, rawColumn = target.column, path = target.name, targetPath = target.name, isId = false))
         }
 
-        return getPathField(method, target.type, target.name, "").toList()
+        return getPathField(method, target.type, target.name, target.name, target.columnPrefix).toList()
     }
 
     private fun getCommandSelectorPaths(type: KSClassDeclaration, rootPath: String, selects: String): Set<String> {
@@ -143,9 +216,15 @@ class QueryMacrosParser {
 
     private fun parseDataClassFields(typeDecl: KSClassDeclaration) = typeDecl.getAllProperties()
 
-    private fun getSubstitution(targetAndCommand: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): String {
+    private fun getSubstitution(
+        targetAndCommand: String,
+        method: KSFunctionDeclaration,
+        methodType: KSFunction,
+        repositoryType: KSType,
+        aliases: Map<String, String>
+    ): String {
         try {
-            val targetAndCmd = targetAndCommand.split("#".toRegex()).dropLastWhile { it.isEmpty() }.toList()
+            val targetAndCmd = targetAndCommand.split("#", limit = 2)
             if (targetAndCmd.size == 1) {
                 throw ProcessingErrorException(
                     "Can't extract query marcos and target from: $targetAndCommand",
@@ -153,16 +232,16 @@ class QueryMacrosParser {
                 )
             }
             val target = getTarget(targetAndCmd[0].trim(), method, methodType, repositoryType)
-            var selectors = targetAndCmd[1].split("-=".toRegex()).dropLastWhile { it.isEmpty() }
-                .toTypedArray()
+            val command = parseCommand(targetAndCommand, method)
+            var selectors = targetAndCmd[1].split("-=", limit = 2).toTypedArray()
             val include: Boolean
             if (selectors.size == 1) {
                 include = true
-                selectors = targetAndCmd[1].split("=".toRegex()).dropLastWhile { it.isEmpty() }.toTypedArray()
+                selectors = targetAndCmd[1].split("=", limit = 2).toTypedArray()
             } else {
                 include = false
             }
-            val commandAsStr = selectors[0].trim()
+            val commandAsStr = command.command
 
             val paths = if (selectors.size != 1)
                 getCommandSelectorPaths(target.type, target.name, selectors[1])
@@ -181,8 +260,10 @@ class QueryMacrosParser {
                 ?: nameConverter.convert(target.type.simpleName.asString())
 
             return when (commandAsStr) {
-                "table" -> tableName
-                "selects" -> fields.joinToString(", ") { f -> f.column }
+                "table" -> if (command.alias == null) tableName else "$tableName ${command.alias}"
+                "selects" -> fields.joinToString(", ") { f -> selectExpression(f, aliases) }
+                "columns" -> fields.joinToString(", ") { f -> f.column }
+                "values" -> fields.joinToString(", ") { f -> ":" + f.path }
                 "inserts" -> {
                     val tableAndColumnPrefix = fields.joinToString(", ", "$tableName(", ")") { it.column }
                     val inserts = fields.joinToString(", ", "VALUES (", ")") { ":" + it.path }
@@ -194,7 +275,7 @@ class QueryMacrosParser {
                     .filter { f: Field -> !f.isId }
                     .joinToString(", ") { f: Field -> f.column + " = :" + f.path }
 
-                "where" -> fields.joinToString(" AND ") { it.column + " = :" + it.path }
+                "where" -> fields.joinToString(" AND ") { columnReference(it, aliases) + " = :" + it.path }
                 else -> throw ProcessingErrorException("Unknown query marcos specified: $targetAndCommand", method)
             }
         } catch (e: IllegalArgumentException) {
@@ -202,11 +283,32 @@ class QueryMacrosParser {
         }
     }
 
+    private fun selectExpression(field: Field, aliases: Map<String, String>): String {
+        val reference = columnReference(field, aliases)
+        if (aliases.containsKey(field.targetPath) && field.column != field.rawColumn) {
+            return "$reference AS ${field.column}"
+        }
+        return reference
+    }
+
+    private fun columnReference(field: Field, aliases: Map<String, String>): String {
+        val alias = aliases[field.targetPath] ?: return field.column
+        return "$alias.${field.rawColumn}"
+    }
+
     private fun getTarget(targetName: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): Target {
+        val path = targetName.split(".")
+            .map { it.trim() }
+            .filter { it.isNotBlank() }
+        if (path.isEmpty()) {
+            throw ProcessingErrorException("Macros command unspecified target received: $targetName", method)
+        }
+
         var reference: KSTypeReference? = null
         var type: KSType? = null
+        val rootTargetName = path[0]
 
-        if (TARGET_RETURN == targetName) {
+        if (TARGET_RETURN == rootTargetName) {
             if (method.isVoid()) {
                 throw ProcessingErrorException(
                     "Macros command specified 'return' target, but return value is type Void",
@@ -230,7 +332,7 @@ class QueryMacrosParser {
         } else {
             for (i in method.parameters.indices) {
                 val parameter = method.parameters[i]
-                if (parameter.name!!.asString().contentEquals(targetName)) {
+                if (parameter.name!!.asString().contentEquals(rootTargetName)) {
                     val resolved = parameter.type.resolve()
                     if (resolved.isCollection()) {
                         reference = resolved.arguments[0].type
@@ -244,12 +346,12 @@ class QueryMacrosParser {
             }
 
             if (type == null) {
-                val genericType = getGenericTarget(targetName, method, methodType, repositoryType)
+                val genericType = getGenericTarget(rootTargetName, method, methodType, repositoryType)
                 if (genericType != null) {
                     return genericType
                 }
                 throw ProcessingErrorException(
-                    "Macros command unspecified target received: $targetName",
+                    "Macros command unspecified target received: $rootTargetName",
                     method
                 )
             }
@@ -257,13 +359,38 @@ class QueryMacrosParser {
 
         val resolved = type!!.declaration
         return if (resolved is KSClassDeclaration) {
-            Target(resolved, targetName, getColumnName(method, targetName, reference, type))
+            var target = Target(resolved, rootTargetName, getColumnName(method, rootTargetName, reference, type), "")
+            for (i in 1 until path.size) {
+                target = getChildTarget(method, target, path[i])
+            }
+            target
         } else {
             throw ProcessingErrorException(
                 "Macros command unprocessable target type: $targetName",
                 method
             )
         }
+    }
+
+    private fun getChildTarget(method: KSFunctionDeclaration, target: Target, childName: String): Target {
+        for (field in getFields(target.type)) {
+            if (!field.simpleName.asString().contentEquals(childName)) {
+                continue
+            }
+            val declaration = field.type.resolve().declaration
+            val fieldType = field.type.resolve()
+            val targetDeclaration = if (fieldType.isCollection()) {
+                fieldType.arguments[0].type!!.resolve().declaration
+            } else {
+                declaration
+            }
+            if (targetDeclaration is KSClassDeclaration) {
+                val prefix = field.findAnnotation(DbUtils.embeddedAnnotation)?.findValueNoDefault<String>("value") ?: ""
+                return Target(targetDeclaration, "${target.name}.$childName", null, target.columnPrefix + prefix)
+            }
+            throw ProcessingErrorException("Macros command unprocessable target type: ${target.name}.$childName", method)
+        }
+        throw ProcessingErrorException("Field '$childName' not found, but was present in query marcos target: ${target.name}", method)
     }
 
     private fun getGenericTarget(targetName: String, method: KSFunctionDeclaration, methodType: KSFunction, repositoryType: KSType): Target? {
@@ -316,7 +443,7 @@ class QueryMacrosParser {
     private fun targetFromType(targetName: String, type: KSType): Target {
         val resolved = type.declaration
         return if (resolved is KSClassDeclaration) {
-            Target(resolved, targetName, getColumnName(method = null, targetName, typeReference = null, type))
+            Target(resolved, targetName, getColumnName(method = null, targetName, typeReference = null, type), "")
         } else {
             throw ProcessingErrorException("Macros command unprocessable target type: $targetName", resolved)
         }

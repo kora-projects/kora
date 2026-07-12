@@ -4,6 +4,7 @@ import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.NameUtils;
+import io.koraframework.annotation.processor.common.ProcessingErrorException;
 import io.koraframework.database.annotation.processor.DbEntityReadHelper;
 import io.koraframework.database.annotation.processor.entity.DbEntity;
 
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class JdbcEntityGenerator {
@@ -70,6 +72,11 @@ public class JdbcEntityGenerator {
 
 
     public void generateListResultSetMapper(DbEntity entity) throws IOException {
+        if (entity.hasEmbeddedCollection()) {
+            generateAggregatingListResultSetMapper(entity);
+            return;
+        }
+
         var mapperClassName = listJdbcResultSetMapperName(entity.typeElement());
 
         var type = TypeSpec.classBuilder(mapperClassName)
@@ -100,6 +107,68 @@ public class JdbcEntityGenerator {
         type.addMethod(constructor.build());
         type.addMethod(apply.build());
 
+
+        JavaFile.builder(mapperClassName.packageName(), type.build()).build().writeTo(this.filer);
+    }
+
+    private void generateAggregatingListResultSetMapper(DbEntity entity) throws IOException {
+        var collections = entity.embeddedCollections();
+        if (collections.size() != 1) {
+            throw new ProcessingErrorException("Only one @Embedded collection field is supported in JdbcResultSetMapper: " + entity.typeElement(), collections.get(1).element());
+        }
+        var rootIdColumns = entity.rootIdColumns();
+        if (rootIdColumns.isEmpty()) {
+            throw new ProcessingErrorException("@Id field is required for one-to-many JdbcResultSetMapper root. Entity: " + entity.typeElement()
+                                               + "; root fields: " + entity.rootFieldsDescription()
+                                               + "; add @Id to one of root fields or to a field inside embedded root type, not to @Embedded collection element only.", entity.rootErrorElement());
+        }
+        var collection = collections.get(0);
+        var mapperClassName = listJdbcResultSetMapperName(entity.typeElement());
+
+        var type = TypeSpec.classBuilder(mapperClassName)
+            .addOriginatingElement(entity.typeElement())
+            .addAnnotation(AnnotationUtils.generated(JdbcEntityGenerator.class))
+            .addSuperinterface(ParameterizedTypeName.get(
+                JdbcTypes.RESULT_SET_MAPPER, ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror()))
+            ))
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+        var constructor = MethodSpec.constructorBuilder().addModifiers(Modifier.PUBLIC);
+
+        var apply = MethodSpec.methodBuilder("apply")
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
+            .addParameter(TypeName.get(ResultSet.class), "_rs")
+            .addException(TypeName.get(SQLException.class))
+            .returns(ParameterizedTypeName.get(ClassName.get(List.class), TypeName.get(entity.typeMirror())));
+        apply.addCode("if (!_rs.next()) {\n  return $T.of();\n}\n", List.class);
+        apply.addCode(this.readColumnIds(entity));
+        var row = this.rowMapperGenerator.readEntity("_row", entity);
+        row.enrich(type, constructor);
+        apply.addCode("var _result = new $T<$T>();\n", ArrayList.class, entity.typeMirror());
+        apply.addCode("var _index = new $T<$T<$T>, $T>();\n", LinkedHashMap.class, List.class, Object.class, entity.typeMirror());
+        apply.addCode("do {$>\n");
+        apply.addCode(row.block());
+        var key = CodeBlock.builder();
+        key.add("$T<$T> _key = $T.of(", List.class, Object.class, List.class);
+        for (int i = 0; i < rootIdColumns.size(); i++) {
+            if (i > 0) {
+                key.add(", ");
+            }
+            key.add("$N", rootIdColumns.get(i).variableName());
+        }
+        key.add(");\n");
+        apply.addCode(key.build());
+        apply.addCode("var _existing = _index.get(_key);\n");
+        apply.addCode("if (_existing == null) {$>\n");
+        apply.addCode("_index.put(_key, _row);\n");
+        apply.addCode("_result.add(_row);\n");
+        apply.addCode("$<\n} else {$>\n");
+        apply.addCode("_existing.$L.addAll(_row.$L);\n", collection.recordAccessor(), collection.recordAccessor());
+        apply.addCode("$<\n}\n");
+        apply.addCode("$<\n} while (_rs.next());\n");
+        apply.addCode("return _result;\n");
+
+        type.addMethod(constructor.build());
+        type.addMethod(apply.build());
 
         JavaFile.builder(mapperClassName.packageName(), type.build()).build().writeTo(this.filer);
     }

@@ -8,6 +8,8 @@ import io.koraframework.database.symbol.processor.DbUtils
 import io.koraframework.database.symbol.processor.parseColumnName
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
+import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
+import io.koraframework.ksp.common.CommonClassNames.isCollection
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.getNameConverter
 import io.koraframework.ksp.common.MappersData
@@ -19,7 +21,7 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
         when (it) {
             is SimpleEntityField -> {
                 val propertyName = it.property.simpleName.asString()
-                sequenceOf(Column(it.property, it.type, propertyName, propertyName, it.columnName, listOf(propertyName), it.type.isMarkedNullable, it.mapping))
+                sequenceOf(Column(it.property, it.type, propertyName, propertyName, it.columnName, listOf(propertyName), it.type.isMarkedNullable, it.mapping, it))
             }
 
             is EmbeddedEntityField -> it.fields.asSequence().map { f ->
@@ -33,11 +35,46 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     f.columnName,
                     listOf(parentPropertyName, propertyName),
                     f.type.isMarkedNullable || f.parent.type.isMarkedNullable,
-                    f.mapping
+                    f.mapping,
+                    it
+                )
+            }
+
+            is EmbeddedCollectionEntityField -> it.fields.asSequence().map { f ->
+                val parentPropertyName = f.parent.property.simpleName.asString()
+                val propertyName = f.property.simpleName.asString()
+                Column(
+                    f.property,
+                    f.type,
+                    "$parentPropertyName.$propertyName",
+                    f.variableName,
+                    f.columnName,
+                    listOf(parentPropertyName, propertyName),
+                    f.type.isMarkedNullable,
+                    f.mapping,
+                    it
                 )
             }
         }
     }.toList()
+
+    val embeddedCollections = fields.filterIsInstance<EmbeddedCollectionEntityField>()
+    val hasEmbeddedCollection = embeddedCollections.isNotEmpty()
+    val rootIdColumns = columns
+        .filter { it.entityField !is EmbeddedCollectionEntityField }
+        .filter { it.property.isAnnotationPresent(DbUtils.idAnnotation) }
+    val rootFieldsDescription = fields
+        .filter { it !is EmbeddedCollectionEntityField }
+        .joinToString(", ") { "${it.property.simpleName.asString()} (${it.type})" }
+    val rootErrorElement: KSAnnotated = fields
+        .firstOrNull { it !is EmbeddedCollectionEntityField }
+        ?.let {
+            when (it) {
+                is EmbeddedEntityField -> it.type.declaration
+                else -> it.property
+            }
+        }
+        ?: classDeclaration
 
     data class Column(
         val property: KSPropertyDeclaration,
@@ -47,7 +84,8 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
         val columnName: String,
         val names: List<String>,
         val isNullable: Boolean,
-        val mapping: MappersData
+        val mapping: MappersData,
+        val entityField: EntityField
     ) {
         fun queryParameterName(variableName: String): String {
             return "$variableName.$sqlParameterName"
@@ -87,6 +125,25 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                 b.add("else -> %L", field.buildInstance())
             }
         }
+        for (field in fields) {
+            if (field !is EmbeddedCollectionEntityField) continue
+            val collectionName = field.parent.property.simpleName.asString()
+            b.addStatement("val %N = ArrayList<%T>()", collectionName, field.elementType.declaration.let { it as KSClassDeclaration }.toClassName())
+            b.controlFlow("if (!(%L))", field.fields.map { CodeBlock.of("%N == null", it.variableName) }.joinToCode(" && ")) {
+                for (column in field.fields) {
+                    if (!column.type.isMarkedNullable) {
+                        controlFlow("if (%N == null)", column.variableName) {
+                            addStatement(
+                                "throw %T(%S)",
+                                NullPointerException::class.java,
+                                "Field ${column.property.simpleName.asString()} is not nullable, but column ${column.columnName} is null"
+                            )
+                        }
+                    }
+                }
+                addStatement("%N.add(%L)", collectionName, field.buildElementInstance())
+            }
+        }
         return b.build()
     }
 
@@ -96,11 +153,40 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
         val mapping: MappersData
     }
 
-    private class SimpleEntityField(override val property: KSPropertyDeclaration, override val type: KSType, val columnName: String, override val mapping: MappersData) : EntityField
+    class SimpleEntityField(override val property: KSPropertyDeclaration, override val type: KSType, val columnName: String, override val mapping: MappersData) : EntityField
     private class EmbeddedEntityField(val parent: SimpleEntityField, override val property: KSPropertyDeclaration, override val type: KSType, val fields: List<Field>) : EntityField {
         fun buildInstance(): CodeBlock {
             val b = CodeBlock.builder()
             b.add("%T(", type.declaration.let { it as KSClassDeclaration }.toClassName()).indent().add("\n")
+            for (i in fields.indices) {
+                val field = fields[i]
+                if (i > 0) {
+                    b.add(",\n")
+                }
+                b.add("%N", field.variableName)
+            }
+            b.unindent().add(")\n")
+            return b.build()
+        }
+
+        data class Field(val parent: SimpleEntityField, val property: KSPropertyDeclaration, val type: KSType, val columnName: String, val mapping: MappersData) {
+            val variableName = parent.property.simpleName.asString() + "_" + property.simpleName.asString()
+        }
+
+        override val mapping: MappersData
+            get() = TODO("Not yet implemented")
+    }
+
+    class EmbeddedCollectionEntityField(
+        val parent: SimpleEntityField,
+        override val property: KSPropertyDeclaration,
+        override val type: KSType,
+        val elementType: KSType,
+        val fields: List<Field>
+    ) : EntityField {
+        fun buildElementInstance(): CodeBlock {
+            val b = CodeBlock.builder()
+            b.add("%T(", elementType.declaration.let { it as KSClassDeclaration }.toClassName()).indent().add("\n")
             for (i in fields.indices) {
                 val field = fields[i]
                 if (i > 0) {
@@ -157,6 +243,17 @@ data class DbEntity(val type: KSType, val classDeclaration: KSClassDeclaration, 
                     }
 
                     val prefix = embedded.findValue<String>("value")?.ifEmpty { null } ?: ""
+                    if (propertyType.isCollection()) {
+                        val elementType = propertyType.arguments[0].type!!.resolve()
+                        val entity = parseEntity(elementType)
+                        if (entity == null) {
+                            throw ProcessingErrorException("Embedded collection field should be of data type", property)
+                        }
+                        val embeddedFields = entity.fields.map { f ->
+                            EmbeddedCollectionEntityField.Field(field, f.property, f.type, prefix + (f as SimpleEntityField).columnName, f.mapping)
+                        }
+                        return@map EmbeddedCollectionEntityField(field, property, propertyType, elementType, embeddedFields)
+                    }
                     val entity = parseEntity(propertyType)
                     if (entity == null) {
                         throw ProcessingErrorException("Embedded field should be of data type", property)
