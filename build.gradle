@@ -347,7 +347,7 @@ subprojects {
             showCauses(true)
             showExceptions(true)
             showStackTraces(true)
-            events("failed")
+            events("passed", "skipped", "failed")
             exceptionFormat("full")
         }
     }
