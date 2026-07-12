@@ -287,7 +287,7 @@ String latestVersion(String group, String artifact, String currentVersion, Strin
             versions = versions.findAll { !(it ==~ /(?i).*(alpha|beta|rc|snapshot|milestone|preview|ea|[.-]M\d+).*/) }
         }
         if (currentVersion ==~ /\d+(\.\d+)+/) {
-            def plainVersions = versions.findAll { it ==~ /\d+(\.\d+)+/ }
+            def plainVersions = versions.findAll { it ==~ /\d+(\.\d+)+/ && !isTimestampLikeVersion(it) }
             if (!plainVersions.isEmpty()) {
                 versions = plainVersions
             }
@@ -315,6 +315,10 @@ String versionSortKey(String version) {
         it ==~ /\d+/ ? it.toLong().toString().padLeft(10, '0') : it.toLowerCase(Locale.ROOT)
     }
     parts.join(".")
+}
+
+boolean isTimestampLikeVersion(String version) {
+    version ==~ /\d{8}\.\d{6}(\.\d+)?/
 }
 
 boolean isAllowedUpdate(String currentVersion, String candidateVersion, String updateLevel) {
@@ -366,7 +370,9 @@ void reportVulnerabilities(List<Map> libraryEntries, File reportFile) {
     def vulnerabilityCount = 0
 
     coordinates.values().sort { "${it.group}:${it.artifact}:${it.version}" }.each { coord ->
-        def vulns = queryOsv(coord.group, coord.artifact, coord.version)
+        def vulns = queryOsv(coord.group, coord.artifact, coord.version).findAll {
+            isOsvVulnerabilityApplicable(it, coord.group, coord.artifact, coord.version)
+        }
         if (vulns.isEmpty()) {
             return
         }
@@ -388,8 +394,13 @@ void reportVulnerabilities(List<Map> libraryEntries, File reportFile) {
             }
             ids = ids.unique()
             def summary = vuln.summary ?: "(no summary)"
+            def affectedSummary = affectedRangeSummary(vuln, coord.group, coord.artifact, coord.version)
             println "  - ${ids.join(', ')}: ${summary}"
             markdown << "- `${ids.join('`, `')}`: ${summary}"
+            if (affectedSummary) {
+                println "    affected: ${affectedSummary}"
+                markdown << "  - Affected range: `${affectedSummary}`"
+            }
         }
         println ""
         markdown << ""
@@ -407,6 +418,135 @@ void reportVulnerabilities(List<Map> libraryEntries, File reportFile) {
     reportFile.parentFile.mkdirs()
     reportFile.write(markdown.join(System.lineSeparator()) + System.lineSeparator(), "UTF-8")
     println "Wrote vulnerability report to ${reportFile}"
+}
+
+boolean isOsvVulnerabilityApplicable(Map vuln, String group, String artifact, String version) {
+    def packageBlocks = matchingPackageBlocks(vuln, group, artifact)
+    if (packageBlocks.isEmpty()) {
+        return true
+    }
+    return !applicableAffectedBlocks(vuln, group, artifact, version).isEmpty()
+}
+
+List matchingPackageBlocks(Map vuln, String group, String artifact) {
+    if (!(vuln.affected instanceof Collection)) {
+        return []
+    }
+    def packageName = "${group}:${artifact}"
+    vuln.affected.findAll { block ->
+        block.package?.ecosystem == "Maven" && block.package?.name == packageName
+    }
+}
+
+List applicableAffectedBlocks(Map vuln, String group, String artifact, String version) {
+    matchingPackageBlocks(vuln, group, artifact).findAll { block ->
+        def range = block.database_specific?.last_known_affected_version_range
+        if (range && !isVersionInSimpleRange(version, range)) {
+            return false
+        }
+        if (block.versions instanceof Collection && !block.versions.isEmpty()) {
+            return block.versions.contains(version)
+        }
+        isVersionCoveredByEvents(version, block.ranges)
+    }
+}
+
+String affectedRangeSummary(Map vuln, String group, String artifact, String version) {
+    def summaries = applicableAffectedBlocks(vuln, group, artifact, version).collect { block ->
+        def explicitRange = block.database_specific?.last_known_affected_version_range
+        if (explicitRange) {
+            return explicitRange
+        }
+        def fixed = []
+        if (block.ranges instanceof Collection) {
+            block.ranges.each { range ->
+                if (range.events instanceof Collection) {
+                    fixed.addAll(range.events.collect { it.fixed }.findAll())
+                }
+            }
+        }
+        fixed ? "< ${fixed.sort { versionSortKey(it) }.first()}" : null
+    }.findAll().unique()
+    summaries.join(", ")
+}
+
+boolean isVersionCoveredByEvents(String version, def ranges) {
+    if (!(ranges instanceof Collection)) {
+        return false
+    }
+    ranges.any { range ->
+        if (!(range.events instanceof Collection)) {
+            return false
+        }
+        def introduced = null
+        def fixed = null
+        range.events.each { event ->
+            if (event.introduced != null) {
+                introduced = event.introduced
+            }
+            if (event.fixed != null && fixed == null) {
+                fixed = event.fixed
+            }
+        }
+        def afterIntroduced = introduced == null || introduced == "0" || compareVersions(version, introduced) >= 0
+        def beforeFixed = fixed == null || compareVersions(version, fixed) < 0
+        afterIntroduced && beforeFixed
+    }
+}
+
+boolean isVersionInSimpleRange(String version, String range) {
+    def matcher = range.trim() =~ /^(<|<=|>|>=|=)\s*([A-Za-z0-9_.-]+)$/
+    if (!matcher.matches()) {
+        return true
+    }
+    def operator = matcher[0][1]
+    def boundary = matcher[0][2]
+    def compared = compareVersions(version, boundary)
+    switch (operator) {
+        case "<":
+            return compared < 0
+        case "<=":
+            return compared <= 0
+        case ">":
+            return compared > 0
+        case ">=":
+            return compared >= 0
+        case "=":
+            return compared == 0
+        default:
+            return true
+    }
+}
+
+int compareVersions(String left, String right) {
+    def leftNumbers = numericVersionParts(left) ?: []
+    def rightNumbers = numericVersionParts(right) ?: []
+    def max = Math.max(leftNumbers.size(), rightNumbers.size())
+    for (int i = 0; i < max; i++) {
+        def leftNumber = i < leftNumbers.size() ? leftNumbers[i] : 0L
+        def rightNumber = i < rightNumbers.size() ? rightNumbers[i] : 0L
+        if (leftNumber != rightNumber) {
+            return leftNumber <=> rightNumber
+        }
+    }
+    return qualifierRank(left) <=> qualifierRank(right)
+}
+
+int qualifierRank(String version) {
+    def lower = version.toLowerCase(Locale.ROOT)
+    if (lower.contains("alpha")) {
+        return 0
+    }
+    if (lower.contains("beta")) {
+        return 1
+    }
+    if (lower.contains("rc") || lower.contains("cr")) {
+        return 2
+    }
+    if (lower.contains("final") || lower ==~ /.*\d$/) {
+        return 3
+    }
+    return 3
 }
 
 void reportUpdates(List updates, Map buildSrcResult, String updateLevel, File reportFile) {
