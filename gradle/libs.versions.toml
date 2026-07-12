@@ -26,7 +26,7 @@ netty = "4.2.16.Final"
 okhttp = "5.4.0"
 undertow = "2.4.2.Final"
 undertow-servlet = "2.3.26.Final"
-resteasy = "6.2.16.Final"
+resteasy = "7.0.2.Final"
 
 # Data and messaging
 kafka = "4.3.1"
@@ -42,11 +42,10 @@ protobuf-protoc = "4.35.1"
 # OpenAPI and SOAP
 swagger-coreline = "2.2.52"
 swagger-parser = "2.1.45"
-cxf = "3.6.11"
-jakarta-xml-ws = "3.0.1"
-jakarta-xml-bind = "3.0.1"
+cxf = "4.2.2"
+jakarta-xml-api = "4.0.5"
 javax-jaxb = "2.3.1"
-jaxb-impl = "2.3.9"
+jaxb-impl = "4.0.9"
 
 # BPM
 camunda7 = "7.24.0"
