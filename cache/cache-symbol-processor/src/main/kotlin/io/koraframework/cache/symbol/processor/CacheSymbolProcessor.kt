@@ -41,6 +41,7 @@ class CacheSymbolProcessor(
         private val CAFFEINE_CACHE_FACTORY = ClassName("io.koraframework.cache.caffeine", "CaffeineCacheFactory")
         private val CAFFEINE_CACHE_CONFIG = ClassName("io.koraframework.cache.caffeine", "CaffeineCacheConfig")
         private val CAFFEINE_CACHE_IMPL = ClassName("io.koraframework.cache.caffeine", "AbstractCaffeineCache")
+        private val CAFFEINE_TELEMETRY_FACTORY = ClassName("io.koraframework.cache.caffeine.telemetry", "CaffeineCacheTelemetryFactory")
 
         private val REDIS_TELEMETRY_FACTORY = ClassName("io.koraframework.cache.redis.telemetry", "RedisCacheTelemetryFactory")
         private val REDIS_CACHE = ClassName("io.koraframework.cache.redis", "RedisCache")
@@ -256,7 +257,8 @@ class CacheSymbolProcessor(
                             .build()
                     )
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
-                    .addStatement("return %T(config, factory)", cacheImplName)
+                    .addParameter("telemetryFactory", CAFFEINE_TELEMETRY_FACTORY)
+                    .addStatement("return %T(config, factory, telemetryFactory)", cacheImplName)
                     .returns(cacheTypeName)
                     .build()
             }
@@ -307,6 +309,7 @@ class CacheSymbolProcessor(
                 FunSpec.constructorBuilder()
                     .addParameter("config", CAFFEINE_CACHE_CONFIG)
                     .addParameter("factory", CAFFEINE_CACHE_FACTORY)
+                    .addParameter("telemetryFactory", CAFFEINE_TELEMETRY_FACTORY)
                     .build()
             }
 
@@ -421,10 +424,9 @@ class CacheSymbolProcessor(
             ?.findValueNoDefault<String>("value")!!
 
         return when (cacheType.rawType) {
-            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory", configPath)
+            CAFFEINE_CACHE -> CodeBlock.of("%S, config, factory, telemetryFactory", configPath)
             REDIS_CACHE -> CodeBlock.of("%S, config, redisClient, telemetryFactory, keyMapper, valueMapper", configPath)
             else -> throw IllegalArgumentException("Unknown cache type: ${cacheType.rawType}")
         }
     }
 }
-

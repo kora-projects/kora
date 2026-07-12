@@ -41,7 +41,7 @@ class SyncCacheOneAopTests implements CaffeineCacheModule {
             final Constructor<?> cacheConstructor = cacheClass.getDeclaredConstructors()[0];
             cacheConstructor.setAccessible(true);
             cache = (DummyCache11) cacheConstructor.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null));
+                caffeineCacheFactory(null), defaultCaffeineCacheTelemetryFactory(null, null, null, null));
 
             var serviceClass = classLoader.loadClass(CACHED_SERVICE);
             if (serviceClass == null) {

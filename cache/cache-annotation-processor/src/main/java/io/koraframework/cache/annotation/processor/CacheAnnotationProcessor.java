@@ -29,6 +29,7 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     private static final ClassName CAFFEINE_CACHE_FACTORY = ClassName.get("io.koraframework.cache.caffeine", "CaffeineCacheFactory");
     private static final ClassName CAFFEINE_CACHE_CONFIG = ClassName.get("io.koraframework.cache.caffeine", "CaffeineCacheConfig");
     private static final ClassName CAFFEINE_CACHE_IMPL = ClassName.get("io.koraframework.cache.caffeine", "AbstractCaffeineCache");
+    private static final ClassName CAFFEINE_TELEMETRY_FACTORY = ClassName.get("io.koraframework.cache.caffeine.telemetry", "CaffeineCacheTelemetryFactory");
 
     private static final ClassName REDIS_TELEMETRY_FACTORY = ClassName.get("io.koraframework.cache.redis.telemetry", "RedisCacheTelemetryFactory");
     private static final ClassName REDIS_CACHE = ClassName.get("io.koraframework.cache.redis", "RedisCache");
@@ -315,7 +316,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                     .addAnnotation(TagUtils.makeAnnotationSpec(ClassName.get(cacheImpl)))
                     .build())
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addStatement("return new $T(config, factory)", cacheImplName)
+                .addParameter(CAFFEINE_TELEMETRY_FACTORY, "telemetryFactory")
+                .addStatement("return new $T(config, factory, telemetryFactory)", cacheImplName)
                 .returns(TypeName.get(cacheImpl.asType()))
                 .build();
         }
@@ -365,7 +367,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(CAFFEINE_CACHE_CONFIG, "config")
                 .addParameter(CAFFEINE_CACHE_FACTORY, "factory")
-                .addStatement("super($S, config, factory)", configPath)
+                .addParameter(CAFFEINE_TELEMETRY_FACTORY, "telemetryFactory")
+                .addStatement("super($S, config, factory, telemetryFactory)", configPath)
                 .build();
         }
 
