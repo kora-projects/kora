@@ -1,4 +1,4 @@
-package io.koraframework.soap.client.common;
+package io.koraframework.soap.client.common.util;
 
 import org.w3c.dom.Element;
 import io.koraframework.soap.client.common.envelope.SoapEnvelope;
@@ -7,9 +7,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.util.function.Function;
 
-public final class SoapEnvelopeProcessors {
+public final class SoapEnvelopeProcessorsUtils {
 
-    private SoapEnvelopeProcessors() {}
+    private SoapEnvelopeProcessorsUtils() {}
 
     public static Function<SoapEnvelope, SoapEnvelope> wssAuth(String username, String password) {
         return soapEnvelope -> {

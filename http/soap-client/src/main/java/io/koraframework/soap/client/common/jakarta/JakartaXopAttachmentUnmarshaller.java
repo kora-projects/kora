@@ -3,7 +3,7 @@ package io.koraframework.soap.client.common.jakarta;
 import jakarta.activation.DataHandler;
 import jakarta.activation.DataSource;
 import jakarta.xml.bind.attachment.AttachmentUnmarshaller;
-import io.koraframework.soap.client.common.MultipartParser;
+import io.koraframework.soap.client.common.util.MultipartParserUtils;
 
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -13,9 +13,9 @@ import java.util.Map;
 
 public class JakartaXopAttachmentUnmarshaller extends AttachmentUnmarshaller {
 
-    private final Map<String, MultipartParser.Part> parts;
+    private final Map<String, MultipartParserUtils.Part> parts;
 
-    public JakartaXopAttachmentUnmarshaller(Map<String, MultipartParser.Part> parts) {
+    public JakartaXopAttachmentUnmarshaller(Map<String, MultipartParserUtils.Part> parts) {
         this.parts = parts;
     }
 

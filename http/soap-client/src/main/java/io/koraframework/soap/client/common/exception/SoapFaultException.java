@@ -3,6 +3,7 @@ package io.koraframework.soap.client.common.exception;
 import io.koraframework.soap.client.common.envelope.SoapFault;
 
 public class SoapFaultException extends SoapException {
+
     private final SoapFault fault;
 
     public SoapFaultException(String message, SoapFault fault) {

@@ -65,41 +65,4 @@ interface SoapClasses {
         override fun xmlElementClassName() = ClassName("jakarta.xml.bind.annotation", "XmlElement")
     }
 
-    object JavaxClasses : SoapClasses {
-        override fun jaxbContextTypeName() = ClassName("javax.xml.bind", "JAXBContext")
-
-        override fun jaxbExceptionTypeName() = ClassName("javax.xml.bind", "JAXBException")
-
-        override fun jaxbElementTypeName() = ClassName("javax.xml.bind", "JAXBElement")
-
-        override fun xmlSeeAlsoType() = ClassName("javax.xml.bind.annotation", "XmlSeeAlso")
-
-        override fun webMethodType() = ClassName("javax.jws", "WebMethod")
-
-        override fun responseWrapperType() = ClassName("javax.xml.ws", "ResponseWrapper")
-
-        override fun requestWrapperType() = ClassName("javax.xml.ws", "RequestWrapper")
-
-        override fun webResultType() = ClassName("javax.jws", "WebResult")
-
-        override fun webParamType() = ClassName("javax.jws", "WebParam")
-
-        override fun xmlToolsType() = ClassName("io.koraframework.soap.client.common.javax", "JavaxSoapEnvelopeMapper")
-
-        override fun holderType() = ClassName("javax.xml.ws", "Holder")
-
-        override fun webFaultType() = ClassName("javax.xml.ws", "WebFault")
-
-        override fun webServiceType() = ClassName("javax.jws", "WebService")
-
-        override fun soapBindingType() = ClassName("javax.jws.soap", "SOAPBinding")
-
-        override fun xmlRootElementClassName() = ClassName("javax.xml.bind.annotation", "XmlRootElement")
-
-        override fun xmlAccessorTypeClassName() = ClassName("javax.xml.bind.annotation", "XmlAccessorType")
-
-        override fun xmlAccessTypeClassName() = ClassName("javax.xml.bind.annotation", "XmlAccessType")
-
-        override fun xmlElementClassName() = ClassName("javax.xml.bind.annotation", "XmlElement")
-    }
 }

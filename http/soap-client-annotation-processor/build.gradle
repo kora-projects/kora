@@ -19,16 +19,14 @@ dependencies {
     cxf libs.cxf.tools.wsdlto.core
     cxf libs.cxf.tools.wsdlto.frontend.jaxws
     cxf libs.cxf.tools.wsdlto.databinding.jaxb
-    cxf libs.javax.jaxb.api
-    cxf libs.javax.jws.api
-    cxf libs.javax.jaxws.api
+    cxf libs.jakarta.xml.bind.api
+    cxf libs.jakarta.xml.ws.api
 
     testImplementation testFixtures(project(":core:annotation-processor-common"))
 
-    testImplementation libs.javax.jaxb.api
-    testImplementation libs.sun.jaxb.impl
-    testImplementation libs.javax.jws.api
-    testImplementation libs.javax.jaxws.api
+    testImplementation libs.jakarta.xml.bind.api
+    testImplementation libs.glassfish.jaxb.jakarta
+    testImplementation libs.jakarta.xml.ws.api
 
     testImplementation libs.cxf.rt.bindings.soap
     testImplementation libs.cxf.rt.transports.http.jetty
@@ -47,27 +45,11 @@ ext {
 def wsdl2Java(String path) {
     var wsdlName = path.substring(path.lastIndexOf('/') + 1).replace(".wsdl", "")
     def jakartaOutput = "$buildDir/generated/" + 'wsdl-jakarta-' + wsdlName
-    def javaxOutput = "$buildDir/generated/" + 'wsdl-javax-' + wsdlName
     def jakarta = project.tasks.register('wsdl-jakarta-' + wsdlName, CxfGenTask) {
         inputFile = file(path)
         outputDir = file(jakartaOutput)
-        doLast {
-            ant.replaceregexp(match: 'javax\\.xml\\.bind', replace: 'jakarta.xml.bind', flags: 'g', byline: true) {
-                fileset(dir: jakartaOutput, includes: '**/*.java')
-            }
-            ant.replaceregexp(match: 'javax\\.jws', replace: 'jakarta.jws', flags: 'g', byline: true) {
-                fileset(dir: jakartaOutput, includes: '**/*.java')
-            }
-            ant.replaceregexp(match: 'javax\\.xml\\.ws', replace: 'jakarta.xml.ws', flags: 'g', byline: true) {
-                fileset(dir: jakartaOutput, includes: '**/*.java')
-            }
-        }
     }
-    def javax = project.tasks.register('wsdl-javax-' + wsdlName, CxfGenTask) {
-        inputFile = file(path)
-        outputDir = file(javaxOutput)
-    }
-    compileTestJava.dependsOn jakarta, javax
+    compileTestJava.dependsOn jakarta
 }
 
 wsdl2Java("$projectDir/src/test/wsdl/simple-service.wsdl")
@@ -93,7 +75,7 @@ abstract class CxfGenTask extends DefaultTask {
         try {
             Thread.currentThread().contextClassLoader = project.cxfClassLoader
             def wsdlToJava = project.cxfClassLoader.loadClass('org.apache.cxf.tools.wsdlto.WSDLToJava')
-            wsdlToJava.main(new String[]{'-d', outputDir.get().toString(), '-fe', 'jaxws21', '-autoNameResolution', '-verbose', inputFile.get().asFile.absolutePath})
+            wsdlToJava.main(new String[]{'-d', outputDir.get().toString(), '-autoNameResolution', '-verbose', inputFile.get().asFile.absolutePath})
         } finally {
             Thread.currentThread().contextClassLoader = oldCl
         }

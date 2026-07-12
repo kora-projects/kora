@@ -1,4 +1,4 @@
-package io.koraframework.soap.client.common;
+package io.koraframework.soap.client.common.util;
 
 
 import org.apache.commons.codec.binary.Base64InputStream;
@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
-public final class MultipartParser {
+public final class MultipartParserUtils {
 
     private static final byte[] end = "--".getBytes(UTF_8);
     private static final byte[] br = "\r\n".getBytes(UTF_8);
@@ -22,7 +22,7 @@ public final class MultipartParser {
 
     public record MultipartMeta(String boundary, String start) {}
 
-    private MultipartParser() {}
+    private MultipartParserUtils() {}
 
     public static MultipartMeta parseMeta(String contentType) {
         var boundary = BOUNDARY_PATTERN.matcher(contentType);
@@ -123,7 +123,7 @@ public final class MultipartParser {
         return true;
     }
 
-    public static void writeContentReplacedWithCids(List<MultipartParser.Part> parts, OutputStream os) throws IOException {
+    public static void writeContentReplacedWithCids(List<MultipartParserUtils.Part> parts, OutputStream os) throws IOException {
         var xml = parts.get(0);
         var cids = findCids(parts);
         if (cids.isEmpty()) {

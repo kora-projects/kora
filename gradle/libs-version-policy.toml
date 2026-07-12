@@ -35,15 +35,5 @@ prometheus-metrics = "minor"
 swagger-coreline = "minor"
 swagger-parser = "minor"
 
-# Keep CXF on the 3.x line unless the SOAP generator setup is tested against CXF 4.x.
-cxf = "minor"
-
 # Keep RESTEasy on 6.x unless the Jakarta stack is intentionally migrated.
 resteasy = "minor"
-
-# Keep JAXB APIs on the 3.x line unless consumers are ready for 4.x.
-jakarta-xml-api = "minor"
-
-# Keep legacy javax SOAP/JAXB dependencies on their existing minor line.
-javax-jaxb = "patch"
-jaxb-impl = "patch"

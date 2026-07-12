@@ -19,7 +19,7 @@ import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryConfig;
 import io.koraframework.soap.client.common.telemetry.impl.NoopSoapClientTelemetry;
 import io.koraframework.soap.client.common.telemetry.SoapClientTelemetryFactory;
 
-import javax.xml.ws.Endpoint;
+import jakarta.xml.ws.Endpoint;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -47,11 +47,8 @@ class WebServiceClientAnnotationProcessorTest {
     @Test
     void testGenerate() throws Exception {
         compile("build/generated/wsdl-jakarta-simple-service/");
-        compile("build/generated/wsdl-javax-simple-service/");
         compile("build/generated/wsdl-jakarta-service-with-multipart-response/");
-        compile("build/generated/wsdl-javax-service-with-multipart-response/");
         compile("build/generated/wsdl-jakarta-service-with-rpc/");
-        compile("build/generated/wsdl-javax-service-with-rpc/");
     }
 
     private ClassLoader compile(String path) throws Exception {
@@ -72,7 +69,7 @@ class WebServiceClientAnnotationProcessorTest {
 
     @Test
     void testCxfServer() throws Throwable {
-        var cl = compile("build/generated/wsdl-javax-simple-service/");
+        var cl = compile("build/generated/wsdl-jakarta-simple-service/");
         var serviceClass = cl.loadClass("io.koraframework.simple.service.SimpleService");
         enum RsKind {SUCCESS, FAILURE1, FAILURE2}
         var rsKind = new AtomicReference<RsKind>(RsKind.SUCCESS);
@@ -184,13 +181,13 @@ class WebServiceClientAnnotationProcessorTest {
 
     @Test
     void testRcpResponse() throws Throwable {
-        var cl = compile("build/generated/wsdl-javax-service-with-rpc/");
+        var cl = compile("build/generated/wsdl-jakarta-service-with-rpc/");
         var serviceClass = cl.loadClass("io.koraframework.service.with.rpc.ServiceWithRpc");
         var invocationHandler = (InvocationHandler) Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass, InvocationHandler.class}, (proxy, method, args) -> {
             args = (Object[]) args[2];
             assertThat(args[0]).isEqualTo("test");
-            ((javax.xml.ws.Holder) args[1]).value = "rs1";
-            ((javax.xml.ws.Holder) args[2]).value = "rs2";
+            ((jakarta.xml.ws.Holder) args[1]).value = "rs1";
+            ((jakarta.xml.ws.Holder) args[2]).value = "rs2";
             return null;
         });
         var server = Proxy.newProxyInstance(cl, new Class<?>[]{serviceClass}, invocationHandler);
@@ -199,8 +196,8 @@ class WebServiceClientAnnotationProcessorTest {
             endpoint.publish("http://localhost:0/test");
             var port = this.getEndpointPort(endpoint);
             var client = createClient(cl, "io.koraframework.service.with.rpc.$ServiceWithRpc_SoapClientImpl", "http://localhost:" + port + "/test");
-            var arg2 = new javax.xml.ws.Holder<>();
-            var arg3 = new javax.xml.ws.Holder<>();
+            var arg2 = new jakarta.xml.ws.Holder<>();
+            var arg3 = new jakarta.xml.ws.Holder<>();
 
             invoke(client, "test", void.class, "test", arg2, arg3);
             assertThat(arg2.value).isEqualTo("rs1");

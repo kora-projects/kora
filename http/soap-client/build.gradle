@@ -7,8 +7,5 @@ dependencies {
     api libs.glassfish.jaxb.jakarta
     api libs.commons.codec
     api libs.jakarta.xml.ws.api
-    api libs.jakarta.jws.api
     api libs.jakarta.xml.bind.api
-
-    compileOnlyApi libs.javax.jaxb.api
 }

@@ -8,32 +8,21 @@ import java.util.Map;
 
 
 @jakarta.xml.bind.annotation.XmlAccessorType(jakarta.xml.bind.annotation.XmlAccessType.FIELD)
-@javax.xml.bind.annotation.XmlAccessorType(javax.xml.bind.annotation.XmlAccessType.FIELD)
 @jakarta.xml.bind.annotation.XmlType(name = "Envelope", propOrder = {
     "header",
     "body",
     "any"
 })
-@javax.xml.bind.annotation.XmlType(name = "Envelope", propOrder = {
-    "header",
-    "body",
-    "any"
-})
 @jakarta.xml.bind.annotation.XmlRootElement(namespace = "http://schemas.xmlsoap.org/soap/envelope/", name = "Envelope")
-@javax.xml.bind.annotation.XmlRootElement(namespace = "http://schemas.xmlsoap.org/soap/envelope/", name = "Envelope")
 public class SoapEnvelope {
 
     @jakarta.xml.bind.annotation.XmlElement(name = "Header", namespace = "http://schemas.xmlsoap.org/soap/envelope/")
-    @javax.xml.bind.annotation.XmlElement(name = "Header", namespace = "http://schemas.xmlsoap.org/soap/envelope/")
     protected SoapEnvelopeHeader header = new SoapEnvelopeHeader();
     @jakarta.xml.bind.annotation.XmlElement(name = "Body", namespace = "http://schemas.xmlsoap.org/soap/envelope/", required = true)
-    @javax.xml.bind.annotation.XmlElement(name = "Body", namespace = "http://schemas.xmlsoap.org/soap/envelope/", required = true)
     protected SoapBody body = new SoapBody();
     @jakarta.xml.bind.annotation.XmlAnyElement(lax = true)
-    @javax.xml.bind.annotation.XmlAnyElement(lax = true)
     protected List<Object> any = new ArrayList<>();
     @jakarta.xml.bind.annotation.XmlAnyAttribute
-    @javax.xml.bind.annotation.XmlAnyAttribute
     private Map<QName, String> otherAttributes = new HashMap<>();
 
     public SoapEnvelope() {
