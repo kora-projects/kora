@@ -46,7 +46,7 @@ cxf = "3.6.11"
 jakarta-xml-ws = "3.0.1"
 jakarta-xml-bind = "3.0.1"
 javax-jaxb = "2.3.1"
-jaxb-impl = "3.0.2"
+jaxb-impl = "2.3.9"
 
 # BPM
 camunda7 = "7.24.0"
