@@ -10,10 +10,13 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {
         return super.commonImports() + """
           import io.koraframework.config.common.mapper.ConfigValueMapper
+          import io.koraframework.common.Either
           import io.koraframework.http.client.common.HttpClient
           import io.koraframework.http.client.common.telemetry.HttpClientTelemetryFactory
           import io.koraframework.http.client.common.response.HttpClientResponseMapper
           import io.koraframework.http.common.HttpResponseEntity
+          import io.koraframework.json.common.JsonReader
+          import io.koraframework.json.common.annotation.Json
         """.trimIndent()
     }
 
@@ -99,5 +102,38 @@ class HttpClientKoraExtensionTest : AbstractSymbolProcessorTest() {
         compileResult.assertSuccess()
     }
 
+    @Test
+    fun testExtensionJsonEitherResponseEntity() {
+        compile0(
+            listOf(KoraAppProcessorProvider()), """
+            @KoraApp
+            interface App {
+                @Root
+                fun root(@Json mapper: HttpClientResponseMapper<HttpResponseEntity<Either<String, String>>>): String = ""
+
+                fun reader(): JsonReader<String> = JsonReader { "" }
+            }
+            """
+        )
+
+        compileResult.assertSuccess()
+    }
+
+    @Test
+    fun testExtensionJsonEitherResponseEntityTypeArguments() {
+        compile0(
+            listOf(KoraAppProcessorProvider()), """
+            @KoraApp
+            interface App {
+                @Root
+                fun root(mapper: HttpClientResponseMapper<HttpResponseEntity<Either<@Json String, @Json String>>>): String = ""
+
+                fun reader(): JsonReader<String> = JsonReader { "" }
+            }
+            """
+        )
+
+        compileResult.assertSuccess()
+    }
 
 }

@@ -435,7 +435,12 @@ public class ClientClassGenerator {
             b.addStatement("$L.$N.apply(_response)", ref, responseMapperName);
         } else if (methodData.codeMappers().isEmpty()) {
             b.addStatement("var _code = _response.code()");
-            b.beginControlFlow("if (_code >= 200 && _code < 300)");
+            var responseMapperRange = methodData.responseMapperRange();
+            if (responseMapperRange != null) {
+                b.beginControlFlow("if (_code >= $L && _code <= $L)", responseMapperRange.from(), responseMapperRange.to());
+            } else if (!isHttpResponseEntityEither(resultType)) {
+                b.beginControlFlow("if (_code >= 200 && _code < 300)");
+            }
             if (resultType.getKind() == TypeKind.VOID) {
                 b.addStatement("return");
             } else if (resultType instanceof DeclaredType dt && dt.asElement().toString().equals("java.lang.Void")) {
@@ -447,9 +452,11 @@ public class ClientClassGenerator {
                     : CodeBlock.of("this");
                 b.addStatement("return $L.$N.apply(_response)", ref, responseMapperName);
             }
-            b.nextControlFlow("else");
-            b.addStatement("throw $T.fromResponse(_response)", httpClientResponseException);
-            b.endControlFlow();
+            if (responseMapperRange != null || !isHttpResponseEntityEither(resultType)) {
+                b.nextControlFlow("else");
+                b.addStatement("throw $T.fromResponse(_response)", httpClientResponseException);
+                b.endControlFlow();
+            }
         } else {
             b.addStatement("var _code = _response.code()");
             if (resultType.getKind() != TypeKind.VOID) {
@@ -725,6 +732,23 @@ public class ClientClassGenerator {
         return typeArg.getKind() == TypeKind.TYPEVAR || types.isAssignable(resultType, typeArg);
     }
 
+    private boolean isHttpResponseEntityEither(TypeMirror resultType) {
+        if ((CommonUtils.isCompletionStage(resultType) || CommonUtils.isMono(resultType)) && resultType instanceof DeclaredType dt) {
+            resultType = dt.getTypeArguments().getFirst();
+        }
+        if (!(resultType instanceof DeclaredType responseEntityType)) {
+            return false;
+        }
+        if (!responseEntityType.asElement().toString().equals("io.koraframework.http.common.HttpResponseEntity")) {
+            return false;
+        }
+        var bodyType = responseEntityType.getTypeArguments().getFirst();
+        return bodyType instanceof DeclaredType bodyDeclaredType
+               && bodyDeclaredType.asElement().toString().equals("io.koraframework.common.Either");
+    }
+
+    record ResponseCodeMapperRangeData(int from, int to) {}
+
     record ResponseCodeMapperData(int code, @Nullable TypeMirror type, @Nullable DeclaredType mapper) {
         public TypeName responseMapperType(TypeMirror returnType) {
             if (this.mapper() != null) {
@@ -780,6 +804,7 @@ public class ClientClassGenerator {
         TypeName returnType,
         CommonUtils.@Nullable MappingData responseMapper,
         List<ResponseCodeMapperData> codeMappers,
+        @Nullable ResponseCodeMapperRangeData responseMapperRange,
         List<Parameter> parameters) {
     }
 
@@ -803,13 +828,24 @@ public class ClientClassGenerator {
             }
             var returnType = TypeName.get(method.getReturnType());
             var responseCodeMappers = this.parseMapperData(method);
+            var responseMapperRange = this.parseMapperRangeData(method);
 
             var responseMapper = CommonUtils.parseMapping(method).getMapping(httpClientResponseMapper);
             if (result.stream().noneMatch(n -> n.element().equals(method))) {
-                result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, parameters));
+                result.add(new MethodData(method, returnType, responseMapper, responseCodeMappers, responseMapperRange, parameters));
             }
         }
         return result;
+    }
+
+    private @Nullable ResponseCodeMapperRangeData parseMapperRangeData(ExecutableElement element) {
+        var annotation = AnnotationUtils.findAnnotation(element, responseCodeMapperRange);
+        if (annotation == null) {
+            return null;
+        }
+        var from = Objects.requireNonNull(AnnotationUtils.<Integer>parseAnnotationValueWithoutDefault(annotation, "from"));
+        var to = Objects.requireNonNull(AnnotationUtils.<Integer>parseAnnotationValueWithoutDefault(annotation, "to"));
+        return new ResponseCodeMapperRangeData(from, to);
     }
 
     private List<ResponseCodeMapperData> parseMapperData(ExecutableElement element) {
