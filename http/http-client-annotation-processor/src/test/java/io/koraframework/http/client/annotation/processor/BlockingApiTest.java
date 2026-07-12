@@ -2,11 +2,13 @@ package io.koraframework.http.client.annotation.processor;
 
 import io.koraframework.common.annotation.Component;
 import io.koraframework.common.annotation.Tag;
+import io.koraframework.common.Either;
 import io.koraframework.http.client.common.exception.HttpClientEncoderException;
 import io.koraframework.http.client.common.exception.HttpClientException;
 import io.koraframework.http.client.common.exception.HttpClientResponseException;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
 import io.koraframework.http.client.common.response.HttpClientResponseMapper;
+import io.koraframework.http.common.HttpResponseEntity;
 import io.koraframework.http.common.body.HttpBody;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -89,6 +91,68 @@ public class BlockingApiTest extends AbstractHttpClientTest {
         onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(500));
         assertThatThrownBy(() -> client.invoke("request")).isInstanceOf(HttpClientResponseException.class);
         verify(mapper, never()).apply(any());
+    }
+
+    @Test
+    public void testBlockingNonVoidResponseMapperRange() throws IOException {
+        var mapper = mock(HttpClientResponseMapper.class);
+        compileClient(List.of(mapper), """
+            @HttpClient
+            public interface TestClient {
+              @ResponseCodeMapperRange(from = 0, to = 599)
+              @HttpRoute(method = "POST", path = "/test")
+              String request();
+            }
+            """);
+
+        reset(httpClient, mapper);
+        when(mapper.apply(any())).thenReturn("test");
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(500));
+        assertThat(client.<String>invoke("request"))
+            .isEqualTo("test");
+
+        reset(httpClient, mapper);
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(600));
+        assertThatThrownBy(() -> client.invoke("request")).isInstanceOf(HttpClientResponseException.class);
+        verify(mapper, never()).apply(any());
+    }
+
+    @Test
+    public void testBlockingHttpResponseEntityEitherMapsAllStatuses() throws IOException {
+        var mapper = mock(HttpClientResponseMapper.class);
+        compileClient(List.of(mapper), """
+            import io.koraframework.common.Either;
+            import io.koraframework.http.common.HttpResponseEntity;
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "POST", path = "/test")
+              HttpResponseEntity<Either<String, String>> request();
+            }
+            """);
+
+        reset(httpClient, mapper);
+        when(mapper.apply(any())).thenReturn(HttpResponseEntity.of(500, io.koraframework.http.common.header.HttpHeaders.of(), Either.right("error")));
+        onRequest("POST", "http://test-url:8080/test", rs -> rs.withCode(500));
+        assertThat(client.<HttpResponseEntity<?>>invoke("request").body()).isInstanceOf(Either.Right.class);
+        verify(mapper).apply(any());
+    }
+
+    @Test
+    public void testBlockingHttpResponseEntityEitherJsonTagsCompile() {
+        var mapper1 = mock(HttpClientResponseMapper.class);
+        var mapper2 = mock(HttpClientResponseMapper.class);
+        compileClient(List.of(mapper1, mapper2), """
+            import io.koraframework.common.Either;
+            import io.koraframework.http.common.HttpResponseEntity;
+            import io.koraframework.json.common.annotation.Json;
+            @HttpClient
+            public interface TestClient {
+              @HttpRoute(method = "GET", path = "/top")
+              @Json HttpResponseEntity<Either<String, String>> top();
+              @HttpRoute(method = "GET", path = "/nested")
+              HttpResponseEntity<Either<@Json String, @Json String>> nested();
+            }
+            """);
     }
 
     @Test
