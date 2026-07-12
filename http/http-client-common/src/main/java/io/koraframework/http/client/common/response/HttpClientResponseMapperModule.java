@@ -72,7 +72,7 @@ public interface HttpClientResponseMapperModule {
         return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
     default <T> JsonHttpClientResponseMapper<T> httpClientResponseJsonMapper(JsonReader<T> reader) {
         return new JsonHttpClientResponseMapper<>(reader);

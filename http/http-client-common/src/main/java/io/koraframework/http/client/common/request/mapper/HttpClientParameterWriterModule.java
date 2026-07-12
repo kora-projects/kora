@@ -99,7 +99,7 @@ public interface HttpClientParameterWriterModule {
         return DateTimeFormatter.ISO_INSTANT::format;
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
     default <T> HttpClientParameterWriter<T> httpClientParameterJsonWriter(JsonWriter<T> jsonWriter) {
         return new JsonHttpClientParameterWriter<>(jsonWriter);
