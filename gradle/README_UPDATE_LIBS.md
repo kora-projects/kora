@@ -128,13 +128,14 @@ This mode queries the OSV.dev API for Maven packages using the current
 `group:artifact:version` values from `libs.versions.toml`.
 
 The report prints coordinates that have known vulnerabilities, including OSV
-IDs, CVE aliases when available, and short summaries:
+IDs, CVE aliases when available, affected version ranges, and short summaries:
 
 ```text
 Vulnerability report via OSV.dev for 120 Maven coordinates:
 
 io.undertow:undertow-core:2.3.18.Final (undertow-core)
   - GHSA-..., CVE-....: ...
+    affected: < 2.4.0.Beta1
 ```
 
 When `-PreportVulnerabilities=true` is used without `-PwriteVersions=true`, the
@@ -149,7 +150,10 @@ You can combine the vulnerability report with a write run:
 
 MvnRepository also shows vulnerability badges in its UI, but those pages are not
 used by the script because they may require browser JavaScript/cookies. OSV.dev
-is used instead as a script-friendly vulnerability source.
+is used instead as a script-friendly vulnerability source. Some OSV records may
+contain broad generated version lists together with a narrower
+`last_known_affected_version_range`; the report uses that range as a sanity
+check before reporting a coordinate as vulnerable.
 
 ## Dependency Update Report
 

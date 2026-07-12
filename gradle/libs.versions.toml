@@ -3,38 +3,38 @@
 guava = "33.6.0-jre"
 jetbrains-annotations = "26.1.0"
 slf4j = "2.0.18"
-logback = "1.5.37"
+logback = "1.5.38"
 
 # Kotlin and code generation
 kotlin-stdlib = "2.4.0" # Visit https://kotlinlang.org/docs/releases.html#release-details to see versions compatability
-ksp = "2.3.9"
+ksp = "2.3.10"
 kotlinpoet = "2.3.0"
 mapstruct = "1.6.3"
 
 # Observability
 micrometer = "1.17.0"
-opentelemetry = "1.63.0"
+opentelemetry = "1.64.0"
 prometheus-metrics = "1.8.0"
 
 # Serialization
-jackson = "3.2.0"
-jackson2-coreline = "2.22.0"
+jackson = "3.2.1"
+jackson2-coreline = "2.22.1"
 jackson2-annotations = "2.22"
 
 # Network and HTTP
-netty = "4.2.15.Final"
+netty = "4.2.16.Final"
 okhttp = "5.4.0"
 undertow = "2.4.2.Final"
-undertow-servlet = "2.3.25.Final"
-resteasy = "6.2.16.Final"
+undertow-servlet = "2.3.26.Final"
+resteasy = "7.0.2.Final"
 
 # Data and messaging
 kafka = "4.3.1"
 cassandra = "4.19.3"
-flyway = "12.10.0"
+flyway = "12.11.0"
 
 # gRPC and protobuf
-grpc-java = "1.82.1"
+grpc-java = "1.82.2"
 grpc-kotlin = "1.5.0"
 protobuf-java = "4.35.1"
 protobuf-protoc = "4.35.1"
@@ -42,20 +42,20 @@ protobuf-protoc = "4.35.1"
 # OpenAPI and SOAP
 swagger-coreline = "2.2.52"
 swagger-parser = "2.1.45"
-cxf = "3.6.11"
-jakarta-xml-api = "3.0.1"
+cxf = "4.2.2"
+jakarta-xml-api = "4.0.5"
 javax-jaxb = "2.3.1"
-jaxb-impl = "2.3.9"
+jaxb-impl = "4.0.9"
 
 # BPM
 camunda7 = "7.24.0"
-zeebe = "8.9.11"
+zeebe = "8.9.12"
 
 # Tests
-junit = "6.1.1"
-mockserver = "7.2.0"
+junit = "6.1.2"
+mockserver = "7.4.0"
 testcontainers = "2.0.5"
-byte-buddy = "1.18.10"
+byte-buddy = "1.18.11"
 
 # Build plugins
 maven-compiler-plugin = "3.8.1"
@@ -66,7 +66,7 @@ protobuf-plugin = "0.10.0"
 # Commons
 commons-cli = "1.11.0"
 commons-codec = "1.22.0"
-commons-collections = "3.2.2"
+commons-collections = "20040102.233541"
 commons-fileupload = "1.6.0"
 commons-io = "2.22.0"
 commons-lang3 = "3.20.0"
@@ -95,7 +95,7 @@ opentelemetry-context = { module = "io.opentelemetry:opentelemetry-context", ver
 opentelemetry-api = { module = "io.opentelemetry:opentelemetry-api", version.ref = "opentelemetry" }
 opentelemetry-exporter-sender-jdk = { module = "io.opentelemetry:opentelemetry-exporter-sender-jdk", version.ref = "opentelemetry" }
 opentelemetry-exporter-otlp = { module = "io.opentelemetry:opentelemetry-exporter-otlp", version.ref = "opentelemetry" }
-opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.42.0" }
+opentelemetry-semconv = { module = "io.opentelemetry.semconv:opentelemetry-semconv", version = "1.43.0" }
 opentelemetry-semconv-incubating = { module = "io.opentelemetry.semconv:opentelemetry-semconv-incubating", version = "1.37.0-alpha" }
 opentelemetry-micrometer-meter-provider = { module = "io.opentelemetry.contrib:opentelemetry-micrometer-meter-provider", version = "1.48.0-alpha" }
 
@@ -124,7 +124,7 @@ jackson2-datatype-jsr310 = { module = "com.fasterxml.jackson.datatype:jackson-da
 jackson2-jakarta-rs-base = { module = "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-base", version.ref = "jackson2-coreline" }
 jackson2-jakarta-rs-json-provider = { module = "com.fasterxml.jackson.jakarta.rs:jackson-jakarta-rs-json-provider", version.ref = "jackson2-coreline" }
 jackson2-module-jakarta-xmlbind-annotations = { module = "com.fasterxml.jackson.module:jackson-module-jakarta-xmlbind-annotations", version.ref = "jackson2-coreline" }
-jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.12" }
+jdbc-postgresql = { module = "org.postgresql:postgresql", version = "42.7.13" }
 hikari = { module = "com.zaxxer:HikariCP", version = "7.1.0" }
 flyway = { module = "org.flywaydb:flyway-core", version.ref = "flyway" }
 flyway-postgres = { module = "org.flywaydb:flyway-database-postgresql", version.ref = "flyway" }
@@ -250,7 +250,7 @@ cxf-rt-transports-http-jetty = { module = "org.apache.cxf:cxf-rt-transports-http
 cxf-rt-frontend-jaxws = { module = "org.apache.cxf:cxf-rt-frontend-jaxws", version.ref = "cxf" }
 
 s3client-minio = { module = "io.minio:minio", version = "9.0.3" }
-s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.46.18" }
+s3client-aws = { module = "software.amazon.awssdk:s3", version = "2.47.5" }
 
 camunda7-engine = { module = "org.camunda.bpm:camunda-engine", version.ref = "camunda7" }
 camunda7-rest-jakarta = { module = "org.camunda.bpm:camunda-engine-rest-jakarta", version.ref = "camunda7" }
