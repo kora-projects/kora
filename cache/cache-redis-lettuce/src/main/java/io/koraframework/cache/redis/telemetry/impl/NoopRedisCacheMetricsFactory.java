@@ -1,5 +1,6 @@
 package io.koraframework.cache.redis.telemetry.impl;
 
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
 import org.jspecify.annotations.Nullable;
 
 public final class NoopRedisCacheMetricsFactory extends DefaultRedisCacheMetricsFactory {
@@ -22,12 +23,12 @@ public final class NoopRedisCacheMetricsFactory extends DefaultRedisCacheMetrics
         }
 
         @Override
-        public void reportCommandTook(String operation, long startedRecordsHandleInNanos, @Nullable Throwable error) {
+        public void reportCommandTook(RedisCacheTelemetry.Operation operation, long startedRecordsHandleInNanos, @Nullable Throwable error) {
             // do nothing
         }
 
         @Override
-        public void reportRatioChange(String operation, RatioType ratioType, int change) {
+        public void reportRatioChange(RedisCacheTelemetry.Operation operation, RatioType ratioType, int change) {
             // do nothing
         }
     }

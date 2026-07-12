@@ -1,5 +1,6 @@
 package io.koraframework.cache.redis.telemetry.impl;
 
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.helpers.NOPLogger;
 
@@ -25,22 +26,22 @@ public final class NoopRedisCacheLoggerFactory extends DefaultRedisCacheLoggerFa
         }
 
         @Override
-        public void logStart(String operation, Object key) {
+        public void logStart(RedisCacheTelemetry.Operation operation, Object key) {
 
         }
 
         @Override
-        public void logStart(String operation, Collection<?> keys) {
+        public void logStart(RedisCacheTelemetry.Operation operation, Collection<?> keys) {
 
         }
 
         @Override
-        public void logEnd(String operation, long startedInNanos, @Nullable Throwable error) {
+        public void logEnd(RedisCacheTelemetry.Operation operation, long startedInNanos, @Nullable Throwable error) {
 
         }
 
         @Override
-        public void logEnd(String operation, long startedInNanos, int retrieved, int missed) {
+        public void logEnd(RedisCacheTelemetry.Operation operation, long startedInNanos, int retrieved, int missed) {
 
         }
     }

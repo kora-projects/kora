@@ -16,6 +16,8 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static io.koraframework.cache.redis.telemetry.RedisCacheTelemetry.Operation.*;
+
 public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     private final Logger logger;
@@ -70,7 +72,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return null;
         }
 
-        var observation = this.telemetry.observe("GET");
+        var observation = this.telemetry.observe(GET);
         return ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -103,7 +105,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return Collections.emptyMap();
         }
 
-        var observation = this.telemetry.observe("GET_MANY");
+        var observation = this.telemetry.observe(GET_MANY);
         return ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -148,7 +150,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return null;
         }
 
-        var observation = this.telemetry.observe("PUT");
+        var observation = this.telemetry.observe(PUT);
         return ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -182,7 +184,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return Collections.emptyMap();
         }
 
-        var observation = this.telemetry.observe("PUT_MANY");
+        var observation = this.telemetry.observe(PUT_MANY);
         return ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -229,7 +231,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return mappingFunction.apply(key);
         }
 
-        var observation = this.telemetry.observe("COMPUTE_IF_ABSENT");
+        var observation = this.telemetry.observe(COMPUTE_IF_ABSENT);
         return ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -286,7 +288,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return mappingFunction.apply(Collections.emptySet());
         }
 
-        var observation = this.telemetry.observe("COMPUTE_IF_ABSENT_MANY");
+        var observation = this.telemetry.observe(COMPUTE_IF_ABSENT_MANY);
         return ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -314,6 +316,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
                     } catch (Exception e) {
                         observation.observeError(e);
                     }
+                    observation.observeValues(fromCache);
 
                     if (fromCache.size() == keys.size()) {
                         return fromCache;
@@ -346,7 +349,6 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
                         }
                     }
                     fromCache.putAll(values);
-                    observation.observeValues(fromCache);
                     return fromCache;
                 } catch (CompletionException e) {
                     observation.observeError(e.getCause());
@@ -366,7 +368,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return;
         }
 
-        var observation = this.telemetry.observe("INVALIDATE");
+        var observation = this.telemetry.observe(INVALIDATE);
         ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -391,7 +393,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
             return;
         }
 
-        var observation = this.telemetry.observe("INVALIDATE_MANY");
+        var observation = this.telemetry.observe(INVALIDATE_MANY);
         ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))
@@ -415,7 +417,7 @@ public abstract class AbstractRedisCache<K, V> implements RedisCache<K, V> {
 
     @Override
     public void invalidateAll() {
-        var observation = this.telemetry.observe("INVALIDATE_ALL");
+        var observation = this.telemetry.observe(INVALIDATE_ALL);
         ScopedValue
             .where(Observation.VALUE, observation)
             .where(OpentelemetryContext.VALUE, Context.current().with(observation.span()))

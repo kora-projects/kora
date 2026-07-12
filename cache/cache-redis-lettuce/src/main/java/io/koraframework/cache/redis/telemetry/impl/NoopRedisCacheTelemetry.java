@@ -10,7 +10,7 @@ public final class NoopRedisCacheTelemetry implements RedisCacheTelemetry {
     private NoopRedisCacheTelemetry() {}
 
     @Override
-    public RedisCacheObservation observe(String operation) {
+    public RedisCacheObservation observe(Operation operation) {
         return NoopRedisCacheObservation.INSTANCE;
     }
 }

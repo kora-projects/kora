@@ -1,6 +1,7 @@
 package io.koraframework.cache.redis.telemetry.impl;
 
 import io.koraframework.cache.redis.telemetry.RedisCacheObservation;
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
 import io.koraframework.cache.redis.telemetry.impl.DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics.RatioType;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.api.trace.StatusCode;
@@ -13,7 +14,7 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
 
     protected final long operationStarted = System.nanoTime();
 
-    protected final String operation;
+    protected final RedisCacheTelemetry.Operation operation;
     protected final DefaultRedisCacheTelemetry.TelemetryContext context;
     protected final DefaultRedisCacheLoggerFactory.DefaultRedisCacheLogger logger;
     protected final DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics metrics;
@@ -30,7 +31,7 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
     @Nullable
     protected Collection<?> keys;
 
-    public DefaultRedisCacheObservation(String operation,
+    public DefaultRedisCacheObservation(RedisCacheTelemetry.Operation operation,
                                         DefaultRedisCacheTelemetry.TelemetryContext context,
                                         DefaultRedisCacheLoggerFactory.DefaultRedisCacheLogger logger,
                                         DefaultRedisCacheMetricsFactory.DefaultRedisCacheMetrics metrics,
@@ -83,7 +84,7 @@ public class DefaultRedisCacheObservation implements RedisCacheObservation {
 
         var retrieved = 0;
         var missed = 0;
-        if (operation.startsWith("GET")) {
+        if (operation.hasCacheResult()) {
             if (value != null) {
                 metrics.reportRatioChange(operation, RatioType.HIT, 1);
                 retrieved = 1;
