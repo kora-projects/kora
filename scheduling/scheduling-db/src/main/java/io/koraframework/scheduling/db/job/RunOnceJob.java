@@ -1,4 +1,4 @@
-package io.koraframework.scheduling.db;
+package io.koraframework.scheduling.db.job;
 
 import com.github.kagkarlsson.scheduler.SchedulerClient;
 import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
@@ -16,8 +16,8 @@ public final class RunOnceJob extends AbstractJob {
 
     public RunOnceJob(SchedulingTelemetry telemetry, Runnable command, String name, Duration delay) {
         super(telemetry, command, name);
-        this.task = Tasks.oneTime(name).execute((instance, context) -> this.runJob());
         this.delay = Objects.requireNonNull(delay);
+        this.task = Tasks.oneTime(name).execute((instance, context) -> this.runJob());
     }
 
     @Override

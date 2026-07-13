@@ -1,5 +1,6 @@
 package io.koraframework.scheduling.db;
 
+import io.koraframework.scheduling.db.util.SchedulingDbInitializerUtils;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -13,7 +14,7 @@ import java.sql.Statement;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
-class DbSchedulerTableInitializerTest {
+class SchedulingDbInitializerUtilsTest {
 
     @Test
     void skipsInitializationWhenTableExists() throws Exception {
@@ -25,7 +26,7 @@ class DbSchedulerTableInitializerTest {
         when(connection.getAutoCommit()).thenReturn(true);
         when(connection.createStatement()).thenReturn(statement);
 
-        DbSchedulerTableInitializer.initialize(dataSource, "scheduled_tasks");
+        SchedulingDbInitializerUtils.initialize(dataSource, "scheduled_tasks");
 
         Mockito.verify(statement).execute("select 1 from scheduled_tasks where 1 = 0");
         Mockito.verify(connection, Mockito.never()).getMetaData();
@@ -50,7 +51,7 @@ class DbSchedulerTableInitializerTest {
         when(connection.createStatement()).thenReturn(tableCheck, createTable, createExecutionTimeIndex, createLastHeartbeatIndex, createPriorityIndex);
         when(tableCheck.execute("select 1 from app_tasks where 1 = 0")).thenThrow(new SQLException("missing table"));
 
-        DbSchedulerTableInitializer.initialize(dataSource, "app_tasks");
+        SchedulingDbInitializerUtils.initialize(dataSource, "app_tasks");
 
         var sql = ArgumentCaptor.forClass(String.class);
         Mockito.verify(createTable).execute(sql.capture());

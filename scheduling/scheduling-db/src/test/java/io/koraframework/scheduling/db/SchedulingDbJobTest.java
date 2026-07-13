@@ -5,6 +5,9 @@ import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingObservation;
+import io.koraframework.scheduling.db.job.CronJob;
+import io.koraframework.scheduling.db.job.FixedDelayJob;
+import io.koraframework.scheduling.db.job.RunOnceJob;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
@@ -18,7 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
 
-class KoraDbScheduledJobTest {
+class SchedulingDbJobTest {
 
     @Test
     void cronJobCreatesRecurringTaskAndRunsCommandWithTelemetry() {
@@ -27,7 +30,6 @@ class KoraDbScheduledJobTest {
         var job = new CronJob(telemetry, calls::incrementAndGet, "cron-job", "*/10 * * * * *");
 
         assertThat(job.task()).isInstanceOf(RecurringTask.class);
-        assertThat(job.startupTask()).isSameAs(job.task());
         assertThat(job.task().getName()).isEqualTo("cron-job");
 
         job.task().execute(job.task().instance("default"), null);
@@ -43,7 +45,6 @@ class KoraDbScheduledJobTest {
         var job = new FixedDelayJob(telemetry, calls::incrementAndGet, "fixed-delay-job", Duration.ofSeconds(1), Duration.ofSeconds(5));
 
         assertThat(job.task()).isInstanceOf(RecurringTask.class);
-        assertThat(job.startupTask()).isSameAs(job.task());
         assertThat(job.task().getName()).isEqualTo("fixed-delay-job");
 
         job.task().execute(job.task().instance("default"), null);
@@ -59,7 +60,6 @@ class KoraDbScheduledJobTest {
         var job = new RunOnceJob(telemetry, calls::incrementAndGet, "once-job", Duration.ofSeconds(3));
 
         assertThat(job.task()).isInstanceOf(OneTimeTask.class);
-        assertThat(job.startupTask()).isNull();
         assertThat(job.task().getName()).isEqualTo("once-job");
 
         job.task().execute(job.task().instance("once-job"), null);

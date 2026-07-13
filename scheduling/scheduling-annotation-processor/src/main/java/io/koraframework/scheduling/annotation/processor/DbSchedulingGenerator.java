@@ -21,7 +21,6 @@ import javax.lang.model.util.Elements;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
-import java.util.Optional;
 
 public final class DbSchedulingGenerator {
 
@@ -29,10 +28,10 @@ public final class DbSchedulingGenerator {
     public static final ClassName scheduleOnce = ClassName.get("io.koraframework.scheduling.db.annotation", "ScheduleOnce");
     public static final ClassName scheduleWithFixedDelay = ClassName.get("io.koraframework.scheduling.db.annotation", "ScheduleWithFixedDelay");
 
-    private static final ClassName dbScheduledJobClassName = ClassName.get("io.koraframework.scheduling.db", "DbScheduledJob");
-    private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.db", "CronJob");
-    private static final ClassName fixedDelayJobClassName = ClassName.get("io.koraframework.scheduling.db", "FixedDelayJob");
-    private static final ClassName runOnceJobClassName = ClassName.get("io.koraframework.scheduling.db", "RunOnceJob");
+    private static final ClassName dbScheduledJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "SchedulingDbJob");
+    private static final ClassName cronJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "CronJob");
+    private static final ClassName fixedDelayJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "FixedDelayJob");
+    private static final ClassName runOnceJobClassName = ClassName.get("io.koraframework.scheduling.db.job", "RunOnceJob");
     private static final ClassName schedulingJobConfigClassName = ClassName.get("io.koraframework.scheduling.common", "SchedulingJobConfig");
     private static final ClassName schedulingTelemetryFactoryClassName = ClassName.get("io.koraframework.scheduling.common.telemetry", "SchedulingTelemetryFactory");
     private static final ClassName nullableClassName = ClassName.get("org.jspecify.annotations", "Nullable");
@@ -73,7 +72,7 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either value() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get(null, null, $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("return new $T(telemetry, () -> object.get().$N(), $S, $S);\n", cronJobClassName, method.getSimpleName(), name, cron);
         } else {
             var packageName = this.elements.getPackageOf(type).getQualifiedName().toString();
@@ -87,7 +86,7 @@ public final class DbSchedulingGenerator {
             module.addMethod(cronConfigComponent(packageName, configClassName, configName, cron));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S);\n", configName, type, method.getSimpleName())
                 .addCode("var name = config.name();\n")
                 .addCode("if (name == null || name.isBlank()) name = $S;\n", name)
                 .addCode("return new $T(telemetry, () -> object.get().$N(), name, config.cron());\n", cronJobClassName, method.getSimpleName());
@@ -108,7 +107,7 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get(null, null, $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var initialDelay = $T.of($L, $T.$L);\n", Duration.class, initialDelay, ChronoUnit.class, unit)
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit)
                 .addCode("return new $T(telemetry, () -> object.get().$N(), $S, initialDelay, delay);\n", fixedDelayJobClassName, method.getSimpleName(), name);
@@ -125,7 +124,7 @@ public final class DbSchedulingGenerator {
             module.addMethod(configComponent(packageName, configClassName, configName));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S);\n", configName, type, method.getSimpleName())
                 .addCode("var name = config.name();\n")
                 .addCode("if (name == null || name.isBlank()) name = $S;\n", name)
                 .addCode("return new $T(telemetry, () -> object.get().$N(), name, config.initialDelay(), config.delay());\n", fixedDelayJobClassName, method.getSimpleName());
@@ -145,7 +144,7 @@ public final class DbSchedulingGenerator {
                 throw new ProcessingErrorException("Either delay() or config() annotation parameter must be provided", method, trigger.triggerAnnotation());
             }
             component
-                .addCode("var telemetry = telemetryFactory.get(null, $T.class, $S);\n", type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get(null, null, $T.class, $S);\n", type, method.getSimpleName())
                 .addCode("var delay = $T.of($L, $T.$L);\n", Duration.class, delay, ChronoUnit.class, unit)
                 .addCode("return new $T(telemetry, () -> object.get().$N(), $S, delay);\n", runOnceJobClassName, method.getSimpleName(), name);
         } else {
@@ -160,7 +159,7 @@ public final class DbSchedulingGenerator {
             module.addMethod(configComponent(packageName, configClassName, configName));
             component.addParameter(ClassName.get(packageName, configClassName), "config");
             component
-                .addCode("var telemetry = telemetryFactory.get(config.telemetry(), $T.class, $S);\n", type, method.getSimpleName())
+                .addCode("var telemetry = telemetryFactory.get($S, config.telemetry(), $T.class, $S);\n", configName, type, method.getSimpleName())
                 .addCode("var name = config.name();\n")
                 .addCode("if (name == null || name.isBlank()) name = $S;\n", name)
                 .addCode("return new $T(telemetry, () -> object.get().$N(), name, config.delay());\n", runOnceJobClassName, method.getSimpleName());
@@ -183,7 +182,7 @@ public final class DbSchedulingGenerator {
             .addAnnotation(AnnotationUtils.generated(DbSchedulingGenerator.class))
             .addModifiers(Modifier.PUBLIC)
             .addSuperinterface(schedulingJobConfigClassName)
-            .addAnnotation(CommonClassNames.configValueExtractorAnnotation);
+            .addAnnotation(CommonClassNames.configMapperAnnotation);
     }
 
     private static String name(TypeElement type, Element method, String name) {
@@ -234,9 +233,9 @@ public final class DbSchedulingGenerator {
         return MethodSpec.methodBuilder(configClassName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, ClassName.get(packageName, configClassName)), "extractor")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, ClassName.get(packageName, configClassName)), "extractor")
             .addCode("var configValue = config.get($S);\n", configPath)
-            .addStatement("return $T.ofNullable(extractor.extract(configValue)).orElseThrow(() -> $T.missingValueAfterParse(configValue))", Optional.class, CommonClassNames.configValueExtractionException)
+            .addStatement("return extractor.mapOrThrow(configValue)")
             .returns(ClassName.get(packageName, configClassName))
             .build();
     }
@@ -246,26 +245,26 @@ public final class DbSchedulingGenerator {
         var method = MethodSpec.methodBuilder(configClassName)
             .addModifiers(Modifier.DEFAULT, Modifier.PUBLIC)
             .addParameter(CommonClassNames.config, "config")
-            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueExtractor, configType), "extractor")
+            .addParameter(ParameterizedTypeName.get(CommonClassNames.configValueMapper, configType), "extractor")
             .returns(configType)
             .addStatement("var value = config.get($S)", configPath);
 
         if (defaultCron != null && !defaultCron.isBlank()) {
             method.beginControlFlow("if (value instanceof $T.NullValue)", CommonClassNames.configValue)
-                .addCode("return extractor.extract($>\n")
+                .addCode("return extractor.mapOrThrow($>\n")
                 .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), $S)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue, defaultCron)
                 .addCode("$<\n);\n")
                 .endControlFlow();
         }
         method.beginControlFlow("if (value instanceof $T.StringValue str)", CommonClassNames.configValue)
             .addStatement("var cron = str.value()")
-            .addCode("return extractor.extract($>\n")
+            .addCode("return extractor.mapOrThrow($>\n")
             .addCode("new $T.ObjectValue(value.origin(), $T.of($S, new $T.StringValue(value.origin(), cron)))", CommonClassNames.configValue, Map.class, "cron", CommonClassNames.configValue)
             .addCode("$<\n);\n")
             .nextControlFlow("else if (value instanceof $T.ObjectValue obj)", CommonClassNames.configValue)
-            .addStatement("return extractor.extract(obj)")
+            .addStatement("return extractor.mapOrThrow(obj)")
             .nextControlFlow("else")
-            .addStatement("throw $T.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValueExtractionException, CommonClassNames.configValue)
+            .addStatement("throw $T.unexpectedValueType(value, $T.StringValue.class)", CommonClassNames.configValueException, CommonClassNames.configValue)
             .endControlFlow();
         return method.build();
     }

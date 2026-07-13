@@ -1,16 +1,14 @@
-package io.koraframework.scheduling.db;
+package io.koraframework.scheduling.db.job;
 
 import com.github.kagkarlsson.scheduler.task.Task;
-import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
-import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
 
 import java.util.Objects;
 
-public abstract class AbstractJob implements DbScheduledJob {
+public abstract class AbstractJob implements SchedulingDbJob {
 
     protected final SchedulingTelemetry telemetry;
     protected final Runnable command;
@@ -24,12 +22,6 @@ public abstract class AbstractJob implements DbScheduledJob {
 
     @Override
     public abstract Task<?> task();
-
-    @Override
-    @Nullable
-    public RecurringTask<?> startupTask() {
-        return null;
-    }
 
     protected final void runJob() {
         ScopedValue.where(io.koraframework.logging.common.MDC.VALUE, new io.koraframework.logging.common.MDC())

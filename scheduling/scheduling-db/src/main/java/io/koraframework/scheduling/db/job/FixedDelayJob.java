@@ -1,4 +1,4 @@
-package io.koraframework.scheduling.db;
+package io.koraframework.scheduling.db.job;
 
 import com.github.kagkarlsson.scheduler.task.ExecutionComplete;
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
@@ -25,11 +25,6 @@ public final class FixedDelayJob extends AbstractJob {
 
     @Override
     public RecurringTask<Void> task() {
-        return this.task;
-    }
-
-    @Override
-    public RecurringTask<?> startupTask() {
         return this.task;
     }
 

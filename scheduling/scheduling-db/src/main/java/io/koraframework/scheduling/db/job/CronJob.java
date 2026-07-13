@@ -1,4 +1,4 @@
-package io.koraframework.scheduling.db;
+package io.koraframework.scheduling.db.job;
 
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import com.github.kagkarlsson.scheduler.task.helper.Tasks;
@@ -17,11 +17,6 @@ public final class CronJob extends AbstractJob {
 
     @Override
     public RecurringTask<Void> task() {
-        return this.task;
-    }
-
-    @Override
-    public RecurringTask<?> startupTask() {
         return this.task;
     }
 }
