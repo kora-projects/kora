@@ -2,16 +2,19 @@ package io.koraframework.scheduling.db;
 
 import com.github.kagkarlsson.scheduler.PollingStrategyConfig;
 import com.github.kagkarlsson.scheduler.Scheduler;
+import com.github.kagkarlsson.scheduler.SchedulerBuilder;
 import com.github.kagkarlsson.scheduler.task.Task;
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.ValueOf;
 import io.koraframework.application.graph.Wrapped;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.executor.BoundedVirtualThreadPerTaskExecutor;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.scheduling.db.job.SchedulingDbJob;
 import io.koraframework.scheduling.db.util.SchedulingDbInitializerUtils;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,13 +28,19 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
     private final DataSource dataSource;
     private final SchedulingDbConfig config;
     private final All<ValueOf<SchedulingDbJob>> jobs;
+    @Nullable
+    private final Configurer<SchedulerBuilder> schedulerBuilderConfigurer;
 
     private volatile Scheduler scheduler;
 
-    public SchedulingDbScheduler(DataSource dataSource, SchedulingDbConfig config, All<ValueOf<SchedulingDbJob>> jobs) {
+    public SchedulingDbScheduler(DataSource dataSource,
+                                 SchedulingDbConfig config,
+                                 All<ValueOf<SchedulingDbJob>> jobs,
+                                 @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
         this.dataSource = dataSource;
         this.config = config;
         this.jobs = jobs;
+        this.schedulerBuilderConfigurer = schedulerBuilderConfigurer;
     }
 
     @Override
@@ -90,6 +99,10 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
                     : prefetchMode.upperLimitRatio()
             );
         };
+
+        if (schedulerBuilderConfigurer != null) {
+            schedulerBuilder = schedulerBuilderConfigurer.configure(schedulerBuilder);
+        }
 
         var scheduler = schedulerBuilder.build();
 
