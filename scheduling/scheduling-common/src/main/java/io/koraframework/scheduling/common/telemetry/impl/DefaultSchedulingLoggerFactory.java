@@ -1,6 +1,5 @@
 package io.koraframework.scheduling.common.telemetry.impl;
 
-import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
