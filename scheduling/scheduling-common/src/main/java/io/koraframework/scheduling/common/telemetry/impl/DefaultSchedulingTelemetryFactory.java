@@ -1,11 +1,10 @@
 package io.koraframework.scheduling.common.telemetry.impl;
 
+import io.koraframework.scheduling.common.SchedulingJobConfig;
 import io.koraframework.scheduling.common.telemetry.SchedulingJobTelemetryConfig;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
-import io.koraframework.scheduling.common.SchedulingJobConfig;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryConfig;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetryFactory;
-import io.koraframework.telemetry.common.TelemetryConfig;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.composite.CompositeMeterRegistry;
 import io.opentelemetry.api.trace.Tracer;

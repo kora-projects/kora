@@ -42,8 +42,6 @@ public interface SchedulingJobConfig {
             @Nullable
             Boolean enabled();
 
-            Duration @Nullable [] slo();
-
             @Nullable
             Map<String, String> attributes();
         }
