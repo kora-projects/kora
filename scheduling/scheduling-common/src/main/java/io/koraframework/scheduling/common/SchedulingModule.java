@@ -20,10 +20,10 @@ public interface SchedulingModule {
 
     @DefaultComponent
     default SchedulingTelemetryFactory defaultSchedulingTelemetryFactory(SchedulingTelemetryConfig config,
-                                                                                @Nullable Tracer tracer,
-                                                                                @Nullable MeterRegistry meterRegistry,
-                                                                                @Nullable DefaultSchedulingLoggerFactory loggerFactory,
-                                                                                @Nullable DefaultSchedulingMetricsFactory metricsFactory) {
+                                                                         @Nullable Tracer tracer,
+                                                                         @Nullable MeterRegistry meterRegistry,
+                                                                         @Nullable DefaultSchedulingLoggerFactory loggerFactory,
+                                                                         @Nullable DefaultSchedulingMetricsFactory metricsFactory) {
         return new DefaultSchedulingTelemetryFactory(config, tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 }
