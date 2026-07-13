@@ -4,9 +4,11 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.common.arg.StructuredArgument;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import io.koraframework.logging.logback.KoraLoggingEvent;
+import io.koraframework.logging.logback.json.JsonFieldConstants;
 import org.slf4j.event.KeyValuePair;
 import tools.jackson.core.JacksonException;
 import tools.jackson.core.JsonGenerator;
+import tools.jackson.core.io.SerializedString;
 import tools.jackson.core.util.JsonGeneratorDelegate;
 
 import java.io.IOException;
@@ -15,8 +17,12 @@ import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class DefaultStructuredJsonWriterLogging implements LoggingEventJsonWriter {
+
+    private static final Map<String, SerializedString> MDC_KEY_CACHE = new ConcurrentHashMap<>();
+    private static final Map<String, SerializedString> ARG_KEY_CACHE = new ConcurrentHashMap<>();
 
     @Override
     public void write(JsonGenerator gen, ILoggingEvent event) throws IOException {
@@ -31,18 +37,25 @@ public final class DefaultStructuredJsonWriterLogging implements LoggingEventJso
             return;
         }
 
-        gen.writeName("mdc");
+        gen.writeName(JsonFieldConstants.MDC);
         gen.writeStartObject();
         for (var entry : koraMdc.entrySet()) {
-            gen.writeName(entry.getKey());
+            var key = getMdcKey(entry.getKey());
+            gen.writeName(key);
             entry.getValue().writeTo(gen);
         }
         for (var entry : slf4jMdc.entrySet()) {
             if (!koraMdc.containsKey(entry.getKey())) {
-                gen.writeStringProperty(entry.getKey(), entry.getValue());
+                var key = getMdcKey(entry.getKey());
+                gen.writeName(key);
+                gen.writeString(entry.getValue());
             }
         }
         gen.writeEndObject();
+    }
+
+    private static SerializedString getMdcKey(String key) {
+        return MDC_KEY_CACHE.computeIfAbsent(key, SerializedString::new);
     }
 
     private Map<String, StructuredArgumentWriter> koraMdc(ILoggingEvent event) {
@@ -59,11 +72,12 @@ public final class DefaultStructuredJsonWriterLogging implements LoggingEventJso
         this.writeData(gen, data);
 
         if (this.hasAttributes(structuredArguments, event.getKeyValuePairs())) {
-            gen.writeName("args");
+            gen.writeName(JsonFieldConstants.ARGS);
             gen.writeStartObject();
             for (var argument : structuredArguments) {
                 if (!this.isData(argument)) {
-                    gen.writeName(argument.fieldName());
+                    var key = getArgKey(argument.fieldName());
+                    gen.writeName(key);
                     argument.writeTo(gen);
                 }
             }
@@ -115,7 +129,7 @@ public final class DefaultStructuredJsonWriterLogging implements LoggingEventJso
         if (data.isEmpty()) {
             return;
         }
-        gen.writeName("data");
+        gen.writeName(JsonFieldConstants.DATA);
         if (data.size() == 1) {
             data.getFirst().writeTo(gen);
         } else {
@@ -141,7 +155,8 @@ public final class DefaultStructuredJsonWriterLogging implements LoggingEventJso
     }
 
     private void writeKeyValuePair(JsonGenerator gen, KeyValuePair keyValuePair) throws IOException {
-        gen.writeName(keyValuePair.key);
+        var key = getArgKey(keyValuePair.key);
+        gen.writeName(key);
         switch (keyValuePair.value) {
             case StructuredArgumentWriter structuredArgumentWriter -> structuredArgumentWriter.writeTo(gen);
             case null -> gen.writeNull();
@@ -157,6 +172,10 @@ public final class DefaultStructuredJsonWriterLogging implements LoggingEventJso
             case BigDecimal value -> gen.writeNumber(value);
             default -> gen.writeString(keyValuePair.value.toString());
         }
+    }
+
+    private static SerializedString getArgKey(String key) {
+        return ARG_KEY_CACHE.computeIfAbsent(key, SerializedString::new);
     }
 
     private static final class UnwrappedObjectJsonGenerator extends JsonGeneratorDelegate {

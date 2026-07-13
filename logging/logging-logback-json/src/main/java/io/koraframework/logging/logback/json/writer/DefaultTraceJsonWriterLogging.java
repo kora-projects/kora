@@ -2,6 +2,7 @@ package io.koraframework.logging.logback.json.writer;
 
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import io.koraframework.logging.logback.KoraLoggingEvent;
+import io.koraframework.logging.logback.json.JsonFieldConstants;
 import io.opentelemetry.api.trace.SpanContext;
 import tools.jackson.core.JsonGenerator;
 
@@ -14,8 +15,10 @@ public final class DefaultTraceJsonWriterLogging implements LoggingEventJsonWrit
         if (event instanceof KoraLoggingEvent koraEvent) {
             var span = koraEvent.span();
             if (span != SpanContext.getInvalid()) {
-                gen.writeStringProperty("traceId", span.getTraceId());
-                gen.writeStringProperty("spanId", span.getSpanId());
+                gen.writeName(JsonFieldConstants.TRACE_ID);
+                gen.writeString(span.getTraceId());
+                gen.writeName(JsonFieldConstants.SPAN_ID);
+                gen.writeString(span.getSpanId());
             }
         }
     }

@@ -36,7 +36,12 @@ final class MaskingJsonGenerator extends JsonGeneratorDelegate {
 
     @Override
     public JsonGenerator writeName(SerializableString name) throws JacksonException {
-        return this.writeName(name.getValue());
+        if (this.isSuppressing()) {
+            return this;
+        }
+
+        this.pendingName = name.getValue();
+        return super.writeName(name);
     }
 
     @Override

@@ -4,6 +4,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.classic.spi.ThrowableProxyUtil;
 import io.koraframework.logging.common.arg.StructuredArgument;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
+import io.koraframework.logging.logback.json.JsonFieldConstants;
 import tools.jackson.core.JsonGenerator;
 
 import java.io.IOException;
@@ -16,14 +17,17 @@ public final class DefaultExceptionJsonWriterLogging implements LoggingEventJson
         if (throwable == null) {
             return;
         }
-        gen.writeName("exception");
+        gen.writeName(JsonFieldConstants.EXCEPTION);
         gen.writeStartObject();
-        gen.writeStringProperty("class", throwable.getClassName());
-        gen.writeStringProperty("message", throwable.getMessage());
-        gen.writeStringProperty("stackTrace", ThrowableProxyUtil.asString(throwable));
+        gen.writeName(JsonFieldConstants.CLASS);
+        gen.writeString(throwable.getClassName());
+        gen.writeName(JsonFieldConstants.MESSAGE);
+        gen.writeString(throwable.getMessage());
+        gen.writeName(JsonFieldConstants.STACK_TRACE);
+        gen.writeString(ThrowableProxyUtil.asString(throwable));
         var data = this.findExceptionData(event);
         if (data != null) {
-            gen.writeName("data");
+            gen.writeName(JsonFieldConstants.DATA);
             data.writeTo(gen);
         }
         gen.writeEndObject();
