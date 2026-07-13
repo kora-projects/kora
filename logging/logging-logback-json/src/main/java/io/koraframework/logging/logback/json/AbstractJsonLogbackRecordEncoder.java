@@ -6,8 +6,8 @@ import io.koraframework.json.common.JsonModule;
 import io.koraframework.logging.logback.json.writer.LoggingEventJsonWriter;
 import tools.jackson.core.JsonEncoding;
 import tools.jackson.core.ObjectWriteContext;
+import tools.jackson.core.util.ByteArrayBuilder;
 
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
@@ -40,8 +40,10 @@ public abstract class AbstractJsonLogbackRecordEncoder extends EncoderBase<ILogg
     }
 
     private byte[] encode0(ILoggingEvent event) throws IOException {
-        try (var baos = new ByteArrayOutputStream(256)) {
-            try (var rawGen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), baos, JsonEncoding.UTF8)) {
+        var recycler = JsonModule.JSON_FACTORY._getBufferRecycler();
+        var out = new ByteArrayBuilder(recycler, 256);
+        try {
+            try (var rawGen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), out, JsonEncoding.UTF8)) {
                 var gen = this.masker == LoggingEventJsonMasker.noop()
                     ? rawGen
                     : new MaskingJsonGenerator(rawGen, this.masker);
@@ -52,14 +54,18 @@ public abstract class AbstractJsonLogbackRecordEncoder extends EncoderBase<ILogg
                 }
                 gen.writeEndObject();
             }
-            baos.write('\n');
-            return baos.toByteArray();
+            out.append('\n');
+            return out.toByteArray();
+        } finally {
+            out.release();
         }
     }
 
     private byte[] encodeWriteFailure(ILoggingEvent event, Exception exception) {
-        try (var baos = new ByteArrayOutputStream(512)) {
-            try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), baos, JsonEncoding.UTF8)) {
+        var recycler = JsonModule.JSON_FACTORY._getBufferRecycler();
+        var out = new ByteArrayBuilder(recycler, 512);
+        try {
+            try (var gen = JsonModule.JSON_FACTORY.createGenerator(ObjectWriteContext.empty(), out, JsonEncoding.UTF8)) {
                 gen.writeStartObject();
                 gen.writeStringProperty("timestamp", OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME));
                 gen.writeStringProperty("level", event.getLevel().levelStr);
@@ -68,8 +74,8 @@ public abstract class AbstractJsonLogbackRecordEncoder extends EncoderBase<ILogg
                 gen.writeStringProperty("exception", exception.getMessage());
                 gen.writeEndObject();
             }
-            baos.write('\n');
-            return baos.toByteArray();
+            out.append('\n');
+            return out.toByteArray();
         } catch (Exception e) {
             return ("{\"timestamp\":\"" + OffsetDateTime.now().format(DateTimeFormatter.ISO_OFFSET_DATE_TIME) + "\","
                 + "\"level\":\"" + event.getLevel().levelStr
@@ -77,6 +83,8 @@ public abstract class AbstractJsonLogbackRecordEncoder extends EncoderBase<ILogg
                 + "\",\"threadName\":\"" + event.getThreadName()
                 + "\",\"exception\":\"" + exception.getMessage() + "\"}\n")
                 .getBytes(StandardCharsets.UTF_8);
+        } finally {
+            out.release();
         }
     }
 
