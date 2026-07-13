@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
 
 public class DependencyModuleHintProvider {
 
-    private static final Logger log = LoggerFactory.getLogger(DependencyModuleHintProvider.class);
+    private static final Logger logger = LoggerFactory.getLogger(DependencyModuleHintProvider.class);
 
     private final List<KoraHint> hints;
 
@@ -76,12 +76,12 @@ public class DependencyModuleHintProvider {
 
     List<Hint> findHints(TypeMirror missingType, @Nullable String missingTag) {
         var typeName = TypeName.get(missingType);
-        log.trace("Checking hints for {}/{}", missingTag, typeName);
+        logger.trace("Checking hints for {}/{}", missingTag, typeName);
         var result = new ArrayList<Hint>();
         for (var hint : this.hints) {
             var matcher = hint.typeRegex().matcher(typeName.toString());
             if (matcher.matches()) {
-                log.trace("Hint {} matched!", hint);
+                logger.trace("Hint {} matched!", hint);
                 if (this.tagMatches(missingTag, hint.tag())) {
                     if (hint instanceof KoraHint.KoraModuleHint h) {
                         result.add(new Hint.ModuleHint(typeName, h.tag(), h.artifact(), h.module()));
@@ -92,7 +92,7 @@ public class DependencyModuleHintProvider {
                     }
                 }
             } else {
-                log.trace("Hint {} doesn't match because of regex", hint);
+                logger.trace("Hint {} doesn't match because of regex", hint);
             }
         }
         return result;
