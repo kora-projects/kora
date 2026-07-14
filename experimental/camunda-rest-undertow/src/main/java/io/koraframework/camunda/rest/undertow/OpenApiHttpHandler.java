@@ -8,9 +8,8 @@ import io.koraframework.http.common.header.HttpHeaders;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.response.HttpServerResponse;
-import io.koraframework.openapi.management.OpenApiHttpServerHandler;
 import io.koraframework.openapi.management.OpenApiManagementConfig;
-import io.koraframework.openapi.management.RapidocHttpServerHandler;
+import io.koraframework.openapi.management.ScalarHttpServerHandler;
 import io.koraframework.openapi.management.SwaggerUIHttpServerHandler;
 import io.undertow.io.IoCallback;
 import io.undertow.io.Sender;
@@ -35,9 +34,9 @@ final class OpenApiHttpHandler implements HttpHandler {
     private final UndertowPathMatcher pathMatcher;
     private final CamundaRestConfig restConfig;
 
-    private final OpenApiHttpServerHandler openApiHandler;
+    private final CamundaOpenApiHttpServerHandler openApiHandler;
     private final SwaggerUIHttpServerHandler swaggerUIHandler;
-    private final RapidocHttpServerHandler rapidocHandler;
+    private final ScalarHttpServerHandler scalarHandler;
 
     OpenApiHttpHandler(CamundaRestConfig restConfig) {
         this.restConfig = restConfig;
@@ -49,28 +48,11 @@ final class OpenApiHttpHandler implements HttpHandler {
         } else {
             openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.path() + "/{file}"));
         }
-        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.rapidoc().path()));
+        openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.scalar().path()));
         openapiMethods.add(new UndertowPathMatcher.HttpMethodPath(HttpMethod.GET, openapi.swaggerui().path()));
         this.pathMatcher = new UndertowPathMatcher(openapiMethods);
 
-        this.openApiHandler = new OpenApiHttpServerHandler(openapi.files(), f -> {
-            if ("/engine-rest".equals(restConfig.path())) {
-                String fileAsStr = new String(f, StandardCharsets.UTF_8);
-                return fileAsStr
-                    .replace("8080", String.valueOf(restConfig.port()))
-                    .getBytes(StandardCharsets.UTF_8);
-            } else {
-                String fileAsStr = new String(f, StandardCharsets.UTF_8);
-                String newEnginePath = restConfig.path().startsWith("/")
-                    ? restConfig.path().substring(1)
-                    : restConfig.path();
-
-                return fileAsStr
-                    .replace("engine-rest", newEnginePath)
-                    .replace("8080", String.valueOf(restConfig.port()))
-                    .getBytes(StandardCharsets.UTF_8);
-            }
-        });
+        this.openApiHandler = new CamundaOpenApiHttpServerHandler(openapi.files(), openapi.cache(), restConfig.path(), restConfig.port());
         this.swaggerUIHandler = new SwaggerUIHttpServerHandler(openapi.path(), new OpenApiManagementConfig.SwaggerUIConfig() {
             @Override
             public boolean enabled() {
@@ -88,11 +70,31 @@ final class OpenApiHttpHandler implements HttpHandler {
             }
 
             @Override
+            public OpenApiManagementConfig.CacheMode cache() {
+                return cacheMode(openapi.swaggerui().cache());
+            }
+
+            @Override
             public Map<String, String> options() {
                 return openapi.swaggerui().options();
             }
         }, openapi.files());
-        this.rapidocHandler = new RapidocHttpServerHandler(openapi.path(), openapi.rapidoc().path(), openapi.files());
+        this.scalarHandler = new ScalarHttpServerHandler(openapi.path(), new OpenApiManagementConfig.ScalarConfig() {
+            @Override
+            public boolean enabled() {
+                return openapi.scalar().enabled();
+            }
+
+            @Override
+            public String path() {
+                return openapi.scalar().path();
+            }
+
+            @Override
+            public OpenApiManagementConfig.CacheMode cache() {
+                return cacheMode(openapi.scalar().cache());
+            }
+        }, openapi.files());
     }
 
     @Override
@@ -104,21 +106,21 @@ final class OpenApiHttpHandler implements HttpHandler {
             exchange.endExchange();
             return;
         }
-        var fakeRequest = getFakeRequest(match);
+        var fakeRequest = getFakeRequest(exchange, match);
         var openapi = restConfig.openapi();
         if (openapi.enabled() && requestPath.startsWith(openapi.path())) {
             executeHandler(exchange, openApiHandler, fakeRequest);
         } else if (openapi.swaggerui().enabled() && requestPath.startsWith(openapi.swaggerui().path())) {
             executeHandler(exchange, swaggerUIHandler, fakeRequest);
-        } else if (openapi.rapidoc().enabled() && requestPath.startsWith(openapi.rapidoc().path())) {
-            executeHandler(exchange, rapidocHandler, fakeRequest);
+        } else if (openapi.scalar().enabled() && requestPath.startsWith(openapi.scalar().path())) {
+            executeHandler(exchange, scalarHandler, fakeRequest);
         } else {
             exchange.setStatusCode(404);
             exchange.endExchange();
         }
     }
 
-    private HttpServerRequest getFakeRequest(UndertowPathMatcher.Match match) {
+    private HttpServerRequest getFakeRequest(HttpServerExchange exchange, UndertowPathMatcher.Match match) {
         return new HttpServerRequest() {
             @Override
             public String scheme() {
@@ -147,7 +149,10 @@ final class OpenApiHttpHandler implements HttpHandler {
 
             @Override
             public HttpHeaders headers() {
-                return null;
+                var acceptEncoding = exchange.getRequestHeaders().getFirst(Headers.ACCEPT_ENCODING);
+                return acceptEncoding == null
+                    ? HttpHeaders.empty()
+                    : HttpHeaders.of("accept-encoding", acceptEncoding);
             }
 
             @Override
@@ -176,6 +181,14 @@ final class OpenApiHttpHandler implements HttpHandler {
             public long requestStartTimeInNanos() {
                 return 0;
             }
+        };
+    }
+
+    private static OpenApiManagementConfig.CacheMode cacheMode(CamundaRestConfig.CamundaOpenApiConfig.CacheMode cacheMode) {
+        return switch (cacheMode) {
+            case NONE -> OpenApiManagementConfig.CacheMode.NONE;
+            case GZIP -> OpenApiManagementConfig.CacheMode.GZIP;
+            case FULL -> OpenApiManagementConfig.CacheMode.FULL;
         };
     }
 

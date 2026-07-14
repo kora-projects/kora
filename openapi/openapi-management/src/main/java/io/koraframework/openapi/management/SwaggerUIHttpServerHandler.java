@@ -1,6 +1,5 @@
 package io.koraframework.openapi.management;
 
-import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.response.HttpServerResponse;
@@ -9,34 +8,27 @@ import io.koraframework.http.server.common.response.HttpServerResponseException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicReference;
 
 public final class SwaggerUIHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
 
     private static final String FILE_PATH = "kora/openapi/management/swagger-ui/index.html";
     private static final String HTML_CONTENT_TYPE = "text/html; charset=utf-8";
 
-    private final AtomicReference<byte[]> content = new AtomicReference<>();
     private final String openapiPath;
     private final OpenApiManagementConfig.SwaggerUIConfig swaggerui;
     private final List<String> openapiFiles;
+    private final CacheHttpServerResponse response;
 
     public SwaggerUIHttpServerHandler(String openapiPath, OpenApiManagementConfig.SwaggerUIConfig swaggerui, List<String> openapiFiles) {
         this.openapiPath = openapiPath;
         this.swaggerui = swaggerui;
         this.openapiFiles = openapiFiles;
+        this.response = new CacheHttpServerResponse(HTML_CONTENT_TYPE, swaggerui.cache(), this::loadSwagger);
     }
 
     @Override
     public HttpServerResponse apply(HttpServerRequest request) {
-        byte[] bytes = content.get();
-        if (bytes != null) {
-            return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, bytes));
-        }
-
-        byte[] loadedBytes = loadSwagger();
-        content.set(loadedBytes);
-        return HttpServerResponse.of(200, HttpBody.of(HTML_CONTENT_TYPE, loadedBytes));
+        return response.response(request);
     }
 
     private byte[] loadSwagger() {

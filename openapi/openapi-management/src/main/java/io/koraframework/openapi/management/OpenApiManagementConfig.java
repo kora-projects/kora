@@ -18,9 +18,19 @@ public interface OpenApiManagementConfig {
         return "/openapi";
     }
 
+    default CacheMode cache() {
+        return CacheMode.GZIP;
+    }
+
     SwaggerUIConfig swaggerui();
 
-    RapidocConfig rapidoc();
+    ScalarConfig scalar();
+
+    enum CacheMode {
+        NONE,
+        GZIP,
+        FULL
+    }
 
     @ConfigMapper
     interface SwaggerUIConfig {
@@ -37,6 +47,10 @@ public interface OpenApiManagementConfig {
             return true;
         }
 
+        default CacheMode cache() {
+            return CacheMode.GZIP;
+        }
+
         default Map<String, String> options() {
             return Map.of(
                 "layout", "StandaloneLayout",
@@ -51,14 +65,18 @@ public interface OpenApiManagementConfig {
     }
 
     @ConfigMapper
-    interface RapidocConfig {
+    interface ScalarConfig {
 
         default boolean enabled() {
             return false;
         }
 
         default String path() {
-            return "/rapidoc";
+            return "/scalar";
+        }
+
+        default CacheMode cache() {
+            return CacheMode.GZIP;
         }
     }
 }

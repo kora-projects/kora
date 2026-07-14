@@ -2,32 +2,32 @@ package io.koraframework.openapi.management;
 
 import io.koraframework.http.common.body.HttpBody;
 import io.koraframework.http.server.common.request.HttpServerRequest;
+import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.response.HttpServerResponse;
 import io.koraframework.http.server.common.response.HttpServerResponseException;
-import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 
 public final class OpenApiHttpServerHandler implements HttpServerRequestHandler.HandlerFunction {
 
-    record OpenapiFile(String fileName, String filePath, String contentType, AtomicReference<byte[]> content) {}
+    record OpenapiFile(String fileName, String filePath, CacheHttpServerResponse response) {}
 
     private final Map<String, OpenapiFile> openapiFiles = new ConcurrentHashMap<>();
-    private final Function<byte[], byte[]> openApiMapper;
 
-    public OpenApiHttpServerHandler(List<String> openapiFiles, Function<byte[], byte[]> openApiMapper) {
-        this.openApiMapper = openApiMapper;
+    public OpenApiHttpServerHandler(List<String> openapiFiles, OpenApiManagementConfig.CacheMode cacheMode) {
         for (var filePath : openapiFiles) {
             var contentType = filePath.endsWith(".json")
                 ? "text/json; charset=utf-8"
                 : "text/x-yaml; charset=utf-8";
             var fileName = ResourceUtils.getFileName(filePath);
-            this.openapiFiles.put(fileName, new OpenapiFile(fileName, filePath, contentType, new AtomicReference<>()));
+            this.openapiFiles.put(fileName, new OpenapiFile(
+                fileName,
+                filePath,
+                new CacheHttpServerResponse(contentType, cacheMode, () -> loadOpenapi(filePath))
+            ));
         }
     }
 
@@ -45,20 +45,11 @@ public final class OpenApiHttpServerHandler implements HttpServerRequestHandler.
             return HttpServerResponse.of(404, HttpBody.plaintext("OpenAPI file not registered: " + fileName));
         }
 
-        var bytes = openapiFile.content().get();
-        if (bytes != null) {
-            return HttpServerResponse.of(200, HttpBody.of(openapiFile.contentType(), bytes));
-        }
-
-        var fileContent = loadOpenapi(openapiFile.filePath());
-        var fileResult = openApiMapper.apply(fileContent);
-        openapiFile.content().set(fileResult);
-        return HttpServerResponse.of(200, HttpBody.of(openapiFile.contentType(), fileResult));
+        return openapiFile.response().response(request);
     }
 
-    private byte[] loadOpenapi(String filePath) {
-        try {
-            var openapiAsStream = ResourceUtils.getFileAsStream(filePath);
+    private static byte[] loadOpenapi(String filePath) {
+        try (var openapiAsStream = ResourceUtils.getFileAsStream(filePath)) {
             if (openapiAsStream == null) {
                 throw HttpServerResponseException.of(404, "OpenAPI file not found while reading: " + filePath);
             }

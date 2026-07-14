@@ -13,7 +13,7 @@ public interface OpenApiManagementModule {
     }
 
     default HttpServerRequestHandler openApiManagementController(OpenApiManagementConfig config) {
-        var handler = new OpenApiHttpServerHandler(config.files(), f -> f);
+        var handler = new OpenApiHttpServerHandler(config.files(), config.cache());
         final String path = (config.files().size() == 1) ? config.path() : config.path() + "/{file}";
         return HttpServerRequestHandlerImpl.of(HttpMethod.GET, path, handler, config.enabled());
     }
@@ -31,9 +31,9 @@ public interface OpenApiManagementModule {
         return HttpServerRequestHandlerImpl.of(HttpMethod.GET, path, handler, enabled);
     }
 
-    default HttpServerRequestHandler rapidocManagementController(OpenApiManagementConfig config) {
-        boolean enabled = config.rapidoc() != null && config.rapidoc().enabled();
-        var handler = new RapidocHttpServerHandler(config.path(), config.rapidoc().path(), config.files());
-        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.rapidoc().path(), handler, enabled);
+    default HttpServerRequestHandler scalarManagementController(OpenApiManagementConfig config) {
+        boolean enabled = config.scalar() != null && config.scalar().enabled();
+        var handler = new ScalarHttpServerHandler(config.path(), config.scalar(), config.files());
+        return HttpServerRequestHandlerImpl.of(HttpMethod.GET, config.scalar().path(), handler, enabled);
     }
 }
