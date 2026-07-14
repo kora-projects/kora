@@ -1,7 +1,7 @@
 package io.koraframework.scheduling.db;
 
-import com.github.kagkarlsson.scheduler.SchedulerClient;
-import com.github.kagkarlsson.scheduler.task.helper.OneTimeTask;
+import com.github.kagkarlsson.scheduler.task.OnStartup;
+import com.github.kagkarlsson.scheduler.task.helper.CustomTask;
 import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import io.koraframework.scheduling.common.telemetry.SchedulingTelemetry;
 import io.koraframework.scheduling.common.telemetry.impl.NoopSchedulingObservation;
@@ -9,16 +9,12 @@ import io.koraframework.scheduling.db.job.CronJob;
 import io.koraframework.scheduling.db.job.FixedDelayJob;
 import io.koraframework.scheduling.db.job.RunOnceJob;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 import java.time.Duration;
-import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.when;
 
 class SchedulingDbJobTest {
@@ -54,29 +50,19 @@ class SchedulingDbJobTest {
     }
 
     @Test
-    void runOnceJobCreatesOneTimeTaskAndSchedulesItOnStart() {
+    void runOnceJobCreatesStartupCustomTaskAndRunsCommandWithTelemetry() {
         var calls = new AtomicInteger();
         var telemetry = telemetry();
         var job = new RunOnceJob(telemetry, calls::incrementAndGet, "once-job", Duration.ofSeconds(3));
 
-        assertThat(job.task()).isInstanceOf(OneTimeTask.class);
+        assertThat(job.task()).isInstanceOf(CustomTask.class);
+        assertThat(job.task()).isInstanceOf(OnStartup.class);
         assertThat(job.task().getName()).isEqualTo("once-job");
 
         job.task().execute(job.task().instance("once-job"), null);
 
         assertThat(calls).hasValue(1);
         Mockito.verify(telemetry).observe();
-
-        var scheduler = Mockito.mock(SchedulerClient.class);
-        var instantCaptor = ArgumentCaptor.forClass(Instant.class);
-
-        job.scheduleOnStart(scheduler);
-
-        Mockito.verify(scheduler).scheduleIfNotExists(
-            argThat(taskInstance -> taskInstance.getTaskName().equals("once-job") && taskInstance.getId().equals("once-job")),
-            instantCaptor.capture()
-        );
-        assertThat(instantCaptor.getValue()).isAfter(Instant.now().minusSeconds(1));
     }
 
     private static SchedulingTelemetry telemetry() {

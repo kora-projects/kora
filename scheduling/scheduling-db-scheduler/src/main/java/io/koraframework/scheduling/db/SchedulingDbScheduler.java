@@ -3,8 +3,9 @@ package io.koraframework.scheduling.db;
 import com.github.kagkarlsson.scheduler.PollingStrategyConfig;
 import com.github.kagkarlsson.scheduler.Scheduler;
 import com.github.kagkarlsson.scheduler.SchedulerBuilder;
+import com.github.kagkarlsson.scheduler.serializer.Serializer;
+import com.github.kagkarlsson.scheduler.task.OnStartup;
 import com.github.kagkarlsson.scheduler.task.Task;
-import com.github.kagkarlsson.scheduler.task.helper.RecurringTask;
 import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.ValueOf;
@@ -20,6 +21,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.sql.DataSource;
 import java.util.ArrayList;
+import java.util.List;
 
 public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler> {
 
@@ -58,14 +60,12 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
         }
 
         var tasks = new ArrayList<Task<?>>();
-        var startupTasks = new ArrayList<RecurringTask<?>>();
-        var resolvedJobs = new ArrayList<SchedulingDbJob>();
+        var startupTasks = new ArrayList<Task<?>>();
         for (var value : this.jobs) {
             var job = value.get();
-            resolvedJobs.add(job);
             var task = job.task();
-            if (task instanceof RecurringTask<?> startupTask) {
-                startupTasks.add(startupTask);
+            if (task instanceof OnStartup) {
+                startupTasks.add(task);
             } else {
                 tasks.add(task);
             }
@@ -78,8 +78,20 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
             .executorService(new BoundedVirtualThreadPerTaskExecutor(this.config.executionParallelism(), Thread.ofVirtual().name("kora-scheduling-db-", 0)))
             .pollingInterval(polling.interval())
             .shutdownMaxWait(this.config.shutdownWait())
-            .tableName(this.config.tableName())
-            .startTasks(startupTasks);
+            .serializer(new Serializer() {
+                @Override
+                public byte[] serialize(Object data) {
+                    return new byte[0];
+                }
+
+                @Override
+                public <T> T deserialize(Class<T> clazz, byte[] serializedData) {
+                    return null;
+                }
+            })
+            .tableName(this.config.tableName());
+
+        schedulerBuilder = startTasks(schedulerBuilder, startupTasks);
 
         schedulerBuilder = switch (polling.strategy()) {
             case FETCH -> schedulerBuilder.pollUsingFetch(
@@ -107,9 +119,6 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
         var scheduler = schedulerBuilder.build();
 
         scheduler.start();
-        for (var job : resolvedJobs) {
-            job.scheduleOnStart(scheduler);
-        }
         this.scheduler = scheduler;
 
         logger.info("SchedulingDbScheduler started in {}", TimeUtils.tookForLogging(started));
@@ -127,5 +136,10 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
         scheduler.stop();
         this.scheduler = null;
         logger.info("SchedulingDbScheduler stopped in {}", TimeUtils.tookForLogging(started));
+    }
+
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static SchedulerBuilder startTasks(SchedulerBuilder schedulerBuilder, List<Task<?>> startupTasks) {
+        return schedulerBuilder.startTasks((List) startupTasks);
     }
 }

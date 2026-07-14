@@ -77,7 +77,7 @@ include(
     'internal:test-cassandra',
     'internal:test-redis',
     'scheduling:scheduling-common',
-    'scheduling:scheduling-db',
+    'scheduling:scheduling-db-scheduler',
     'scheduling:scheduling-jdk',
     'scheduling:scheduling-quartz',
     'scheduling:scheduling-annotation-processor',
