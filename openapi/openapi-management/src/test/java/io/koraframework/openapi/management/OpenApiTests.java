@@ -60,7 +60,7 @@ final class OpenApiTests {
     void swaggerUiDefaultConfig() {
         var handler = new SwaggerUIHttpServerHandler("/openapi", new TestSwaggerUIConfig(), List.of("openapi1.yaml"));
 
-        var html = bodyString(handler.apply(null));
+        var html = bodyString(handler.apply(request("")));
 
         assertTrue(html.contains("\"layout\": \"StandaloneLayout\""));
         assertTrue(html.contains("\"validatorUrl\": null"));
@@ -119,7 +119,7 @@ final class OpenApiTests {
         };
         var handler = new SwaggerUIHttpServerHandler("/openapi", config, List.of("openapi1.yaml"));
 
-        var html = bodyString(handler.apply(null));
+        var html = bodyString(handler.apply(request("")));
 
         assertTrue(html.contains("\"layout\": \"BaseLayout\""));
         assertTrue(html.contains("\"validatorUrl\": \"https://validator.example.com\""));
@@ -138,7 +138,7 @@ final class OpenApiTests {
     void scalarSourcesSingleFile() {
         var handler = new ScalarHttpServerHandler("/openapi", new TestScalarConfig(), List.of("openapi1.yaml"));
 
-        var html = bodyString(handler.apply(null));
+        var html = bodyString(handler.apply(request("")));
 
         assertTrue(html.contains("sources: ["));
         assertTrue(html.contains(".replace(\"/scalar\", \"/openapi\")"));
@@ -151,7 +151,7 @@ final class OpenApiTests {
     void scalarSourcesMultipleFiles() {
         var handler = new ScalarHttpServerHandler("/openapi", new TestScalarConfig(), List.of("openapi1.yaml", "openapi2.yaml"));
 
-        var html = bodyString(handler.apply(null));
+        var html = bodyString(handler.apply(request("")));
 
         assertTrue(html.contains(".replace(\"/scalar\", \"/openapi/openapi1\")"));
         assertTrue(html.contains(".replace(\"/scalar\", \"/openapi/openapi2\")"));
