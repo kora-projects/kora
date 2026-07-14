@@ -6,6 +6,7 @@ import org.quartz.DisallowConcurrentExecution;
 import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorTest;
 import io.koraframework.annotation.processor.common.TestUtils;
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
+import io.koraframework.json.annotation.processor.JsonAnnotationProcessor;
 
 import java.util.List;
 
@@ -73,6 +74,18 @@ class SchedulingAnnotationProcessorTest extends AbstractAnnotationProcessorTest 
         cr.assertSuccess();
         var clazz = cr.loadClass("$TestClass_job_Job");
         assertThat(clazz).hasAnnotation(DisallowConcurrentExecution.class);
+    }
+
+    @Test
+    public void testSchedulingDbJsonCodec() {
+        var cr = compile(List.of(new SchedulingDbJsonCodecAnnotationProcessor(), new JsonAnnotationProcessor()), """
+            @io.koraframework.json.common.annotation.Json
+            @io.koraframework.scheduling.db.annotation.SchedulingDbJsonCodec
+            public record EmailJobData(String email) {}
+            """);
+        cr.assertSuccess();
+        var module = cr.loadClass("$EmailJobData_SchedulingDbJsonCodecModule");
+        assertThat(module.getDeclaredMethods()).anyMatch(m -> m.getName().equals("emailJobDataSchedulingDbCodec"));
     }
 
 
