@@ -30,6 +30,7 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
     private final DataSource dataSource;
     private final SchedulingDbConfig config;
     private final All<ValueOf<SchedulingDbJob>> jobs;
+    private final Serializer serializer;
     @Nullable
     private final Configurer<SchedulerBuilder> schedulerBuilderConfigurer;
 
@@ -38,10 +39,12 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
     public SchedulingDbScheduler(DataSource dataSource,
                                  SchedulingDbConfig config,
                                  All<ValueOf<SchedulingDbJob>> jobs,
+                                 Serializer serializer,
                                  @Nullable Configurer<SchedulerBuilder> schedulerBuilderConfigurer) {
         this.dataSource = dataSource;
         this.config = config;
         this.jobs = jobs;
+        this.serializer = serializer;
         this.schedulerBuilderConfigurer = schedulerBuilderConfigurer;
     }
 
@@ -78,17 +81,7 @@ public final class SchedulingDbScheduler implements Lifecycle, Wrapped<Scheduler
             .executorService(new BoundedVirtualThreadPerTaskExecutor(this.config.executionParallelism(), Thread.ofVirtual().name("kora-scheduling-db-", 0)))
             .pollingInterval(polling.interval())
             .shutdownMaxWait(this.config.shutdownWait())
-            .serializer(new Serializer() {
-                @Override
-                public byte[] serialize(Object data) {
-                    return new byte[0];
-                }
-
-                @Override
-                public <T> T deserialize(Class<T> clazz, byte[] serializedData) {
-                    return null;
-                }
-            })
+            .serializer(this.serializer)
             .tableName(this.config.tableName());
 
         schedulerBuilder = startTasks(schedulerBuilder, startupTasks);
