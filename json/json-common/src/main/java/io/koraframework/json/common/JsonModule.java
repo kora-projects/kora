@@ -230,8 +230,9 @@ public interface JsonModule {
     default JsonReader<BigDecimal> bigDecimalJsonReader() {
         return parser -> switch (parser.currentToken()) {
             case VALUE_NULL -> null;
+            case VALUE_STRING -> new BigDecimal(parser.getValueAsString());
             case VALUE_NUMBER_FLOAT, VALUE_NUMBER_INT -> parser.getDecimalValue();
-            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_FLOAT or VALUE_NUMBER_INT token, got " + parser.currentToken());
+            default -> throw new StreamReadException(parser, "Expecting VALUE_NUMBER_FLOAT, VALUE_STRING or VALUE_NUMBER_INT token, got " + parser.currentToken());
         };
     }
 
