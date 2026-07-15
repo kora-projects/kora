@@ -37,6 +37,8 @@ public abstract class BaseOpenapiTest {
             public String serverConfigPrefix;
             public boolean useSecurityDeclarationOrder;
             @Nullable
+            public String securityRequirementMode;
+            @Nullable
             public String clientResponseMode;
 
             public Options setAuthAsArg(boolean authAsArg) {
@@ -94,6 +96,11 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setSecurityRequirementMode(@Nullable String securityRequirementMode) {
+                this.securityRequirementMode = securityRequirementMode;
+                return this;
+            }
+
             public Options setClientResponseMode(@Nullable String clientResponseMode) {
                 this.clientResponseMode = clientResponseMode;
                 return this;
@@ -113,6 +120,7 @@ public abstract class BaseOpenapiTest {
                        ", extensions='" + extensions + '\'' +
                        ", serverConfigPrefix='" + serverConfigPrefix + '\'' +
                        ", useSecurityDeclarationOrder=" + useSecurityDeclarationOrder +
+                       ", securityRequirementMode='" + securityRequirementMode + '\'' +
                        ", clientResponseMode='" + clientResponseMode + '\'' +
                        '}';
             }
@@ -159,6 +167,10 @@ public abstract class BaseOpenapiTest {
 
             if (fileName.contains("security")) {
                 result.add(new SwaggerParams(fileName, name + "_auth_arg", new SwaggerParams.Options().setAuthAsArg(true)));
+            }
+
+            if (name.equals("petstoreV3_security_multi")) {
+                result.add(new SwaggerParams(fileName, name + "_always_or", new SwaggerParams.Options().setSecurityRequirementMode("ALWAYS_OR")));
             }
 
             if (name.equals("petstoreV2") || name.equals("petstoreV3")) {
@@ -244,6 +256,9 @@ public abstract class BaseOpenapiTest {
         }
         if (options.useSecurityDeclarationOrder) {
             configurator.addAdditionalProperty("useSecurityDeclarationOrder", "true");
+        }
+        if (options.securityRequirementMode != null) {
+            configurator.addAdditionalProperty("securityRequirementMode", options.securityRequirementMode);
         }
         if (options.clientResponseMode != null) {
             configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);

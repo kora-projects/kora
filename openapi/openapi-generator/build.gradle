@@ -90,6 +90,7 @@ sourceSets {
             addOpenapiDir("petstoreV3_security_multi")
             addOpenapiDir("petstoreV3_security_multi_auth")
             addOpenapiDir("petstoreV3_security_multi_auth_arg")
+            addOpenapiDir("petstoreV3_security_multi_always_or")
             addOpenapiDir("petstoreV3_security_anonymous")
             addOpenapiDir("petstoreV3_security_anonymous_auth_arg")
             addOpenapiDir("petstoreV3_security_api_key")

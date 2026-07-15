@@ -14,7 +14,7 @@ public class SecurityData {
 
     public Map<Set<String>, String> principalExtractorTagBySecurityRequirementNames = new LinkedHashMap<>();
 
-    public void fromOpenapi(OpenAPI openAPI, boolean useSecurityDeclarationOrder) {
+    public void fromOpenapi(OpenAPI openAPI, boolean useSecurityDeclarationOrder, CodegenParams.SecurityRequirementMode securityRequirementMode) {
         if (openAPI.getPaths() != null) {
             for (var pathname : openAPI.getPaths().keySet()) {
                 var path = openAPI.getPaths().get(pathname);
@@ -26,14 +26,14 @@ public class SecurityData {
                         var normalizedOperationSchema = newSecurityRequirementsSet(useSecurityDeclarationOrder);
                         for (var securityRequirement : operation.getSecurity()) {
                             var normalized = normalizeSecurityRequirement(securityRequirement, useSecurityDeclarationOrder);
-                            normalizedOperationSchema.add(normalized);
+                            addSecurityRequirement(normalizedOperationSchema, normalized, useSecurityDeclarationOrder, securityRequirementMode);
                         }
                         securityRequirementByOperation.put(operation.getOperationId(), normalizedOperationSchema);
                     } else if (openAPI.getSecurity() != null) {
                         var normalizedOperationSchema = newSecurityRequirementsSet(useSecurityDeclarationOrder);
                         for (var securityRequirement : openAPI.getSecurity()) {
                             var normalized = normalizeSecurityRequirement(securityRequirement, useSecurityDeclarationOrder);
-                            normalizedOperationSchema.add(normalized);
+                            addSecurityRequirement(normalizedOperationSchema, normalized, useSecurityDeclarationOrder, securityRequirementMode);
                         }
                         securityRequirementByOperation.put(operation.getOperationId(), normalizedOperationSchema);
                     }
@@ -52,6 +52,25 @@ public class SecurityData {
                 }
                 principalExtractorTagBySecurityRequirementNames.putIfAbsent(newSecurityNamesSet(requirement.keySet(), useSecurityDeclarationOrder), "SecurityRequirementTag" + principalExtractorTagBySecurityRequirementNames.size());
             }
+        }
+    }
+
+    private static void addSecurityRequirement(
+        Set<Map<String, Set<String>>> requirements,
+        Map<String, Set<String>> requirement,
+        boolean useSecurityDeclarationOrder,
+        CodegenParams.SecurityRequirementMode securityRequirementMode
+    ) {
+        if (securityRequirementMode == CodegenParams.SecurityRequirementMode.STANDARD || requirement.size() <= 1) {
+            requirements.add(requirement);
+            return;
+        }
+        for (var entry : requirement.entrySet()) {
+            var singleRequirement = useSecurityDeclarationOrder
+                ? new OrderedMap<String, Set<String>>()
+                : new TreeMap<String, Set<String>>();
+            singleRequirement.put(entry.getKey(), entry.getValue());
+            requirements.add(singleRequirement);
         }
     }
 

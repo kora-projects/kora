@@ -102,6 +102,46 @@ public class HttpServerKotlinOpenapiTest extends BaseKotlinOpenapiTest {
     }
 
     @Test
+    void securityRequirementModeStandardRequiresAllSchemasInOneRequirement() throws Exception {
+        var files = generate(
+            "petstoreV3_security_multi_standard",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_multi.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("AuthData"));
+        assertTrue(securityContent.contains("if (headerAuth1 != null && queryAuth != null)"));
+    }
+
+    @Test
+    void securityRequirementModeAlwaysOrSplitsSchemasInOneRequirement() throws Exception {
+        var files = generate(
+            "petstoreV3_security_multi_always_or",
+            "kotlin-server",
+            getClass().getResource("/example/petstoreV3_security_multi.yaml").toExternalForm(),
+            new SwaggerParams.Options().setSecurityRequirementMode("ALWAYS_OR")
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.kt"))
+            .findFirst()
+            .orElseThrow());
+
+        assertFalse(securityContent.contains("AuthData"));
+        assertFalse(securityContent.contains("if (headerAuth1 != null && queryAuth != null)"));
+        assertTrue(securityContent.contains("extract(request, headerAuth1)"));
+        assertTrue(securityContent.contains("extract(request, queryAuth)"));
+    }
+
+    @Test
     void bareObjectRequestAndResponseUseByteArrayByDefault() throws Exception {
         var files = generate(
             "petstoreV3_bare_object_bytes_default",

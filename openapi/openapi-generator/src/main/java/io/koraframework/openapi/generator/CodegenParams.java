@@ -32,6 +32,7 @@ public class CodegenParams {
     public static final String FORCE_INCLUDE_OPTIONAL = "forceIncludeOptional";
     public static final String RAW_BODY_MODE = "rawBodyMode";
     public static final String USE_SECURITY_DECLARATION_ORDER = "useSecurityDeclarationOrder";
+    public static final String SECURITY_REQUIREMENT_MODE = "securityRequirementMode";
     public static final String CLIENT_RESPONSE_MODE = "clientResponseMode";
     
     public CodegenMode codegenMode = CodegenMode.JAVA_CLIENT;
@@ -53,6 +54,7 @@ public class CodegenParams {
     public boolean forceIncludeOptional = false;
     public RawBodyMode rawBodyMode = RawBodyMode.BYTES;
     public boolean useSecurityDeclarationOrder = false;
+    public SecurityRequirementMode securityRequirementMode = SecurityRequirementMode.STANDARD;
     public ClientResponseMode clientResponseMode = ClientResponseMode.SEALED;
 
     static List<CliOption> cliOptions() {
@@ -74,6 +76,7 @@ public class CodegenParams {
         cliOptions.add(CliOption.newString(FORCE_INCLUDE_OPTIONAL, "If enabled forces Nullable and NonRequired fields to be included ALWAYS even if null, can't be enabled with enableJsonNullable simultaneously"));
         cliOptions.add(CliOption.newString(RAW_BODY_MODE, "Bare object request and response body mode (one of BYTES, RAW)"));
         cliOptions.add(CliOption.newBoolean(USE_SECURITY_DECLARATION_ORDER, "Use OpenAPI security requirement declaration order when generating auth tags and interceptors"));
+        cliOptions.add(CliOption.newString(SECURITY_REQUIREMENT_MODE, "Security requirement interpretation mode (one of STANDARD, ALWAYS_OR)"));
         cliOptions.add(CliOption.newString(CLIENT_RESPONSE_MODE, "HTTP client response generation mode (one of SEALED, SUCCESSFUL)"));
         return cliOptions;
     }
@@ -144,6 +147,9 @@ public class CodegenParams {
         }
         if (additionalProperties.containsKey(USE_SECURITY_DECLARATION_ORDER)) {
             params.useSecurityDeclarationOrder = Boolean.parseBoolean(additionalProperties.get(USE_SECURITY_DECLARATION_ORDER).toString());
+        }
+        if (additionalProperties.containsKey(SECURITY_REQUIREMENT_MODE)) {
+            params.securityRequirementMode = SecurityRequirementMode.of(additionalProperties.get(SECURITY_REQUIREMENT_MODE).toString());
         }
         if (additionalProperties.containsKey(CLIENT_RESPONSE_MODE)) {
             params.clientResponseMode = ClientResponseMode.of(additionalProperties.get(CLIENT_RESPONSE_MODE).toString());
@@ -245,6 +251,15 @@ public class CodegenParams {
 
         public static ClientResponseMode of(String value) {
             return ClientResponseMode.valueOf(value.toUpperCase(Locale.ROOT));
+        }
+    }
+
+    public enum SecurityRequirementMode {
+        STANDARD,
+        ALWAYS_OR;
+
+        public static SecurityRequirementMode of(String value) {
+            return SecurityRequirementMode.valueOf(value.toUpperCase(Locale.ROOT));
         }
     }
 }

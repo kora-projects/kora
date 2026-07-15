@@ -205,6 +205,44 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
     }
 
     @Test
+    void securityRequirementModeStandardRequiresAllSchemasInOneRequirement() throws Exception {
+        var files = generate(
+            "petstoreV3_security_multi_standard",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_multi.yaml").toExternalForm(),
+            new SwaggerParams.Options()
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertTrue(securityContent.contains("if (headerAuth1 != null && queryAuth != null)"));
+    }
+
+    @Test
+    void securityRequirementModeAlwaysOrSplitsSchemasInOneRequirement() throws Exception {
+        var files = generate(
+            "petstoreV3_security_multi_always_or",
+            "java-client",
+            getClass().getResource("/example/petstoreV3_security_multi.yaml").toExternalForm(),
+            new SwaggerParams.Options().setSecurityRequirementMode("ALWAYS_OR")
+        );
+
+        var securityContent = Files.readString(files.stream()
+            .map(java.io.File::toPath)
+            .filter(path -> path.getFileName().toString().equals("ApiSecurity.java"))
+            .findFirst()
+            .orElseThrow());
+
+        assertFalse(securityContent.contains("if (headerAuth1 != null && queryAuth != null)"));
+        assertTrue(securityContent.contains("if (headerAuth1 != null)"));
+        assertTrue(securityContent.contains("if (queryAuth != null)"));
+    }
+
+    @Test
     void successfulClientResponseModeReturnsSuccessAndThrowsTypedException() throws Exception {
         var files = generate(
             "petstoreV3_client_successful_response",

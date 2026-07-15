@@ -151,7 +151,8 @@ class ServerSecuritySchemaGenerator : AbstractKotlinGenerator<Map<String, Any>>(
                 } else {
                     val authData = ClassName(this.apiPackage, "ApiSecurity", extractorTag + "AuthData");
                     val params = securityRequirement.keys.map { CodeBlock.of("%N", it) }.joinToCode(", ", "(", ")")
-                    intercept.addStatement("val %N = this.%N_.extract(\n  request,\n  %T%L)", extractorTag, extractorTag, authData, params)
+                    val ifProvided = securityRequirement.keys.map { CodeBlock.of("%N != null", it) }.joinToCode(" && ")
+                    intercept.addStatement("val %N = if (%L) this.%N_.extract(\n  request,\n  %T%L) else null", extractorTag, ifProvided, extractorTag, authData, params)
                 }
             }
             intercept.beginControlFlow("if (%N != null)", extractorTag)
