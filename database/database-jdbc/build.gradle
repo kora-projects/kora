@@ -6,4 +6,5 @@ dependencies {
     api libs.hikari
 
     testImplementation project(":internal:test-postgres")
+    testImplementation libs.mockito.core
 }
