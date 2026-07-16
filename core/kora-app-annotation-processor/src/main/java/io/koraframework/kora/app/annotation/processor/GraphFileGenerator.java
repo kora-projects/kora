@@ -205,7 +205,7 @@ public class GraphFileGenerator {
         statement.add("),\n");
 
         statement.add("g -> ");
-        var dependenciesCode = this.generateDependenciesCode(ctx, component, graphTypeName);
+        var dependenciesCode = this.generateDependenciesCode(ctx, component, graphTypeName, 0);
 
         switch (declaration) {
             case ComponentDeclaration.AnnotatedComponent annotatedComponent -> {
@@ -221,10 +221,16 @@ public class GraphFileGenerator {
                 statement.add("($L)", dependenciesCode);
             }
             case ComponentDeclaration.FromModuleComponent moduleComponent -> {
-                if (moduleComponent.module() instanceof ModuleDeclaration.AnnotatedModule(var element)) {
-                    statement.add("impl.module$L.", allModules.indexOf(element));
+                if (moduleComponent.module() instanceof ModuleDeclaration.ClassModule || moduleComponent.module() instanceof ModuleDeclaration.FactoryModule) {
+                    dependenciesCode = this.generateDependenciesCode(ctx, component, graphTypeName, 1);
+                    var moduleInstDep = component.dependencies().getFirst();
+                    statement.add("$L.", moduleInstDep.write(ctx, graphTypeName));
                 } else {
-                    statement.add("impl.");
+                    if (moduleComponent.module() instanceof ModuleDeclaration.AnnotatedModule(var element)) {
+                        statement.add("impl.module$L.", allModules.indexOf(element));
+                    } else {
+                        statement.add("impl.");
+                    }
                 }
                 if (!moduleComponent.typeVariables().isEmpty()) {
                     statement.add("<");
@@ -256,7 +262,7 @@ public class GraphFileGenerator {
     }
 
 
-    private CodeBlock generateDependenciesCode(ProcessingContext ctx, ResolvedComponent component, ClassName graphTypeName) {
+    private CodeBlock generateDependenciesCode(ProcessingContext ctx, ResolvedComponent component, ClassName graphTypeName, int startFrom) {
         var resolvedDependencies = component.dependencies();
         if (resolvedDependencies.isEmpty()) {
             return CodeBlock.of("");
@@ -264,8 +270,8 @@ public class GraphFileGenerator {
         var b = CodeBlock.builder();
         b.indent();
         b.add("\n");
-        for (int i = 0, dependenciesSize = resolvedDependencies.size(); i < dependenciesSize; i++) {
-            if (i > 0) b.add(",\n");
+        for (int i = startFrom, dependenciesSize = resolvedDependencies.size(); i < dependenciesSize; i++) {
+            if (i > startFrom) b.add(",\n");
             var resolvedDependency = resolvedDependencies.get(i);
             b.add(resolvedDependency.write(ctx, graphTypeName));
         }

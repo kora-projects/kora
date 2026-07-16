@@ -32,6 +32,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private final List<TypeElement> koraAppElements = new ArrayList<>();
     private final List<TypeElement> modules = new ArrayList<>();
+    private final List<TypeElement> classModules = new ArrayList<>();
     private final List<TypeElement> components = new ArrayList<>();
 
     @Override
@@ -104,19 +105,26 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private void processModules(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         for (var annotated : annotatedElements.getOrDefault(CommonClassNames.module, List.of())) {
-            if (annotated.element().getKind() != ElementKind.INTERFACE) {
-                continue;
-            }
-            var te = (TypeElement) annotated.element();
-            for (var member : elements.getAllMembers(te)) {
-                if (member.getKind() == ElementKind.METHOD && member.getModifiers().contains(Modifier.DEFAULT)) {
-                    var method = (ExecutableElement) member;
-                    if (method.getReturnType().getKind() != TypeKind.DECLARED) {
-                        messager.printMessage(Diagnostic.Kind.ERROR, "Only reference types are allowed as graph components");
+            var kind = annotated.element().getKind();
+            if (kind == ElementKind.CLASS) {
+                var te = (TypeElement) annotated.element();
+                if (!te.getModifiers().contains(Modifier.ABSTRACT)) {
+                    this.classModules.add(te);
+                }
+            } else if (kind == ElementKind.INTERFACE) {
+                var te = (TypeElement) annotated.element();
+                for (var member : elements.getAllMembers(te)) {
+                    if (member.getKind() == ElementKind.METHOD && member.getModifiers().contains(Modifier.DEFAULT)) {
+                        var method = (ExecutableElement) member;
+                        if (method.getReturnType().getKind() != TypeKind.DECLARED) {
+                            messager.printMessage(Diagnostic.Kind.ERROR, "Only reference types are allowed as graph components");
+                        }
                     }
                 }
+                this.modules.add(te);
+            } else {
+                messager.printMessage(Diagnostic.Kind.ERROR, "Only classes and interfaces are allowed as modules");
             }
-            this.modules.add(te);
         }
     }
 
@@ -145,6 +153,11 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
         allComponents.addAll(mixedInModuleComponents);
         allComponents.addAll(annotatedModulesComponents);
+        for (var classModule : this.classModules) {
+            var classModuleDecl = new ModuleDeclaration.ClassModule(classModule);
+            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, classModule));
+            allComponents.addAll(KoraAppUtils.parseClassModuleComponents(ctx, classModuleDecl));
+        }
         allComponents.sort(Comparator.comparing(Objects::toString));
 
         record Components(List<ComponentDeclaration> templates, List<ComponentDeclaration> nonTemplates) {}

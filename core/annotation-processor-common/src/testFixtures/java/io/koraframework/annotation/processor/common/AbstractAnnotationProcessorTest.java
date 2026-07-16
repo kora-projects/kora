@@ -65,6 +65,7 @@ public abstract class AbstractAnnotationProcessorTest {
     protected String commonImports() {
         return """
             import io.koraframework.common.annotation.*;
+            import io.koraframework.common.annotation.Module;
             import io.koraframework.common.*;
             import org.jspecify.annotations.Nullable;
             import java.util.Optional;

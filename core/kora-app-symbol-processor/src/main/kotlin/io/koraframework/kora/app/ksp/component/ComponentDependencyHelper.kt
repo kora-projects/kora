@@ -5,6 +5,7 @@ import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ParameterizedTypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
+import io.koraframework.kora.app.ksp.declaration.ModuleDeclaration
 import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.TagUtils
@@ -18,11 +19,36 @@ object ComponentDependencyHelper {
             is ComponentDeclaration.FromModuleComponent -> {
                 val element = declaration.method
                 val result = ArrayList<DependencyClaim>(declaration.methodParameterTypes.size + 1)
+                if (declaration.module is ModuleDeclaration.FactoryModule) {
+                    result.add(
+                        DependencyClaim(
+                            declaration.module.element.asType(listOf()),
+                            declaration.module.tag,
+                            DependencyClaim.DependencyClaimType.ONE_REQUIRED
+                        )
+                    )
+                }
+                if (declaration.module is ModuleDeclaration.ClassModule) {
+                    result.add(
+                        DependencyClaim(
+                            declaration.module.element.asType(listOf()),
+                            null,
+                            DependencyClaim.DependencyClaimType.ONE_REQUIRED
+                        )
+                    )
+                }
                 for (i in 0 until declaration.methodParameterTypes.size) {
                     val parameterType = declaration.methodParameterTypes[i]
                     val parameterElement = element.parameters[i]
-                    val tags = TagUtils.parseTagValue(parameterElement)
-                    result.add(parseClaim(parameterType, tags, declaration.method.parameters[i]))
+                    var tag = TagUtils.parseTagValue(parameterElement)
+                    if (CommonClassNames.tagFactory.canonicalName == tag) {
+                        if (declaration.module is ModuleDeclaration.FactoryModule) {
+                            tag = declaration.module.tag
+                        } else {
+                            throw ProcessingErrorException("Tag @Tag.Factory is only allowed for factory modules ", declaration.method)
+                        }
+                    }
+                    result.add(parseClaim(parameterType, tag, declaration.method.parameters[i]))
                 }
                 return result
             }

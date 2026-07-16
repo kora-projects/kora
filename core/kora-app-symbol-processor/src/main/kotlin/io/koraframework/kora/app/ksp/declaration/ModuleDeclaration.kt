@@ -7,4 +7,6 @@ sealed interface ModuleDeclaration {
 
     data class MixedInModule(override val element: KSClassDeclaration) : ModuleDeclaration
     data class AnnotatedModule(override val element: KSClassDeclaration) : ModuleDeclaration
+    data class ClassModule(override val element: KSClassDeclaration) : ModuleDeclaration
+    data class FactoryModule(override val element: KSClassDeclaration, val tag: String?) : ModuleDeclaration
 }

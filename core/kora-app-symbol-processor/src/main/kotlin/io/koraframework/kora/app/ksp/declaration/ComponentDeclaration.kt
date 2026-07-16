@@ -156,7 +156,15 @@ sealed interface ComponentDeclaration {
                     method
                 )
             }
-            val tags = TagUtils.parseTagValue(method)
+            var tag = TagUtils.parseTagValue(method)
+            if (CommonClassNames.tagFactory.canonicalName == tag) {
+                if (module is ModuleDeclaration.FactoryModule) {
+                    tag = module.tag
+                } else {
+                    throw ProcessingErrorException("Tag @Tag.Factory is only allowed for factory modules ", method)
+                }
+            }
+
             val conditionalAnnotation = method.findAnnotation(CommonClassNames.conditional)
             val condition = conditionalAnnotation?.findValueNoDefault<KSType>("tag")
                 ?.toClassName()
@@ -170,7 +178,7 @@ sealed interface ComponentDeclaration {
                     it.variance
                 )
             }
-            return FromModuleComponent(type, module, tags, method, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type), condition)
+            return FromModuleComponent(type, module, tag, method, parameterTypes, typeParameters, ctx.serviceTypesHelper.isInterceptor(type), condition)
         }
 
         fun fromAnnotated(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): AnnotatedComponent {

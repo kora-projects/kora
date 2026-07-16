@@ -25,7 +25,8 @@ import io.koraframework.http.server.common.system.$HttpServerSystemConfig_Config
 import io.koraframework.http.server.common.system.LivenessHandler;
 import io.koraframework.http.server.common.system.MetricsHandler;
 import io.koraframework.http.server.common.system.ReadinessHandler;
-import io.koraframework.http.server.common.telemetry.*;
+import io.koraframework.http.server.common.telemetry.HttpServerObservation;
+import io.koraframework.http.server.common.telemetry.HttpServerTelemetry;
 import io.koraframework.http.server.common.telemetry.impl.NoopHttpServerTelemetry;
 import io.koraframework.telemetry.common.MetricsScraper;
 import io.opentelemetry.api.trace.Span;
@@ -76,7 +77,7 @@ public abstract class HttpServerTestKit {
             new MetricsHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), valueOf(Optional.of(registry)))
         ),
         List.of(),
-        $HttpServerSystemConfig_ConfigValueMapper.DEFAULTS
+        $HttpServerConfig_ConfigValueMapper.DEFAULTS
     );
 
     private volatile HttpServer httpServer = null;
@@ -991,7 +992,7 @@ public abstract class HttpServerTestKit {
     }
 
     protected void startSystemHttpServer() {
-        this.privateHttpServer = this.httpServer(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), privateApiHandler, NoopHttpServerTelemetry.INSTANCE);
+        this.privateHttpServer = this.httpServer(valueOf($HttpServerConfig_ConfigValueMapper.DEFAULTS), privateApiHandler, NoopHttpServerTelemetry.INSTANCE);
         try {
             this.privateHttpServer.init();
         } catch (Exception e) {

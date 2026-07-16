@@ -1,37 +1,10 @@
 package io.koraframework.http.server.undertow;
 
-import io.koraframework.application.graph.ValueOf;
-import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.common.annotation.Root;
-import io.koraframework.common.Configurer;
-import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.router.HttpServerHandler;
-import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
-import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
-import io.koraframework.http.server.undertow.handler.KoraVirtualThreadDispatchHttpHandler;
-import io.undertow.Undertow;
-import io.undertow.server.HttpHandler;
-import org.jspecify.annotations.Nullable;
-import org.xnio.XnioWorker;
+import io.koraframework.common.annotation.FactoryModule;
 
 public interface UndertowPublicHttpServerModule extends UndertowSystemHttpServerModule {
-
-    @Root
-    default UndertowHttpServer undertowPublicHttpServer(ValueOf<HttpHandler> httpHandler,
-                                                        XnioWorker worker,
-                                                        ValueOf<HttpServerConfig> config,
-                                                        @Nullable Configurer<Undertow.Builder> configurer,
-                                                        @Nullable Configurer<HttpHandler> handlerConfigurer) {
-        return new UndertowHttpServer("kora-undertow", httpHandler, worker, config, configurer, handlerConfigurer);
-    }
-
-    @DefaultComponent
-    default HttpHandler undertowPublicHttpHandler(HttpServerConfig config,
-                                                  HttpServerHandler publicApiHandler,
-                                                  HttpServerTelemetryFactory telemetryFactory) {
-        var telemetry = telemetryFactory.get(config.telemetry());
-        var handler = (HttpHandler) new KoraRequestProcessingHttpHandler(telemetry, publicApiHandler);
-        handler = new KoraVirtualThreadDispatchHttpHandler("kora-undertow", handler);
-        return handler;
+    @FactoryModule
+    default UndertowHttpServerModule publicApi() {
+        return new UndertowHttpServerModule("kora-undertow", "httpServer");
     }
 }

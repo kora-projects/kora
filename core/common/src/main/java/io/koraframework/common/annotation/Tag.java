@@ -40,7 +40,16 @@ public @interface Tag {
      * <hr>
      * <b>English</b>: A special tag type which means that the tag matches any dependency enforcement condition, i.e. it matches any tag
      */
-    final class Any {}
+    @Tag(Any.class)
+    @interface Any {}
+
+    /**
+     * <b>Русский</b>: Специальный тип тега для параметров методов модуля-класса — означает «использовать тот же тег, что и у самого модуля».
+     * <hr>
+     * <b>English</b>: A special tag type for class-module method parameters — means "use the same tag as the enclosing module".
+     */
+    @Tag(Factory.class)
+    @interface Factory {}
 
     Class<?> value();
 }

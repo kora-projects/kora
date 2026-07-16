@@ -238,7 +238,14 @@ public sealed interface ComponentDeclaration {
         if (TypeParameterUtils.hasRawTypes(type)) {
             throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", method);
         }
-        var tags = TagUtils.parseTagValue(method);
+        var tag = TagUtils.parseTagValue(method);
+        if (CommonClassNames.tagFactory.canonicalName().equals(tag)) {
+            if (module instanceof ModuleDeclaration.FactoryModule(var _, var moduleTag)) {
+                tag = moduleTag;
+            } else {
+                throw new ProcessingErrorException("Tag @Tag.Factory is only allowed for factory modules ", method);
+            }
+        }
         var conditionalAnnotation = AnnotationUtils.findAnnotation(method, CommonClassNames.conditional);
         var condition = conditionalAnnotation != null
             ? (ClassName) TypeName.get(Objects.requireNonNull(AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(conditionalAnnotation, "tag")))
@@ -246,7 +253,7 @@ public sealed interface ComponentDeclaration {
         var parameterTypes = method.getParameters().stream().map(VariableElement::asType).toList();
         var typeParameters = method.getTypeParameters().stream().map(TypeParameterElement::asType).toList();
         var isInterceptor = ctx.serviceTypeHelper.isInterceptor(type);
-        return new FromModuleComponent(type, module, tags, condition, method, parameterTypes, typeParameters, isInterceptor);
+        return new FromModuleComponent(type, module, tag, condition, method, parameterTypes, typeParameters, isInterceptor);
     }
 
     static ComponentDeclaration fromAnnotated(ProcessingContext ctx, TypeElement typeElement) {
