@@ -35,8 +35,8 @@ class KoraAppProcessor(
 
 
     private val codeGenerator = environment.codeGenerator
-    private val annotatedModules = mutableListOf<String>()
-    private val classModules = mutableListOf<String>()
+    private val annotatedInterfaceModules = mutableListOf<String>()
+    private val annotatedClassModules = mutableListOf<String>() // @Disabled("Haven't decided whether to release it yet")
     private val components = mutableListOf<String>()
     private val koraApps = mutableListOf<String>()
 
@@ -119,7 +119,7 @@ class KoraAppProcessor(
 
         val allInterfaces = declaration.getAllSuperTypes().toList()
         val submodules = findKoraSubmoduleModules(ctx.resolver, allInterfaces, declaration)
-        val allModules = (submodules + annotatedModules.map { resolver!!.getClassDeclarationByName(it)!! })
+        val allModules = (submodules + annotatedInterfaceModules.map { resolver!!.getClassDeclarationByName(it)!! })
             .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
             .filter { it.qualifiedName?.asString() != "kotlin.Any" }
             .toSet()
@@ -172,12 +172,12 @@ class KoraAppProcessor(
             }
         }
         allComponents.addAll(annotatedModuleComponents)
-        for (classModule in this.classModules) {
-            val classModuleDecl = ModuleDeclaration.ClassModule(resolver!!.getClassDeclarationByName(classModule)!!)
-            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, classModuleDecl.element))
-            classModuleDecl.element.getAllFunctions()
+        for (factoryModule in this.annotatedClassModules) {
+            val factoryModuleDecl = ModuleDeclaration.ClassModule(resolver!!.getClassDeclarationByName(factoryModule)!!)
+            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, factoryModuleDecl.element))
+            factoryModuleDecl.element.getAllFunctions()
                 .filter(filterObjectMethods)
-                .forEach { innerFunc -> factoryModuleComponents.add(ComponentDeclaration.fromModule(ctx, classModuleDecl, innerFunc)) }
+                .forEach { innerFunc -> allComponents.add(ComponentDeclaration.fromModule(ctx, factoryModuleDecl, innerFunc)) }
         }
         allComponents.sortedBy { it.toString() }
         // todo modules from kora app part
@@ -231,18 +231,19 @@ class KoraAppProcessor(
             if (module is KSClassDeclaration) {
                 if (module.classKind == ClassKind.INTERFACE) {
                     if (module.validateAll()) {
-                        annotatedModules.add(module.qualifiedName!!.asString())
+                        annotatedInterfaceModules.add(module.qualifiedName!!.asString())
                     } else {
                         deferred.add(module)
                     }
                 }
-                if (module.classKind == ClassKind.CLASS) {
-                    if (module.validateAll()) {
-                        classModules.add(module.qualifiedName!!.asString())
-                    } else {
-                        deferred.add(module)
-                    }
-                }
+//                @Disabled("Haven't decided whether to release it yet")
+//                if (module.classKind == ClassKind.CLASS) {
+//                    if (module.validateAll()) {
+//                        annotatedClassModules.add(module.qualifiedName!!.asString())
+//                    } else {
+//                        deferred.add(module)
+//                    }
+//                }
             }
         }
         return deferred

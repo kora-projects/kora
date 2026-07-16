@@ -1,5 +1,6 @@
 package io.koraframework.kora.app.annotation.processor;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -164,6 +165,7 @@ class ModuleTest extends AbstractKoraAppTest {
         draw.init();
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     public void testClassModuleProvidesDependency() {
         var draw = compile("""
@@ -185,6 +187,7 @@ class ModuleTest extends AbstractKoraAppTest {
         draw.init();
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     public void testClassModuleWithConstructorDependency() {
         var draw = compile("""
@@ -214,6 +217,7 @@ class ModuleTest extends AbstractKoraAppTest {
         draw.init();
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     public void testClassModuleExtendsBaseModule() {
         var draw = compile("""
@@ -241,6 +245,7 @@ class ModuleTest extends AbstractKoraAppTest {
         draw.init();
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     public void testClassModuleOverridesInheritedMethod() {
         var draw = compile("""

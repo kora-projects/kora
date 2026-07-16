@@ -30,10 +30,10 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(KoraAppProcessor.class);
 
-    private final List<TypeElement> koraAppElements = new ArrayList<>();
-    private final List<TypeElement> modules = new ArrayList<>();
-    private final List<TypeElement> classModules = new ArrayList<>();
+    private final List<TypeElement> annotatedInterfaceModules = new ArrayList<>();
+    private final List<TypeElement> annotatedClassModules = new ArrayList<>(); // @Disabled("Haven't decided whether to release it yet")
     private final List<TypeElement> components = new ArrayList<>();
+    private final List<TypeElement> koraApps = new ArrayList<>();
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -57,9 +57,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 return;
             }
             var ctx = new ProcessingContext(processingEnv);
-            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements", this.koraAppElements);
+            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements", this.koraApps);
 
-            for (var element : this.koraAppElements) {
+            for (var element : this.koraApps) {
                 try {
                     var result = buildGraph(roundEnv, ctx, element);
                     this.write(element, ctx, result);
@@ -79,7 +79,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 if (log.isInfoEnabled()) {
                     log.info("@KoraApp element found:\n{}", element.toString().indent(4));
                 }
-                this.koraAppElements.add((TypeElement) element);
+                this.koraApps.add((TypeElement) element);
             } else {
                 this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@KoraApp can be placed only on interfaces", element);
             }
@@ -106,12 +106,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     private void processModules(Map<ClassName, List<AnnotatedElement>> annotatedElements) {
         for (var annotated : annotatedElements.getOrDefault(CommonClassNames.module, List.of())) {
             var kind = annotated.element().getKind();
-            if (kind == ElementKind.CLASS) {
-                var te = (TypeElement) annotated.element();
-                if (!te.getModifiers().contains(Modifier.ABSTRACT)) {
-                    this.classModules.add(te);
-                }
-            } else if (kind == ElementKind.INTERFACE) {
+            if (kind == ElementKind.INTERFACE) {
                 var te = (TypeElement) annotated.element();
                 for (var member : elements.getAllMembers(te)) {
                     if (member.getKind() == ElementKind.METHOD && member.getModifiers().contains(Modifier.DEFAULT)) {
@@ -121,7 +116,13 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                         }
                     }
                 }
-                this.modules.add(te);
+                this.annotatedInterfaceModules.add(te);
+//            @Disabled("Haven't decided whether to release it yet")
+//            } else if (kind == ElementKind.CLASS) {
+//                var te = (TypeElement) annotated.element();
+//                if (!te.getModifiers().contains(Modifier.ABSTRACT)) {
+//                    this.annotatedClassModules.add(te);
+//                }
             } else {
                 messager.printMessage(Diagnostic.Kind.ERROR, "Only classes and interfaces are allowed as modules");
             }
@@ -135,7 +136,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         var type = (TypeElement) classElement;
         var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
         if (log.isTraceEnabled()) {
-            log.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.modules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
+            log.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.annotatedInterfaceModules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
                 .map(Object::toString).sorted()
                 .collect(Collectors.joining("\n")).indent(4));
         }
@@ -144,7 +145,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
             log.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
         }
         var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
-        var discoveredModules = this.modules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
+        var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());
         var allModules = Stream.concat(discoveredModules, submodules.stream()).sorted(Comparator.comparing(Objects::toString)).toList();
         var annotatedModulesComponents = KoraAppUtils.parseComponents(ctx, allModules.stream().map(ModuleDeclaration.AnnotatedModule::new).toList());
         var allComponents = new ArrayList<ComponentDeclaration>(this.components.size() + mixedInModuleComponents.size() + annotatedModulesComponents.size());
@@ -153,9 +154,9 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
         allComponents.addAll(mixedInModuleComponents);
         allComponents.addAll(annotatedModulesComponents);
-        for (var classModule : this.classModules) {
-            var classModuleDecl = new ModuleDeclaration.ClassModule(classModule);
-            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, classModule));
+        for (var factoryModule : this.annotatedClassModules) {
+            var classModuleDecl = new ModuleDeclaration.ClassModule(factoryModule);
+            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, factoryModule));
             allComponents.addAll(KoraAppUtils.parseClassModuleComponents(ctx, classModuleDecl));
         }
         allComponents.sort(Comparator.comparing(Objects::toString));

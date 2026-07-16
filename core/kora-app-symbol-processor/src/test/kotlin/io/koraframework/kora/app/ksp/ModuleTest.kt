@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.ksp
 
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 class ModuleTest : AbstractKoraAppProcessorTest() {
@@ -193,6 +194,7 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         draw.init()
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     fun testClassModuleProvidesDependency() {
         val draw = compile(
@@ -218,6 +220,7 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         draw.init()
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     fun testClassModuleWithConstructorDependency() {
         val draw = compile(
@@ -251,6 +254,7 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         draw.init()
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     fun testClassModuleExtendsBaseModule() {
         val draw = compile(
@@ -284,6 +288,7 @@ class ModuleTest : AbstractKoraAppProcessorTest() {
         draw.init()
     }
 
+    @Disabled("Haven't decided whether to release it yet")
     @Test
     fun testClassModuleOverridesInheritedMethod() {
         val draw = compile(
