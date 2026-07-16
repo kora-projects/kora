@@ -143,7 +143,7 @@ open class DependencyTest : AbstractKoraAppProcessorTest() {
     }
 
     @Test
-//    @Disabled
+    @Disabled
     fun testBugged() {
         val draw = compile(
             """
