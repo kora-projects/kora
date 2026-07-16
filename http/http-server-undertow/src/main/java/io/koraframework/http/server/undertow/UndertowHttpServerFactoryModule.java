@@ -6,7 +6,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Root;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.server.common.HttpServerConfig;
-import io.koraframework.http.server.common.HttpServerInstanceModule;
+import io.koraframework.http.server.common.HttpServerFactoryModule;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 import io.koraframework.http.server.common.telemetry.HttpServerTelemetryFactory;
 import io.koraframework.http.server.undertow.handler.KoraRequestProcessingHttpHandler;
@@ -16,10 +16,11 @@ import io.undertow.server.HttpHandler;
 import org.jspecify.annotations.Nullable;
 import org.xnio.XnioWorker;
 
-public class UndertowHttpServerModule extends HttpServerInstanceModule {
+public class UndertowHttpServerFactoryModule extends HttpServerFactoryModule {
+
     private final String name;
 
-    public UndertowHttpServerModule(String name, String configPath) {
+    public UndertowHttpServerFactoryModule(String name, String configPath) {
         super(configPath);
         this.name = name;
     }

@@ -8,10 +8,11 @@ import io.koraframework.http.server.common.interceptor.HttpServerInterceptor;
 import io.koraframework.http.server.common.request.HttpServerRequestHandler;
 import io.koraframework.http.server.common.router.HttpServerHandler;
 
-public class HttpServerInstanceModule {
+public class HttpServerFactoryModule {
+
     private final String configPath;
 
-    public HttpServerInstanceModule(String configPath) {
+    public HttpServerFactoryModule(String configPath) {
         this.configPath = configPath;
     }
 

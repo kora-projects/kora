@@ -13,10 +13,11 @@ import org.jspecify.annotations.Nullable;
 import org.xnio.XnioWorker;
 
 public interface UndertowSystemHttpServerModule extends HttpServerModule {
+
     @FactoryModule
     @SystemApi
-    default UndertowHttpServerModule systemApi() {
-        return new UndertowHttpServerModule("kora-undertow-system", "httpServer.system");
+    default UndertowHttpServerFactoryModule undertowSystemApi() {
+        return new UndertowHttpServerFactoryModule("kora-undertow-system", "httpServer.system");
     }
 
     default UndertowConfig undertowHttpServerConfig(Config config, ConfigValueMapper<UndertowConfig> mapper) {
