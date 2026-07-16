@@ -30,6 +30,8 @@ resteasy = "6.2.16.Final"
 
 # Data and messaging
 kafka = "4.3.1"
+avro = "1.12.0"
+kafka-avro-serializer = "7.7.2"
 cassandra = "4.19.3"
 flyway = "12.11.0"
 
@@ -186,6 +188,10 @@ mockserver-netty = { module = "org.mock-server:mockserver-netty", version.ref = 
 mockserver-client = { module = "org.mock-server:mockserver-client-java", version.ref = "mockserver" }
 
 kafka-client = { module = "org.apache.kafka:kafka-clients", version.ref = "kafka" }
+avro = { module = "org.apache.avro:avro", version.ref = "avro" }
+avro-tools = { module = "org.apache.avro:avro-tools", version.ref = "avro" }
+kafka-avro-serializer = { module = "io.confluent:kafka-avro-serializer", version.ref = "kafka-avro-serializer" }
+
 
 # gRPC - https://github.com/grpc/grpc-java/blob/master/SECURITY.md#netty
 grpc-kotlin-stub = { module = "io.grpc:grpc-kotlin-stub", version.ref = "grpc-kotlin" }

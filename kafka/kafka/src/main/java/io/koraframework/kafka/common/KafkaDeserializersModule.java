@@ -2,9 +2,13 @@ package io.koraframework.kafka.common;
 
 import org.apache.kafka.common.serialization.*;
 import org.apache.kafka.common.utils.Bytes;
+import org.apache.avro.specific.SpecificRecord;
+import io.koraframework.avro.common.AvroReader;
+import io.koraframework.avro.common.annotation.Avro;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.annotation.Json;
+import io.koraframework.kafka.common.consumer.deserializer.KafkaAvroTypedDeserializer;
 import io.koraframework.kafka.common.consumer.deserializer.JsonKafkaDeserializer;
 
 import java.nio.ByteBuffer;
@@ -74,5 +78,11 @@ public interface KafkaDeserializersModule {
     @DefaultComponent
     default <T> JsonKafkaDeserializer<T> jsonKafkaDeserializer(JsonReader<T> reader) {
         return new JsonKafkaDeserializer<>(reader);
+    }
+
+    @Avro
+    @DefaultComponent
+    default <T extends SpecificRecord> Deserializer<T> avroKafkaSpecificDeserializer(@Avro AvroReader<T> reader) {
+        return new KafkaAvroTypedDeserializer<>(reader);
     }
 }

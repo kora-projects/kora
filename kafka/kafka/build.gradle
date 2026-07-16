@@ -3,10 +3,17 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 dependencies {
     annotationProcessor project(":config:config-annotation-processor")
 
+    compileOnly project(":avro:avro-common")
+
+    compileOnly(libs.kafka.avro.serializer) {
+        exclude group: "org.apache.kafka", module: "kafka-clients"
+    }
+
     api project(":core:common")
     api project(":config:config-common")
     api project(":telemetry:telemetry-common")
     api project(":logging:logging-common")
+
     api libs.kafka.client
 
     testImplementation project(':internal:test-kafka')

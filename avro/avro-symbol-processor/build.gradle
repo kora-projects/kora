@@ -2,7 +2,7 @@ import org.apache.avro.tool.SpecificCompilerTool
 
 buildscript {
     dependencies {
-        classpath "org.apache.avro:avro-tools:1.12.0"
+        classpath libs.avro.tools
     }
 }
 
@@ -10,20 +10,17 @@ apply from: "${project.rootDir}/gradle/kotlin-plugin.gradle"
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(':symbol-processor-common')
-    api project(':kora-app-symbol-processor')
+    api project(':core:symbol-processor-common')
+    api project(':core:kora-app-symbol-processor')
 
     testImplementation project(':avro:avro-common')
-    testImplementation testFixtures(project(':symbol-processor-common'))
+    testImplementation testFixtures(project(':core:symbol-processor-common'))
 
     testImplementation libs.classgraph
     testImplementation libs.kotlin.compiler
     testImplementation libs.kotlin.compiler
     testImplementation libs.junit.jupiter
-    testImplementation libs.ksp
     testImplementation libs.ksp.api
-    testImplementation libs.kotlin.coroutines.reactor
-    testImplementation libs.kotlin.coroutines.jdk8
 }
 
 tasks.register("generateAvroClasses") {
@@ -38,7 +35,7 @@ tasks.register("generateAvroClasses") {
 
     doFirst {
         delete outputDir
-        delete "$buildDir/in-test-generated-ksp/sources/tinkoff/kora"
+        delete "$buildDir/in-tesVt-generated-ksp/sources/iokoraframework/kora"
     }
 
     doLast {
