@@ -235,15 +235,17 @@ class KoraAppProcessor(
                     } else {
                         deferred.add(module)
                     }
-                }
 //                @Disabled("Haven't decided whether to release it yet")
-//                if (module.classKind == ClassKind.CLASS) {
+//                } else if (module.classKind == ClassKind.CLASS) {
 //                    if (module.validateAll()) {
 //                        annotatedClassModules.add(module.qualifiedName!!.asString())
 //                    } else {
 //                        deferred.add(module)
 //                    }
 //                }
+                } else {
+                    kspLogger.error("Only interfaces are allowed as modules", module)
+                }
             }
         }
         return deferred

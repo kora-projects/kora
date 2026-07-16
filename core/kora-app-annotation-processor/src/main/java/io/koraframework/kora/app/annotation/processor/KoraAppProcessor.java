@@ -124,7 +124,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 //                    this.annotatedClassModules.add(te);
 //                }
             } else {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Only classes and interfaces are allowed as modules");
+                messager.printMessage(Diagnostic.Kind.ERROR, "Only interfaces are allowed as modules");
             }
         }
     }
