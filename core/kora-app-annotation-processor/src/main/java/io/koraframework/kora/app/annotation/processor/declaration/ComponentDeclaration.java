@@ -312,9 +312,6 @@ public sealed interface ComponentDeclaration {
             if (tag == null) {
                 tag = TagUtils.parseTagValue(typeElement);
             }
-            if(tag.isEmpty()) {
-                tag = generatedResult.tags();
-            }
             var type = typeElement.asType();
             if (TypeParameterUtils.hasRawTypes(type)) {
                 throw new ProcessingErrorException("""

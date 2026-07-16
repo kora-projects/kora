@@ -2,18 +2,18 @@ import org.apache.avro.tool.SpecificCompilerTool
 
 buildscript {
     dependencies {
-        classpath "org.apache.avro:avro-tools:1.12.0"
+        classpath libs.avro.tools
     }
 }
 
 apply from: "${project.rootDir}/gradle/in-test-generated.gradle"
 
 dependencies {
-    api project(":annotation-processor-common")
-    api project(":kora-app-annotation-processor")
+    api project(":core:annotation-processor-common")
+    api project(":core:kora-app-annotation-processor")
 
     testImplementation project(":avro:avro-common")
-    testImplementation testFixtures(project(":annotation-processor-common"))
+    testImplementation testFixtures(project(":core:annotation-processor-common"))
 }
 
 tasks.register("generateAvroClasses") {
@@ -34,6 +34,10 @@ tasks.register("generateAvroClasses") {
         var params = ["-bigDecimal", "schema", inputDir.toString(), outputDir.toString()]
         new SpecificCompilerTool().run(System.in, System.out, System.err, params)
     }
+}
+
+sourceSets.test.java {
+    srcDir tasks.generateAvroClasses
 }
 
 test.dependsOn(tasks.generateAvroClasses)
