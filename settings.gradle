@@ -52,6 +52,7 @@ include(
     'database:database-liquibase',
     'jms',
     'kafka:kafka',
+    'kafka:kafka-schema-registry',
     'kafka:kafka-annotation-processor',
     'kafka:kafka-symbol-processor',
     'http:http-common',
@@ -105,4 +106,7 @@ include(
     'experimental:camunda-zeebe-worker',
     'experimental:camunda-zeebe-worker-annotation-processor',
     'experimental:camunda-zeebe-worker-symbol-processor',
+    'avro:avro-common',
+    'avro:avro-annotation-processor',
+    'avro:avro-symbol-processor',
 )
