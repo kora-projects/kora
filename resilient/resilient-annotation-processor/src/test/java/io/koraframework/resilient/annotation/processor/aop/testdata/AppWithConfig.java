@@ -20,14 +20,22 @@ public interface AppWithConfig extends ConfigValueMapperModule, CircuitBreakerMo
             """
                 resilient {
                   circuitbreaker {
-                    default {
-                      type = STRIPED_APPROX
-                      countBased {
-                        windowSize = 1
-                        stripedApprox {
-                          stripes = 1
-                        }
-                      }
+                    custom1 {
+                      slidingWindowSize = 1
+                      minimumRequiredCalls = 1
+                      failureRateThreshold = 100
+                      permittedCallsInHalfOpenState = 1
+                      waitDurationInOpenState = 1s
+                    }
+                    custom2 {
+                      slidingWindowSize = 1
+                      minimumRequiredCalls = 1
+                      failureRateThreshold = 100
+                      permittedCallsInHalfOpenState = 1
+                      waitDurationInOpenState = 1s
+                    }
+                    custom3 {
+                      slidingWindowSize = 1
                       minimumRequiredCalls = 1
                       failureRateThreshold = 100
                       permittedCallsInHalfOpenState = 1

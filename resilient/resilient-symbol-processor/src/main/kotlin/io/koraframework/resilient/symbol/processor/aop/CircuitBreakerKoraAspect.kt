@@ -15,8 +15,11 @@ import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
 import io.koraframework.ksp.common.FunctionUtils.isFuture
 import io.koraframework.ksp.common.FunctionUtils.isMono
+import io.koraframework.ksp.common.FunctionUtils.isSuspend
 import io.koraframework.ksp.common.FunctionUtils.isVoid
+import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.ksp.common.exception.ProcessingErrorException
+import io.koraframework.resilient.symbol.processor.CircuitBreakerTagUtils
 import java.util.concurrent.CompletionStage
 import java.util.concurrent.Future
 
@@ -45,16 +48,17 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
         val circuitBreakerName = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
             .findValue<String>("value")!!
 
-        val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.circuitbreaker.CircuitBreakerManager")!!.asType(listOf())
-        val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
         val circuitType = resolver.getClassDeclarationByName("io.koraframework.resilient.circuitbreaker.CircuitBreaker")!!.asType(listOf())
-        val fieldCircuit = aspectContext.fieldFactory.constructorInitialized(
+        val tag = CircuitBreakerTagUtils.tagName(circuitBreakerName)
+        val fieldCircuit = aspectContext.fieldFactory.constructorParam(
             circuitType,
-            CodeBlock.of("%L[%S]", fieldManager, circuitBreakerName)
+            listOf(tag.toTagAnnotation())
         )
 
         val body = if (ksFunction.isFlow()) {
             buildBodyFlow(ksFunction, superCall, fieldCircuit)
+        } else if (ksFunction.isSuspend()) {
+            buildBodySuspend(ksFunction, superCall, fieldCircuit)
         } else {
             buildBodySync(ksFunction, superCall, fieldCircuit)
         }
@@ -108,6 +112,31 @@ class CircuitBreakerKoraAspect(val resolver: Resolver) : KoraAspect {
             }
             """.trimIndent(), flowMember, fieldCircuitBreaker, emitMember, superMethod.toString(),
             fieldCircuitBreaker, PERMITTED_EXCEPTION, fieldCircuitBreaker
+        ).build()
+    }
+
+    private fun buildBodySuspend(
+        method: KSFunctionDeclaration, superCall: String, fieldCircuitBreaker: String
+    ): CodeBlock {
+        val superMethod = buildMethodCall(method, superCall)
+        val methodCall = if (method.isVoid()) superMethod else CodeBlock.of("val t = %L", superMethod)
+        val returnCall = if (method.isVoid()) CodeBlock.of("") else CodeBlock.of("t")
+
+        return CodeBlock.builder().add(
+            """
+            return try {
+                %L.acquire()
+                %L
+                %L.releaseOnSuccess()
+                %L
+            } catch (e: %T) {
+                throw e
+            } catch (e: Throwable) {
+                %L.releaseOnError(e)
+                throw e
+            }
+            """.trimIndent(), fieldCircuitBreaker, methodCall, fieldCircuitBreaker,
+            returnCall, PERMITTED_EXCEPTION, fieldCircuitBreaker
         ).build()
     }
 

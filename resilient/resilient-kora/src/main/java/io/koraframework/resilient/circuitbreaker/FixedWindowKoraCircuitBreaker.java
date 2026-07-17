@@ -52,7 +52,7 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
     private final AtomicLong state;
     private final String name;
-    private final CircuitBreakerConfig.NamedConfig config;
+    private final CircuitBreakerConfig config;
     private final CircuitBreakerPredicate failurePredicate;
     private final CircuitBreakerTelemetry telemetry;
     private final long waitDurationInOpenStateInNanos;

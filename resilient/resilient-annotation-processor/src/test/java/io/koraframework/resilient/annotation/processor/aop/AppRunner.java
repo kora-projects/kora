@@ -6,6 +6,7 @@ import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
 import io.koraframework.application.graph.ApplicationGraphDraw;
 import io.koraframework.application.graph.RefreshableGraph;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
+import io.koraframework.resilient.annotation.processor.CircuitBreakerAnnotationProcessor;
 import io.koraframework.resilient.annotation.processor.aop.testdata.AppWithConfig;
 import org.junit.jupiter.api.Assertions;
 
@@ -63,6 +64,7 @@ public abstract class AppRunner extends Assertions {
     protected List<AbstractKoraProcessor> getProcessors() {
         return List.of(
             new KoraAppProcessor(),
+            new CircuitBreakerAnnotationProcessor(),
             new AopAnnotationProcessor()
         );
     }

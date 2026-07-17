@@ -1,11 +1,12 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
-import com.palantir.javapoet.ClassName;
-import com.palantir.javapoet.CodeBlock;
+import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
+import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.aop.annotation.processor.KoraAspect;
+import io.koraframework.resilient.annotation.processor.CircuitBreakerTagUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
@@ -48,11 +49,10 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
                 .map(e -> String.valueOf(e.getValue().getValue())).findFirst())
             .orElseThrow();
 
-        var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.circuitbreaker.CircuitBreakerManager"));
-        var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
         var circuitType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.circuitbreaker.CircuitBreaker"));
-        var fieldCircuit = aspectContext.fieldFactory().constructorInitialized(circuitType,
-            CodeBlock.of("$L.get($S)", fieldManager, circuitBreakerName));
+        final String fieldCircuit;
+        var tag = CircuitBreakerTagUtils.tagName(circuitBreakerName);
+        fieldCircuit = aspectContext.fieldFactory().constructorParam(circuitType, List.of(TagUtils.makeAnnotationSpec(tag)));
 
         final CodeBlock body;
         if (MethodUtils.isCompletionStage(method)) {

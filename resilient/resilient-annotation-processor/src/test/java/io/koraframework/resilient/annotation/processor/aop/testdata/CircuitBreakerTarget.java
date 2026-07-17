@@ -14,7 +14,7 @@ public class CircuitBreakerTarget {
 
     public boolean alwaysFail = true;
 
-    @CircuitBreaker("custom1")
+    @CircuitBreaker("resilient.circuitbreaker.custom1")
     public String getValueSync() {
         if (alwaysFail)
             throw new IllegalStateException("Failed");
@@ -22,19 +22,19 @@ public class CircuitBreakerTarget {
         return "OK";
     }
 
-    @CircuitBreaker("custom1")
+    @CircuitBreaker("resilient.circuitbreaker.custom1")
     public void getValueSyncVoid() {
         if (alwaysFail)
             throw new IllegalStateException("Failed");
     }
 
-    @CircuitBreaker("custom1")
+    @CircuitBreaker("resilient.circuitbreaker.custom1")
     public void getValueSyncVoidCheckedException() throws IOException {
         if (alwaysFail)
             throw new IllegalStateException("Failed");
     }
 
-    @CircuitBreaker("custom1")
+    @CircuitBreaker("resilient.circuitbreaker.custom1")
     public String getValueSyncCheckedException() throws IOException {
         if (alwaysFail)
             throw new IllegalStateException("Failed");
@@ -42,7 +42,7 @@ public class CircuitBreakerTarget {
         return "OK";
     }
 
-    @CircuitBreaker("custom2")
+    @CircuitBreaker("resilient.circuitbreaker.custom2")
     public CompletionStage<String> getValueStage() {
         if (alwaysFail)
             return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
@@ -50,7 +50,7 @@ public class CircuitBreakerTarget {
         return CompletableFuture.completedFuture("OK");
     }
 
-    @CircuitBreaker("custom3")
+    @CircuitBreaker("resilient.circuitbreaker.custom3")
     public CompletableFuture<String> getValueFuture() {
         if (alwaysFail)
             return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
