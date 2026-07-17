@@ -6,7 +6,7 @@ import io.koraframework.netty.common.NettyModule;
 public interface LettuceModule extends NettyModule {
 
     @FactoryModule
-    default LettuceFactoryModule lettuce() {
+    default LettuceFactoryModule lettuceFactory() {
         return new LettuceFactoryModule("lettuce");
     }
 }
