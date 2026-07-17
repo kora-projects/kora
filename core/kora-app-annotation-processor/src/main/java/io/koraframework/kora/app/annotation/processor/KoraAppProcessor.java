@@ -17,6 +17,7 @@ import javax.lang.model.element.*;
 import javax.lang.model.type.TypeKind;
 import javax.tools.Diagnostic;
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -28,7 +29,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 
     public static final int COMPONENTS_PER_HOLDER_CLASS = 500;
 
-    private static final Logger log = LoggerFactory.getLogger(KoraAppProcessor.class);
+    private static final Logger logger = LoggerFactory.getLogger(KoraAppProcessor.class);
 
     private final List<TypeElement> annotatedInterfaceModules = new ArrayList<>();
     private final List<TypeElement> annotatedClassModules = new ArrayList<>(); // @Disabled("Haven't decided whether to release it yet")
@@ -38,7 +39,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
-        log.info("@KoraApp processor started");
+        logger.info("@KoraApp processor started");
     }
 
     @Override
@@ -57,7 +58,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 return;
             }
             var ctx = new ProcessingContext(processingEnv);
-            LogUtils.logElementsFull(log, Level.DEBUG, "Processing elements", this.koraApps);
+            LogUtils.logElementsFull(logger, Level.DEBUG, "Processing elements", this.koraApps);
 
             for (var element : this.koraApps) {
                 try {
@@ -66,7 +67,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 } catch (ProcessingErrorException e) {
                     e.printError(this.processingEnv);
                 } catch (IOException e) {
-                    throw new RuntimeException(e);
+                    throw new UncheckedIOException(e);
                 }
             }
         }
@@ -76,8 +77,8 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         for (var annotated : annotatedElements.getOrDefault(CommonClassNames.koraApp, List.of())) {
             var element = annotated.element();
             if (element.getKind() == ElementKind.INTERFACE) {
-                if (log.isInfoEnabled()) {
-                    log.info("@KoraApp element found:\n{}", element.toString().indent(4));
+                if (logger.isInfoEnabled()) {
+                    logger.info("@KoraApp element found:\n{}", element.toString().indent(4));
                 }
                 this.koraApps.add((TypeElement) element);
             } else {
@@ -135,14 +136,14 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
         }
         var type = (TypeElement) classElement;
         var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
-        if (log.isTraceEnabled()) {
-            log.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.annotatedInterfaceModules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
+        if (logger.isTraceEnabled()) {
+            logger.trace("Effective modules found:\n{}", Stream.concat(Stream.of(type), this.annotatedInterfaceModules.stream()).flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream())
                 .map(Object::toString).sorted()
                 .collect(Collectors.joining("\n")).indent(4));
         }
         var mixedInModuleComponents = KoraAppUtils.parseComponents(ctx, interfaces.stream().map(ModuleDeclaration.MixedInModule::new).toList());
-        if (log.isTraceEnabled()) {
-            log.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
+        if (logger.isTraceEnabled()) {
+            logger.trace("Effective methods of {}:\n{}", classElement, mixedInModuleComponents.stream().map(Object::toString).sorted().collect(Collectors.joining("\n")).indent(4));
         }
         var submodules = KoraAppUtils.findKoraSubmoduleModules(this.elements, interfaces, type, processingEnv);
         var discoveredModules = this.annotatedInterfaceModules.stream().flatMap(t -> KoraAppUtils.collectInterfaces(this.types, t).stream());

@@ -13,7 +13,8 @@ import java.util.ServiceLoader;
 import java.util.stream.Collectors;
 
 public record Extensions(List<KoraExtension> extensions) {
-    private static final Logger log = LoggerFactory.getLogger(Extensions.class);
+
+    private static final Logger logger = LoggerFactory.getLogger(Extensions.class);
 
     public static Extensions load(ClassLoader classLoader, ProcessingEnvironment processingEnvironment) {
         var serviceLoader = ServiceLoader.load(ExtensionFactory.class, classLoader);
@@ -22,13 +23,13 @@ public record Extensions(List<KoraExtension> extensions) {
             .flatMap(f -> f.create(processingEnvironment).stream())
             .toList();
 
-        if (!extensions.isEmpty() && log.isInfoEnabled()) {
+        if (!extensions.isEmpty() && logger.isInfoEnabled()) {
             String out = extensions.stream()
                 .map(e -> e.getClass().getCanonicalName())
                 .collect(Collectors.joining("\n"))
                 .indent(4);
 
-            log.info("Extensions found:\n{}", out);
+            logger.info("Extensions found:\n{}", out);
         }
 
         return new Extensions(extensions);
@@ -40,7 +41,7 @@ public record Extensions(List<KoraExtension> extensions) {
         for (var extension : this.extensions) {
             var generator = extension.getDependencyGenerator(roundEnvironment, typeMirror, tag);
             if (generator != null) {
-                log.trace("Extension '{}' is suitable generating for type: {}", extension.getClass().getCanonicalName(), typeMirror);
+                logger.trace("Extension '{}' is suitable generating for type: {}", extension.getClass().getCanonicalName(), typeMirror);
                 extensions.add(generator);
             }
         }

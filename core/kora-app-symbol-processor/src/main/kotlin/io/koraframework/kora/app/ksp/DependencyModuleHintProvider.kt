@@ -12,7 +12,8 @@ import java.io.IOException
 import java.util.regex.Pattern
 
 class DependencyModuleHintProvider {
-    private val log = LoggerFactory.getLogger(this::class.java)
+
+    private val logger = LoggerFactory.getLogger(this::class.java)
 
     private var hints: List<KoraHint> = mutableListOf()
 
@@ -71,23 +72,23 @@ class DependencyModuleHintProvider {
     }
 
     fun findHints(missingType: KSType, missingTag: String?): List<Hint> {
-        log.trace("Checking hints for {}/{}", missingTag, missingType)
+        logger.trace("Checking hints for {}/{}", missingTag, missingType)
         val result = mutableListOf<Hint>()
         for (hint in hints) {
             val matcher = hint.typeRegex.matcher(missingType.toTypeName().toString())
             if (matcher.matches()) {
                 if (tagMatches(missingTag, hint.tag)) {
-                    log.trace("Hint {} matched!", hint)
+                    logger.trace("Hint {} matched!", hint)
                     when (hint) {
                         is KoraHint.KoraModuleHint -> result.add(Hint.ModuleHint(missingType, hint.tag, hint.artifact, hint.moduleName))
                         is KoraHint.KoraTipHint -> result.add(Hint.TipHint(missingType, hint.tag, hint.tip))
                         else -> throw UnsupportedOperationException("Unknown hint type: $hint")
                     }
                 } else {
-                    log.trace("Hint {} doesn't match because of tag", hint)
+                    logger.trace("Hint {} doesn't match because of tag", hint)
                 }
             } else {
-                log.trace("Hint {} doesn't match because of regex", hint)
+                logger.trace("Hint {} doesn't match because of regex", hint)
             }
         }
         return result

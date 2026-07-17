@@ -20,6 +20,7 @@ public abstract class AbstractKoraProcessor extends AbstractProcessor {
     protected Types types;
     protected Elements elements;
     protected Messager messager;
+    private boolean buildEnvironmentClosed;
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -48,30 +49,48 @@ public abstract class AbstractKoraProcessor extends AbstractProcessor {
 
     @Override
     public final boolean process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv) {
-        var start = System.currentTimeMillis();
-        var supportedAnnotationNames = getSupportedAnnotationClassNames();
-        var annotatedElements = new HashMap<ClassName, List<AnnotatedElement>>();
-        var annotatedElementsSize = 0;
-        for (var annotation : annotations) {
-            var annotationClassName = ClassName.get(annotation);
-            if (supportedAnnotationNames.contains(annotationClassName)) {
-                for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
-                    annotatedElements.computeIfAbsent(annotationClassName, n -> new ArrayList<>()).add(new AnnotatedElement(annotation, element));
-                    annotatedElementsSize++;
+        var closeAfterRound = roundEnv.processingOver() || roundEnv.errorRaised();
+        try {
+            var start = System.currentTimeMillis();
+            var supportedAnnotationNames = getSupportedAnnotationClassNames();
+            var annotatedElements = new HashMap<ClassName, List<AnnotatedElement>>();
+            var annotatedElementsSize = 0;
+            for (var annotation : annotations) {
+                var annotationClassName = ClassName.get(annotation);
+                if (supportedAnnotationNames.contains(annotationClassName)) {
+                    for (var element : roundEnv.getElementsAnnotatedWith(annotation)) {
+                        annotatedElements.computeIfAbsent(annotationClassName, n -> new ArrayList<>()).add(new AnnotatedElement(annotation, element));
+                        annotatedElementsSize++;
+                    }
                 }
             }
+            try {
+                this.process(annotations, roundEnv, annotatedElements);
+            } catch (ProcessingErrorException e) {
+                e.printError(this.processingEnv);
+            }
+            var end = System.currentTimeMillis();
+            var took = end - start;
+            if (took > 100) {
+                this.messager.printMessage(Diagnostic.Kind.NOTE, "%s processing took %sms for %d elements".formatted(this.getClass().getSimpleName(), took, annotatedElementsSize));
+            }
+            return false;
+        } catch (RuntimeException | Error e) {
+            closeBuildEnvironment();
+            throw e;
+        } finally {
+            if (closeAfterRound) {
+                closeBuildEnvironment();
+            }
         }
-        try {
-            this.process(annotations, roundEnv, annotatedElements);
-        } catch (ProcessingErrorException e) {
-            e.printError(this.processingEnv);
+    }
+
+    private void closeBuildEnvironment() {
+        if (this.buildEnvironmentClosed) {
+            return;
         }
-        var end = System.currentTimeMillis();
-        var took = end - start;
-        if (took > 100) {
-            this.messager.printMessage(Diagnostic.Kind.NOTE, "%s processing took %sms for %d elements".formatted(this.getClass().getSimpleName(), took, annotatedElementsSize));
-        }
-        return false;
+        this.buildEnvironmentClosed = true;
+        BuildEnvironment.close();
     }
 
     protected abstract void process(Set<? extends TypeElement> annotations, RoundEnvironment roundEnv, Map<ClassName, List<AnnotatedElement>> annotatedElements);

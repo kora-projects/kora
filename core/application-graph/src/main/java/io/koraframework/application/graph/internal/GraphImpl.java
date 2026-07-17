@@ -21,7 +21,7 @@ public final class GraphImpl implements InitializedGraph {
     private static final CompletableFuture<Void> EMPTY_FUTURE = CompletableFuture.completedFuture(null);
 
     private final ApplicationGraphDraw draw;
-    private final Logger log;
+    private final Logger logger;
     private final Set<Integer> refreshListenerNodes = new HashSet<>();
 
     private volatile AtomicReferenceArray<@Nullable Object> objects;
@@ -29,7 +29,7 @@ public final class GraphImpl implements InitializedGraph {
 
     public GraphImpl(ApplicationGraphDraw draw) {
         this.draw = draw;
-        this.log = LoggerFactory.getLogger(this.draw.getRoot());
+        this.logger = LoggerFactory.getLogger(this.draw.getRoot());
         this.objects = new AtomicReferenceArray<>(this.draw.size());
     }
 
@@ -113,15 +113,15 @@ public final class GraphImpl implements InitializedGraph {
         root.set(fromNode.index);
         this.initLock.lock();
 
-        log.debug("Dependency container refreshing from node {} of class {}...", fromNode.index, this.objects.get(fromNode.index).getClass());
-        final long started = log.isDebugEnabled() ? started() : 0;
+        logger.debug("Dependency container refreshing from node {} of class {}...", fromNode.index, this.objects.get(fromNode.index).getClass());
+        final long started = logger.isDebugEnabled() ? started() : 0;
         try {
             this.initializeSubgraph(fromNode.index);
-            if (log.isDebugEnabled()) {
-                log.debug("Dependency container refreshed in {}", tookForLogging(started));
+            if (logger.isDebugEnabled()) {
+                logger.debug("Dependency container refreshed in {}", tookForLogging(started));
             }
         } catch (Throwable e) {
-            log.debug("Dependency container refresh error", e);
+            logger.debug("Dependency container refresh error", e);
             throw e;
         } finally {
             this.initLock.unlock();
@@ -134,13 +134,13 @@ public final class GraphImpl implements InitializedGraph {
         root.set(0, this.objects.length());
         this.initLock.lock();
 
-        log.debug("Dependency container initializing...");
+        logger.debug("Dependency container initializing...");
         final long started = started();
         try {
             this.initializeSubgraph(0);
-            log.debug("Dependency container initialized in {}", tookForLogging(started));
+            logger.debug("Dependency container initialized in {}", tookForLogging(started));
         } catch (Exception e) {
-            log.debug("Dependency container initialization failed", e);
+            logger.debug("Dependency container initialization failed", e);
             throw e;
         } finally {
             this.initLock.unlock();
@@ -152,13 +152,13 @@ public final class GraphImpl implements InitializedGraph {
         var root = new BitSet(this.objects.length());
         root.set(0, this.objects.length());
         this.initLock.lock();
-        log.debug("Dependency container releasing...");
+        logger.debug("Dependency container releasing...");
         final long started = started();
         try {
             this.releaseNodes(this.objects, root);
-            log.debug("Dependency container released in {}", tookForLogging(started));
+            logger.debug("Dependency container released in {}", tookForLogging(started));
         } catch (Exception e) {
-            log.debug("Dependency container releasing failed", e);
+            logger.debug("Dependency container releasing failed", e);
             throw e;
         } finally {
             this.initLock.unlock();
@@ -166,7 +166,7 @@ public final class GraphImpl implements InitializedGraph {
     }
 
     private void initializeSubgraph(int startFrom) {
-        log.trace("Materializing graph objects {}", startFrom);
+        logger.trace("Materializing graph objects {}", startFrom);
         this.conditionResultsCache.clear();
         var tmpGraph = new TmpGraph(this);
         var errors = tmpGraph.init(startFrom);
@@ -174,7 +174,7 @@ public final class GraphImpl implements InitializedGraph {
             try {
                 this.releaseNodes(tmpGraph.tmpArray, tmpGraph.initialized);
             } catch (Throwable e) {
-                this.log.warn("Error on releasing temporary objects after init error", e);
+                this.logger.warn("Error on releasing temporary objects after init error", e);
             }
             if (errors.size() == 1) {
                 switch (errors.getFirst()) {
@@ -203,21 +203,21 @@ public final class GraphImpl implements InitializedGraph {
         try {
             this.releaseNodes(oldObjects, tmpGraph.initialized);
         } catch (Throwable e) {
-            this.log.warn("Error on releasing temporary objects after init error", e);
+            this.logger.warn("Error on releasing temporary objects after init error", e);
         }
-        log.trace("Dependency container refreshed, calling interceptors...");
+        logger.trace("Dependency container refreshed, calling interceptors...");
         for (var refreshListenerNode : this.refreshListenerNodes) {
             if (this.objects.get(refreshListenerNode) instanceof RefreshListener refreshListener) {
                 try {
                     refreshListener.graphRefreshed();
                 } catch (Exception e) {
-                    log.warn("Exception caught when calling listener.graphRefreshed(), object={}", refreshListener);
+                    logger.warn("Exception caught when calling listener.graphRefreshed(), object={}", refreshListener);
                 }
             }
         }
         this.conditionResultsCache.putAll(tmpGraph.conditionResultsCache);
         tmpGraph.delegate = this;
-        log.trace("Dependency container refreshed, ");
+        logger.trace("Dependency container refreshed, ");
     }
 
     private void releaseNodes(AtomicReferenceArray<Object> objects, BitSet root) {
@@ -284,13 +284,13 @@ public final class GraphImpl implements InitializedGraph {
             var interceptorNode = (NodeImpl<? extends GraphInterceptor<T>>) i.previous();
             @SuppressWarnings("unchecked")
             var interceptor = (GraphInterceptor<T>) objects.get(interceptorNode.index);
-            this.log.trace("Intercepting release node {} of class {} with node {} of class {}", node.index, object.getClass(), interceptorNode.index, interceptor.getClass());
+            this.logger.trace("Intercepting release node {} of class {} with node {} of class {}", node.index, object.getClass(), interceptorNode.index, interceptor.getClass());
             try {
                 var intercepted = interceptor.beforeRelease(object);
-                log.trace("Intercepting release node {} of class {} with node {} of class {} complete", node.index, object.getClass(), interceptorNode.index, interceptor.getClass());
+                logger.trace("Intercepting release node {} of class {} with node {} of class {} complete", node.index, object.getClass(), interceptorNode.index, interceptor.getClass());
                 object = intercepted;
             } catch (Throwable e) {
-                this.log.trace("Intercepting release node {} of class {} with node {} of class {} error", node.index, object.getClass(), interceptorNode.index, interceptor.getClass(), e);
+                this.logger.trace("Intercepting release node {} of class {} with node {} of class {} error", node.index, object.getClass(), interceptorNode.index, interceptor.getClass(), e);
                 if (error == null) {
                     error = e;
                 } else {
@@ -308,10 +308,10 @@ public final class GraphImpl implements InitializedGraph {
                     error.addSuppressed(e);
                 }
             }
-            log.trace("Node {} of class {} released", node.index, object.getClass());
+            logger.trace("Node {} of class {} released", node.index, object.getClass());
         }
         if (object instanceof AutoCloseable closeable) {
-            log.trace("Releasing node {} of class {}", node.index, object.getClass());
+            logger.trace("Releasing node {} of class {}", node.index, object.getClass());
             try {
                 closeable.close();
             } catch (Throwable e) {
@@ -321,7 +321,7 @@ public final class GraphImpl implements InitializedGraph {
                     error.addSuppressed(e);
                 }
             }
-            log.trace("Node {} of class {} released", node.index, object.getClass());
+            logger.trace("Node {} of class {} released", node.index, object.getClass());
         }
         if (error != null) {
             throw error;
@@ -347,7 +347,7 @@ public final class GraphImpl implements InitializedGraph {
             }
             this.inits = new AtomicReferenceArray<>(this.tmpArray.length());
             this.initialized = new BitSet(this.tmpArray.length());
-            this.debugEnabled = this.rootGraph.log.isDebugEnabled();
+            this.debugEnabled = this.rootGraph.logger.isDebugEnabled();
         }
 
         private final ConcurrentMap<GraphConditionKey, GraphCondition.ConditionResult> conditionResultsCache = new ConcurrentHashMap<>();
@@ -494,7 +494,7 @@ public final class GraphImpl implements InitializedGraph {
                 switch (node.condition().apply(this)) {
                     case GraphCondition.ConditionResult.Matched _ -> {}
                     case GraphCondition.ConditionResult.Failed failed -> {
-                        this.rootGraph.log.trace("Creating node {} canceled: {}", node.index, failed.reason());
+                        this.rootGraph.logger.trace("Creating node {} canceled: {}", node.index, failed.reason());
                         this.tmpArray.set(node.index, new ConditionFailedGraphValue(failed));
                         return;
                     }
@@ -502,9 +502,9 @@ public final class GraphImpl implements InitializedGraph {
             }
 
 
-            if (this.rootGraph.log.isTraceEnabled()) {
+            if (this.rootGraph.logger.isTraceEnabled()) {
                 var dependenciesStr = node.createDependencies.stream().map(Node::toString).collect(Collectors.joining(",", "[", "]"));
-                this.rootGraph.log.trace("Creating node {}, dependencies {}", node.index, dependenciesStr);
+                this.rootGraph.logger.trace("Creating node {}, dependencies {}", node.index, dependenciesStr);
             }
 
             var newObject = Objects.requireNonNull(node.factory.get(this));
@@ -525,7 +525,7 @@ public final class GraphImpl implements InitializedGraph {
                     this.rootGraph.refreshListenerNodes.add(node.index);
                 }
             }
-            this.rootGraph.log.trace("Created node {} {}", node.index, newObject.getClass());
+            this.rootGraph.logger.trace("Created node {} {}", node.index, newObject.getClass());
             if (newObject instanceof Lifecycle lifecycle) {
                 this.initializeNode(node, lifecycle);
             }
@@ -533,16 +533,16 @@ public final class GraphImpl implements InitializedGraph {
                 var interceptor = (NodeImpl<? extends GraphInterceptor<T>>) interceptorNode;
                 var interceptorObject = (GraphInterceptor<T>) this.get(interceptor);
                 // todo handle somehow errors on that stage?
-                this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {}", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass());
+                this.rootGraph.logger.trace("Intercepting init node {} of class {} with node {} of class {}", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass());
                 try {
                     var intercepted = interceptorObject.afterInit(newObject);
-                    this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} complete", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass());
+                    this.rootGraph.logger.trace("Intercepting init node {} of class {} with node {} of class {} complete", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass());
                     newObject = intercepted;
                 } catch (RuntimeException | Error e) {
-                    this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass(), e);
+                    this.rootGraph.logger.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass(), e);
                     throw e;
                 } catch (Throwable e) {
-                    this.rootGraph.log.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass(), e);
+                    this.rootGraph.logger.trace("Intercepting init node {} of class {} with node {} of class {} error", node.index, newObject.getClass(), interceptor.index, interceptorObject.getClass(), e);
                     throw new IllegalStateException(e);
                 }
             }
@@ -563,21 +563,21 @@ public final class GraphImpl implements InitializedGraph {
 
         private void initializeNode(NodeImpl<?> node, Lifecycle lifecycle) {
             var index = node.index;
-            this.rootGraph.log.trace("Initializing node {} of class {} cancelled", index, lifecycle.getClass());
+            this.rootGraph.logger.trace("Initializing node {} of class {} cancelled", index, lifecycle.getClass());
             try {
                 lifecycle.init();
-                this.rootGraph.log.trace("Node Initializing {} of class {} complete", index, lifecycle.getClass());
+                this.rootGraph.logger.trace("Node Initializing {} of class {} complete", index, lifecycle.getClass());
             } catch (CancellationException e) {
-                this.rootGraph.log.trace("Node Initializing {} of class {} cancelled", index, lifecycle.getClass());
+                this.rootGraph.logger.trace("Node Initializing {} of class {} cancelled", index, lifecycle.getClass());
                 throw e;
             } catch (CompletionException ce) {
-                this.rootGraph.log.trace("Node Initializing {} of class {} error", index, lifecycle.getClass(), ce.getCause());
+                this.rootGraph.logger.trace("Node Initializing {} of class {} error", index, lifecycle.getClass(), ce.getCause());
                 throw ce;
             } catch (RuntimeException | Error e) {
-                this.rootGraph.log.trace("Node Initializing {} of class {} error", index, lifecycle.getClass(), e);
+                this.rootGraph.logger.trace("Node Initializing {} of class {} error", index, lifecycle.getClass(), e);
                 throw e;
             } catch (Throwable e) {
-                this.rootGraph.log.trace("Initializing node {} of class {} error", index, lifecycle.getClass(), e);
+                this.rootGraph.logger.trace("Initializing node {} of class {} error", index, lifecycle.getClass(), e);
                 throw new IllegalStateException(e);
             }
         }
@@ -594,7 +594,7 @@ public final class GraphImpl implements InitializedGraph {
                         if (this.debugEnabled) {
                             var took = System.nanoTime() - startTime;
                             if (took > SLOW_NODE_INIT_THRESHOLD * 1_000_000) {
-                                this.rootGraph.log.debug("Initialized node {} at index {} in {}ms", node.type(), node.index, took / 1_000_000);
+                                this.rootGraph.logger.debug("Initialized node {} at index {} in {}ms", node.type(), node.index, took / 1_000_000);
                             }
                         }
                         future.complete(null);
@@ -602,7 +602,7 @@ public final class GraphImpl implements InitializedGraph {
                         if (this.debugEnabled) {
                             var took = System.nanoTime() - startTime;
                             if (took > SLOW_NODE_INIT_THRESHOLD * 1_000_000) {
-                                this.rootGraph.log.debug("Initialized node {} at index {} in {}ms", node.type(), node.index, took / 1_000_000);
+                                this.rootGraph.logger.debug("Initialized node {} at index {} in {}ms", node.type(), node.index, took / 1_000_000);
                             }
                         }
                         future.completeExceptionally(t);
