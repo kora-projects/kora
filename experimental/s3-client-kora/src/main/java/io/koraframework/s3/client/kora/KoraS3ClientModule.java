@@ -1,12 +1,10 @@
 package io.koraframework.s3.client.kora;
 
 import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.common.annotation.Tag;
+import io.koraframework.common.annotation.FactoryModule;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.exception.ConfigValueException;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
-import io.koraframework.http.client.common.HttpClient;
-import io.koraframework.s3.client.kora.impl.KoraS3Client;
 import io.koraframework.s3.client.kora.telemetry.S3ClientTelemetryFactory;
 import io.koraframework.s3.client.kora.telemetry.impl.DefaultS3ClientLoggerFactory;
 import io.koraframework.s3.client.kora.telemetry.impl.DefaultS3ClientMetricsFactory;
@@ -25,27 +23,9 @@ public interface KoraS3ClientModule {
         return new DefaultS3ClientTelemetryFactory(tracer, meterRegistry, loggerFactory, metricsFactory);
     }
 
-    @Tag(S3Client.class)
-    @DefaultComponent
-    default HttpClient defaultKoraS3httpClient(HttpClient client) {
-        return client;
-    }
-
-    @DefaultComponent
-    default S3ClientFactory defaultKoraS3ClientFactory(@Tag(S3Client.class) HttpClient client,
-                                                       S3ClientTelemetryFactory telemetryFactory) {
-        return new S3ClientFactory() {
-            @Override
-            public S3Client create(S3ClientConfig config) {
-                return create("s3", KoraS3Client.class, config);
-            }
-
-            @Override
-            public S3Client create(String configPath, Class<?> clientImpl, S3ClientConfig config) {
-                var telemetry = telemetryFactory.get(configPath, clientImpl, config.telemetry());
-                return new KoraS3Client(client, config, telemetry);
-            }
-        };
+    @FactoryModule
+    default S3FactoryModule defaultKoraS3Factory() {
+        return new S3FactoryModule("s3");
     }
 
     @DefaultComponent

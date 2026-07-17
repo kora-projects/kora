@@ -2,11 +2,13 @@ package io.koraframework.s3.client.kora.annotation.processor.gen;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.MethodSpec;
+import com.palantir.javapoet.ParameterSpec;
 import com.palantir.javapoet.ParameterizedTypeName;
 import com.palantir.javapoet.TypeSpec;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.NameUtils;
+import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.s3.client.kora.annotation.processor.S3ClassNames;
 import io.koraframework.s3.client.kora.annotation.processor.S3ClientAnnotationProcessor;
 import io.koraframework.s3.client.kora.annotation.processor.S3ClientUtils;
@@ -16,6 +18,7 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 
 public class ModuleGenerator {
     public static TypeSpec generate(ProcessingEnvironment processingEnv, TypeElement s3client) {
@@ -49,11 +52,12 @@ public class ModuleGenerator {
             ? S3ClassNames.CONFIG_WITH_CREDS
             : S3ClassNames.CONFIG;
 
-        var s3ClientAnnotation = AnnotationUtils.findAnnotation(s3client, S3ClassNames.CLIENT);
+        var s3ClientAnnotation = AnnotationUtils.findAnnotation(s3client, S3ClassNames.Annotation.CLIENT);
         var s3ClientConfigPath = AnnotationUtils.<String>parseAnnotationValueWithoutDefault(s3ClientAnnotation, "value");
         if (s3ClientConfigPath == null || s3ClientConfigPath.isEmpty()) {
             s3ClientConfigPath = s3client.getSimpleName().toString();
         }
+        var factoryTag = AnnotationUtils.<TypeMirror>parseAnnotationValueWithoutDefault(s3ClientAnnotation, "factoryTag");
         b.addMethod(MethodSpec.methodBuilder("clientConfig")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(configType)
@@ -64,7 +68,7 @@ public class ModuleGenerator {
         var clientImpl = MethodSpec.methodBuilder("clientImpl")
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(clientType)
-            .addParameter(S3ClassNames.CLIENT_FACTORY, "clientFactory")
+            .addParameter(clientFactoryParameter(factoryTag))
             .addParameter(configType, "clientConfig");
         if (paths.isEmpty()) {
             clientImpl
@@ -76,5 +80,14 @@ public class ModuleGenerator {
         b.addMethod(clientImpl.build());
 
         return b.build();
+    }
+
+    private static ParameterSpec clientFactoryParameter(TypeMirror factoryTag) {
+        var parameter = ParameterSpec.builder(S3ClassNames.CLIENT_FACTORY, "clientFactory");
+        var tag = TagUtils.makeAnnotationSpec(factoryTag);
+        if (tag != null) {
+            parameter.addAnnotation(tag);
+        }
+        return parameter.build();
     }
 }
