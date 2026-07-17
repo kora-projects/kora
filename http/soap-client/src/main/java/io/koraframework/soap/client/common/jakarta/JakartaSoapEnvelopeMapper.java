@@ -5,12 +5,14 @@ import io.koraframework.soap.client.common.envelope.SoapEnvelope;
 import io.koraframework.soap.client.common.exception.SoapException;
 import io.koraframework.soap.client.common.exception.SoapRequestMarshallingException;
 import io.koraframework.soap.client.common.exception.SoapResponseUnmarshallingException;
+import io.koraframework.soap.client.common.util.MultipartParserUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.util.Map;
 
 public class JakartaSoapEnvelopeMapper implements SoapEnvelopeMapper {
+
     private final jakarta.xml.bind.JAXBContext jaxb;
 
     public JakartaSoapEnvelopeMapper(jakarta.xml.bind.JAXBContext jaxb) {
@@ -40,7 +42,7 @@ public class JakartaSoapEnvelopeMapper implements SoapEnvelopeMapper {
     }
 
     @Override
-    public SoapEnvelope unmarshal(Map<String, MultipartParser.Part> parts, String xmlPartId) throws SoapException {
+    public SoapEnvelope unmarshal(Map<String, MultipartParserUtils.Part> parts, String xmlPartId) throws SoapException {
         var xmlPart = parts.get(xmlPartId);
         try {
             var unmarshaller = jaxb.createUnmarshaller();

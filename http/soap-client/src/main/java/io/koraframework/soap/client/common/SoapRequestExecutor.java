@@ -2,6 +2,7 @@ package io.koraframework.soap.client.common;
 
 import io.koraframework.soap.client.common.exception.SoapInvalidHttpResponseException;
 import io.koraframework.soap.client.common.exception.SoapException;
+import io.koraframework.soap.client.common.util.MultipartParserUtils;
 import io.opentelemetry.context.Context;
 import io.koraframework.common.telemetry.Observation;
 import io.koraframework.common.telemetry.OpentelemetryContext;
@@ -114,12 +115,12 @@ public class SoapRequestExecutor {
         }
     }
 
-    private record ParseMultipartResult(SoapResult.Success result, MultipartParser.Part xmlPart) {}
+    private record ParseMultipartResult(SoapResult.Success result, MultipartParserUtils.Part xmlPart) {}
 
     private ParseMultipartResult readMultipart(String contentType, InputStream body) throws IOException {
-        var multipartMeta = MultipartParser.parseMeta(contentType);
+        var multipartMeta = MultipartParserUtils.parseMeta(contentType);
         var bodyAsBytes = body.readAllBytes();
-        var parts = MultipartParser.parse(bodyAsBytes, multipartMeta.boundary());
+        var parts = MultipartParserUtils.parse(bodyAsBytes, multipartMeta.boundary());
         var xmlPartId = multipartMeta.start();
         var responseEnvelope = (SoapEnvelope) this.soapMapper.unmarshal(parts, xmlPartId);
         var responseBody = responseEnvelope.getBody().getAny().get(0);

@@ -1,6 +1,7 @@
 package io.koraframework.soap.client.common.exception;
 
 public class SoapInvalidHttpResponseException extends SoapException {
+
     public SoapInvalidHttpResponseException(String message) {
         super(message);
     }

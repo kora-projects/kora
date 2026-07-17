@@ -24,7 +24,6 @@ class WebServiceClientSymbolProcessor(private val env: SymbolProcessorEnvironmen
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {
         val jakartaWebService = resolver.getClassDeclarationByName("jakarta.jws.WebService")
-        val javaxWebService = resolver.getClassDeclarationByName("javax.jws.WebService")
         val generator = SoapClientImplGenerator(resolver)
         if (jakartaWebService != null) {
             val symbols = resolver.getSymbolsWithAnnotation("jakarta.jws.WebService").toList()
@@ -38,19 +37,6 @@ class WebServiceClientSymbolProcessor(private val env: SymbolProcessorEnvironmen
                 }
             }
         }
-        if (javaxWebService != null) {
-            val symbols = resolver.getSymbolsWithAnnotation("javax.jws.WebService").toList()
-            symbols.forEach {
-                it.visitClass { declaration ->
-                    try {
-                        processService(declaration, SoapClasses.JavaxClasses, generator)
-                    } catch (e: IOException) {
-                        throw RuntimeException(e)
-                    }
-                }
-            }
-        }
         return listOf()
     }
 }
-

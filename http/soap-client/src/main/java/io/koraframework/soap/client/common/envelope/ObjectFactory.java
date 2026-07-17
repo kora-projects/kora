@@ -2,7 +2,6 @@ package io.koraframework.soap.client.common.envelope;
 
 
 @jakarta.xml.bind.annotation.XmlRegistry
-@javax.xml.bind.annotation.XmlRegistry
 public class ObjectFactory {
 
     public ObjectFactory() {

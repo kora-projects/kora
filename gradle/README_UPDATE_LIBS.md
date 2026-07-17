@@ -65,9 +65,8 @@ Example:
 
 ```toml
 [version-levels]
-cxf = "minor"
 resteasy = "minor"
-javax-jaxb = "patch"
+commons-collections = "patch"
 ```
 
 Policy keys normally match names from the `[versions]` section in

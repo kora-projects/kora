@@ -16,14 +16,10 @@ import java.util.Set;
 public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
     private SoapClientImplGenerator generator;
     private static final ClassName JAKARTA_WEB_SERVICE = new SoapClasses.JakartaClasses().webServiceType();
-    private static final ClassName JAVAX_WEB_SERVICE = new SoapClasses.JavaxClasses().webServiceType();
 
     @Override
     public Set<ClassName> getSupportedAnnotationClassNames() {
-        return Set.of(
-            JAKARTA_WEB_SERVICE,
-            JAVAX_WEB_SERVICE
-        );
+        return Set.of(JAKARTA_WEB_SERVICE);
     }
 
     @Override
@@ -38,11 +34,6 @@ public class WebServiceClientAnnotationProcessor extends AbstractKoraProcessor {
             var jakartaClasses = new SoapClasses.JakartaClasses();
             var service = annotated.element();
             this.processService(service, jakartaClasses);
-        }
-        for (var annotated : annotatedElements.getOrDefault(JAVAX_WEB_SERVICE, List.of())) {
-            var javaxClasses = new SoapClasses.JavaxClasses();
-            var service = annotated.element();
-            this.processService(service, javaxClasses);
         }
     }
 

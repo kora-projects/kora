@@ -11,11 +11,8 @@ class WebServiceClientSymbolProcessorTest {
     @Test
     fun testGenerate() {
         compileKotlin("build/generated/wsdl-jakarta-simple-service/")
-        compileKotlin("build/generated/wsdl-javax-simple-service/")
         compileKotlin("build/generated/wsdl-jakarta-service-with-multipart-response/")
-        compileKotlin("build/generated/wsdl-javax-service-with-multipart-response/")
         compileKotlin("build/generated/wsdl-jakarta-service-with-rpc/")
-        compileKotlin("build/generated/wsdl-javax-service-with-rpc/")
     }
 
     private fun compileKotlin(targetDir: String) {
