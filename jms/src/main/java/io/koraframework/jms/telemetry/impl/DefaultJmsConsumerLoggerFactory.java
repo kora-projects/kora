@@ -1,6 +1,6 @@
 package io.koraframework.jms.telemetry.impl;
 
-import io.koraframework.jms.JmsUtils;
+import io.koraframework.jms.util.JmsUtils;
 import io.koraframework.logging.common.arg.StructuredArgumentWriter;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;

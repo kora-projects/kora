@@ -4,6 +4,7 @@ import java.util.Optional;
 import java.util.function.Function;
 
 public interface ValueOf<T> {
+
     T get();
 
     default <Q> ValueOf<Q> map(Function<T, Q> mapper) {

@@ -38,7 +38,7 @@ public class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFac
     }
 
     @Override
-    public HttpServerTelemetry get(HttpServerTelemetryConfig config) {
+    public HttpServerTelemetry get(String name, int port, HttpServerTelemetryConfig config) {
         var traceEnabled = this.tracer != null && config.tracing().enabled();
         var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
         if (!traceEnabled && !metricEnabled && !config.logging().enabled()) {
@@ -66,15 +66,17 @@ public class DefaultHttpServerTelemetryFactory implements HttpServerTelemetryFac
             enabledLoggerFactory = NoopHttpServerLoggerFactory.INSTANCE;
         }
 
-        return build(config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, bodyLogger != null ? bodyLogger : new DefaultHttpServerBodyConverter());
+        return build(name, port, config, tracer, meterRegistry, enabledMetricsFactory, enabledLoggerFactory, bodyLogger != null ? bodyLogger : new DefaultHttpServerBodyConverter());
     }
 
-    protected HttpServerTelemetry build(HttpServerTelemetryConfig config,
+    protected HttpServerTelemetry build(String name,
+                                        int port,
+                                        HttpServerTelemetryConfig config,
                                         Tracer tracer,
                                         MeterRegistry meterRegistry,
                                         DefaultHttpServerMetricsFactory metricsFactory,
                                         DefaultHttpServerLoggerFactory loggerFactory,
                                         DefaultHttpServerBodyConverter loggerBodyConverter) {
-        return new DefaultHttpServerTelemetry(config, tracer, meterRegistry, metricsFactory, loggerFactory, loggerBodyConverter);
+        return new DefaultHttpServerTelemetry(name, port, config, tracer, meterRegistry, metricsFactory, loggerFactory, loggerBodyConverter);
     }
 }

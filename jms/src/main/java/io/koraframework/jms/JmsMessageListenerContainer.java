@@ -1,5 +1,6 @@
 package io.koraframework.jms;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -24,12 +25,15 @@ public class JmsMessageListenerContainer implements Lifecycle {
     private static final Logger logger = LoggerFactory.getLogger(JmsMessageListenerContainer.class);
 
     private static final ConcurrentHashMap<String, AtomicInteger> threadCounters = new ConcurrentHashMap<>();
+
     private final ConnectionFactory connectionFactory;
     private final JmsListenerContainerConfig config;
     private final JmsMessageListener messageListener;
     private final Logger log;
     private final JmsConsumerTelemetry telemetry;
     private final AtomicBoolean isStarted = new AtomicBoolean(false);
+
+    @Nullable
     private volatile ExecutorService executorService;
 
     public JmsMessageListenerContainer(ConnectionFactory connectionFactory, JmsListenerContainerConfig config, JmsMessageListener messageListener, JmsConsumerTelemetryFactory telemetryFactory) {

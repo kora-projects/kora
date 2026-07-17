@@ -1,4 +1,4 @@
-package io.koraframework.jms;
+package io.koraframework.jms.util;
 
 import javax.jms.*;
 import java.nio.charset.StandardCharsets;

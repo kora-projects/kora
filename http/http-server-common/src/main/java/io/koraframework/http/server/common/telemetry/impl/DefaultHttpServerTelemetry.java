@@ -16,7 +16,9 @@ import java.util.Objects;
 
 public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
 
-    public record TelemetryContext(HttpServerTelemetryConfig config,
+    public record TelemetryContext(String name,
+                                   int port,
+                                   HttpServerTelemetryConfig config,
                                    boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
@@ -24,6 +26,7 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
                                    DefaultHttpServerBodyConverter bodyLogger) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
+            "NONE", -1,
             new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
                 new $HttpServerTelemetryConfig_HttpServerLoggingConfig_ConfigValueMapper.HttpServerLoggingConfig_Defaults(),
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),
@@ -36,7 +39,9 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
     protected final DefaultHttpServerLoggerFactory.DefaultHttpServerLogger logger;
     protected final DefaultHttpServerMetricsFactory.DefaultHttpServerMetrics metrics;
 
-    public DefaultHttpServerTelemetry(HttpServerTelemetryConfig config,
+    public DefaultHttpServerTelemetry(String name,
+                                      int port,
+                                      HttpServerTelemetryConfig config,
                                       Tracer tracer,
                                       MeterRegistry meterRegistry,
                                       DefaultHttpServerMetricsFactory metricsFactory,
@@ -45,7 +50,9 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
         var isTracingEnabled = config.tracing().enabled() && tracer != DefaultHttpServerTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultHttpServerTelemetryFactory.NOOP_METER_REGISTRY;
 
-        this.context = new TelemetryContext(config,
+        this.context = new TelemetryContext(name,
+            port,
+            config,
             isTracingEnabled,
             isMetricsEnabled,
             meterRegistry,
@@ -66,7 +73,6 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
     }
 
     protected SpanBuilder startSpan(HttpServerRequest request) {
-        @SuppressWarnings("DataFlowIssue")
         var span = this.context.tracer()
             .spanBuilder(request.method() + " " + request.pathTemplate())
             .setSpanKind(SpanKind.SERVER)
@@ -74,6 +80,8 @@ public class DefaultHttpServerTelemetry implements HttpServerTelemetry {
             .setAttribute(UrlAttributes.URL_SCHEME, request.scheme())
             .setAttribute(HttpAttributes.HTTP_ROUTE, request.pathTemplate())
             .setAttribute(ServerAttributes.SERVER_ADDRESS, request.host())
+            .setAttribute(ServerAttributes.SERVER_PORT, this.context.port())
+            .setAttribute("server.name", this.context.name())
             .setAttribute(HttpAttributes.HTTP_REQUEST_METHOD, request.method()); // if unknown tracing is disabled
 
         if (request.body().contentType() != null) {
