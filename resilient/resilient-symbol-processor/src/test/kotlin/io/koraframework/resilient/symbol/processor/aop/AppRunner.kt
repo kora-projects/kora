@@ -7,6 +7,7 @@ import io.koraframework.application.graph.ApplicationGraphDraw
 import io.koraframework.application.graph.RefreshableGraph
 import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.ksp.common.symbolProcess
+import io.koraframework.resilient.symbol.processor.CircuitBreakerSymbolProcessorProvider
 import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
 import org.junit.jupiter.api.Assertions
 import java.util.function.Supplier
@@ -62,12 +63,13 @@ open class AppRunner : Assertions() {
     fun getProcessors(): List<SymbolProcessorProvider> {
         return listOf(
             KoraAppProcessorProvider(),
+            CircuitBreakerSymbolProcessorProvider(),
             AopSymbolProcessorProvider()
         )
     }
 
     private fun getClassLoader(classes: List<KClass<*>>): ClassLoader {
-        return symbolProcess(listOf(KoraAppProcessorProvider(), AopSymbolProcessorProvider()), classes)
+        return symbolProcess(getProcessors(), classes)
     }
 
     fun getGraphForClasses(targetClasses: List<KClass<*>>): InitializedGraph {

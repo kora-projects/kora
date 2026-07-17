@@ -19,21 +19,6 @@ interface AppWithConfig : ConfigValueMapperModule, CircuitBreakerModule, RetryMo
     fun config() = ConfigFactory.parseString(
         """
             resilient {
-              circuitbreaker {
-                default {
-                  type = STRIPED_APPROX
-                  countBased {
-                    windowSize = 1
-                    stripedApprox {
-                      stripes = 1
-                    }
-                  }
-                  minimumRequiredCalls = 1
-                  failureRateThreshold = 100
-                  permittedCallsInHalfOpenState = 1
-                  waitDurationInOpenState = 1s
-                }
-              }
               timeout {
                 default {
                   duration = 300ms
@@ -63,6 +48,27 @@ interface AppWithConfig : ConfigValueMapperModule, CircuitBreakerModule, RetryMo
                   limitRefreshPeriod = 1s
                 }
               }
+            }
+            custom1 {
+              slidingWindowSize = 1
+              minimumRequiredCalls = 1
+              failureRateThreshold = 100
+              permittedCallsInHalfOpenState = 1
+              waitDurationInOpenState = 1s
+            }
+            custom2 {
+              slidingWindowSize = 1
+              minimumRequiredCalls = 1
+              failureRateThreshold = 100
+              permittedCallsInHalfOpenState = 1
+              waitDurationInOpenState = 1s
+            }
+            customThrows {
+              slidingWindowSize = 1
+              minimumRequiredCalls = 1
+              failureRateThreshold = 100
+              permittedCallsInHalfOpenState = 1
+              waitDurationInOpenState = 1s
             }
             """.trimIndent()
     ).resolve()
