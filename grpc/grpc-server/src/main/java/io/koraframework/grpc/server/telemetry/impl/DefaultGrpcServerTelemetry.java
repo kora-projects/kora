@@ -11,18 +11,24 @@ import io.opentelemetry.api.trace.Tracer;
 import io.opentelemetry.api.trace.propagation.W3CTraceContextPropagator;
 import io.opentelemetry.context.Context;
 import io.opentelemetry.context.propagation.TextMapGetter;
+import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.NetworkAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
 
 public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
 
-    public record TelemetryContext(GrpcServerTelemetryConfig config,
+    public record TelemetryContext(String name,
+                                   int port,
+                                   GrpcServerTelemetryConfig config,
                                    boolean isTracingEnabled,
                                    boolean isMetricsEnabled,
                                    MeterRegistry meterRegistry,
-                                   Tracer tracer) {
+                                   Tracer tracer,
+                                   DefaultGrpcServerBodyConverter bodyConverter) {
 
         public static final TelemetryContext EMPTY = new TelemetryContext(
+            "NONE",
+            -1,
             new $GrpcServerTelemetryConfig_ConfigValueMapper.GrpcServerTelemetryConfig_Impl(
                 new $GrpcServerTelemetryConfig_GrpcServerLoggingConfig_ConfigValueMapper.GrpcServerLoggingConfig_Defaults(),
                 new $GrpcServerTelemetryConfig_GrpcServerMetricsConfig_ConfigValueMapper.GrpcServerMetricsConfig_Defaults(),
@@ -31,7 +37,8 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
             false,
             false,
             DefaultGrpcServerTelemetryFactory.NOOP_METER_REGISTRY,
-            DefaultGrpcServerTelemetryFactory.NOOP_TRACER
+            DefaultGrpcServerTelemetryFactory.NOOP_TRACER,
+            new DefaultGrpcServerBodyConverter()
         );
     }
 
@@ -39,14 +46,17 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
     protected final DefaultGrpcServerLoggerFactory.DefaultGrpcServerLogger logger;
     protected final DefaultGrpcServerMetricsFactory.DefaultGrpcServerMetrics metrics;
 
-    public DefaultGrpcServerTelemetry(GrpcServerTelemetryConfig config,
+    public DefaultGrpcServerTelemetry(String name,
+                                      int port,
+                                      GrpcServerTelemetryConfig config,
                                       Tracer tracer,
                                       MeterRegistry meterRegistry,
                                       DefaultGrpcServerMetricsFactory metricsFactory,
-                                      DefaultGrpcServerLoggerFactory loggerFactory) {
+                                      DefaultGrpcServerLoggerFactory loggerFactory,
+                                      DefaultGrpcServerBodyConverter bodyConverter) {
         var isTracingEnabled = config.tracing().enabled() && tracer != DefaultGrpcServerTelemetryFactory.NOOP_TRACER;
         var isMetricsEnabled = config.metrics().enabled() && meterRegistry != DefaultGrpcServerTelemetryFactory.NOOP_METER_REGISTRY;
-        this.context = new TelemetryContext(config, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer);
+        this.context = new TelemetryContext(name, port, config, isTracingEnabled, isMetricsEnabled, meterRegistry, tracer, bodyConverter);
         this.logger = loggerFactory.create(this.context);
         this.metrics = metricsFactory.create(this.context);
     }
@@ -80,6 +90,8 @@ public class DefaultGrpcServerTelemetry implements GrpcServerTelemetry {
             .spanBuilder(serviceName + "/" + methodName)
             .setSpanKind(SpanKind.SERVER)
             .setParent(parentCtx)
+            .setAttribute(ServerAttributes.SERVER_PORT, this.context.port())
+            .setAttribute("server.name", this.context.name())
             .setAttribute(RpcIncubatingAttributes.RPC_SYSTEM, "grpc")
             .setAttribute(RpcIncubatingAttributes.RPC_SERVICE, serviceName)
             .setAttribute(RpcIncubatingAttributes.RPC_METHOD, methodName)

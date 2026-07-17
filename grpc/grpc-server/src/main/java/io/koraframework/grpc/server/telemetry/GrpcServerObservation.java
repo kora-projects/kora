@@ -9,7 +9,7 @@ public interface GrpcServerObservation extends Observation {
 
     void observeRequest(int numMessages);
 
-    void observeSendMessage(Object rs);
+    void observeSendMessage(Object request);
 
     void observeClose(Status status, Metadata trailers);
 
@@ -19,7 +19,7 @@ public interface GrpcServerObservation extends Observation {
 
     void observeHalfClosed();
 
-    void observeReceiveMessage(Object rq);
+    void observeReceiveMessage(Object response);
 
     void observeReady();
 

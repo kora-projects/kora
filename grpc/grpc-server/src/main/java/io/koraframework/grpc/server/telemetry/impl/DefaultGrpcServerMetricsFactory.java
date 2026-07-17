@@ -4,6 +4,7 @@ import io.grpc.Status;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
+import io.opentelemetry.semconv.ServerAttributes;
 import io.opentelemetry.semconv.incubating.RpcIncubatingAttributes;
 import org.jspecify.annotations.Nullable;
 
@@ -59,7 +60,9 @@ public class DefaultGrpcServerMetricsFactory {
                     extraTags++;
                 }
             }
-            var tags = new ArrayList<Tag>(4 + this.context.config().metrics().tags().size() + extraTags);
+            var tags = new ArrayList<Tag>(6 + this.context.config().metrics().tags().size() + extraTags);
+            tags.add(Tag.of("server.name", this.context.name()));
+            tags.add(Tag.of(ServerAttributes.SERVER_PORT.getKey(), String.valueOf(this.context.port())));
             tags.add(Tag.of(RpcIncubatingAttributes.RPC_SYSTEM.getKey(), RpcIncubatingAttributes.RpcSystemIncubatingValues.GRPC));
             tags.add(Tag.of(RpcIncubatingAttributes.RPC_SERVICE.getKey(), metricKey.service()));
             tags.add(Tag.of(RpcIncubatingAttributes.RPC_METHOD.getKey(), metricKey.method()));
