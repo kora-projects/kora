@@ -210,10 +210,27 @@ class GraphFileGenerator(
             }
 
             is ComponentDeclaration.FromModuleComponent -> {
-                if (declaration.module is ModuleDeclaration.AnnotatedModule) {
-                    statement.add("impl.module%L.", allModules.indexOf(declaration.module.element))
-                } else {
-                    statement.add("impl.")
+                val methodDependenciesCode: CodeBlock
+                when (val module = declaration.module) {
+                    is ModuleDeclaration.AnnotatedModule -> {
+                        methodDependenciesCode = dependenciesCode
+                        statement.add("impl.module%L.", allModules.indexOf(module.element))
+                    }
+
+                    is ModuleDeclaration.FactoryModule -> {
+                        methodDependenciesCode = getDependenciesCode(component, 1)
+                        statement.add("%L.", component.dependencies.first().write(ctx))
+                    }
+
+                    is ModuleDeclaration.ClassModule -> {
+                        methodDependenciesCode = getDependenciesCode(component, 1)
+                        statement.add("%L.", component.dependencies.first().write(ctx))
+                    }
+
+                    else -> {
+                        methodDependenciesCode = dependenciesCode
+                        statement.add("impl.")
+                    }
                 }
                 statement.add("%N", declaration.method.simpleName.asString())
                 if (declaration.typeVariables.isNotEmpty()) {
@@ -226,7 +243,7 @@ class GraphFileGenerator(
                     }
                     statement.add(">")
                 }
-                statement.add("(%L)", dependenciesCode)
+                statement.add("(%L)", methodDependenciesCode)
             }
 
             is ComponentDeclaration.FromExtensionComponent -> {
@@ -367,12 +384,13 @@ class GraphFileGenerator(
     }
 
 
-    private fun getDependenciesCode(component: ResolvedComponent): CodeBlock {
-        if (component.dependencies.isEmpty()) {
+    private fun getDependenciesCode(component: ResolvedComponent, startIndex: Int = 0): CodeBlock {
+        val deps = component.dependencies.drop(startIndex)
+        if (deps.isEmpty()) {
             return CodeBlock.of("")
         }
         val block = CodeBlock.builder().indent().add("\n")
-        for ((i, dependency) in component.dependencies.withIndex()) {
+        for ((i, dependency) in deps.withIndex()) {
             if (i > 0) {
                 block.add(",\n")
             }

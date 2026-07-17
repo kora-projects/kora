@@ -18,7 +18,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 data class TestClass(val a: String)
 
                 @Root
-                fun test(r: io.koraframework.json.common.JsonReader<TestClass>) {}
+                fun test(r: io.koraframework.json.common.JsonReader<TestClass>): Any = r
             }
         """.trimIndent()
         )
@@ -38,7 +38,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 data class TestClass(val a: String)
 
                 @Root
-                fun test(r: io.koraframework.json.common.JsonWriter<TestClass>) {}
+                fun test(r: io.koraframework.json.common.JsonWriter<TestClass>): Any = r
             }
         """.trimIndent()
         )
@@ -58,7 +58,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 enum class TestEnum { INSTANCE }
 
                 @Root
-                fun test(r: io.koraframework.json.common.JsonReader<TestEnum>) {}
+                fun test(r: io.koraframework.json.common.JsonReader<TestEnum>): Any = r
             }
         """.trimIndent()
         )
@@ -78,7 +78,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 enum class TestEnum { INSTANCE }
 
                 @Root
-                fun test(r: io.koraframework.json.common.JsonWriter<TestEnum>) {}
+                fun test(r: io.koraframework.json.common.JsonWriter<TestEnum>): Any = r
             }
         """.trimIndent()
         )
@@ -105,7 +105,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 }
 
                 @Root
-                fun test(r: io.koraframework.json.common.JsonReader<TestInterface>) {}
+                fun test(r: io.koraframework.json.common.JsonReader<TestInterface>): Any = r
             }
         """.trimIndent()
         )
@@ -132,7 +132,7 @@ class JsonKoraExtensionTest : AbstractSymbolProcessorTest() {
                 }
 
                 @Root
-                fun test(r: io.koraframework.json.common.JsonWriter<TestInterface>) {}
+                fun test(r: io.koraframework.json.common.JsonWriter<TestInterface>): Any = r
             }
         """.trimIndent()
         )

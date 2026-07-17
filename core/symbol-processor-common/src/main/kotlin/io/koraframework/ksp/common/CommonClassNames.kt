@@ -30,6 +30,7 @@ object CommonClassNames {
     val namingStrategy = ClassName("io.koraframework.common.annotation", "NamingStrategy")
     val tag = ClassName("io.koraframework.common.annotation", "Tag")
     val tagAny = ClassName("io.koraframework.common.annotation", "Tag", "Any")
+    val tagFactory = ClassName("io.koraframework.common.annotation", "Tag", "Factory")
     val conditional = ClassName("io.koraframework.common.annotation", "Conditional")
     val nameConverter = ClassName("io.koraframework.common.naming", "NameConverter")
     val koraApp = ClassName("io.koraframework.common.annotation", "KoraApp")
@@ -38,6 +39,7 @@ object CommonClassNames {
     val component = ClassName("io.koraframework.common.annotation", "Component")
     val defaultComponent = ClassName("io.koraframework.common.annotation", "DefaultComponent")
     val root = ClassName("io.koraframework.common.annotation", "Root")
+    val factoryModule = ClassName("io.koraframework.common.annotation", "FactoryModule")
 
     val node = ClassName("io.koraframework.application.graph", "Node")
     val lifecycle = ClassName("io.koraframework.application.graph", "Lifecycle")

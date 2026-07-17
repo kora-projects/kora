@@ -33,10 +33,12 @@ public class CommonClassNames {
     public static final ClassName namingStrategy = ClassName.get("io.koraframework.common.annotation", "NamingStrategy");
     public static final ClassName tag = ClassName.get("io.koraframework.common.annotation", "Tag");
     public static final ClassName tagAny = ClassName.get("io.koraframework.common.annotation", "Tag", "Any");
+    public static final ClassName tagFactory = ClassName.get("io.koraframework.common.annotation", "Tag", "Factory");
     public static final ClassName nameConverter = ClassName.get("io.koraframework.common.naming", "NameConverter");
     public static final ClassName koraApp = ClassName.get("io.koraframework.common.annotation", "KoraApp");
     public static final ClassName koraSubmodule = ClassName.get("io.koraframework.common.annotation", "KoraSubmodule");
     public static final ClassName module = ClassName.get("io.koraframework.common.annotation", "Module");
+    public static final ClassName factoryModule = ClassName.get("io.koraframework.common.annotation", "FactoryModule");
     public static final ClassName component = ClassName.get("io.koraframework.common.annotation", "Component");
     public static final ClassName defaultComponent = ClassName.get("io.koraframework.common.annotation", "DefaultComponent");
     public static final ClassName conditional = ClassName.get("io.koraframework.common.annotation", "Conditional");

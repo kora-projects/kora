@@ -6,6 +6,7 @@ import io.koraframework.annotation.processor.common.*;
 import io.koraframework.kora.app.annotation.processor.ProcessingContext;
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim.DependencyClaimType;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
+import io.koraframework.kora.app.annotation.processor.declaration.ModuleDeclaration;
 import org.jspecify.annotations.Nullable;
 
 import javax.lang.model.element.Element;
@@ -25,12 +26,22 @@ public class ComponentDependencyHelper {
             case ComponentDeclaration.FromModuleComponent moduleComponent -> {
                 var element = moduleComponent.method();
                 var result = new ArrayList<DependencyClaim>(moduleComponent.methodParameterTypes().size() + 1);
+                if (moduleComponent.module() instanceof ModuleDeclaration.ClassModule(var moduleTypeElement)) {
+                    result.add(new DependencyClaim(element, moduleTypeElement.asType(), null, DependencyClaimType.ONE_REQUIRED));
+                } else if (moduleComponent.module() instanceof ModuleDeclaration.FactoryModule(var moduleTypeElement, var moduleTag)) {
+                    result.add(new DependencyClaim(element, moduleTypeElement.asType(), moduleTag, DependencyClaimType.ONE_REQUIRED));
+                }
                 for (int i = 0; i < moduleComponent.methodParameterTypes().size(); i++) {
                     var parameterType = moduleComponent.methodParameterTypes().get(i);
                     var parameterElement = element.getParameters().get(i);
-                    var tags = TagUtils.parseTagValue(parameterElement);
+                    var tag = TagUtils.parseTagValue(parameterElement);
+                    if (CommonClassNames.tagFactory.canonicalName().equals(tag)) {
+                        if (moduleComponent.module() instanceof ModuleDeclaration.FactoryModule(_, var moduleTag)) {
+                            tag = moduleTag;
+                        }
+                    }
                     var isNullable = CommonUtils.isNullable(parameterElement);
-                    result.add(parseClaim(element, parameterType, tags, isNullable));
+                    result.add(parseClaim(element, parameterType, tag, isNullable));
                 }
                 return result;
             }

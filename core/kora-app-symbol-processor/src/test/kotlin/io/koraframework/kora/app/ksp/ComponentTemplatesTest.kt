@@ -54,7 +54,7 @@ class ComponentTemplatesTest : AbstractKoraAppProcessorTest() {
                     class MyJsonWriterImpl<T> : MyJsonWriter<T>
 
                     @Root
-                    fun root(o: MyJsonWriter<List<String>>) {}
+                    fun root(o: MyJsonWriter<List<String>>): Any = o
                 }
                 """);
     }

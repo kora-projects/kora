@@ -76,7 +76,7 @@ public abstract class HttpServerTestKit {
             new MetricsHandler(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), valueOf(Optional.of(registry)))
         ),
         List.of(),
-        $HttpServerSystemConfig_ConfigValueMapper.DEFAULTS
+        $HttpServerConfig_ConfigValueMapper.DEFAULTS
     );
 
     private volatile HttpServer httpServer = null;
@@ -991,7 +991,7 @@ public abstract class HttpServerTestKit {
     }
 
     protected void startSystemHttpServer() {
-        this.privateHttpServer = this.httpServer(valueOf($HttpServerSystemConfig_ConfigValueMapper.DEFAULTS), privateApiHandler, NoopHttpServerTelemetry.INSTANCE);
+        this.privateHttpServer = this.httpServer(valueOf($HttpServerConfig_ConfigValueMapper.DEFAULTS), privateApiHandler, NoopHttpServerTelemetry.INSTANCE);
         try {
             this.privateHttpServer.init();
         } catch (Exception e) {

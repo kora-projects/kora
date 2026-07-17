@@ -17,10 +17,13 @@ import io.koraframework.kora.app.ksp.declaration.ModuleDeclaration
 import io.koraframework.kora.app.ksp.exception.UnresolvedDependencyException
 import io.koraframework.kora.app.ksp.interceptor.ComponentInterceptors
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
+import io.koraframework.ksp.common.AnnotationUtils.isAnnotationPresent
 import io.koraframework.ksp.common.BaseSymbolProcessor
 import io.koraframework.ksp.common.CommonAopUtils.hasAopAnnotations
 import io.koraframework.ksp.common.CommonClassNames
+import io.koraframework.ksp.common.CommonClassNames.isVoid
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.TagUtils
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 
 class KoraAppProcessor(
@@ -32,7 +35,8 @@ class KoraAppProcessor(
 
 
     private val codeGenerator = environment.codeGenerator
-    private val annotatedModules = mutableListOf<String>()
+    private val annotatedInterfaceModules = mutableListOf<String>()
+    private val annotatedClassModules = mutableListOf<String>() // @Disabled("Haven't decided whether to release it yet")
     private val components = mutableListOf<String>()
     private val koraApps = mutableListOf<String>()
 
@@ -103,9 +107,11 @@ class KoraAppProcessor(
         val filterObjectMethods: (KSFunctionDeclaration) -> Boolean = {
             val name = it.simpleName.asString()
             !it.modifiers.contains(Modifier.PRIVATE)
+                && name != "<init>"
                 && name != "equals"
                 && name != "hashCode"
-                && name != "toString"// todo find out a better way to filter object methods
+                && name != "toString"
+                && it.returnType != null && !it.returnType!!.isVoid() // todo find out a better way to filter object methods
         }
         val mixedInComponents = declaration.getAllFunctions()
             .filter(filterObjectMethods)
@@ -113,7 +119,7 @@ class KoraAppProcessor(
 
         val allInterfaces = declaration.getAllSuperTypes().toList()
         val submodules = findKoraSubmoduleModules(ctx.resolver, allInterfaces, declaration)
-        val allModules = (submodules + annotatedModules.map { resolver!!.getClassDeclarationByName(it)!! })
+        val allModules = (submodules + annotatedInterfaceModules.map { resolver!!.getClassDeclarationByName(it)!! })
             .flatMap { it.getAllSuperTypes().map { it.declaration as KSClassDeclaration } + it }
             .filter { it.qualifiedName?.asString() != "kotlin.Any" }
             .toSet()
@@ -122,8 +128,24 @@ class KoraAppProcessor(
         val annotatedModules = allModules
             .filter { !it.asStarProjectedType().isAssignableFrom(rootErasure) }
             .map { ModuleDeclaration.AnnotatedModule(it) }
-        val annotatedModuleComponentsTmp = annotatedModules
-            .flatMap { it.element.getDeclaredFunctions().filter(filterObjectMethods).map { f -> ComponentDeclaration.fromModule(ctx, it, f) } }
+        val annotatedModuleComponentsTmp = mutableListOf<ComponentDeclaration.FromModuleComponent>()
+        val factoryModuleComponents = mutableListOf<ComponentDeclaration.FromModuleComponent>()
+        for (module in annotatedModules) {
+            for (func in module.element.getDeclaredFunctions().filter(filterObjectMethods)) {
+                annotatedModuleComponentsTmp.add(ComponentDeclaration.fromModule(ctx, module, func))
+                if (func.isAnnotationPresent(CommonClassNames.factoryModule)) {
+                    val returnTypeDecl = func.returnType?.resolve()?.declaration
+                    if (returnTypeDecl !is KSClassDeclaration) {
+                        throw ProcessingErrorException("Factory module function must return a class", func)
+                    }
+                    val methodTag = TagUtils.parseTagValue(func)
+                    val methodModule = ModuleDeclaration.FactoryModule(returnTypeDecl, methodTag)
+                    returnTypeDecl.getAllFunctions()
+                        .filter(filterObjectMethods)
+                        .forEach { innerFunc -> factoryModuleComponents.add(ComponentDeclaration.fromModule(ctx, methodModule, innerFunc)) }
+                }
+            }
+        }
         val annotatedModuleComponents = ArrayList(annotatedModuleComponentsTmp)
         for (annotatedComponent in annotatedModuleComponentsTmp) {
             if (annotatedComponent.method.modifiers.contains(Modifier.OVERRIDE)) {
@@ -132,13 +154,31 @@ class KoraAppProcessor(
                 mixedInComponents.remove(overridee)
             }
         }
+        annotatedModuleComponents.addAll(factoryModuleComponents)
         val allComponents = ArrayList<ComponentDeclaration>(annotatedModuleComponents.size + mixedInComponents.size + 200)
         for (componentClass in components) {
             val decl = ctx.resolver.getClassDeclarationByName(componentClass)!!
             allComponents.add(ComponentDeclaration.fromAnnotated(ctx, decl))
         }
-        allComponents.addAll(mixedInComponents.asSequence().map { ComponentDeclaration.fromModule(ctx, rootModule, it) })
+        for (func in mixedInComponents) {
+            allComponents.add(ComponentDeclaration.fromModule(ctx, rootModule, func))
+            if (func.isAnnotationPresent(CommonClassNames.factoryModule)) {
+                val returnTypeDecl = func.returnType?.resolve()?.declaration as? KSClassDeclaration ?: continue
+                val methodTag = TagUtils.parseTagValue(func)
+                val methodModule = ModuleDeclaration.FactoryModule(returnTypeDecl, methodTag)
+                returnTypeDecl.getAllFunctions()
+                    .filter(filterObjectMethods)
+                    .forEach { innerFunc -> allComponents.add(ComponentDeclaration.fromModule(ctx, methodModule, innerFunc)) }
+            }
+        }
         allComponents.addAll(annotatedModuleComponents)
+        for (factoryModule in this.annotatedClassModules) {
+            val factoryModuleDecl = ModuleDeclaration.ClassModule(resolver!!.getClassDeclarationByName(factoryModule)!!)
+            allComponents.add(ComponentDeclaration.fromAnnotated(ctx, factoryModuleDecl.element))
+            factoryModuleDecl.element.getAllFunctions()
+                .filter(filterObjectMethods)
+                .forEach { innerFunc -> allComponents.add(ComponentDeclaration.fromModule(ctx, factoryModuleDecl, innerFunc)) }
+        }
         allComponents.sortedBy { it.toString() }
         // todo modules from kora app part
         val templateComponents = ArrayList<ComponentDeclaration>(allComponents.size)
@@ -188,11 +228,23 @@ class KoraAppProcessor(
         val deferred = mutableListOf<KSAnnotated>()
         val moduleOfSymbols = resolver.getSymbolsWithAnnotation(CommonClassNames.module.canonicalName)
         for (module in moduleOfSymbols) {
-            if (module is KSClassDeclaration && module.classKind == ClassKind.INTERFACE) {
-                if (module.validateAll()) {
-                    annotatedModules.add(module.qualifiedName!!.asString())
+            if (module is KSClassDeclaration) {
+                if (module.classKind == ClassKind.INTERFACE) {
+                    if (module.validateAll()) {
+                        annotatedInterfaceModules.add(module.qualifiedName!!.asString())
+                    } else {
+                        deferred.add(module)
+                    }
+//                @Disabled("Haven't decided whether to release it yet")
+//                } else if (module.classKind == ClassKind.CLASS) {
+//                    if (module.validateAll()) {
+//                        annotatedClassModules.add(module.qualifiedName!!.asString())
+//                    } else {
+//                        deferred.add(module)
+//                    }
+//                }
                 } else {
-                    deferred.add(module)
+                    kspLogger.error("Only interfaces are allowed as modules", module)
                 }
             }
         }
