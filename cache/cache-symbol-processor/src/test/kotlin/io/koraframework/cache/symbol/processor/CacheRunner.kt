@@ -1,9 +1,10 @@
 package io.koraframework.cache.symbol.processor
 
-import io.koraframework.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper`
-import io.koraframework.cache.caffeine.`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper`
 import io.koraframework.cache.caffeine.CaffeineCacheConfig
-import io.koraframework.cache.caffeine.CaffeineCacheConfig.CaffeineTelemetryConfig
+import io.koraframework.cache.caffeine.telemetry.CaffeineCacheTelemetryConfig
+import io.koraframework.cache.caffeine.telemetry.`$CaffeineCacheTelemetryConfig_CaffeineCacheLoggingConfig_ConfigValueMapper`
+import io.koraframework.cache.caffeine.telemetry.`$CaffeineCacheTelemetryConfig_CaffeineCacheMetricsConfig_ConfigValueMapper`
+import io.koraframework.cache.caffeine.telemetry.`$CaffeineCacheTelemetryConfig_CaffeineCacheTracingConfig_ConfigValueMapper`
 import io.koraframework.cache.redis.*
 import io.koraframework.cache.redis.RedisCacheClient
 import io.koraframework.cache.redis.telemetry.`$RedisCacheTelemetryConfig_ConfigValueMapper`
@@ -25,13 +26,14 @@ class CacheRunner {
 
         fun getCaffeineConfig(): CaffeineCacheConfig {
             val config = Mockito.mock(CaffeineCacheConfig::class.java)
-            val telemetry = Mockito.mock(CaffeineTelemetryConfig::class.java)
+            val telemetry = Mockito.mock(CaffeineCacheTelemetryConfig::class.java)
             `when`(config.telemetry()).thenReturn(telemetry)
             `when`(config.maximumSize()).thenReturn(100000L)
             `when`(config.expireAfterAccess()).thenReturn(null)
             `when`(config.expireAfterWrite()).thenReturn(null)
-            `when`(telemetry.metrics()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineMetricsConfig_ConfigValueMapper`.CaffeineMetricsConfig_Defaults())
-            `when`(telemetry.logging()).thenReturn(`$CaffeineCacheConfig_CaffeineTelemetryConfig_CaffeineLoggingConfig_ConfigValueMapper`.CaffeineLoggingConfig_Defaults())
+            `when`(telemetry.metrics()).thenReturn(`$CaffeineCacheTelemetryConfig_CaffeineCacheMetricsConfig_ConfigValueMapper`.CaffeineCacheMetricsConfig_Defaults())
+            `when`(telemetry.logging()).thenReturn(`$CaffeineCacheTelemetryConfig_CaffeineCacheLoggingConfig_ConfigValueMapper`.CaffeineCacheLoggingConfig_Defaults())
+            `when`(telemetry.tracing()).thenReturn(`$CaffeineCacheTelemetryConfig_CaffeineCacheTracingConfig_ConfigValueMapper`.CaffeineCacheTracingConfig_Defaults())
             return config
         }
 

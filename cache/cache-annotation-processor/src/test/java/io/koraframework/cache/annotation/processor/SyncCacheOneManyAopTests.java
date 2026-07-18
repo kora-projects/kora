@@ -48,7 +48,7 @@ class SyncCacheOneManyAopTests implements CaffeineCacheModule, RedisCacheModule 
             final Constructor<?> cacheConstructor1 = cacheClass1.getDeclaredConstructors()[0];
             cacheConstructor1.setAccessible(true);
             cache1 = (DummyCache11) cacheConstructor1.newInstance(CacheRunner.getCaffeineConfig(),
-                caffeineCacheFactory(null));
+                caffeineCacheFactory(null), defaultCaffeineCacheTelemetryFactory(null, null, null, null));
 
             var cacheClass2 = classLoader.loadClass(CACHED_IMPL_2);
             if (cacheClass2 == null) {

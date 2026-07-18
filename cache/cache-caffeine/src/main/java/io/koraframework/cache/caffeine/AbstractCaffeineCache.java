@@ -1,33 +1,32 @@
 package io.koraframework.cache.caffeine;
 
 import com.github.benmanes.caffeine.cache.Cache;
+import io.koraframework.cache.caffeine.telemetry.CaffeineCacheTelemetry;
+import io.koraframework.cache.caffeine.telemetry.CaffeineCacheTelemetryFactory;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.NOPLogger;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import static io.koraframework.cache.caffeine.telemetry.CaffeineCacheTelemetry.Operation.*;
+
 @NullMarked
 public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V> {
 
-    private final String cacheName;
     private final Cache<K, V> caffeine;
-    private final Logger logger;
+    private final CaffeineCacheTelemetry telemetry;
 
     protected AbstractCaffeineCache(String cacheConfigPath,
                                     CaffeineCacheConfig config,
-                                    CaffeineCacheFactory factory) {
-        this.cacheName = cacheConfigPath;
+                                    CaffeineCacheFactory factory,
+                                    CaffeineCacheTelemetryFactory telemetryFactory) {
         this.caffeine = factory.build(cacheConfigPath, config);
-        this.logger = config.telemetry().logging().enabled()
-            ? LoggerFactory.getLogger(getClass())
-            : NOPLogger.NOP_LOGGER;
+        this.telemetry = telemetryFactory.get(cacheConfigPath, getClass(), config.telemetry());
     }
 
     @Override
@@ -37,25 +36,18 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return null;
         }
 
-        V value = caffeine.getIfPresent(key);
-        if (value == null) {
-            if (logger.isTraceEnabled()) {
-                logger.atTrace()
-                    .addKeyValue("cacheName", cacheName)
-                    .addKeyValue("operation", "GET")
-                    .addKeyValue("key", key)
-                    .log("Caffeine Cache operation didn't retrieved value");
-            }
-        } else {
-            if (logger.isDebugEnabled()) {
-                logger.atDebug()
-                    .addKeyValue("cacheName", cacheName)
-                    .addKeyValue("operation", "GET")
-                    .addKeyValue("key", key)
-                    .log("Caffeine Cache operation retrieved value");
-            }
+        var observation = this.telemetry.observe(GET);
+        observation.observeKey(key);
+        try {
+            var value = caffeine.getIfPresent(key);
+            observation.observeValue(value);
+            return value;
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
-        return value;
     }
 
     @Override
@@ -64,107 +56,77 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return Collections.emptyMap();
         }
 
-        var values = caffeine.getAllPresent(keys);
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "GET_MANY")
-                .addKeyValue("keys", keys.size())
-                .addKeyValue("values", values.size())
-                .log("Caffeine Cache operation completed");
+        var observation = this.telemetry.observe(GET_MANY);
+        observation.observeKeys(keys);
+        try {
+            var values = caffeine.getAllPresent(keys);
+            observation.observeValues(values);
+            return values;
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
-        return values;
     }
 
     @Override
     public Map<K, V> getAll() {
-        var values = Collections.unmodifiableMap(caffeine.asMap());
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "GET_ALL")
-                .addKeyValue("values", values.size())
-                .log("Caffeine Cache operation completed");
+        var observation = this.telemetry.observe(GET_ALL);
+        try {
+            var values = Collections.unmodifiableMap(caffeine.asMap());
+            observation.observeValues(values);
+            return values;
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
-        return values;
     }
 
     @Override
     public V computeIfAbsent(K key, Function<K, @Nullable V> mappingFunction) {
         if (key == null) {
-            if (logger.isTraceEnabled()) {
-                logger.atTrace()
-                    .addKeyValue("cacheName", cacheName)
-                    .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-                    .log("Caffeine Cache operation empty key provided, executing mapping function...");
-            }
             return mappingFunction.apply(key);
         }
 
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-                .addKeyValue("key", key)
-                .log("Caffeine Cache operation started...");
+        var observation = this.telemetry.observe(COMPUTE_IF_ABSENT);
+        observation.observeKey(key);
+        try {
+            var value = caffeine.get(key, mappingFunction);
+            observation.observeValue(value);
+            return value;
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
-
-        var value = caffeine.get(key, mappingFunction);
-        if (value == null) {
-            if (logger.isTraceEnabled()) {
-                logger.atTrace()
-                    .addKeyValue("cacheName", cacheName)
-                    .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-                    .addKeyValue("key", key)
-                    .log("Caffeine Cache operation completed without any value");
-            }
-        } else {
-            if (logger.isTraceEnabled()) {
-                logger.atTrace()
-                    .addKeyValue("cacheName", cacheName)
-                    .addKeyValue("operation", "COMPUTE_IF_ABSENT")
-                    .addKeyValue("key", key)
-                    .log("Caffeine Cache operation completed with value");
-            }
-        }
-        return value;
     }
 
     @SuppressWarnings("unchecked")
     @Override
     public Map<K, V> computeIfAbsent(Collection<K> keys, Function<Set<K>, Map<K, V>> mappingFunction) {
         if (keys == null || keys.isEmpty()) {
-            if (logger.isTraceEnabled()) {
-                logger.atTrace()
-                    .addKeyValue("cacheName", cacheName)
-                    .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
-                    .log("Caffeine Cache operation empty keys provided, executing mapping function...");
-            }
             return mappingFunction.apply(Collections.emptySet());
         }
 
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
-                .addKeyValue("keys", keys.size())
-                .log("Caffeine Cache operation started...");
+        var observation = this.telemetry.observe(COMPUTE_IF_ABSENT_MANY);
+        observation.observeKeys(keys);
+        try {
+            var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
+            if (value == null) {
+                value = Collections.emptyMap();
+            }
+            observation.observeValues(value);
+            return value;
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
-
-        var value = caffeine.getAll(keys, ks -> mappingFunction.apply((Set<K>) ks));
-        if (value == null) {
-            value = Collections.emptyMap();
-        }
-
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "COMPUTE_IF_ABSENT_MANY")
-                .addKeyValue("keys", keys.size())
-                .addKeyValue("values", value.size())
-                .log("Caffeine Cache operation completed");
-        }
-        return value;
     }
 
     public V put(K key, V value) {
@@ -172,15 +134,18 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return value;
         }
 
-        caffeine.put(key, value);
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "PUT")
-                .addKeyValue("key", key)
-                .log("Caffeine Cache operation completed");
+        var observation = this.telemetry.observe(PUT);
+        observation.observeKey(key);
+        observation.observeValue(value);
+        try {
+            caffeine.put(key, value);
+            return value;
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
-        return value;
     }
 
     @Override
@@ -189,16 +154,18 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return Collections.emptyMap();
         }
 
-        caffeine.putAll(keyAndValues);
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "PUT_MANY")
-                .addKeyValue("keys", keyAndValues.size())
-                .log("Caffeine Cache operation completed");
+        var observation = this.telemetry.observe(PUT_MANY);
+        observation.observeKeys(keyAndValues.keySet());
+        observation.observeValues(keyAndValues);
+        try {
+            caffeine.putAll(keyAndValues);
+            return keyAndValues;
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
-
-        return keyAndValues;
     }
 
     @Override
@@ -207,13 +174,15 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return;
         }
 
-        caffeine.invalidate(key);
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "INVALIDATE")
-                .addKeyValue("key", key)
-                .log("Caffeine Cache operation completed");
+        var observation = this.telemetry.observe(INVALIDATE);
+        observation.observeKey(key);
+        try {
+            caffeine.invalidate(key);
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
     }
 
@@ -223,24 +192,29 @@ public abstract class AbstractCaffeineCache<K, V> implements CaffeineCache<K, V>
             return;
         }
 
-        caffeine.invalidateAll(keys);
-        if (logger.isTraceEnabled()) {
-            logger.atTrace()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "INVALIDATE_MANY")
-                .addKeyValue("keys", keys.size())
-                .log("Caffeine Cache operation completed");
+        var observation = this.telemetry.observe(INVALIDATE_MANY);
+        observation.observeKeys(keys);
+        try {
+            caffeine.invalidateAll(keys);
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
     }
 
     @Override
     public void invalidateAll() {
-        caffeine.invalidateAll();
-        if (logger.isDebugEnabled()) {
-            logger.atDebug()
-                .addKeyValue("cacheName", cacheName)
-                .addKeyValue("operation", "INVALIDATE_ALL")
-                .log("Caffeine Cache operation completed");
+        var observation = this.telemetry.observe(INVALIDATE_ALL);
+        try {
+            observation.observeKeys(List.of());
+            caffeine.invalidateAll();
+        } catch (Exception e) {
+            observation.observeError(e);
+            throw e;
+        } finally {
+            observation.end();
         }
     }
 }
