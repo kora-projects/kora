@@ -1,0 +1,7 @@
+dependencies {
+    api project(':config:config-common')
+    api project(':telemetry:opentelemetry-common')
+    api libs.opentelemetry.sdk.trace
+
+    annotationProcessor project(':config:config-annotation-processor')
+}
