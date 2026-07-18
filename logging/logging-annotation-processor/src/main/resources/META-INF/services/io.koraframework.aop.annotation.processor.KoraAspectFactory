@@ -1,2 +1,2 @@
-io.koraframework.logging.aspect.LogAspectFactory
-io.koraframework.logging.aspect.mdc.MdcAspectFactory
+io.koraframework.logging.annotation.processor.aop.LogAspectFactory
+io.koraframework.logging.annotation.processor.aop.MdcAspectFactory

@@ -6,6 +6,14 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
 import org.slf4j.event.Level
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
+import io.koraframework.json.common.JsonWriter
+import io.koraframework.json.common.writer.ListJsonWriter
+import io.koraframework.json.common.writer.MapJsonWriter
+import io.koraframework.json.ksp.JsonSymbolProcessorProvider
+import io.koraframework.logging.common.arg.JsonStructuredArgumentMapper
+import io.koraframework.logging.common.arg.MaskedStructuredArgumentMapper
+import io.koraframework.logging.common.masking.MaskingMetadata
+import io.koraframework.logging.symbol.processor.MaskingMetadataSymbolProcessorProvider
 import java.util.*
 
 class LogAspectTest : AbstractLogAspectTest() {
@@ -379,6 +387,127 @@ class LogAspectTest : AbstractLogAspectTest() {
         verifyInData(mapOf("arg1" to "mapped-arg1"))
         o.verify(log).isDebugEnabled
         o.verifyNoMoreInteractions()
+    }
+
+    @Test
+    fun testMaskingMetadataSupportsNestedGenericContainers() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingMetadataSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class Credentials(@Mask val secret: String)
+            """.trimIndent(),
+            """
+            @Mask
+            @Json
+            data class User(val nestedList: List<List<Credentials>>, val nestedMap: Map<String, List<Credentials>>)
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.`in`
+                open fun test(@Mask arg1: User) {}
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val credentialsWriter = new("\$Credentials_JsonWriter") as JsonWriter<Any?>
+        val listWriter = ListJsonWriter(credentialsWriter)
+        val nestedListWriter = ListJsonWriter(listWriter)
+        val nestedMapWriter = MapJsonWriter(listWriter)
+        val userWriter = new("\$User_JsonWriter", nestedListWriter, nestedMapWriter) as JsonWriter<Any?>
+        val metadata = new("\$User_MaskingMetadata") as MaskingMetadata<Any?>
+        val mapper = MaskedStructuredArgumentMapper(userWriter, metadata)
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        val credentials1 = new("Credentials", "secret-1")
+        val credentials2 = new("Credentials", "secret-2")
+        val user = new("User", listOf(listOf(credentials1)), mapOf("key" to listOf(credentials2)))
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test", user)
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled
+        o.verify(log).info(inData.capture(), ArgumentMatchers.eq(">"))
+        o.verifyNoMoreInteractions()
+        verifyInJson("{\"arg1\":{\"nestedList\":[[{\"secret\":\"***\"}]],\"nestedMap\":{\"key\":[{\"secret\":\"***\"}]}}}")
+    }
+
+    @Test
+    fun testLogResultWithJsonMapperTag() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingMetadataSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Json
+            data class TestRecord(val value: String)
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.out
+                @Json
+                open fun test(): TestRecord {
+                    return TestRecord("test-value")
+                }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val writer = new("\$TestRecord_JsonWriter") as JsonWriter<Any?>
+        val mapper = JsonStructuredArgumentMapper(writer)
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test")
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled
+        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
+        o.verifyNoMoreInteractions()
+        verifyOutJson("{\"out\":{\"value\":\"test-value\"}}")
+    }
+
+    @Test
+    fun testLogResultWithMaskedMapperTag() {
+        compile0(
+            listOf(JsonSymbolProcessorProvider(), MaskingMetadataSymbolProcessorProvider(), AopSymbolProcessorProvider()),
+            """
+            @Mask
+            @Json
+            data class User(val name: String, @Mask(mode = Mask.Mode.KEEP_LAST, keep = 2) val token: String)
+            """.trimIndent(),
+            """
+            open class Target {
+                @Log.out
+                @Mask
+                open fun test(): User {
+                    return User("user", "secret")
+                }
+            }
+            """.trimIndent()
+        )
+        compileResult.assertSuccess()
+
+        val writer = new("\$User_JsonWriter") as JsonWriter<Any?>
+        val metadata = new("\$User_MaskingMetadata") as MaskingMetadata<Any?>
+        val mapper = MaskedStructuredArgumentMapper(writer, metadata)
+        val aopProxy = TestObject(loadClass("\$Target__AopProxy").kotlin, new("\$Target__AopProxy", factory, mapper))
+
+        Mockito.verify(factory).getLogger(testPackage() + ".Target.test")
+        val log = Objects.requireNonNull(loggers[testPackage() + ".Target.test"])!!
+
+        reset(log, Level.DEBUG)
+        aopProxy.invoke<Any>("test")
+        val o = Mockito.inOrder(log)
+        o.verify(log).isDebugEnabled
+        o.verify(log).info(outData.capture(), ArgumentMatchers.eq("<"))
+        o.verifyNoMoreInteractions()
+        verifyOutJson("{\"out\":{\"name\":\"user\",\"token\":\"***et\"}}")
     }
 
 }

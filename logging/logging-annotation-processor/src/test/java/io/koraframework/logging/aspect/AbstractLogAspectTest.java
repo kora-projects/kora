@@ -40,6 +40,9 @@ public abstract class AbstractLogAspectTest extends AbstractAnnotationProcessorT
     protected String commonImports() {
         return super.commonImports() + """
             import io.koraframework.logging.common.annotation.Log;
+            import io.koraframework.logging.common.annotation.Mask;
+            import io.koraframework.json.common.annotation.Json;
+            import io.koraframework.json.common.annotation.JsonField;
             import static org.slf4j.event.Level.*;
             """;
     }
