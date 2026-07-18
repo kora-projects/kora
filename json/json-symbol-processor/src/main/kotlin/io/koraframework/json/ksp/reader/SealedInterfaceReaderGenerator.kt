@@ -38,8 +38,9 @@ class SealedInterfaceReaderGenerator {
 
         addReaders(typeBuilder, subclasses, typeArgMap)
 
-        val discriminatorField = jsonClassDeclaration.discriminatorField()
+        val discriminator = jsonClassDeclaration.discriminator()
             ?: throw ProcessingErrorException("Sealed interface should have @JsonDiscriminatorField annotation", jsonClassDeclaration)
+        val discriminatorField = discriminator.field
         val function = FunSpec.builder("read")
             .addModifiers(KModifier.PUBLIC, KModifier.OVERRIDE)
             .addParameter("__parser", JsonTypes.jsonParser)
@@ -48,8 +49,12 @@ class SealedInterfaceReaderGenerator {
             addStatement("return null")
         }
         function.addCode("val bufferingParser = %T(__parser)\n", JsonTypes.bufferingJsonParser)
-        function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
-        function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+        if (discriminator.defaultValue.isNullOrEmpty()) {
+            function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S)\n", JsonTypes.discriminatorHelper, discriminatorField);
+            function.addCode("if (discriminator == null) throw %T(__parser, %S)\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+        } else {
+            function.addCode("val discriminator = %T.readStringDiscriminator(bufferingParser, %S) ?: %S\n", JsonTypes.discriminatorHelper, discriminatorField, discriminator.defaultValue);
+        }
         function.addCode("val bufferedParser = %T.createFlattened(false, bufferingParser.reset(), __parser)\n", JsonTypes.jsonParserSequence)
         function.addCode("bufferedParser.nextToken()\n")
         function.beginControlFlow("return when(discriminator) {")

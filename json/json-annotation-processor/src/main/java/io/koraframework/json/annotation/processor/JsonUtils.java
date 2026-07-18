@@ -69,17 +69,31 @@ public final class JsonUtils {
 
     @Nullable
     public static String discriminatorField(Types types, TypeElement element) {
+        var discriminator = discriminator(types, element);
+        return discriminator == null
+            ? null
+            : discriminator.field();
+    }
+
+    @Nullable
+    public static Discriminator discriminator(Types types, TypeElement element) {
         if (element.getModifiers().contains(Modifier.SEALED)) {
             var annotation = AnnotationUtils.findAnnotation(element, JsonTypes.jsonDiscriminatorField);
             if (annotation != null) {
-                return AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "value");
+                return new Discriminator(
+                    AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "value"),
+                    AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "defaultValue")
+                );
             }
         }
         var superClass = types.asElement(element.getSuperclass());
         if (superClass instanceof TypeElement && superClass.getModifiers().contains(Modifier.SEALED)) {
             var annotation = AnnotationUtils.findAnnotation(superClass, JsonTypes.jsonDiscriminatorField);
             if (annotation != null) {
-                return AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "value");
+                return new Discriminator(
+                    AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "value"),
+                    AnnotationUtils.parseAnnotationValueWithoutDefault(annotation, "defaultValue")
+                );
             }
         }
         for (var directSupertype : types.directSupertypes(element.asType())) {
@@ -87,7 +101,7 @@ public final class JsonUtils {
                 continue;
             }
             var superelement = types.asElement(directSupertype);
-            var discriminator = discriminatorField(types, (TypeElement) superelement);
+            var discriminator = discriminator(types, (TypeElement) superelement);
             if (discriminator != null) {
                 return discriminator;
             }
@@ -108,4 +122,6 @@ public final class JsonUtils {
         }
         return List.of(element.getSimpleName().toString());
     }
+
+    public record Discriminator(String field, @Nullable String defaultValue) {}
 }

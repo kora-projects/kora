@@ -41,10 +41,9 @@ public class SealedInterfaceReaderGenerator {
 
         this.addReaders(typeBuilder, permittedSubclasses);
 
-        var discriminatorField = JsonUtils.discriminatorField(this.types, jsonElement);
-        if (discriminatorField == null) {
-            discriminatorField = "@type";
-        }
+        var discriminator = JsonUtils.discriminator(this.types, jsonElement);
+        var discriminatorField = discriminator == null ? "@type" : discriminator.field();
+        var defaultDiscriminatorValue = discriminator == null ? null : discriminator.defaultValue();
         var method = MethodSpec.methodBuilder("read")
             .addModifiers(Modifier.PUBLIC, Modifier.FINAL)
             .addParameter(JsonTypes.jsonParser, "__parser")
@@ -55,7 +54,11 @@ public class SealedInterfaceReaderGenerator {
             .endControlFlow();
         method.addCode("var bufferingParser = new $T(__parser);\n", JsonTypes.bufferingJsonParser);
         method.addCode("var discriminator = $T.readStringDiscriminator(bufferingParser, $S);\n", JsonTypes.discriminatorHelper, discriminatorField);
-        method.addCode("if (discriminator == null) throw new $T(__parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+        if (defaultDiscriminatorValue == null || defaultDiscriminatorValue.isEmpty()) {
+            method.addCode("if (discriminator == null) throw new $T(__parser, $S);\n", JsonTypes.jsonParseException, "Discriminator required, but not provided");
+        } else {
+            method.addCode("if (discriminator == null) discriminator = $S;\n", defaultDiscriminatorValue);
+        }
         method.addCode("var bufferedParser = $T.createFlattened(false, bufferingParser.reset(), __parser);\n", JsonTypes.jsonParserSequence);
         method.addCode("bufferedParser.nextToken();\n");
         method.addCode("return switch(discriminator) {$>\n");

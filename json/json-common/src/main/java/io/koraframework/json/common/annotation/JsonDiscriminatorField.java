@@ -45,4 +45,11 @@ public @interface JsonDiscriminatorField {
      * <b>English</b>: Name of the field that will determine the type of the deserializable value
      */
     String value();
+
+    /**
+     * @return <b>Русский</b>: Значение дискриминатора, которое будет использовано если поле {@link #value()} отсутствует
+     * <hr>
+     * <b>English</b>: Discriminator value that will be used when {@link #value()} field is missing
+     */
+    String defaultValue() default "";
 }

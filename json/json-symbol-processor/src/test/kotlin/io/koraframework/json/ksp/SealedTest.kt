@@ -230,6 +230,33 @@ class SealedTest : AbstractJsonSymbolProcessorTest() {
     }
 
     @Test
+    fun testSealedInterfaceWithDefaultDiscriminator() {
+        compile(
+            """
+            @Json
+            @JsonDiscriminatorField(value = "@type", defaultValue = "Impl1")
+            sealed interface TestInterface {
+                @Json
+                data class Impl1(val value :String): TestInterface
+                @Json
+                data class Impl2(val value: Int): TestInterface
+            }
+            """
+        );
+
+        val m1 = mapper("TestInterface_Impl1")
+        val m2 = mapper("TestInterface_Impl2")
+        val m = mapper(
+            "TestInterface",
+            listOf(m1, m2),
+            listOf(m1, m2)
+        )
+
+        m.assertRead("{\"value\":\"test\"}", new("TestInterface\$Impl1", "test"))
+        m.assertRead("{\"value\":42, \"@type\":\"Impl2\"}", new("TestInterface\$Impl2", 42))
+    }
+
+    @Test
     fun testSealedSubinterface() {
         compile(
             """

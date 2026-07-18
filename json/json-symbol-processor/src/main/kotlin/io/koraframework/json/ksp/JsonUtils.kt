@@ -106,24 +106,33 @@ fun findJsonField(param: KSAnnotated): KSAnnotation? {
 
 
 fun KSClassDeclaration.discriminatorField(): String? {
+    return discriminator()?.field
+}
+
+fun KSClassDeclaration.discriminator(): Discriminator? {
     if (this.packageName.asString() == "kotlin") {
         return null
     }
     if (this.modifiers.contains(Modifier.SEALED)) {
         val annotation = this.findAnnotation(JsonTypes.jsonDiscriminatorField)
         if (annotation != null) {
-            return annotation.findValue<String>("value")
+            return Discriminator(
+                annotation.findValue<String>("value")!!,
+                annotation.findValue<String>("defaultValue")
+            )
         }
     }
     for (type in this.superTypes) {
         val supertype = type.resolve().declaration as KSClassDeclaration
-        val discriminator = supertype.discriminatorField()
+        val discriminator = supertype.discriminator()
         if (discriminator != null) {
             return discriminator
         }
     }
     return null
 }
+
+data class Discriminator(val field: String, val defaultValue: String?)
 
 fun KSClassDeclaration.discriminatorValues(): List<String> {
     return findAnnotation(JsonTypes.jsonDiscriminatorValue)
@@ -169,4 +178,3 @@ fun detectSealedHierarchyTypeVariables(jsonClassDeclaration: KSClassDeclaration,
     }
     return map
 }
-
