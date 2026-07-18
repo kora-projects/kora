@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import io.koraframework.validation.annotation.processor.testdata.ValidBar;
 import io.koraframework.validation.annotation.processor.testdata.ValidFoo;
+import io.koraframework.validation.annotation.processor.testdata.ValidOneOf;
 import io.koraframework.validation.annotation.processor.testdata.ValidTaz;
 import io.koraframework.validation.common.ValidationContext;
 import io.koraframework.validation.common.Violation;
@@ -127,5 +128,13 @@ class ValidAnnotationProcessorTests extends ValidRunner {
         // then
         final List<Violation> violations = service.validate(value, ValidationContext.builder().failFast(false).build());
         assertThat(violations).hasSize(2);
+    }
+
+    @Test
+    void validateOneOf() {
+        var service = getOneOfValidator();
+
+        assertThat(service.validate(new ValidOneOf("NEW"))).isEmpty();
+        assertThat(service.validate(new ValidOneOf("FAIL"))).hasSize(1);
     }
 }

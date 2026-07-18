@@ -123,12 +123,16 @@ public final class ValidUtils {
             return ve.asType().toString() + "." + value.getValue();
         }
 
-        if (value.getValue() instanceof List<?>) {
-            return ((List<?>) value).stream()
+        if (value.getValue() instanceof List<?> list) {
+            return list.stream()
                 .map(v -> v instanceof AnnotationValue
                     ? castParameterValue((AnnotationValue) v)
                     : v.toString())
                 .toList();
+        }
+
+        if (value.toString().startsWith("{") && value.toString().endsWith("}")) {
+            return "new String[] " + value;
         }
 
         return value.toString();

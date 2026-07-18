@@ -8,6 +8,7 @@ import io.koraframework.validation.common.Validator
 import io.koraframework.validation.common.constraint.ValidatorModule
 import io.koraframework.validation.symbol.processor.testdata.ValidBar
 import io.koraframework.validation.symbol.processor.testdata.ValidFoo
+import io.koraframework.validation.symbol.processor.testdata.ValidOneOf
 import io.koraframework.validation.symbol.processor.testdata.ValidTaz
 
 @KspExperimental
@@ -44,13 +45,20 @@ open class ValidRunner : Assertions(), ValidatorModule {
         return clazz.constructors[0].newInstance(patternStringValidatorFactory()) as Validator<ValidTaz>
     }
 
+    protected open fun getOneOfValidator(): Validator<ValidOneOf> {
+        val classLoader = getClassLoader()
+        val clazz = classLoader.loadClass("io.koraframework.validation.symbol.processor.testdata.\$ValidOneOf_Validator")
+        return clazz.constructors[0].newInstance(oneOfStringValidatorFactory()) as Validator<ValidOneOf>
+    }
+
     private fun getClassLoader(): ClassLoader {
         return try {
             if (classLoader == null) {
                 val classes = listOf(
                     ValidFoo::class,
                     ValidBar::class,
-                    ValidTaz::class
+                    ValidTaz::class,
+                    ValidOneOf::class
                 )
                 classLoader = symbolProcess(listOf(ValidSymbolProcessorProvider()), classes)
             }

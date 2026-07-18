@@ -9,6 +9,7 @@ import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import com.squareup.kotlinpoet.ParameterizedTypeName
+import com.squareup.kotlinpoet.joinToCode
 import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
@@ -149,11 +150,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
             val parameters = CodeBlock.of(
                 constraint.factory.parameters.values.asSequence()
                 .map {
-                    when (it) {
-                        is String -> CodeBlock.of("%S", it)
-                        is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (it.parentDeclaration as KSClassDeclaration).toClassName(), it.simpleName.asString())
-                        else -> CodeBlock.of("%L", it)
-                    }
+                    parameterCode(it)
                 }
                 .joinToString(", ", "(", ")"))
 
@@ -287,16 +284,7 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
                 val parameters = CodeBlock.of(
                     constraint.factory.parameters.values.asSequence()
                     .map {
-                        when (it) {
-                            is String -> CodeBlock.of("%S", it)
-                            is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of(
-                                "%T.%N",
-                                (it.parentDeclaration as KSClassDeclaration).toClassName(),
-                                it.simpleName.asString()
-                            )
-
-                            else -> CodeBlock.of("%L", it)
-                        }
+                        parameterCode(it)
                     }
                     .joinToString(", ", "(", ")"))
 
@@ -460,5 +448,14 @@ class ValidateMethodKoraAspect(private val resolver: Resolver) : KoraAspect {
 
     private fun buildMethodCall(method: KSFunctionDeclaration, call: String): CodeBlock {
         return CodeBlock.of(method.parameters.asSequence().map { p -> CodeBlock.of("%L", p) }.joinToString(", ", "$call(", ")"))
+    }
+
+    private fun parameterCode(value: Any?): CodeBlock {
+        return when (value) {
+            is String -> CodeBlock.of("%S", value)
+            is KSClassDeclaration if value.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (value.parentDeclaration as KSClassDeclaration).toClassName(), value.simpleName.asString())
+            is List<*> -> CodeBlock.of("arrayOf(%L)", value.map { parameterCode(it) }.joinToCode(", "))
+            else -> CodeBlock.of("%L", value)
+        }
     }
 }

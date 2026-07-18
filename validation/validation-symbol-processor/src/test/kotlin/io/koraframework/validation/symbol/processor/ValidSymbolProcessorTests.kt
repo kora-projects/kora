@@ -6,6 +6,7 @@ import org.junit.jupiter.api.TestInstance
 import io.koraframework.validation.common.ValidationContext
 import io.koraframework.validation.symbol.processor.testdata.ValidBar
 import io.koraframework.validation.symbol.processor.testdata.ValidFoo
+import io.koraframework.validation.symbol.processor.testdata.ValidOneOf
 import io.koraframework.validation.symbol.processor.testdata.ValidTaz
 import java.time.OffsetDateTime
 
@@ -95,5 +96,13 @@ class ValidSymbolProcessorTests : ValidRunner() {
         // then
         val violations = service.validate(value, ValidationContext.builder().failFast(false).build())
         assertEquals(2, violations.size)
+    }
+
+    @Test
+    fun validateOneOf() {
+        val service = getOneOfValidator()
+
+        assertEquals(0, service.validate(ValidOneOf("NEW")).size)
+        assertEquals(1, service.validate(ValidOneOf("FAIL")).size)
     }
 }

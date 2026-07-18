@@ -153,11 +153,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             val fieldName = entry.value
             val validatorType = factory.validator()
             val createParameters = factory.parameters.values.map {
-                when (it) {
-                    is String -> CodeBlock.of("%S", it)
-                    is KSClassDeclaration if it.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (it.parentDeclaration as KSClassDeclaration).toClassName(), it.simpleName.asString())
-                    else -> CodeBlock.of("%L", it)
-                }
+                parameterCode(it)
             }.joinToCode(", ")
 
             validatorSpecBuilder.addProperty(
@@ -213,6 +209,15 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             .build()
 
         return ValidSymbolProcessor.ValidatorSpec(meta, typeSpec, parameterSpecs)
+    }
+
+    private fun parameterCode(value: Any?): CodeBlock {
+        return when (value) {
+            is String -> CodeBlock.of("%S", value)
+            is KSClassDeclaration if value.classKind == ClassKind.ENUM_ENTRY -> CodeBlock.of("%T.%N", (value.parentDeclaration as KSClassDeclaration).toClassName(), value.simpleName.asString())
+            is List<*> -> CodeBlock.of("arrayOf(%L)", value.map { parameterCode(it) }.joinToCode(", "))
+            else -> CodeBlock.of("%L", value)
+        }
     }
 
     private fun getValidatorMeta(declaration: KSClassDeclaration): ValidatorMeta {
