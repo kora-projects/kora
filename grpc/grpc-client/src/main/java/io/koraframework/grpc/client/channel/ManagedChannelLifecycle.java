@@ -102,9 +102,13 @@ public final class ManagedChannelLifecycle implements Lifecycle, Wrapped<Managed
         if (this.configurer != null) {
             builder = this.configurer.configure(builder);
         }
-
         this.channel = builder.build();
-        logger.info("GrpcManagedChannel '{}' started in {}", this.config.url(), TimeUtils.tookForLogging(started));
+        try {
+            this.channel.getState(true);
+            logger.info("GrpcManagedChannel '{}' started in {}", this.config.url(), TimeUtils.tookForLogging(started));
+        } catch (Exception e) {
+            logger.warn("GrpcManagedChannel '{}' started with error in {}", this.config.url(), TimeUtils.tookForLogging(started), e);
+        }
     }
 
     @Override
