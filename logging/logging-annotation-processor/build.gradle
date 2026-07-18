@@ -2,6 +2,8 @@ dependencies {
     implementation project(':aop:aop-annotation-processor')
 
     testImplementation project(':logging:logging-common')
+    testImplementation project(':json:json-annotation-processor')
+    testImplementation project(':core:kora-app-annotation-processor')
     testImplementation testFixtures(project(":core:annotation-processor-common"))
     testImplementation project(':logging:logging-logback')
 }

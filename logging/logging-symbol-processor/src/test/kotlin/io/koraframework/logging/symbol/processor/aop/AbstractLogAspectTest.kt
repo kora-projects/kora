@@ -36,6 +36,9 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
     override fun commonImports(): String {
         return super.commonImports() + """
             import io.koraframework.logging.common.annotation.Log
+            import io.koraframework.logging.common.annotation.Mask
+            import io.koraframework.json.common.annotation.Json
+            import io.koraframework.json.common.annotation.JsonField
             import org.slf4j.event.Level.*
             import org.slf4j.Logger
             import org.slf4j.LoggerFactory
@@ -96,6 +99,16 @@ abstract class AbstractLogAspectTest : AbstractSymbolProcessorTest() {
 
     protected open fun verifyOutData(expectedData: Map<String, String>) {
         verifyData(outData, expectedData)
+    }
+
+    protected open fun verifyInJson(expectedJson: String) {
+        val writer = inData.value as StructuredArgumentWriter
+        Assertions.assertThat(writer.writeToString()).isEqualTo(expectedJson)
+    }
+
+    protected open fun verifyOutJson(expectedJson: String) {
+        val writer = outData.value as StructuredArgumentWriter
+        Assertions.assertThat(writer.writeToString()).isEqualTo(expectedJson)
     }
 
     protected open fun verifyData(captor: ArgumentCaptor<Marker>, expectedData: Map<String, String>) {

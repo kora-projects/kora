@@ -1,4 +1,4 @@
-package io.koraframework.logging.aspect;
+package io.koraframework.logging.annotation.processor.aop;
 
 import org.jspecify.annotations.Nullable;
 import io.koraframework.annotation.processor.common.AnnotationUtils;
@@ -10,7 +10,7 @@ import javax.lang.model.element.VariableElement;
 import java.util.List;
 import java.util.Optional;
 
-import static io.koraframework.logging.aspect.LogAspectClassNames.*;
+import static io.koraframework.logging.annotation.processor.aop.LogAspectClassNames.*;
 
 public class LogAspectUtils {
     public static final List<String> LEVELS = List.of("ERROR", "WARN", "INFO", "DEBUG", "TRACE");

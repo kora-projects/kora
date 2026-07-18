@@ -1,4 +1,4 @@
-package io.koraframework.logging.symbol.processor.aop.data
+package io.koraframework.logging.symbol.processor.aop
 
 import org.slf4j.event.Level
 

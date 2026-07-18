@@ -1,4 +1,4 @@
-package io.koraframework.logging.aspect;
+package io.koraframework.logging.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
@@ -9,13 +9,14 @@ import io.koraframework.annotation.processor.common.*;
 import io.koraframework.aop.annotation.processor.KoraAspect;
 
 import javax.annotation.processing.ProcessingEnvironment;
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.TypeKind;
 import java.util.*;
 
-import static io.koraframework.logging.aspect.LogAspectClassNames.*;
-import static io.koraframework.logging.aspect.LogAspectUtils.*;
+import static io.koraframework.logging.annotation.processor.aop.LogAspectClassNames.*;
+import static io.koraframework.logging.annotation.processor.aop.LogAspectUtils.*;
 
 public class LogAspect implements KoraAspect {
 
@@ -84,13 +85,13 @@ public class LogAspect implements KoraAspect {
             var logResultLevel = logResultLevel(executableElement, logOutLevel, env);
             final CodeBlock resultWriter;
             if (!isVoid && logResultLevel != null) {
-                var mapping = CommonUtils.parseMapping(executableElement).getMapping(structuredArgumentMapper);
+                var mapping = this.structuredArgumentMapping(executableElement);
                 var mapperType = mapping != null && mapping.mapperClass() != null
                     ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(executableElement.getReturnType())) : TypeName.get(mapping.mapperClass())
                     : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(executableElement.getReturnType()).box());
                 var mapper = aspectContext.fieldFactory().constructorParam(
                     mapperType.annotated(CommonClassNames.nullableAnnotation),
-                    List.of()
+                    mapping == null || mapping.toTagAnnotation() == null ? List.of() : List.of(mapping.toTagAnnotation())
                 );
                 var resultWriterBuilder = CodeBlock.builder().beginControlFlow("gen ->")
                     .addStatement("gen.writeStartObject()")
@@ -172,13 +173,13 @@ public class LogAspect implements KoraAspect {
             final CodeBlock resultWriter;
             b.beginControlFlow(".whenComplete(($L, $L) -> ", RESULT_VAR_NAME, ERROR_VAR_NAME);
             if (!isVoid && logResultLevel != null) {
-                var mapping = CommonUtils.parseMapping(executableElement).getMapping(structuredArgumentMapper);
+                var mapping = this.structuredArgumentMapping(executableElement);
                 var mapperType = mapping != null && mapping.mapperClass() != null
                     ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(methodGeneric)) : TypeName.get(mapping.mapperClass())
                     : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(methodGeneric));
                 var mapper = aspectContext.fieldFactory().constructorParam(
                     mapperType.annotated(CommonClassNames.nullableAnnotation),
-                    List.of()
+                    mapping == null || mapping.toTagAnnotation() == null ? List.of() : List.of(mapping.toTagAnnotation())
                 );
                 var resultWriterBuilder = CodeBlock.builder().add("gen -> {$>\n")
                     .add("gen.writeStartObject();\n")
@@ -309,13 +310,13 @@ public class LogAspect implements KoraAspect {
                 b.beginControlFlow("if ($N.$N())", loggerField, "is" + CommonUtils.capitalize(level.toLowerCase()) + "Enabled");
             }
             for (var param : paramsForLevel) {
-                var mapping = CommonUtils.parseMapping(param).getMapping(structuredArgumentMapper);
+                var mapping = this.structuredArgumentMapping(param);
                 var mapperType = mapping != null && mapping.mapperClass() != null
                     ? mapping.isGeneric() ? mapping.parameterized(TypeName.get(param.asType())) : TypeName.get(mapping.mapperClass())
                     : ParameterizedTypeName.get(structuredArgumentMapper, TypeName.get(param.asType()).box());
                 var mapper = aspectContext.fieldFactory().constructorParam(
                     mapperType.annotated(CommonClassNames.nullableAnnotation),
-                    List.of()
+                    mapping == null || mapping.toTagAnnotation() == null ? List.of() : List.of(mapping.toTagAnnotation())
                 );
                 b.beginControlFlow("if (this.$N != null)", mapper);
                 b.addStatement("gen.writeName($S)", param.getSimpleName());
@@ -338,5 +339,16 @@ public class LogAspect implements KoraAspect {
         r.run();
         cb.add("$<\n}\n");
         return cb;
+    }
+
+    private CommonUtils.MappingData structuredArgumentMapping(Element element) {
+        var mapping = CommonUtils.parseMapping(element).getMapping(structuredArgumentMapper);
+        if (mapping != null) {
+            return mapping;
+        }
+        if (AnnotationUtils.findAnnotation(element, mask) != null) {
+            return new CommonUtils.MappingData(null, mask.canonicalName());
+        }
+        return null;
     }
 }
