@@ -37,6 +37,12 @@ public interface TelemetryConfig {
     @ConfigMapper
     interface MetricsConfig {
 
+        enum MetricsMode {
+            SUMMARY,
+            SLO,
+            VM
+        }
+
         Duration[] DEFAULT_SLO = new Duration[]{
             Duration.ofMillis(1),
             Duration.ofMillis(10),
@@ -58,12 +64,34 @@ public interface TelemetryConfig {
             return false;
         }
 
+        default MetricsMode mode() {
+            return MetricsMode.SLO;
+        }
+
+        VmConfig vm();
+
         default Duration[] slo() {
             return DEFAULT_SLO;
         }
 
         default Map<String, String> tags() {
             return Map.of();
+        }
+
+        @ConfigMapper
+        interface VmConfig {
+
+            default Duration min() {
+                return Duration.ofMillis(1);
+            }
+
+            default Duration max() {
+                return Duration.ofSeconds(90);
+            }
+
+            default int buckets() {
+                return 16;
+            }
         }
     }
 }

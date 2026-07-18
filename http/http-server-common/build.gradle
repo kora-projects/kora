@@ -5,12 +5,16 @@ plugins {
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
+    compileOnly project(':micrometer:micrometer-module')
+
     api project(':core:common')
     api project(':logging:logging-common')
     api project(':telemetry:telemetry-common')
     api project(':http:http-common')
 
     testImplementation project(':config:config-hocon')
+    testImplementation project(':micrometer:micrometer-module')
+    testImplementation libs.micrometer.registry.prometheus
 
     testFixturesApi libs.okhttp
     testFixturesImplementation libs.junit.jupiter

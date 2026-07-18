@@ -1,11 +1,11 @@
 dependencies {
+    annotationProcessor project(':config:config-annotation-processor')
+
+    compileOnly project(':resilient:resilient-kora')
+
+    api project(":telemetry:telemetry-common")
     api libs.micrometer.core
     api libs.micrometer.registry.prometheus
     api libs.opentelemetry.api
     api libs.opentelemetry.micrometer.meter.provider
-    api project(":telemetry:telemetry-common")
-
-    annotationProcessor project(':config:config-annotation-processor')
-
-    compileOnly project(':resilient:resilient-kora')
 }

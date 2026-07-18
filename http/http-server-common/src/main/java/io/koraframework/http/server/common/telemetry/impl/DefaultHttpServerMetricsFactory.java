@@ -2,10 +2,13 @@ package io.koraframework.http.server.common.telemetry.impl;
 
 import io.koraframework.http.server.common.request.HttpServerRequest;
 import io.koraframework.http.server.common.response.HttpServerResponse;
+import io.koraframework.micrometer.module.VictoriaMetricsHistogram;
+import io.koraframework.telemetry.common.TelemetryConfig;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.Timer;
+import io.micrometer.prometheusmetrics.PrometheusMeterRegistry;
 import io.opentelemetry.semconv.ErrorAttributes;
 import io.opentelemetry.semconv.HttpAttributes;
 import io.opentelemetry.semconv.ServerAttributes;
@@ -24,7 +27,11 @@ public class DefaultHttpServerMetricsFactory {
     public static final DefaultHttpServerMetricsFactory INSTANCE = new DefaultHttpServerMetricsFactory();
 
     public DefaultHttpServerMetrics create(DefaultHttpServerTelemetry.TelemetryContext context) {
-        return new DefaultHttpServerMetrics(context);
+        return switch (context.config().metrics().mode()) {
+            case SUMMARY -> new SummaryHttpServerMetrics(context);
+            case SLO -> new DefaultHttpServerMetrics(context);
+            case VM -> new VictoriaMetricsHttpServerMetrics(context);
+        };
     }
 
     public static class DefaultHttpServerMetrics {
@@ -97,6 +104,15 @@ public class DefaultHttpServerMetricsFactory {
                                                            HttpServerRequest request,
                                                            HttpServerResponse response,
                                                            @Nullable Throwable throwable) {
+            return Timer.builder("http.server.request.duration")
+                .serviceLevelObjectives(this.context.config().metrics().slo())
+                .tags(createMetricServerDurationTags(metricKey, request, response, throwable));
+        }
+
+        protected Tags createMetricServerDurationTags(DurationKey metricKey,
+                                                      HttpServerRequest request,
+                                                      HttpServerResponse response,
+                                                      @Nullable Throwable throwable) {
             var extraTags = 0;
             if (metricKey.extraTags != null) {
                 for (Tag _ : metricKey.extraTags) {
@@ -105,7 +121,7 @@ public class DefaultHttpServerMetricsFactory {
             }
             var staticTags = new ArrayList<Tag>(5 + this.context.config().metrics().tags().size() + extraTags);
 
-            var errorType = (throwable == null) ? "" : throwable.getClass().getCanonicalName();
+            var errorType = (metricKey.errorType == null) ? "" : metricKey.errorType.getCanonicalName();
             staticTags.add(Tag.of(HttpAttributes.HTTP_REQUEST_METHOD.getKey(), request.method()));
             staticTags.add(Tag.of(HttpAttributes.HTTP_ROUTE.getKey(), metricKey.pathTemplate()));
             staticTags.add(Tag.of(UrlAttributes.URL_SCHEME.getKey(), request.scheme()));
@@ -121,9 +137,7 @@ public class DefaultHttpServerMetricsFactory {
                 }
             }
 
-            return Timer.builder("http.server.request.duration")
-                .serviceLevelObjectives(this.context.config().metrics().slo())
-                .tags(Tags.of(staticTags));
+            return Tags.of(staticTags);
         }
 
         protected ActiveRequestsKey createMetricActiveRequestsGaugeKey(HttpServerRequest request) {
@@ -169,6 +183,62 @@ public class DefaultHttpServerMetricsFactory {
                 .tags(staticTags)
                 .register(this.context.meterRegistry());
             return value;
+        }
+    }
+
+    public static final class SummaryHttpServerMetrics extends DefaultHttpServerMetrics {
+
+        public SummaryHttpServerMetrics(DefaultHttpServerTelemetry.TelemetryContext context) {
+            super(context);
+        }
+
+        @Override
+        protected Timer.Builder createMetricServerDuration(DurationKey metricKey,
+                                                           HttpServerRequest request,
+                                                           HttpServerResponse response,
+                                                           @Nullable Throwable throwable) {
+            return super.createMetricServerDuration(metricKey, request, response, throwable)
+                .serviceLevelObjectives();
+        }
+    }
+
+    public static final class VictoriaMetricsHttpServerMetrics extends DefaultHttpServerMetrics {
+
+        private final PrometheusMeterRegistry meterRegistry;
+        private final ConcurrentHashMap<DurationKey, VictoriaMetricsHistogram> requestDurationCache = new ConcurrentHashMap<>();
+
+        public VictoriaMetricsHttpServerMetrics(DefaultHttpServerTelemetry.TelemetryContext context) {
+            super(context);
+            var meterRegistry = context.meterRegistry();
+            if (!(meterRegistry instanceof PrometheusMeterRegistry prometheusMeterRegistry)) {
+                throw new IllegalStateException("%s=%s requires PrometheusMeterRegistry"
+                    .formatted(TelemetryConfig.MetricsConfig.class.getSimpleName() + ".mode", TelemetryConfig.MetricsConfig.MetricsMode.VM));
+            }
+            this.meterRegistry = prometheusMeterRegistry;
+        }
+
+        @Override
+        public void recordEnd(HttpServerRequest request,
+                              HttpServerResponse response,
+                              @Nullable Throwable exception,
+                              long processingTimeNanos) {
+            var key = createMetricServerDurationKey(request, response, exception);
+            var meter = this.requestDurationCache.computeIfAbsent(key, _ -> createVictoriaMetricsServerDuration(key, request, response, exception));
+            meter.record(processingTimeNanos, TimeUnit.NANOSECONDS);
+            createMetricActiveRequestsGaugeCounter(request).decrementAndGet();
+        }
+
+        private VictoriaMetricsHistogram createVictoriaMetricsServerDuration(DurationKey metricKey,
+                                                                            HttpServerRequest request,
+                                                                            HttpServerResponse response,
+                                                                            @Nullable Throwable throwable) {
+            return VictoriaMetricsHistogram.builder("http.server.request.duration")
+                .baseUnit("seconds")
+                .min(this.context.config().metrics().vm().min())
+                .max(this.context.config().metrics().vm().max())
+                .buckets(this.context.config().metrics().vm().buckets())
+                .tags(createMetricServerDurationTags(metricKey, request, response, throwable))
+                .register(this.meterRegistry);
         }
     }
 }
