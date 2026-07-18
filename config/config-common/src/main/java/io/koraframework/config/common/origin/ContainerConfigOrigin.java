@@ -9,16 +9,17 @@ public class ContainerConfigOrigin implements ConfigOrigin {
     private final String description;
 
     public ContainerConfigOrigin(ConfigOrigin origin1, ConfigOrigin origin2) {
+        this(List.of(origin1, origin2));
+    }
+
+    public ContainerConfigOrigin(List<ConfigOrigin> origins) {
         this.origins = new ArrayList<>();
-        if (origin1 instanceof ContainerConfigOrigin container) {
-            this.origins.addAll(container.origins());
-        } else {
-            this.origins.add(origin1);
-        }
-        if (origin2 instanceof ContainerConfigOrigin container) {
-            this.origins.addAll(container.origins());
-        } else {
-            this.origins.add(origin2);
+        for (var origin : origins) {
+            if (origin instanceof ContainerConfigOrigin container) {
+                this.origins.addAll(container.origins());
+            } else {
+                this.origins.add(origin);
+            }
         }
         this.description = this.origins.stream()
             .map(ConfigOrigin::description)
