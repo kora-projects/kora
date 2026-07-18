@@ -22,6 +22,37 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.DoubleAdder;
 
+/**
+ * VictoriaMetrics-compatible histogram collector for Micrometer Prometheus registry.
+ * <p>
+ * The implementation is inspired by VictoriaMetrics {@code vmrange} histogram format,
+ * the Go VictoriaMetrics metrics implementation, and the old Micrometer 1.12
+ * {@code FixedBoundaryVictoriaMetricsHistogram} implementation.
+ * <p>
+ * The collector keeps one registered Prometheus collector per metric name and stores a
+ * separate child for every unique Micrometer tag set. Recording is lock-free for existing
+ * children: the input value is converted to seconds, mapped to a VictoriaMetrics bucket by
+ * decimal exponent and mantissa, and increments the corresponding {@link AtomicLongArray}
+ * cell. The fixed grid has special buckets for {@code 0...0}, values below {@code 1e-9},
+ * and values above {@code 1e18}; regular buckets split every decimal exponent from
+ * {@code 1e-9} to {@code 1e18} into {@code 9 * DECIMAL_MULTIPLIER} ranges.
+ * <p>
+ * The builder-provided {@code min}, {@code max}, and {@code buckets} values affect only
+ * scrape output and cardinality, not the internal recording grid. During collection the
+ * child scans occupied VM buckets, folds everything below {@code min} into a single
+ * {@code 0...min} range, folds everything above {@code max} into {@code max...+Inf}, and
+ * leaves in-range buckets in their native {@code vmrange} form. If the resulting occupied
+ * ranges still exceed {@code buckets}, adjacent ranges are merged into at most
+ * {@code buckets} exported bucket series for that label set.
+ * <p>
+ * Export uses Prometheus {@code untyped} series because VictoriaMetrics {@code vmrange}
+ * buckets are not Prometheus cumulative {@code le} histogram buckets. Bucket range merging
+ * affects only distribution precision in scrape output; {@code _count} and {@code _sum}
+ * are accumulated independently and remain exact.
+ *
+ * @see <a href="https://docs.victoriametrics.com/victoriametrics/keyconcepts/#histogram">VictoriaMetrics histograms</a>
+ * @see <a href="https://valyala.medium.com/improving-histogram-usability-for-prometheus-and-grafana-bc7e5df0e350">Improving histogram usability for Prometheus and Grafana</a>
+ */
 public final class VictoriaMetricsHistogram {
 
     private static final int E10_MIN = -9;
