@@ -1,5 +1,6 @@
 package io.koraframework.cache.redis.telemetry.impl;
 
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
@@ -26,7 +27,7 @@ public class DefaultRedisCacheMetricsFactory {
         protected static final String TAG_OPERATION = "operation";
         protected static final String TAG_ORIGIN = "origin";
 
-        public record DurationKey(String operation,
+        public record DurationKey(RedisCacheTelemetry.Operation operation,
                                   @Nullable Class<? extends Throwable> errorType,
                                   @Nullable Tags extraTags) {
 
@@ -35,7 +36,7 @@ public class DefaultRedisCacheMetricsFactory {
             }
         }
 
-        public record RatioKey(String operation,
+        public record RatioKey(RedisCacheTelemetry.Operation operation,
                                RatioType ratioType,
                                @Nullable Tags extraTags) {
 
@@ -64,7 +65,7 @@ public class DefaultRedisCacheMetricsFactory {
             this.context = context;
         }
 
-        public void reportCommandTook(String operation,
+        public void reportCommandTook(RedisCacheTelemetry.Operation operation,
                                       long startedRecordsHandleInNanos,
                                       @Nullable Throwable error) {
             var took = System.nanoTime() - startedRecordsHandleInNanos;
@@ -78,7 +79,7 @@ public class DefaultRedisCacheMetricsFactory {
             meter.record(took, TimeUnit.NANOSECONDS);
         }
 
-        public void reportRatioChange(String operation,
+        public void reportRatioChange(RedisCacheTelemetry.Operation operation,
                                       RatioType ratioType,
                                       int change) {
             var key = createMetricRatioCounterKey(operation, ratioType);
@@ -90,7 +91,7 @@ public class DefaultRedisCacheMetricsFactory {
             meter.increment(change);
         }
 
-        protected DurationKey createMetricOperationDurationKey(String operation, @Nullable Throwable error) {
+        protected DurationKey createMetricOperationDurationKey(RedisCacheTelemetry.Operation operation, @Nullable Throwable error) {
             if (error instanceof CompletionException ce && ce.getCause() != null) {
                 error = ce.getCause();
             }
@@ -98,13 +99,13 @@ public class DefaultRedisCacheMetricsFactory {
             return new DurationKey(operation, errorType, null);
         }
 
-        protected RatioKey createMetricRatioCounterKey(String operation, RatioType ratioType) {
+        protected RatioKey createMetricRatioCounterKey(RedisCacheTelemetry.Operation operation, RatioType ratioType) {
             return new RatioKey(operation, ratioType, null);
         }
 
         // DO NOT ADD DYNAMIC TAGS IN BUILDER, use metric key instead of metric collision will happen
         protected Timer.Builder createMetricOperationDuration(DurationKey metricKey,
-                                                              String operation,
+                                                              RedisCacheTelemetry.Operation operation,
                                                               @Nullable Throwable error) {
             var extraTags = 0;
             if (metricKey.extraTags != null) {
@@ -123,7 +124,7 @@ public class DefaultRedisCacheMetricsFactory {
             }
 
             // dynamic tags from cache key
-            tags.add(Tag.of(TAG_OPERATION, operation));
+            tags.add(Tag.of(TAG_OPERATION, operation.name()));
             tags.add(Tag.of(ErrorAttributes.ERROR_TYPE.getKey(), errorValue));
             if (metricKey.extraTags != null) {
                 for (Tag extraTag : metricKey.extraTags) {
@@ -138,7 +139,7 @@ public class DefaultRedisCacheMetricsFactory {
 
         // DO NOT ADD DYNAMIC TAGS IN BUILDER, use metric key instead of metric collision will happen
         protected Counter.Builder createMetricRatioCounter(RatioKey metricKey,
-                                                           String operation,
+                                                           RedisCacheTelemetry.Operation operation,
                                                            RatioType ratioType) {
             var extraTags = 0;
             if (metricKey.extraTags != null) {
@@ -156,7 +157,7 @@ public class DefaultRedisCacheMetricsFactory {
             }
 
             // dynamic tags from cache key
-            tags.add(Tag.of(TAG_OPERATION, operation));
+            tags.add(Tag.of(TAG_OPERATION, operation.name()));
             tags.add(Tag.of("type", ratioType.value));
             if (metricKey.extraTags != null) {
                 for (Tag extraTag : metricKey.extraTags) {

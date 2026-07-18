@@ -61,17 +61,17 @@ public class DefaultRedisCacheTelemetry implements RedisCacheTelemetry {
     }
 
     @Override
-    public RedisCacheObservation observe(String operation) {
+    public RedisCacheObservation observe(Operation operation) {
         var span = (context.isTracingEnabled())
             ? this.createSpan(operation).startSpan()
             : Span.getInvalid();
         return new DefaultRedisCacheObservation(operation, context, logger, metrics, span);
     }
 
-    protected SpanBuilder createSpan(String operation) {
+    protected SpanBuilder createSpan(Operation operation) {
         var span = this.context.tracer().spanBuilder("cache.operation")
             .setSpanKind(SpanKind.INTERNAL)
-            .setAttribute(TAG_OPERATION, operation)
+            .setAttribute(TAG_OPERATION, operation.name())
             .setAttribute(SYSTEM_CONFIG_PATH, this.context.cacheConfigPath())
             .setAttribute(SYSTEM_NAME_SIMPLE, this.context.cacheImplSimpleName())
             .setAttribute(SYSTEM_NAME_CANONICAL, this.context.cacheImplCanonicalName())

@@ -1,5 +1,6 @@
 package io.koraframework.cache.redis.telemetry.impl;
 
+import io.koraframework.cache.redis.telemetry.RedisCacheTelemetry;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +26,7 @@ public class DefaultRedisCacheLoggerFactory {
             this.context = context;
         }
 
-        public void logStart(String operation, Object key) {
+        public void logStart(RedisCacheTelemetry.Operation operation, Object key) {
             if (this.logger.isTraceEnabled()) {
                 this.logger.atTrace()
                     .addKeyValue("operation", operation)
@@ -36,7 +37,7 @@ public class DefaultRedisCacheLoggerFactory {
             }
         }
 
-        public void logStart(String operation, Collection<?> keys) {
+        public void logStart(RedisCacheTelemetry.Operation operation, Collection<?> keys) {
             if (this.logger.isTraceEnabled()) {
                 this.logger.atTrace()
                     .addKeyValue("operation", operation)
@@ -47,7 +48,7 @@ public class DefaultRedisCacheLoggerFactory {
             }
         }
 
-        public void logEnd(String operation, long startedInNanos, @Nullable Throwable error) {
+        public void logEnd(RedisCacheTelemetry.Operation operation, long startedInNanos, @Nullable Throwable error) {
             if (error == null) {
                 this.logEnd(operation, startedInNanos, 0, 0);
                 return;
@@ -63,7 +64,7 @@ public class DefaultRedisCacheLoggerFactory {
             }
         }
 
-        public void logEnd(String operation, long startedInNanos, int retrieved, int missed) {
+        public void logEnd(RedisCacheTelemetry.Operation operation, long startedInNanos, int retrieved, int missed) {
             if (this.logger.isDebugEnabled()) {
                 var builder = retrieved > 0
                     ? this.logger.atDebug()
@@ -75,7 +76,7 @@ public class DefaultRedisCacheLoggerFactory {
                     .addKeyValue("cacheImpl", this.context.cacheImplCanonicalName())
                     .addKeyValue("processingTime", (System.nanoTime() - startedInNanos) / 1_000_000);
 
-                if (operation.startsWith("GET")) {
+                if (operation.hasCacheResult()) {
                     builder.addKeyValue("retrieved", retrieved);
                     builder.addKeyValue("missed", missed);
                 }
