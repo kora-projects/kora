@@ -36,8 +36,8 @@ public class CacheAnnotationProcessor extends AbstractKoraProcessor {
     private static final ClassName REDIS_CACHE_IMPL = ClassName.get("io.koraframework.cache.redis", "AbstractRedisCache");
     private static final ClassName REDIS_CACHE_CONFIG = ClassName.get("io.koraframework.cache.redis", "RedisCacheConfig");
     private static final ClassName REDIS_CACHE_CLIENT = ClassName.get("io.koraframework.cache.redis", "RedisCacheClient");
-    private static final ClassName REDIS_CACHE_MAPPER_KEY = ClassName.get("io.koraframework.cache.redis", "RedisCacheKeyMapper");
-    private static final ClassName REDIS_CACHE_MAPPER_VALUE = ClassName.get("io.koraframework.cache.redis", "RedisCacheValueMapper");
+    private static final ClassName REDIS_CACHE_MAPPER_KEY = ClassName.get("io.koraframework.cache.redis.mapper", "RedisCacheKeyMapper");
+    private static final ClassName REDIS_CACHE_MAPPER_VALUE = ClassName.get("io.koraframework.cache.redis.mapper", "RedisCacheValueMapper");
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
