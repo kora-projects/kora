@@ -38,12 +38,12 @@ public record ValidMeta(Type source, TypeElement sourceElement, List<Field> fiel
         }
     }
 
-    public record Field(Type type, String name, boolean isRecord, boolean isNullable, boolean isNotNull,
+    public record Field(Type type, String name, boolean isRecordOrInterface, boolean isNullable, boolean isNotNull,
                         boolean isJsonNullable, boolean isPrimitive, List<Constraint> constraint,
                         List<Validated> validates) {
 
         public String accessor() {
-            return (isRecord)
+            return (isRecordOrInterface)
                 ? name + "()"
                 : "get" + name.substring(0, 1).toUpperCase() + name.substring(1) + "()";
         }

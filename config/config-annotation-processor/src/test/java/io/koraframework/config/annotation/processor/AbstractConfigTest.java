@@ -4,6 +4,7 @@ import io.koraframework.annotation.processor.common.AbstractAnnotationProcessorT
 import io.koraframework.config.annotation.processor.processor.ConfigParserAnnotationProcessor;
 import io.koraframework.config.annotation.processor.processor.ConfigSourceAnnotationProcessor;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
+import io.koraframework.validation.annotation.processor.ValidAnnotationProcessor;
 import org.intellij.lang.annotations.Language;
 
 import java.lang.reflect.InvocationTargetException;
@@ -19,7 +20,7 @@ public abstract class AbstractConfigTest extends AbstractAnnotationProcessorTest
     }
 
     protected ConfigValueMapper<Object> compileConfig(List<?> arguments, @Language("java") String... sources) {
-        super.compile(List.of(new ConfigParserAnnotationProcessor(), new ConfigSourceAnnotationProcessor()), sources);
+        super.compile(List.of(new ConfigParserAnnotationProcessor(), new ConfigSourceAnnotationProcessor(), new ValidAnnotationProcessor()), sources);
         this.compileResult.assertSuccess();
         var args = arguments
             .stream()

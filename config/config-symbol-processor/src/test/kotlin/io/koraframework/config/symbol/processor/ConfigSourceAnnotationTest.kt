@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test
 import io.koraframework.config.common.Config
 import io.koraframework.config.common.mapper.ConfigValueMapper
 import io.koraframework.config.common.util.ConfigMappingUtils
+import io.koraframework.validation.common.Validator
+import org.mockito.Mockito
+import org.mockito.Mockito.verify
 
 class ConfigSourceAnnotationTest : AbstractConfigTest() {
     @Test
@@ -20,6 +23,27 @@ class ConfigSourceAnnotationTest : AbstractConfigTest() {
         )
         assertThat(mapper.map(ConfigMappingUtils.fromMap(mapOf("value" to 42)).root()))
             .isEqualTo(new($$"$TestConfig_ConfigValueMapper$TestConfig_Impl", 42))
+    }
+
+    @Test
+    fun testValidConfigSourceValidatedAfterParse() {
+        val validator = Mockito.mock(Validator::class.java) as Validator<Any?>
+        val mapper = compileConfig(
+            listOf(validator), """
+            @ConfigSource("test.path")
+            @io.koraframework.validation.common.annotation.Valid
+            interface TestConfig {
+              @io.koraframework.validation.common.annotation.NotBlank
+              fun value(): String
+            }
+            """.trimIndent()
+        )
+
+        val result = mapper.map(ConfigMappingUtils.fromMap(mapOf("value" to "test")).root())
+
+        assertThat(result)
+            .isEqualTo(new($$"$TestConfig_ConfigValueMapper$TestConfig_Impl", "test"))
+        verify(validator).validateAndThrow(result)
     }
 
     @Test

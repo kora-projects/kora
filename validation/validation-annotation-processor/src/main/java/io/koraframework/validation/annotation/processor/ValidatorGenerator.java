@@ -35,7 +35,7 @@ public class ValidatorGenerator {
     }
 
     public void generateFor(TypeElement validatedElement) {
-        if (validatedElement.getKind().isInterface()) {
+        if (validatedElement.getKind().isInterface() && validatedElement.getModifiers().contains(Modifier.SEALED)) {
             this.generateForSealed(validatedElement);
             return;
         }
@@ -274,6 +274,9 @@ public class ValidatorGenerator {
     }
 
     private ValidMeta getValidatorMetas(TypeElement element) {
+        if (element.getKind().isInterface()) {
+            return getInterfaceValidatorMetas(element);
+        }
         final List<VariableElement> elementFields = getFields(element);
         final List<ValidMeta.Field> fields = new ArrayList<>();
         for (VariableElement fieldElement : elementFields) {
@@ -331,9 +334,73 @@ public class ValidatorGenerator {
             .toList();
     }
 
+    private ValidMeta getInterfaceValidatorMetas(TypeElement element) {
+        final Map<String, ExecutableElement> accessors = new LinkedHashMap<>();
+        collectInterfaceAccessors(element, accessors, new HashSet<>());
+        final List<ValidMeta.Field> fields = new ArrayList<>();
+        for (var method : accessors.values()) {
+            final TypeMirror methodType = ((javax.lang.model.type.ExecutableType) types.asMemberOf((DeclaredType) element.asType(), method)).getReturnType();
+            final List<ValidMeta.Constraint> constraints = ValidUtils.getValidatedByConstraints(processingEnv, methodType, method.getAnnotationMirrors());
+            final List<ValidMeta.Validated> validateds = getValidated(method, methodType);
+            final boolean isNotNull = isNotNull(method);
+            final boolean isJsonNullable;
+            final TypeMirror targetType;
+            if (methodType instanceof DeclaredType dt && jsonNullable.canonicalName().equals(dt.asElement().toString())) {
+                targetType = dt.getTypeArguments().get(0);
+                isJsonNullable = true;
+            } else {
+                targetType = methodType;
+                isJsonNullable = false;
+            }
+
+            if (!constraints.isEmpty() || !validateds.isEmpty() || (isJsonNullable && isNotNull)) {
+                final boolean isNullable = CommonUtils.isNullable(element) || CommonUtils.isNullable(method);
+                final boolean isPrimitive = methodType.getKind().isPrimitive();
+                final TypeMirror fieldType = ValidUtils.getBoxType(targetType, processingEnv);
+                fields.add(new ValidMeta.Field(
+                    ValidMeta.Type.ofElement(processingEnv.getTypeUtils().asElement(fieldType), fieldType),
+                    method.getSimpleName().toString(),
+                    true,
+                    isNullable,
+                    isNotNull,
+                    isJsonNullable,
+                    isPrimitive,
+                    constraints,
+                    validateds));
+            }
+        }
+        return new ValidMeta(element, fields);
+    }
+
+    private void collectInterfaceAccessors(TypeElement element, Map<String, ExecutableElement> accessors, Set<TypeElement> seen) {
+        if (!seen.add(element)) {
+            return;
+        }
+        for (var enclosed : element.getEnclosedElements()) {
+            if (enclosed.getKind() != ElementKind.METHOD || enclosed.getModifiers().contains(Modifier.STATIC) || enclosed.getModifiers().contains(Modifier.PRIVATE)) {
+                continue;
+            }
+            var method = (ExecutableElement) enclosed;
+            if (method.getParameters().isEmpty() && method.getReturnType().getKind() != TypeKind.VOID && method.getTypeParameters().isEmpty()) {
+                accessors.putIfAbsent(method.getSimpleName().toString(), method);
+            }
+        }
+        for (var superinterface : element.getInterfaces()) {
+            collectInterfaceAccessors((TypeElement) types.asElement(superinterface), accessors, seen);
+        }
+    }
+
     private static List<ValidMeta.Validated> getValidated(VariableElement field) {
         if (field.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
             return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(field, field.asType())));
+        }
+
+        return Collections.emptyList();
+    }
+
+    private static List<ValidMeta.Validated> getValidated(ExecutableElement method, TypeMirror methodType) {
+        if (method.getAnnotationMirrors().stream().anyMatch(a -> a.getAnnotationType().toString().equals(VALID_TYPE.canonicalName()))) {
+            return List.of(new ValidMeta.Validated(ValidMeta.Type.ofElement(method, methodType)));
         }
 
         return Collections.emptyList();

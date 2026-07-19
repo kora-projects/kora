@@ -221,7 +221,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
     }
 
     private fun getValidatorMeta(declaration: KSClassDeclaration): ValidatorMeta {
-        if (declaration.classKind == ClassKind.INTERFACE || declaration.classKind == ClassKind.ENUM_CLASS) {
+        if ((declaration.classKind == ClassKind.INTERFACE && !declaration.isConfigInterface()) || declaration.classKind == ClassKind.ENUM_CLASS) {
             throw ProcessingErrorException("Validation can't be generated for: ${declaration.classKind}", declaration)
         }
 
@@ -231,6 +231,7 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             .toList()
 
         val fields = ArrayList<Field>()
+        val seen = HashSet<String>()
         for (fieldProperty in elementFields) {
             val constraints = fieldProperty.getConstraints()
             val validateds = getValid(fieldProperty)
@@ -242,10 +243,12 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
 
             if (constraints.isNotEmpty() || validateds.isNotEmpty() || (isJsonNullable && isNotNull)) {
+                seen.add(fieldProperty.simpleName.asString())
                 val realType = if (isJsonNullable) resolvedType.arguments[0].type else fieldProperty.type
                 fields.add(
                     Field(
                         realType!!.asType(),
+                        fieldProperty.simpleName.asString(),
                         fieldProperty.simpleName.asString(),
                         declaration.modifiers.any { m -> m == Modifier.DATA },
                         isNullable,
@@ -255,6 +258,44 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
                         validateds
                     )
                 )
+            }
+        }
+        if (declaration.classKind == ClassKind.INTERFACE) {
+            for (function in declaration.getAllFunctions()) {
+                if (function.simpleName.asString() in setOf("equals", "hashCode", "toString")) {
+                    continue
+                }
+                if (function.parameters.isNotEmpty() || function.returnType == null || function.typeParameters.isNotEmpty()) {
+                    continue
+                }
+                val constraints = function.getConstraints()
+                val validateds = getValid(function)
+                val resolvedType = function.returnType!!.resolve()
+                val isNullable = resolvedType.isMarkedNullable
+                val isNotNull = (function.annotations + function.returnType!!.annotations)
+                    .map { it.annotationType.resolveToUnderlying().declaration.let { it as KSClassDeclaration }.toClassName().simpleName }
+                    .any { it.contentEquals("NonNull", true) || it.contentEquals("NotNull", true) }
+                val isJsonNullable = resolvedType.declaration.let { if (it is KSClassDeclaration) it.toClassName() else null } == ValidTypes.jsonNullable
+
+                if (constraints.isNotEmpty() || validateds.isNotEmpty() || (isJsonNullable && isNotNull)) {
+                    if (!seen.add(function.simpleName.asString())) {
+                        continue
+                    }
+                    val realType = if (isJsonNullable) resolvedType.arguments[0].type else function.returnType
+                    fields.add(
+                        Field(
+                            realType!!.asType(),
+                            function.simpleName.asString(),
+                            function.simpleName.asString() + "()",
+                            false,
+                            isNullable,
+                            isNotNull,
+                            isJsonNullable,
+                            constraints,
+                            validateds
+                        )
+                    )
+                }
             }
         }
 
@@ -278,6 +319,14 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             ?.firstOrNull { it.isAnnotationPresent(VALID_TYPE) }
             ?.let { return listOf(Validated(field.type.asType())) }
             ?: emptyList()
+    }
+
+    private fun getValid(function: KSFunctionDeclaration): List<Validated> {
+        if (function.isAnnotationPresent(VALID_TYPE)) {
+            return listOf(Validated(function.returnType!!.asType()))
+        }
+
+        return emptyList()
     }
 
     fun generate(symbol: KSAnnotated) {
@@ -338,5 +387,13 @@ class ValidatorGenerator(val codeGenerator: CodeGenerator) {
             .build()
 
         fileSpec.writeTo(codeGenerator = codeGenerator, aggregating = false)
+    }
+
+    private fun KSClassDeclaration.isConfigInterface(): Boolean {
+        return this.annotations.any {
+            val className = it.annotationType.resolve().declaration.qualifiedName?.asString()
+            className == "io.koraframework.config.common.annotation.ConfigMapper"
+                || className == "io.koraframework.config.common.annotation.ConfigSource"
+        }
     }
 }

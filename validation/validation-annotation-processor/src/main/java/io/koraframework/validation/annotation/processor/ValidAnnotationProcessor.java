@@ -44,7 +44,7 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
                 this.messager.printMessage(Diagnostic.Kind.ERROR, "Validation can't be generated for enum", element);
                 continue;
             }
-            if (element.getKind() == ElementKind.INTERFACE && !element.getModifiers().contains(Modifier.SEALED)) {
+            if (element.getKind() == ElementKind.INTERFACE && !element.getModifiers().contains(Modifier.SEALED) && !isConfigInterface(element)) {
                 this.messager.printMessage(Diagnostic.Kind.ERROR, "Validation can't be generated for non sealed interface", element);
                 continue;
             }
@@ -56,5 +56,12 @@ public final class ValidAnnotationProcessor extends AbstractKoraProcessor {
                 }
             }
         }
+    }
+
+    private static boolean isConfigInterface(javax.lang.model.element.Element element) {
+        return element.getAnnotationMirrors().stream()
+            .map(a -> a.getAnnotationType().toString())
+            .anyMatch(a -> a.equals("io.koraframework.config.common.annotation.ConfigMapper")
+                || a.equals("io.koraframework.config.common.annotation.ConfigSource"));
     }
 }
