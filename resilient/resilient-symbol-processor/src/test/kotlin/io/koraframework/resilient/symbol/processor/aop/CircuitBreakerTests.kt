@@ -23,13 +23,17 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             import com.typesafe.config.ConfigFactory
             import io.koraframework.common.annotation.Component
             import io.koraframework.common.annotation.KoraApp
+            import io.koraframework.common.annotation.Module
             import io.koraframework.common.annotation.Root
+            import io.koraframework.common.annotation.Tag
             import io.koraframework.config.common.Config
             import io.koraframework.config.common.mapper.ConfigValueMapperModule
             import io.koraframework.config.common.origin.SimpleConfigOrigin
             import io.koraframework.config.hocon.HoconConfigFactory
+            import io.koraframework.resilient.circuitbreaker.CircuitBreakerPredicate
             import io.koraframework.resilient.circuitbreaker.CircuitBreakerModule
             import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreaker
+            import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreakable
 
         """.trimIndent()
     }
@@ -52,10 +56,14 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 }
             """),
             """
+            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
+            """,
+            """
             @Component
             @Root
             open class TestTarget1 {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker::class)
                 open fun getValue(): String = "1"
             }
             """,
@@ -63,7 +71,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             @Component
             @Root
             open class TestTarget2 {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker::class)
                 open fun getValue(): String = "2"
             }
             """
@@ -93,10 +101,14 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 }
             """),
             """
+            @CircuitBreaker("payment")
+            interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
+            """,
+            """
             @Component
             @Root
             open class TestTarget {
-                @CircuitBreaker("payment")
+                @CircuitBreakable(TestCircuitBreaker::class)
                 open fun getValue(): String {
                     throw IllegalStateException("Failed")
                 }
@@ -115,15 +127,79 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun syncCircuitBreaker() {
+    fun circuitBreakerInterfaceTestIsUsedWhenPredicateIsAbsent() {
         compile0(
             processors,
             app(circuitBreakerConfig("custom1")),
             """
+            @CircuitBreaker("custom1")
+            interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker {
+                override fun test(throwable: Throwable): Boolean = false
+            }
+            """,
+            """
             @Component
             @Root
             open class TestTarget {
-                @CircuitBreaker("custom1")
+                @CircuitBreakable(TestCircuitBreaker::class)
+                open fun getValue(): String {
+                    throw IllegalStateException("Failed")
+                }
+            }
+            """
+        )
+        compileResult.assertSuccess()
+
+        val service = loadService("TestTarget")
+        assertThatThrownBy { service.javaClass.getMethod("getValue").invoke(service) }
+            .isInstanceOf(InvocationTargetException::class.java)
+            .extracting("targetException")
+            .isInstanceOf(IllegalStateException::class.java)
+        assertThatThrownBy { service.javaClass.getMethod("getValue").invoke(service) }
+            .isInstanceOf(InvocationTargetException::class.java)
+            .extracting("targetException")
+            .isInstanceOf(IllegalStateException::class.java)
+    }
+
+    @Test
+    fun taggedPredicateOverridesCircuitBreakerInterfaceTest() {
+        compile0(
+            processors,
+            appWithPredicateModule(circuitBreakerConfig("custom1")),
+            """
+            @CircuitBreaker("custom1")
+            interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker {
+                override fun test(throwable: Throwable): Boolean = false
+            }
+            """,
+            """
+            @Component
+            @Root
+            open class TestTarget {
+                @CircuitBreakable(TestCircuitBreaker::class)
+                open fun getValue(): String {
+                    throw IllegalStateException("Failed")
+                }
+            }
+            """
+        )
+        compileResult.assertSuccess()
+
+        val service = loadService("TestTarget")
+        assertCircuitBreaker(service, "getValue")
+    }
+
+    @Test
+    fun syncCircuitBreaker() {
+        compile0(
+            processors,
+            app(circuitBreakerConfig("custom1")),
+            circuitBreakerInterface(),
+            """
+            @Component
+            @Root
+            open class TestTarget {
+                @CircuitBreakable(TestCircuitBreaker::class)
                 open fun getValue(): String {
                     throw IllegalStateException("Failed")
                 }
@@ -140,12 +216,13 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     fun voidCircuitBreaker() {
         compile0(
             processors,
-            app(circuitBreakerConfig("custom2")),
+            app(circuitBreakerConfig("custom1")),
+            circuitBreakerInterface(),
             """
             @Component
             @Root
             open class TestTarget {
-                @CircuitBreaker("custom2")
+                @CircuitBreakable(TestCircuitBreaker::class)
                 open fun getValue() {
                     throw IllegalStateException("Failed")
                 }
@@ -162,13 +239,14 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     fun throwsAnnotationCircuitBreaker() {
         compile0(
             processors,
-            app(circuitBreakerConfig("customThrows")),
+            app(circuitBreakerConfig("custom1")),
+            circuitBreakerInterface(),
             """
             @Component
             @Root
             open class TestTarget {
                 @Throws(IllegalStateException::class)
-                @CircuitBreaker("customThrows")
+                @CircuitBreakable(TestCircuitBreaker::class)
                 open fun getValue(): String {
                     throw IllegalStateException("Failed")
                 }
@@ -186,13 +264,14 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
         compile0(
             processors,
             app(circuitBreakerConfig("custom1")),
+            circuitBreakerInterface(),
             """
-            typealias CB = CircuitBreaker
+            typealias CB = CircuitBreakable
 
             @Component
             @Root
             open class TestTarget {
-                @CB("custom1")
+                @CB(TestCircuitBreaker::class)
                 open fun getValue(): String {
                     throw IllegalStateException("Failed")
                 }
@@ -210,11 +289,12 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
         compile0(
             processors,
             app(circuitBreakerConfig("custom1")),
+            circuitBreakerInterface(),
             """
             @Component
             @Root
             open class TestTarget {
-                @CircuitBreaker("custom1")
+                @CircuitBreakable(TestCircuitBreaker::class)
                 open suspend fun getValue(): String {
                     throw IllegalStateException("Failed")
                 }
@@ -232,98 +312,57 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
-    fun generatedTagNameCollisionFails() {
+    fun circuitBreakerInterfaceMustExtendRuntimeCircuitBreaker() {
         assertThatThrownBy {
             compile0(
                 processors,
-                app("""
-                    resilient {
-                      circuitbreaker {
-                        foo-bar {
-                          slidingWindowSize = 1
-                          minimumRequiredCalls = 1
-                          failureRateThreshold = 100
-                          permittedCallsInHalfOpenState = 1
-                          waitDurationInOpenState = 1s
-                        }
-                        foo {
-                          bar {
-                            slidingWindowSize = 1
-                            minimumRequiredCalls = 1
-                            failureRateThreshold = 100
-                            permittedCallsInHalfOpenState = 1
-                            waitDurationInOpenState = 1s
-                          }
-                        }
-                      }
-                    }
-                """),
+                app(circuitBreakerConfig("custom1")),
                 """
-                @Component
-                @Root
-                open class TestTarget1 {
-                    @CircuitBreaker("resilient.circuitbreaker.foo-bar")
-                    open fun getValue(): String = "1"
-                }
-                """,
-                """
-                @Component
-                @Root
-                open class TestTarget2 {
-                    @CircuitBreaker("resilient.circuitbreaker.foo.bar")
-                    open fun getValue(): String = "2"
-                }
+                @CircuitBreaker("custom1")
+                interface TestCircuitBreaker
                 """
             )
         }
             .isInstanceOf(ProcessingErrorException::class.java)
-            .hasMessageContaining("generate the same tag")
+            .hasMessageContaining("must extend io.koraframework.resilient.circuitbreaker.CircuitBreaker")
     }
 
     @Test
-    fun reservedCircuitBreakerRootPathFails() {
+    fun blankCircuitBreakerConfigPathFails() {
         assertThatThrownBy {
             compile0(
                 processors,
-                app("resilient.circuitbreaker.custom1 {}"),
+                app(circuitBreakerConfig("custom1")),
                 """
-                @Component
-                @Root
-                open class TestTarget {
-                    @CircuitBreaker("resilient.circuitbreaker")
-                    open fun getValue(): String = "1"
-                }
+                @CircuitBreaker("")
+                interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
                 """
             )
         }
             .isInstanceOf(ProcessingErrorException::class.java)
-            .hasMessageContaining("config path 'resilient.circuitbreaker' is reserved")
-    }
-
-    @Test
-    fun reservedCircuitBreakerTelemetryPathFails() {
-        assertThatThrownBy {
-            compile0(
-                processors,
-                app("resilient.circuitbreaker.custom1 {}"),
-                """
-                @Component
-                @Root
-                open class TestTarget {
-                    @CircuitBreaker("resilient.circuitbreaker.telemetry")
-                    open fun getValue(): String = "1"
-                }
-                """
-            )
-        }
-            .isInstanceOf(ProcessingErrorException::class.java)
-            .hasMessageContaining("config path 'resilient.circuitbreaker.telemetry' is reserved")
+            .hasMessageContaining("config path can't be blank")
     }
 
     private fun app(config: String): String {
         return """
             @KoraApp
             interface AppWithConfig : ConfigValueMapperModule, CircuitBreakerModule {
+                fun config(): Config {
+                    return HoconConfigFactory.fromHocon(SimpleConfigOrigin("test"), ConfigFactory.parseString(${"\"\"\""}
+                        $config
+                    ${"\"\"\""}).resolve())
+                }
+            }
+        """
+    }
+
+    private fun appWithPredicateModule(config: String): String {
+        return """
+            @KoraApp
+            interface AppWithConfig : ConfigValueMapperModule, CircuitBreakerModule {
+                @Tag(TestCircuitBreaker::class)
+                fun testCircuitBreakerPredicate(): CircuitBreakerPredicate = CircuitBreakerPredicate { true }
+
                 fun config(): Config {
                     return HoconConfigFactory.fromHocon(SimpleConfigOrigin("test"), ConfigFactory.parseString(${"\"\"\""}
                         $config
@@ -342,6 +381,13 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
               permittedCallsInHalfOpenState = 1
               waitDurationInOpenState = 1s
             }
+        """
+    }
+
+    private fun circuitBreakerInterface(): String {
+        return """
+            @CircuitBreaker("custom1")
+            interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
         """
     }
 

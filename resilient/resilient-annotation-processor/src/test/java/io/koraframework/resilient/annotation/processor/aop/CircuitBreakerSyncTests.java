@@ -30,8 +30,11 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             import io.koraframework.config.common.mapper.ConfigValueMapperModule;
             import io.koraframework.config.common.origin.SimpleConfigOrigin;
             import io.koraframework.config.hocon.HoconConfigFactory;
+            import io.koraframework.common.annotation.Tag;
+            import io.koraframework.resilient.circuitbreaker.CircuitBreakerPredicate;
             import io.koraframework.resilient.circuitbreaker.CircuitBreakerModule;
             import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreaker;
+            import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreakable;
             import java.io.IOException;
             import java.util.concurrent.CompletableFuture;
             import java.util.concurrent.CompletionStage;
@@ -44,7 +47,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @Component
             @Root
             public class TestTarget {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public String getValueSync() {
                     throw new IllegalStateException("Failed");
                 }
@@ -60,7 +63,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @Component
             @Root
             public class TestTarget {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public void getValueSyncVoid() {
                     throw new IllegalStateException("Failed");
                 }
@@ -76,7 +79,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @Component
             @Root
             public class TestTarget {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public void getValueSyncVoidCheckedException() throws IOException {
                     throw new IllegalStateException("Failed");
                 }
@@ -92,7 +95,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @Component
             @Root
             public class TestTarget {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public String getValueSyncCheckedException() throws IOException {
                     throw new IllegalStateException("Failed");
                 }
@@ -108,7 +111,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @Component
             @Root
             public class TestTarget {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public CompletionStage<String> getValueStage() {
                     return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
                 }
@@ -124,7 +127,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @Component
             @Root
             public class TestTarget {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public CompletableFuture<String> getValueFuture() {
                     return CompletableFuture.failedFuture(new IllegalStateException("Failed"));
                 }
@@ -136,11 +139,11 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
 
     @Test
     void sameConfigPathUsesSingleCircuitBreakerComponent() {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), """
+        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), circuitBreakerInterface(), """
             @Component
             @Root
             public class TestTarget1 {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public String getValue() {
                     return "1";
                 }
@@ -149,7 +152,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             @Component
             @Root
             public class TestTarget2 {
-                @CircuitBreaker("resilient.circuitbreaker.custom1")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public String getValue() {
                     return "2";
                 }
@@ -164,10 +167,13 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     @Test
     void rootConfigPathIsAllowed() {
         compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), appWithRootConfig(), """
+            @CircuitBreaker("payment")
+            public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {}
+            """, """
             @Component
             @Root
             public class TestTarget {
-                @CircuitBreaker("payment")
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public String getValue() {
                     throw new IllegalStateException("Failed");
                 }
@@ -182,34 +188,82 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
-    void generatedTagNameCollisionFails() {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), """
+    void circuitBreakerInterfaceTestIsUsedWhenPredicateIsAbsent() {
+        var service = compileApp("""
             @Component
             @Root
-            public class TestTarget1 {
-                @CircuitBreaker("resilient.circuitbreaker.foo-bar")
+            public class TestTarget {
+                @CircuitBreakable(TestCircuitBreaker.class)
                 public String getValue() {
-                    return "1";
+                    throw new IllegalStateException("Failed");
                 }
             }
             """, """
-            @Component
-            @Root
-            public class TestTarget2 {
-                @CircuitBreaker("resilient.circuitbreaker.foo.bar")
-                public String getValue() {
-                    return "2";
+            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {
+                @Override
+                default boolean test(Throwable throwable) {
+                    return false;
                 }
             }
             """);
 
+        assertThrows(IllegalStateException.class, () -> invoke(service, "getValue"));
+        assertThrows(IllegalStateException.class, () -> invoke(service, "getValue"));
+    }
+
+    @Test
+    void taggedPredicateOverridesCircuitBreakerInterfaceTest() {
+        var service = compileAppWithPredicate("""
+            @Component
+            @Root
+            public class TestTarget {
+                @CircuitBreakable(TestCircuitBreaker.class)
+                public String getValue() {
+                    throw new IllegalStateException("Failed");
+                }
+            }
+            """, """
+            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {
+                @Override
+                default boolean test(Throwable throwable) {
+                    return false;
+                }
+            }
+            """);
+
+        assertCircuitBreaker(service, "getValue");
+    }
+
+    @Test
+    void circuitBreakerInterfaceMustExtendRuntimeCircuitBreaker() {
+        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), """
+            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            public interface TestCircuitBreaker {}
+            """);
+
         assertTrue(compileResult.isFailed());
         assertTrue(compileResult.errors().stream()
-            .anyMatch(e -> e.getMessage(null).contains("generate the same tag")));
+            .anyMatch(e -> e.getMessage(null).contains("must extend io.koraframework.resilient.circuitbreaker.CircuitBreaker")));
     }
 
     private Object compileApp(String target) {
-        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), target);
+        return compileApp(target, circuitBreakerInterface());
+    }
+
+    private Object compileApp(String target, String circuitBreakerInterface) {
+        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), circuitBreakerInterface, target);
+        compileResult.assertSuccess();
+
+        var graph = loadGraph("AppWithConfig");
+        var service = graph.findByType(loadClass("TestTarget"));
+        assertNotNull(service);
+        return service;
+    }
+
+    private Object compileAppWithPredicate(String target, String circuitBreakerInterface) {
+        compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), appWithPredicate(), circuitBreakerInterface, target);
         compileResult.assertSuccess();
 
         var graph = loadGraph("AppWithConfig");
@@ -287,6 +341,43 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                     ).resolve());
                 }
             }
+            """;
+    }
+
+    private String appWithPredicate() {
+        return """
+            @KoraApp
+            public interface AppWithConfig extends ConfigValueMapperModule, CircuitBreakerModule {
+                @Tag(TestCircuitBreaker.class)
+                default CircuitBreakerPredicate testCircuitBreakerPredicate() {
+                    return throwable -> true;
+                }
+
+                default Config config() {
+                    return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
+                        \"""
+                            resilient {
+                              circuitbreaker {
+                                custom1 {
+                                  slidingWindowSize = 1
+                                  minimumRequiredCalls = 1
+                                  failureRateThreshold = 100
+                                  permittedCallsInHalfOpenState = 1
+                                  waitDurationInOpenState = 1s
+                                }
+                              }
+                            }
+                            \"""
+                    ).resolve());
+                }
+            }
+            """;
+    }
+
+    private String circuitBreakerInterface() {
+        return """
+            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {}
             """;
     }
 }

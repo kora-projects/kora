@@ -4,14 +4,13 @@ import com.palantir.javapoet.*;
 import io.koraframework.annotation.processor.common.CommonClassNames;
 import io.koraframework.annotation.processor.common.MethodUtils;
 import io.koraframework.annotation.processor.common.ProcessingErrorException;
-import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.aop.annotation.processor.KoraAspect;
-import io.koraframework.resilient.annotation.processor.CircuitBreakerTagUtils;
 
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
-import java.util.List;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -21,7 +20,8 @@ import static com.palantir.javapoet.CodeBlock.joining;
 
 public class CircuitBreakerKoraAspect implements KoraAspect {
 
-    private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.circuitbreaker.annotation", "CircuitBreaker");
+    private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.circuitbreaker.annotation", "CircuitBreakable");
+    private static final ClassName CIRCUIT_BREAKER = ClassName.get("io.koraframework.resilient.circuitbreaker", "CircuitBreaker");
     private static final ClassName PERMITTED_EXCEPTION = ClassName.get("io.koraframework.resilient.circuitbreaker.exception", "CallNotPermittedException");
 
     private final ProcessingEnvironment env;
@@ -43,16 +43,23 @@ public class CircuitBreakerKoraAspect implements KoraAspect {
             throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
         }
 
-        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
-        final String circuitBreakerName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
+        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
+            .filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName()))
+            .findFirst();
+        final TypeMirror circuitBreakerTypeMirror = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
-                .map(e -> String.valueOf(e.getValue().getValue())).findFirst())
+                .map(e -> (TypeMirror) e.getValue().getValue())
+                .findFirst())
             .orElseThrow();
 
-        var circuitType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.circuitbreaker.CircuitBreaker"));
-        final String fieldCircuit;
-        var tag = CircuitBreakerTagUtils.tagName(circuitBreakerName);
-        fieldCircuit = aspectContext.fieldFactory().constructorParam(circuitType, List.of(TagUtils.makeAnnotationSpec(tag)));
+        var circuitBreakerElement = (TypeElement) env.getTypeUtils().asElement(circuitBreakerTypeMirror);
+        var baseCircuitBreakerType = env.getElementUtils().getTypeElement(CIRCUIT_BREAKER.canonicalName()).asType();
+        if (!env.getTypeUtils().isAssignable(circuitBreakerTypeMirror, baseCircuitBreakerType)) {
+            throw new ProcessingErrorException("@%s value must extend %s".formatted(ANNOTATION_TYPE.simpleName(), CIRCUIT_BREAKER.canonicalName()), method);
+        }
+
+        var circuitType = env.getTypeUtils().getDeclaredType(circuitBreakerElement);
+        final String fieldCircuit = aspectContext.fieldFactory().constructorParam(circuitType, java.util.List.of());
 
         final CodeBlock body;
         if (MethodUtils.isCompletionStage(method)) {
