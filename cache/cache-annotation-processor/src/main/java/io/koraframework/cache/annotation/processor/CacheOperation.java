@@ -8,7 +8,7 @@ import java.util.List;
 
 public record CacheOperation(Type type, List<CacheExecution> executions, Origin origin) {
 
-    public record CacheExecution(String field, TypeElement type, DeclaredType superType, CacheKey cacheKey) {}
+    public record CacheExecution(String field, TypeElement type, DeclaredType superType, CacheKey cacheKey, boolean async, boolean caffeine) {}
 
     public record CacheKey(DeclaredType type, CodeBlock code) {}
 

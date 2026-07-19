@@ -8,7 +8,7 @@ import org.junit.jupiter.api.TestInstance
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.cache.CacheKeyMapper
 import io.koraframework.cache.caffeine.CaffeineCacheModule
-import io.koraframework.cache.redis.RedisCacheKeyMapper
+import io.koraframework.cache.redis.mapper.RedisCacheKeyMapper
 import io.koraframework.cache.redis.RedisCacheModule
 import io.koraframework.cache.symbol.processor.testcache.DummyCache21
 import io.koraframework.cache.symbol.processor.testcache.DummyCache22

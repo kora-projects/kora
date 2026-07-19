@@ -30,6 +30,11 @@ class CacheSymbolProcessorTests : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun cacheAsyncMode() {
+        assertDoesNotThrow { processClass(CacheableAsync::class) }
+    }
+
+    @Test
     fun cacheRedisKeyMapperTagged() {
         assertDoesNotThrow { processClass(DummyCacheTagged::class) }
     }

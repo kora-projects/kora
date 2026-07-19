@@ -42,11 +42,11 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);
-        final CodeBlock body = buildBodySync(method, operation, superCall);
+        final CodeBlock body = buildBodySync(method, operation, superCall, aspectContext);
         return new ApplyResult.MethodBody(body);
     }
 
-    private CodeBlock getSyncBlock(ExecutableElement method, CacheOperation operation) {
+    private CodeBlock getSyncBlock(ExecutableElement method, CacheOperation operation, String executorField) {
         final CodeBlock.Builder builder = CodeBlock.builder();
 
         final boolean isOptionalMethod = MethodUtils.isOptional(method);
@@ -91,15 +91,15 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
             }
 
             if (isOptionalMethodSkip) {
-                builder.add("$L.put($L, _v);\n", cache.field(), putKeyField);
+                builder.add(cachePut(executorField, cache, putKeyField, "_v"));
             } else if (isOptionalMethod && !isCacheOptional(cache)) {
                 builder.beginControlFlow("_value.ifPresent(_v ->");
-                builder.add("$L.put($L, _v);\n", cache.field(), putKeyField);
+                builder.add(cachePut(executorField, cache, putKeyField, "_v"));
                 builder.endControlFlow(")");
             } else if (!isOptionalMethod && isCacheOptional(cache)) {
-                builder.add("$L.put($L, $T.ofNullable(_value));\n", cache.field(), putKeyField, Optional.class);
+                builder.add(cachePut(executorField, cache, putKeyField, "java.util.Optional.ofNullable(_value)"));
             } else {
-                builder.add("$L.put($L, _value);\n", cache.field(), putKeyField);
+                builder.add(cachePut(executorField, cache, putKeyField, "_value"));
             }
         }
 
@@ -118,15 +118,17 @@ public class CachePutAopKoraAspect extends AbstractAopCacheAspect {
 
     private CodeBlock buildBodySync(ExecutableElement method,
                                     CacheOperation operation,
-                                    String superCall) {
+                                    String superCall,
+                                    AspectContext aspectContext) {
         final String superMethod = getSuperMethod(method, superCall);
+        final String executorField = getExecutorField(operation, aspectContext);
 
         // cache variables
         final CodeBlock.Builder builder = CodeBlock.builder();
 
         // cache super method
         builder.add("var _value = $L;\n", superMethod);
-        builder.add(getSyncBlock(method, operation));
+        builder.add(getSyncBlock(method, operation, executorField));
         return builder.build();
     }
 

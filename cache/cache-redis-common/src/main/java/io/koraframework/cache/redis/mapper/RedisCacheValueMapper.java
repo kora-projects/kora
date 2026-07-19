@@ -1,4 +1,4 @@
-package io.koraframework.cache.redis;
+package io.koraframework.cache.redis.mapper;
 
 import org.jspecify.annotations.Nullable;
 

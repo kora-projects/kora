@@ -17,7 +17,9 @@ data class CacheOperation(
         val field: String,
         val type: KSType,
         val superType: KSTypeReference,
-        val cacheKey: CacheKey?
+        val cacheKey: CacheKey?,
+        val async: Boolean,
+        val caffeine: Boolean,
     )
 
     data class CacheKey(val type: KSTypeArgument, val code: CodeBlock)

@@ -37,36 +37,36 @@ public class CacheInvalidateAllAopKoraAspect extends AbstractAopCacheAspect {
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);
-        final CodeBlock body = buildBodySyncAll(method, operation, superCall);
+        final CodeBlock body = buildBodySyncAll(method, operation, superCall, aspectContext);
         return new ApplyResult.MethodBody(body);
     }
 
     private CodeBlock buildBodySyncAll(ExecutableElement method,
                                        CacheOperation operation,
-                                       String superCall) {
+                                       String superCall,
+                                       AspectContext aspectContext) {
         final String superMethod = getSuperMethod(method, superCall);
+        final String executorField = getExecutorField(operation, aspectContext);
 
         // cache variables
-        final StringBuilder builder = new StringBuilder();
+        final CodeBlock.Builder builder = CodeBlock.builder();
 
         // cache super method
         if (MethodUtils.isVoid(method)) {
-            builder.append(superMethod).append(";\n");
+            builder.addStatement(superMethod);
         } else {
-            builder.append("var _value = ").append(superMethod).append(";\n");
+            builder.add("var _value = ").addStatement(superMethod);
         }
 
         // cache invalidate
         for (var cache : operation.executions()) {
-            builder.append(cache.field()).append(".invalidateAll();\n");
+            builder.add(cacheInvalidateAll(executorField, cache));
         }
 
         if (!MethodUtils.isVoid(method)) {
-            builder.append("return _value;");
+            builder.addStatement("return _value");
         }
 
-        return CodeBlock.builder()
-            .add(builder.toString())
-            .build();
+        return builder.build();
     }
 }

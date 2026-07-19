@@ -35,7 +35,7 @@ class CacheInvalidateAllAopKoraAspect(private val resolver: Resolver) : Abstract
         }
 
         val operation = CacheOperationUtils.Companion.getCacheOperation(ksFunction, aspectContext)
-        val body = buildBodySyncAll(ksFunction, operation, superCall)
+        val body = buildBodySyncAll(ksFunction, operation, superCall, aspectContext)
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
@@ -43,8 +43,10 @@ class CacheInvalidateAllAopKoraAspect(private val resolver: Resolver) : Abstract
         method: KSFunctionDeclaration,
         operation: CacheOperation,
         superCall: String,
+        aspectContext: KoraAspect.AspectContext,
     ): CodeBlock {
         val superMethod = getSuperMethod(method, superCall)
+        val executorField = getExecutorField(operation, aspectContext)
         val builder = CodeBlock.builder()
 
         // cache super method
@@ -56,7 +58,7 @@ class CacheInvalidateAllAopKoraAspect(private val resolver: Resolver) : Abstract
 
         // cache invalidate
         for (cache in operation.executions) {
-            builder.add(cache.field).add(".invalidateAll()\n")
+            builder.add(cacheInvalidateAll(executorField, cache))
         }
 
         if (method.isVoid()) {
