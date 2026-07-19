@@ -8,6 +8,7 @@ import io.koraframework.application.graph.RefreshableGraph;
 import io.koraframework.kora.app.annotation.processor.KoraAppProcessor;
 import io.koraframework.resilient.annotation.processor.CircuitBreakerAnnotationProcessor;
 import io.koraframework.resilient.annotation.processor.aop.testdata.AppWithConfig;
+import io.koraframework.resilient.annotation.processor.aop.testdata.TestCircuitBreaker;
 import org.junit.jupiter.api.Assertions;
 
 import java.lang.reflect.Constructor;
@@ -31,6 +32,7 @@ public abstract class AppRunner extends Assertions {
     protected final InitializedGraph getGraph(Class<?> app, Class<?>... targetClasses) {
         try {
             final List<Class<?>> classes = new ArrayList<>(List.of(targetClasses));
+            classes.add(TestCircuitBreaker.class);
             classes.add(app);
             var classLoader = getClassLoader(getProcessors(), classes);
             var clazz = classLoader.loadClass(app.getName() + "Graph");

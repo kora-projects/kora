@@ -28,6 +28,10 @@ public interface CircuitBreaker {
         CLOSED, OPEN, HALF_OPEN
     }
 
+    default boolean test(Throwable throwable) {
+        return true;
+    }
+
     /**
      * Try to acquire {@link CircuitBreaker} and return result from {@link Supplier}
      * or throws {@link CallNotPermittedException} if not acquired
