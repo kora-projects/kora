@@ -152,7 +152,14 @@ sealed interface ComponentDeclaration {
             val type = method.returnType!!.resolve().fixPlatformType(ctx.resolver)
             if (type.isError) {
                 throw ProcessingErrorException(
-                    "Component type is not resolvable in the current round of processing: func $method()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    """
+                    Component return type cannot be resolved in the current KSP round:
+                      function: $method
+
+                    Fix:
+                      - Check imports and module dependencies.
+                      - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
+                    """.trimIndent(),
                     method
                 )
             }
@@ -161,7 +168,16 @@ sealed interface ComponentDeclaration {
                 if (module is ModuleDeclaration.FactoryModule) {
                     tag = module.tag
                 } else {
-                    throw ProcessingErrorException("Tag @Tag.Factory is only allowed for factory modules ", method)
+                    throw ProcessingErrorException(
+                        """
+                        @Tag.Factory can only be used inside factory modules.
+
+                        Fix:
+                          - Move this provider to a factory module.
+                          - Replace @Tag.Factory with an explicit @Tag(...) value.
+                        """.trimIndent(),
+                        method
+                    )
                 }
             }
 
@@ -184,7 +200,16 @@ sealed interface ComponentDeclaration {
         fun fromAnnotated(ctx: ProcessingContext, classDeclaration: KSClassDeclaration): AnnotatedComponent {
             val constructor = classDeclaration.primaryConstructor
             if (constructor == null) {
-                throw ProcessingErrorException("@Component annotated class should have primary constructor", classDeclaration)
+                throw ProcessingErrorException(
+                    """
+                    @Component class must have a primary constructor.
+
+                    Fix:
+                      - Add a primary constructor.
+                      - Move construction to a module function if primary constructor is not possible.
+                    """.trimIndent(),
+                    classDeclaration
+                )
             }
             val typeParameters = classDeclaration.typeParameters.map {
                 val t = it.bounds.firstOrNull()?.resolve() ?: ctx.resolver.builtIns.anyType
@@ -215,7 +240,14 @@ sealed interface ComponentDeclaration {
             val type = sourceType.returnType!!
             if (type.isError) {
                 throw ProcessingErrorException(
-                    "Component type is not resolvable in the current round of processing: func $sourceType()\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    """
+                    Extension component return type cannot be resolved in the current KSP round:
+                      function type: $sourceType
+
+                    Fix:
+                      - Check imports and module dependencies.
+                      - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
+                    """.trimIndent(),
                     sourceMethod
                 )
             }

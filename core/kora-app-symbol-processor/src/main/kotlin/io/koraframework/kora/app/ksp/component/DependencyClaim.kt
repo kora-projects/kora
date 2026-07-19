@@ -1,10 +1,11 @@
 package io.koraframework.kora.app.ksp.component
 
+import com.google.devtools.ksp.symbol.KSAnnotated
 import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.ksp.common.TagUtils.tagMatches
 
-data class DependencyClaim(val type: KSType, val tag: String?, val claimType: DependencyClaimType) {
+data class DependencyClaim(val type: KSType, val tag: String?, val claimType: DependencyClaimType, val source: KSAnnotated? = null) {
 
     enum class DependencyClaimType {
         ONE_REQUIRED,

@@ -44,7 +44,7 @@ public class ComponentTemplatesTest extends AbstractKoraAppTest {
             Assertions.fail("Should throw an exception");
         } catch (CompileResult.CompilationFailedException e) {
             Assertions.assertThat(e)
-                .hasMessageContaining("Required dependency type wasn't found");
+                .hasMessageContaining("No component found for dependency:");
         }
     }
 

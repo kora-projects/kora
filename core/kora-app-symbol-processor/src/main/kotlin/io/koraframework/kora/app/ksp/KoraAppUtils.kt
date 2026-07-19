@@ -22,12 +22,24 @@ object KoraAppUtils {
             .toList()
         if (constructors.isEmpty()) {
             throw ProcessingErrorException(
-                "Type annotated with @Component has no public constructors", this
+                """
+                @Component type has no public constructors.
+
+                Fix:
+                  - Add one public constructor.
+                  - Move construction to a module function if constructor cannot be public.
+                """.trimIndent(), this
             )
         }
         if (constructors.size > 1) {
             throw ProcessingErrorException(
-                "Type annotated with @Component has more then one public constructor", this
+                """
+                @Component type has more than one public constructor.
+
+                Fix:
+                  - Keep exactly one public constructor.
+                  - Make extra constructors non-public.
+                """.trimIndent(), this
             )
         }
         return constructors[0]

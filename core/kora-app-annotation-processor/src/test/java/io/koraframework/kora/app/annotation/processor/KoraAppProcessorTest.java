@@ -154,10 +154,11 @@ class KoraAppProcessorTest {
     void unresolvedDependency() {
         assertThatThrownBy(() -> testClass(AppWithUnresolvedDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
-                s.assertThat(e.getMessage()).startsWith("""
-                    Required dependency type wasn't found in graph and can't be auto created: io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 (no tags)
-                      Please check class for @Component annotation or that required module with declaration factory is plugged in.
-                      Dependency requested at: io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency#class2(io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3)""");
+                s.assertThat(e.getMessage()).contains("No component found for dependency:");
+                s.assertThat(e.getMessage()).contains("io.koraframework.kora.app.annotation.processor.app.AppWithUnresolvedDependency.Class3 (no tags)");
+                s.assertThat(e.getMessage()).contains("Required at:");
+                s.assertThat(e.getMessage()).contains("Dependency resolution path:");
+                s.assertThat(e.getMessage()).contains("Fix:");
                 s.assertThat(e.diagnostics.get(0).getLineNumber()).isEqualTo(14);
                 s.assertThat(e.diagnostics.get(0).getSource().getName().replace('\\', '/')).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithUnresolvedDependency.java");
             }));
@@ -167,7 +168,9 @@ class KoraAppProcessorTest {
     void testCircularDependency() {
         assertThatThrownBy(() -> testClass(AppWithCircularDependency.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
-                s.assertThat(e.getMessage()).startsWith("Encountered circular dependency in graph for source type:");
+                s.assertThat(e.getMessage()).startsWith("Circular dependency found:");
+                s.assertThat(e.getMessage()).contains("Dependency cycle:");
+                s.assertThat(e.getMessage()).contains("Fix:");
                 s.assertThat(e.diagnostics.get(0).getSource().getName().replace('\\', '/')).isEqualTo("src/test/java/io/koraframework/kora/app/annotation/processor/app/AppWithCircularDependency.java");
             }));
     }
@@ -190,20 +193,18 @@ class KoraAppProcessorTest {
 //        testClass(AppWithFactories5.class).init();; TODO больше не нужно
         assertThatThrownBy(() -> testClass(AppWithFactories6.class))
             .isInstanceOf(CompilationErrorException.class)
-            .hasMessageStartingWith("Encountered circular dependency in graph for source type");
+            .hasMessageStartingWith("Circular dependency found:");
         testClass(AppWithFactories7.class).init();
         testClass(AppWithFactories8.class).init();
         assertThatThrownBy(() -> testClass(AppWithFactories10.class))
             .isInstanceOf(CompilationErrorException.class)
-            .hasMessageStartingWith("Required dependency type wasn't found in graph and can't be auto created: java.io.Closeable")
+            .hasMessageStartingWith("No component found for dependency:")
             .asInstanceOf(type(CompilationErrorException.class))
             .extracting(CompilationErrorException::getDiagnostics, list(Diagnostic.class))
             .anySatisfy(d -> {
                 assertThat(d.getKind()).isEqualTo(Diagnostic.Kind.ERROR);
-                assertThat(d.getMessage(Locale.ENGLISH)).startsWith("""
-                    Required dependency type wasn't found in graph and can't be auto created: java.io.Closeable (no tags)
-                      Please check class for @Component annotation or that required module with declaration factory is plugged in.
-                    """.trim());
+                assertThat(d.getMessage(Locale.ENGLISH)).contains("No component found for dependency:");
+                assertThat(d.getMessage(Locale.ENGLISH)).contains("java.io.Closeable (no tags)");
             });
 //        assertThatThrownBy(() -> testClass(AppWithFactories11.class))
 //            .isInstanceOf(CompilationErrorException.class)
@@ -247,8 +248,8 @@ class KoraAppProcessorTest {
         assertThatThrownBy(() -> testClass(AppWithComponentCollisionAndDirect.class))
             .isInstanceOfSatisfying(CompilationErrorException.class, e -> SoftAssertions.assertSoftly(s -> {
                 var error = e.getDiagnostics().stream().filter(d -> d.getKind() == Diagnostic.Kind.ERROR).findFirst().get();
-                s.assertThat(error.getMessage(Locale.US))
-                    .startsWith("More than one declaration matches dependency type: io.koraframework.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1");
+                s.assertThat(error.getMessage(Locale.US)).contains("Multiple components match dependency:");
+                s.assertThat(error.getMessage(Locale.US)).contains("io.koraframework.kora.app.annotation.processor.app.AppWithComponentCollisionAndDirect.Class1");
             }));
     }
 

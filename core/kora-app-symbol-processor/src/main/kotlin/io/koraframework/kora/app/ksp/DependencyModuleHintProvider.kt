@@ -23,7 +23,7 @@ class DependencyModuleHintProvider {
                 JsonFactoryBuilder().build().createParser(ObjectReadContext.empty(), r).use { parser -> hints = KoraHint.parseList(parser) }
             }
         } catch (e: IOException) {
-            throw RuntimeException(e)
+            throw IllegalStateException("Kora internal error: failed to read generated kora-hints.json resource", e)
         }
     }
 
@@ -40,23 +40,21 @@ class DependencyModuleHintProvider {
             override fun message(): String {
                 if (tag == null) {
                     return """
-                        Missing component: ${type.toTypeName()}
-                            Component is provided by standard Kora module you may forgot to plug it:
-                                Gradle dependency:  implementation("$artifact")
-                                Module interface:  $module
+                        ${type.toTypeName()} is provided by a standard Kora module.
+                          Gradle dependency: implementation("$artifact")
+                          Module interface: $module
                                 """.trimIndent()
                 } else {
                     val tagForMsg = if (this.tag == "io.koraframework.json.common.annotation.Json") {
                         "@io.koraframework.json.common.annotation.Json"
                     } else {
-                        "@Tag({$tag}::class)"
+                        "@Tag($tag::class)"
                     }
 
                     return """
-                        Missing component: ${type.toTypeName()} with $tagForMsg
-                            Component is provided by standard Kora module you may forgot to plug it:
-                                Gradle dependency:  implementation("$artifact")
-                                Module interface:  $module
+                        ${type.toTypeName()} with $tagForMsg is provided by a standard Kora module.
+                          Gradle dependency: implementation("$artifact")
+                          Module interface: $module
                                 """.trimIndent()
                 }
             }
@@ -82,7 +80,7 @@ class DependencyModuleHintProvider {
                     when (hint) {
                         is KoraHint.KoraModuleHint -> result.add(Hint.ModuleHint(missingType, hint.tag, hint.artifact, hint.moduleName))
                         is KoraHint.KoraTipHint -> result.add(Hint.TipHint(missingType, hint.tag, hint.tip))
-                        else -> throw UnsupportedOperationException("Unknown hint type: $hint")
+                        else -> throw IllegalStateException("Kora internal error: unknown dependency hint type: $hint")
                     }
                 } else {
                     logger.trace("Hint {} doesn't match because of tag", hint)
@@ -225,7 +223,7 @@ class DependencyModuleHintProvider {
                 val finalTag = when {
                     tag != null -> tag
                     tags.size == 1 -> tags.first()
-                    tags.isNotEmpty() -> throw RuntimeException("Tags size should be 0 or 1")
+                    tags.isNotEmpty() -> throw IllegalStateException("Kora internal error: dependency hint declares more than one tag: $tags")
                     else -> null
                 }
                 return if (tip != null) {

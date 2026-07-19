@@ -12,6 +12,7 @@ import io.koraframework.kora.app.annotation.processor.declaration.ComponentDecla
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.element.VariableElement;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.List;
@@ -27,7 +28,12 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
                                          Deque<GraphBuilder.ResolutionFrame> stack,
                                          List<DependencyModuleHintProvider.Hint> hints) {
 
-        this(component, dependencyClaim, List.of(new ProcessingError(constructErrorMessage(koraApp, component, dependencyClaim, stack, hints), component.source())), stack);
+        this(component, dependencyClaim, List.of(getError(koraApp, component, dependencyClaim, stack, hints)), stack);
+    }
+
+    private static ProcessingError getError(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints) {
+        var errorSource = dependencyClaim.source() == null ? component.source() : dependencyClaim.source();
+        return new ProcessingError(constructErrorMessage(koraApp, component, dependencyClaim, stack, hints), errorSource);
     }
 
 
@@ -55,31 +61,38 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
 
     private static String constructErrorMessage(TypeElement koraApp, ComponentDeclaration component, DependencyClaim dependencyClaim, Deque<GraphBuilder.ResolutionFrame> stack, List<DependencyModuleHintProvider.Hint> hints) {
         var msg = new StringBuilder();
+        msg.append("No component found for dependency:\n  ");
+        msg.append(TypeName.get(dependencyClaim.type()));
         if (dependencyClaim.tag() == null) {
-            var format = """
-                Required dependency type wasn't found in graph and can't be auto created: %s (no tags)
-                Please check class for @%s annotation or that required module with declaration factory is plugged in.""";
-            msg.append(String.format(format, TypeName.get(dependencyClaim.type()), CommonClassNames.component.simpleName()));
+            msg.append(" (no tags)");
         } else {
-            var tagMsg = "@Tag(" + dependencyClaim.tag() + ".class)";
-            var format = """
-                Required dependency type wasn't found in graph and can't be auto created: %s with tag %s.
-                Please check class for @%s annotation or that required module with declaration factory is plugged in.""";
-            msg.append(String.format(format, TypeName.get(dependencyClaim.type()), tagMsg, CommonClassNames.component.simpleName()));
-        }
-        if (!hints.isEmpty()) {
-            msg.append("\n\nHints:");
-            for (var hint : hints) {
-                msg.append("\n  - Hint: ").append(hint.message());
-            }
+            msg.append(" with ").append(formatTag(dependencyClaim.tag()));
         }
 
         var requestedMsg = getRequestedMessage(component);
-        msg.append("\n").append(requestedMsg);
+        msg.append("\n\nRequired at:\n  ").append(requestedMsg);
+        var source = dependencyClaim.source();
+        if (source instanceof VariableElement variableElement) {
+            msg.append("\n  parameter: ").append(variableElement.asType()).append(" ").append(variableElement.getSimpleName());
+        }
 
         var treeMsg = getDependencyTreeSimpleMessage(koraApp, stack, component, dependencyClaim);
-        msg.append("\n").append(treeMsg);
+        msg.append("\n\n").append(treeMsg);
+        if (!hints.isEmpty()) {
+            msg.append("\n\nHint:");
+            for (var hint : hints) {
+                msg.append("\n  - ").append(hint.message().strip().replace("\n", "\n    "));
+            }
+        }
+        msg.append("\n\nFix:");
+        msg.append("\n  - Add @").append(CommonClassNames.component.simpleName()).append(" to an implementation of ").append(TypeName.get(dependencyClaim.type())).append('.');
+        msg.append("\n  - Add a module method that returns ").append(TypeName.get(dependencyClaim.type())).append('.');
+        msg.append("\n  - Include a module that provides ").append(TypeName.get(dependencyClaim.type())).append(" in @KoraApp.");
         return msg.toString();
+    }
+
+    private static String formatTag(String tag) {
+        return "@Tag(" + tag + ".class)";
     }
 
     private static String getRequestedMessage(ComponentDeclaration declaration) {
@@ -99,9 +112,9 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
         } while (element != null);
 
         if (module != null && factoryMethod != null && factoryMethod.getKind() == ElementKind.CONSTRUCTOR) {
-            return "Dependency requested at: %s.%s".formatted(module.getEnclosingElement(), factoryMethod);
+            return "%s.%s".formatted(module.getEnclosingElement(), factoryMethod);
         } else {
-            return "Dependency requested at: %s#%s".formatted(module, factoryMethod);
+            return "%s#%s".formatted(module, factoryMethod);
         }
     }
 
@@ -110,7 +123,7 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
                                                          ComponentDeclaration declaration,
                                                          DependencyClaim dependencyClaim) {
         var msg = new StringBuilder();
-        msg.append("Dependency resolution tree:");
+        msg.append("Dependency resolution path:");
 
         var stackFrames = new ArrayList<GraphBuilder.ResolutionFrame>();
         var i = stack.descendingIterator();
@@ -147,7 +160,7 @@ public class UnresolvedDependencyException extends ProcessingErrorException {
 
         msg.append(delimiter).append(declaration.declarationString());
 
-        var errorMissing = " [ ERROR: MISSING COMPONENT ]";
+        var errorMissing = " [MISSING]";
         if (dependencyClaim.tag() == null) {
             msg.append(delimiter)
                 .append(dependencyClaim.type()).append("   ")

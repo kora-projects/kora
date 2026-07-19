@@ -95,7 +95,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
 
     fun interceptType(maybeInterceptor: KSType): KSType {
         if (!interceptorType.isAssignableFrom(maybeInterceptor)) {
-            throw IllegalArgumentException()
+            throw IllegalStateException("Kora internal error: interceptType called for non-interceptor type: ${maybeInterceptor.declaration.qualifiedName?.asString()}")
         }
 
         return if (maybeInterceptor.declaration is KSClassDeclaration) {
@@ -103,7 +103,7 @@ class ServiceTypesHelper(val resolver: Resolver) {
                 .filter { f -> f.simpleName.asString() == "afterInit" && f.parameters.size == 1 && f.returnType != null && !f.returnType!!.isVoid() }
                 .filter { f -> f.parameters.first().type.toTypeName() == f.returnType!!.toTypeName() }
                 .map { it.returnType!!.resolve() }
-                .firstOrNull() ?: throw IllegalArgumentException()
+                .firstOrNull() ?: throw IllegalStateException("Kora internal error: interceptor type has no valid afterInit(T): T method: ${maybeInterceptor.declaration.qualifiedName?.asString()}")
         } else {
             val memberOf = interceptorInitFunction.asMemberOf(maybeInterceptor)
             return memberOf.parameterTypes[0]!!.makeNotNullable()

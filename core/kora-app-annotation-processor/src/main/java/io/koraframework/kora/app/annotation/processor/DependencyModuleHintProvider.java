@@ -42,10 +42,9 @@ public class DependencyModuleHintProvider {
             public String message() {
                 if (tag == null) {
                     return """
-                        Missing component: %s
-                            Component is provided by standard Kora module you may forgot to plug it:
-                                Gradle dependency:  implementation("%s")
-                                Module interface:  %s
+                        %s is provided by a standard Kora module.
+                          Gradle dependency: implementation("%s")
+                          Module interface: %s
                         """.formatted(type, artifact, module);
                 } else {
                     String tagForMsg;
@@ -56,10 +55,9 @@ public class DependencyModuleHintProvider {
                     }
 
                     return """
-                        Missing component: %s with %s
-                            Component is provided by standard Kora module you may forgot to plug it:
-                                Gradle dependency:  implementation("%s")
-                                Module interface:  %s
+                        %s with %s is provided by a standard Kora module.
+                          Gradle dependency: implementation("%s")
+                          Module interface: %s
                         """.formatted(type, tagForMsg, artifact, module);
                 }
             }
@@ -88,7 +86,7 @@ public class DependencyModuleHintProvider {
                     } else if (hint instanceof KoraHint.KoraTipHint t) {
                         result.add(new Hint.TipHint(typeName, t.tag(), t.tip()));
                     } else {
-                        throw new UnsupportedOperationException("Unknown hint type: " + hint);
+                        throw new IllegalStateException("Kora internal error: unknown dependency hint type: " + hint);
                     }
                 }
             } else {
@@ -165,7 +163,7 @@ public class DependencyModuleHintProvider {
                             next = p.nextToken();
                         }
                         if (!tags.isEmpty() && tags.size() != 1) {
-                            throw new IllegalArgumentException("More than one tag found in hint: " + tags);
+                            throw new IllegalStateException("Kora internal error: dependency hint declares more than one tag: " + tags);
                         }
                     }
                     case "tag" -> {

@@ -91,7 +91,16 @@ class KoraAppProcessor(
                     deferred.add(declaration)
                 }
             } else {
-                kspLogger.error("@KoraApp can be placed only on interfaces", declaration)
+                kspLogger.error(
+                    """
+                    @KoraApp can only be applied to interfaces.
+
+                    Fix:
+                      - Change this type to an interface.
+                      - Move @KoraApp to an interface that declares root components and modules.
+                    """.trimIndent(),
+                    declaration
+                )
             }
         }
         hasDeferred = deferred.isNotEmpty()
@@ -100,7 +109,16 @@ class KoraAppProcessor(
 
     private fun buildGraph(ctx: ProcessingContext, declaration: KSClassDeclaration): ResolvedGraph {
         if (declaration.classKind != ClassKind.INTERFACE) {
-            throw ProcessingErrorException("@KoraApp is only applicable to interfaces", declaration)
+            throw ProcessingErrorException(
+                """
+                @KoraApp can only be applied to interfaces.
+
+                Fix:
+                  - Change this type to an interface.
+                  - Move @KoraApp to an interface that declares root components and modules.
+                """.trimIndent(),
+                declaration
+            )
         }
         val rootErasure = declaration.asStarProjectedType()
         val rootModule = ModuleDeclaration.MixedInModule(declaration)
@@ -136,7 +154,16 @@ class KoraAppProcessor(
                 if (func.isAnnotationPresent(CommonClassNames.factoryModule)) {
                     val returnTypeDecl = func.returnType?.resolve()?.declaration
                     if (returnTypeDecl !is KSClassDeclaration) {
-                        throw ProcessingErrorException("Factory module function must return a class", func)
+                        throw ProcessingErrorException(
+                            """
+                            @FactoryModule function must return a class or interface type.
+
+                            Fix:
+                              - Change the return type to a module class/interface.
+                              - Remove @FactoryModule if this function is a regular provider.
+                            """.trimIndent(),
+                            func
+                        )
                     }
                     val methodTag = TagUtils.parseTagValue(func)
                     val methodModule = ModuleDeclaration.FactoryModule(returnTypeDecl, methodTag)
@@ -218,7 +245,17 @@ class KoraAppProcessor(
                     }
                     classDeclarationByName
                 } else {
-                    resolver.getClassDeclarationByName(ksName) ?: throw ProcessingErrorException("Declaration of ${ksName.asString()} wasn't found", it)
+                    resolver.getClassDeclarationByName(ksName) ?: throw ProcessingErrorException(
+                        """
+                        Module declaration cannot be resolved:
+                          type: ${ksName.asString()}
+
+                        Fix:
+                          - Check imports and module dependencies.
+                          - Compile again after fixing earlier compiler errors.
+                        """.trimIndent(),
+                        it
+                    )
                 }
             }
             .toList()
@@ -244,7 +281,16 @@ class KoraAppProcessor(
 //                    }
 //                }
                 } else {
-                    kspLogger.error("Only interfaces are allowed as modules", module)
+                    kspLogger.error(
+                        """
+                        @Module can only be applied to interfaces.
+
+                        Fix:
+                          - Change this type to an interface.
+                          - Move module factory methods to an interface annotated with @Module.
+                        """.trimIndent(),
+                        module
+                    )
                 }
             }
         }

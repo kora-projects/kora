@@ -67,7 +67,7 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 } catch (ProcessingErrorException e) {
                     e.printError(this.processingEnv);
                 } catch (IOException e) {
-                    throw new UncheckedIOException(e);
+                    throw new IllegalStateException("Kora internal error: failed to write generated graph for @KoraApp " + element.getQualifiedName(), e);
                 }
             }
         }
@@ -82,7 +82,13 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                 }
                 this.koraApps.add((TypeElement) element);
             } else {
-                this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "@KoraApp can be placed only on interfaces", element);
+                this.processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, """
+                    @KoraApp can only be applied to interfaces.
+
+                    Fix:
+                      - Change this type to an interface.
+                      - Move @KoraApp to an interface that declares root components and modules.
+                    """.stripTrailing(), element);
             }
         }
     }
@@ -113,7 +119,13 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
                     if (member.getKind() == ElementKind.METHOD && member.getModifiers().contains(Modifier.DEFAULT)) {
                         var method = (ExecutableElement) member;
                         if (method.getReturnType().getKind() != TypeKind.DECLARED) {
-                            messager.printMessage(Diagnostic.Kind.ERROR, "Only reference types are allowed as graph components");
+                            messager.printMessage(Diagnostic.Kind.ERROR, """
+                                Module method returns a non-reference type, so it cannot be used as a graph component.
+
+                                Fix:
+                                  - Return a class or interface type.
+                                  - Wrap primitive values in a reference type.
+                                """.stripTrailing(), method);
                         }
                     }
                 }
@@ -125,14 +137,26 @@ public class KoraAppProcessor extends AbstractKoraProcessor {
 //                    this.annotatedClassModules.add(te);
 //                }
             } else {
-                messager.printMessage(Diagnostic.Kind.ERROR, "Only interfaces are allowed as modules");
+                messager.printMessage(Diagnostic.Kind.ERROR, """
+                    @Module can only be applied to interfaces.
+
+                    Fix:
+                      - Change this type to an interface.
+                      - Move module factory methods to an interface annotated with @Module.
+                    """.stripTrailing(), annotated.element());
             }
         }
     }
 
     private ResolvedGraph buildGraph(RoundEnvironment roundEnv, ProcessingContext ctx, Element classElement) {
         if (classElement.getKind() != ElementKind.INTERFACE) {
-            throw new ProcessingErrorException("@KoraApp is only applicable to interfaces", classElement);
+            throw new ProcessingErrorException("""
+                @KoraApp can only be applied to interfaces.
+
+                Fix:
+                  - Change this type to an interface.
+                  - Move @KoraApp to an interface that declares root components and modules.
+                """.stripTrailing(), classElement);
         }
         var type = (TypeElement) classElement;
         var interfaces = KoraAppUtils.collectInterfaces(this.types, type);
