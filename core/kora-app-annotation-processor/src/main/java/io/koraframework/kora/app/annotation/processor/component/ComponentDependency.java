@@ -26,7 +26,7 @@ public sealed interface ComponentDependency {
                     case ALL_OF_ONE -> codeBlock.add("$T.all(g", CommonClassNames.all);
                     case ALL_OF_VALUE -> codeBlock.add("$T.allValues(g", CommonClassNames.all);
                     case ALL_OF_PROMISE -> codeBlock.add("$T.allPromises(g", CommonClassNames.all);
-                    default -> throw new IllegalStateException("Unknown claim type: " + allOf.claim().claimType());
+                    default -> throw new IllegalStateException("Kora internal error: unsupported All<T> claim type for code generation: " + allOf.claim());
                 }
                 for (var dependency : allOf.resolvedDependencies) {
                     var dependencyNode = dependency.component().nodeRef("some_fake_holder_idc");
@@ -44,7 +44,7 @@ public sealed interface ComponentDependency {
                 case ONE_NULLABLE -> CodeBlock.of("($T) null", claim.type());
                 case NULLABLE_VALUE_OF -> CodeBlock.of("($T<$T>) null", CommonClassNames.valueOf, claim.type());
                 case NULLABLE_PROMISE_OF -> CodeBlock.of("($T<$T>) null", CommonClassNames.promiseOf, claim.type());
-                default -> throw new IllegalArgumentException(claim.claimType().toString());
+                default -> throw new IllegalStateException("Kora internal error: unsupported nullable dependency claim type for code generation: " + claim);
             };
             case PromisedProxyParameterDependency promised -> {
                 var dependency = Objects.requireNonNull(promised.realDependency);
@@ -56,7 +56,7 @@ public sealed interface ComponentDependency {
             case TargetDependency(var claim, var component) -> switch (claim.claimType()) {
                 case ONE_REQUIRED, ONE_NULLABLE -> CodeBlock.of("g.get($T.$N.$N)", graphTypeName, component.holderName(), component.fieldName());
                 case NODE_OF -> CodeBlock.of("$T.$N.$N", graphTypeName, component.holderName(), component.fieldName());
-                default -> throw new IllegalStateException("Unexpected value: " + claim.claimType());
+                default -> throw new IllegalStateException("Kora internal error: unsupported target dependency claim type for code generation: " + claim);
             };
             case TypeOfDependency(var claim) -> TypeOfDependency.buildTypeRef(ctx.types, claim.type());
             case ValueOfDependency(_, var delegate) when delegate instanceof WrappedTargetDependency ->
@@ -75,7 +75,7 @@ public sealed interface ComponentDependency {
                     case PROMISE_OF -> {
                         b.add("g.getOnePromiseOf(");
                     }
-                    default -> throw new IllegalStateException("Unknown claim type: " + oneOfDependency.claim().claimType());
+                    default -> throw new IllegalStateException("Kora internal error: unsupported one-of dependency claim type for code generation: " + oneOfDependency.claim());
                 }
                 for (int i = 0; i < oneOfDependency.dependencies().size(); i++) {
                     if (i > 0) b.add(", ");

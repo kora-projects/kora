@@ -201,7 +201,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages)
-                        .anyMatch { it.contains("Required dependency type wasn't found in graph and can't be auto created: io.koraframework.kora.app.ksp.app.AppWithUnresolvedDependency.Class3") }
+                        .anyMatch { it.contains("No component found for dependency:") && it.contains("AppWithUnresolvedDependency.Class3") && it.contains("Fix:") }
                 }
             }
     }
@@ -211,7 +211,7 @@ class KoraAppKspTest {
         Assertions.assertThatThrownBy { testClass(AppWithCircularDependency::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
-                    s.assertThat(e.messages).anyMatch { it.contains("Encountered circular dependency in graph for source type") }
+                    s.assertThat(e.messages).anyMatch { it.contains("Circular dependency found:") && it.contains("Dependency cycle:") && it.contains("Fix:") }
                 }
             }
     }
@@ -239,7 +239,7 @@ class KoraAppKspTest {
         Assertions.assertThatThrownBy { testClass(AppWithFactories6::class) }
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
-                    s.assertThat(e.messages).anyMatch { it.contains("Encountered circular dependency in graph for source type") }
+                    s.assertThat(e.messages).anyMatch { it.contains("Circular dependency found:") && it.contains("Dependency cycle:") && it.contains("Fix:") }
                 }
             }
 
@@ -251,7 +251,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages).anyMatch {
-                        it.contains("Required dependency type wasn't found in graph and can't be auto created: java.io.Closeable")
+                        it.contains("No component found for dependency:") && it.contains("java.io.Closeable")
                     }
                 }
             }
@@ -291,7 +291,7 @@ class KoraAppKspTest {
             .isInstanceOfSatisfying(CompilationErrorException::class.java) { e ->
                 SoftAssertions.assertSoftly { s: SoftAssertions ->
                     s.assertThat(e.messages)
-                        .anyMatch { it.contains("More than one component matches dependency type: io.koraframework.kora.app.ksp.app.AppWithComponentCollisionAndDirect.Class1") }
+                        .anyMatch { it.contains("Multiple components match dependency:") && it.contains("AppWithComponentCollisionAndDirect.Class1") && it.contains("Fix:") }
                 }
             }
     }
@@ -456,5 +456,4 @@ class KoraAppKspTest {
         }
     }
 }
-
 

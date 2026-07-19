@@ -45,7 +45,7 @@ public final class GraphResolutionHelper {
         var isDirectAssignable = ctx.types.isAssignable(resolvedComponent.type(), dependencyClaim.type());
         var isWrappedAssignable = ctx.serviceTypeHelper.isAssignableToUnwrapped(resolvedComponent.type(), dependencyClaim.type());
         if (!isDirectAssignable && !isWrappedAssignable) {
-            throw new IllegalStateException();
+            throw new IllegalStateException("Kora internal error: resolved component is not assignable to dependency claim. Component=" + resolvedComponent.declaration().declarationString() + ", claim=" + dependencyClaim);
         }
 
         var targetDependency = isWrappedAssignable
@@ -56,7 +56,7 @@ public final class GraphResolutionHelper {
             case ONE_REQUIRED, ONE_NULLABLE, NODE_OF -> targetDependency;
             case PROMISE_OF, NULLABLE_PROMISE_OF -> new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
             case VALUE_OF, NULLABLE_VALUE_OF -> new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
-            case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF, GRAPH -> throw new IllegalStateException();
+            case ALL_OF_ONE, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF, GRAPH -> throw new IllegalStateException("Kora internal error: unsupported single dependency claim type " + dependencyClaim.claimType() + " for " + dependencyClaim);
         };
     }
 
@@ -84,8 +84,7 @@ public final class GraphResolutionHelper {
                     // that's fine, default component wasn't directly requested by anyone, so we don't need it
                     continue;
                 } else {
-                    // something went wrong
-                    throw new NullPointerException();
+                    throw new IllegalStateException("Kora internal error: non-default All<T> dependency declaration is not resolved: " + declaration.declarationString());
                 }
             }
             if (ctx.types.isAssignable(declaration.type(), dependencyClaim.type())) {
@@ -94,7 +93,7 @@ public final class GraphResolutionHelper {
                     case ALL_OF_ONE -> targetDependency;
                     case ALL_OF_PROMISE -> new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
                     case ALL_OF_VALUE -> new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
-                    case null, default -> throw new IllegalStateException("Unexpected value: " + dependencyClaim.claimType());
+                    case null, default -> throw new IllegalStateException("Kora internal error: unsupported All<T> claim type " + dependencyClaim.claimType() + " for " + dependencyClaim);
                 };
                 result.add(dependency);
             }
@@ -104,7 +103,7 @@ public final class GraphResolutionHelper {
                     case ALL_OF_ONE -> targetDependency;
                     case ALL_OF_PROMISE -> new ComponentDependency.PromiseOfDependency(dependencyClaim, targetDependency);
                     case ALL_OF_VALUE -> new ComponentDependency.ValueOfDependency(dependencyClaim, targetDependency);
-                    case null, default -> throw new IllegalStateException("Unexpected value: " + dependencyClaim.claimType());
+                    case null, default -> throw new IllegalStateException("Kora internal error: unsupported wrapped All<T> claim type " + dependencyClaim.claimType() + " for " + dependencyClaim);
                 };
                 result.add(dependency);
             }
@@ -114,12 +113,19 @@ public final class GraphResolutionHelper {
 
     public static List<ComponentDeclaration> findDependencyDeclarationsFromTemplate(ProcessingContext ctx, ComponentDeclaration forDeclaration, List<ComponentDeclaration> sourceDeclarations, DependencyClaim dependencyClaim) {
         if (dependencyClaim.type().getKind() == TypeKind.ERROR) {
-            throw new ProcessingErrorException("Component error type dependency claim " + dependencyClaim.type(), forDeclaration.source());
+            throw new ProcessingErrorException("""
+                Dependency type cannot be resolved:
+                  type: %s
+
+                Fix:
+                  - Check imports and module dependencies.
+                  - Compile again after fixing earlier compiler errors.
+                """.formatted(dependencyClaim.type()).stripTrailing(), dependencyClaim.source() == null ? forDeclaration.source() : dependencyClaim.source());
         }
 
         var claimType = dependencyClaim.claimType();
         if (claimType == ALL_OF_ONE || claimType == ALL_OF_PROMISE || claimType == ALL_OF_VALUE) {
-            throw new UnsupportedOperationException();
+            throw new IllegalStateException("Kora internal error: component templates cannot be resolved for All<T> dependency claim: " + dependencyClaim);
         }
         var types = ctx.types;
         var declarations = new ArrayList<ComponentDeclaration>();
@@ -138,7 +144,7 @@ public final class GraphResolutionHelper {
                 continue sources;
             }
             if (!(match instanceof ComponentTemplateHelper.TemplateMatch.Some(var map))) {
-                throw new IllegalStateException();
+                throw new IllegalStateException("Kora internal error: unknown component template match result " + match + " for " + sourceDeclaration.declarationString());
             }
             var realReturnType = ComponentTemplateHelper.replace(types, declarationDeclaredType, map);
 
@@ -212,7 +218,7 @@ public final class GraphResolutionHelper {
                     ));
                 }
                 case ComponentDeclaration.PromisedProxyComponent promisedProxyComponent -> declarations.add(promisedProxyComponent.withType(realReturnType));
-                default -> throw new IllegalArgumentException(sourceDeclaration.toString());
+                default -> throw new IllegalStateException("Kora internal error: unsupported template component declaration: " + sourceDeclaration);
             }
         }
         if (declarations.isEmpty()) {

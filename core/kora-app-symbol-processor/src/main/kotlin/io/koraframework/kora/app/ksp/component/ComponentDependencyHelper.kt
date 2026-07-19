@@ -24,7 +24,8 @@ object ComponentDependencyHelper {
                         DependencyClaim(
                             declaration.module.element.asType(listOf()),
                             declaration.module.tag,
-                            DependencyClaim.DependencyClaimType.ONE_REQUIRED
+                            DependencyClaim.DependencyClaimType.ONE_REQUIRED,
+                            element
                         )
                     )
                 }
@@ -33,7 +34,8 @@ object ComponentDependencyHelper {
                         DependencyClaim(
                             declaration.module.element.asType(listOf()),
                             null,
-                            DependencyClaim.DependencyClaimType.ONE_REQUIRED
+                            DependencyClaim.DependencyClaimType.ONE_REQUIRED,
+                            element
                         )
                     )
                 }
@@ -45,7 +47,16 @@ object ComponentDependencyHelper {
                         if (declaration.module is ModuleDeclaration.FactoryModule) {
                             tag = declaration.module.tag
                         } else {
-                            throw ProcessingErrorException("Tag @Tag.Factory is only allowed for factory modules ", declaration.method)
+                            throw ProcessingErrorException(
+                                """
+                                @Tag.Factory can only be used inside factory modules.
+
+                                Fix:
+                                  - Move this provider to a factory module.
+                                  - Replace @Tag.Factory with an explicit @Tag(...) value.
+                                """.trimIndent(),
+                                declaration.method
+                            )
                         }
                     }
                     result.add(parseClaim(parameterType, tag, declaration.method.parameters[i]))
@@ -73,8 +84,10 @@ object ComponentDependencyHelper {
             }
 
 
-            is ComponentDeclaration.OptionalComponent -> throw IllegalArgumentException()
-            is ComponentDeclaration.PromisedProxyComponent -> throw IllegalArgumentException()
+            is ComponentDeclaration.OptionalComponent ->
+                throw IllegalStateException("Kora internal error: optional synthetic component cannot declare dependencies: $declaration")
+            is ComponentDeclaration.PromisedProxyComponent ->
+                throw IllegalStateException("Kora internal error: promised proxy synthetic component cannot declare dependencies: $declaration")
         }
     }
 
@@ -83,7 +96,14 @@ object ComponentDependencyHelper {
         if (parameterType.isError) {
             throw ProcessingErrorException(
                 ProcessingError(
-                    "Dependency type parameter is not resolvable in the current round of processing: $element\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    """
+                    Dependency type cannot be resolved in the current KSP round:
+                      element: $element
+
+                    Fix:
+                      - Check imports and module dependencies.
+                      - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
+                    """.trimIndent(),
                     element,
                     Diagnostic.Kind.WARNING
                 )
@@ -94,58 +114,75 @@ object ComponentDependencyHelper {
         } catch (e: IllegalArgumentException) {
             throw ProcessingErrorException(
                 ProcessingError(
-                    "Dependency type parameter is not resolvable in the current round of processing: $element\nTry disabling Kora KSP 'symbol-processors' dependency and compile without it to check for errors in your codebase (Kotlin and KSP compiler work only this way)",
+                    """
+                    Dependency type cannot be converted to a KotlinPoet type in the current KSP round:
+                      element: $element
+
+                    Fix:
+                      - Check imports and module dependencies.
+                      - Compile without Kora symbol processors to expose earlier Kotlin errors if KSP hides them.
+                    """.trimIndent(),
                     element,
                     Diagnostic.Kind.WARNING
                 )
             )
         }
         if (typeName == CommonClassNames.graph || typeName == CommonClassNames.refreshableGraph) {
-            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.GRAPH)
+            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.GRAPH, element)
         }
         if (typeName is ParameterizedTypeName) {
             val firstTypeParam = parameterType.arguments[0].type!!.resolve()
             if (typeName.rawType == CommonClassNames.typeRef) {
-                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.TYPE_REF)
+                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.TYPE_REF, element)
             }
             if (typeName.rawType.canonicalName == CommonClassNames.node.canonicalName) {
                 if (firstTypeParam.isMarkedNullable) {
-                    throw ProcessingErrorException("Nullable arguments to node are not allowed", element)
+                    throw ProcessingErrorException(
+                        """
+                        Invalid Node dependency argument:
+                          Node<T> cannot use a nullable T.
+
+                        Fix:
+                          - Use a non-nullable Node<T>.
+                          - Inject nullable dependency directly if nullable access is required.
+                        """.trimIndent(),
+                        element
+                    )
                 }
-                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NODE_OF);
+                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NODE_OF, element);
             }
 
             if (typeName.rawType == CommonClassNames.all) {
                 val allOf = typeName.typeArguments[0]
                 if (allOf is ParameterizedTypeName) {
                     if (allOf.rawType == CommonClassNames.valueOf) {
-                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tag, DependencyClaim.DependencyClaimType.ALL_OF_VALUE)
+                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tag, DependencyClaim.DependencyClaimType.ALL_OF_VALUE, element)
                     }
                     if (allOf.rawType == CommonClassNames.promiseOf) {
-                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tag, DependencyClaim.DependencyClaimType.ALL_OF_PROMISE)
+                        return DependencyClaim(firstTypeParam.arguments[0].type!!.resolve(), tag, DependencyClaim.DependencyClaimType.ALL_OF_PROMISE, element)
                     }
                 }
-                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.ALL)
+                return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.ALL, element)
             }
             if (typeName.rawType == CommonClassNames.valueOf) {
                 if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
-                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF, element)
                 } else {
-                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.VALUE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.VALUE_OF, element)
                 }
             }
             if (typeName.rawType == CommonClassNames.promiseOf) {
                 if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
-                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF, element)
                 } else {
-                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.PROMISE_OF)
+                    return DependencyClaim(firstTypeParam, tag, DependencyClaim.DependencyClaimType.PROMISE_OF, element)
                 }
             }
         }
         if (parameterType.isMarkedNullable || element.isAnnotationPresent(CommonClassNames.nullable)) {
-            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.NULLABLE_ONE)
+            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.NULLABLE_ONE, element)
         } else {
-            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.ONE_REQUIRED)
+            return DependencyClaim(parameterType, tag, DependencyClaim.DependencyClaimType.ONE_REQUIRED, element)
         }
     }
 }

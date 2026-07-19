@@ -302,7 +302,7 @@ class GraphFileGenerator(
                             is ComponentDependency.TargetDependency -> result.add(singleDependency.component)
                             is ComponentDependency.ValueOfDependency -> result.add(singleDependency.component)
                             is ComponentDependency.WrappedTargetDependency -> result.add(singleDependency.component)
-                            is ComponentDependency.NullDependency -> throw IllegalStateException()
+                            is ComponentDependency.NullDependency -> throw IllegalStateException("Kora internal error: OneOf<T> dependency unexpectedly contains a NullDependency while collecting initialization dependencies: ${dependency.claim}")
                         }
                     }
 
@@ -364,7 +364,7 @@ class GraphFileGenerator(
                             is ComponentDependency.TargetDependency -> result.add(singleDependency.component)
                             is ComponentDependency.ValueOfDependency -> result.add(singleDependency.component)
                             is ComponentDependency.WrappedTargetDependency -> result.add(singleDependency.component)
-                            else -> throw IllegalStateException()
+                            else -> throw IllegalStateException("Kora internal error: OneOf<T> dependency unexpectedly contains unsupported dependency while collecting refresh dependencies: $singleDependency")
                         }
                     }
                 }
@@ -401,4 +401,3 @@ class GraphFileGenerator(
     }
 
 }
-

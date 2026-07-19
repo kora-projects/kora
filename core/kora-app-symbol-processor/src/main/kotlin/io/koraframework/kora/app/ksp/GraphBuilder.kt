@@ -94,7 +94,13 @@ class GraphBuilder {
     fun build(): ResolvedGraph {
         if (rootSet.isEmpty()) {
             throw ProcessingErrorException(
-                "@KoraApp has no root components, expected at least one component annotated with @Root",
+                """
+                @KoraApp has no root components.
+
+                Fix:
+                  - Annotate at least one component or module function with @Root.
+                  - Check that root component is visible from this @KoraApp module set.
+                """.trimIndent(),
                 root
             )
         }
@@ -123,11 +129,37 @@ class GraphBuilder {
                     val conditionDeclarations = componentDeclarations.getByType(CommonClassNames.graphCondition)
                         .filter { componentCondition.canonicalName == it.declaration.tag }
                     if (conditionDeclarations.isEmpty()) {
-                        throw ProcessingErrorException("Component declares condition with tag ${componentCondition}, but none found in graph: $declaration", declaration.source)
+                        throw ProcessingErrorException(
+                            """
+                            Component condition cannot be resolved:
+                              required condition tag: @Tag(${componentCondition}::class)
+                              component: $declaration
+
+                            Fix:
+                              - Add a GraphCondition component with this tag.
+                              - Include a module that provides this GraphCondition.
+                              - Check that @Conditional uses the intended tag.
+                            """.trimIndent(),
+                            declaration.source
+                        )
                     }
                     if (conditionDeclarations.size > 1) {
                         val str = conditionDeclarations.joinToString("\n") { it.declaration.toString() }.prependIndent("  ")
-                        throw ProcessingErrorException("Component declares condition with tag $componentCondition, but multiple candidates found in graph:\n$declaration\n$str", declaration.source)
+                        throw ProcessingErrorException(
+                            """
+                            Multiple GraphCondition components match condition tag:
+                              required condition tag: @Tag(${componentCondition}::class)
+                              component: $declaration
+
+                            Candidates:
+                            $str
+
+                            Fix:
+                              - Keep only one GraphCondition for this tag.
+                              - Use different @Tag(...) values for different conditions.
+                            """.trimIndent(),
+                            declaration.source
+                        )
                     }
                     val conditionDeclaration = conditionDeclarations.first()
                     val resolvedCondition = this.resolvedComponents.getByDeclaration(conditionDeclaration)
@@ -244,7 +276,7 @@ class GraphBuilder {
                     val idx = componentDeclarations.add(optionalDeclaration)
                     stack.addLast(frame.copy(currentDependency = currentDependency))
                     val type = dependencyClaim.type.arguments[0].type!!.resolve().makeNullable()
-                    val claim = ComponentDependencyHelper.parseClaim(type, dependencyClaim.tag, declaration.source)
+                    val claim = ComponentDependencyHelper.parseClaim(type, dependencyClaim.tag, dependencyClaim.source ?: declaration.source)
                     stack.addLast(
                         ResolutionFrame.Component(
                             optionalDeclaration,
@@ -295,7 +327,15 @@ class GraphBuilder {
                     for (resolvedDependency in dependencies) {
                         if (resolvedDependency.component!!.index > component.index) {
                             throw ProcessingErrorException(
-                                "All<T> dependency appeared in graph after component requesting it, this is a bug that we will fix later",
+                                """
+                                All<T> dependency appeared in graph after the component that requests it.
+
+                                This is an internal graph ordering limitation.
+
+                                Fix:
+                                  - Move the component that provides the All<T> item so it is reachable before the requesting component.
+                                  - If this graph should be valid, please report this as a Kora bug with the dependency path.
+                                """.trimIndent(),
                                 resolvedDependency.component!!.declaration.source
                             )
                         }
@@ -305,9 +345,10 @@ class GraphBuilder {
                 if (dependency is ComponentDependency.PromisedProxyParameterDependency) {
                     val componentDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, dependency.claim)
                     if (componentDeclarations.size != 1) {
-                        throw IllegalStateException();
+                        throw IllegalStateException("Kora internal error: promised proxy dependency expected exactly one target declaration, got ${componentDeclarations.size} for ${dependency.claim}")
                     }
-                    val realDependency = resolvedComponents.getByDeclaration(componentDeclarations.first())!!
+                    val realDependency = resolvedComponents.getByDeclaration(componentDeclarations.first())
+                        ?: throw IllegalStateException("Kora internal error: promised proxy declaration was found but is not resolved: ${componentDeclarations.first().declaration.declarationString()}")
                     dependency.realDependency = realDependency
                 }
             }
@@ -355,7 +396,7 @@ class GraphBuilder {
         if (dependencyClaim.claimType == ALL || dependencyClaim.claimType == ALL_OF_VALUE || dependencyClaim.claimType == ALL_OF_PROMISE) {
             return ComponentDependency.AllOfDependency(dependencyClaim)
         }
-        throw IllegalStateException()
+        throw IllegalStateException("Kora internal error: processAllOf called for non-All dependency claim: $dependencyClaim")
     }
 
     private fun findInterceptors(declaration: ComponentDeclaration): Sequence<ResolutionFrame.Component> {
@@ -508,14 +549,18 @@ class GraphBuilder {
             if (claimTypeDeclaration !is KSClassDeclaration) throw circularDependencyException
             if (claimTypeDeclaration.classKind != ClassKind.INTERFACE && !(claimTypeDeclaration.classKind == ClassKind.CLASS && claimTypeDeclaration.isOpen())) throw circularDependencyException
             val proxyDependencyClaim = DependencyClaim(
-                dependencyClaim.type, CommonClassNames.promisedProxy.canonicalName, dependencyClaim.claimType
+                dependencyClaim.type, CommonClassNames.promisedProxy.canonicalName, dependencyClaim.claimType, dependencyClaim.source
             )
             val declarations = GraphResolutionHelper.findDependencyDeclarations(ctx, componentDeclarations, proxyDependencyClaim);
             if (declarations.isNotEmpty()) {
-                check(declarations.size == 1)
+                check(declarations.size == 1) {
+                    "Kora internal error: promised proxy declaration is ambiguous for $proxyDependencyClaim, declarations: $declarations"
+                }
                 val decl = declarations.first()
                 val resolved = resolvedComponents.getByDeclaration(decl)
-                checkNotNull(resolved)
+                checkNotNull(resolved) {
+                    "Kora internal error: promised proxy declaration was found but is not resolved: ${decl.declaration.declarationString()}"
+                }
                 stack.removeLast()
                 prevFrame.resolvedDependencies.add(GraphResolutionHelper.toDependency(ctx, resolved, dependencyClaim))
                 stack.addLast(prevFrame.copy(currentDependency = prevFrame.currentDependency + 1))
@@ -533,7 +578,9 @@ class GraphBuilder {
                     proxyComponentDeclarations = findDependencyDeclarationsFromTemplate(
                         ctx, declaration, templateDeclarations, proxyDependencyClaim
                     )
-                    check(proxyComponentDeclarations.size == 1)
+                    check(proxyComponentDeclarations.size == 1) {
+                        "Kora internal error: generated promised proxy template expected one declaration, got ${proxyComponentDeclarations.size} for $proxyDependencyClaim"
+                    }
                     proxyComponentDeclaration = proxyComponentDeclarations.first()
                     declIdx = this.componentDeclarations.add(proxyComponentDeclaration)
                 } else {
@@ -541,7 +588,9 @@ class GraphBuilder {
                     declIdx = this.componentDeclarations.add(generatedDeclaration)
                 }
             } else {
-                check(proxyComponentDeclarations.size == 1)
+                check(proxyComponentDeclarations.size == 1) {
+                    "Kora internal error: promised proxy template is ambiguous for $proxyDependencyClaim, declarations: $proxyComponentDeclarations"
+                }
                 proxyComponentDeclaration = proxyComponentDeclarations.first()
                 declIdx = this.componentDeclarations.add(proxyComponentDeclaration)
             }
@@ -551,7 +600,8 @@ class GraphBuilder {
                         declaration, DependencyClaim(
                             declaration.type,
                             declaration.tag,
-                            ONE_REQUIRED
+                            ONE_REQUIRED,
+                            declaration.source
                         )
                     )
                 )
