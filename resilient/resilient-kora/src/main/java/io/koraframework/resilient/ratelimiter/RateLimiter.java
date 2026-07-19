@@ -6,13 +6,13 @@ import java.util.function.Supplier;
 
 /**
  * A {@link RateLimiter} limits the rate of calls to a backend system.
- * The rate is defined as a maximum number of calls ({@link RateLimiterConfig.NamedConfig#limitForPeriod()})
- * within a period ({@link RateLimiterConfig.NamedConfig#limitRefreshPeriod()}).
+ * The rate is defined as a maximum number of calls ({@link RateLimiterConfig#limitForPeriod()})
+ * within a period ({@link RateLimiterConfig#limitRefreshPeriod()}).
  * <p>
  * When the rate limit is exceeded, a {@link RateLimitExceededException} is thrown.
  * <p>
- * Usage via annotation: {@link io.koraframework.resilient.ratelimiter.annotation.RateLimit}
- * Usage via imperative style: inject {@link RateLimiterManager} and call {@link RateLimiterManager#get(String)}
+ * Usage via typed style: declare a spec interface with {@code @RateLimiterSpec}
+ * and apply {@code @RateLimited} to protected methods.
  */
 public interface RateLimiter {
 

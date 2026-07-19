@@ -1,8 +1,6 @@
 package io.koraframework.resilient.ratelimiter;
 
 import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetryFactory;
 import io.koraframework.resilient.ratelimiter.telemetry.impl.DefaultRateLimiterLoggerFactory;
 import io.koraframework.resilient.ratelimiter.telemetry.impl.DefaultRateLimiterMetricsFactory;
@@ -12,15 +10,6 @@ import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
 
 public interface RateLimiterModule {
-
-    default RateLimiterConfig koraRateLimiterConfig(Config config, ConfigValueMapper<RateLimiterConfig> mapper) {
-        return mapper.mapOrThrow(config.get("resilient"));
-    }
-
-    default RateLimiterManager koraRateLimiterManager(RateLimiterConfig config,
-                                                      RateLimiterTelemetryFactory telemetryFactory) {
-        return new KoraRateLimiterManager(config, telemetryFactory);
-    }
 
     @DefaultComponent
     default RateLimiterTelemetryFactory defaultRateLimiterTelemetryFactory(@Nullable Tracer tracer,

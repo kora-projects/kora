@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import org.junit.jupiter.api.assertThrows
 import io.koraframework.resilient.circuitbreaker.telemetry.impl.NoopCircuitBreakerTelemetry
-import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetryConfig
 import java.time.Duration
 import java.util.concurrent.Callable
 import java.util.function.Supplier
@@ -28,7 +27,7 @@ class CircuitBreakerTests {
     fun switchFromClosedToOpenToHalfOpenToOpenToHalfOpenToClosedForAccept() {
         // given
         val config = config(true, 50, WAIT_IN_OPEN, 2, 4L, 2L)
-        val circuitBreaker = KoraCircuitBreaker("default", config, KoraCircuitBreakerPredicate(), NoopCircuitBreakerTelemetry.INSTANCE)
+        val circuitBreaker = KoraCircuitBreaker("default", config, null, NoopCircuitBreakerTelemetry.INSTANCE)
 
         val successCallable = Callable {
             try {
@@ -84,7 +83,7 @@ class CircuitBreakerTests {
 
             override fun minimumRequiredCalls() = minimumRequiredCalls
 
-            override fun telemetry(): CircuitBreakerTelemetryConfig? = null
+            override fun telemetry(): CircuitBreakerConfig.TelemetryConfig? = null
         }
     }
 }

@@ -1,63 +1,106 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import io.koraframework.resilient.annotation.processor.aop.testdata.*;
 import io.koraframework.resilient.timeout.exception.TimeoutExhaustedException;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class TimeoutSyncTests extends AppRunner {
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-    private TimeoutTarget getService() {
-        final InitializedGraph graph = getGraph(AppWithConfig.class,
-            CircuitBreakerTarget.class,
-            RetryTarget.class,
-            TimeoutTarget.class,
-            FallbackTarget.class);
-
-        return getServiceFromGraph(graph, TimeoutTarget.class);
-    }
+class TimeoutSyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncTimeout() {
-        // given
-        var service = getService();
+        var service = compileTimeoutTarget("""
+            @Timeout(TestTimeout.class)
+            public String call() throws InterruptedException {
+                Thread.sleep(100);
+                return "OK";
+            }
+            """);
 
-        assertThrows(TimeoutExhaustedException.class, service::getValueSync);
+        assertThrows(TimeoutExhaustedException.class, () -> invoke(service, "call"));
     }
 
     @Test
     void syncTimeoutVoid() {
-        // given
-        var service = getService();
+        var service = compileTimeoutTarget("""
+            @Timeout(TestTimeout.class)
+            public void call() throws InterruptedException {
+                Thread.sleep(100);
+            }
+            """);
 
-        assertThrows(TimeoutExhaustedException.class, service::getValueSyncVoid);
+        assertThrows(TimeoutExhaustedException.class, () -> invoke(service, "call"));
     }
 
     @Test
     void syncTimeoutCheckedException() {
-        // given
-        var service = getService();
+        var service = compileTimeoutTarget("""
+            @Timeout(TestTimeout.class)
+            public String call() throws IOException {
+                sleepLong();
+                return "OK";
+            }
+            private void sleepLong() {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            """);
 
-        assertThrows(TimeoutExhaustedException.class, service::getValueSyncCheckedException);
+        assertThrows(TimeoutExhaustedException.class, () -> invoke(service, "call"));
     }
 
     @Test
     void syncTimeoutCheckedExceptionVoid() {
-        // given
-        var service = getService();
+        var service = compileTimeoutTarget("""
+            @Timeout(TestTimeout.class)
+            public void call() throws IOException {
+                sleepLong();
+            }
+            private void sleepLong() {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+            """);
 
-        assertThrows(TimeoutExhaustedException.class, service::getValueSyncCheckedExceptionVoid);
+        assertThrows(TimeoutExhaustedException.class, () -> invoke(service, "call"));
     }
 
     @Test
-    void syncTimeoutCheckedExceptionVoidFailed() {
-        // given
-        var service = getService();
+    void checkedExceptionBeforeTimeoutIsPropagated() {
+        var service = compileTimeoutTarget("""
+            @Timeout(TestTimeout.class)
+            public void call() throws IOException {
+                throw new IOException("OPS");
+            }
+            """);
 
-        var ex = assertThrows(IOException.class, service::getValueSyncCheckedExceptionVoidFailed);
+        var ex = assertThrows(IOException.class, () -> invokeTarget(service, "call"));
         assertEquals("OPS", ex.getMessage());
+    }
+
+    private Object compileTimeoutTarget(String method) {
+        return compileApp("""
+            custom1 {
+              duration = 10ms
+            }
+            """, """
+            @TimeoutSpec("custom1")
+            public interface TestTimeout extends io.koraframework.resilient.timeout.Timeouter {}
+            """, """
+            @Component
+            @Root
+            public class TestTarget {
+                %s
+            }
+            """.formatted(method));
     }
 }

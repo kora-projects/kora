@@ -8,7 +8,7 @@ import java.util.concurrent.Callable;
 /**
  * Timeout executor contract
  */
-public interface Timeout {
+public interface Timeouter {
 
     /**
      * @return duration timeout executor is configured for
@@ -19,11 +19,23 @@ public interface Timeout {
      * @param runnable to execute
      * @throws TimeoutExhaustedException when timed out
      */
-    void execute(Runnable runnable) throws TimeoutExhaustedException;
+    <E extends Throwable> void execute(TimeoutRunnable<E> runnable) throws E, TimeoutExhaustedException;
 
     /**
-     * @param supplier to execute
+     * @param callable to execute
      * @throws TimeoutExhaustedException when timed out
      */
-    <T> T execute(Callable<T> supplier) throws TimeoutExhaustedException;
+    <T, E extends Throwable> T execute(TimeoutCallable<T, E> callable) throws E, TimeoutExhaustedException;
+
+    @FunctionalInterface
+    interface TimeoutRunnable<E extends Throwable> {
+
+        void run() throws E;
+    }
+
+    @FunctionalInterface
+    interface TimeoutCallable<T, E extends Throwable> {
+
+        T call() throws E;
+    }
 }

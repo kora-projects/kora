@@ -1,8 +1,7 @@
 package io.koraframework.resilient.ratelimiter;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigMapper;
-import io.koraframework.resilient.ratelimiter.telemetry.RateLimiterTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Map;
@@ -10,76 +9,53 @@ import java.util.Map;
 @ConfigMapper
 public interface RateLimiterConfig {
 
-    String DEFAULT = "default";
-
-    default Map<String, NamedConfig> ratelimiter() {
-        return Map.of();
+    default boolean enabled() {
+        return true;
     }
 
-    RateLimiterTelemetryConfig telemetry();
+    int limitForPeriod();
 
-    /**
-     * {@link #limitForPeriod} Configures the number of permissions available during one limit refresh period.
-     * Must be greater than 0.<br>
-     * {@link #limitRefreshPeriod} Configures the period of a limit refresh. After each period the rate limiter
-     * sets its permissions count to the {@link #limitForPeriod} value. Must be greater than 0.<br>
-     */
+    Duration limitRefreshPeriod();
+
+    @Nullable
+    TelemetryConfig telemetry();
+
     @ConfigMapper
-    interface NamedConfig {
+    interface TelemetryConfig {
 
-        @Nullable
-        Boolean enabled();
+        LoggingConfig logging();
 
-        /**
-         * @return number of permissions available per {@link #limitRefreshPeriod()}
-         */
-        @Nullable
-        Integer limitForPeriod();
+        MetricsConfig metrics();
 
-        /**
-         * @return the period after which permissions are refreshed
-         */
-        @Nullable
-        Duration limitRefreshPeriod();
-    }
+        TracingConfig tracing();
 
-    default NamedConfig getNamedConfig(String name) {
-        final NamedConfig defaultConfig = ratelimiter().get(DEFAULT);
-        final NamedConfig namedConfig = ratelimiter().getOrDefault(name, defaultConfig);
-        if (namedConfig == null) {
-            throw new IllegalStateException("RateLimiter no configuration is provided, but either '%s' or '%s' config is required".formatted(name, DEFAULT));
+        @ConfigMapper
+        interface LoggingConfig {
+
+            @Nullable
+            Boolean enabled();
         }
 
-        final NamedConfig mergedConfig = merge(namedConfig, defaultConfig);
-        if (mergedConfig.limitForPeriod() == null) {
-            throw new IllegalStateException("RateLimiter property '%s' is not configured in either '%s' or '%s' config"
-                .formatted("limitForPeriod", name, DEFAULT));
-        }
-        if (mergedConfig.limitRefreshPeriod() == null) {
-            throw new IllegalStateException("RateLimiter property '%s' is not configured in either '%s' or '%s' config"
-                .formatted("limitRefreshPeriod", name, DEFAULT));
-        }
-        if (mergedConfig.limitForPeriod() < 1) {
-            throw new IllegalArgumentException("RateLimiter '%s' property '%s' must be greater than 0, but was: %s"
-                .formatted(name, "limitForPeriod", mergedConfig.limitForPeriod()));
-        }
-        if (mergedConfig.limitRefreshPeriod().isNegative() || mergedConfig.limitRefreshPeriod().isZero()) {
-            throw new IllegalArgumentException("RateLimiter '%s' property '%s' must be positive, but was: %s"
-                .formatted(name, "limitRefreshPeriod", mergedConfig.limitRefreshPeriod()));
+        @ConfigMapper
+        interface MetricsConfig {
+
+            @Nullable
+            Boolean enabled();
+
+            Duration @Nullable [] slo();
+
+            @Nullable
+            Map<String, String> tags();
         }
 
-        return mergedConfig;
-    }
+        @ConfigMapper
+        interface TracingConfig {
 
-    private static NamedConfig merge(NamedConfig namedConfig, NamedConfig defaultConfig) {
-        if (defaultConfig == null) {
-            return namedConfig;
+            @Nullable
+            Boolean enabled();
+
+            @Nullable
+            Map<String, String> attributes();
         }
-
-        return new $RateLimiterConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
-            namedConfig.limitForPeriod() == null ? defaultConfig.limitForPeriod() : namedConfig.limitForPeriod(),
-            namedConfig.limitRefreshPeriod() == null ? defaultConfig.limitRefreshPeriod() : namedConfig.limitRefreshPeriod()
-        );
     }
 }

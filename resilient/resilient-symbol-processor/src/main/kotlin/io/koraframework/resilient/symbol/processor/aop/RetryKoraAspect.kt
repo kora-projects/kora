@@ -4,9 +4,11 @@ import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
+import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValue
@@ -27,7 +29,8 @@ import java.util.concurrent.Future
 class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
-        private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.retry.annotation", "Retry")
+        private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.retry.annotation", "Retryable")
+        private val RETRY = ClassName("io.koraframework.resilient.retry", "Retry")
 
         private val RETRY_RUNNER = ClassName("io.koraframework.resilient.retry", "Retry", "RetryRunnable")
         private val RETRY_SUPPLIER = ClassName("io.koraframework.resilient.retry", "Retry", "RetrySupplier")
@@ -55,35 +58,22 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
             throw ProcessingErrorException("@Retryable can't be applied for types assignable from ${CommonClassNames.flux}", ksFunction)
         }
 
-        val retryableName = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
-            .findValue<String>("value")!!
-
-        val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.retry.RetryManager")!!.asType(listOf())
-        val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
-        val retrierType = resolver.getClassDeclarationByName("io.koraframework.resilient.retry.Retry")!!.asType(listOf())
-        val fieldRetrier = aspectContext.fieldFactory.constructorInitialized(
-            retrierType,
-            CodeBlock.of("%L[%S]", fieldManager, retryableName)
+        val retryType = ksFunction.findAnnotation(ANNOTATION_TYPE)!!
+            .findValue<KSType>("value")!!
+        val baseRetry = resolver.getClassDeclarationByName(RETRY.canonicalName)!!.asStarProjectedType()
+        if (!baseRetry.isAssignableFrom(retryType)) {
+            throw ProcessingErrorException("@Retryable value must extend ${RETRY.canonicalName}", ksFunction)
+        }
+        val retryName = retryType.declaration.simpleName.asString()
+        val fieldRetrier = aspectContext.fieldFactory.constructorParam(
+            retryType.toTypeName(),
+            listOf()
         )
 
         val body = if (ksFunction.isFlow()) {
-            val retryConfigType = resolver.getClassDeclarationByName("io.koraframework.resilient.retry.RetryConfig")!!.asType(listOf())
-            val fieldRetryConfig = aspectContext.fieldFactory.constructorParam(retryConfigType, listOf())
-            val retryConfigNamedType = resolver.getClassDeclarationByName("io.koraframework.resilient.retry.RetryConfig.NamedConfig")!!.asType(listOf())
-            val fieldRetryNamedConfig = aspectContext.fieldFactory.constructorInitialized(
-                retryConfigNamedType,
-                CodeBlock.of("%L.getNamedConfig(%S)", fieldRetryConfig, retryableName)
-            )
-            buildBodyFlow(ksFunction, superCall, fieldRetrier, fieldRetryNamedConfig, retryableName)
+            buildBodyFlow(ksFunction, superCall, fieldRetrier, retryName)
         } else if (ksFunction.isSuspend()) {
-            val retryConfigType = resolver.getClassDeclarationByName("io.koraframework.resilient.retry.RetryConfig")!!.asType(listOf())
-            val fieldRetryConfig = aspectContext.fieldFactory.constructorParam(retryConfigType, listOf())
-            val retryConfigNamedType = resolver.getClassDeclarationByName("io.koraframework.resilient.retry.RetryConfig.NamedConfig")!!.asType(listOf())
-            val fieldRetryNamedConfig = aspectContext.fieldFactory.constructorInitialized(
-                retryConfigNamedType,
-                CodeBlock.of("%L.getNamedConfig(%S)", fieldRetryConfig, retryableName)
-            )
-            buildBodySuspend(ksFunction, superCall, fieldRetrier, fieldRetryNamedConfig, retryableName)
+            buildBodySuspend(ksFunction, superCall, fieldRetrier, retryName)
         } else {
             buildBodySync(ksFunction, superCall, fieldRetrier)
         }
@@ -107,13 +97,9 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         method: KSFunctionDeclaration,
         superCall: String,
         fieldRetrier: String,
-        fieldRetryNamedConfig: String,
-        retryableName: String
+        retryName: String
     ): CodeBlock {
         return CodeBlock.builder()
-            .controlFlow("if (java.lang.Boolean.FALSE.equals(%L.enabled()))", fieldRetryNamedConfig) {
-                addStatement("return " + buildMethodCall(method, superCall).toString())
-            }
             .add("%L.asState()", fieldRetrier).indent().add("\n")
             .controlFlow(".use { _state ->", fieldRetrier) {
                 beginControlFlow("if (_state.attemptsMax == 0)")
@@ -145,7 +131,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
                                     _suppressed.forEach { _e.addSuppressed(it) }
                                     throw _exhaustedException
                                     
-                                    """.trimIndent(), MEMBER_RETRY_EXCEPTION, retryableName
+                                    """.trimIndent(), MEMBER_RETRY_EXCEPTION, retryName
                                 )
                             }
                         }
@@ -161,13 +147,9 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
         method: KSFunctionDeclaration,
         superCall: String,
         fieldRetrier: String,
-        fieldRetryNamedConfig: String,
-        retryableName: String
+        retryName: String
     ): CodeBlock {
         return CodeBlock.builder()
-            .controlFlow("if (java.lang.Boolean.FALSE.equals(%L.enabled()))", fieldRetryNamedConfig) {
-                addStatement("return " + buildMethodCall(method, superCall).toString())
-            }
             .controlFlow("return %M", MEMBER_FLOW) {
                 controlFlow("return@flow %L.asState().use { _state ->", fieldRetrier) {
                     beginControlFlow("if (_state.attemptsMax == 0)")
@@ -183,7 +165,7 @@ class RetryKoraAspect(val resolver: Resolver) : KoraAspect {
                                 addStatement("true")
                             }
                             controlFlow("%T.EXHAUSTED ->", MEMBER_RETRY_STATUS) {
-                                addStatement("throw %M(%S, _state.getAttempts(), _cause)", MEMBER_RETRY_EXCEPTION, retryableName)
+                                addStatement("throw %M(%S, _state.getAttempts(), _cause)", MEMBER_RETRY_EXCEPTION, retryName)
                             }
                         }
                     }

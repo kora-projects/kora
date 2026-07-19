@@ -1,14 +1,14 @@
-package io.koraframework.resilient.circuitbreaker.annotation;
+package io.koraframework.resilient.timeout.annotation;
 
 import java.lang.annotation.*;
 
 @Documented
 @Retention(value = RetentionPolicy.RUNTIME)
 @Target(value = {ElementType.TYPE})
-public @interface CircuitBreaker {
+public @interface TimeoutSpec {
 
     /**
-     * @return path for CircuitBreaker config
+     * @return path for Timeout config
      */
     String value();
 }

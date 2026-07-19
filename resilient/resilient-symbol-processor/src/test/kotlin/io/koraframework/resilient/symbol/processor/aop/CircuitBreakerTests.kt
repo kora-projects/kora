@@ -1,11 +1,14 @@
 package io.koraframework.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
+import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
 import io.koraframework.application.graph.ApplicationGraphDraw
+import io.koraframework.kora.app.ksp.KoraAppProcessorProvider
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
 import io.koraframework.ksp.common.exception.ProcessingErrorException
 import io.koraframework.resilient.circuitbreaker.CircuitBreaker
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException
+import io.koraframework.resilient.symbol.processor.CircuitBreakerSymbolProcessorProvider
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.Assertions.assertThatThrownBy
 import org.junit.jupiter.api.Test
@@ -16,7 +19,11 @@ import java.util.function.Supplier
 @KspExperimental
 class CircuitBreakerTests : AbstractSymbolProcessorTest() {
 
-    private val processors = AppRunner().getProcessors()
+    private val processors = listOf(
+        KoraAppProcessorProvider(),
+        CircuitBreakerSymbolProcessorProvider(),
+        AopSymbolProcessorProvider(),
+    )
 
     override fun commonImports(): String {
         return """
@@ -30,9 +37,9 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             import io.koraframework.config.common.mapper.ConfigValueMapperModule
             import io.koraframework.config.common.origin.SimpleConfigOrigin
             import io.koraframework.config.hocon.HoconConfigFactory
+            import io.koraframework.resilient.ResilientModule
             import io.koraframework.resilient.circuitbreaker.CircuitBreakerPredicate
-            import io.koraframework.resilient.circuitbreaker.CircuitBreakerModule
-            import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreaker
+            import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreakerSpec
             import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreakable
 
         """.trimIndent()
@@ -56,7 +63,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 }
             """),
             """
-            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
             """,
             """
@@ -101,7 +108,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 }
             """),
             """
-            @CircuitBreaker("payment")
+            @CircuitBreakerSpec("payment")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
             """,
             """
@@ -132,7 +139,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             processors,
             app(circuitBreakerConfig("custom1")),
             """
-            @CircuitBreaker("custom1")
+            @CircuitBreakerSpec("custom1")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker {
                 override fun test(throwable: Throwable): Boolean = false
             }
@@ -167,7 +174,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
             processors,
             appWithPredicateModule(circuitBreakerConfig("custom1")),
             """
-            @CircuitBreaker("custom1")
+            @CircuitBreakerSpec("custom1")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker {
                 override fun test(throwable: Throwable): Boolean = false
             }
@@ -318,7 +325,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 processors,
                 app(circuitBreakerConfig("custom1")),
                 """
-                @CircuitBreaker("custom1")
+                @CircuitBreakerSpec("custom1")
                 interface TestCircuitBreaker
                 """
             )
@@ -334,7 +341,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
                 processors,
                 app(circuitBreakerConfig("custom1")),
                 """
-                @CircuitBreaker("")
+                @CircuitBreakerSpec("")
                 interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
                 """
             )
@@ -346,9 +353,16 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     private fun app(config: String): String {
         return """
             @KoraApp
-            interface AppWithConfig : ConfigValueMapperModule, CircuitBreakerModule {
+            interface AppWithConfig : ConfigValueMapperModule, ResilientModule {
                 fun config(): Config {
                     return HoconConfigFactory.fromHocon(SimpleConfigOrigin("test"), ConfigFactory.parseString(${"\"\"\""}
+                        resilient.telemetry {
+                          circuitBreaker {}
+                          retry {}
+                          timeout {}
+                          fallback {}
+                          rateLimiter {}
+                        }
                         $config
                     ${"\"\"\""}).resolve())
                 }
@@ -359,12 +373,19 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
     private fun appWithPredicateModule(config: String): String {
         return """
             @KoraApp
-            interface AppWithConfig : ConfigValueMapperModule, CircuitBreakerModule {
+            interface AppWithConfig : ConfigValueMapperModule, ResilientModule {
                 @Tag(TestCircuitBreaker::class)
                 fun testCircuitBreakerPredicate(): CircuitBreakerPredicate = CircuitBreakerPredicate { true }
 
                 fun config(): Config {
                     return HoconConfigFactory.fromHocon(SimpleConfigOrigin("test"), ConfigFactory.parseString(${"\"\"\""}
+                        resilient.telemetry {
+                          circuitBreaker {}
+                          retry {}
+                          timeout {}
+                          fallback {}
+                          rateLimiter {}
+                        }
                         $config
                     ${"\"\"\""}).resolve())
                 }
@@ -386,7 +407,7 @@ class CircuitBreakerTests : AbstractSymbolProcessorTest() {
 
     private fun circuitBreakerInterface(): String {
         return """
-            @CircuitBreaker("custom1")
+            @CircuitBreakerSpec("custom1")
             interface TestCircuitBreaker : io.koraframework.resilient.circuitbreaker.CircuitBreaker
         """
     }

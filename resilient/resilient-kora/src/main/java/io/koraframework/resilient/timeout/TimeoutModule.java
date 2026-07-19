@@ -1,8 +1,6 @@
 package io.koraframework.resilient.timeout;
 
 import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.config.common.Config;
-import io.koraframework.config.common.mapper.ConfigValueMapper;
 import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryFactory;
 import io.koraframework.resilient.timeout.telemetry.impl.DefaultTimeoutLoggerFactory;
 import io.koraframework.resilient.timeout.telemetry.impl.DefaultTimeoutMetricsFactory;
@@ -12,15 +10,6 @@ import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
 
 public interface TimeoutModule {
-
-    default TimeoutConfig koraTimeoutConfig(Config config, ConfigValueMapper<TimeoutConfig> mapper) {
-        return mapper.mapOrThrow(config.get("resilient"));
-    }
-
-    default TimeoutManager koraTimeoutManager(TimeoutConfig config,
-                                              TimeoutTelemetryFactory telemetryFactory) {
-        return new KoraTimeoutManager(config, telemetryFactory);
-    }
 
     @DefaultComponent
     default TimeoutTelemetryFactory defaultTimeoutTelemetryFactory(@Nullable Tracer tracer,

@@ -1,6 +1,5 @@
 package io.koraframework.resilient.symbol.processor.aop
 
-import com.google.devtools.ksp.getClassDeclarationByName
 import com.google.devtools.ksp.processing.Resolver
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
@@ -8,7 +7,6 @@ import com.squareup.kotlinpoet.CodeBlock
 import com.squareup.kotlinpoet.MemberName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotations
-import io.koraframework.ksp.common.AnnotationUtils.findValue
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
 import io.koraframework.ksp.common.FunctionUtils.isFlow
@@ -24,6 +22,9 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
 
     companion object {
         private val ANNOTATION_TYPE = ClassName("io.koraframework.resilient.fallback.annotation", "Fallback")
+        private val FALLBACK_TELEMETRY = ClassName("io.koraframework.resilient.fallback.telemetry", "FallbackTelemetry")
+        private val FALLBACK_TELEMETRY_FACTORY = ClassName("io.koraframework.resilient.fallback.telemetry", "FallbackTelemetryFactory")
+        private val RESILIENT_CONFIG = ClassName("io.koraframework.resilient", "ResilientConfig")
     }
 
     override fun getSupportedAnnotationTypes(): Set<String> {
@@ -43,65 +44,81 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
 
         val annotation = ksFunction.findAnnotations(ANNOTATION_TYPE).first()
 
-        val fallbackName = annotation.findValue<String>("value")!!
         val fallback = annotation.asFallback(ksFunction)
-
-        val managerType = resolver.getClassDeclarationByName("io.koraframework.resilient.fallback.FallbackManager")!!.asType(listOf())
-        val fieldManager = aspectContext.fieldFactory.constructorParam(managerType, listOf())
-        val fallbackType = resolver.getClassDeclarationByName("io.koraframework.resilient.fallback.Fallback")!!.asType(listOf())
-        val fieldFallback = aspectContext.fieldFactory.constructorInitialized(
-            fallbackType,
-            CodeBlock.of("%L[%S]", fieldManager, fallbackName)
+        val telemetryName = "${ksFunction.parentDeclaration?.qualifiedName?.asString()}.${ksFunction.simpleName.asString()}"
+        val fieldTelemetryFactory = aspectContext.fieldFactory.constructorParam(FALLBACK_TELEMETRY_FACTORY, listOf())
+        val fieldResilientConfig = aspectContext.fieldFactory.constructorParam(RESILIENT_CONFIG, listOf())
+        val fieldTelemetry = aspectContext.fieldFactory.constructorInitialized(
+            FALLBACK_TELEMETRY,
+            CodeBlock.of("%N.get(%S, %N.fallback())", fieldTelemetryFactory, telemetryName, fieldResilientConfig)
         )
 
         val body = if (ksFunction.isFlow()) {
-            buildBodyFlow(ksFunction, fallback, superCall, fieldFallback)
+            buildBodyFlow(ksFunction, fallback, superCall, fieldTelemetry)
         } else {
-            buildBodySync(ksFunction, fallback, superCall, fieldFallback)
+            buildBodySync(ksFunction, fallback, superCall, fieldTelemetry)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
     private fun buildBodySync(
-        method: KSFunctionDeclaration, fallbackCall: FallbackMeta, superCall: String, fieldFallback: String
+        method: KSFunctionDeclaration, fallbackCall: FallbackMeta, superCall: String, fieldTelemetry: String
     ): CodeBlock {
         val prefix = if (method.isVoid()) "" else "return "
         val superMethod = buildMethodCall(method, superCall)
+        val reasonGuard = fallbackCall.reasonTypeName()
+            ?.let { CodeBlock.of("if (_e !is %T) throw _e\n", it) }
+            ?: CodeBlock.of("")
         return CodeBlock.builder().add(
             """
             ${prefix}try {
                 %L
             } catch (_e: Throwable) {
-                if(%L.canFallback(_e)) {
+                %L
+                val _fallbackObservation = %L.observe()
+                try {
+                    _fallbackObservation.recordExecute(_e)
                     %L
-                } else {
-                    throw _e
+                } catch (_fallbackException: Throwable) {
+                    _fallbackObservation.observeError(_fallbackException)
+                    throw _fallbackException
+                } finally {
+                    _fallbackObservation.end()
                 }
             }
-            """.trimIndent(), superMethod.toString(), fieldFallback, fallbackCall.call()
+            """.trimIndent(), superMethod.toString(), reasonGuard, fieldTelemetry, fallbackCall.call()
         ).build()
     }
 
     private fun buildBodyFlow(
-        method: KSFunctionDeclaration, fallbackCall: FallbackMeta, superCall: String, fieldFallback: String
+        method: KSFunctionDeclaration, fallbackCall: FallbackMeta, superCall: String, fieldTelemetry: String
     ): CodeBlock {
         val flowMember = MemberName("kotlinx.coroutines.flow", "flow")
         val catchMember = MemberName("kotlinx.coroutines.flow", "catch")
         val emitMember = MemberName("kotlinx.coroutines.flow", "emitAll")
         val superMethod = buildMethodCall(method, superCall)
+        val reasonGuard = fallbackCall.reasonTypeName()
+            ?.let { CodeBlock.of("if (_e !is %T) throw _e\n", it) }
+            ?: CodeBlock.of("")
         return CodeBlock.builder().add(
             """
             return %M {
                 %M(%L)
             }.%M { _e ->
-                if (%L.canFallback(_e)) {
+                %L
+                val _fallbackObservation = %L.observe()
+                try {
+                    _fallbackObservation.recordExecute(_e)
                     %M(%L)
-                } else {
-                    throw _e
+                } catch (_fallbackException: Throwable) {
+                    _fallbackObservation.observeError(_fallbackException)
+                    throw _fallbackException
+                } finally {
+                    _fallbackObservation.end()
                 }
             }
-            """.trimIndent(), flowMember, emitMember, superMethod.toString(), catchMember, fieldFallback, emitMember, fallbackCall.call()
+            """.trimIndent(), flowMember, emitMember, superMethod.toString(), catchMember, reasonGuard, fieldTelemetry, emitMember, fallbackCall.call()
         ).build()
     }
 
@@ -109,8 +126,4 @@ class FallbackKoraAspect(val resolver: Resolver) : KoraAspect {
         return CodeBlock.of(method.parameters.asSequence().map { p -> CodeBlock.of("%L", p) }.joinToString(", ", "$call(", ")"))
     }
 
-    private fun buildMethodCallable(method: KSFunctionDeclaration, call: String): CodeBlock {
-        val callableMember = MemberName("java.util.concurrent", "Callable")
-        return CodeBlock.builder().add("%M { %L }", callableMember, buildMethodCall(method, call)).build()
-    }
 }
