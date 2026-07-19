@@ -1,61 +1,59 @@
 package io.koraframework.resilient.timeout;
 
-import org.jspecify.annotations.Nullable;
 import io.koraframework.config.common.annotation.ConfigMapper;
-import io.koraframework.resilient.timeout.telemetry.TimeoutTelemetryConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.Objects;
 
 @ConfigMapper
 public interface TimeoutConfig {
 
-    String DEFAULT = "default";
-
-    default Map<String, NamedConfig> timeout() {
-        return Map.of();
+    default boolean enabled() {
+        return true;
     }
 
-    TimeoutTelemetryConfig telemetry();
+    Duration duration();
 
-    /**
-     * {@link #duration} Configures maximum interval for timeout.
-     */
+    @Nullable
+    TelemetryConfig telemetry();
+
     @ConfigMapper
-    interface NamedConfig {
+    interface TelemetryConfig {
 
-        @Nullable
-        Boolean enabled();
+        LoggingConfig logging();
 
-        @Nullable
-        Duration duration();
-    }
+        MetricsConfig metrics();
 
-    default NamedConfig getNamedConfig(String name) {
-        Objects.requireNonNull(name);
-        if (timeout() == null)
-            throw new IllegalStateException("Timeout no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
+        TracingConfig tracing();
 
-        final NamedConfig defaultConfig = timeout().get(DEFAULT);
-        final NamedConfig namedConfig = timeout().getOrDefault(name, defaultConfig);
-        if (namedConfig == null)
-            throw new IllegalStateException("Timeout no configuration is provided, but either '" + name + "' or '" + DEFAULT + "' config is required");
+        @ConfigMapper
+        interface LoggingConfig {
 
-        final NamedConfig mergedConfig = merge(namedConfig, defaultConfig);
-        if (mergedConfig.duration() == null)
-            throw new IllegalStateException("Timeout 'duration' is not configured in either '" + name + "' or '" + DEFAULT + "' config");
-
-        return mergedConfig;
-    }
-
-    private static NamedConfig merge(NamedConfig namedConfig, NamedConfig defaultConfig) {
-        if (defaultConfig == null) {
-            return namedConfig;
+            @Nullable
+            Boolean enabled();
         }
 
-        return new $TimeoutConfig_NamedConfig_ConfigValueMapper.NamedConfig_Impl(
-            namedConfig.enabled() != null ? Boolean.TRUE.equals(namedConfig.enabled()) : (defaultConfig.enabled() == null || Boolean.TRUE.equals(defaultConfig.enabled())),
-            namedConfig.duration() == null ? defaultConfig.duration() : namedConfig.duration());
+        @ConfigMapper
+        interface MetricsConfig {
+
+            @Nullable
+            Boolean enabled();
+
+            Duration @Nullable [] slo();
+
+            @Nullable
+            Map<String, String> tags();
+        }
+
+        @ConfigMapper
+        interface TracingConfig {
+
+            @Nullable
+            Boolean enabled();
+
+            @Nullable
+            Map<String, String> attributes();
+        }
     }
 }

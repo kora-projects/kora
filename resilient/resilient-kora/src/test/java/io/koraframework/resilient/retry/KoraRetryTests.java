@@ -3,13 +3,10 @@ package io.koraframework.resilient.retry;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
 import io.koraframework.resilient.retry.telemetry.RetryObservation;
 import io.koraframework.resilient.retry.telemetry.RetryTelemetry;
-import io.koraframework.resilient.retry.telemetry.RetryTelemetryConfig;
 import io.opentelemetry.api.trace.Span;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
-import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.Executors;
@@ -201,68 +198,25 @@ class KoraRetryTests {
     }
 
     @Test
-    void sharedBudgetNameSharesTokens() {
-        var config = new TestRetryConfig(Map.of(
-            RetryConfig.DEFAULT, config(Duration.ZERO, Duration.ZERO, 1, null, budget()),
-            "a", config(Duration.ZERO, Duration.ZERO, 1, null, budget("shared")),
-            "b", config(Duration.ZERO, Duration.ZERO, 1, null, budget("shared"))
-        ));
-        var manager = manager(config);
-
-        assertThrows(RetryExhaustedException.class, () -> manager.get("a").retry((Retry.RetrySupplier<String, RuntimeException>) () -> {
-            throw OPS;
-        }));
-        assertThrows(IllegalStateException.class, () -> manager.get("b").retry((Retry.RetrySupplier<String, RuntimeException>) () -> {
-            throw OPS;
-        }));
-    }
-
-    @Test
-    void differentBudgetNamesAreIsolated() {
-        var config = new TestRetryConfig(Map.of(
-            RetryConfig.DEFAULT, config(Duration.ZERO, Duration.ZERO, 1, null, budget()),
-            "a", config(Duration.ZERO, Duration.ZERO, 1, null, budget("a-budget")),
-            "b", config(Duration.ZERO, Duration.ZERO, 1, null, budget("b-budget"))
-        ));
-        var manager = manager(config);
-
-        assertThrows(RetryExhaustedException.class, () -> manager.get("a").retry((Retry.RetrySupplier<String, RuntimeException>) () -> {
-            throw OPS;
-        }));
-        assertThrows(RetryExhaustedException.class, () -> manager.get("b").retry((Retry.RetrySupplier<String, RuntimeException>) () -> {
-            throw OPS;
-        }));
-    }
-
-    @Test
     void configValidationFailsFast() {
-        var config = new TestRetryConfig(Map.of(RetryConfig.DEFAULT, config(Duration.ZERO, Duration.ZERO, 1, null, budget(-1.0, 1, 1))));
+        var config = config(Duration.ZERO, Duration.ZERO, 1, null, budget(-1.0, 1, 1));
 
-        assertThrows(IllegalArgumentException.class, () -> config.getNamedConfig(RetryConfig.DEFAULT));
+        assertThrows(IllegalArgumentException.class, () -> new KoraRetryBudget(config.retryBudget()));
     }
 
     @Test
     void configValidationRejectsInvalidJitterRatio() {
-        var config = new TestRetryConfig(Map.of(RetryConfig.DEFAULT, config(Duration.ZERO, Duration.ZERO, 1, new TestJitterConfig(RetryConfig.JitterType.FULL, 2.0), null)));
+        var config = config(Duration.ZERO, Duration.ZERO, 1, new TestJitterConfig(RetryConfig.JitterType.FULL, 2.0), null);
 
-        assertThrows(IllegalArgumentException.class, () -> config.getNamedConfig(RetryConfig.DEFAULT));
+        assertThrows(IllegalArgumentException.class, () -> retry(config, null, new CountingTelemetry()));
     }
 
-    private static KoraRetryManager manager(RetryConfig config) {
-        return new KoraRetryManager(config, List.of(predicate()), (name, telemetryConfig) -> new CountingTelemetry());
-    }
-
-    private static KoraRetry retry(RetryConfig.NamedConfig config, KoraRetryBudget retryBudget, CountingTelemetry telemetry) {
+    private static KoraRetry retry(RetryConfig config, KoraRetryBudget retryBudget, CountingTelemetry telemetry) {
         return new KoraRetry("test", config, predicate(), retryBudget, telemetry);
     }
 
     private static RetryPredicate predicate() {
         return new RetryPredicate() {
-            @Override
-            public String name() {
-                return KoraRetryPredicate.class.getCanonicalName();
-            }
-
             @Override
             public boolean test(Throwable throwable) {
                 return true;
@@ -273,23 +227,18 @@ class KoraRetryTests {
     private static RetryPredicate nonRetryablePredicate() {
         return new RetryPredicate() {
             @Override
-            public String name() {
-                return KoraRetryPredicate.class.getCanonicalName();
-            }
-
-            @Override
             public boolean test(Throwable throwable) {
                 return false;
             }
         };
     }
 
-    private static RetryConfig.NamedConfig config(Duration delay, Duration delayStep, int attempts, RetryConfig.JitterConfig jitter, RetryConfig.RetryBudgetConfig retryBudget) {
+    private static RetryConfig config(Duration delay, Duration delayStep, int attempts, RetryConfig.JitterConfig jitter, RetryConfig.RetryBudgetConfig retryBudget) {
         return config(delay, delayStep, attempts, null, jitter, retryBudget);
     }
 
-    private static RetryConfig.NamedConfig config(Duration delay, Duration delayStep, int attempts, RetryConfig.BackoffConfig backoff, RetryConfig.JitterConfig jitter, RetryConfig.RetryBudgetConfig retryBudget) {
-        return new TestNamedConfig(true, delay, delayStep, backoff, jitter, retryBudget, attempts, KoraRetryPredicate.class.getCanonicalName());
+    private static RetryConfig config(Duration delay, Duration delayStep, int attempts, RetryConfig.BackoffConfig backoff, RetryConfig.JitterConfig jitter, RetryConfig.RetryBudgetConfig retryBudget) {
+        return new TestRetryConfig(true, delay, delayStep, backoff, jitter, retryBudget, attempts, null);
     }
 
     private static RetryConfig.JitterConfig jitter() {
@@ -305,46 +254,34 @@ class KoraRetryTests {
     }
 
     private static RetryConfig.RetryBudgetConfig budget() {
-        return budget(null);
-    }
-
-    private static RetryConfig.RetryBudgetConfig budget(String name) {
-        return new TestRetryBudgetConfig(true, name, 0.0, 1, 1, 0.0);
+        return new TestRetryBudgetConfig(true, 0.0, 1, 1, 0.0);
     }
 
     private static RetryConfig.RetryBudgetConfig budget(double ratio, int tokensMax, int tokensInitial) {
-        return new TestRetryBudgetConfig(true, null, ratio, tokensMax, tokensInitial, 0.0);
+        return new TestRetryBudgetConfig(true, ratio, tokensMax, tokensInitial, 0.0);
     }
 
-    private record TestRetryConfig(Map<String, RetryConfig.NamedConfig> retry) implements RetryConfig {
-        @Override
-        public RetryTelemetryConfig telemetry() {
-            return null;
-        }
-    }
-
-    private record TestNamedConfig(
-        Boolean enabled,
+    private record TestRetryConfig(
+        boolean enabled,
         Duration delay,
         Duration delayStep,
         RetryConfig.BackoffConfig backoff,
         RetryConfig.JitterConfig jitter,
         RetryConfig.RetryBudgetConfig retryBudget,
-        Integer attempts,
-        String failurePredicateName
-    ) implements RetryConfig.NamedConfig {}
+        int attempts,
+        RetryConfig.TelemetryConfig telemetry
+    ) implements RetryConfig {}
 
-    private record TestJitterConfig(RetryConfig.JitterType type, Double ratio) implements RetryConfig.JitterConfig {}
+    private record TestJitterConfig(RetryConfig.JitterType type, double ratio) implements RetryConfig.JitterConfig {}
 
-    private record TestBackoffConfig(RetryConfig.BackoffType type, Double multiplier, Duration delayMax) implements RetryConfig.BackoffConfig {}
+    private record TestBackoffConfig(RetryConfig.BackoffType type, double multiplier, Duration delayMax) implements RetryConfig.BackoffConfig {}
 
     private record TestRetryBudgetConfig(
-        Boolean enabled,
-        String name,
-        Double ratio,
-        Integer tokensMax,
-        Integer tokensInitial,
-        Double minTokensPerSecond
+        boolean enabled,
+        double ratio,
+        int tokensMax,
+        int tokensInitial,
+        double minTokensPerSecond
     ) implements RetryConfig.RetryBudgetConfig {}
 
     private static final class CountingTelemetry implements RetryTelemetry {

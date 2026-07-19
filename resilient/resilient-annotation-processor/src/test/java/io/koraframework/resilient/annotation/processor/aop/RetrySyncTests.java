@@ -1,178 +1,205 @@
 package io.koraframework.resilient.annotation.processor.aop;
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import io.koraframework.resilient.annotation.processor.aop.testdata.*;
 import io.koraframework.resilient.retry.exception.RetryExhaustedException;
+import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class RetrySyncTests extends AppRunner {
-
-    private RetryTarget getService() {
-        final InitializedGraph graph = getGraph(AppWithConfig.class,
-            CircuitBreakerTarget.class,
-            RetryTarget.class,
-            TimeoutTarget.class,
-            FallbackTarget.class);
-
-        return getServiceFromGraph(graph, RetryTarget.class);
-    }
-
-    private static final int RETRY_SUCCESS = 0;
-    private static final int RETRY_FAIL = 3;
-
-    private final RetryTarget retryableTarget = getService();
+class RetrySyncTests extends ResilientAopTestSupport {
 
     @Test
     void syncVoidRetrySuccess() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public void call() {
+                attempts++;
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_SUCCESS);
+        invoke(service, "call");
 
-        // then
-        service.retrySyncVoid("1");
-        assertEquals(0, service.getRetryAttempts());
+        assertEquals(1, invoke(service, "attempts"));
     }
 
     @Test
     void syncVoidRetryFail() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public void call() {
+                attempts++;
+                throw new IllegalStateException("Failed");
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_FAIL);
+        var ex = assertThrows(RetryExhaustedException.class, () -> invoke(service, "call"));
 
-        // then
-        try {
-            service.retrySyncVoid("1");
-            fail("Should not happen");
-        } catch (RetryExhaustedException ex) {
-            assertNotNull(ex.getMessage());
-            assertEquals(2, service.getRetryAttempts());
-        }
+        assertNotNull(ex.getMessage());
+        assertEquals(3, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetrySuccess() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public String call(String value) {
+                attempts++;
+                return value;
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_SUCCESS);
-
-        // then
-        assertEquals("1", service.retrySync("1"));
-        assertEquals(0, service.getRetryAttempts());
+        assertEquals("1", invoke(service, "call", "1"));
+        assertEquals(1, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetryFail() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public String call(String value) {
+                attempts++;
+                throw new IllegalStateException("Failed");
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_FAIL);
+        var ex = assertThrows(RetryExhaustedException.class, () -> invoke(service, "call", "1"));
 
-        // then
-        try {
-            service.retrySync("1");
-            fail("Should not happen");
-        } catch (RetryExhaustedException ex) {
-            assertNotNull(ex.getMessage());
-            assertEquals(2, service.getRetryAttempts());
-        }
+        assertNotNull(ex.getMessage());
+        assertEquals(3, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetryCheckedSuccess() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public String call(String value) throws IOException {
+                attempts++;
+                return value;
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_SUCCESS);
-
-        // then
-        try {
-            service.retrySyncCheckedException("1");
-            assertEquals(0, service.getRetryAttempts());
-        } catch (IOException e) {
-            fail("Should not happen");
-        }
+        assertEquals("1", invoke(service, "call", "1"));
+        assertEquals(1, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetryCheckedFail() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("""
+            @Retryable(TestRetry.class)
+            public String call(String value) throws IOException {
+                attempts++;
+                throw new IllegalStateException("Failed");
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_FAIL);
+        var ex = assertThrows(RetryExhaustedException.class, () -> invoke(service, "call", "1"));
 
-        // then
-        try {
-            service.retrySyncCheckedException("1");
-            fail("Should not happen");
-        } catch (RetryExhaustedException ex) {
-            assertNotNull(ex.getMessage());
-            assertEquals(2, service.getRetryAttempts());
-        } catch (IOException e) {
-            fail("Should not happen");
-        }
+        assertNotNull(ex.getMessage());
+        assertEquals(3, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetryZeroSuccess() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("TestRetryZeroAttempts", """
+            @Retryable(TestRetryZeroAttempts.class)
+            public String call(String value) {
+                attempts++;
+                return value;
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_SUCCESS);
-
-        // then
-        service.retrySyncZeroAttempts("1");
-        assertEquals(0, service.getRetryAttempts());
+        assertEquals("1", invoke(service, "call", "1"));
+        assertEquals(1, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetryZeroFail() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("TestRetryZeroAttempts", """
+            @Retryable(TestRetryZeroAttempts.class)
+            public String call(String value) {
+                attempts++;
+                throw new IllegalStateException("Failed");
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_FAIL);
-
-        // then
-        assertThrows(IllegalStateException.class, () -> service.retrySyncZeroAttempts("1"));
-        assertEquals(0, service.getRetryAttempts());
+        assertThrows(IllegalStateException.class, () -> invoke(service, "call", "1"));
+        assertEquals(1, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetryDisabledSuccess() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("TestRetryDisabled", """
+            @Retryable(TestRetryDisabled.class)
+            public String call(String value) {
+                attempts++;
+                return value;
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_SUCCESS);
-
-        // then
-        service.retrySyncDisabled("1");
-        assertEquals(0, service.getRetryAttempts());
+        assertEquals("1", invoke(service, "call", "1"));
+        assertEquals(1, invoke(service, "attempts"));
     }
 
     @Test
     void syncRetryDisabledFail() {
-        // given
-        var service = retryableTarget;
+        var service = compileRetryTarget("TestRetryDisabled", """
+            @Retryable(TestRetryDisabled.class)
+            public String call(String value) {
+                attempts++;
+                throw new IllegalStateException("Failed");
+            }
+            """);
 
-        // then
-        service.setFailAttempts(RETRY_FAIL);
+        assertThrows(IllegalStateException.class, () -> invoke(service, "call", "1"));
+        assertEquals(1, invoke(service, "attempts"));
+    }
 
-        // then
-        assertThrows(IllegalStateException.class, () -> service.retrySyncDisabled("1"));
-        assertEquals(0, service.getRetryAttempts());
+    private Object compileRetryTarget(String method) {
+        return compileRetryTarget("TestRetry", method);
+    }
+
+    private Object compileRetryTarget(String retryType, String method) {
+        return compileApp(retryConfig(), retryInterface(retryType), """
+            @Component
+            @Root
+            public class TestTarget {
+                public int attempts = 0;
+                public int attempts() {
+                    return attempts;
+                }
+                %s
+            }
+            """.formatted(method));
+    }
+
+    private String retryInterface(String retryType) {
+        var configPath = switch (retryType) {
+            case "TestRetryZeroAttempts" -> "customZeroAttempts";
+            case "TestRetryDisabled" -> "customDisabled";
+            default -> "custom1";
+        };
+        return """
+            @RetrySpec("%s")
+            public interface %s extends io.koraframework.resilient.retry.Retry {}
+            """.formatted(configPath, retryType);
+    }
+
+    private String retryConfig() {
+        return """
+            custom1 {
+              delay = 1ms
+              attempts = 2
+            }
+            customZeroAttempts {
+              delay = 1ms
+              attempts = 0
+            }
+            customDisabled {
+              enabled = false
+              delay = 1ms
+              attempts = 2
+            }
+            """;
     }
 }

@@ -10,6 +10,8 @@ import io.koraframework.aop.annotation.processor.KoraAspect;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.TypeMirror;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -18,7 +20,8 @@ import static com.palantir.javapoet.CodeBlock.joining;
 
 public class RateLimitKoraAspect implements KoraAspect {
 
-    private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.ratelimiter.annotation", "RateLimit");
+    private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.ratelimiter.annotation", "RateLimited");
+    private static final ClassName RATE_LIMITER = ClassName.get("io.koraframework.resilient.ratelimiter", "RateLimiter");
     private static final ClassName EXCEEDED_EXCEPTION = ClassName.get("io.koraframework.resilient.ratelimiter.exception", "RateLimitExceededException");
 
     private final ProcessingEnvironment env;
@@ -46,19 +49,19 @@ public class RateLimitKoraAspect implements KoraAspect {
             .filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName()))
             .findFirst();
 
-        final String rateLimiterName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
+        final TypeMirror rateLimiterTypeMirror = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
-                .map(e -> String.valueOf(e.getValue().getValue()))
+                .map(e -> (TypeMirror) e.getValue().getValue())
                 .findFirst())
             .orElseThrow();
 
-        var managerType = env.getTypeUtils().getDeclaredType(
-            env.getElementUtils().getTypeElement("io.koraframework.resilient.ratelimiter.RateLimiterManager"));
-        var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
-        var rateLimiterType = env.getTypeUtils().getDeclaredType(
-            env.getElementUtils().getTypeElement("io.koraframework.resilient.ratelimiter.RateLimiter"));
-        var fieldRateLimiter = aspectContext.fieldFactory().constructorInitialized(rateLimiterType,
-            CodeBlock.of("$L.get($S)", fieldManager, rateLimiterName));
+        var rateLimiterElement = (TypeElement) env.getTypeUtils().asElement(rateLimiterTypeMirror);
+        var baseRateLimiterType = env.getElementUtils().getTypeElement(RATE_LIMITER.canonicalName()).asType();
+        if (!env.getTypeUtils().isAssignable(rateLimiterTypeMirror, baseRateLimiterType)) {
+            throw new ProcessingErrorException("@%s value must extend %s".formatted(ANNOTATION_TYPE.simpleName(), RATE_LIMITER.canonicalName()), method);
+        }
+        var rateLimiterType = env.getTypeUtils().getDeclaredType(rateLimiterElement);
+        var fieldRateLimiter = aspectContext.fieldFactory().constructorParam(rateLimiterType, List.of());
 
         return new ApplyResult.MethodBody(buildBodySync(method, superCall, fieldRateLimiter));
     }

@@ -1,174 +1,188 @@
 package io.koraframework.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.assertThrows
 import io.koraframework.resilient.retry.exception.RetryExhaustedException
-import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
-import io.koraframework.resilient.symbol.processor.aop.testdata.RetryTarget
-import io.koraframework.resilient.symbol.processor.aop.testdata.`typealias`.RetryAliasTarget
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class RetryTests : AppRunner() {
-
-    private inline fun <reified T> getService(): T {
-        val graph = getGraphForApp(
-            AppWithConfig::class,
-            listOf(
-                RetryTarget::class,
-                RetryAliasTarget::class,
-            )
-        )
-
-        return getServiceFromGraph(graph)
-    }
-
-    private val EXEC_SUCCESS = 0
-    private val EXEC_FAIL = 3
-
-    private val retryTarget = getService<RetryTarget>()
+class RetryTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncVoidRetrySuccess() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("""
+            @Retryable(TestRetry::class)
+            open fun call() {
+                attempts++
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_SUCCESS)
+        call(service, "call")
 
-        // then
-        service.retrySyncVoid("1")
-        assertEquals(0, service.getRetryAttempts())
+        assertEquals(1, call(service, "attempts"))
     }
 
     @Test
     fun syncVoidRetryFail() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("""
+            @Retryable(TestRetry::class)
+            open fun call() {
+                attempts++
+                throw IllegalStateException("Failed")
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_FAIL)
+        val ex = assertThrows<RetryExhaustedException> { call(service, "call") }
 
-        // then
-        try {
-            service.retrySyncVoid("1")
-            fail("Should not happen")
-        } catch (ex: RetryExhaustedException) {
-            assertNotNull(ex.message)
-            assertEquals(2, service.getRetryAttempts())
-        }
+        assertNotNull(ex.message)
+        assertEquals(3, call(service, "attempts"))
     }
 
     @Test
     fun syncRetrySuccess() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("""
+            @Retryable(TestRetry::class)
+            open fun call(value: String): String {
+                attempts++
+                return value
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_SUCCESS)
-
-        // then
-        assertEquals("1", service.retrySync("1"))
-        assertEquals(0, service.getRetryAttempts())
+        assertEquals("1", call(service, "call", "1"))
+        assertEquals(1, call(service, "attempts"))
     }
 
     @Test
     fun syncRetryFail() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("""
+            @Retryable(TestRetry::class)
+            open fun call(value: String): String {
+                attempts++
+                throw IllegalStateException("Failed")
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_FAIL)
+        val ex = assertThrows<RetryExhaustedException> { call(service, "call", "1") }
 
-        // then
-        try {
-            service.retrySync("1")
-            fail("Should not happen")
-        } catch (ex: RetryExhaustedException) {
-            assertNotNull(ex.message)
-            assertEquals(2, service.getRetryAttempts())
-        }
+        assertNotNull(ex.message)
+        assertEquals(3, call(service, "attempts"))
     }
 
     @Test
     fun syncRetryZeroSuccess() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("TestRetryZeroAttempts", """
+            @Retryable(TestRetryZeroAttempts::class)
+            open fun call(value: String): String {
+                attempts++
+                return value
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_SUCCESS)
-
-        // then
-        assertEquals("1", service.retrySyncZeroAttempt("1"))
-        assertEquals(0, service.getRetryAttempts())
+        assertEquals("1", call(service, "call", "1"))
+        assertEquals(1, call(service, "attempts"))
     }
 
     @Test
     fun syncRetryZeroFail() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("TestRetryZeroAttempts", """
+            @Retryable(TestRetryZeroAttempts::class)
+            open fun call(value: String): String {
+                attempts++
+                throw IllegalStateException("Failed")
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_FAIL)
-
-        // then
-        assertThrows(IllegalStateException::class.java) { service.retrySyncZeroAttempt("1") }
-        assertEquals(0, service.getRetryAttempts())
+        assertThrows<IllegalStateException> { call(service, "call", "1") }
+        assertEquals(1, call(service, "attempts"))
     }
 
     @Test
     fun syncRetryDisabledSuccess() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("TestRetryDisabled", """
+            @Retryable(TestRetryDisabled::class)
+            open fun call(value: String): String {
+                attempts++
+                return value
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_SUCCESS)
-
-        // then
-        assertEquals("1", service.retrySyncDisabled("1"))
-        assertEquals(0, service.getRetryAttempts())
+        assertEquals("1", call(service, "call", "1"))
+        assertEquals(1, call(service, "attempts"))
     }
 
     @Test
     fun syncRetryDisabledFail() {
-        // given
-        val service = retryTarget
+        val service = compileRetryTarget("TestRetryDisabled", """
+            @Retryable(TestRetryDisabled::class)
+            open fun call(value: String): String {
+                attempts++
+                throw IllegalStateException("Failed")
+            }
+        """)
 
-        // then
-        service.setFailAttempts(EXEC_FAIL)
-
-        // then
-        assertThrows(IllegalStateException::class.java) { service.retrySyncDisabled("1") }
-        assertEquals(0, service.getRetryAttempts())
+        assertThrows<IllegalStateException> { call(service, "call", "1") }
+        assertEquals(1, call(service, "attempts"))
     }
 
     @Test
-    fun aliasAnnotationSuccess() {
-        // given
-        val service = getService<RetryAliasTarget>()
+    fun typealiasRetrySuccess() {
+        val service = compileRetryTarget("""
+            typealias RetryAlias = Retryable
 
-        // when
-        service.setFailAttempts(EXEC_SUCCESS)
+            @RetryAlias(TestRetry::class)
+            open fun call(value: String): String {
+                attempts++
+                return value
+            }
+        """)
 
-        // then
-        assertEquals("1", service.retrySync("1"))
-        assertEquals(0, service.getRetryAttempts())
+        assertEquals("1", call(service, "call", "1"))
+        assertEquals(1, call(service, "attempts"))
     }
 
-    @Test
-    fun aliasAnnotationFail() {
-        // given
-        val service = getService<RetryAliasTarget>()
+    private fun compileRetryTarget(method: String): Any = compileRetryTarget("TestRetry", method)
 
-        // when
-        service.setFailAttempts(EXEC_FAIL)
+    private fun compileRetryTarget(retryType: String, method: String): Any {
+        return compileApp(retryConfig(), retryInterface(retryType), """
+            @Component
+            @Root
+            open class TestTarget {
+                var attempts: Int = 0
+                fun attempts(): Int = attempts
+                $method
+            }
+        """)
+    }
 
-        // then
-        assertThrows<RetryExhaustedException> {
-            service.retrySync("1")
+    private fun retryInterface(retryType: String): String {
+        val configPath = when (retryType) {
+            "TestRetryZeroAttempts" -> "customZeroAttempts"
+            "TestRetryDisabled" -> "customDisabled"
+            else -> "custom1"
         }
-        assertEquals(2, service.getRetryAttempts())
+        return """
+            @RetrySpec("$configPath")
+            interface $retryType : io.koraframework.resilient.retry.Retry
+        """
+    }
+
+    private fun retryConfig(): String {
+        return """
+            custom1 {
+              delay = 1ms
+              attempts = 2
+            }
+            customZeroAttempts {
+              delay = 1ms
+              attempts = 0
+            }
+            customDisabled {
+              enabled = false
+              delay = 1ms
+              attempts = 2
+            }
+        """
     }
 }

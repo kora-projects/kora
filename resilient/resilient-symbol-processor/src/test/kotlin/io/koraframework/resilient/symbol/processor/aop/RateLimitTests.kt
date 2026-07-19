@@ -1,78 +1,73 @@
 package io.koraframework.resilient.symbol.processor.aop
 
 import com.google.devtools.ksp.KspExperimental
-import org.junit.jupiter.api.Test
-import org.junit.jupiter.api.TestInstance
-import org.junit.jupiter.api.assertThrows
 import io.koraframework.resilient.ratelimiter.exception.RateLimitExceededException
-import io.koraframework.resilient.symbol.processor.aop.testdata.AppWithConfig
-import io.koraframework.resilient.symbol.processor.aop.testdata.CircuitBreakerTarget
-import io.koraframework.resilient.symbol.processor.aop.testdata.RateLimitTarget
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @KspExperimental
-class RateLimitTests : AppRunner() {
-
-    private inline fun <reified T> getService(): T {
-        val graph = getGraphForApp(
-            AppWithConfig::class,
-            listOf(
-                CircuitBreakerTarget::class,
-                RateLimitTarget::class,
-            )
-        )
-        return getServiceFromGraph(graph)
-    }
+class RateLimitTests : ResilientAopSymbolTestSupport() {
 
     @Test
     fun syncRateLimitFirstCallSucceeds() {
-        // given
-        val service = getService<RateLimitTarget>()
+        val service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter::class)
+            open fun call(): String = "OK"
+        """)
 
-        // when/then — first call within limitForPeriod=1 should succeed
-        val result = service.getValueSync()
-        assertNotNull(result)
-        assertEquals("OK", result)
+        assertEquals("OK", call(service, "call"))
     }
 
     @Test
     fun syncRateLimitSecondCallExceedsLimit() {
-        // given
-        val service = getService<RateLimitTarget>()
+        val service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter::class)
+            open fun call(): String = "OK"
+        """)
 
-        // when
-        service.getValueSync()
+        call(service, "call")
 
-        // then — second call in the same period should be rejected
-        assertThrows<RateLimitExceededException> {
-            service.getValueSync()
-        }
+        assertThrows<RateLimitExceededException> { call(service, "call") }
     }
 
     @Test
     fun voidRateLimitFirstCallSucceeds() {
-        // given
-        val service = getService<RateLimitTarget>()
+        val service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter::class)
+            open fun call() {}
+        """)
 
-        // when/then — should not throw
-        try {
-            service.getValueSyncVoid()
-        } catch (e: Throwable) {
-            fail("First call should not throw, but got: $e")
-        }
+        call(service, "call")
     }
 
     @Test
     fun voidRateLimitSecondCallExceedsLimit() {
-        // given
-        val service = getService<RateLimitTarget>()
+        val service = compileRateLimitTarget("""
+            @RateLimited(TestRateLimiter::class)
+            open fun call() {}
+        """)
 
-        // when
-        service.getValueSyncVoid()
+        call(service, "call")
 
-        // then
-        assertThrows<RateLimitExceededException> {
-            service.getValueSyncVoid()
-        }
+        assertThrows<RateLimitExceededException> { call(service, "call") }
+    }
+
+    private fun compileRateLimitTarget(method: String): Any {
+        return compileApp("""
+            custom1 {
+              limitForPeriod = 1
+              limitRefreshPeriod = 1s
+            }
+        """, """
+            @RateLimiterSpec("custom1")
+            interface TestRateLimiter : io.koraframework.resilient.ratelimiter.RateLimiter
+        """, """
+            @Component
+            @Root
+            open class TestTarget {
+                $method
+            }
+        """)
     }
 }

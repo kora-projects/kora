@@ -32,8 +32,8 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
             import io.koraframework.config.hocon.HoconConfigFactory;
             import io.koraframework.common.annotation.Tag;
             import io.koraframework.resilient.circuitbreaker.CircuitBreakerPredicate;
-            import io.koraframework.resilient.circuitbreaker.CircuitBreakerModule;
-            import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreaker;
+            import io.koraframework.resilient.ResilientModule;
+            import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreakerSpec;
             import io.koraframework.resilient.circuitbreaker.annotation.CircuitBreakable;
             import java.io.IOException;
             import java.util.concurrent.CompletableFuture;
@@ -167,7 +167,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     @Test
     void rootConfigPathIsAllowed() {
         compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), appWithRootConfig(), """
-            @CircuitBreaker("payment")
+            @CircuitBreakerSpec("payment")
             public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {}
             """, """
             @Component
@@ -199,7 +199,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                 }
             }
             """, """
-            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {
                 @Override
                 default boolean test(Throwable throwable) {
@@ -224,7 +224,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                 }
             }
             """, """
-            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {
                 @Override
                 default boolean test(Throwable throwable) {
@@ -239,7 +239,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     @Test
     void circuitBreakerInterfaceMustExtendRuntimeCircuitBreaker() {
         compile(List.of(new KoraAppProcessor(), new CircuitBreakerAnnotationProcessor(), new AopAnnotationProcessor()), app(), """
-            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             public interface TestCircuitBreaker {}
             """);
 
@@ -301,11 +301,18 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     private String app() {
         return """
             @KoraApp
-            public interface AppWithConfig extends ConfigValueMapperModule, CircuitBreakerModule {
+            public interface AppWithConfig extends ConfigValueMapperModule, ResilientModule {
                 default Config config() {
                     return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
                         \"""
                             resilient {
+                              telemetry {
+                                circuitBreaker {}
+                                retry {}
+                                timeout {}
+                                fallback {}
+                                rateLimiter {}
+                              }
                               circuitbreaker {
                                 custom1 {
                                   slidingWindowSize = 1
@@ -326,7 +333,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     private String appWithRootConfig() {
         return """
             @KoraApp
-            public interface AppWithConfig extends ConfigValueMapperModule, CircuitBreakerModule {
+            public interface AppWithConfig extends ConfigValueMapperModule, ResilientModule {
                 default Config config() {
                     return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
                         \"""
@@ -336,6 +343,15 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                               failureRateThreshold = 100
                               permittedCallsInHalfOpenState = 1
                               waitDurationInOpenState = 1s
+                            }
+                            resilient {
+                              telemetry {
+                                circuitBreaker {}
+                                retry {}
+                                timeout {}
+                                fallback {}
+                                rateLimiter {}
+                              }
                             }
                             \"""
                     ).resolve());
@@ -347,7 +363,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
     private String appWithPredicate() {
         return """
             @KoraApp
-            public interface AppWithConfig extends ConfigValueMapperModule, CircuitBreakerModule {
+            public interface AppWithConfig extends ConfigValueMapperModule, ResilientModule {
                 @Tag(TestCircuitBreaker.class)
                 default CircuitBreakerPredicate testCircuitBreakerPredicate() {
                     return throwable -> true;
@@ -357,6 +373,13 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
                     return HoconConfigFactory.fromHocon(new SimpleConfigOrigin("test"), ConfigFactory.parseString(
                         \"""
                             resilient {
+                              telemetry {
+                                circuitBreaker {}
+                                retry {}
+                                timeout {}
+                                fallback {}
+                                rateLimiter {}
+                              }
                               circuitbreaker {
                                 custom1 {
                                   slidingWindowSize = 1
@@ -376,7 +399,7 @@ class CircuitBreakerSyncTests extends AbstractAnnotationProcessorTest {
 
     private String circuitBreakerInterface() {
         return """
-            @CircuitBreaker("resilient.circuitbreaker.custom1")
+            @CircuitBreakerSpec("resilient.circuitbreaker.custom1")
             public interface TestCircuitBreaker extends io.koraframework.resilient.circuitbreaker.CircuitBreaker {}
             """;
     }

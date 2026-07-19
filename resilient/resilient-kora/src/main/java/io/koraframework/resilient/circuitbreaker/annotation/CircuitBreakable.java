@@ -1,13 +1,14 @@
 package io.koraframework.resilient.circuitbreaker.annotation;
 
 import io.koraframework.common.annotation.AopAnnotation;
+import io.koraframework.resilient.circuitbreaker.CircuitBreaker;
 import io.koraframework.resilient.circuitbreaker.CircuitBreakerConfig;
 import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedException;
 
 import java.lang.annotation.*;
 
 /**
- * Annotation allow applying {@link io.koraframework.resilient.circuitbreaker.CircuitBreaker} to a specific method
+ * Annotation allow applying {@link CircuitBreaker} to a specific method
  * When applied to method, method may throw {@link CallNotPermittedException} when all CircuitBreaker in OPEN state
  */
 @Documented
@@ -20,5 +21,5 @@ public @interface CircuitBreakable {
      * @see CircuitBreakerConfig
      * @return CircuitBreaker implementation interface
      */
-    Class<? extends io.koraframework.resilient.circuitbreaker.CircuitBreaker> value();
+    Class<? extends CircuitBreaker> value();
 }

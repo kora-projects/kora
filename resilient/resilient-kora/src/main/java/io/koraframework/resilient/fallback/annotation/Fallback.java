@@ -1,24 +1,25 @@
 package io.koraframework.resilient.fallback.annotation;
 
 import io.koraframework.common.annotation.AopAnnotation;
-import io.koraframework.resilient.fallback.FallbackConfig;
+import io.koraframework.common.annotation.AopPropagate;
 
-import java.lang.annotation.*;
+import java.lang.annotation.Documented;
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
 
 @AopAnnotation
 @Documented
-@Retention(value = RetentionPolicy.RUNTIME)
-@Target(value = {ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
 public @interface Fallback {
 
-    /**
-     * @see FallbackConfig
-     * @return the name of Fallback config path
-     */
-    String value();
-
-    /**
-     * @return fallbackMethod method name to execute
-     */
     String method();
+
+    @Documented
+    @AopPropagate
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.PARAMETER)
+    @interface Reason {}
 }

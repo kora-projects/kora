@@ -10,7 +10,9 @@ import io.koraframework.aop.annotation.processor.KoraAspect;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeMirror;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -20,9 +22,8 @@ import static com.palantir.javapoet.CodeBlock.joining;
 
 public class RetryKoraAspect implements KoraAspect {
 
-    private static final ClassName RETRY_EXCEPTION = ClassName.get("io.koraframework.resilient.retry.exception", "RetryExhaustedException");
-    private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.retry.annotation", "Retry");
-    private static final ClassName RETRY_STATE = ClassName.get("io.koraframework.resilient.retry", "Retry", "RetryState", "RetryStatus");
+    private static final ClassName ANNOTATION_TYPE = ClassName.get("io.koraframework.resilient.retry.annotation", "Retryable");
+    private static final ClassName RETRY = ClassName.get("io.koraframework.resilient.retry", "Retry");
 
     private final ProcessingEnvironment env;
 
@@ -43,24 +44,27 @@ public class RetryKoraAspect implements KoraAspect {
             throw new ProcessingErrorException("@%s can't be applied for type ".formatted(ANNOTATION_TYPE) + method.getReturnType().toString(), method);
         }
 
-        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream().filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName())).findFirst();
-        final String retryableName = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
+        final Optional<? extends AnnotationMirror> mirror = method.getAnnotationMirrors().stream()
+            .filter(a -> a.getAnnotationType().toString().equals(ANNOTATION_TYPE.canonicalName()))
+            .findFirst();
+        final TypeMirror retryTypeMirror = mirror.flatMap(a -> a.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("value"))
-                .map(e -> String.valueOf(e.getValue().getValue())).findFirst())
+                .map(e -> (TypeMirror) e.getValue().getValue())
+                .findFirst())
             .orElseThrow();
+
+        var retryElement = (TypeElement) env.getTypeUtils().asElement(retryTypeMirror);
+        var baseRetryType = env.getElementUtils().getTypeElement(RETRY.canonicalName()).asType();
+        if (!env.getTypeUtils().isAssignable(retryTypeMirror, baseRetryType)) {
+            throw new ProcessingErrorException("@%s value must extend %s".formatted(ANNOTATION_TYPE.simpleName(), RETRY.canonicalName()), method);
+        }
+        var retryType = env.getTypeUtils().getDeclaredType(retryElement);
+        var fieldRetrier = aspectContext.fieldFactory().constructorParam(retryType, List.of());
 
         final CodeBlock body;
         if (MethodUtils.isCompletionStage(method)) {
-            var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.retry.RetryManager"));
-            var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
-            var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.retry.Retry"));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S)", fieldManager, retryableName));
             body = buildBodyCompletableStage(method, superCall, fieldRetrier);
         } else {
-            var managerType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.retry.RetryManager"));
-            var fieldManager = aspectContext.fieldFactory().constructorParam(managerType, List.of());
-            var retrierType = env.getTypeUtils().getDeclaredType(env.getElementUtils().getTypeElement("io.koraframework.resilient.retry.Retry"));
-            var fieldRetrier = aspectContext.fieldFactory().constructorInitialized(retrierType, CodeBlock.of("$L.get($S)", fieldManager, retryableName));
             body = buildBodySync(method, superCall, fieldRetrier);
         }
 

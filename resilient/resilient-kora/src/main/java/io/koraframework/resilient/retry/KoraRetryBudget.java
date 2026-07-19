@@ -2,7 +2,7 @@ package io.koraframework.resilient.retry;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-final class KoraRetryBudget {
+public final class KoraRetryBudget {
 
     static final long SCALE = 1_000_000L;
 
@@ -12,7 +12,26 @@ final class KoraRetryBudget {
     private final long minTokenIncrementPerSecond;
     private final AtomicLong lastMinTokenRefillNanos = new AtomicLong(System.nanoTime());
 
-    KoraRetryBudget(double ratio, int tokensMax, int tokensInitial, double minTokensPerSecond) {
+    public KoraRetryBudget(RetryConfig.RetryBudgetConfig config) {
+        this(config.ratio(), config.tokensMax(), config.tokensInitial(), config.minTokensPerSecond());
+    }
+
+    public KoraRetryBudget(double ratio, int tokensMax, int tokensInitial, double minTokensPerSecond) {
+        if (ratio < 0) {
+            throw new IllegalArgumentException("RetryBudget ratio must be >= 0");
+        }
+        if (tokensMax < 0) {
+            throw new IllegalArgumentException("RetryBudget tokensMax must be >= 0");
+        }
+        if (tokensInitial < 0) {
+            throw new IllegalArgumentException("RetryBudget tokensInitial must be >= 0");
+        }
+        if (tokensInitial > tokensMax) {
+            throw new IllegalArgumentException("RetryBudget tokensInitial must be <= tokensMax");
+        }
+        if (minTokensPerSecond < 0) {
+            throw new IllegalArgumentException("RetryBudget minTokensPerSecond must be >= 0");
+        }
         this.tokens = new AtomicLong(scale(tokensInitial));
         this.tokensMax = scale(tokensMax);
         this.successIncrement = Math.round(ratio * SCALE);
