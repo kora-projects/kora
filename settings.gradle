@@ -37,6 +37,7 @@ include(
     'opentelemetry:opentelemetry-tracing-exporter-http',
     'logging:logging-common',
     'logging:logging-logback',
+    'logging:logging-logback-json',
     'logging:logging-annotation-processor',
     'logging:logging-symbol-processor',
     'grpc:grpc-server',
