@@ -4,14 +4,20 @@ import io.koraframework.resilient.circuitbreaker.exception.CallNotPermittedExcep
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerTelemetry;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation;
 import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallAcquireStatus;
+import io.koraframework.resilient.circuitbreaker.telemetry.CircuitBreakerObservation.CallResult;
 import org.jspecify.annotations.Nullable;
 
-import java.time.Clock;
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 
 /**
  * CircuitBreaker - Fixed Window implementation
+ * <p>
+ * Cheapest implementation: one packed {@link AtomicLong} stores CLOSED and HALF_OPEN counters.
+ * It has very low memory overhead and a small hot path, but CLOSED statistics are a fixed counter window,
+ * not an exact ring of the globally latest N calls.
  * --------------------------------------------------------------------------------------------------
  * Closed {@link #state}
  * 10 | 0000000000000000000000000000000 | 0000000000000000000000000000000
@@ -30,7 +36,7 @@ import java.util.function.Supplier;
  * --------------------------------------------------------------------------------------------------
  */
 @SuppressWarnings("ConstantConditions")
-final class KoraCircuitBreaker implements CircuitBreaker {
+final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
 
     private static final long CLOSED_COUNTER_MASK = 0x7FFF_FFFFL;
     private static final long CLOSED_STATE = 1L << 63;
@@ -49,17 +55,23 @@ final class KoraCircuitBreaker implements CircuitBreaker {
     private final CircuitBreakerConfig.NamedConfig config;
     private final CircuitBreakerPredicate failurePredicate;
     private final CircuitBreakerTelemetry telemetry;
-    private final long waitDurationInOpenStateInMillis;
-    private final Clock clock;
+    private final long waitDurationInOpenStateInNanos;
+    private final LongSupplier currentTimeNanos;
+    private final long startedNanos;
 
-    KoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+        this(name, config, failurePredicate, telemetry, System::nanoTime);
+    }
+
+    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
         this.state = new AtomicLong(CLOSED_STATE);
         this.name = name;
         this.config = config;
         this.failurePredicate = failurePredicate;
         this.telemetry = telemetry;
-        this.waitDurationInOpenStateInMillis = config.waitDurationInOpenState().toMillis();
-        this.clock = Clock.systemDefaultZone();
+        this.waitDurationInOpenStateInNanos = toNanosSaturated(config.waitDurationInOpenState());
+        this.currentTimeNanos = currentTimeNanos;
+        this.startedNanos = currentTimeNanos.getAsLong();
     }
 
     State getState() {
@@ -85,9 +97,12 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             var observation = this.telemetry.observe();
             try {
                 observation.recordCallAcquire(State.CLOSED, CallAcquireStatus.DISABLED);
-                return supplier.get();
+                var result = supplier.get();
+                observation.recordCallResult(State.CLOSED, CallResult.SUCCESS);
+                return result;
             } catch (Throwable e) {
                 observation.observeError(e);
+                observation.recordCallResult(State.CLOSED, CallResult.FAILURE);
                 throw e;
             } finally {
                 observation.end();
@@ -103,6 +118,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             if (fallback == null) {
                 throw e;
             }
+            recordFallback(e);
         } catch (Throwable e) {
             releaseOnError(e);
             throw e;
@@ -127,20 +143,24 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         return (int) (value & CLOSED_COUNTER_MASK);
     }
 
-    private short countHalfOpenSuccess(long value) {
-        return (short) ((value >> 16) & HALF_OPEN_COUNTER_MASK);
+    private int countHalfOpenSuccess(long value) {
+        return (int) ((value >> 16) & HALF_OPEN_COUNTER_MASK);
     }
 
-    private short countHalfOpenError(long value) {
-        return (short) ((value >> 32) & HALF_OPEN_COUNTER_MASK);
+    private int countHalfOpenError(long value) {
+        return (int) ((value >> 32) & HALF_OPEN_COUNTER_MASK);
     }
 
-    private short countHalfOpenAcquired(long value) {
-        return (short) (value & HALF_OPEN_COUNTER_MASK);
+    private int countHalfOpenAcquired(long value) {
+        return (int) (value & HALF_OPEN_COUNTER_MASK);
     }
 
     private long getOpenState() {
-        return clock.millis();
+        return currentElapsedNanos();
+    }
+
+    private long currentElapsedNanos() {
+        return Math.max(0, currentTimeNanos.getAsLong() - startedNanos);
     }
 
     private void onStateChange(State prevState,
@@ -187,7 +207,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         }
 
         if (state == State.HALF_OPEN) {
-            final short acquired = countHalfOpenAcquired(stateLong);
+            final int acquired = countHalfOpenAcquired(stateLong);
             if (acquired < config.permittedCallsInHalfOpenState()) {
                 final boolean isAcquired = this.state.compareAndSet(stateLong, stateLong + 1);
                 if (isAcquired) {
@@ -202,10 +222,10 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             }
         }
 
-        final long currentTimeInMillis = clock.millis();
-        final long beenInOpenState = currentTimeInMillis - stateLong;
+        final long currentTimeInNanos = currentElapsedNanos();
+        final long beenInOpenState = currentTimeInNanos - stateLong;
         // go to half open
-        if (beenInOpenState >= waitDurationInOpenStateInMillis) {
+        if (beenInOpenState >= waitDurationInOpenStateInNanos) {
             if (this.state.compareAndSet(stateLong, HALF_OPEN_STATE + 1)) {
                 onStateChange(State.OPEN, State.HALF_OPEN, null, observation);
                 observation.recordCallAcquire(State.HALF_OPEN, CallAcquireStatus.PERMITTED);
@@ -243,6 +263,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             if (prevState != newState) {
                 onStateChange(prevState, newState, null, observation);
             }
+            observation.recordCallResult(prevState, CallResult.SUCCESS);
         } finally {
             observation.end();
         }
@@ -252,7 +273,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         final State state = getState(currentState);
         if (state == State.CLOSED) {
             final int total = countClosedTotal(currentState) + 1;
-            if (total == config.slidingWindowSize()) {
+            if (total == config.countBased().windowSize()) {
                 return CLOSED_STATE;
             } else {
                 // just increase counter
@@ -281,13 +302,8 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             }
 
             if (!failurePredicate.test(throwable)) {
-                final long currentStateLong = state.get();
-                final State currentState = getState(currentStateLong);
-                if (currentState == State.HALF_OPEN) {
-                    this.state.decrementAndGet();
-                    return;
-                }
-
+                releaseIgnoredError();
+                observation.recordCallResult(getState(state.get()), CallResult.IGNORED_FAILURE);
                 return;
             }
 
@@ -308,6 +324,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             } else {
                 observation.observeError(throwable);
             }
+            observation.recordCallResult(prevState, CallResult.FAILURE);
         } finally {
             observation.end();
         }
@@ -326,7 +343,7 @@ final class KoraCircuitBreaker implements CircuitBreaker {
             final int failureRatePercentage = (int) (errors / total * 100);
             if (failureRatePercentage >= config.failureRateThreshold()) {
                 return getOpenState();
-            } else if (total == config.slidingWindowSize()) {
+            } else if (total == config.countBased().windowSize()) {
                 return CLOSED_STATE;
             } else {
                 // just increase both counters
@@ -338,6 +355,37 @@ final class KoraCircuitBreaker implements CircuitBreaker {
         } else {
             // do nothing with open state
             return currentState;
+        }
+    }
+
+    private void releaseIgnoredError() {
+        while (true) {
+            final long currentStateLong = state.get();
+            final State currentState = getState(currentStateLong);
+            if (currentState != State.HALF_OPEN) {
+                return;
+            }
+
+            if (state.compareAndSet(currentStateLong, currentStateLong - 1)) {
+                return;
+            }
+        }
+    }
+
+    private void recordFallback(CallNotPermittedException exception) {
+        var observation = this.telemetry.observe();
+        try {
+            observation.recordCallResult(exception.state(), CallResult.FALLBACK);
+        } finally {
+            observation.end();
+        }
+    }
+
+    private static long toNanosSaturated(Duration duration) {
+        try {
+            return duration.toNanos();
+        } catch (ArithmeticException e) {
+            return Long.MAX_VALUE;
         }
     }
 }

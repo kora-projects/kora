@@ -85,6 +85,38 @@ public class DefaultCircuitBreakerLoggerFactory {
                 .addKeyValue("newState", newState.name())
                 .log("CircuitBreaker state changed");
         }
+
+        public void logResult(CircuitBreaker.State state,
+                              CircuitBreakerObservation.CallResult callResult,
+                              long processingTimeNanos,
+                              @Nullable Throwable exception) {
+            if (exception != null && callResult == CircuitBreakerObservation.CallResult.FAILURE) {
+                if (!logger.isWarnEnabled()) {
+                    return;
+                }
+                logger.atWarn()
+                    .addKeyValue("resilientType", "circuitbreaker")
+                    .addKeyValue("resilientName", this.context.name())
+                    .addKeyValue("state", state.name())
+                    .addKeyValue("callResult", callResult.name())
+                    .addKeyValue("processingTime", processingTimeNanos / 1_000_000)
+                    .addKeyValue("exceptionType", exception.getClass().getCanonicalName())
+                    .addKeyValue("exceptionMessage", exception.getMessage())
+                    .log("CircuitBreaker call failed");
+            } else if (logger.isDebugEnabled()) {
+                var event = logger.atDebug()
+                    .addKeyValue("resilientType", "circuitbreaker")
+                    .addKeyValue("resilientName", this.context.name())
+                    .addKeyValue("state", state.name())
+                    .addKeyValue("callResult", callResult.name())
+                    .addKeyValue("processingTime", processingTimeNanos / 1_000_000);
+                if (exception != null) {
+                    event.addKeyValue("exceptionType", exception.getClass().getCanonicalName())
+                        .addKeyValue("exceptionMessage", exception.getMessage());
+                }
+                event.log("CircuitBreaker call result recorded");
+            }
+        }
     }
 
 }

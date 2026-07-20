@@ -14,6 +14,9 @@ public final class NoopCircuitBreakerObservation implements CircuitBreakerObserv
     public void recordCallAcquire(CircuitBreaker.State state, CallAcquireStatus callStatus) {}
 
     @Override
+    public void recordCallResult(CircuitBreaker.State state, CallResult callResult) {}
+
+    @Override
     public void recordStateChange(CircuitBreaker.State previousState, CircuitBreaker.State newState) {}
 
     @Override

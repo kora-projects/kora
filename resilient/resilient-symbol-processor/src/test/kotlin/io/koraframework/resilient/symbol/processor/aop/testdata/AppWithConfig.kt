@@ -21,7 +21,13 @@ interface AppWithConfig : ConfigValueMapperModule, CircuitBreakerModule, RetryMo
             resilient {
               circuitbreaker {
                 default {
-                  slidingWindowSize = 1
+                  type = STRIPED_APPROX
+                  countBased {
+                    windowSize = 1
+                    stripedApprox {
+                      stripes = 1
+                    }
+                  }
                   minimumRequiredCalls = 1
                   failureRateThreshold = 100
                   permittedCallsInHalfOpenState = 1

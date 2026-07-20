@@ -7,7 +7,7 @@ import java.util.function.Supplier;
 
 /**
  * A {@link CircuitBreaker} manages the state of a backend system. The CircuitBreaker is implemented
- * via a finite state machine with five states: CLOSED, OPEN, HALF_OPEN.
+ * via a finite state machine with three states: CLOSED, OPEN, HALF_OPEN.
  * The CircuitBreaker does not know anything about the backend's state by itself, but uses the
  * information provided by the decorators via {@link CircuitBreaker#releaseOnSuccess()} and {@link
  * CircuitBreaker#releaseOnError(Throwable)} events. Before communicating with the backend, the permission to do so

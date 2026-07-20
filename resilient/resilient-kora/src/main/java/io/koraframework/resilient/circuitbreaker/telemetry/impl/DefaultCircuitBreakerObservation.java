@@ -14,6 +14,8 @@ public class DefaultCircuitBreakerObservation implements CircuitBreakerObservati
 
     protected CircuitBreaker.@Nullable State state;
     protected CircuitBreakerObservation.@Nullable CallAcquireStatus callStatus;
+    protected CircuitBreaker.@Nullable State resultState;
+    protected CircuitBreakerObservation.@Nullable CallResult callResult;
     protected CircuitBreaker.@Nullable State newState;
     @Nullable
     protected Throwable exception;
@@ -31,6 +33,12 @@ public class DefaultCircuitBreakerObservation implements CircuitBreakerObservati
     public void recordCallAcquire(CircuitBreaker.State state, CircuitBreakerObservation.CallAcquireStatus callStatus) {
         this.state = state;
         this.callStatus = callStatus;
+    }
+
+    @Override
+    public void recordCallResult(CircuitBreaker.State state, CircuitBreakerObservation.CallResult callResult) {
+        this.resultState = state;
+        this.callResult = callResult;
     }
 
     @Override
@@ -57,6 +65,10 @@ public class DefaultCircuitBreakerObservation implements CircuitBreakerObservati
         if (this.state != null && this.callStatus != null) {
             this.metrics.recordCallAcquire(this.state, this.callStatus);
             this.logger.logAcquire(this.state, this.callStatus, System.nanoTime() - this.startNanos, this.exception);
+        }
+        if (this.resultState != null && this.callResult != null) {
+            this.metrics.recordCallResult(this.resultState, this.callResult);
+            this.logger.logResult(this.resultState, this.callResult, System.nanoTime() - this.startNanos, this.exception);
         }
     }
 }
