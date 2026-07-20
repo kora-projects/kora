@@ -2,17 +2,20 @@ package io.koraframework.cache.annotation.processor.aop;
 
 import com.palantir.javapoet.ClassName;
 import com.palantir.javapoet.CodeBlock;
+import io.koraframework.annotation.processor.common.TagUtils;
 import io.koraframework.aop.annotation.processor.KoraAspect;
 import io.koraframework.cache.annotation.processor.CacheOperation;
 
 import javax.lang.model.element.ExecutableElement;
 import java.util.List;
+import java.util.concurrent.Executor;
 
 import static com.palantir.javapoet.CodeBlock.joining;
 
 abstract class AbstractAopCacheAspect implements KoraAspect {
 
-    private static final ClassName CACHE_ASYNC_EXECUTOR = ClassName.get("io.koraframework.cache", "CacheAsyncExecutor");
+    private static final ClassName EXECUTOR = ClassName.get(Executor.class);
+    private static final ClassName CACHE_MODE = ClassName.get("io.koraframework.cache.annotation", "CacheMode");
 
     String getSuperMethod(ExecutableElement method, String superCall) {
         return method.getParameters().stream()
@@ -25,7 +28,7 @@ abstract class AbstractAopCacheAspect implements KoraAspect {
             return null;
         }
 
-        return aspectContext.fieldFactory().constructorParam(CACHE_ASYNC_EXECUTOR, List.of());
+        return aspectContext.fieldFactory().constructorParam(EXECUTOR, List.of(TagUtils.makeAnnotationSpec(CACHE_MODE)));
     }
 
     boolean isAsync(CacheOperation.CacheExecution cache) {

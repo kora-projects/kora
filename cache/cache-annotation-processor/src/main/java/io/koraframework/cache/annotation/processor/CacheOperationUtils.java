@@ -138,7 +138,10 @@ public final class CacheOperationUtils {
                 .orElseThrow();
             final boolean async = annotation.getElementValues().entrySet().stream()
                 .filter(e -> e.getKey().getSimpleName().contentEquals("mode"))
-                .map(e -> String.valueOf(e.getValue().getValue()).endsWith(".ASYNC"))
+                .map(e -> {
+                    var value = String.valueOf(e.getValue().getValue());
+                    return value.equals("ASYNC") || value.endsWith(".ASYNC");
+                })
                 .findFirst()
                 .orElse(false);
 
@@ -148,7 +151,10 @@ public final class CacheOperationUtils {
             var superTypes = env.getTypeUtils().directSupertypes(cacheElement.asType());
             var superType = ((DeclaredType) superTypes.get(superTypes.size() - 1));
             var caffeineCacheElement = env.getElementUtils().getTypeElement(CAFFEINE_CACHE.canonicalName());
-            var isCaffeine = caffeineCacheElement != null && env.getTypeUtils().isSubtype(cacheElement.asType(), caffeineCacheElement.asType());
+            var isCaffeine = caffeineCacheElement != null && env.getTypeUtils().isSubtype(
+                env.getTypeUtils().erasure(cacheElement.asType()),
+                env.getTypeUtils().erasure(caffeineCacheElement.asType())
+            );
             if (async && isCaffeine) {
                 env.getMessager().printMessage(Diagnostic.Kind.WARNING,
                     "Cache async mode is ignored for CaffeineCache " + cacheElement.getQualifiedName(),

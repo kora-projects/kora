@@ -5,12 +5,14 @@ import com.google.devtools.ksp.symbol.KSFunctionDeclaration
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.CodeBlock
 import io.koraframework.aop.symbol.processor.KoraAspect
+import io.koraframework.ksp.common.TagUtils.toTagAnnotation
 import io.koraframework.cache.symbol.processor.CacheOperation
 
 @KspExperimental
 abstract class AbstractAopCacheAspect : KoraAspect {
 
-    private val cacheAsyncExecutor = ClassName("io.koraframework.cache", "CacheAsyncExecutor")
+    private val executor = ClassName("java.util.concurrent", "Executor")
+    private val cacheMode = ClassName("io.koraframework.cache.annotation", "CacheMode")
 
     open fun getSuperMethod(method: KSFunctionDeclaration, superCall: String): String {
         return method.parameters.joinToString(", ", "$superCall(", ")")
@@ -21,7 +23,7 @@ abstract class AbstractAopCacheAspect : KoraAspect {
             return null
         }
 
-        return aspectContext.fieldFactory.constructorParam(cacheAsyncExecutor, listOf())
+        return aspectContext.fieldFactory.constructorParam(executor, listOf(cacheMode.toTagAnnotation()))
     }
 
     fun isAsync(cache: CacheOperation.CacheExecution): Boolean {
