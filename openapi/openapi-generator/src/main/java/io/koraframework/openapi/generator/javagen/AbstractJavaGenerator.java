@@ -114,7 +114,9 @@ public abstract class AbstractJavaGenerator<C> extends AbstractGenerator<C, Java
         }
         if (params.codegenMode.isServer() && params.enableValidation) {
             var validation = getValidation(param);
-            b.addAnnotation(validation);
+            if(validation != null) {
+                b.addAnnotation(validation);
+            }
         }
         return b.build();
     }
