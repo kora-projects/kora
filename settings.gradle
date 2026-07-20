@@ -50,6 +50,7 @@ include(
     'database:database-flyway',
     'database:database-cassandra',
     'database:database-liquibase',
+    'database:database-jdbc-postgres',
     'jms',
     'kafka:kafka',
     'kafka:kafka-annotation-processor',

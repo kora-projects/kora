@@ -5,3 +5,11 @@
 **/.project
 **/.settings
 **/bin
+.DS_Store
+
+# Local working clones and artifacts (never commit)
+agents-md/
+.superpowers/
+
+# Superpowers spec/plan working artifacts — local only, never commit
+docs/superpowers/
