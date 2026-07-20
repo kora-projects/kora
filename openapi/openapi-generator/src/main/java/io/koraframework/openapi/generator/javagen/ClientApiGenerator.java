@@ -1,6 +1,7 @@
 package io.koraframework.openapi.generator.javagen;
 
 import com.palantir.javapoet.*;
+import io.koraframework.openapi.generator.CodegenParams;
 import org.apache.commons.lang3.StringUtils;
 import org.openapitools.codegen.CodegenOperation;
 import org.openapitools.codegen.CodegenParameter;
@@ -8,7 +9,12 @@ import org.openapitools.codegen.CodegenSecurity;
 import org.openapitools.codegen.model.OperationsMap;
 
 import javax.lang.model.element.Modifier;
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.List;
+
+import static io.koraframework.openapi.generator.CodegenParams.ClientResponseMode.SUCCESSFUL;
+import static io.koraframework.openapi.generator.SecurityData.hasNonAnonymousRequirements;
 
 public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
@@ -19,6 +25,9 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             .addAnnotation(buildHttpClientAnnotation(ctx));
         for (var operation : ctx.getOperations().getOperation()) {
             b.addMethod(buildMethod(ctx, operation));
+            if (usesSuccessfulResponseMapper(ctx, operation)) {
+                b.addType(buildResponseException(ctx, operation));
+            }
             if (operation.getHasFormParams()) {
                 b.addType(buildFormParamsRecord(ctx, operation));
             }
@@ -28,7 +37,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .filter(p -> !(p.isHeaderParam && operation.implicitHeadersParams.stream().anyMatch(h -> p.paramName.equals(h.paramName))))
                 .toList();
             if (!optionalParams.isEmpty()) {
-                b.addType(buildJavaClientApiOptionalParams(ctx, operation, optionalParams));
+                writeJavaClientApiOptionalParams(ctx, operation, optionalParams);
                 b.addMethod(buildRequiredArgsCall(ctx, operation, optionalParams));
                 b.addMethod(buildRequiredArgsWithArgsCall(ctx, operation, optionalParams));
             }
@@ -38,7 +47,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private MethodSpec buildRequiredArgsCall(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
-        var returnType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+        var returnType = clientReturnType(ctx, operation);
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(returnType)
@@ -56,6 +65,14 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 paramsCounter++;
                 b.addCode("$N", param.name());
             }
+        }
+        if (hasBareObjectBody(operation)) {
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            b.addParameter(httpHeadersParameter());
+            b.addCode("additionalHeaders");
+            paramsCounter++;
         }
 
         for (int i = 0; i < operation.allParams.size(); i++) {
@@ -89,7 +106,7 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
     }
 
     private MethodSpec buildRequiredArgsWithArgsCall(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
-        var returnType = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+        var returnType = clientReturnType(ctx, operation);
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.DEFAULT)
             .returns(returnType)
@@ -107,6 +124,14 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 paramsCounter++;
                 b.addCode("$N", param.name());
             }
+        }
+        if (hasBareObjectBody(operation)) {
+            if (paramsCounter > 0) {
+                b.addCode(", ");
+            }
+            b.addParameter(httpHeadersParameter());
+            b.addCode("additionalHeaders");
+            paramsCounter++;
         }
         for (int i = 0; i < operation.allParams.size(); i++) {
             var p = operation.allParams.get(i);
@@ -135,26 +160,32 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
             paramsCounter++;
         }
-        b.addParameter(ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "OptArgs"), "optionalArguments");
+        b.addParameter(optionalArgsClassName(ctx, operation), "optionalArguments");
         return b.addCode(");\n").build();
     }
 
-    private TypeSpec buildJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
-        var b = MethodSpec.constructorBuilder();
-        if (operation.isDeprecated) {
-            b.addAnnotation(Deprecated.class);
-        }
-        for (var optionalParam : optionalParams) {
-            var type = asType(ctx, operation, optionalParam).box().annotated(AnnotationSpec.builder(Classes.nullable).build());
-            b.addParameter(ParameterSpec.builder(type, optionalParam.paramName)
+    private void writeJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
+        try {
+            JavaFile.builder(apiPackage, buildJavaClientApiOptionalParams(ctx, operation, optionalParams))
                 .build()
-            );
+                .writeTo(Path.of(outputFolder));
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        var recordClassName = ClassName.get(apiPackage, ctx.get("classname").toString(), StringUtils.capitalize(operation.operationId) + "OptArgs");
+    }
 
-        var typeSpec = TypeSpec.recordBuilder(recordClassName)
-            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
-            .recordConstructor(b.build());
+    private TypeSpec buildJavaClientApiOptionalParams(OperationsMap ctx, CodegenOperation operation, List<CodegenParameter> optionalParams) {
+        var constructor = MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PRIVATE);
+        if (operation.isDeprecated) {
+            constructor.addAnnotation(Deprecated.class);
+        }
+        var recordClassName = optionalArgsClassName(ctx, operation);
+
+        var typeSpec = TypeSpec.classBuilder(recordClassName.simpleName())
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC, Modifier.FINAL);
+
         var empty = MethodSpec.methodBuilder("empty")
             .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
             .returns(recordClassName)
@@ -188,6 +219,20 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
         defaults.addCode(");\n");
         typeSpec.addMethod(defaults.build());
 
+        var accessors = new java.util.ArrayList<MethodSpec>();
+        for (var optionalParam : optionalParams) {
+            var type = asType(ctx, operation, optionalParam).box().annotated(AnnotationSpec.builder(Classes.nullable).build());
+            constructor.addParameter(ParameterSpec.builder(type, optionalParam.paramName).build());
+            constructor.addStatement("this.$N = $N", optionalParam.paramName, optionalParam.paramName);
+            typeSpec.addField(FieldSpec.builder(type, optionalParam.paramName, Modifier.PRIVATE).build());
+            accessors.add(MethodSpec.methodBuilder(optionalParam.paramName)
+                .addModifiers(Modifier.PUBLIC)
+                .returns(type)
+                .addStatement("return this.$N", optionalParam.paramName)
+                .build());
+        }
+        typeSpec.addMethod(constructor.build());
+        accessors.forEach(typeSpec::addMethod);
 
         for (var optionalParam : optionalParams) {
             var type = asType(ctx, operation, optionalParam).box();
@@ -195,43 +240,50 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
                 .returns(recordClassName)
                 .addModifiers(Modifier.PUBLIC)
                 .addParameter(type, optionalParam.paramName)
-                .addCode("return new $T(", recordClassName);
-            for (int i = 0; i < optionalParams.size(); i++) {
-                if (i > 0) {
-                    wither.addCode(", ");
-                }
-                var p = optionalParams.get(i);
-                wither.addCode(p.paramName);
-            }
-            wither.addCode(");\n");
+                .addStatement("this.$N = $N", optionalParam.paramName, optionalParam.paramName)
+                .addStatement("return this");
             typeSpec.addMethod(wither.build());
         }
 
         return typeSpec.build();
     }
 
+    private ClassName optionalArgsClassName(OperationsMap ctx, CodegenOperation operation) {
+        return ClassName.get(apiPackage, ctx.get("classname").toString() + StringUtils.capitalize(operation.operationId) + "OptArgs");
+    }
+
 
     private MethodSpec buildMethod(OperationsMap ctx, CodegenOperation operation) {
-        var tag = ctx.get("baseName").toString();
         var b = MethodSpec.methodBuilder(operation.operationId)
             .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
             .addJavadoc(buildMethodJavadoc(ctx, operation));
         if (operation.isDeprecated) {
             b.addAnnotation(Deprecated.class);
         }
-        this.buildAdditionalAnnotations(tag).forEach(b::addAnnotation);
+        this.buildAdditionalMethodAnnotations(ctx, operation).forEach(b::addAnnotation);
         this.buildImplicitHeaders(operation).forEach(b::addAnnotation);
         b.addAnnotation(this.buildHttpRoute(operation));
-        for (var response : operation.responses) {
-            b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
-                .addMember("code", "$L", response.isDefault ? "-1" : response.code)
-                .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper"))
-                .build()
-            );
+        var clientMapping = clientMapping(ctx, operation);
+        if (clientMapping != null) {
+            b.addAnnotation(AnnotationSpec.builder(Classes.mapping)
+                .addMember("value", "$T.class", ClassName.bestGuess(clientMapping.type()))
+                .build());
+        } else if (usesSuccessfulResponseMapper(ctx, operation)) {
+            b.addAnnotation(AnnotationSpec.builder(Classes.mapping)
+                .addMember("value", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + "SuccessfulResponseMapper"))
+                .build());
+        } else {
+            for (var response : operation.responses) {
+                b.addAnnotation(AnnotationSpec.builder(Classes.responseCodeMapper)
+                    .addMember("code", "$L", response.isDefault ? "-1" : response.code)
+                    .addMember("mapper", "$T.class", ClassName.get(apiPackage, ctx.get("classname") + "ClientResponseMappers", StringUtils.capitalize(operation.operationId) + response.code + "ApiResponseMapper"))
+                    .build()
+                );
+            }
         }
         if (!params.authAsMethodArgument) {
             var requirement = this.security.securityRequirementByOperation.get(operation.operationId);
-            if (requirement != null && !requirement.isEmpty()) {
+            if (hasNonAnonymousRequirements(requirement)) {
                 var interceptorTag = this.security.interceptorTagBySecurityRequirement.get(requirement);
                 var annotation = AnnotationSpec.builder(Classes.interceptWith)
                     .addMember("value", "$T.class", Classes.httpClientInterceptor)
@@ -241,12 +293,15 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             }
         }
 
-        this.buildInterceptors(tag, Classes.httpClientInterceptor).forEach(b::addAnnotation);
-        b.returns(ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse"));
+        this.buildInterceptors(ctx, operation, Classes.httpClientInterceptor).forEach(b::addAnnotation);
+        b.returns(clientReturnType(ctx, operation));
         if (operation.hasAuthMethods && params.authAsMethodArgument) {
             for (var param : this.buildAuthParameters(operation)) {
                 b.addParameter(param);
             }
+        }
+        if (hasBareObjectBody(operation)) {
+            b.addParameter(httpHeadersParameter());
         }
         for (var param : operation.allParams) {
             if (param.isFormParam) {
@@ -273,6 +328,103 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
             b.addParameter(parameter);
         }
         return b.build();
+    }
+
+    private CodegenParams.ClientMapping clientMapping(OperationsMap ctx, CodegenOperation operation) {
+        CodegenParams.ClientMapping result = null;
+        for (var extension : resolveExtensions(ctx, operation)) {
+            if (extension.clientMapping() != null) {
+                result = extension.clientMapping();
+            }
+        }
+        return result;
+    }
+
+    private ParameterSpec httpHeadersParameter() {
+        return ParameterSpec.builder(Classes.httpHeaders, "additionalHeaders")
+            .addAnnotation(AnnotationSpec.builder(Classes.header).build())
+            .build();
+    }
+
+    private TypeName clientReturnType(OperationsMap ctx, CodegenOperation operation) {
+        var responseClassName = ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+        if (params.clientResponseMode != SUCCESSFUL) {
+            return responseClassName;
+        }
+        var successfulResponses = operation.responses.stream()
+            .filter(response -> !response.isDefault)
+            .filter(response -> {
+                var code = Integer.parseInt(response.code);
+                return code >= 200 && code < 300;
+            })
+            .toList();
+        if (successfulResponses.size() == 1) {
+            var response = successfulResponses.getFirst();
+            return operation.responses.size() == 1
+                ? responseClassName
+                : responseClassName.nestedClass(StringUtils.capitalize(operation.operationId) + response.code + "ApiResponse");
+        }
+        if (successfulResponses.size() > 1) {
+            var dataType = successfulResponses.getFirst().dataType;
+            if (dataType != null && successfulResponses.stream().allMatch(response -> dataType.equals(response.dataType))) {
+                return responseClassName.nestedClass(responseClassName.simpleName().replaceAll("ApiResponse$", "") + sanitizeSharedResponseName(dataType) + "ApiResponse");
+            }
+        }
+        return responseClassName;
+    }
+
+    private boolean usesSuccessfulResponseMapper(OperationsMap ctx, CodegenOperation operation) {
+        if (params.clientResponseMode != SUCCESSFUL || !hasErrorResponses(operation)) {
+            return false;
+        }
+        return !clientReturnType(ctx, operation).equals(fullResponseType(ctx, operation));
+    }
+
+    private boolean hasErrorResponses(CodegenOperation operation) {
+        return operation.responses.stream().anyMatch(response -> {
+            if (response.isDefault) {
+                return true;
+            }
+            var code = Integer.parseInt(response.code);
+            return code < 200 || code >= 300;
+        });
+    }
+
+    private ClassName fullResponseType(OperationsMap ctx, CodegenOperation operation) {
+        return ClassName.get(apiPackage, ctx.get("classname") + "Responses", StringUtils.capitalize(operation.operationId) + "ApiResponse");
+    }
+
+    private TypeSpec buildResponseException(OperationsMap ctx, CodegenOperation operation) {
+        var responseType = fullResponseType(ctx, operation);
+        var constructor = MethodSpec.constructorBuilder()
+            .addModifiers(Modifier.PUBLIC)
+            .addParameter(TypeName.INT, "code")
+            .addParameter(Classes.httpHeaders, "headers")
+            .addParameter(responseType, "response")
+            .addStatement("super(code, headers, new byte[0])")
+            .addStatement("this.response = response")
+            .build();
+        return TypeSpec.classBuilder(responseExceptionSimpleName(ctx, operation))
+            .addAnnotation(generated())
+            .addModifiers(Modifier.PUBLIC, Modifier.STATIC)
+            .superclass(Classes.httpClientResponseException)
+            .addField(responseType, "response", Modifier.PRIVATE, Modifier.FINAL)
+            .addMethod(constructor)
+            .addMethod(MethodSpec.methodBuilder("getResponse")
+                .addModifiers(Modifier.PUBLIC)
+                .returns(responseType)
+                .addStatement("return this.response")
+                .build())
+            .build();
+    }
+
+    static String responseExceptionSimpleName(OperationsMap ctx, CodegenOperation operation) {
+        return ctx.get("classname") + StringUtils.capitalize(operation.operationId) + "HttpClientResponseException";
+    }
+
+    private static String sanitizeSharedResponseName(String dataType) {
+        var name = dataType.replaceAll("[^a-zA-Z0-9]", "");
+        return name.isBlank() ? "Content" : StringUtils.capitalize(name);
     }
 
     protected List<ParameterSpec> buildAuthParameters(CodegenOperation op) {
@@ -335,8 +487,11 @@ public class ClientApiGenerator extends AbstractJavaGenerator<OperationsMap> {
 
     private AnnotationSpec buildHttpClientAnnotation(OperationsMap ctx) {
         var httpClientAnnotation = AnnotationSpec.builder(Classes.httpClient);
-        if (params.clientConfigPrefix != null) {
-            httpClientAnnotation.addMember("value", "$S", params.clientConfigPrefix + "." + ctx.get("classname"));
+        if (params.clientConfig != null || params.clientConfigPrefix != null) {
+            var configPath = params.clientConfigPrefix != null
+                ? params.clientConfigPrefix + "." + StringUtils.uncapitalize(ctx.get("classname").toString())
+                : params.clientConfig;
+            httpClientAnnotation.addMember("value", "$S", configPath);
         }
         var tag = ctx.get("baseName").toString();
         var clientTag = params.clientTags.get(tag);

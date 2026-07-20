@@ -104,6 +104,10 @@ components:
         nonReqInt:
           type: integer
           enum: [ 5, 7, 8, 10 ]
+        nonReqDouble:
+          type: number
+          format: double
+          enum: [ 1.5, 2.5 ]
         nonReqArrayInt:
           type: array
           items:

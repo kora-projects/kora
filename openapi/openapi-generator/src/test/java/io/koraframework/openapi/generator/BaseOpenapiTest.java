@@ -6,8 +6,10 @@ import org.openapitools.codegen.config.CodegenConfigurator;
 
 import javax.annotation.Nullable;
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -23,6 +25,19 @@ public abstract class BaseOpenapiTest {
             @Nullable
             public String implicitHeadersRegex;
             public boolean defaultDelegate;
+            @Nullable
+            public String rawBodyMode;
+            @Nullable
+            public String clientConfig = "test";
+            @Nullable
+            public String clientConfigPrefix;
+            @Nullable
+            public String extensions;
+            @Nullable
+            public String serverConfigPrefix;
+            public boolean useSecurityDeclarationOrder;
+            @Nullable
+            public String clientResponseMode;
 
             public Options setAuthAsArg(boolean authAsArg) {
                 this.authAsArg = authAsArg;
@@ -49,6 +64,41 @@ public abstract class BaseOpenapiTest {
                 return this;
             }
 
+            public Options setRawBodyMode(@Nullable String rawBodyMode) {
+                this.rawBodyMode = rawBodyMode;
+                return this;
+            }
+
+            public Options setClientConfig(@Nullable String clientConfig) {
+                this.clientConfig = clientConfig;
+                return this;
+            }
+
+            public Options setClientConfigPrefix(@Nullable String clientConfigPrefix) {
+                this.clientConfigPrefix = clientConfigPrefix;
+                return this;
+            }
+
+            public Options setExtensions(@Nullable String extensions) {
+                this.extensions = extensions;
+                return this;
+            }
+
+            public Options setServerConfigPrefix(@Nullable String serverConfigPrefix) {
+                this.serverConfigPrefix = serverConfigPrefix;
+                return this;
+            }
+
+            public Options setUseSecurityDeclarationOrder(boolean useSecurityDeclarationOrder) {
+                this.useSecurityDeclarationOrder = useSecurityDeclarationOrder;
+                return this;
+            }
+
+            public Options setClientResponseMode(@Nullable String clientResponseMode) {
+                this.clientResponseMode = clientResponseMode;
+                return this;
+            }
+
             @Override
             public String toString() {
                 return "Options{" +
@@ -57,6 +107,13 @@ public abstract class BaseOpenapiTest {
                        ", implicitHeaders=" + implicitHeaders +
                        ", implicitHeadersRegex=" + implicitHeadersRegex +
                        ", defaultDelegate=" + defaultDelegate +
+                       ", rawBodyMode='" + rawBodyMode + '\'' +
+                       ", clientConfig='" + clientConfig + '\'' +
+                       ", clientConfigPrefix='" + clientConfigPrefix + '\'' +
+                       ", extensions='" + extensions + '\'' +
+                       ", serverConfigPrefix='" + serverConfigPrefix + '\'' +
+                       ", useSecurityDeclarationOrder=" + useSecurityDeclarationOrder +
+                       ", clientResponseMode='" + clientResponseMode + '\'' +
                        '}';
             }
         }
@@ -83,7 +140,11 @@ public abstract class BaseOpenapiTest {
             "/example/petstoreV3_security_cookie.yaml",
             "/example/petstoreV3_security_oauth.yaml",
             "/example/petstoreV3_security_multi.yaml",
+            "/example/petstoreV3_security_anonymous.yaml",
             "/example/petstoreV3_single_response.yaml",
+            "/example/petstoreV3_same_response_model.yaml",
+            "/example/petstoreV3_bare_object.yaml",
+            "/example/petstoreV3_client_successful_response.yaml",
             "/example/petstoreV3_responses.yaml",
             "/example/petstoreV3_types.yaml",
             "/example/petstoreV3_validation.yaml",
@@ -109,6 +170,14 @@ public abstract class BaseOpenapiTest {
             if (name.equals("petstoreV3")) {
                 result.add(new SwaggerParams(fileName, name + "_default_delegate", new SwaggerParams.Options().setDefaultDelegate(true)));
             }
+
+            if (name.equals("petstoreV3_bare_object")) {
+                result.add(new SwaggerParams(fileName, name + "_raw", new SwaggerParams.Options().setRawBodyMode("RAW")));
+            }
+
+            if (name.equals("petstoreV3_client_successful_response")) {
+                result.add(new SwaggerParams(fileName, name + "_successful", new SwaggerParams.Options().setClientResponseMode("SUCCESSFUL")));
+            }
         }
 
         return result.toArray(SwaggerParams[]::new);
@@ -129,14 +198,19 @@ public abstract class BaseOpenapiTest {
                 "skipFormModel", "false"
             ))
             .addAdditionalProperty("mode", mode)
-            .addAdditionalProperty("additionalModelTypeAnnotations", "@io.koraframework.json.common.annotation.JsonInclude(io.koraframework.json.common.annotation.JsonInclude.IncludeType.ALWAYS)")
-            .addAdditionalProperty("interceptors", """
+            .addAdditionalProperty("extensions", """
                 {
-                  "*": [
-                    {
-                      "tag": "java.lang.String"
+                  "*": {
+                    "additionalModelTypeAnnotations": [
+                      "@io.koraframework.json.common.annotation.JsonInclude(io.koraframework.json.common.annotation.JsonInclude.IncludeType.ALWAYS)"
+                    ],
+                    "interceptorTag": "java.lang.String"
+                  },
+                  "operations": {
+                    "findPetsByStatus": {
+                      "interceptorTag": "java.lang.Integer"
                     }
-                  ]
+                  }
                 }
                 """)
             .addAdditionalProperty("tags", """
@@ -151,8 +225,29 @@ public abstract class BaseOpenapiTest {
             .addAdditionalProperty("authAsMethodArgument", options.authAsArg)
             .addAdditionalProperty("implicitHeaders", options.implicitHeaders)
             .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
-            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest)
-            .addAdditionalProperty("clientConfigPrefix", "test");
+            .addAdditionalProperty("requestInDelegateParams", options.includeServerRequest);
+
+        if (options.clientConfig != null) {
+            configurator.addAdditionalProperty("clientConfig", options.clientConfig);
+        }
+        if (options.clientConfigPrefix != null) {
+            configurator.addAdditionalProperty("clientConfigPrefix", options.clientConfigPrefix);
+        }
+        if (options.rawBodyMode != null) {
+            configurator.addAdditionalProperty("rawBodyMode", options.rawBodyMode);
+        }
+        if (options.extensions != null) {
+            configurator.addAdditionalProperty("extensions", options.extensions);
+        }
+        if (options.serverConfigPrefix != null) {
+            configurator.addAdditionalProperty("serverConfigPrefix", options.serverConfigPrefix);
+        }
+        if (options.useSecurityDeclarationOrder) {
+            configurator.addAdditionalProperty("useSecurityDeclarationOrder", "true");
+        }
+        if (options.clientResponseMode != null) {
+            configurator.addAdditionalProperty("clientResponseMode", options.clientResponseMode);
+        }
 
         if (options.defaultDelegate) {
             configurator.addAdditionalProperty("delegateMethodBodyMode", "throwException");
@@ -169,6 +264,15 @@ public abstract class BaseOpenapiTest {
 
         var clientOptInput = configurator.toClientOptInput();
         var generator = new DefaultGenerator();
-        return generator.opts(clientOptInput).generate();
+        var generatedFiles = new ArrayList<>(generator.opts(clientOptInput).generate());
+        var generatedPaths = new HashSet<>(generatedFiles.stream().map(file -> file.toPath().toAbsolutePath()).toList());
+        try (var files = Files.walk(openapiSourcesDir)) {
+            files.filter(Files::isRegularFile)
+                .map(Path::toAbsolutePath)
+                .filter(path -> !generatedPaths.contains(path))
+                .map(Path::toFile)
+                .forEach(generatedFiles::add);
+        }
+        return generatedFiles;
     }
 }

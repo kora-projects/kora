@@ -11,6 +11,7 @@ public class HttpServerClassNames {
     public static final ClassName interceptWithClassName = ClassName.get("io.koraframework.http.common.annotation", "InterceptWith");
     public static final ClassName interceptWithContainerClassName = ClassName.get("io.koraframework.http.common.annotation", "InterceptWith", "InterceptWithContainer");
     public static final ClassName httpResponseEntity = ClassName.get("io.koraframework.http.common", "HttpResponseEntity");
+    public static final ClassName httpHeaders = ClassName.get("io.koraframework.http.common.header", "HttpHeaders");
     public static final ClassName httpController = ClassName.get("io.koraframework.http.server.common.annotation", "HttpController");
 
     public static final ClassName httpServerRequest = ClassName.get("io.koraframework.http.server.common.request", "HttpServerRequest");

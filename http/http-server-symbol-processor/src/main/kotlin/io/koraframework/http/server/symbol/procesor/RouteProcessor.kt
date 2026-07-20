@@ -7,6 +7,7 @@ import com.squareup.kotlinpoet.ksp.toClassName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.cookie
 import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.header
+import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.httpHeaders
 import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.httpRoute
 import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.httpServerRequest
 import io.koraframework.http.server.symbol.procesor.HttpServerClassNames.httpServerRequestHandler
@@ -89,7 +90,7 @@ class RouteProcessor {
                 it.isAnnotationPresent(cookie) -> funBuilder.addCookieParameterMapper(it)
                 else -> {
                     val type = it.type.toTypeName()
-                    if (type != httpServerRequest) {
+                    if (type != httpServerRequest && type != httpHeaders) {
                         funBuilder.addRequestParameterMapper(it)
                         bodyParams.add(it)
                     }
@@ -182,6 +183,9 @@ class RouteProcessor {
         val type = param.type.toTypeName()
         if (type == httpServerRequest) {
             addStatement("val %N = %N", param.name!!.asString(), requestName)
+        }
+        if (type == httpHeaders) {
+            addStatement("val %N = %N.headers()", param.name!!.asString(), requestName)
         }
     }
 
@@ -437,5 +441,3 @@ class RouteProcessor {
         }
     }
 }
-
-

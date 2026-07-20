@@ -6,6 +6,8 @@ import org.openapitools.codegen.CodegenSecurity;
 import javax.lang.model.element.Modifier;
 import java.util.*;
 
+import static io.koraframework.openapi.generator.SecurityData.hasAnonymousRequirement;
+
 public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<String, Object>> {
 
     @Override
@@ -88,6 +90,9 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addCode("return new $T(", interceptorClass);
         var seen = new HashSet<String>();
         for (var securityRequirement : security) {
+            if (securityRequirement.isEmpty()) {
+                continue;
+            }
             var principalExtractorTag = this.security.principalExtractorTagBySecurityRequirementNames.get(securityRequirement.keySet());
             if (!seen.add(principalExtractorTag)) {
                 continue;
@@ -127,6 +132,9 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
             .addModifiers(Modifier.PUBLIC);
         var seen = new HashSet<String>();
         for (var securityRequirement : security) {
+            if (securityRequirement.isEmpty()) {
+                continue;
+            }
             var principalExtractorTag = this.security.principalExtractorTagBySecurityRequirementNames.get(securityRequirement.keySet());
             if (!seen.add(principalExtractorTag)) {
                 continue;
@@ -147,7 +155,11 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
 
         var securitySchemaSeen = new HashSet<String>();
         var securityRequirementSeen = new HashSet<String>();
+        var allowAnonymous = hasAnonymousRequirement(security);
         for (var securityRequirement : security) {
+            if (securityRequirement.isEmpty()) {
+                continue;
+            }
             for (var entry : securityRequirement.entrySet()) {
                 var securitySchemaName = entry.getKey();
                 var scopes = entry.getValue();
@@ -207,7 +219,11 @@ public class ServerSecuritySchemaGenerator extends AbstractJavaGenerator<Map<Str
 
             intercept.addCode("\n");
         }
-        intercept.addStatement("throw $T.of(403, $S)", Classes.httpServerResponseException, "Forbidden");
+        if (allowAnonymous) {
+            intercept.addStatement("return chain.process(request)");
+        } else {
+            intercept.addStatement("throw $T.of(401, $S)", Classes.httpServerResponseException, "Unauthorized");
+        }
         b.addMethod(intercept.build());
         return b.build();
     }

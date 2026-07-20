@@ -4,6 +4,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.client.common.response.mapper.JsonHttpClientResponseMapper;
 import io.koraframework.http.common.HttpResponseEntity;
+import io.koraframework.http.common.body.HttpBodyInput;
 import io.koraframework.json.common.JsonReader;
 import io.koraframework.json.common.annotation.Json;
 
@@ -40,7 +41,12 @@ public interface HttpClientResponseMapperModule {
     }
 
     @DefaultComponent
-    default <T> HttpClientResponseMapper<HttpResponseEntity<T>> httpClientResponsEentityResponseMapper(HttpClientResponseMapper<T> mapper) {
+    default HttpClientResponseMapper<HttpBodyInput> httpClientResponseBodyInputMapper() {
+        return HttpClientResponse::body;
+    }
+
+    @DefaultComponent
+    default <T> HttpClientResponseMapper<HttpResponseEntity<T>> httpClientResponseEntityResponseMapper(HttpClientResponseMapper<T> mapper) {
         return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), mapper.apply(response));
     }
 
@@ -50,7 +56,7 @@ public interface HttpClientResponseMapperModule {
         return response -> HttpResponseEntity.of(response.code(), response.headers().toMutable(), delegate.apply(response));
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
     default <T> JsonHttpClientResponseMapper<T> httpClientResponseJsonMapper(JsonReader<T> reader) {
         return new JsonHttpClientResponseMapper<>(reader);

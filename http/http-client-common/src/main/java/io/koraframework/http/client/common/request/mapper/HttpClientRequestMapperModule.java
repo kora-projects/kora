@@ -4,6 +4,7 @@ import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.common.annotation.Tag;
 import io.koraframework.http.client.common.request.HttpClientRequestMapper;
 import io.koraframework.http.common.body.HttpBody;
+import io.koraframework.http.common.body.HttpBodyOutput;
 import io.koraframework.json.common.JsonWriter;
 import io.koraframework.json.common.annotation.Json;
 
@@ -14,6 +15,11 @@ public interface HttpClientRequestMapperModule {
     @DefaultComponent
     default HttpClientRequestMapper<byte[]> httpClientRequestByteArrayMapper() {
         return (body) -> HttpBody.octetStream(body);
+    }
+
+    @DefaultComponent
+    default HttpClientRequestMapper<HttpBodyOutput> httpClientRequestBodyOutputMapper() {
+        return body -> body;
     }
 
     @DefaultComponent
@@ -36,7 +42,7 @@ public interface HttpClientRequestMapperModule {
         return new FormMultipartClientRequestMapper();
     }
 
-    @Tag(Json.class)
+    @Json
     @DefaultComponent
     default <T> JsonHttpClientRequestMapper<T> httpClientRequestJsonMapper(JsonWriter<T> writer) {
         return new JsonHttpClientRequestMapper<>(writer);

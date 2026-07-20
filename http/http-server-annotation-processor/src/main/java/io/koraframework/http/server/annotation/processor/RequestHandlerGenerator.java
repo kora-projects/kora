@@ -112,6 +112,7 @@ public class RequestHandlerGenerator {
                     hasNonBodyParams = true;
                 }
                 case REQUEST -> handler.add("var $N = _request;\n", parameter.name());
+                case HEADERS -> handler.add("var $N = $N.headers();\n", parameter.name(), requestName);
                 default -> {}
             }
         }
@@ -126,7 +127,7 @@ public class RequestHandlerGenerator {
                 case QUERY -> this.defineQueryParameter(parameter, methodBuilder);
                 case HEADER -> this.defineHeaderParameter(parameter, methodBuilder);
                 case COOKIE -> this.defineCookieParameter(parameter, methodBuilder);
-                case MAPPED_HTTP_REQUEST, REQUEST -> CodeBlock.of("");
+                case MAPPED_HTTP_REQUEST, REQUEST, HEADERS -> CodeBlock.of("");
             };
             handler.add(codeBlock);
             handler.add("\n");
@@ -764,6 +765,10 @@ public class RequestHandlerGenerator {
                 parameters.add(new Parameter(REQUEST, parameter.getSimpleName().toString(), parameterType, parameter));
                 continue;
             }
+            if (parameter.asType().toString().equals(HttpServerClassNames.httpHeaders.canonicalName())) {
+                parameters.add(new Parameter(HEADERS, parameter.getSimpleName().toString(), parameterType, parameter));
+                continue;
+            }
 
             parameters.add(new Parameter(MAPPED_HTTP_REQUEST, parameter.getSimpleName().toString(), parameterType, parameter));
         }
@@ -857,6 +862,7 @@ public class RequestHandlerGenerator {
         COOKIE,
         QUERY,
         PATH,
-        REQUEST
+        REQUEST,
+        HEADERS
     }
 }
