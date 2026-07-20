@@ -185,6 +185,7 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
 
             aspectsToApply.reverse()
             val generatedMethodNames = mutableSetOf<String>()
+            var isMethodAspectApplied = false
             for (aspect in aspectsToApply) {
                 val result: KoraAspect.ApplyResult = aspect.apply(function, superCall, aopContext)
                 if (result is KoraAspect.ApplyResult.Noop) {
@@ -227,9 +228,10 @@ class AopProcessor(private val aspects: List<KoraAspect>, private val resolver: 
                 f.returns(returnType.toTypeName())
                 typeBuilder.addFunction(f.build())
                 methodAspectsApplied.add(aspect)
+                isMethodAspectApplied = true
             }
 
-            if (methodAspectsApplied.isNotEmpty()) {
+            if (isMethodAspectApplied) {
                 val b = CodeBlock.builder()
                 if (function.returnType!!.resolve() != resolver.builtIns.unitType) {
                     b.add("return ")

@@ -61,6 +61,27 @@ class AopAnnotationProcessorTest : AbstractSymbolProcessorTest() {
     }
 
     @Test
+    fun testNoopAspectAfterAppliedAspectDoesNotCreateOverride() {
+        compile0(listOf(AopSymbolProcessorProvider()), """
+            open class AopTarget {
+                @io.koraframework.aop.ksp.TestAnnotation1("test")
+                open fun test1(id: Long): Long = id
+
+                @io.koraframework.aop.ksp.TestNoopAnnotation
+                open fun test2(id: Long): Long = id
+            }
+            
+            """.trimIndent())
+        compileResult.assertSuccess()
+        val aopProxy = loadClass("\$AopTarget__AopProxy")
+
+        val methods = aopProxy.declaredMethods.filter { m: Method -> Modifier.isPublic(m.modifiers) }
+
+        assertThat(methods).hasSize(1)
+        assertThat(methods[0].name).isEqualTo("test1")
+    }
+
+    @Test
     fun testClassLevelAspectsApplied() {
         compile0(listOf(AopSymbolProcessorProvider()), """
             @io.koraframework.aop.ksp.TestAnnotation1("testClassLevelAspectsApplied")
