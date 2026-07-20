@@ -101,7 +101,7 @@ public class HttpClientJavaOpenapiTest extends BaseJavaOpenapiTest {
             .findFirst()
             .orElseThrow());
 
-        assertTrue(content.contains("non-sealed interface GetErrorsModelErrorApiResponse extends GetErrorsApiResponse"));
+        assertTrue(content.contains("sealed interface GetErrorsModelErrorApiResponse extends GetErrorsApiResponse"));
         assertTrue(content.contains("ModelError content()"));
         assertTrue(content.contains("default String message()"));
         assertTrue(content.contains("int _statusCode()"));

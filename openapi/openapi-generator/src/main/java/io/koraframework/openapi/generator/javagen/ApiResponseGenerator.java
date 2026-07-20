@@ -99,7 +99,7 @@ public class ApiResponseGenerator extends AbstractJavaGenerator<OperationsMap> {
             var className = responseClassName.nestedClass(responseClassName.simpleName().replaceAll("ApiResponse$", "") + sanitizeSharedResponseName(dataType) + "ApiResponse");
             var type = TypeSpec.interfaceBuilder(className)
                 .addAnnotation(generated())
-                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.NON_SEALED)
+                .addModifiers(Modifier.PUBLIC, Modifier.STATIC, Modifier.SEALED)
                 .addSuperinterface(responseClassName)
                 .addMethod(MethodSpec.methodBuilder("content")
                     .addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT)
