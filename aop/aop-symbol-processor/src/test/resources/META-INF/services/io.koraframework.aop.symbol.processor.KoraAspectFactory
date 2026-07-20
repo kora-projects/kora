@@ -5,3 +5,4 @@ io.koraframework.aop.ksp.aoptarget.AopTarget2$Aspect22Factory
 io.koraframework.aop.ksp.aoptarget.AopTarget3$Aspect3Factory
 io.koraframework.aop.ksp.TestAnnotation1$TestAnnotationAspectFactory
 io.koraframework.aop.ksp.TestAnnotation2$TestAnnotationAspectFactory
+io.koraframework.aop.ksp.TestNoopAnnotation$TestNoopAspectFactory
