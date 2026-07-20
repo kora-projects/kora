@@ -1,5 +1,6 @@
 package io.koraframework.s3.client.kora.annotation;
 
+import io.koraframework.common.annotation.Tag;
 import io.koraframework.s3.client.kora.S3ClientConfig;
 import io.koraframework.s3.client.kora.S3Credentials;
 import io.koraframework.s3.client.kora.exception.S3ClientNoSuchKeyException;
@@ -36,6 +37,8 @@ public @interface S3 {
          * }</pre>
          */
         String value() default "";
+
+        Class<?> factoryTag() default Tag.class;
     }
 
     @Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})

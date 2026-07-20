@@ -1,16 +1,20 @@
 package io.koraframework.s3.client.kora.symbol.processor.gen
 
 import com.google.devtools.ksp.symbol.KSClassDeclaration
+import com.google.devtools.ksp.symbol.KSType
 import com.squareup.kotlinpoet.ClassName
 import com.squareup.kotlinpoet.FunSpec
+import com.squareup.kotlinpoet.ParameterSpec
 import com.squareup.kotlinpoet.ParameterizedTypeName.Companion.parameterizedBy
 import com.squareup.kotlinpoet.TypeSpec
 import com.squareup.kotlinpoet.TypeSpec.Companion.interfaceBuilder
+import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotation
 import io.koraframework.ksp.common.AnnotationUtils.findValueNoDefault
 import io.koraframework.ksp.common.CommonClassNames
 import io.koraframework.ksp.common.KotlinPoetUtils.controlFlow
 import io.koraframework.ksp.common.KspCommonUtils.generated
+import io.koraframework.ksp.common.TagUtils.addTag
 import io.koraframework.ksp.common.generatedClassName
 import io.koraframework.s3.client.kora.symbol.processor.S3ClientUtils
 import io.koraframework.s3.client.kora.symbol.processor.S3ClassNames
@@ -44,12 +48,13 @@ object ModuleGenerator {
         else
             S3ClassNames.config
 
-        val s3ClientAnnotation = s3client.findAnnotation(S3ClassNames.client)
+        val s3ClientAnnotation = s3client.findAnnotation(S3ClassNames.Annotation.client)
         var s3ClientConfigPath = s3ClientAnnotation?.findValueNoDefault<String>("value")
 
         if (s3ClientConfigPath.isNullOrEmpty()) {
             s3ClientConfigPath = s3client.simpleName.asString()
         }
+        val factoryTag = s3ClientAnnotation?.findValueNoDefault<KSType>("factoryTag")
         b.addFunction(
             FunSpec.builder("clientConfig")
                 .returns(configType)
@@ -60,7 +65,7 @@ object ModuleGenerator {
         )
         val clientImpl = FunSpec.builder("clientImpl")
             .returns(clientType)
-            .addParameter("clientFactory", S3ClassNames.clientFactory)
+            .addParameter(clientFactoryParameter(factoryTag))
             .addParameter("clientConfig", configType)
         if (paths.isEmpty()) {
             clientImpl
@@ -74,4 +79,9 @@ object ModuleGenerator {
         return b.build()
     }
 
+    private fun clientFactoryParameter(factoryTag: KSType?): ParameterSpec {
+        return ParameterSpec.builder("clientFactory", S3ClassNames.clientFactory)
+            .addTag(factoryTag?.toTypeName())
+            .build()
+    }
 }
