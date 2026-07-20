@@ -4,9 +4,6 @@ info:
   title: Petstore with discriminator
   version: 1.0.0
 
-security:
-  - headerAuth1: [ ]
-
 paths:
   /pets0:
     get:
@@ -42,6 +39,24 @@ paths:
         - oAuth: [ 'read' ]
         - oAuth: [ 'write' ]
       operationId: pets2
+      tags:
+        - pets
+      responses:
+        '200':
+          description: A paged array of pets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pets"
+  /pets3:
+    get:
+      security:
+        - headerAuth1: [ ]
+          headerAuth2: [ ]
+          queryAuth: [ ]
+        - oAuth: [ 'read' ]
+        - oAuth: [ 'write' ]
+      operationId: pets3
       tags:
         - pets
       responses:
@@ -107,11 +122,5 @@ components:
           scopes:
             read_pets: read your pets
             write_pets: modify pets in your account
-#security:
-#  - headerAuth: [ ]
-#    cookieAuth: [ ]
-#    queryAuth: [ ]
-#  - oAuth:
-#      - write_pets
-#      - read_pets
-#
+security:
+  - headerAuth1: [ ]
