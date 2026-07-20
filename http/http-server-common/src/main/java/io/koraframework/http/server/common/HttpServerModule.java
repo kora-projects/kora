@@ -37,6 +37,11 @@ public interface HttpServerModule extends HttpServerParameterReaderModule, HttpS
     }
 
     @SystemApi
+    default HttpServerSystemConfig systemHttpServerConfig(Config config, ConfigValueMapper<HttpServerSystemConfig> mapper) {
+        return mapper.mapOrThrow(config.get("httpServer.system"));
+    }
+
+    @SystemApi
     default HttpServerRequestHandler systemLivenessHttpServerRequestHandler(@SystemApi ValueOf<HttpServerSystemConfig> config, All<PromiseOf<LivenessProbe>> probes) {
         return new LivenessHandler(config, probes);
     }
