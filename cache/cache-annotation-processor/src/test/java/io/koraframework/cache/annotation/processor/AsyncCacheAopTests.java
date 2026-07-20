@@ -1,10 +1,9 @@
 package io.koraframework.cache.annotation.processor;
 
 import io.koraframework.aop.annotation.processor.AopAnnotationProcessor;
-import io.koraframework.cache.CacheAsyncExecutor;
+import io.koraframework.cache.caffeine.CaffeineCacheModule;
 import io.koraframework.cache.redis.RedisCacheClient;
 import io.koraframework.cache.redis.RedisCacheModule;
-import io.koraframework.cache.caffeine.CaffeineCacheModule;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
@@ -12,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BooleanSupplier;
 
@@ -32,7 +32,7 @@ public class AsyncCacheAopTests extends AbstractCacheAnnotationProcessorTests im
 
         var client = new BlockingRedisCacheClient();
         var cache = newRedisCache(client);
-        var service = newObject("$CacheableSync__AopProxy", cache, new CacheAsyncExecutor());
+        var service = newObject("$CacheableSync__AopProxy", cache, Executors.newSingleThreadExecutor());
         client.blockSet();
 
         assertThat(call(service, "getValue", "1")).isEqualTo("1");
@@ -54,7 +54,7 @@ public class AsyncCacheAopTests extends AbstractCacheAnnotationProcessorTests im
 
         var client = new BlockingRedisCacheClient();
         var cache = newRedisCache(client);
-        var service = newObject("$CacheableSync__AopProxy", cache, new CacheAsyncExecutor());
+        var service = newObject("$CacheableSync__AopProxy", cache, Executors.newSingleThreadExecutor());
         client.blockSet();
 
         assertThat(call(service, "putValue", "1")).isEqualTo("1");
@@ -76,7 +76,7 @@ public class AsyncCacheAopTests extends AbstractCacheAnnotationProcessorTests im
         var client = new BlockingRedisCacheClient();
         var cache = newRedisCache(client);
         call(cache, "put", "1", "1");
-        var service = newObject("$CacheableSync__AopProxy", cache, new CacheAsyncExecutor());
+        var service = newObject("$CacheableSync__AopProxy", cache, Executors.newSingleThreadExecutor());
         client.blockDelOne();
 
         call(service, "evictValue", "1");
@@ -99,7 +99,7 @@ public class AsyncCacheAopTests extends AbstractCacheAnnotationProcessorTests im
         var cache = newRedisCache(client);
         call(cache, "put", "1", "1");
         call(cache, "put", "2", "2");
-        var service = newObject("$CacheableSync__AopProxy", cache, new CacheAsyncExecutor());
+        var service = newObject("$CacheableSync__AopProxy", cache, Executors.newSingleThreadExecutor());
         client.blockDelMany();
 
         call(service, "evictAll");

@@ -2,19 +2,16 @@ package io.koraframework.cache.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
 import io.koraframework.aop.symbol.processor.AopSymbolProcessorProvider
-import io.koraframework.cache.CacheAsyncExecutor
 import io.koraframework.cache.caffeine.CaffeineCacheModule
 import io.koraframework.cache.redis.RedisCacheClient
 import io.koraframework.cache.redis.RedisCacheModule
 import io.koraframework.ksp.common.AbstractSymbolProcessorTest
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNull
-import org.junit.jupiter.api.Assertions.assertTrue
-import org.junit.jupiter.api.Assertions.fail
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
+import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 @KspExperimental
@@ -45,7 +42,7 @@ class AsyncCacheAopTests : AbstractSymbolProcessorTest(), CaffeineCacheModule, R
 
         val client = BlockingRedisCacheClient()
         val cache = newRedisCache(client)
-        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, CacheAsyncExecutor())
+        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, Executors.newSingleThreadExecutor())
         client.blockSet()
 
         assertEquals("1", service.call("getValue", "1"))
@@ -67,7 +64,7 @@ class AsyncCacheAopTests : AbstractSymbolProcessorTest(), CaffeineCacheModule, R
 
         val client = BlockingRedisCacheClient()
         val cache = newRedisCache(client)
-        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, CacheAsyncExecutor())
+        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, Executors.newSingleThreadExecutor())
         client.blockSet()
 
         assertEquals("1", service.call("putValue", "1"))
@@ -89,7 +86,7 @@ class AsyncCacheAopTests : AbstractSymbolProcessorTest(), CaffeineCacheModule, R
         val client = BlockingRedisCacheClient()
         val cache = newRedisCache(client)
         cache.call("put", "1", "1")
-        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, CacheAsyncExecutor())
+        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, Executors.newSingleThreadExecutor())
         client.blockDelOne()
 
         service.call("evictValue", "1")
@@ -112,7 +109,7 @@ class AsyncCacheAopTests : AbstractSymbolProcessorTest(), CaffeineCacheModule, R
         val cache = newRedisCache(client)
         cache.call("put", "1", "1")
         cache.call("put", "2", "2")
-        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, CacheAsyncExecutor())
+        val service = newObject("\$CacheableSync__AopProxy", cache.objectInstance, Executors.newSingleThreadExecutor())
         client.blockDelMany()
 
         service.call("evictAll")
