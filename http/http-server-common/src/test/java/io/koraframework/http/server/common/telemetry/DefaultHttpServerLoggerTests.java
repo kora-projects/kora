@@ -225,6 +225,8 @@ public class DefaultHttpServerLoggerTests {
 
     private DefaultHttpServerTelemetry.TelemetryContext context(HttpServerTelemetryConfig.HttpServerLoggingConfig loggingConfig) {
         return new DefaultHttpServerTelemetry.TelemetryContext(
+            "test-http-server",
+            8080,
             new $HttpServerTelemetryConfig_ConfigValueMapper.HttpServerTelemetryConfig_Impl(
                 loggingConfig,
                 new $HttpServerTelemetryConfig_HttpServerMetricsConfig_ConfigValueMapper.HttpServerMetricsConfig_Defaults(),

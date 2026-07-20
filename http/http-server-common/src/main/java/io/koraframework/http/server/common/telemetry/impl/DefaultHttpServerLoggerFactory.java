@@ -91,6 +91,8 @@ public class DefaultHttpServerLoggerFactory {
                 : null;
             var arg = (StructuredArgumentWriter) gen -> {
                 gen.writeStartObject();
+                gen.writeStringProperty("serverName", this.context.name());
+                gen.writeNumberProperty("serverPort", this.context.port());
                 gen.writeStringProperty("authority", request.host());
                 gen.writeStringProperty("operation", operation);
                 if (finalQuery != null && !finalQuery.isEmpty()) {
@@ -141,6 +143,8 @@ public class DefaultHttpServerLoggerFactory {
 
             var w = (StructuredArgumentWriter) gen -> {
                 gen.writeStartObject();
+                gen.writeStringProperty("serverName", this.context.name());
+                gen.writeNumberProperty("serverPort", this.context.port());
                 gen.writeStringProperty("authority", request.host());
                 gen.writeStringProperty("operation", operation);
                 gen.writeStringProperty("resultCode", resultCode.string());

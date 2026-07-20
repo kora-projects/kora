@@ -25,6 +25,8 @@ import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.any;
+import static org.mockito.Mockito.anyInt;
+import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.when;
 
 class HttpServerHandlerProcessTests {
@@ -67,7 +69,7 @@ class HttpServerHandlerProcessTests {
         var handlers = List.of(handler(method, route));
         var telemetry = NoopHttpServerTelemetry.INSTANCE;
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
-        when(telemetryFactory.get(any())).thenReturn(telemetry);
+        when(telemetryFactory.get(anyString(), anyInt(), any())).thenReturn(telemetry);
         var config = config(false);
         var handler = new HttpServerHandler(handlers, All.of(), config);
 
@@ -115,7 +117,7 @@ class HttpServerHandlerProcessTests {
         var handlers = List.of(handler(method, route));
         var telemetry = NoopHttpServerTelemetry.INSTANCE;
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
-        when(telemetryFactory.get(any())).thenReturn(telemetry);
+        when(telemetryFactory.get(anyString(), anyInt(), any())).thenReturn(telemetry);
         var config = config(true);
         var handler = new HttpServerHandler(handlers, All.of(), config);
 
@@ -136,7 +138,7 @@ class HttpServerHandlerProcessTests {
         );
         var config = config(false);
         var telemetryFactory = Mockito.mock(HttpServerTelemetryFactory.class);
-        when(telemetryFactory.get(any())).thenReturn(NoopHttpServerTelemetry.INSTANCE);
+        when(telemetryFactory.get(anyString(), anyInt(), any())).thenReturn(NoopHttpServerTelemetry.INSTANCE);
         var handler = new HttpServerHandler(handlers, All.of(), config);
 
         var request = new HttpRouterRequestImpl("POST", "/baz", "test", "http", HttpHeaders.of(), Map.of(), HttpBody.empty());

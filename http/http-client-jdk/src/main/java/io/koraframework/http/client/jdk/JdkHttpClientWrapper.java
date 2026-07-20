@@ -2,8 +2,10 @@ package io.koraframework.http.client.jdk;
 
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
+import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.client.common.HttpClientConfig;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,12 +24,17 @@ public final class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient
 
     private final JdkHttpClientConfig config;
     private final HttpClientConfig baseConfig;
+    @Nullable
+    private final Configurer<HttpClient.Builder> clientConfigurer;
 
     private volatile HttpClient client;
 
-    public JdkHttpClientWrapper(JdkHttpClientConfig config, HttpClientConfig baseConfig) {
+    public JdkHttpClientWrapper(JdkHttpClientConfig config,
+                                HttpClientConfig baseConfig,
+                                @Nullable Configurer<HttpClient.Builder> clientConfigurer) {
         this.config = config;
         this.baseConfig = baseConfig;
+        this.clientConfigurer = clientConfigurer;
     }
 
     @Override
@@ -61,6 +68,10 @@ public final class JdkHttpClientWrapper implements Lifecycle, Wrapped<HttpClient
                     }
                 });
             }
+        }
+
+        if (this.clientConfigurer != null) {
+            builder = this.clientConfigurer.configure(builder);
         }
 
         this.client = builder.build();

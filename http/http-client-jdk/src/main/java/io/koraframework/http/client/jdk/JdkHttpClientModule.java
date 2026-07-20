@@ -1,22 +1,18 @@
 package io.koraframework.http.client.jdk;
 
 import io.koraframework.common.annotation.DefaultComponent;
-import io.koraframework.config.common.Config;
+import io.koraframework.common.annotation.FactoryModule;
 import io.koraframework.config.common.ConfigValue;
 import io.koraframework.config.common.mapper.ConfigValueMapper;
-import io.koraframework.http.client.common.HttpClientConfig;
 import io.koraframework.http.client.common.HttpClientModule;
 
 import java.net.http.HttpClient;
 
 public interface JdkHttpClientModule extends HttpClientModule {
 
-    default JdkHttpClient jdkHttpClient(HttpClient client) {
-        return new JdkHttpClient(client);
-    }
-
-    default JdkHttpClientConfig jdkHttpClientConfig(Config config, ConfigValueMapper<JdkHttpClientConfig> mapper) {
-        return mapper.mapOrThrow(config.get("httpClient.jdk"));
+    @FactoryModule
+    default JdkHttpClientFactoryModule jdkHttpClientFactory() {
+        return new JdkHttpClientFactoryModule("httpClient");
     }
 
     @DefaultComponent
@@ -30,8 +26,4 @@ public interface JdkHttpClientModule extends HttpClientModule {
         };
     }
 
-    @DefaultComponent
-    default JdkHttpClientWrapper jdkHttpClientWrapper(JdkHttpClientConfig config, HttpClientConfig baseConfig) {
-        return new JdkHttpClientWrapper(config, baseConfig);
-    }
 }

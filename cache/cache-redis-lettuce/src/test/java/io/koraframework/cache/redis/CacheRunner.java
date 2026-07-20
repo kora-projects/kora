@@ -51,7 +51,7 @@ public abstract class CacheRunner extends Assertions implements RedisCacheModule
     }
 
     private RedisCacheClient createLettuce(RedisParams redisParams) throws Exception {
-        var lettuceClientFactory = lettuceFactory(null, null, null, null, null, null);
+        var lettuceClientFactory = lettuceFactory().lettuceFactory(null, null, null, null, null, null);
         var lettuceConfig = new LettuceConfig() {
             @Override
             public String uri() {

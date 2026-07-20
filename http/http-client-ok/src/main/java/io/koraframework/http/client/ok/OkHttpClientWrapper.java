@@ -4,12 +4,12 @@ import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import io.koraframework.application.graph.All;
 import io.koraframework.application.graph.Lifecycle;
 import io.koraframework.application.graph.Wrapped;
 import io.koraframework.common.Configurer;
 import io.koraframework.common.util.TimeUtils;
 import io.koraframework.http.client.common.HttpClientConfig;
+import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 
@@ -19,13 +19,17 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
 
     private final OkHttpClientConfig config;
     private final HttpClientConfig baseConfig;
-    private final All<Configurer<OkHttpClient.Builder>> configurers;
+    @Nullable
+    private final Configurer<OkHttpClient.Builder> configurer;
+
     private volatile OkHttpClient client;
 
-    public OkHttpClientWrapper(OkHttpClientConfig config, HttpClientConfig baseConfig, All<Configurer<OkHttpClient.Builder>> configurers) {
+    public OkHttpClientWrapper(OkHttpClientConfig config,
+                               HttpClientConfig baseConfig,
+                               @Nullable Configurer<OkHttpClient.Builder> configurer) {
         this.config = config;
         this.baseConfig = baseConfig;
-        this.configurers = configurers;
+        this.configurer = configurer;
     }
 
     @Override
@@ -55,8 +59,8 @@ public final class OkHttpClientWrapper implements Lifecycle, Wrapped<OkHttpClien
                 builder.proxyAuthenticator(new ProxyAuthenticator(proxyUser, proxyPassword));
             }
         }
-        for (var configurer : this.configurers) {
-            builder = configurer.configure(builder);
+        if (this.configurer != null) {
+            builder = this.configurer.configure(builder);
         }
         this.client = builder.build();
 

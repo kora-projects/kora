@@ -5,6 +5,7 @@ import io.koraframework.jms.telemetry.JmsConsumerTelemetryFactory;
 import javax.jms.ConnectionFactory;
 
 public class JmsMessageListenerContainerFactory {
+
     private final ConnectionFactory jmsConnectionFactory;
     private final JmsConsumerTelemetryFactory telemetry;
 
