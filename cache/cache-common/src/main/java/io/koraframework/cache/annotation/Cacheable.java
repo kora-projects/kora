@@ -24,4 +24,9 @@ public @interface Cacheable {
      * @return The parameter names that make up the key.
      */
     String[] args() default {};
+
+    /**
+     * @return cache update execution mode
+     */
+    CacheMode mode() default CacheMode.SYNC;
 }

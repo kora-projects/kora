@@ -1,6 +1,7 @@
 package io.koraframework.cache.redis.lettuce;
 
 import io.koraframework.cache.redis.RedisCacheClient;
+import io.koraframework.cache.redis.RedisCacheModule;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.koraframework.redis.lettuce.LettuceConfig;
 import io.koraframework.redis.lettuce.LettuceFactory;
@@ -12,7 +13,7 @@ import io.lettuce.core.cluster.RedisClusterClient;
 
 import java.util.List;
 
-public interface LettuceCacheModule extends LettuceModule {
+public interface LettuceRedisCacheModule extends RedisCacheModule, LettuceModule {
 
     @DefaultComponent
     default RedisCacheClient lettuceRedisCacheClient(AbstractRedisClient redisClient,

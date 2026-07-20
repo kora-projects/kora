@@ -1,6 +1,7 @@
 package io.koraframework.cache.redis;
 
 import io.koraframework.application.graph.Lifecycle;
+import io.koraframework.cache.redis.lettuce.LettuceRedisCacheModule;
 import io.koraframework.cache.redis.telemetry.*;
 import io.koraframework.cache.redis.testdata.DummyCache;
 import io.koraframework.redis.lettuce.$LettuceConfig_SslConfig_ConfigValueMapper;
@@ -14,7 +15,7 @@ import org.junit.jupiter.api.Assertions;
 
 import java.time.Duration;
 
-public abstract class CacheRunner extends Assertions implements RedisCacheModule {
+public abstract class CacheRunner extends Assertions implements LettuceRedisCacheModule {
 
     public static final String PREFIX = "pref";
 

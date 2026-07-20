@@ -36,9 +36,9 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
 
         val operation = CacheOperationUtils.Companion.getCacheOperation(ksFunction, aspectContext)
         val body = if (operation.type == CacheOperation.Type.EVICT_ALL) {
-            buildBodySyncAll(ksFunction, operation, superCall)
+            buildBodySyncAll(ksFunction, operation, superCall, aspectContext)
         } else {
-            buildBodySync(ksFunction, operation, superCall)
+            buildBodySync(ksFunction, operation, superCall, aspectContext)
         }
 
         return KoraAspect.ApplyResult.MethodBody(body)
@@ -48,8 +48,10 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         method: KSFunctionDeclaration,
         operation: CacheOperation,
         superCall: String,
+        aspectContext: KoraAspect.AspectContext,
     ): CodeBlock {
         val superMethod = getSuperMethod(method, superCall)
+        val executorField = getExecutorField(operation, aspectContext)
         val builder = CodeBlock.builder()
 
         // cache super method
@@ -66,9 +68,11 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
             builder.add("val %L = %L\n", keyField, cache.cacheKey!!.code)
 
             if (cache.cacheKey.type.type!!.resolve().isMarkedNullable) {
-                builder.add("%L?.let { %L.invalidate(it) }\n", keyField, cache.field)
+                builder.add("%L?.let { ", keyField)
+                builder.add(cacheInvalidate(executorField, cache, "it"))
+                builder.add("}\n")
             } else {
-                builder.add("%L.invalidate(%L)\n", cache.field, keyField)
+                builder.add(cacheInvalidate(executorField, cache, keyField))
             }
         }
 
@@ -87,8 +91,10 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
         method: KSFunctionDeclaration,
         operation: CacheOperation,
         superCall: String,
+        aspectContext: KoraAspect.AspectContext,
     ): CodeBlock {
         val superMethod = getSuperMethod(method, superCall)
+        val executorField = getExecutorField(operation, aspectContext)
         val builder = CodeBlock.builder()
 
         // cache super method
@@ -100,7 +106,7 @@ class CacheInvalidateAopKoraAspect(private val resolver: Resolver) : AbstractAop
 
         // cache invalidate
         for (cache in operation.executions) {
-            builder.add(cache.field).add(".invalidateAll()\n")
+            builder.add(cacheInvalidateAll(executorField, cache))
         }
 
         if (method.isVoid()) {

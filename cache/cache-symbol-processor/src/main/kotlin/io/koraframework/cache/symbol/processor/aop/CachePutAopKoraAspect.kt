@@ -37,7 +37,7 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
         }
 
         val operation = CacheOperationUtils.Companion.getCacheOperation(ksFunction, aspectContext)
-        val body = buildBodySync(ksFunction, operation, superCall)
+        val body = buildBodySync(ksFunction, operation, superCall, aspectContext)
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
@@ -45,8 +45,10 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
         method: KSFunctionDeclaration,
         operation: CacheOperation,
         superCall: String,
+        aspectContext: KoraAspect.AspectContext,
     ): CodeBlock {
         val superMethod = getSuperMethod(method, superCall)
+        val executorField = getExecutorField(operation, aspectContext)
         val builder = CodeBlock.builder()
 
         // cache super method
@@ -59,9 +61,11 @@ class CachePutAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheAs
             builder.add("val %L = %L\n", keyField, cache.cacheKey!!.code)
 
             if (cache.cacheKey.type.type!!.resolve().isMarkedNullable) {
-                builder.add("%L?.let { %L.put(it, _value) }\n", keyField, cache.field)
+                builder.add("%L?.let { ", keyField)
+                builder.add(cachePut(executorField, cache, "it", "_value"))
+                builder.add("}\n")
             } else {
-                builder.add("%L.put(%L, _value)\n", cache.field, keyField)
+                builder.add(cachePut(executorField, cache, keyField, "_value"))
             }
         }
 

@@ -2,6 +2,7 @@ package io.koraframework.cache.symbol.processor
 
 import com.google.devtools.ksp.KspExperimental
 import com.google.devtools.ksp.getConstructors
+import com.google.devtools.ksp.getAllSuperTypes
 import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.isPublic
 import com.google.devtools.ksp.symbol.*
@@ -13,6 +14,7 @@ import com.squareup.kotlinpoet.TypeName
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.aop.symbol.processor.KoraAspect
 import io.koraframework.ksp.common.AnnotationUtils.findAnnotations
+import io.koraframework.ksp.common.KoraSymbolProcessingEnv
 import io.koraframework.ksp.common.FunctionUtils.isCompletionStage
 import io.koraframework.ksp.common.FunctionUtils.isFlow
 import io.koraframework.ksp.common.FunctionUtils.isFlux
@@ -46,6 +48,7 @@ class CacheOperationUtils {
         private val KEY_MAPPER_9 = ClassName("io.koraframework.cache", "CacheKeyMapper", "CacheKeyMapper9")
 
         val REDIS_CACHE = ClassName("io.koraframework.cache.redis", "RedisCache")
+        val CAFFEINE_CACHE = ClassName("io.koraframework.cache.caffeine", "CaffeineCache")
         val ANNOTATION_CACHEABLE = ClassName("io.koraframework.cache.annotation", "Cacheable")
         val ANNOTATION_CACHEABLES = ClassName("io.koraframework.cache.annotation", "Cacheables")
         val ANNOTATION_CACHE_PUT = ClassName("io.koraframework.cache.annotation", "CachePut")
@@ -142,10 +145,21 @@ class CacheOperationUtils {
                 val cacheImpl = annotation.arguments.filter { a -> a.name!!.asString() == "value" }
                     .map { a -> a.value as KSType }
                     .first()
+                val async = annotation.arguments.filter { a -> a.name!!.asString() == "mode" }
+                    .map { a -> a.value.toString().endsWith(".ASYNC") }
+                    .firstOrNull()
+                    ?: false
 
                 val fieldCache = aspectContext.fieldFactory.constructorParam(cacheImpl, listOf())
                 val superTypes = (cacheImpl.declaration as KSClassDeclaration).superTypes.toList()
                 val superType = superTypes[superTypes.size - 1]
+                val isCaffeine = isCaffeineCache(cacheImpl)
+                if (async && isCaffeine) {
+                    KoraSymbolProcessingEnv.logger.warn(
+                        "Cache async mode is ignored for CaffeineCache ${(cacheImpl.declaration as KSClassDeclaration).qualifiedName!!.asString()}",
+                        method
+                    )
+                }
 
                 var cacheKey: CacheOperation.CacheKey?
                 val cacheKeyMirror = superType.resolve().arguments[0]
@@ -203,10 +217,21 @@ class CacheOperationUtils {
                 }
 
                 allParameters.add(parameters)
-                cacheExecs.add(CacheOperation.CacheExecution(fieldCache, cacheImpl, superType, cacheKey))
+                cacheExecs.add(CacheOperation.CacheExecution(fieldCache, cacheImpl, superType, cacheKey, async, isCaffeine))
             }
 
             return CacheOperation(type, cacheExecs, origin)
+        }
+
+        private fun isCaffeineCache(type: KSType): Boolean {
+            val declaration = type.declaration as? KSClassDeclaration ?: return false
+            if (declaration.qualifiedName?.asString() == CAFFEINE_CACHE.canonicalName) {
+                return true
+            }
+
+            return declaration.getAllSuperTypes().any {
+                (it.declaration as? KSClassDeclaration)?.qualifiedName?.asString() == CAFFEINE_CACHE.canonicalName
+            }
         }
 
         private fun getCacheableAnnotations(method: KSFunctionDeclaration): List<KSAnnotation> {

@@ -1,4 +1,4 @@
-package io.koraframework.cache.redis;
+package io.koraframework.cache.redis.mapper;
 
 import io.koraframework.cache.CacheKeyMapper;
 import org.jspecify.annotations.Nullable;

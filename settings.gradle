@@ -88,6 +88,7 @@ include(
     'cache:cache-annotation-processor',
     'cache:cache-symbol-processor',
     'cache:cache-caffeine',
+    'cache:cache-redis-common',
     'cache:cache-redis-lettuce',
     'validation:validation-common',
     'validation:validation-module',

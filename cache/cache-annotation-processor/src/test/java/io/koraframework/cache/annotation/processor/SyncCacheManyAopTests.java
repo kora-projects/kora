@@ -9,7 +9,7 @@ import io.koraframework.cache.annotation.processor.testcache.DummyCache21;
 import io.koraframework.cache.annotation.processor.testcache.DummyCache22;
 import io.koraframework.cache.annotation.processor.testdata.sync.CacheableSyncMany;
 import io.koraframework.cache.caffeine.CaffeineCacheModule;
-import io.koraframework.cache.redis.RedisCacheKeyMapper;
+import io.koraframework.cache.redis.mapper.RedisCacheKeyMapper;
 import io.koraframework.cache.redis.RedisCacheModule;
 
 import java.lang.reflect.Constructor;

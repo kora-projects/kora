@@ -19,4 +19,9 @@ public @interface CacheInvalidateAll {
      * @return cache implementation
      */
     Class<? extends Cache<?, ?>> value();
+
+    /**
+     * @return cache invalidation execution mode
+     */
+    CacheMode mode() default CacheMode.SYNC;
 }

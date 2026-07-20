@@ -4,12 +4,13 @@ import io.koraframework.cache.caffeine.telemetry.CaffeineCacheTelemetryFactory;
 import io.koraframework.cache.caffeine.telemetry.impl.DefaultCaffeineCacheLoggerFactory;
 import io.koraframework.cache.caffeine.telemetry.impl.DefaultCaffeineCacheMetricsFactory;
 import io.koraframework.cache.caffeine.telemetry.impl.DefaultCaffeineCacheTelemetryFactory;
+import io.koraframework.cache.CacheCommonModule;
 import io.koraframework.common.annotation.DefaultComponent;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.opentelemetry.api.trace.Tracer;
 import org.jspecify.annotations.Nullable;
 
-public interface CaffeineCacheModule {
+public interface CaffeineCacheModule extends CacheCommonModule {
 
     @DefaultComponent
     default CaffeineCacheFactory caffeineCacheFactory(@Nullable MeterRegistry meterRegistry) {

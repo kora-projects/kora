@@ -33,6 +33,11 @@ class CacheAnnotationProcessorTests extends AbstractAnnotationProcessorTest {
     }
 
     @Test
+    void cacheAsyncMode() {
+        assertDoesNotThrow(() -> TestUtils.annotationProcess(CacheableAsync.class, new AopAnnotationProcessor()));
+    }
+
+    @Test
     void cacheTaggedRedisKeyMapper() {
         assertDoesNotThrow(() -> TestUtils.annotationProcess(DummyCacheTagged.class, new CacheAnnotationProcessor()));
     }

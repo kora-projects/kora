@@ -1,6 +1,8 @@
 package io.koraframework.cache.redis.testdata;
 
 import io.koraframework.cache.redis.*;
+import io.koraframework.cache.redis.mapper.RedisCacheKeyMapper;
+import io.koraframework.cache.redis.mapper.RedisCacheValueMapper;
 import io.koraframework.cache.redis.telemetry.RedisCacheTelemetryFactory;
 
 public final class DummyCache extends AbstractRedisCache<String, String> {

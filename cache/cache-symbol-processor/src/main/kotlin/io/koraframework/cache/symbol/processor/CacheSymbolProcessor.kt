@@ -48,8 +48,8 @@ class CacheSymbolProcessor(
         private val REDIS_CACHE_IMPL = ClassName("io.koraframework.cache.redis", "AbstractRedisCache")
         private val REDIS_CACHE_CONFIG = ClassName("io.koraframework.cache.redis", "RedisCacheConfig")
         private val REDIS_CACHE_CLIENT = ClassName("io.koraframework.cache.redis", "RedisCacheClient")
-        private val REDIS_CACHE_MAPPER_KEY = ClassName("io.koraframework.cache.redis", "RedisCacheKeyMapper")
-        private val REDIS_CACHE_MAPPER_VALUE = ClassName("io.koraframework.cache.redis", "RedisCacheValueMapper")
+        private val REDIS_CACHE_MAPPER_KEY = ClassName("io.koraframework.cache.redis.mapper", "RedisCacheKeyMapper")
+        private val REDIS_CACHE_MAPPER_VALUE = ClassName("io.koraframework.cache.redis.mapper", "RedisCacheValueMapper")
     }
 
     override fun processRound(resolver: Resolver): List<KSAnnotated> {

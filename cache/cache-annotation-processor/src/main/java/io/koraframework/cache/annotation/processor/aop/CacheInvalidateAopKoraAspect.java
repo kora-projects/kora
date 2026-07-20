@@ -37,11 +37,11 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
         }
 
         final CacheOperation operation = CacheOperationUtils.getCacheOperation(method, env, aspectContext);
-        final CodeBlock body = buildBodySync(method, operation, superCall);
+        final CodeBlock body = buildBodySync(method, operation, superCall, aspectContext);
         return new ApplyResult.MethodBody(body);
     }
 
-    private CodeBlock getSyncBlock(ExecutableElement method, CacheOperation operation) {
+    private CodeBlock getSyncBlock(ExecutableElement method, CacheOperation operation, String executorField) {
         // cache variables
         var builder = CodeBlock.builder();
 
@@ -75,7 +75,7 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
                 }
             }
 
-            builder.addStatement("$L.invalidate($L)", cache.field(), keyField);
+            builder.add(cacheInvalidate(executorField, cache, keyField));
         }
 
         return builder.build();
@@ -83,8 +83,10 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
 
     private CodeBlock buildBodySync(ExecutableElement method,
                                     CacheOperation operation,
-                                    String superCall) {
+                                    String superCall,
+                                    AspectContext aspectContext) {
         final String superMethod = getSuperMethod(method, superCall);
+        final String executorField = getExecutorField(operation, aspectContext);
 
         // cache variables
         var builder = CodeBlock.builder();
@@ -96,7 +98,7 @@ public class CacheInvalidateAopKoraAspect extends AbstractAopCacheAspect {
             builder.add("var value = ").addStatement(superMethod);
         }
 
-        builder.add(getSyncBlock(method, operation));
+        builder.add(getSyncBlock(method, operation, executorField));
 
         if (!MethodUtils.isVoid(method)) {
             builder.addStatement("return value");

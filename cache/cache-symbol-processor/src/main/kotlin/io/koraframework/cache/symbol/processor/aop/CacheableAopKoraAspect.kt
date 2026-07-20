@@ -37,23 +37,30 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         }
 
         val operation = CacheOperationUtils.Companion.getCacheOperation(ksFunction, aspectContext)
-        val body = buildBodySync(ksFunction, operation, superCall)
+        val body = buildBodySync(ksFunction, operation, superCall, aspectContext)
         return KoraAspect.ApplyResult.MethodBody(body)
     }
 
     private fun buildBodySync(
         method: KSFunctionDeclaration,
         operation: CacheOperation,
-        superCall: String
+        superCall: String,
+        aspectContext: KoraAspect.AspectContext,
     ): CodeBlock {
         val superMethod = getSuperMethod(method, superCall)
+        val executorField = getExecutorField(operation, aspectContext)
         val builder = CodeBlock.builder()
 
         val isResultNullable = method.returnType!!.resolve().isMarkedNullable
         val suffixCheck = if (isResultNullable) "" else "!!"
         if (operation.executions.size == 1) {
-            val keyBlock = CodeBlock.of("val _key = %L\n", operation.executions[0].cacheKey!!.code)
-            val isSingleNullableParam = operation.executions[0].type.isMarkedNullable
+            val cache = operation.executions[0]
+            val keyBlock = CodeBlock.of("val _key = %L\n", cache.cacheKey!!.code)
+            if (isAsync(cache)) {
+                return buildSingleBodyAsync(cache, superMethod, keyBlock, suffixCheck, executorField)
+            }
+
+            val isSingleNullableParam = cache.type.isMarkedNullable
             val codeBlock = if (isSingleNullableParam) {
                 CodeBlock.of(
                     """
@@ -62,10 +69,10 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
                         } else {
                             %L
                         }
-                    """.trimIndent(), operation.executions[0].field, superMethod, suffixCheck, superMethod
+                    """.trimIndent(), cache.field, superMethod, suffixCheck, superMethod
                 )
             } else {
-                CodeBlock.of("return %L.computeIfAbsent(_key) { %L }%L", operation.executions[0].field, superMethod, suffixCheck)
+                CodeBlock.of("return %L.computeIfAbsent(_key) { %L }%L", cache.field, superMethod, suffixCheck)
             }
 
             return CodeBlock.builder()
@@ -96,7 +103,12 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
             for (j in 0 until i) {
                 val prevCache = operation.executions[j]
                 val prevCacheKeyField = "_key${j + 1}"
-                builder.add("\t%L.put(%L, _value)\n", prevCache.field, prevCacheKeyField)
+                if (isAsync(prevCache)) {
+                    builder.add("\tval _asyncValue%L = _value\n", j)
+                    builder.add("\t").add(cachePut(executorField, prevCache, prevCacheKeyField, "_asyncValue$j"))
+                } else {
+                    builder.add("\t%L.put(%L, _value)\n", prevCache.field, prevCacheKeyField)
+                }
             }
 
             builder
@@ -113,9 +125,11 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
             val keyField = "_key${i + 1}"
 
             if (cache.cacheKey!!.type.type!!.resolve().isMarkedNullable) {
-                builder.add("%L?.let { %L.put(it, _value) }\n", keyField, cache.field)
+                builder.add("%L?.let { ", keyField)
+                builder.add(cachePut(executorField, cache, "it", "_value"))
+                builder.add("}\n")
             } else {
-                builder.add("%L.put(%L, _value)\n", cache.field, keyField)
+                builder.add(cachePut(executorField, cache, keyField, "_value"))
             }
         }
         builder.add("return _value")
@@ -123,5 +137,43 @@ class CacheableAopKoraAspect(private val resolver: Resolver) : AbstractAopCacheA
         return CodeBlock.builder()
             .add(builder.build())
             .build()
+    }
+
+    private fun buildSingleBodyAsync(
+        cache: CacheOperation.CacheExecution,
+        superMethod: String,
+        keyBlock: CodeBlock,
+        suffixCheck: String,
+        executorField: String?,
+    ): CodeBlock {
+        val builder = CodeBlock.builder()
+            .add(keyBlock)
+
+        if (cache.type.isMarkedNullable) {
+            builder.add(
+                """
+                    if (_key == null) {
+                        return %L
+                    }
+                    
+                """.trimIndent(),
+                superMethod
+            )
+        }
+
+        builder.add("val _value = %L.get(_key)\n", cache.field)
+        builder.add(
+            """
+                if (_value != null) {
+                    return _value%L
+                }
+                
+            """.trimIndent(),
+            suffixCheck
+        )
+        builder.add("val _result = %L\n", superMethod)
+        builder.add(cachePut(executorField, cache, "_key", "_result"))
+        builder.add("return _result")
+        return builder.build()
     }
 }

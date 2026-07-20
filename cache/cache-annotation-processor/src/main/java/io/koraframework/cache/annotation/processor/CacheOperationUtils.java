@@ -36,6 +36,7 @@ public final class CacheOperationUtils {
     public static final ClassName ANNOTATION_CACHE_INVALIDATES = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidates");
     public static final ClassName ANNOTATION_CACHE_INVALIDATE_ALL = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidateAll");
     public static final ClassName ANNOTATION_CACHE_INVALIDATE_ALLS = ClassName.get("io.koraframework.cache.annotation", "CacheInvalidateAlls");
+    public static final ClassName CAFFEINE_CACHE = ClassName.get("io.koraframework.cache.caffeine", "CaffeineCache");
 
     private static final Set<String> CACHE_ANNOTATIONS = Set.of(
         ANNOTATION_CACHEABLE.canonicalName(), ANNOTATION_CACHEABLES.canonicalName(),
@@ -135,12 +136,30 @@ public final class CacheOperationUtils {
                 .map(e -> String.valueOf(e.getValue().getValue()))
                 .findFirst()
                 .orElseThrow();
+            final boolean async = annotation.getElementValues().entrySet().stream()
+                .filter(e -> e.getKey().getSimpleName().contentEquals("mode"))
+                .map(e -> {
+                    var value = String.valueOf(e.getValue().getValue());
+                    return value.equals("ASYNC") || value.endsWith(".ASYNC");
+                })
+                .findFirst()
+                .orElse(false);
 
             var cacheElement = env.getElementUtils().getTypeElement(cacheImpl);
             var fieldCache = aspectContext.fieldFactory().constructorParam(cacheElement.asType(), List.of());
 
             var superTypes = env.getTypeUtils().directSupertypes(cacheElement.asType());
             var superType = ((DeclaredType) superTypes.get(superTypes.size() - 1));
+            var caffeineCacheElement = env.getElementUtils().getTypeElement(CAFFEINE_CACHE.canonicalName());
+            var isCaffeine = caffeineCacheElement != null && env.getTypeUtils().isSubtype(
+                env.getTypeUtils().erasure(cacheElement.asType()),
+                env.getTypeUtils().erasure(caffeineCacheElement.asType())
+            );
+            if (async && isCaffeine) {
+                env.getMessager().printMessage(Diagnostic.Kind.WARNING,
+                    "Cache async mode is ignored for CaffeineCache " + cacheElement.getQualifiedName(),
+                    method);
+            }
 
 
             final CacheOperation.CacheKey cacheKey;
@@ -187,7 +206,7 @@ public final class CacheOperationUtils {
                 }
             }
 
-            cacheExecutions.add(new CacheOperation.CacheExecution(fieldCache, cacheElement, superType, cacheKey));
+            cacheExecutions.add(new CacheOperation.CacheExecution(fieldCache, cacheElement, superType, cacheKey, async, isCaffeine));
         }
 
         return new CacheOperation(type, cacheExecutions, origin);

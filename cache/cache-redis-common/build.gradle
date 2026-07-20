@@ -1,8 +1,10 @@
 dependencies {
     annotationProcessor project(':config:config-annotation-processor')
 
-    api project(":cache:cache-redis-common")
-    api project(":redis:redis-lettuce")
+    api project(":cache:cache-common")
+    api project(":config:config-common")
+    api project(":telemetry:telemetry-common")
+    api project(":logging:logging-common")
 
     testImplementation project(":internal:test-logging")
     testImplementation project(":internal:test-redis")
