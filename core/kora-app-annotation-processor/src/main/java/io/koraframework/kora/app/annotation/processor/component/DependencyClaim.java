@@ -11,21 +11,46 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import java.util.Objects;
 
-public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyClaimType claimType) {
+public record DependencyClaim(TypeMirror type, @Nullable String tag, DependencyClaimType claimType, @Nullable Element source) {
     public DependencyClaim {
         Objects.requireNonNull(type);
         Objects.requireNonNull(claimType);
         if (TypeParameterUtils.hasTypeParameter(type)) {
-            throw new IllegalStateException("Component can't have generic dependencies: " + type);
+            if (source != null) {
+                throw new ProcessingErrorException("""
+                    Dependency uses an unresolved generic type:
+                      type: %s
+
+                    Kora dependency keys must be concrete types.
+
+                    Fix:
+                      - Bind the generic type parameter to a concrete type.
+                      - Move generic construction to a component template or module method.
+                    """.formatted(type).stripTrailing(), source);
+            }
+            throw new IllegalStateException("Kora internal error: generic dependency claim was created without source element: " + type);
         }
+    }
+
+    public DependencyClaim(TypeMirror type, @Nullable String tag, DependencyClaimType claimType) {
+        this(type, tag, claimType, null);
     }
 
     public DependencyClaim(Element src, TypeMirror type, @Nullable String tag, DependencyClaimType claimType) {
         if (type.getKind() != TypeKind.DECLARED) {
-            throw new ProcessingErrorException("Only reference types are allowed as graph components, got " + type + " at " + src, src);
+            throw new ProcessingErrorException("""
+                Dependency has non-reference type:
+                  type: %s
+
+                Kora graph components must be classes or interfaces.
+
+                Fix:
+                  - Use a reference type instead of a primitive or void type.
+                  - Wrap primitive values in a class or boxed type.
+                """.formatted(type).stripTrailing(), src);
         }
 
-        this(type, tag, claimType);
+        this(type, tag, claimType, src);
     }
 
     public boolean tagsMatches(String other) {

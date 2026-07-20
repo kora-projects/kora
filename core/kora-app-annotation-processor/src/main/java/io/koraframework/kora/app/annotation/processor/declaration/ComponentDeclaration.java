@@ -236,14 +236,29 @@ public sealed interface ComponentDeclaration {
     static ComponentDeclaration fromModule(ProcessingContext ctx, ModuleDeclaration module, ExecutableElement method) {
         var type = method.getReturnType();
         if (TypeParameterUtils.hasRawTypes(type)) {
-            throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", method);
+            throw new ProcessingErrorException("""
+                Component provider returns a raw type:
+                  type: %s
+
+                Raw component types are forbidden because they make dependency resolution ambiguous.
+
+                Fix:
+                  - Specify generic type arguments in the return type.
+                  - Return a concrete parameterized type.
+                """.formatted(type).stripTrailing(), method);
         }
         var tag = TagUtils.parseTagValue(method);
         if (CommonClassNames.tagFactory.canonicalName().equals(tag)) {
             if (module instanceof ModuleDeclaration.FactoryModule(var _, var moduleTag)) {
                 tag = moduleTag;
             } else {
-                throw new ProcessingErrorException("Tag @Tag.Factory is only allowed for factory modules ", method);
+                throw new ProcessingErrorException("""
+                    @Tag.Factory can only be used inside factory modules.
+
+                    Fix:
+                      - Move this provider to a factory module.
+                      - Replace @Tag.Factory with an explicit @Tag(...) value.
+                    """.stripTrailing(), method);
             }
         }
         var conditionalAnnotation = AnnotationUtils.findAnnotation(method, CommonClassNames.conditional);
@@ -259,7 +274,14 @@ public sealed interface ComponentDeclaration {
     static ComponentDeclaration fromAnnotated(ProcessingContext ctx, TypeElement typeElement) {
         var constructors = CommonUtils.findConstructors(typeElement, m -> m.contains(Modifier.PUBLIC));
         if (constructors.size() != 1) {
-            throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", typeElement);
+            throw new ProcessingErrorException("""
+                @Component class must have exactly one public constructor.
+
+                Fix:
+                  - Keep one public constructor.
+                  - Make extra constructors non-public.
+                  - Move complex construction logic to a module method.
+                """.stripTrailing(), typeElement);
         }
         var constructor = constructors.get(0);
         var type = typeElement.asType();
@@ -292,7 +314,16 @@ public sealed interface ComponentDeclaration {
             }
             var type = typeElement.asType();
             if (TypeParameterUtils.hasRawTypes(type)) {
-                throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", sourceMethod);
+                throw new ProcessingErrorException("""
+                    Extension component uses a raw type:
+                      type: %s
+
+                    Raw component types are forbidden because they make dependency resolution ambiguous.
+
+                    Fix:
+                      - Specify generic type arguments explicitly.
+                      - Generate a concrete parameterized component type.
+                    """.formatted(type).stripTrailing(), sourceMethod);
             }
             var className = ClassName.get(typeElement);
 
@@ -303,7 +334,16 @@ public sealed interface ComponentDeclaration {
             var type = generatedResult.targetType().getReturnType();
             var parameterTypes = generatedResult.targetType().getParameterTypes();
             if (TypeParameterUtils.hasRawTypes(type)) {
-                throw new ProcessingErrorException("Components with raw types can break dependency resolution in unpredictable way so they are forbidden", sourceMethod);
+                throw new ProcessingErrorException("""
+                    Extension component provider returns a raw type:
+                      type: %s
+
+                    Raw component types are forbidden because they make dependency resolution ambiguous.
+
+                    Fix:
+                      - Specify generic type arguments explicitly.
+                      - Generate a concrete parameterized return type.
+                    """.formatted(type).stripTrailing(), sourceMethod);
             }
             var parameterTags = sourceMethod.getParameters().stream().map(TagUtils::parseTagValue).toList();
             var tag = TagUtils.parseTagValue(sourceMethod);

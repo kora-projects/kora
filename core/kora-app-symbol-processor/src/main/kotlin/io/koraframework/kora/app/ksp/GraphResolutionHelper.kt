@@ -43,7 +43,9 @@ object GraphResolutionHelper {
     fun toDependency(ctx: ProcessingContext, resolvedComponent: ResolvedComponent, dependencyClaim: DependencyClaim): SingleDependency {
         val isDirectAssignable = dependencyClaim.type.isAssignableFrom(resolvedComponent.type)
         val isWrappedAssignable = ctx.serviceTypesHelper.isAssignableToUnwrapped(resolvedComponent.type, dependencyClaim.type)
-        check(isDirectAssignable || isWrappedAssignable)
+        check(isDirectAssignable || isWrappedAssignable) {
+            "Kora internal error: resolved component is not assignable to dependency claim. Component=${resolvedComponent.declaration.declarationString()}, claim=$dependencyClaim"
+        }
 
         val targetDependency = if (isWrappedAssignable)
             WrappedTargetDependency(dependencyClaim, resolvedComponent)
@@ -54,7 +56,7 @@ object GraphResolutionHelper {
             ONE_REQUIRED, NULLABLE_ONE, NODE_OF -> targetDependency
             PROMISE_OF, NULLABLE_PROMISE_OF -> PromiseOfDependency(dependencyClaim, targetDependency)
             VALUE_OF, NULLABLE_VALUE_OF -> ValueOfDependency(dependencyClaim, targetDependency)
-            ALL, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF, GRAPH -> throw java.lang.IllegalStateException()
+            ALL, ALL_OF_PROMISE, ALL_OF_VALUE, TYPE_REF, GRAPH -> throw IllegalStateException("Kora internal error: unsupported single dependency claim type ${dependencyClaim.claimType} for $dependencyClaim")
         }
     }
 
@@ -194,7 +196,7 @@ object GraphResolutionHelper {
                     )
                 }
 
-                is ComponentDeclaration.OptionalComponent -> throw IllegalStateException()
+                is ComponentDeclaration.OptionalComponent -> throw IllegalStateException("Kora internal error: optional synthetic component cannot be used as a component template: $template")
             }
         }
         if (result.isEmpty()) {
@@ -240,8 +242,7 @@ object GraphResolutionHelper {
                     // that's fine, default component wasn't directly requested by anyone, so we don't need it
                     continue
                 } else {
-                    // something went wrong
-                    throw NullPointerException()
+                    throw IllegalStateException("Kora internal error: non-default All<T> dependency declaration is not resolved: ${declaration.declarationString()}")
                 }
             }
 
@@ -251,7 +252,7 @@ object GraphResolutionHelper {
                     ALL -> targetDependency
                     ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
                     ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
-                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
+                    else -> throw IllegalStateException("Kora internal error: unsupported All<T> claim type ${dependencyClaim.claimType} for $dependencyClaim")
                 }
                 result.add(dependency)
             }
@@ -262,7 +263,7 @@ object GraphResolutionHelper {
                     ALL -> targetDependency
                     ALL_OF_PROMISE -> PromiseOfDependency(dependencyClaim, targetDependency)
                     ALL_OF_VALUE -> ValueOfDependency(dependencyClaim, targetDependency)
-                    else -> throw IllegalStateException("Unexpected value: " + dependencyClaim.claimType)
+                    else -> throw IllegalStateException("Kora internal error: unsupported wrapped All<T> claim type ${dependencyClaim.claimType} for $dependencyClaim")
                 }
                 result.add(dependency)
             }

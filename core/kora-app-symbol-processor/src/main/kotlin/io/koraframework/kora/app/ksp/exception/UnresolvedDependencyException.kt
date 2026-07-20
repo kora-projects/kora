@@ -4,6 +4,7 @@ import com.google.devtools.ksp.isConstructor
 import com.google.devtools.ksp.symbol.KSClassDeclaration
 import com.google.devtools.ksp.symbol.KSDeclaration
 import com.google.devtools.ksp.symbol.KSFunctionDeclaration
+import com.google.devtools.ksp.symbol.KSValueParameter
 import com.squareup.kotlinpoet.ksp.toTypeName
 import io.koraframework.kora.app.ksp.DependencyModuleHintProvider
 import io.koraframework.kora.app.ksp.GraphBuilder
@@ -20,7 +21,7 @@ class UnresolvedDependencyException(
     val declaration: ComponentDeclaration,
     val dependencyClaim: DependencyClaim,
     hints: List<DependencyModuleHintProvider.Hint>,
-) : ProcessingErrorException(listOf(ProcessingError(getMessage(stack, declaration, dependencyClaim, hints).trimIndent(), declaration.source, Diagnostic.Kind.ERROR))) {
+) : ProcessingErrorException(listOf(ProcessingError(getMessage(stack, declaration, dependencyClaim, hints).trimIndent(), dependencyClaim.source ?: declaration.source, Diagnostic.Kind.ERROR))) {
 
 
     companion object {
@@ -30,36 +31,38 @@ class UnresolvedDependencyException(
             dependencyClaim: DependencyClaim,
             hints: List<DependencyModuleHintProvider.Hint>,
         ): String {
-            val msg = if (dependencyClaim.tag == null) {
-                StringBuilder(
-                    "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} (no tags)\n" +
-                        "Keep in mind that nullable & non nullable types are different in Kotlin.\n" +
-                        "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
-                )
+            val msg = StringBuilder()
+            msg.append("No component found for dependency:\n  ")
+            msg.append(dependencyClaim.type.toTypeName())
+            if (dependencyClaim.tag == null) {
+                msg.append(" (no tags)")
             } else {
-                val tagMsg = "@Tag(${dependencyClaim.tag}::class)"
-                StringBuilder(
-                    "Required dependency type wasn't found in graph and can't be auto created: ${dependencyClaim.type.toTypeName()} with tag ${tagMsg}.\n" +
-                        "Keep in mind that nullable & non nullable types are different in Kotlin).\n" +
-                        "Please check class for @${CommonClassNames.component.canonicalName} annotation or that required module with component factory is plugged in."
-                )
+                msg.append(" with @Tag(${dependencyClaim.tag}::class)")
             }
-
-            if (hints.isNotEmpty()) {
-                msg.append("\n\nHints:")
-                for (hint in hints) {
-                    msg.append("\n  - Hint: ").append(hint.message())
-                }
-            }
-
-            val claimMsg = "Required dependency claim: $dependencyClaim"
-            msg.append("\n\n").append(claimMsg)
+            msg.append("\n\nNote:\n  Kotlin nullable and non-nullable types are different dependency keys.")
 
             val requestedMsg = getRequestedMessage(declaration)
-            msg.append("\n").append(requestedMsg)
+            msg.append("\n\nRequired at:\n  ").append(requestedMsg)
+            val source = dependencyClaim.source
+            if (source is KSValueParameter) {
+                msg.append("\n  parameter: ")
+                    .append(source.type.toTypeName())
+                    .append(" ")
+                    .append(source.name?.asString() ?: "<unnamed>")
+            }
 
             val treeMsg = getDependencyTreeSimpleMessage(stack, declaration, dependencyClaim)
-            msg.append("\n").append(treeMsg)
+            msg.append("\n\n").append(treeMsg)
+            if (hints.isNotEmpty()) {
+                msg.append("\n\nHint:")
+                for (hint in hints) {
+                    msg.append("\n  - ").append(hint.message().trim().replace("\n", "\n    "))
+                }
+            }
+            msg.append("\n\nFix:")
+            msg.append("\n  - Add @${CommonClassNames.component.canonicalName} to an implementation of ${dependencyClaim.type.toTypeName()}.")
+            msg.append("\n  - Add a module function that returns ${dependencyClaim.type.toTypeName()}.")
+            msg.append("\n  - Include a module that provides ${dependencyClaim.type.toTypeName()} in @KoraApp.")
             return msg.toString()
         }
 
@@ -81,13 +84,13 @@ class UnresolvedDependencyException(
             } while (element != null)
 
             return if (module != null && factoryMethod != null && factoryMethod.isConstructor()) {
-                "Dependency requested at: ${module.qualifiedName!!.asString()}#${factoryMethod}(${
+                "${module.qualifiedName!!.asString()}#${factoryMethod}(${
                     factoryMethod.parameters.joinToString(", ") {
                         it.type.toTypeName().toString()
                     }
                 })"
             } else {
-                "Dependency requested at: ${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
+                "${module!!.qualifiedName!!.asString()}#${factoryMethod!!.qualifiedName!!.asString()}(${
                     factoryMethod.parameters.joinToString(", ") {
                         it.type.toTypeName().toString()
                     }
@@ -101,7 +104,7 @@ class UnresolvedDependencyException(
             dependencyClaim: DependencyClaim,
         ): String {
             val msg = StringBuilder()
-            msg.append("Dependency resolution tree:")
+            msg.append("Dependency resolution path:")
 
             val stackFrames = mutableListOf<GraphBuilder.ResolutionFrame>()
             val i = stack.descendingIterator()
@@ -152,7 +155,7 @@ class UnresolvedDependencyException(
 
             msg.append(delimiter).append(declaration.declarationString())
 
-            val errorMissing = " [ ERROR: MISSING COMPONENT ]"
+            val errorMissing = " [MISSING]"
             if (dependencyClaim.tag == null) {
                 msg.append(delimiter)
                     .append(dependencyClaim.type.toTypeName()).append("   ")

@@ -23,7 +23,7 @@ sealed interface ComponentDependency {
                 DependencyClaim.DependencyClaimType.ALL -> codeBlock.add("%T.all(it", CommonClassNames.all)
                 DependencyClaim.DependencyClaimType.ALL_OF_VALUE -> codeBlock.add("%T.allValues(it", CommonClassNames.all)
                 DependencyClaim.DependencyClaimType.ALL_OF_PROMISE -> codeBlock.add("%T.allPromises(it", CommonClassNames.all)
-                else -> throw IllegalStateException("Unexpected dependency type ${claim.claimType}")
+                else -> throw IllegalStateException("Kora internal error: unsupported All<T> claim type for code generation: $claim")
             }
             for (dependency in resolvedDependencies) {
                 val dependencyNode = dependency.component!!.nodeRef("some_fake_holder_idc")
@@ -41,7 +41,7 @@ sealed interface ComponentDependency {
                 DependencyClaim.DependencyClaimType.NULLABLE_ONE -> CodeBlock.of("null as %T", claim.type.toTypeName().copy(true))
                 DependencyClaim.DependencyClaimType.NULLABLE_VALUE_OF -> CodeBlock.of("null as %T", CommonClassNames.valueOf.parameterizedBy(claim.type.toTypeName()).copy(true))
                 DependencyClaim.DependencyClaimType.NULLABLE_PROMISE_OF -> CodeBlock.of("null as %T", CommonClassNames.promiseOf.parameterizedBy(claim.type.toTypeName()).copy(true))
-                else -> throw IllegalArgumentException(claim.claimType.toString())
+                else -> throw IllegalStateException("Kora internal error: unsupported nullable dependency claim type for code generation: $claim")
             }
         }
 
@@ -99,7 +99,7 @@ sealed interface ComponentDependency {
                 DependencyClaim.DependencyClaimType.ONE_REQUIRED -> b.add("it.getOneOf(")
                 DependencyClaim.DependencyClaimType.VALUE_OF -> b.add("it.getOneValueOf(")
                 DependencyClaim.DependencyClaimType.PROMISE_OF -> b.add("it.getOnePromiseOf(")
-                else -> throw IllegalStateException("Unknown claim type: " + claim.claimType)
+                else -> throw IllegalStateException("Kora internal error: unsupported one-of dependency claim type for code generation: $claim")
             }
             for ((i, dependency) in dependencies.withIndex()) {
                 if (i > 0) b.add(", ")

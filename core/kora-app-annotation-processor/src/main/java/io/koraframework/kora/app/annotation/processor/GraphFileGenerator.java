@@ -254,7 +254,7 @@ public class GraphFileGenerator {
                 var optionalOf = ((DeclaredType) optional.type()).getTypeArguments().get(0);
                 statement.add("$T.<$T>ofNullable($L)", Optional.class, optionalOf, dependenciesCode);
             }
-            case null, default -> throw new RuntimeException("Unknown type " + declaration);
+            case null, default -> throw new IllegalStateException("Kora internal error: graph generator got unsupported component declaration: " + declaration);
         }
         statement.add(")");
         return statement.build();

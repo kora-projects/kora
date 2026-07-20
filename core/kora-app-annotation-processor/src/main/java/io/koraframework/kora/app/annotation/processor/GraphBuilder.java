@@ -101,7 +101,13 @@ public class GraphBuilder {
     public ResolvedGraph build() {
         if (rootSet.isEmpty()) {
             throw new ProcessingErrorException(
-                "@KoraApp has no root components, expected at least one declaration annotated with @Root",
+                """
+                    @KoraApp has no root components.
+
+                    Fix:
+                      - Annotate at least one component or module method with @Root.
+                      - Check that root component is visible from this @KoraApp module set.
+                    """.stripTrailing(),
                 root
             );
         }
@@ -139,11 +145,31 @@ public class GraphBuilder {
                     .filter(d -> componentCondition.canonicalName().equals(d.declaration().tag()))
                     .toList();
                 if (conditionDeclarations.isEmpty()) {
-                    throw new ProcessingErrorException("Component declares condition with tag %s, but none found in graph: %s".formatted(componentCondition.toString(), declaration), declaration.source());
+                    throw new ProcessingErrorException("""
+                        Component condition cannot be resolved:
+                          required condition tag: @Tag(%s.class)
+                          component: %s
+
+                        Fix:
+                          - Add a GraphCondition component with this tag.
+                          - Include a module that provides this GraphCondition.
+                          - Check that @Conditional uses the intended tag.
+                        """.formatted(componentCondition, declaration).stripTrailing(), declaration.source());
                 }
                 if (conditionDeclarations.size() > 1) {
                     var str = conditionDeclarations.stream().map(DeclarationWithIndex::declaration).map(Object::toString).collect(Collectors.joining("\n")).indent(2);
-                    throw new ProcessingErrorException("Component declares condition with tag %s, but multiple candidates found in graph:\n%s\n%s".formatted(componentCondition.toString(), declaration, str), declaration.source());
+                    throw new ProcessingErrorException("""
+                        Multiple GraphCondition components match condition tag:
+                          required condition tag: @Tag(%s.class)
+                          component: %s
+
+                        Candidates:
+                        %s
+
+                        Fix:
+                          - Keep only one GraphCondition for this tag.
+                          - Use different @Tag(...) values for different conditions.
+                        """.formatted(componentCondition, declaration, str).stripTrailing(), declaration.source());
                 }
                 var conditionDeclaration = conditionDeclarations.getFirst();
                 resolvedCondition = this.resolvedComponents.getByDeclaration(conditionDeclaration);
@@ -266,7 +292,14 @@ public class GraphBuilder {
                     try {
                         extensionResult = Objects.requireNonNull(extension.generateDependency());
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        throw new ProcessingErrorException("""
+                            Extension failed to generate dependency:
+                              dependency: %s
+
+                            Fix:
+                              - Check earlier errors from the extension annotation processor.
+                              - If no earlier errors exist, report this as a Kora extension bug.
+                            """.formatted(dependencyClaim.type()).stripTrailing(), dependencyClaim.source() == null ? declaration.source() : dependencyClaim.source());
                     }
                     var extensionComponent = switch (extensionResult) {
                         case ExtensionResult.CodeBlockResult codeBlockResult -> ComponentDeclaration.fromExtension(codeBlockResult);
@@ -301,7 +334,15 @@ public class GraphBuilder {
                     for (var resolvedDependency : dependencies) {
                         if (resolvedDependency.component().index() > component.index()) {
                             throw new ProcessingErrorException(
-                                "All<T> dependency appeared in graph after component requesting it, this is a bug that we will fix later",
+                                """
+                                    All<T> dependency appeared in graph after the component that requests it.
+
+                                    This is an internal graph ordering limitation.
+
+                                    Fix:
+                                      - Move the component that provides the All<T> item so it is reachable before the requesting component.
+                                      - If this graph should be valid, please report this as a Kora bug with the dependency path.
+                                    """.stripTrailing(),
                                 resolvedDependency.component().declaration().source()
                             );
                         }
@@ -311,7 +352,7 @@ public class GraphBuilder {
                 if (dependency instanceof ComponentDependency.PromisedProxyParameterDependency proxy) {
                     var componentDeclarations = GraphResolutionHelper.findDependencyDeclarations(ctx, declarations, proxy.claim());
                     if (componentDeclarations.size() != 1) {
-                        throw new IllegalStateException();
+                        throw new IllegalStateException("Kora internal error: promised proxy dependency expected exactly one target declaration, got " + componentDeclarations.size() + " for " + proxy.claim());
                     }
                     var realDependency = Objects.requireNonNull(resolvedComponents.getByDeclaration(componentDeclarations.getFirst()));
                     proxy.setPromised(realDependency);
@@ -363,7 +404,7 @@ public class GraphBuilder {
         if (dependencyClaim.claimType() == ALL_OF_PROMISE) {
             return new ComponentDependency.AllOfDependency(dependencyClaim);
         }
-        throw new IllegalStateException();
+        throw new IllegalStateException("Kora internal error: processAllOf called for non-All dependency claim: " + dependencyClaim);
     }
 
     private List<ResolutionFrame.Component> findInterceptors(ProcessingContext ctx, ResolvedComponents resolvedComponents, Deque<ResolutionFrame> resolutionStack, ComponentDeclaration declaration) {
@@ -446,7 +487,7 @@ public class GraphBuilder {
         try {
             javaFile.build().writeTo(ctx.filer);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new IllegalStateException("Kora internal error: failed to write promised proxy component for " + typeElement.getQualifiedName(), e);
         }
         return new ComponentDeclaration.PromisedProxyComponent(typeElement, ClassName.get(packageElement.getQualifiedName().toString(), resultClassName));
     }
@@ -481,12 +522,12 @@ public class GraphBuilder {
             var declarations = GraphResolutionHelper.findDependencyDeclarations(ctx, this.declarations, proxyDependencyClaim);
             if (!declarations.isEmpty()) {
                 if (declarations.size() > 1) {
-                    throw new IllegalStateException();
+                    throw new IllegalStateException("Kora internal error: promised proxy declaration is ambiguous for " + proxyDependencyClaim + ", declarations: " + declarations);
                 }
                 var decl = declarations.getFirst();
                 var resolved = resolvedComponents.getByDeclaration(decl);
                 if (resolved == null) {
-                    throw new IllegalStateException();
+                    throw new IllegalStateException("Kora internal error: promised proxy declaration was found but is not resolved: " + decl.declaration().declarationString());
                 }
                 stack.removeLast();
                 prevComponent.resolvedDependencies().add(GraphResolutionHelper.toDependency(ctx, resolved, dependencyClaim));
@@ -506,7 +547,7 @@ public class GraphBuilder {
                         ctx, declaration, templates, proxyDependencyClaim
                     );
                     if (proxyComponentDeclarations.size() != 1) {
-                        throw new IllegalStateException();
+                        throw new IllegalStateException("Kora internal error: generated promised proxy template expected one declaration, got " + proxyComponentDeclarations.size() + " for " + proxyDependencyClaim);
                     }
                     proxyComponentDeclaration = proxyComponentDeclarations.getFirst();
                     declIdx = this.declarations.add(proxyComponentDeclaration);
@@ -516,7 +557,7 @@ public class GraphBuilder {
                 }
             } else {
                 if (proxyComponentDeclarations.size() > 1) {
-                    throw new IllegalStateException();
+                    throw new IllegalStateException("Kora internal error: promised proxy template is ambiguous for " + proxyDependencyClaim + ", declarations: " + proxyComponentDeclarations);
                 }
                 proxyComponentDeclaration = proxyComponentDeclarations.getFirst();
                 declIdx = this.declarations.add(proxyComponentDeclaration);

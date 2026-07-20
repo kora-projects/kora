@@ -51,7 +51,7 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
             try {
                 this.generateAppParts();
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw new IllegalStateException("Kora internal error: failed to write generated @KoraSubmodule implementation", e);
             }
         }
     }
@@ -231,12 +231,24 @@ public class KoraSubmoduleProcessor extends AbstractKoraProcessor {
             .toList();
         if (constructors.isEmpty()) {
             throw new ProcessingErrorException(
-                "Type annotated with @Component has no public constructors", element
+                """
+                    @Component type has no public constructors.
+
+                    Fix:
+                      - Add one public constructor.
+                      - Move construction to a module method if constructor cannot be public.
+                    """.stripTrailing(), element
             );
         }
         if (constructors.size() > 1) {
             throw new ProcessingErrorException(
-                "Type annotated with @Component has more then one public constructor", element
+                """
+                    @Component type has more than one public constructor.
+
+                    Fix:
+                      - Keep exactly one public constructor.
+                      - Make extra constructors non-public.
+                    """.stripTrailing(), element
             );
         }
         return constructors.get(0);

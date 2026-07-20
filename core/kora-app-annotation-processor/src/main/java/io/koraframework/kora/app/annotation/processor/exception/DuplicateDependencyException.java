@@ -7,6 +7,7 @@ import io.koraframework.kora.app.annotation.processor.component.ComponentDepende
 import io.koraframework.kora.app.annotation.processor.component.DependencyClaim;
 import io.koraframework.kora.app.annotation.processor.declaration.ComponentDeclaration;
 
+import javax.lang.model.element.VariableElement;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,7 +30,7 @@ public class DuplicateDependencyException extends ProcessingErrorException {
                                                            List<ComponentDeclaration> foundDeclarations) {
         var deps = foundDeclarations.stream()
             .map(c -> String.format("- %s", c.declarationString()))
-            .collect(Collectors.joining("\n", "Candidates for injection:\n", "")).indent(2);
+            .collect(Collectors.joining("\n", "Candidates:\n", "")).indent(2);
 
         return getError(claim, declaration, deps);
     }
@@ -40,7 +41,7 @@ public class DuplicateDependencyException extends ProcessingErrorException {
         var deps = foundDeclarations.stream()
             .map(ComponentDependency.SingleDependency::component)
             .map(c -> String.format("- %s", c.declaration().declarationString()))
-            .collect(Collectors.joining("\n", "Candidates for injection:\n", "")).indent(2);
+            .collect(Collectors.joining("\n", "Candidates:\n", "")).indent(2);
 
         return getError(claim, declaration, deps);
     }
@@ -48,17 +49,27 @@ public class DuplicateDependencyException extends ProcessingErrorException {
     private static ProcessingError getError(DependencyClaim claim,
                                             ComponentDeclaration declaration,
                                             String deps) {
+        var msg = new StringBuilder();
+        msg.append("Multiple components match dependency:\n  ").append(TypeName.get(claim.type()));
         if (claim.tag() == null) {
-            return new ProcessingError("More than one declaration matches dependency type: " + TypeName.get(claim.type()) + " (no tags)\n"
-                                       + deps
-                                       + "\nPlease check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.",
-                declaration.source());
+            msg.append(" (no tags)");
         } else {
-            var tagMsg = "@Tag(" + claim.tag() + ".class)";
-            return new ProcessingError("More than one declaration matches dependency type: " + TypeName.get(claim.type()) + " with " + tagMsg + "\n"
-                                       + deps
-                                       + "\nPlease check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.",
-                declaration.source());
+            msg.append(" with @Tag(").append(claim.tag()).append(".class)");
         }
+        var source = claim.source();
+        if (source instanceof VariableElement variableElement) {
+            msg.append("\n\nRequired at:\n  ")
+                .append(variableElement.getEnclosingElement())
+                .append("\n  parameter: ")
+                .append(variableElement.asType())
+                .append(" ")
+                .append(variableElement.getSimpleName());
+        }
+        msg.append("\n\n").append(deps.stripTrailing());
+        msg.append("\n\nFix:");
+        msg.append("\n  - Add different @Tag(...) annotations to candidates and request the needed tag.");
+        msg.append("\n  - Mark fallback candidate with @DefaultComponent.");
+        msg.append("\n  - Remove one duplicate provider.");
+        return new ProcessingError(msg.toString(), claim.source() == null ? declaration.source() : claim.source());
     }
 }

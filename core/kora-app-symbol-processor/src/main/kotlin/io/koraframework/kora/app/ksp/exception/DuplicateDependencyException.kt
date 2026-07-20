@@ -1,6 +1,7 @@
 package io.koraframework.kora.app.ksp.exception
 
 import com.squareup.kotlinpoet.ksp.toTypeName
+import com.google.devtools.ksp.symbol.KSValueParameter
 import io.koraframework.kora.app.ksp.component.ComponentDependency
 import io.koraframework.kora.app.ksp.component.DependencyClaim
 import io.koraframework.kora.app.ksp.declaration.ComponentDeclaration
@@ -31,7 +32,7 @@ data class DuplicateDependencyException(
         ): ProcessingError {
             val deps = foundDeclarations
                 .map { String.format("- %s", it.declarationString()) }
-                .joinToString("\n", "Candidates for injection:\n", "").prependIndent("  ")
+                .joinToString("\n", "Candidates:\n", "").prependIndent("  ")
 
             return getError(claim, declaration, deps)
         }
@@ -41,21 +42,28 @@ data class DuplicateDependencyException(
             declaration: ComponentDeclaration,
             deps: String
         ): ProcessingError {
+            val msg = StringBuilder()
+            msg.append("Multiple components match dependency:\n  ").append(claim.type.toTypeName())
             if (claim.tag == null) {
-                return ProcessingError(
-                    """More than one component matches dependency type: ${claim.type.toTypeName()} (no tags)
-                    $deps
-                    Please check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.""".trimIndent(),
-                    declaration.source
-                )
+                msg.append(" (no tags)")
             } else {
-                return ProcessingError(
-                    """More than one component matches dependency type: ${claim.type.toTypeName()} with @Tag(${claim.tag}::class)
-                    $deps
-                    Please check that injection dependency is declared correctly or that @DefaultComponent annotation is not missing if was intended.""".trimIndent(),
-                    declaration.source
-                )
+                msg.append(" with @Tag(${claim.tag}::class)")
             }
+            val source = claim.source
+            if (source is KSValueParameter) {
+                msg.append("\n\nRequired at:\n  ")
+                    .append(source.parent)
+                    .append("\n  parameter: ")
+                    .append(source.type.toTypeName())
+                    .append(" ")
+                    .append(source.name?.asString() ?: "<unnamed>")
+            }
+            msg.append("\n\n").append(deps.trimEnd())
+            msg.append("\n\nFix:")
+            msg.append("\n  - Add different @Tag(...) annotations to candidates and request the needed tag.")
+            msg.append("\n  - Mark fallback candidate with @DefaultComponent.")
+            msg.append("\n  - Remove one duplicate provider.")
+            return ProcessingError(msg.toString(), claim.source ?: declaration.source)
         }
     }
 }

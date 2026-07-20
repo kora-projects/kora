@@ -18,23 +18,21 @@ data class CircularDependencyException(
             cycle: List<ComponentDeclaration>,
             declaration: ComponentDeclaration
         ): ProcessingError {
-            val deps = cycle.joinToString("\n", "Cycle dependency candidates:\n", "") { String.format("- %s", it.declarationString()) }.prependIndent("  ")
+            val deps = cycle.joinToString("\n  ^--- ", "Dependency cycle:\n  @--- ") { it.declarationString() }.prependIndent("  ")
 
+            val msg = StringBuilder()
+            msg.append("Circular dependency found:\n  ").append(declaration.type.toTypeName())
             if (declaration.tag == null) {
-                return ProcessingError(
-                    """Encountered circular dependency in graph for source type: ${declaration.type.toTypeName()} (no tags)
-                    $deps
-                    Please check that you are not using cycle dependency in ${CommonClassNames.lifecycle}, this is forbidden.""".trimIndent(),
-                    declaration.source
-                )
+                msg.append(" (no tags)")
             } else {
-                return ProcessingError(
-                    """Encountered circular dependency in graph for source type: ${declaration.type.toTypeName()} with @Tag(${declaration.tag}::class)
-                    $deps
-                    Please check that you are not using cycle dependency in ${CommonClassNames.lifecycle}, this is forbidden.""".trimIndent(),
-                    declaration.source
-                )
+                msg.append(" with @Tag(${declaration.tag}::class)")
             }
+            msg.append("\n\n").append(deps.trimEnd()).append(" [CYCLE]")
+            msg.append("\n\nFix:")
+            msg.append("\n  - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.")
+            msg.append("\n  - Move shared state into a separate component.")
+            msg.append("\n  - Do not create dependency cycles in ${CommonClassNames.lifecycle}.")
+            return ProcessingError(msg.toString(), declaration.source)
         }
     }
 }
