@@ -67,19 +67,26 @@ class CircuitBreakerTests {
         failureRateThreshold: Int,
         waitDurationInOpenState: Duration,
         permittedCallsInHalfOpenState: Int,
-        slidingWindowSize: Long,
+        windowSize: Long,
         minimumRequiredCalls: Long,
     ): CircuitBreakerConfig {
         return object : CircuitBreakerConfig {
             override fun enabled() = enabled
+
+            override fun type() = CircuitBreakerConfig.CircuitBreakerType.FIXED_WINDOW
+
+            override fun countBased() = object : CircuitBreakerConfig.CountBasedConfig {
+                override fun windowSize() = windowSize
+                override fun stripedApprox(): CircuitBreakerConfig.StripedApproxConfig? = null
+            }
+
+            override fun timeBased(): CircuitBreakerConfig.TimeBasedConfig? = null
 
             override fun failureRateThreshold() = failureRateThreshold
 
             override fun waitDurationInOpenState() = waitDurationInOpenState
 
             override fun permittedCallsInHalfOpenState() = permittedCallsInHalfOpenState
-
-            override fun slidingWindowSize() = slidingWindowSize
 
             override fun minimumRequiredCalls() = minimumRequiredCalls
 

@@ -59,11 +59,11 @@ final class FixedWindowKoraCircuitBreaker implements CircuitBreaker {
     private final LongSupplier currentTimeNanos;
     private final long startedNanos;
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
+    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry) {
         this(name, config, failurePredicate, telemetry, System::nanoTime);
     }
 
-    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig.NamedConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
+    FixedWindowKoraCircuitBreaker(String name, CircuitBreakerConfig config, CircuitBreakerPredicate failurePredicate, CircuitBreakerTelemetry telemetry, LongSupplier currentTimeNanos) {
         this.state = new AtomicLong(CLOSED_STATE);
         this.name = name;
         this.config = config;
