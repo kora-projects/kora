@@ -48,6 +48,24 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Pets"
+  /pets3:
+    get:
+      security:
+        - headerAuth1: [ ]
+          headerAuth2: [ ]
+          queryAuth: [ ]
+        - oAuth: [ 'read' ]
+        - oAuth: [ 'write' ]
+      operationId: pets3
+      tags:
+        - pets
+      responses:
+        '200':
+          description: A paged array of pets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pets"
 components:
   schemas:
     Pet:
@@ -105,11 +123,4 @@ components:
             read_pets: read your pets
             write_pets: modify pets in your account
 security:
-  - headerAuth: [ ]
-    cookieAuth: [ ]
-    queryAuth: [ ]
-    headerAuth2: [ ]
-  - oAuth:
-      - write_pets
-      - read_pets
-
+  - headerAuth1: [ ]
